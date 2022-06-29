@@ -485,7 +485,7 @@ def _fully_qualified_name(cls: Type[Any]):
   return name_utils.get_full_name(cls)
 
 
-def _compile_resolver_op(
+def _compile_op_node(
     op_node: resolver_op.OpNode,) -> pipeline_pb2.ResolverConfig.ResolverStep:
   result = pipeline_pb2.ResolverConfig.ResolverStep()
   result.class_path = _fully_qualified_name(op_node.op_type)
@@ -493,14 +493,15 @@ def _compile_resolver_op(
   return result
 
 
-def _compile_resolver_function(
-    f: resolver_function.ResolverFunction,
+def _compile_trace_result(
+    trace_result: resolver_op.Node,
 ) -> List[pipeline_pb2.ResolverConfig.ResolverStep]:
-  """Converts ResolverFunction to corresponding ResolverSteps."""
+  """Converts traced ResolverFunction output to corresponding ResolverSteps."""
   result = []
-  op_node = f.trace()
-  while not op_node.is_input_node:
-    result.append(_compile_resolver_op(op_node))
+  op_node = trace_result
+  while not isinstance(op_node, resolver_op.InputNode):
+    assert isinstance(op_node, resolver_op.OpNode)
+    result.append(_compile_op_node(op_node))
     if len(op_node.args) != 1:
       raise NotImplementedError(
           f"ResolverOp {op_node!r} has {len(op_node.args)} args, expected 1.")
@@ -645,7 +646,7 @@ def _compile_resolver_node(
   """Converts Resolver node to a corresponding ResolverSteps."""
   assert compiler_utils.is_resolver(resolver_node)
   resolver_node = cast(resolver.Resolver, resolver_node)
-  result = _compile_resolver_function(resolver_node.resolver_function)
+  result = _compile_trace_result(resolver_node.trace_result)
   for step in result:
     step.input_keys.extend(resolver_node.inputs.keys())
   return result
@@ -660,7 +661,9 @@ def _compile_for_each_context(
     items = ops.Unnest(input_node, key=input_key)
     return ops.SkipIfEmpty(items)
 
-  return _compile_resolver_function(impl)
+  dummy_input_node = resolver_op.InputNode(
+      None, resolver_op.DataType.ARTIFACT_MULTIMAP)
+  return _compile_trace_result(impl.trace(dummy_input_node))
 
 
 def _check_property_value_type(property_name: str,

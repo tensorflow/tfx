@@ -60,6 +60,10 @@ class ManyArtifacts(
     return []
 
 
+DUMMY_INPUT_NODE = resolver_op.InputNode(
+    None, resolver_op.DataType.ARTIFACT_MULTIMAP)
+
+
 class ResolverOpTest(tf.test.TestCase):
 
   def testDefineOp_PropertyDefaultViolatesType(self):
@@ -68,24 +72,24 @@ class ResolverOpTest(tf.test.TestCase):
         str_prop = resolver_op.Property(type=str, default=42)
 
   def testOpCall_ReturnsOpNode(self):
-    result = Foo(resolver_op.OpNode.INPUT_NODE, foo=42)
+    result = Foo(DUMMY_INPUT_NODE, foo=42)
     self.assertIsInstance(result, resolver_op.OpNode)
-    self.assertEqual(repr(result), 'Foo(INPUT_NODE, foo=42)')
+    self.assertEqual(repr(result), 'Foo(Input(), foo=42)')
 
   def testOpCall_MissingRequiredProperty(self):
     with self.assertRaisesRegex(
         ValueError, 'Required property foo is missing.'):
-      Foo(resolver_op.OpNode.INPUT_NODE)
+      Foo(DUMMY_INPUT_NODE)
 
   def testOpCall_UnknownProperty(self):
     with self.assertRaisesRegex(
         KeyError, 'Unknown property bar.'):
-      Foo(resolver_op.OpNode.INPUT_NODE, foo=42, bar='zz')
+      Foo(DUMMY_INPUT_NODE, foo=42, bar='zz')
 
   def testOpCall_PropertyTypeCheck(self):
     with self.assertRaisesRegex(
         TypeError, "foo should be <class 'int'> but got '42'."):
-      Foo(resolver_op.OpNode.INPUT_NODE, foo='42')
+      Foo(DUMMY_INPUT_NODE, foo='42')
 
   def testOpCreate_ReturnsOp(self):
     result = Foo.create(foo=42)
@@ -93,8 +97,8 @@ class ResolverOpTest(tf.test.TestCase):
     self.assertEqual(result.foo, 42)
 
   def testOpCreate_CannotTakeMultipleArgs(self):
-    foo1 = Foo(resolver_op.OpNode.INPUT_NODE, foo=1)
-    foo2 = Foo(resolver_op.OpNode.INPUT_NODE, foo=2)
+    foo1 = Foo(DUMMY_INPUT_NODE, foo=1)
+    foo2 = Foo(DUMMY_INPUT_NODE, foo=2)
     with self.assertRaises(ValueError):
       Bar(foo1, foo2)
 
@@ -119,7 +123,7 @@ class ResolverOpTest(tf.test.TestCase):
       Foo.create(foo='42')
 
   def testOpCreate_ArgumentTypeCheck(self):
-    input_node = resolver_op.OpNode.INPUT_NODE
+    input_node = DUMMY_INPUT_NODE
 
     with self.subTest('Need List[Dict] but got Dict.'):
       with self.assertRaisesRegex(
@@ -166,29 +170,22 @@ class ResolverOpTest(tf.test.TestCase):
 class OpNodeTest(tf.test.TestCase):
 
   def testOpNode_Repr(self):
-    input_node = resolver_op.OpNode.INPUT_NODE
+    input_node = DUMMY_INPUT_NODE
     foo = resolver_op.OpNode(
         op_type=Foo, args=[input_node], kwargs={'foo': 42})
     bar = resolver_op.OpNode(
         op_type=Bar, args=[foo], kwargs={'bar': 'z'})
 
-    self.assertEqual(repr(bar), "Bar(Foo(INPUT_NODE, foo=42), bar='z')")
+    self.assertEqual(repr(bar), "Bar(Foo(Input(), foo=42), bar='z')")
 
   def testOpNode_ArgsMustBeOpNodeSequence(self):
-    node = resolver_op.OpNode.INPUT_NODE
+    node = DUMMY_INPUT_NODE
 
     with self.assertRaises(TypeError):
       resolver_op.OpNode(op_type=Foo, args=node)  # Not a Sequence!
 
     with self.assertRaises(TypeError):
       resolver_op.OpNode(op_type=Foo, args=[42])  # Element is not OpNode!
-
-  def testOpNode_IsInputNode(self):
-    input_node = resolver_op.OpNode.INPUT_NODE
-    foo = Foo(input_node, foo=42)
-
-    self.assertTrue(input_node.is_input_node)
-    self.assertFalse(foo.is_input_node)
 
 
 if __name__ == '__main__':

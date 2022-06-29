@@ -44,10 +44,8 @@ class ResolverFunction:
   def __call__(self, *args, **kwargs):
     raise NotImplementedError('Cannot call resolver_function directly.')
 
-  def trace(
-      self,
-      input_node: resolver_op.OpNode = resolver_op.OpNode.INPUT_NODE,
-  ) -> resolver_op.OpNode:
+  # TODO(b/236140660): Make trace() private and only use __call__.
+  def trace(self, input_node: resolver_op.Node) -> resolver_op.Node:
     """Trace resolver function with given argument as an input node."""
     # TODO(b/188023509): Better debug support & error message.
     result = self._function(input_node)

@@ -287,30 +287,27 @@ class OpNode(Node):
       raise TypeError(f'`args` should be a Sequence[Node] but got {value!r}.')
 
   def __repr__(self):
-    if self.is_input_node:
-      return 'INPUT_NODE'
-    else:
-      all_args = [repr(arg) for arg in self.args]
-      all_args.extend(f'{k}={repr(v)}' for k, v in self.kwargs.items())
-      return f'{self.op_type.__qualname__}({", ".join(all_args)})'
+    all_args = [repr(arg) for arg in self.args]
+    all_args.extend(f'{k}={repr(v)}' for k, v in self.kwargs.items())
+    return f'{self.op_type.__qualname__}({", ".join(all_args)})'
 
-  @property
-  def is_input_node(self):
-    return self is OpNode.INPUT_NODE
 
-attr.set_run_validators(False)
-OpNode.INPUT_NODE = OpNode(
-    op_type=None,
-    output_data_type=DataType.ARTIFACT_MULTIMAP)
-attr.set_run_validators(True)
+class InputNode(Node):
+  """Node that represents the input arguments of the resolver function."""
+
+  def __init__(self, wrapped: Any, output_data_type: DataType):
+    # TODO(b/236140795): Allow only BaseChannel as a wrapped and make
+    # output_data_type always be the ARTIFACT_LIST.
+    self.wrapped = wrapped
+    self.output_data_type = output_data_type
+
+  def __repr__(self) -> str:
+    return 'Input()'
 
 
 class DictNode(Node):
   """Node that represents a dict of Node values."""
-
-  @property
-  def output_data_type(self) -> DataType:
-    return DataType.ARTIFACT_MULTIMAP
+  output_data_type = DataType.ARTIFACT_MULTIMAP
 
   def __init__(self, nodes: Mapping[str, Node]):
     if not typing_utils.is_compatible(nodes, Mapping[str, Node]) or any(

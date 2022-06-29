@@ -15,6 +15,7 @@
 
 import tensorflow as tf
 from tfx.dsl.input_resolution import resolver_function
+from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -34,8 +35,11 @@ class UnnestOpTest(tf.test.TestCase):
     def f(root):
       return ops.Unnest(root)
 
+    input_node = resolver_op.InputNode(
+        None, resolver_op.DataType.ARTIFACT_MULTIMAP)
+
     with self.assertRaisesRegex(ValueError, 'Required property key is missing'):
-      f.trace()
+      f.trace(input_node)
 
   def testUnnest_KeyChannel_Unnested(self):
     [x1, x2, x3] = self.create_artifacts(uri_prefix='x/', n=3)

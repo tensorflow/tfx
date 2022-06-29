@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.resolver_function."""
-import tensorflow as tf
 
-from tfx.dsl.components.common import resolver
+import tensorflow as tf
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
 
@@ -33,13 +32,8 @@ class Bar(resolver_op.ResolverOp):
     return input_dict
 
 
-class FooStrategy(resolver.ResolverStrategy):
-
-  def __init__(self, foo: int):
-    self._foo = foo
-
-  def resolve_artifacts(self, store, input_dict):
-    return input_dict
+DUMMY_INPUT_NODE = resolver_op.InputNode(
+    None, resolver_op.DataType.ARTIFACT_MULTIMAP)
 
 
 class ResolverFunctionTest(tf.test.TestCase):
@@ -52,23 +46,9 @@ class ResolverFunctionTest(tf.test.TestCase):
       return result
 
     rf = resolver_function.ResolverFunction(resolve)
-    output_node = rf.trace(resolver_op.OpNode.INPUT_NODE)
+    output_node = rf.trace(DUMMY_INPUT_NODE)
     self.assertEqual(repr(output_node),
-                     "Bar(Foo(INPUT_NODE, foo=1), bar='x')")
-
-  def testTrace_ResolverOpAndResolverStrategyInterop(self):
-
-    def resolve(input_dict):
-      result = Foo(input_dict, foo=1)
-      result = FooStrategy.as_resolver_op(result, foo=2)
-      result = Bar(result, bar='x')
-      return result
-
-    rf = resolver_function.ResolverFunction(resolve)
-    output_node = rf.trace(resolver_op.OpNode.INPUT_NODE)
-    self.assertEqual(
-        repr(output_node),
-        "Bar(FooStrategy(Foo(INPUT_NODE, foo=1), foo=2), bar='x')")
+                     "Bar(Foo(Input(), foo=1), bar='x')")
 
   def testTrace_BadReturnValue(self):
 
@@ -77,7 +57,7 @@ class ResolverFunctionTest(tf.test.TestCase):
 
     rf = resolver_function.ResolverFunction(resolve)
     with self.assertRaises(TypeError):
-      rf.trace(resolver_op.OpNode.INPUT_NODE)
+      rf.trace(DUMMY_INPUT_NODE)
 
 
 if __name__ == '__main__':
