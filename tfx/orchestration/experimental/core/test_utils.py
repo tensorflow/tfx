@@ -20,6 +20,7 @@ import uuid
 from absl.testing.absltest import mock
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -54,7 +55,17 @@ def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
   output_example.uri = 'my_examples_uri'
   contexts = context_lib.prepare_contexts(mlmd_handle, example_gen.contexts)
   execution = execution_publish_utils.register_execution(
-      mlmd_handle, example_gen.node_info.type, contexts)
+      mlmd_handle,
+      example_gen.node_info.type,
+      contexts,
+      exec_properties={
+          # We use an arbitrary SHA256 hash here for testing. Note that it's
+          # a constant hash that doesn't depend on the parameters, which happens
+          # to be fine since in the tests we never generate more than one
+          # fake example gen run.
+          constants.EXECUTOR_SPEC_FINGERPRINT_KEY:
+              '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'
+      })
   execution_publish_utils.publish_succeeded_execution(
       mlmd_handle, execution.id, contexts, {
           'examples': [output_example],
