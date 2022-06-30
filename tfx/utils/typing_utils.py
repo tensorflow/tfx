@@ -83,7 +83,7 @@ def is_compatible(value: Any, tp: Any) -> bool:
         subtypes = [typing.Type[a] for a in typing_extensions.get_args(subtype)]
         return any(is_compatible(value, t) for t in subtypes)
       elif inspect.isclass(subtype):
-        return issubclass(value, subtype)
+        return inspect.isclass(value) and issubclass(value, subtype)
     # List[T], Set[T], FrozenSet[T], Iterable[T], Sequence[T], MutableSeuence[T]
     elif maybe_origin in (
         list,
