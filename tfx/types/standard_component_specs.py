@@ -38,6 +38,7 @@ from tfx.types.system_executions import Transform
 # Parameters keys for modules
 # Shared Keys across components
 SCHEMA_KEY = 'schema'
+STUDY_CONFIG_KEY = 'study_config'
 EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
 BLESSING_KEY = 'blessing'
@@ -76,6 +77,8 @@ OUTPUT_EXAMPLES_KEY = 'output_examples'
 # Key for schema_gen
 INFER_FEATURE_SHAPE_KEY = 'infer_feature_shape'
 SCHEMA_FILE_KEY = 'schema_file'
+# key for ImportStudyConfigGen
+STUDY_FILE_KEY = 'study_file'
 # Key for statistics_gen
 STATS_OPTIONS_JSON_KEY = 'stats_options_json'
 SHARDED_STATS_OUTPUT_KEY = 'sharded_stats_output'
