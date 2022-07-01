@@ -26,18 +26,18 @@ import json
 import os
 import tempfile
 from typing import Any, List
-import apache_beam as beam
 
 import absl.testing.absltest
+import apache_beam as beam
 from apache_beam.options.pipeline_options import DirectOptions
 
 from tfx import types
 from tfx.dsl.compiler import compiler
+from tfx.dsl.component.experimental.annotations import BeamComponentParameter
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
-from tfx.dsl.component.experimental.annotations import BeamComponentParameter
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.io import fileio
 from tfx.dsl.placeholder import placeholder as ph
@@ -211,11 +211,10 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         metadata_connection_config=sqlite_metadata_connection_config(
             metadata_path),
         components=[dummy_beam_component],
-        beam_pipeline_args=[#'--runner=DirectRunner',
-                            #'--direct_running_mode=multi_processing',
+        beam_pipeline_args=['--runner=DirectRunner',
+                            '--direct_running_mode=multi_processing',
                             ph.Placeholder(placeholder_type=placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE,
                                            key=num_workers_env_var_name)
-                                .encode()
                             ],
     )
 

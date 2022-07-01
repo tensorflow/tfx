@@ -15,6 +15,7 @@
 
 from typing import Any, Callable, Optional, cast
 
+from tfx.dsl.compiler import placeholder_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import data_types
@@ -67,6 +68,7 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
     self.extra_flags = []
     self.extra_flags.extend(beam_executor_spec.python_executor_spec.extra_flags)
     self.beam_pipeline_args = []
+
     self.beam_pipeline_args.extend(beam_executor_spec.beam_pipeline_args)
 
   def run_executor(
@@ -83,6 +85,21 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
     Returns:
       The output from executor.
     """
+    import os
+    print('os.environ')
+    print(os.environ)
+    context = placeholder_utils.ResolutionContext(
+        exec_info=execution_info,
+        executor_spec=self._executor_spec,
+        platform_config=self._platform_config
+    )
+
+    self.beam_pipeline_args.extend([
+        placeholder_utils.resolve_placeholder_expression(beam_pipeline_arg, context)
+        for beam_pipeline_arg in self.beam_pipeline_args])
+
+    print(f"beam_pipeline_args: {self.beam_pipeline_args}")
+
     context = base_beam_executor.BaseBeamExecutor.Context(
         beam_pipeline_args=self.beam_pipeline_args,
         extra_flags=self.extra_flags,

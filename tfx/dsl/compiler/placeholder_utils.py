@@ -190,8 +190,10 @@ class _ExpressionResolver:
         },
         placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
             context.exec_info.to_proto(),
-      placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE:
-        os.environ,
+        placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE:
+            os.environ,
+        placeholder_pb2.Placeholder.Type.STRING_VALUE:
+            lambda string_value: string_value,
     }
 
   def resolve(self, expression: placeholder_pb2.PlaceholderExpression) -> Any:
@@ -513,7 +515,8 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
         placeholder_pb2.Placeholder.EXEC_PROPERTY: "exec_property",
         placeholder_pb2.Placeholder.RUNTIME_INFO: "runtime_info",
         placeholder_pb2.Placeholder.EXEC_INVOCATION: "execution_invocation",
-        placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE: "environment_variable"
+        placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE: "environment_variable",
+        placeholder_pb2.Placeholder.STRING_VALUE: "string_value"
     }
     ph_name = ph_names_map[placeholder_pb.type]
     if placeholder_pb.key:
