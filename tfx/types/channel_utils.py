@@ -15,8 +15,10 @@
 
 from typing import cast, Dict, Iterable, List
 
+from tfx.dsl.input_resolution import resolver_function
 from tfx.types import artifact
 from tfx.types import channel
+from tfx.types import resolved_channel
 
 
 def as_channel(artifacts: Iterable[artifact.Artifact]) -> channel.Channel:
@@ -74,7 +76,7 @@ def get_dependent_node_ids(channel_: channel.BaseChannel) -> Iterable[str]:
   # pytype: disable=attribute-error
   if isinstance(channel_, channel.OutputChannel):
     yield channel_.producer_component_id
-  if isinstance(channel_, channel.PipelineInputChannel):
+  elif isinstance(channel_, channel.PipelineInputChannel):
     yield channel_.pipeline.id
   elif isinstance(channel_, channel.Channel):
     # Raw Channel is not considered as a data dependent usage. If dependency is
@@ -86,5 +88,9 @@ def get_dependent_node_ids(channel_: channel.BaseChannel) -> Iterable[str]:
       yield from get_dependent_node_ids(each_channel)
   elif isinstance(channel_, channel.LoopVarChannel):
     yield from get_dependent_node_ids(channel_.wrapped)
+  elif isinstance(channel_, resolved_channel.ResolvedChannel):
+    for each_channel in resolver_function.get_dependent_channels(
+        channel_.output_node):
+      yield from get_dependent_node_ids(each_channel)
   else:
     raise TypeError(f'Invalid channel type {type(channel_)}')
