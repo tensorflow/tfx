@@ -94,9 +94,9 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
         platform_config=self._platform_config
     )
 
-    self.beam_pipeline_args.extend([
+    self.beam_pipeline_args = [
         placeholder_utils.resolve_placeholder_expression(beam_pipeline_arg, context)
-        for beam_pipeline_arg in self.beam_pipeline_args])
+        for beam_pipeline_arg in self.beam_pipeline_args]
 
     print(f"beam_pipeline_args: {self.beam_pipeline_args}")
 

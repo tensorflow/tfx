@@ -191,7 +191,7 @@ class _ExpressionResolver:
         placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
             context.exec_info.to_proto(),
         placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE:
-            os.environ,
+            os.environ.get,
         placeholder_pb2.Placeholder.Type.STRING_VALUE:
             lambda string_value: string_value,
     }
@@ -221,6 +221,10 @@ class _ExpressionResolver:
     # a key.
     if placeholder.type == placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
       return context
+    elif placeholder.type == placeholder_pb2.Placeholder.Type.\
+            ENVIRONMENT_VARIABLE or placeholder.type == placeholder_pb2.\
+            Placeholder.Type.STRING_VALUE:
+      return context(placeholder.key)
 
     # Handle remaining placeholder types.
     try:
