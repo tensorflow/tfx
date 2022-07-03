@@ -78,7 +78,6 @@ def LoadDummyDatasetComponent(dataset: OutputArtifact[DummyDataset]):
 @component(use_beam=True)
 def SimpleBeamPoweredComponent(beam_pipeline: BeamComponentParameter[beam.Pipeline] = None):
   with beam_pipeline as p:
-    print(p.options.view_as(DirectOptions))
     direct_num_workers = p.options.view_as(DirectOptions).direct_num_workers
     direct_running_mode = p.options.view_as(DirectOptions).direct_running_mode
     LocalDagRunnerTest.BEAM_ARG_VALUES['direct_num_workers'] = direct_num_workers
@@ -215,7 +214,6 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
             metadata_path),
         components=[dummy_beam_component],
         beam_pipeline_args=['--runner=DirectRunner',
-                            # '--direct_running_mode=multi_processing',
                             '--direct_running_mode=' + ph.Placeholder(
                                 placeholder_type=placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE,
                                 key=direct_running_mode_env_var_name),
