@@ -78,10 +78,11 @@ def LoadDummyDatasetComponent(dataset: OutputArtifact[DummyDataset]):
 @component(use_beam=True)
 def SimpleBeamPoweredComponent(beam_pipeline: BeamComponentParameter[beam.Pipeline] = None):
   with beam_pipeline as p:
-    print(p.options)
     print(p.options.view_as(DirectOptions))
     direct_num_workers = p.options.view_as(DirectOptions).direct_num_workers
-    LocalDagRunnerTest.BEAM_DIRECT_NUM_WORKERS = direct_num_workers
+    direct_running_mode = p.options.view_as(DirectOptions).direct_running_mode
+    LocalDagRunnerTest.BEAM_ARG_VALUES['direct_num_workers'] = direct_num_workers
+    LocalDagRunnerTest.BEAM_ARG_VALUES['direct_running_mode'] = direct_running_mode
 
 
 class SimpleModel:
@@ -159,12 +160,12 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
   # execution side-effects in local test.
   RAN_COMPONENTS = []
   # List of beam env vars from placeholders
-  BEAM_DIRECT_NUM_WORKERS = None
+  BEAM_ARG_VALUES = None
 
   def setUp(self):
     super().setUp()
     self.__class__.RAN_COMPONENTS = []
-    self.__class__.BEAM_DIRECT_NUM_WORKERS = None
+    self.__class__.BEAM_ARG_VALUES = {}
 
   def _getTestPipeline(self) -> pipeline_py.Pipeline:
     # Construct component instances.
@@ -197,7 +198,9 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     c = compiler.Compiler()
     return c.compile(test_pipeline)
 
-  def _getTestBeamComponentPipeline(self, num_workers_env_var_name) -> pipeline_py.Pipeline:
+  def _getTestBeamComponentPipeline(self, num_workers_env_var_name,
+                                    direct_running_mode_env_var_name) \
+          -> pipeline_py.Pipeline:
     # Construct component instances.
     dummy_beam_component = SimpleBeamPoweredComponent().with_id('Beam')
 
@@ -212,7 +215,10 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
             metadata_path),
         components=[dummy_beam_component],
         beam_pipeline_args=['--runner=DirectRunner',
-                            '--direct_running_mode=multi_processing',
+                            # '--direct_running_mode=multi_processing',
+                            '--direct_running_mode=' + ph.Placeholder(
+                                placeholder_type=placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE,
+                                key=direct_running_mode_env_var_name),
                             ph.Placeholder(placeholder_type=placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE,
                                            key=num_workers_env_var_name)
                             ],
@@ -255,13 +261,20 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
 
   def testBeamComponentWithPlaceHolderArgs(self):
     # Set env vars for the placeholder
+    direct_running_mode_env_var_name = 'DIRECT_RUNNING_MODE'
+    direct_running_mode = 'multi_processing'
+    direct_num_workers = 2
     num_workers_env_var_name = 'NUM_WORKERS'
-    num_workers_env_var_value = '--direct_num_workers=2'
+    num_workers_env_var_value = f'--direct_num_workers={direct_num_workers}'
+
+    os.environ[direct_running_mode_env_var_name] = direct_running_mode
     os.environ[num_workers_env_var_name] = num_workers_env_var_value
 
-    local_dag_runner.LocalDagRunner().run(self._getTestBeamComponentPipeline(num_workers_env_var_name))
+    local_dag_runner.LocalDagRunner().run(self._getTestBeamComponentPipeline(num_workers_env_var_name,
+                                                                             direct_running_mode_env_var_name))
 
-    self.assertEqual(self.BEAM_DIRECT_NUM_WORKERS, num_workers_env_var_value)
+    self.assertEqual(self.BEAM_ARG_VALUES['direct_num_workers'], num_workers_env_var_value)
+    self.assertEqual(self.BEAM_ARG_VALUES['direct_running_mode'], num_workers_env_var_value)
 
 
 if __name__ == '__main__':
