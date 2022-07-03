@@ -273,8 +273,8 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     local_dag_runner.LocalDagRunner().run(self._getTestBeamComponentPipeline(num_workers_env_var_name,
                                                                              direct_running_mode_env_var_name))
 
-    self.assertEqual(self.BEAM_ARG_VALUES['direct_num_workers'], num_workers_env_var_value)
-    self.assertEqual(self.BEAM_ARG_VALUES['direct_running_mode'], num_workers_env_var_value)
+    self.assertEqual(self.BEAM_ARG_VALUES['direct_num_workers'], direct_num_workers)
+    self.assertEqual(self.BEAM_ARG_VALUES['direct_running_mode'], direct_running_mode)
 
 
 if __name__ == '__main__':

@@ -85,9 +85,6 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
     Returns:
       The output from executor.
     """
-    import os
-    print('os.environ')
-    print(os.environ)
     context = placeholder_utils.ResolutionContext(
         exec_info=execution_info,
         executor_spec=self._executor_spec,
@@ -97,8 +94,6 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
     self.beam_pipeline_args = [
         placeholder_utils.resolve_placeholder_expression(beam_pipeline_arg, context)
         for beam_pipeline_arg in self.beam_pipeline_args]
-
-    print(f"beam_pipeline_args: {self.beam_pipeline_args}")
 
     context = base_beam_executor.BaseBeamExecutor.Context(
         beam_pipeline_args=self.beam_pipeline_args,
