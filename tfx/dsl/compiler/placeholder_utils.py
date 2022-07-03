@@ -221,6 +221,8 @@ class _ExpressionResolver:
     # a key.
     if placeholder.type == placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
       return context
+    # Handle the special case of ENVIRONMENT_VARIABLE and STRING_VALUE
+    # placeholders, which needs to be resolved as a function call.
     elif placeholder.type == placeholder_pb2.Placeholder.Type.\
             ENVIRONMENT_VARIABLE or placeholder.type == placeholder_pb2.\
             Placeholder.Type.STRING_VALUE:
