@@ -14,6 +14,7 @@
 """Tests for tfx.dsl.compiler.compiler."""
 import os
 import threading
+import unittest
 
 from absl import flags
 from absl.testing import parameterized
@@ -21,6 +22,7 @@ import tensorflow as tf
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler.testdata import additional_properties_test_pipeline_async
 from tfx.dsl.compiler.testdata import channel_union_pipeline
+from tfx.dsl.compiler.testdata import composable_pipeline
 from tfx.dsl.compiler.testdata import conditional_pipeline
 from tfx.dsl.compiler.testdata import dynamic_exec_properties_pipeline
 from tfx.dsl.compiler.testdata import foreach_pipeline
@@ -77,6 +79,8 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     with open(test_pb_filepath) as text_pb_file:
       return text_format.ParseLines(text_pb_file, pipeline_pb2.Pipeline())
 
+  @unittest.skipIf(tf.__version__ < "2",
+                   "Large proto comparison has a bug not fixed with TF < 2.")
   @parameterized.named_parameters(
       ("_additional_properties_test_pipeline_async",
        additional_properties_test_pipeline_async,
@@ -94,6 +98,8 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
        "dynamic_exec_properties_pipeline_ir.pbtxt"),
       ("_pipeline_with_annotations", pipeline_with_annotations,
        "pipeline_with_annotations_ir.pbtxt"),
+      ("_composable_pipeline", composable_pipeline,
+       "composable_pipeline_ir.pbtxt"),
   )
   def testCompile(self, pipeline_module, expected_result_path):
     """Tests compiling the whole pipeline."""
@@ -130,7 +136,8 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     downstream_component.exec_properties["input_num"] = test_wrong_type_channel
     with self.assertRaisesRegex(
         ValueError,
-        "output channel to dynamic exec properties is not ValueArtifact"):
+        "Dynamic execution property only supports ValueArtifact typed channel."
+    ):
       dsl_compiler.compile(test_pipeline)
 
   def testCompileNoneExistentNodeError(self):

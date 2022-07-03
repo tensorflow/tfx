@@ -125,15 +125,11 @@ enum FileFormat {
   // Indicates TFRecords format files with gzip compression.
   FORMAT_TFRECORDS_GZIP = 5;
 
-  // File format:
-  // Indicates RecordIO format files.
-  FORMAT_RECORDIO = 3;
-
   // Indicates parquet format files in any of the supported compressions.
   // https://arrow.apache.org/docs/python/parquet.html
   FILE_FORMAT_PARQUET = 16;
 
-  reserved 1, 2, 4, 6, 7 to 15, 17 to max;
+  reserved 1 to 4, 6, 7 to 15, 17 to max;
 }
 
 // Specification of the output of the example gen.

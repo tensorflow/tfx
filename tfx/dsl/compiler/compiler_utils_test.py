@@ -72,6 +72,23 @@ class CompilerUtilsTest(tf.test.TestCase):
             string_value="test_default_value"))
     self.assertEqual(expected_pb, pb)
 
+  def testSetStructuralRuntimeParameterPb(self):
+    pb = compiler_utils.set_structural_runtime_parameter_pb(
+        pipeline_pb2.StructuralRuntimeParameter(),
+        ["pipeline_name", ("pipeline-run-id", str, "default_pipeline_run_id")])
+
+    expected_pb = pipeline_pb2.StructuralRuntimeParameter(parts=[
+        pipeline_pb2.StructuralRuntimeParameter.StringOrRuntimeParameter(
+            constant_value="pipeline_name"),
+        pipeline_pb2.StructuralRuntimeParameter.StringOrRuntimeParameter(
+            runtime_parameter=pipeline_pb2.RuntimeParameter(
+                name="pipeline-run-id",
+                type=pipeline_pb2.RuntimeParameter.Type.STRING,
+                default_value=metadata_store_pb2.Value(
+                    string_value="default_pipeline_run_id")))
+    ])
+    self.assertEqual(expected_pb, pb)
+
   def testIsResolver(self):
     resv = resolver.Resolver(
         strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy)

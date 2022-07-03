@@ -49,7 +49,9 @@ class StepBuilderTest(tf.test.TestCase):
   def testBuildTask(self):
     query = 'SELECT * FROM TABLE'
     bq_example_gen = big_query_example_gen_component.BigQueryExampleGen(
-        query=query)
+        query=query).with_platform_config(
+            pipeline_pb2.PipelineDeploymentConfig.PipelineContainerSpec
+            .ResourceSpec(cpu_limit=5.0, memory_limit=10.0))
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
     component_defs = {}
     my_builder = step_builder.StepBuilder(

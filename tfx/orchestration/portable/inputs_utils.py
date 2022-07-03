@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable library for input artifacts resolution."""
-from typing import Dict, Mapping, Sequence, Union
+from typing import Dict, Sequence, Union
 
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
@@ -20,7 +20,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
-from tfx.orchestration.portable.input_resolution import processor
+from tfx.orchestration.portable.input_resolution import resolver_config_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import typing_utils
 
@@ -37,13 +37,20 @@ def _resolve_channels_dict(
   return result
 
 
-def _is_sufficient(artifact_multimap: Mapping[str, Sequence[types.Artifact]],
-                   node_inputs: pipeline_pb2.NodeInputs) -> bool:
-  """Checks given artifact multimap has enough artifacts per channel."""
-  return all(
-      len(artifacts) >= node_inputs.inputs[key].min_count
-      for key, artifacts in artifact_multimap.items()
-      if key in node_inputs.inputs)
+def _check_sufficient(
+    input_dicts: Sequence[typing_utils.ArtifactMultiMap],
+    node_inputs: pipeline_pb2.NodeInputs) -> None:
+  """Checks given artifact multimap has enough artifacts from input_spec."""
+  min_counts = {
+      key: input_spec.min_count
+      for key, input_spec in node_inputs.inputs.items()
+  }
+  for input_dict in input_dicts:
+    for key, artifacts in input_dict.items():
+      if len(artifacts) < min_counts[key]:
+        raise exceptions.FailedPreconditionError(
+            f'inputs[{key}] has min_count = {min_counts[key]} but only got '
+            f'{len(artifacts)} artifact(s).')
 
 
 class Trigger(tuple, Sequence[typing_utils.ArtifactMultiMap]):
@@ -61,21 +68,81 @@ class Skip(tuple, Sequence[typing_utils.ArtifactMultiMap]):
     return super().__new__(cls)
 
 
+def _resolve_node_inputs_with_resolver_config(
+    metadata_handler: metadata.Metadata,
+    node_inputs: pipeline_pb2.NodeInputs,
+) -> Sequence[typing_utils.ArtifactMultiMap]:
+  """Resolve inputs with pipeline_pb2.ResolverConfig.
+
+  Input artifacts are resolved in the following steps:
+
+  1. An initial input dict (Mapping[str, Sequence[Artifact]]) is fetched from
+     the input channel definitions (in NodeInputs.inputs.channels).
+  2. Each NodeInputs.resolver_config.resolver_steps is applied sequentially.
+  3. If the final output is a single dict (Mapping[str, Sequence[Artifact]]),
+     then wraps it as a list of single element. Otherwise (list of dicts),
+     return as-is.
+
+  Args:
+    metadata_handler: MetadataHandler instance for MLMD access.
+    node_inputs: Current NodeInputs on which input resolution is running.
+
+  Raises:
+    InputResolutionError: If input resolution went wrong.
+
+  Returns:
+    A resolved list of dicts (can be empty).
+  """
+  initial_dict = _resolve_channels_dict(metadata_handler, node_inputs)
+  try:
+    resolved = resolver_config_resolver.resolve(
+        metadata_handler.store,
+        initial_dict,
+        node_inputs.resolver_config)
+  except exceptions.SkipSignal:
+    return []
+  except exceptions.InputResolutionError:
+    raise
+  except Exception as e:
+    raise exceptions.InputResolutionError(
+        f'Error occurred during input resolution: {str(e)}.') from e
+
+  if typing_utils.is_artifact_multimap(resolved):
+    resolved = [resolved]
+  if not typing_utils.is_list_of_artifact_multimap(resolved):
+    raise exceptions.FailedPreconditionError(
+        'Invalid input resolution result; expected Sequence[ArtifactMultiMap] '
+        f'type but got {resolved}.')
+  return resolved  # pytype: disable=bad-return-type
+
+
+def _resolve_node_inputs(
+    metadata_handler: metadata.Metadata,
+    node_inputs: pipeline_pb2.NodeInputs
+) -> Sequence[typing_utils.ArtifactMultiMap]:
+  """Resolve input artifacts from pipeline_pb2.NodeInputs.
+
+  Given `node_inputs` should not contain `resolver_config` field which is an
+  older IR format that should be handled from a function
+  `_resolve_node_inputs_with_resolver_config`.
+
+  Args:
+    metadata_handler: A Metadata instance.
+    node_inputs: A NodeInput message without `resolver_config` field.
+
+  Returns:
+    A resolved list of dicts (can be empty).
+  """
+  channels_dict = _resolve_channels_dict(metadata_handler, node_inputs)
+  return [channels_dict]
+
+
 def resolve_input_artifacts(
     *,
     pipeline_node: pipeline_pb2.PipelineNode,
     metadata_handler: metadata.Metadata,
 ) -> Union[Trigger, Skip]:
   """Resolve input artifacts according to a pipeline node IR definition.
-
-  Input artifacts are resolved in the following steps:
-
-  1. An initial input dict (Mapping[str, Sequence[Artifact]]) is fetched from
-     the input channel definitions (in NodeInputs.inputs.channels).
-  2. Optionally input resolution logic is performed if specified (in
-     NodeInputs.resolver_config).
-  3. Filters input map with enough number of artifacts as specified in
-     NodeInputs.inputs.min_count.
 
   Args:
     pipeline_node: Current PipelineNode on which input resolution is running.
@@ -91,30 +158,13 @@ def resolve_input_artifacts(
         execution.
   """
   node_inputs = pipeline_node.inputs
-  initial_dict = _resolve_channels_dict(metadata_handler, node_inputs)
-  try:
-    resolved = processor.run_resolver_steps(
-        initial_dict,
-        resolver_steps=node_inputs.resolver_config.resolver_steps,
-        store=metadata_handler.store)
-  except exceptions.SkipSignal:
-    return Skip()
-  except exceptions.InputResolutionError:
-    raise
-  except Exception as e:
-    raise exceptions.InputResolutionError(
-        f'Error occurred during input resolution: {str(e)}.') from e
-
-  if typing_utils.is_artifact_multimap(resolved):
-    resolved = [resolved]
-  if not typing_utils.is_list_of_artifact_multimap(resolved):
-    raise exceptions.FailedPreconditionError(
-        'Invalid input resolution result; expected Sequence[ArtifactMultiMap] '
-        f'type but got {resolved}.')
-  resolved = [d for d in resolved if _is_sufficient(d, node_inputs)]
-  if not resolved:
-    raise exceptions.FailedPreconditionError('No valid inputs.')
-  return Trigger(resolved)
+  if node_inputs.resolver_config.resolver_steps:
+    resolved = _resolve_node_inputs_with_resolver_config(
+        metadata_handler, node_inputs)
+  else:
+    resolved = _resolve_node_inputs(metadata_handler, node_inputs)
+  _check_sufficient(resolved, node_inputs)
+  return Trigger(resolved) if resolved else Skip()
 
 
 def resolve_parameters(

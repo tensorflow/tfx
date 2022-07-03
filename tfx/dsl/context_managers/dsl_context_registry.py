@@ -22,6 +22,7 @@ from tfx.dsl.context_managers import dsl_context
 
 # Use Any to avoid cyclic import.
 _BaseNode = Any
+_Pipeline = Any
 
 
 class DslContextRegistry:
@@ -148,6 +149,46 @@ class DslContextRegistry:
         result.append(context)
     return result
 
+  def extract_for_pipeline(self, pipeline: _Pipeline) -> 'DslContextRegistry':
+    """Creates new registry with pipeline level contexts filtered out.
+
+    This function should be called in the pipeline constructor, i.e., where
+    pipeine scope ends, to persist contexts defined within the pipeline scope
+    in the pipeline object.
+
+    Args:
+      pipeline: A pipeline that may exist in the registry.
+    Returns:
+      A new DSL context registry with only contexts within the pipeline scope.
+    """
+    # pylint:disable=protected-access
+    result = DslContextRegistry()
+    latest_pipeline_level_context = None
+    for context in reversed(self._all_contexts):
+      if pipeline in self._nodes_by_context[context]:
+        latest_pipeline_level_context = context
+        break
+      else:
+        context.parent = None
+        result._all_contexts.append(context)
+    result._all_contexts.reverse()
+
+    result._active_contexts = []
+
+    if latest_pipeline_level_context:
+      result._all_nodes = self._nodes_by_context[latest_pipeline_level_context]
+    else:
+      result._all_nodes = self._all_nodes
+
+    for context, nodes in self._nodes_by_context.items():
+      if context in result._all_contexts:
+        result._nodes_by_context[context] = [
+            n for n in nodes if n in result._all_nodes
+        ]
+
+    result._finalized = False
+    # pylint:enable=protected-access
+    return result
 
 _registry_holder = threading.local()
 

@@ -110,6 +110,10 @@ def make_required_install_packages():
           default='>=1.8.0,<1.9.0',
           nightly='>=1.9.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
+      # typing-extensions allows consistent & future-proof interface for typing.
+      # Since kfp<2 uses typing-extensions<4, lower bound is the latest 3.x, and
+      # upper bound is <5 as the semver started from 4.0 according to their doc.
+      'typing-extensions>=3.10.0.2,<5',
   ]
 
 

@@ -19,6 +19,7 @@
 | -- | -- | -- | -- |
 | `tensorflow` | `>=1.15.5,<2` or `~=2.9.0` | `>=1.15.5,<2` or `~=2.8.0` | |
 | `tensorflow-ranking` | `~=0.5.0` | `~=0.3.0` | Required for TF 2.9 |
+| `typing-extensions` | `>=4.2.0,<5` | N/A | For typing utilities |
 
 ## Documentation Updates
 
@@ -28,10 +29,8 @@
 
 *   Added experimental exit_handler support for KubeflowDagRunner.
 *   Enabled custom labels to be submitted to CAIP training jobs.
-*   Enabled custom Python function-based components to share pipeline Beam
-    configuration by [inheriting from BaseBeamComponent]
-(https://www.tensorflow.org/tfx/guide/custom_function_component)
-*   Support dynamic exec properties in TFX pipeline. Downstream component parameter could take the upstream output using Placeholder.
+*   Enabled custom resource-setting (vCPU and RAM) for containers orchestrating 
+    on Vertex AI.
 
 ## Breaking Changes
 

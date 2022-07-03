@@ -29,14 +29,10 @@ from tfx.types.system_artifacts import Statistics
 from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import json_utils
 
-# Span for an artifact.
 SPAN_PROPERTY = Property(type=PropertyType.INT)
-# Version for an artifact.
 VERSION_PROPERTY = Property(type=PropertyType.INT)
-# Comma separated of splits for an artifact. Empty string means artifact
-# has no split.
 SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
-# Value for a string-typed artifact.
+# (DEPRECATED. Do not use.) Value for a string-typed artifact.
 STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
 
 
@@ -75,6 +71,36 @@ class _TfxArtifact(Artifact):
 
 
 class Examples(_TfxArtifact):
+  """Artifact that contains the training data.
+
+  Training data should be brought in to the TFX pipeline using components
+  like ExampleGen. Data in Examples artifact is split and stored separately.
+  The file and payload format must be specified as optional custom properties
+  if not using default formats.
+  Please see
+  https://www.tensorflow.org/tfx/guide/examplegen#span_version_and_split to
+  understand about span, version and splits.
+
+  * Properties:
+     - `span`: Integer to distinguish group of Examples.
+     - `version`: Integer to represent updated data.
+     - `split_names`: JSON string of the list of split names. For example,
+        '["train", "test"]'. Empty string means artifact has no split.
+
+  * File structure:
+     - `{uri}/`
+        - `Split-{split_name1}/`: Files for split
+           - All direct children files are recognized as the data.
+           - File format and payload format are determined by custom properties.
+        - `Split-{split_name2}/`: Another split...
+
+  * Commonly used custom properties of the Examples artifact:
+    - `file_format`: a string that represents the file format. See
+      tfx/components/util/tfxio_utils.py:make_tfxio for
+      available values.
+    - `payload_format`: int (enum) value of the data payload format.
+      See tfx/proto/example_gen.proto:PayloadFormat for available formats.
+  """
   TYPE_NAME = 'Examples'
   TYPE_ANNOTATION = Dataset
   PROPERTIES = {
@@ -115,6 +141,24 @@ class InfraBlessing(_TfxArtifact):
 
 
 class Model(_TfxArtifact):
+  """Artifact that contains the actual persisted model.
+
+  Training components stores the trained model like a saved model in this
+  artifact. A `Model` artifact contains serialization of the trained model in
+  one or more formats, each suitable for different usage (e.g. serving,
+  evaluation), and serving environments.
+
+  * File structure:
+     - `{uri}/`
+        - `Format-Serving/`: Model exported for serving.
+           - `saved_model.pb`
+           - Other actual model files.
+        - `Format-TFMA/`: Model exported for evaluation.
+           - `saved_model.pb`
+           - Other actual model files.
+
+  * Commonly used custom properties of the Model artifact:
+  """
   TYPE_NAME = 'Model'
   TYPE_ANNOTATION = SystemModel
 

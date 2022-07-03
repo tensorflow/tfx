@@ -151,9 +151,8 @@ class StepBuilder:
 
     Args:
       node: A TFX node. The logical unit of a step. Note, currently for resolver
-        node we only support two types of resolver
-        policies, including: 1) latest blessed model, and 2) latest model
-          artifact.
+        node we only support two types of resolver policies, including: 1)
+        latest blessed model, and 2) latest model artifact.
       deployment_config: The deployment config in Kubeflow IR to be populated.
       component_defs: Dict mapping from node id to compiled ComponetSpec proto.
         Items in the dict will get updated as the pipeline is built.
@@ -161,13 +160,13 @@ class StepBuilder:
         Pipeline.dsl_context_registry.
       image: TFX image used in the underlying container spec. Required if node
         is a TFX component.
-      image_cmds: Optional. If not specified the default `ENTRYPOINT` defined
-        in the docker image will be used. Note: the commands here refers to the
-          K8S container command, which maps to Docker entrypoint field. If one
-          supplies command but no args are provided for the container, the
-          container will be invoked with the provided command, ignoring the
-          `ENTRYPOINT` and `CMD` defined in the Dockerfile. One can find more
-          details regarding the difference between K8S and Docker conventions at
+      image_cmds: Optional. If not specified the default `ENTRYPOINT` defined in
+        the docker image will be used. Note: the commands here refers to the K8S
+        container command, which maps to Docker entrypoint field. If one
+        supplies command but no args are provided for the container, the
+        container will be invoked with the provided command, ignoring the
+        `ENTRYPOINT` and `CMD` defined in the Dockerfile. One can find more
+        details regarding the difference between K8S and Docker conventions at
         https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
       enable_cache: If true, enables cache lookup for this pipeline step.
@@ -261,8 +260,8 @@ class StepBuilder:
     # Conditionals
     implicit_input_channels = {}
     implicit_upstream_node_ids = set()
-    predicates = conditional.get_predicates(
-        self._node, self._dsl_context_registry)
+    predicates = conditional.get_predicates(self._node,
+                                            self._dsl_context_registry)
     if predicates:
       implicit_keys_map = {
           tfx_compiler_utils.implicit_channel_key(channel): key
@@ -404,7 +403,29 @@ class StepBuilder:
       NotImplementedError: When the executor class is neither ExecutorClassSpec
       nor TemplatedExecutorContainerSpec.
     """
+
     assert isinstance(self._node, base_component.BaseComponent)
+
+    if self._node.platform_config:
+      logging.info(
+          'ResourceSpec with container execution parameters has been passed via platform_config'
+      )
+      assert isinstance(
+          self._node.platform_config, pipeline_pb2.PipelineDeploymentConfig
+          .PipelineContainerSpec.ResourceSpec
+      ), ('platform_config, if set by the user, must be a ResourceSpec proto '
+          'specifying vCPU and vRAM requirements')
+      cpu_limit = self._node.platform_config.cpu_limit
+      memory_limit = self._node.platform_config.memory_limit
+      if cpu_limit:
+        assert (cpu_limit >= 0), ('vCPU must be non-negative')
+      if memory_limit:
+        assert (memory_limit >= 0), ('vRAM must be non-negative')
+
+      if self._node.platform_config.accelerator.type:
+        assert (self._node.platform_config.accelerator.count >=
+                0), ('GPU type and count must be set')
+
     if isinstance(self._node.executor_spec,
                   executor_specs.TemplatedExecutorContainerSpec):
       container_spec = self._node.executor_spec
@@ -413,8 +434,9 @@ class StepBuilder:
           command=_resolve_command_line(
               container_spec=container_spec,
               exec_properties=self._node.exec_properties,
-          ),
-      )
+          ))
+      if self._node.platform_config:
+        result.resources.CopyFrom(self._node.platform_config)
       return result
 
     # The container entrypoint format below assumes ExecutorClassSpec.
@@ -438,6 +460,8 @@ class StepBuilder:
     result.args.append('{{$}}')
     result.args.extend(self._beam_pipeline_args)
 
+    if self._node.platform_config:
+      result.resources.CopyFrom(self._node.platform_config)
     return result
 
   def _build_file_based_example_gen_spec(self) -> ContainerSpec:

@@ -16,6 +16,7 @@ import os
 import tempfile
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import tensorflow_data_validation as tfdv
 from tfx.components.statistics_gen import executor
 from tfx.dsl.io import fileio
@@ -27,16 +28,25 @@ from tfx.utils import json_utils
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
+_EXECUTOR_TEST_PARAMS = [{
+    'testcase_name': 'no_sharded_output',
+    'sharded_output': False
+}]
+if tfdv.default_sharded_output_supported():
+  _EXECUTOR_TEST_PARAMS.append({
+      'testcase_name': 'yes_sharded_output',
+      'sharded_output': True
+  })
+
+
 # TODO(b/133421802): Investigate why tensorflow.TestCase could cause a crash
 # when used with tfdv.
-class ExecutorTest(absltest.TestCase):
+class ExecutorTest(parameterized.TestCase):
 
   def get_temp_dir(self):
     return tempfile.mkdtemp()
 
-  def _validate_stats_output(self, stats_path):
-    self.assertTrue(fileio.exists(stats_path))
-    stats = tfdv.load_stats_binary(stats_path)
+  def _validate_stats(self, stats):
     self.assertLen(stats.datasets, 1)
     data_set = stats.datasets[0]
     self.assertGreater(data_set.num_examples, 0)
@@ -44,7 +54,17 @@ class ExecutorTest(absltest.TestCase):
     # TODO(b/126245422): verify content of generated stats after we have stable
     # test data set.
 
-  def testDo(self):
+  def _validate_stats_output(self, stats_path):
+    self.assertTrue(fileio.exists(stats_path))
+    stats = tfdv.load_stats_binary(stats_path)
+    self._validate_stats(stats)
+
+  def _validate_sharded_stats_output(self, stats_prefix):
+    stats = tfdv.load_sharded_statistics(stats_prefix).proto()
+    self._validate_stats(stats)
+
+  @parameterized.named_parameters(*_EXECUTOR_TEST_PARAMS)
+  def testDo(self, sharded_output: bool):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     output_data_dir = os.path.join(
@@ -66,6 +86,8 @@ class ExecutorTest(absltest.TestCase):
         # List needs to be serialized before being passed into Do function.
         standard_component_specs.EXCLUDE_SPLITS_KEY:
             json_utils.dumps(['test']),
+        standard_component_specs.SHARDED_STATS_OUTPUT_KEY:
+            sharded_output,
     }
 
     # Create output dict.
@@ -87,6 +109,28 @@ class ExecutorTest(absltest.TestCase):
         os.path.join(stats.uri, 'Split-train', 'FeatureStats.pb'))
     self._validate_stats_output(
         os.path.join(stats.uri, 'Split-eval', 'FeatureStats.pb'))
+    if sharded_output:
+      self._validate_sharded_stats_output(
+          os.path.join(
+              stats.uri, 'Split-train',
+              'FeatureStats' + tfdv.default_sharded_output_suffix()))
+      self._validate_sharded_stats_output(
+          os.path.join(
+              stats.uri, 'Split-eval',
+              'FeatureStats' + tfdv.default_sharded_output_suffix()))
+    else:
+      # We want to verify that attempting to load sharded stats produces an
+      # error.
+      with self.assertRaisesRegex(ValueError, 'No input paths found.*'):
+        self._validate_sharded_stats_output(
+            os.path.join(
+                stats.uri, 'Split-train',
+                'FeatureStats' + tfdv.default_sharded_output_suffix()))
+      with self.assertRaisesRegex(ValueError, 'No input paths found.*'):
+        self._validate_sharded_stats_output(
+            os.path.join(
+                stats.uri, 'Split-eval',
+                'FeatureStats' + tfdv.default_sharded_output_suffix()))
 
     # Assert 'test' split is excluded.
     self.assertFalse(

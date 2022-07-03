@@ -84,7 +84,7 @@ STATS_FILE = 'FeatureStats.pb'
 SAMPLE_FILE_NAME = 'Sample.rio'
 # TODO(b/215448985): Move these to a shared location with StatsGen.
 _SHARDED_OUTPUT_PARTITIONS = 10
-_SHARDED_STATS_PREFIX = 'FeatureStats.rio'
+SHARDED_STATS_PREFIX = 'FeatureStats.rio'
 
 _SCHEMA_FILE = 'schema.pbtxt'
 
@@ -591,7 +591,6 @@ class TransformProcessor:
   @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(beam.Pipeline)
-  @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _IncrementPipelineMetrics(
       pipeline: beam.Pipeline, total_columns_count: int,
       analyze_columns_count: int, transform_columns_count: int,
@@ -638,7 +637,6 @@ class TransformProcessor:
   @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
-  @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _WriteExamples(pcoll: beam.pvalue.PCollection, file_format: str,
                      transformed_example_path: str) -> beam.pvalue.PDone:
     """Writes transformed examples compressed in gzip format.
@@ -730,7 +728,7 @@ class TransformProcessor:
       stats_output_dir = os.path.dirname(stats_output_loc)
       schema_output_path = os.path.join(stats_output_dir, _SCHEMA_FILE)
       sharded_stats_output_prefix = os.path.join(stats_output_dir,
-                                                 _SHARDED_STATS_PREFIX)
+                                                 SHARDED_STATS_PREFIX)
       anomalies_output_path = os.path.join(stats_output_dir, _ANOMALIES_FILE)
 
     generated_stats = (
@@ -738,7 +736,8 @@ class TransformProcessor:
         | 'FilterInternalColumn' >> beam.Map(_FilterInternalColumn)
         | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options))
 
-    if stats_options.experimental_result_partitions > 1:
+    if (stats_options.experimental_result_partitions > 1 and
+        tfdv.default_sharded_output_supported()):
       stats_result = (
           generated_stats
           | 'WriteStats' >> tfdv.WriteStatisticsToRecordsAndBinaryFile(
@@ -1368,7 +1367,7 @@ class TransformProcessor:
                       os.path.join(
                           stats_output_paths[
                               labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
-                          _SHARDED_STATS_PREFIX),
+                          SHARDED_STATS_PREFIX),
                   _SCHEMA_KEY:
                       os.path.join(
                           stats_output_paths[
@@ -1443,7 +1442,7 @@ class TransformProcessor:
                       os.path.join(
                           stats_output_paths[
                               labels.POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL],
-                          _SHARDED_STATS_PREFIX),
+                          SHARDED_STATS_PREFIX),
                   _SCHEMA_KEY:
                       os.path.join(
                           stats_output_paths[
