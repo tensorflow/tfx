@@ -31,6 +31,7 @@ from tfx.dsl.compiler.testdata import iris_pipeline_sync
 from tfx.dsl.compiler.testdata import non_existent_component_pipeline
 from tfx.dsl.compiler.testdata import pipeline_root_placeholder
 from tfx.dsl.compiler.testdata import pipeline_with_annotations
+from tfx.dsl.compiler.testdata import resolver_function_pipeline
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact
@@ -100,6 +101,8 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
        "pipeline_with_annotations_ir.pbtxt"),
       ("_composable_pipeline", composable_pipeline,
        "composable_pipeline_ir.pbtxt"),
+      ("_resolver_function_pipeline", resolver_function_pipeline,
+       "resolver_function_pipeline_ir.pbtxt"),
   )
   def testCompile(self, pipeline_module, expected_result_path):
     """Tests compiling the whole pipeline."""
