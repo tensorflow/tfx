@@ -54,9 +54,9 @@ def make_pipeline_sdk_required_install_packages():
       'absl-py>=0.9,<2.0.0',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=1.8.0,<1.9.0',
+          default='>=1.9.0,<1.10.0',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=1.9.0.dev',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
@@ -93,22 +93,22 @@ def make_required_install_packages():
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
-          default='>=1.8.0,<1.9.0',
-          nightly='>=1.9.0.dev',
+          default='>=1.9.0,<1.10.0',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'
       ),
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.39.0,<0.40',
-          nightly='>=0.40.0.dev',
+          default='>=0.40.0,<0.41',
+          nightly='>=0.41.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),
-      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,<3',
+      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=1.8.0,<1.9.0',
-          nightly='>=1.9.0.dev',
+          default='>=1.9.0,<1.10.0',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
-          default='>=1.8.0,<1.9.0',
-          nightly='>=1.9.0.dev',
+          default='>=1.9.0,<1.10.0',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
       # typing-extensions allows consistent & future-proof interface for typing.
       # Since kfp<2 uses typing-extensions<4, lower bound is the latest 3.x, and
@@ -167,8 +167,8 @@ def make_extra_packages_tf_ranking():
   return [
       'tensorflow-ranking>=0.5,<0.6',
       'struct2tensor' + select_constraint(
-          default='>=0.39,<0.40',
-          nightly='>=0.40.0.dev',
+          default='>=0.40,<0.41',
+          nightly='>=0.41.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
   ]
 
