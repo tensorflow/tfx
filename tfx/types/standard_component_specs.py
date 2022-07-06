@@ -16,6 +16,7 @@
 import tensorflow_model_analysis as tfma
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import evaluator_pb2
+from tfx.proto import example_diff_pb2
 from tfx.proto import example_gen_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
@@ -109,6 +110,11 @@ PRE_TRANSFORM_STATS_KEY = 'pre_transform_stats'
 POST_TRANSFORM_SCHEMA_KEY = 'post_transform_schema'
 POST_TRANSFORM_STATS_KEY = 'post_transform_stats'
 POST_TRANSFORM_ANOMALIES_KEY = 'post_transform_anomalies'
+# Key for example_diff
+BASELINE_EXAMPLES_KEY = 'baseline_examples'
+EXAMPLE_DIFF_CONFIG_KEY = 'example_diff_config'
+EXAMPLE_DIFF_RESULT_KEY = 'example_diff_result'
+INCLUDE_SPLIT_PAIRS_KEY = 'include_split_pairs'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -473,3 +479,23 @@ class TransformSpec(ComponentSpec):
               type=standard_artifacts.ExampleAnomalies, optional=True)
   }
   TYPE_ANNOTATION = Transform
+
+
+class ExampleDiffSpec(ComponentSpec):
+  """ExampleDiff component spec."""
+  PARAMETERS = {
+      EXAMPLE_DIFF_CONFIG_KEY:
+          ExecutionParameter(
+              type=example_diff_pb2.ExampleDiffConfig, use_proto=True),
+      INCLUDE_SPLIT_PAIRS_KEY:
+          ExecutionParameter(type=str, optional=True),
+  }
+  INPUTS = {
+      EXAMPLES_KEY: ChannelParameter(type=standard_artifacts.Examples),
+      BASELINE_EXAMPLES_KEY: ChannelParameter(type=standard_artifacts.Examples),
+  }
+  OUTPUTS = {
+      EXAMPLE_DIFF_RESULT_KEY:
+          ChannelParameter(type=standard_artifacts.ExamplesDiff),
+  }
+  TYPE_ANNOTATION = Process
