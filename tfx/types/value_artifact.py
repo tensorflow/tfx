@@ -28,7 +28,16 @@ _IS_NULL_KEY = '__is_null__'
 
 
 class ValueArtifact(Artifact):
-  """Artifacts of small scalar-values that can be easily loaded into memory."""
+  """Artifacts of small scalar-values that can be easily loaded into memory.
+
+  Value artifacts are stored to a file located at the `uri` of the artifact.
+  This is different from other kinds of artifact types that has a directory at
+  the `uri`. The payload of the file will be determined by each value artifact
+  types which is a subclass of this class.
+
+  The content of a value artifact can be read or written using `.value`
+  property.
+  """
 
   def __init__(self, *args, **kwargs):
     """Initializes ValueArtifact."""

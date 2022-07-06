@@ -214,7 +214,10 @@ class Bytes(ValueArtifact):
 
 
 class String(ValueArtifact):
-  """String-typed artifact."""
+  """String-typed artifact.
+
+  String value artifacts are encoded using UTF-8.
+  """
   TYPE_NAME = 'String'
 
   # Note, currently we enforce unicode-encoded string.
@@ -246,7 +249,10 @@ class Boolean(ValueArtifact):
 
 
 class Integer(ValueArtifact):
-  """Integer-typed artifact."""
+  """Integer-typed artifact.
+
+  Integer value artifacts are encoded as a decimal string.
+  """
   TYPE_NAME = 'Integer'
 
   def encode(self, value: int) -> bytes:
@@ -260,7 +266,12 @@ class Integer(ValueArtifact):
 
 
 class Float(ValueArtifact):
-  """Float-typed artifact."""
+  """Float-typed artifact.
+
+  Float value artifacts are encoded using Python str() class. However,
+  Nan and Infinity are handled separately. See string constants in the
+  class.
+  """
   TYPE_NAME = 'Float'
 
   _POSITIVE_INFINITY = float('Inf')
