@@ -209,6 +209,7 @@ message InputGraph {
     oneof kind {
       OpNode op_node = 2;
       DictNode dict_node = 3;
+      InputNode input_node = 4;
     }
   }
 
@@ -239,6 +240,13 @@ message InputGraph {
   message DictNode {
     // Map from dict key to node ID.
     map<string, string> node_ids = 1;
+  }
+
+  // InputNode refers a NodeInputs.inputs[input_key]. Its output_data_type is
+  // always ARTIFACT_LIST.
+  // Corresponds to the tfx.dsl.resolver_op.InputNode.
+  message InputNode {
+    string input_key = 1;
   }
 
   // Nodes of this input graph. Key is the node ID.
