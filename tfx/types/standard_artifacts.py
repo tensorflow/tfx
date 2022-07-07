@@ -119,6 +119,29 @@ class ExampleAnomalies(_TfxArtifact):
 
 
 class ExampleStatistics(_TfxArtifact):
+  """Artifact that contains statistics about the training data.
+
+  StatisticsGen component uses Tensorflow Data Validation(TFDV) to analyze the
+  input data and produce the statistics. Other components like `Transform` might
+  produce this artifact while processing their input data.
+  Please see
+  https://www.tensorflow.org/tfx/guide/examplegen#span_version_and_split to
+  understand about span and splits.
+
+  * Properties:
+     - `span`: Integer to distinguish group of ExampleStatistics.
+     - `split_names`: JSON string of the list of split names. For example,
+        '["train", "test"]'. Empty string means artifact has no split.
+
+  * File structure:
+     - `{uri}/`
+        - `Split-{split_name1}/`: Files for split
+           - `FeatureStats.*`: Actual statistics files.
+        - `Split-{split_name2}/`: Another split...
+
+     NOTE: If there is no split information in the artifact property, statistics
+     files should be located directly under `{uri}` directory.
+  """
   TYPE_NAME = 'ExampleStatistics'
   TYPE_ANNOTATION = Statistics
   PROPERTIES = {
