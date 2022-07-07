@@ -105,6 +105,8 @@
   "unexpected keyword argument 'default_args'".
 * StatisticsGen will raise an error if unsupported StatsOptions (i.e.,
   generators or experimental_slice_functions) are passed.
+* Fixed a bug in the Artifact attribute setter that was causing the
+  corresponding getter not to return a value for properties of type JSON_VALUE.
 
 ## Dependency Updates
 
