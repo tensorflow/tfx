@@ -164,7 +164,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
   @parameterized.parameters(
       (pipeline_pb2.Pipeline.SYNC, 'test_pipeline:test_run_0:test_node'),
-      (pipeline_pb2.Pipeline.ASYNC, 'test_pipeline:test_node'))
+      (pipeline_pb2.Pipeline.ASYNC, 'test_pipeline:1:test_node'))
   def testGenerateOutputArtifacts(self, exec_mode, artifact_name_prefix):
     output_artifacts = self._output_resolver(
         exec_mode).generate_output_artifacts(1)

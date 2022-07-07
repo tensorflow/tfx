@@ -152,6 +152,8 @@ class OutputsResolver:
       artifact_name = f'{self._pipeline_info.id}'
       if self._execution_mode == pipeline_pb2.Pipeline.SYNC:
         artifact_name = f'{artifact_name}:{self._pipeline_run_id}'
+      else:
+        artifact_name = f'{artifact_name}:{execution_id}'
       # The index of this artifact, since we only has one artifact per output
       # for now, it is always 0.
       # TODO(b/162331170): Update the "0" to the actual index.
@@ -291,6 +293,3 @@ def populate_exec_properties(
           'supported, going to drop it', type(value), key)
       continue
     executor_output.execution_properties[key].CopyFrom(v)
-
-
-
