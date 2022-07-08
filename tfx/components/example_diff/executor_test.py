@@ -67,8 +67,7 @@ class ExecutorTest(parameterized.TestCase):
   def _validate_skew_pairs(self, diff_path, expect_skew):
     self.assertNotEmpty(fileio.glob(diff_path + '*-of-*'))
     count = 0
-    for r in feature_skew_detector.skew_pair_iterator(diff_path):
-      print('WAKA WAKA1', r)
+    for _ in feature_skew_detector.skew_pair_iterator(diff_path):
       count += 1
     if not expect_skew:
       self.assertEqual(count, 0)
@@ -107,8 +106,6 @@ class ExecutorTest(parameterized.TestCase):
       })
   def testDo(self, split_pairs, expected_split_pair_names, expect_skew,
              identifiers):
-    if identifiers != ['trip_start_timestamp', 'company', 'dropoff_longitude']:
-      return
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     output_data_dir = os.path.join(
@@ -161,9 +158,6 @@ class ExecutorTest(parameterized.TestCase):
 
     # See tensorflow_data_validation/skew/feature_skew_detector_test.py for
     # detailed examples of feature skew pipeline output.
-    self.assertEqual(
-        artifact_utils.encode_split_names(expected_split_pair_names),
-        example_diff.split_names)
     for split_pair_name in expected_split_pair_names:
       self._validate_skew_pairs(
           os.path.join(example_diff.uri, 'SplitPair-' + split_pair_name,

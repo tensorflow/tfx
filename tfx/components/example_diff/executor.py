@@ -128,9 +128,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           base_examples.split_names):
         if included_split_pairs.included(test_split, base_split):
           split_pairs.append((test_split, base_split))
-    # Set up output artifact splits.
-    example_diff_artifact.split_names = artifact_utils.encode_split_names(
-        ['%s_%s' % (test, base) for test, base in split_pairs])
 
     with self._make_beam_pipeline() as p:
       for test_split, base_split in split_pairs:
