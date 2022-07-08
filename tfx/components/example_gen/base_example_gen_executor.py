@@ -16,6 +16,7 @@
 import abc
 import bisect
 import hashlib
+import pickle
 from typing import Any, Dict, List, Union
 
 from absl import logging
@@ -43,7 +44,7 @@ def _GeneratePartitionKey(record: Union[tf.train.Example,
     if isinstance(record, bytes):
       return record
     if isinstance(record, dict):
-      return pa.serialize(record).to_buffer().to_pybytes()
+      return pickle.dumps(record)
     return record.SerializeToString(deterministic=True)
 
   if isinstance(record, tf.train.Example):
