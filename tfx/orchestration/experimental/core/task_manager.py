@@ -14,7 +14,9 @@
 """TaskManager manages the execution and cancellation of tasks."""
 
 from concurrent import futures
+import sys
 import threading
+import traceback
 import typing
 from typing import Dict, Optional
 
@@ -220,12 +222,13 @@ class TaskManager:
     # a failed execution and MLMD is updated accordingly.
     try:
       result = scheduler.schedule()
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
       logging.exception('Exception raised by task scheduler; node uid: %s',
                         task.node_uid)
       result = ts.TaskSchedulerResult(
           status=status_lib.Status(
-              code=status_lib.Code.ABORTED, message=str(e)))
+              code=status_lib.Code.ABORTED,
+              message=''.join(traceback.format_exception(*sys.exc_info()))))
     logging.info('For ExecNodeTask id: %s, task-scheduler result status: %s',
                  task.task_id, result.status)
     # If the node was paused, we do not complete the execution as it is expected
