@@ -299,20 +299,25 @@ class TempPipInstallContext:
                        (pip_dependencies,))
     self.pip_dependencies = pip_dependencies
     self.temp_directory = None
+    self.orig_syspath = None
+    self.orig_pypath = None
 
   def __enter__(self) -> 'TempPipInstallContext':
     if self.pip_dependencies:
       self.temp_directory = tempfile.mkdtemp()
       for dependency in self.pip_dependencies:
         install_to_temp_directory(dependency, temp_dir=self.temp_directory)
+      self.orig_syspath = sys.path
+      self.orig_pypath = os.environ['PYTHONPATH']
       sys.path = sys.path + [self.temp_directory]
-      os.environ['PYTHONPATH'] = ':'.join(sys.path)
+      os.environ['PYTHONPATH'] = self.orig_pypath + \
+                                 os.pathsep + self.temp_directory
     return self
 
   def __exit__(self, *unused_exc_info):
     if self.pip_dependencies:
-      sys.path = list(path for path in sys.path if path != self.temp_directory)
-      os.environ['PYTHONPATH'] = ':'.join(sys.path)
+      sys.path = self.orig_syspath
+      os.environ['PYTHONPATH'] = self.orig_pypath
 
 
 def install_to_temp_directory(pip_dependency: str,
