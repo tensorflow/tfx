@@ -185,15 +185,21 @@ class _Generator:
 
     resolved_info = task_gen_utils.generate_resolved_info(
         metadata_handler, node)
+
     # TODO(b/207038460): Update async pipeline to support ForEach.
-    if (resolved_info is None or not resolved_info.input_and_params or
-        resolved_info.input_and_params[0] is None or
-        resolved_info.input_and_params[0].input_artifacts is None or
-        not any(resolved_info.input_and_params[0].input_artifacts.values())):
+
+    # Note that some nodes e.g. ImportSchemaGen don't have inputs, and for those
+    # nodes it is okay that there are no resolved input artifacts.
+    if ((resolved_info is None or not resolved_info.input_and_params or
+         resolved_info.input_and_params[0] is None or
+         resolved_info.input_and_params[0].input_artifacts is None) or
+        (node.inputs.inputs and
+         not any(resolved_info.input_and_params[0].input_artifacts.values()))):
       logging.info(
           'Task cannot be generated for node %s since no input artifacts '
           'are resolved.', node.node_info.id)
       return result
+
     input_artifacts = resolved_info.input_and_params[0].input_artifacts
     exec_properties = resolved_info.input_and_params[0].exec_properties
 

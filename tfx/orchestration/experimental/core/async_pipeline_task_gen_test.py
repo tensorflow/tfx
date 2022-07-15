@@ -125,23 +125,24 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         ignore_update_node_state_tasks=ignore_update_node_state_tasks)
 
   @parameterized.parameters(0, 1)
-  def test_no_tasks_generated_when_no_inputs(self, min_count):
-    """Tests no tasks are generated when there are no inputs, regardless of min_count."""
+  def test_tasks_generation_when_no_inputs(self, min_count):
+    """Tests no tasks generated when no inputs, regardless of min_count."""
+
     for node in self._pipeline.nodes:
       for v in node.pipeline_node.inputs.inputs.values():
         v.min_count = min_count
 
-    with self._mlmd_connection as m:
-      pipeline_state = test_utils.get_or_create_pipeline_state(
-          m, self._pipeline)
-      task_gen = asptg.AsyncPipelineTaskGenerator(
-          m, lambda _: False, service_jobs.DummyServiceJobManager())
-      tasks = task_gen.generate(pipeline_state)
-      self.assertEmpty(tasks, 'Expected no task generation when no inputs.')
-      self.assertEmpty(
-          test_utils.get_non_orchestrator_executions(m),
-          'There must not be any registered executions since no tasks were '
-          'generated.')
+    # Note that "example gen" tasks will be generated since it has no declared
+    # inputs, so it is okay to execute it even when there are no inputs.
+    [update_example_gen_task] = self._generate_and_test(
+        use_task_queue=False,
+        num_initial_executions=0,
+        num_tasks_generated=1,
+        num_new_executions=0,
+        num_active_executions=0,
+        expected_exec_nodes=[])
+    self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
 
   @parameterized.parameters(False, True)
   def test_task_generation(self, use_task_queue):
