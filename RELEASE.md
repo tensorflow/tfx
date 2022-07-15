@@ -12,6 +12,9 @@
 
 ## Bug Fixes and Other Changes
 
+*   Type hint on BaseComponent.inputs and BaseComponent.outputs corrected to be
+    Channel subclasses.
+
 ## Dependency Updates
 
 | Package Name | Version Constraints | Previously (in `v1.9.0`) | Comments |
