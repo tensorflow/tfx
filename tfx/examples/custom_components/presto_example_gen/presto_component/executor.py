@@ -37,14 +37,14 @@ class _ReadPrestoDoFn(beam.DoFn):
   def __init__(self, client: prestodb.dbapi.Connection):
     self.cursor = client.cursor()
 
-  def process(self, query: str) -> Iterable[Tuple[str, str, Any]]:
+  def process(self, query: str) -> Tuple[Tuple[str, str, Any]]:
     """Yields rows from query results.
 
     Args:
       query: A SQL query used to return results from Presto table.
 
     Yields:
-      One row from the query result, represented by a list of tuples. Each tuple
+      One row from the query result, represented by a tuple of tuples. Each tuple
       contains information on column name, column data type, data.
     """
     self.cursor.execute(query)
@@ -126,7 +126,7 @@ def _deserialize_auth_config(
 
 
 def _row_to_example(
-    instance: Iterable[Tuple[str, str, Any]]) -> tf.train.Example:
+    instance: Tuple[Tuple[str, str, Any]]) -> tf.train.Example:
   """Convert presto result row to tf example."""
   feature = {}
   for key, data_type, value in instance:
