@@ -14,7 +14,7 @@
 """Generic TFX PrestoExampleGen executor."""
 
 import datetime
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Iterable, Tuple
 
 import apache_beam as beam
 import prestodb
@@ -37,7 +37,7 @@ class _ReadPrestoDoFn(beam.DoFn):
   def __init__(self, client: prestodb.dbapi.Connection):
     self.cursor = client.cursor()
 
-  def process(self, query: str) -> Tuple[Tuple[str, str, Any]]:
+  def process(self, query: str) -> Iterable[Tuple[str, str, Any]]:
     """Yields rows from query results.
 
     Args:
@@ -126,7 +126,7 @@ def _deserialize_auth_config(
 
 
 def _row_to_example(
-    instance: Tuple[Tuple[str, str, Any]]) -> tf.train.Example:
+    instance: Iterable[Tuple[str, str, Any]]) -> tf.train.Example:
   """Convert presto result row to tf example."""
   feature = {}
   for key, data_type, value in instance:
