@@ -59,7 +59,7 @@ class _ReadPrestoDoFn(beam.DoFn):
         col_types.append(metadata[1])
 
       for r in rows:
-        yield zip(cols, col_types, r)
+        yield tuple(zip(cols, col_types, r))
 
   def teardown(self):
     if self.cursor:
