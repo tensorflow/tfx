@@ -15,6 +15,7 @@
 
 from absl.testing.absltest import mock
 import tensorflow as tf
+from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler as ts
@@ -33,6 +34,12 @@ class _FakeTaskScheduler(ts.TaskScheduler):
 
   def cancel(self):
     pass
+
+
+def _fake_task_scheduler_builder(mlmd_handle: metadata.Metadata,
+                                 pipeline: pipeline_pb2.Pipeline,
+                                 task: task_lib.Task) -> ts.TaskScheduler:
+  return _FakeTaskScheduler(mlmd_handle, pipeline, task)
 
 
 class TaskSchedulerRegistryTest(tu.TfxTest):
@@ -84,13 +91,29 @@ class TaskSchedulerRegistryTest(tu.TfxTest):
         mock.Mock(), self._pipeline, task)
     self.assertIsInstance(task_scheduler, _FakeTaskScheduler)
 
+  def test_register_using_builder_function(self):
+    # Register a fake task scheduler builder.
+    ts.TaskSchedulerRegistry.register(self._spec_type_url,
+                                      _fake_task_scheduler_builder)
+
+    # Create a task and verify that the correct scheduler is instantiated.
+    task = test_utils.create_exec_node_task(
+        node_uid=task_lib.NodeUid(
+            pipeline_uid=task_lib.PipelineUid(pipeline_id='pipeline'),
+            node_id='Trainer'),
+        pipeline=self._pipeline)
+    task_scheduler = ts.TaskSchedulerRegistry.create_task_scheduler(
+        mock.Mock(), self._pipeline, task)
+    self.assertIsInstance(task_scheduler, _FakeTaskScheduler)
+
   def test_scheduler_not_found(self):
     task = test_utils.create_exec_node_task(
         node_uid=task_lib.NodeUid(
             pipeline_uid=task_lib.PipelineUid(pipeline_id='pipeline'),
             node_id='Transform'),
         pipeline=self._pipeline)
-    with self.assertRaisesRegex(ValueError, 'No task scheduler found'):
+    with self.assertRaisesRegex(ValueError,
+                                'No task scheduler class or builder found'):
       ts.TaskSchedulerRegistry.create_task_scheduler(mock.Mock(),
                                                      self._pipeline, task)
 
