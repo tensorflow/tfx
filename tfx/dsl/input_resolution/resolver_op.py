@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Module for ResolverOp and its related definitions."""
+from __future__ import annotations
+
 import abc
-import enum
 from typing import Any, Generic, Mapping, Type, TypeVar, Union, Sequence
 
 import attr
-import tfx.types
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
 from tfx.utils import typing_utils
+import typing_extensions
 
 import ml_metadata as mlmd
 
@@ -35,21 +37,16 @@ class Context:
   # run, and current running node information.
 
 
-class DataType(enum.Enum):
-  """Supported data types for ResolverOps input/outputs."""
-  ARTIFACT_LIST = Sequence[tfx.types.Artifact]
-  ARTIFACT_MULTIMAP = typing_utils.ArtifactMultiMap
-  ARTIFACT_MULTIMAP_LIST = Sequence[typing_utils.ArtifactMultiMap]
-
-  def is_acceptable(self, value: Any) -> bool:
-    """Check the value is instance of the data type."""
-    if self == self.ARTIFACT_LIST:
-      return typing_utils.is_homogeneous_artifact_list(value)
-    elif self == self.ARTIFACT_MULTIMAP:
-      return typing_utils.is_artifact_multimap(value)
-    elif self == self.ARTIFACT_MULTIMAP_LIST:
-      return typing_utils.is_list_of_artifact_multimap(value)
-    raise NotImplementedError(f'Cannot check type for {self}.')
+# Note that to use DataType as a generic type parameter (e.g.
+# `Sequence[DataType]`) you need either `from __future__ import annotations`
+# or quote the enum parameter (e.g. `Sequence['DataType']`).
+# go/pytype-faq#annotating-with-a-proto-enum-type-caused-a-runtime-error
+DataType = pipeline_pb2.InputGraph.DataType
+_ValidDataType = typing_extensions.Literal[
+    DataType.ARTIFACT_LIST,
+    DataType.ARTIFACT_MULTIMAP,
+    DataType.ARTIFACT_MULTIMAP_LIST,
+]
 
 
 class _ResolverOpMeta(abc.ABCMeta):
@@ -81,7 +78,14 @@ class _ResolverOpMeta(abc.ABCMeta):
         for prop in attrs.values()
         if isinstance(prop, Property)
     }
+    if not typing_utils.is_compatible(arg_data_types, Sequence[_ValidDataType]):
+      raise ValueError(
+          f'Invalid arg_data_types = {arg_data_types}. '
+          'Expected Sequence[DataType].')
     cls._arg_data_types = arg_data_types
+    if not typing_utils.is_compatible(return_data_type, _ValidDataType):
+      raise ValueError(
+          f'Invalid return_data_type = {return_data_type}. Expected DataType.')
     cls._return_data_type = return_data_type
     super().__init__(name, bases, attrs)
 
@@ -125,8 +129,9 @@ class _ResolverOpMeta(abc.ABCMeta):
         raise ValueError('Cannot directly call ResolverOp with real values. '
                          'Use output of another operator as an argument.')
       if arg.output_data_type != arg_data_type:
-        raise TypeError(f'{cls.__name__} takes {arg_data_type.name} type '
-                        f'but got {arg.output_data_type.name} instead.')
+        raise TypeError(
+            f'{cls.__name__} takes {DataType.Name(arg_data_type)} type '
+            f'but got {DataType.Name(arg.output_data_type)} instead.')
       transformed_args.append(arg)
     return transformed_args
 
@@ -273,8 +278,7 @@ class OpNode(Node):
   # Output data type of ResolverOp.
   output_data_type = attr.ib(
       type=DataType,
-      default=DataType.ARTIFACT_MULTIMAP,
-      validator=attr.validators.instance_of(DataType))
+      default=DataType.ARTIFACT_MULTIMAP)
   # Arguments of the ResolverOp.
   args = attr.ib(type=Sequence[Node], default=())
   # Property for the ResolverOp, given as keyword arguments.

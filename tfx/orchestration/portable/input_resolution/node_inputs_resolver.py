@@ -165,7 +165,7 @@ from tfx.utils import typing_utils
 import ml_metadata as mlmd
 
 _T = TypeVar('_T')
-_IRDataType = pipeline_pb2.InputGraph.DataType
+_DataType = pipeline_pb2.InputGraph.DataType
 
 
 def _check_cycle(
@@ -311,15 +311,15 @@ def _resolve_input_graph_ref(
       store, node_inputs.input_graphs[graph_id])
   for partition, input_dict in _join_artifacts(resolved, graph_input_keys):
     result = graph_fn(input_dict)
-    if graph_output_type == _IRDataType.ARTIFACT_LIST:
+    if graph_output_type == _DataType.ARTIFACT_LIST:
       # result == [Artifact()]
       resolved[input_key].append((partition, result))
-    elif graph_output_type == _IRDataType.ARTIFACT_MULTIMAP:
+    elif graph_output_type == _DataType.ARTIFACT_MULTIMAP:
       # result == {'x': [Artifact()], 'y': [Artifact()]}
       for each_input_key, input_graph_ref in same_graph_inputs.items():
         resolved[each_input_key].append(
             (partition, result[input_graph_ref.key]))
-    elif graph_output_type == _IRDataType.ARTIFACT_MULTIMAP_LIST:
+    elif graph_output_type == _DataType.ARTIFACT_MULTIMAP_LIST:
       # result == [{'x': [Artifact()]}, {'x': [Artifact()]}]
       for index, each_result in enumerate(result):
         new_partition = partition | {graph_id: index}
