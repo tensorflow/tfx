@@ -44,8 +44,8 @@ class _ReadPrestoDoFn(beam.DoFn):
       query: A SQL query used to return results from Presto table.
 
     Yields:
-      One row from the query result, represented by a tuple of tuples. Each tuple
-      contains information on column name, column data type, data.
+      One row from the query result, represented by a tuple of tuples.
+      Each tuple contains information on column name, column data type, data.
     """
     self.cursor.execute(query)
     rows = self.cursor.fetchall()
