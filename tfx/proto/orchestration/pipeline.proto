@@ -497,6 +497,7 @@ message NodeExecutionOptions {
     Skip skip = 3;
   }
 
+  // LINT.IfChange
   // An enum defines the trigger strategy of when the node will be ready to be
   // triggered. Only supported in the experimental orchestrator under SYNC mode
   // and ignored when configured for other platforms.
@@ -516,6 +517,7 @@ message NodeExecutionOptions {
   // Unset or set to default value of TRIGGER_STATEGY_UNDEFINED behaves the
   // same as ALL_UPSTREAM_NODES_SUCCEEDED.
   TriggerStrategy strategy = 4;
+  // LINT.ThenChange(tfx/orchestration/experimental/core/sync_pipeline_task_gen.py)
 }
 
 // Pipeline node definition.

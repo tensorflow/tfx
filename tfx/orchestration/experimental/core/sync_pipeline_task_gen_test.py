@@ -33,6 +33,7 @@ from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_sync_pipeline
 from tfx.orchestration.portable import runtime_parameter_utils
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -776,6 +777,45 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
       [finalize_task] = self._generate(False, True, fail_fast=fail_fast)
       self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
       self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
+
+  def test_node_triggering_strategies(self):
+    """Tests node triggering strategies."""
+    # Set chore_b's node triggering strategy to all upstream node succeeded.
+    self._chore_b.execution_options.strategy = (
+        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED)
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
+    self._run_next(False, expect_nodes=[self._stats_gen])
+    self._run_next(False, expect_nodes=[self._schema_gen])
+    self._run_next(
+        False, expect_nodes=[self._example_validator, self._transform])
+    self._run_next(False, expect_nodes=[self._trainer])
+    [chore_a_task] = self._generate_and_test(
+        False,
+        num_initial_executions=6,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        ignore_update_node_state_tasks=True,
+        fail_fast=False)
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, chore_a_task.execution_id) as chore_a_exec:
+        # Fail chore a execution.
+        chore_a_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+        data_types_utils.set_metadata_value(
+            chore_a_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+            'foobar error')
+    # Despite upstream node failure, chore b proceeds because it's failure
+    # strategy is ALL_UPSTREAM_NODES_COMPLETED.
+    self._run_next(False, expect_nodes=[self._chore_b])
+    # All runnable nodes executed, finalization task should be produced.
+    [finalize_task] = self._generate(False, True)
+    self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
+    self.assertEqual(status_lib.Code.OK, finalize_task.status.code)
+    # Reset chore_b's node triggering strategy.
+    self._chore_b.execution_options.strategy = (
+        pipeline_pb2.NodeExecutionOptions.TRIGGER_STRATEGY_UNSPECIFIED)
 
 
 if __name__ == '__main__':

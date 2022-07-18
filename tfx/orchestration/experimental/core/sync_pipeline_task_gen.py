@@ -136,7 +136,8 @@ class _Generator:
         if node_state.is_failure():
           failed_nodes_dict[node_id] = node_state.status
           continue
-        if not self._upstream_nodes_successful(node, successful_node_ids):
+        if not self._trigger_strategy_satisfied(node, successful_node_ids,
+                                                failed_nodes_dict):
           continue
         tasks = self._generate_tasks_for_node(node)
         for task in tasks:
@@ -145,6 +146,10 @@ class _Generator:
               successful_node_ids.add(node_id)
             elif pstate.is_node_state_failure(task.state):
               failed_nodes_dict[node_id] = task.status
+              # While the pipeline can still proceed depending on the trigger
+              # strategy of descending nodes, the fail fast option should only
+              # be used together with ALL_UPSTREAM_NODES_SUCCEEDED since it will
+              # fail the pipeline if any node fails.
               if self._fail_fast:
                 finalize_pipeline_task = self._abort_task(task.status.message)
             update_node_state_tasks.append(task)
@@ -161,18 +166,34 @@ class _Generator:
       assert not finalize_pipeline_task
       node_by_id = _node_by_id(self._pipeline)
       # Collect nodes that cannot be run because they have a failed ancestor.
-      unrunnable_node_ids = set()
+      unrunnable_descendant_ids = set()
       for node_id in failed_nodes_dict:
-        unrunnable_node_ids |= _descendants(node_by_id, node_id)
-      # Nodes that are still runnable have neither succeeded nor failed, and
-      # don't have a failed ancestor.
+        unrunnable_descendant_ids |= _unrunnable_descendants(
+            node_by_id, node_id)
+      # Nodes that are still runnable have neither succeeded nor failed, don't
+      # have a failed ancestor, or have a triggering strategy that ignores
+      # upstream failures.
       runnable_node_ids = node_by_id.keys() - (
-          unrunnable_node_ids | successful_node_ids | failed_nodes_dict.keys())
-      # If there are no runnable nodes, we can abort the pipeline.
+          unrunnable_descendant_ids | successful_node_ids
+          | failed_nodes_dict.keys())
       if not runnable_node_ids:
-        finalize_pipeline_task = self._abort_task(
-            'Cannot make progress due to node failures: \n' +
-            _status_dict_to_error_message(failed_nodes_dict))
+        # If there are no runnable nodes and not all nodes are completed,
+        # we can abort the pipeline.
+        if unrunnable_descendant_ids:
+          finalize_pipeline_task = self._abort_task(
+              'Cannot make progress due to node failures: \n' +
+              _status_dict_to_error_message(failed_nodes_dict))
+        # If all nodes are completed and not all terminal nodes are successful,
+        # the pipeline should be marked failed.
+        elif terminal_node_ids & failed_nodes_dict.keys():
+          failed_terminal_nodes = {
+              k: v
+              for k, v in failed_nodes_dict.items()
+              if k in terminal_node_ids
+          }
+          finalize_pipeline_task = self._abort_task(
+              'Pipeline failed due to terminal node failures: \n' +
+              _status_dict_to_error_message(failed_terminal_nodes))
 
     result = update_node_state_tasks
     if finalize_pipeline_task:
@@ -260,7 +281,7 @@ class _Generator:
     # If one of the executions in the set for the node failed or cancelled, the
     # pipeline should be aborted if the node is not in state STARTING.
     # For nodes that are in state STARTING, new executions are created.
-    # TODO (b/223627713) a node in a ForEach is not restartable, it is better
+    # TODO(b/223627713): a node in a ForEach is not restartable, it is better
     # to prevent restarting for now.
     failed_executions = [
         e for e in latest_executions_set if execution_lib.is_execution_failed(e)
@@ -402,6 +423,31 @@ class _Generator:
     """Returns `True` if all the upstream nodes have been successfully executed."""
     return set(node.upstream_nodes) <= successful_node_ids
 
+  def _upstream_nodes_completed(
+      self, node: pipeline_pb2.PipelineNode, successful_node_ids: Set[str],
+      failed_nodes_dict: Dict[str, status_lib.Status]) -> bool:
+    """Returns `True` if all the upstream nodes have been executed or skipped."""
+    return set(node.upstream_nodes) <= (
+        successful_node_ids | failed_nodes_dict.keys())
+
+  def _trigger_strategy_satisfied(
+      self, node: pipeline_pb2.PipelineNode, successful_node_ids: Set[str],
+      failed_nodes_dict: Dict[str, status_lib.Status]) -> bool:
+    """Returns `True` if the node's Trigger Strategy is satisfied."""
+    if node.execution_options.strategy == (
+        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED):
+      return self._upstream_nodes_completed(node, successful_node_ids,
+                                            failed_nodes_dict)
+    elif node.execution_options.strategy in (
+        pipeline_pb2.NodeExecutionOptions.TRIGGER_STRATEGY_UNSPECIFIED,
+        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_SUCCEEDED):
+      return self._upstream_nodes_successful(node, successful_node_ids)
+    else:
+      raise NotImplementedError(
+          'Unrecognized node triggering strategy: %s' %
+          pipeline_pb2.NodeExecutionOptions.TriggerStrategy.Name(
+              node.execution_options.strategy))
+
   def _abort_task(self, error_msg: str) -> task_lib.FinalizePipelineTask:
     """Returns task to abort pipeline execution."""
     error_msg = (f'Aborting pipeline execution due to node execution failure; '
@@ -459,11 +505,16 @@ def _node_by_id(
   }
 
 
-def _descendants(node_by_id: Mapping[str, pipeline_pb2.PipelineNode],
-                 node_id: str) -> Set[str]:
-  """Returns node_ids of all descendants of the given node_id."""
+def _unrunnable_descendants(node_by_id: Mapping[str, pipeline_pb2.PipelineNode],
+                            failed_node_id: str) -> Set[str]:
+  """Returns node_ids of all unrunnable descendants of the given failed node_id."""
   queue = collections.deque()
-  queue.extend(node_by_id[node_id].downstream_nodes)
+  for node_with_upstream_failure in node_by_id[failed_node_id].downstream_nodes:
+    # Nodes with ALL_UPSTREAM_NODES_COMPLETED trigger strategy can make progress
+    # despite a failed upstream node.
+    if node_by_id[node_with_upstream_failure].execution_options.strategy != (
+        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED):
+      queue.append(node_with_upstream_failure)
   result = set()
   while queue:
     q_node_id = queue.popleft()
