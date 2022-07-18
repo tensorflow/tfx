@@ -20,11 +20,13 @@ from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
+from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as tfx_channel
 from tfx.types import channel_utils
+from tfx.types import resolved_channel
 
 
 def set_runtime_parameter_pb(
@@ -146,13 +148,21 @@ def has_task_dependency(tfx_pipeline: pipeline.Pipeline):
   for component in tfx_pipeline.components:
     upstream_data_dep_ids = set()
     for value in component.inputs.values():
-      # Resolver node is a special case. It sets producer_component_id, but not
-      # upstream_nodes. Excludes the case by filtering using producer_map.
-      upstream_data_dep_ids.update([
-          input_channel.producer_component_id
-          for input_channel in channel_utils.get_individual_channels(value)
-          if input_channel in producer_map
-      ])
+      if isinstance(value, resolved_channel.ResolvedChannel):
+        input_nodes = resolver_function.get_input_nodes(value.output_node)
+        input_channels = [input_node.wrapped for input_node in input_nodes]
+        for input_channel in input_channels:
+          upstream_data_dep_ids.update([
+              channel.producer_component_id
+              for channel in input_channel.values()
+          ])
+      else:
+        upstream_data_dep_ids.update([
+            input_channel.producer_component_id
+            for input_channel in channel_utils.get_individual_channels(value)
+            if input_channel in producer_map
+        ])
+
     upstream_deps_ids = {node.id for node in component._upstream_nodes}  # pylint: disable=protected-access
 
     # Compares a node's all upstream nodes and all upstream data dependencies.
