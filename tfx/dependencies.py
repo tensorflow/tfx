@@ -76,12 +76,6 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.38,<3',
       'attrs>=19.3.0,<21',
       'click>=7,<8',
-      # TODO(b/238946565): Remove pinned version when pip can find depenencies
-      # without this. `google-api-core` is needed for many google cloud
-      # packages. `google-cloud-recommendations-ai==0.2.0` is a dependency of
-      # apache-beam[gcp] and it requires 'google-api-core<2' which cause a lot
-      # of backtracking.
-      'google-api-core<2',
       'google-cloud-aiplatform>=1.6.2,<2',
       'google-cloud-bigquery>=2.26.0,<3',
       'grpcio>=1.28.1,<2',

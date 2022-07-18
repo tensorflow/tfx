@@ -21,7 +21,6 @@ from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.types import channel
 from tfx.types.system_executions import SystemExecution
 from tfx.utils import abc_utils
 from tfx.utils import doc_controls
@@ -166,11 +165,11 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
 
   @property
   @doc_controls.do_not_doc_in_subclasses
-  def inputs(self) -> Dict[str, channel.Channel]:
+  def inputs(self) -> Dict[str, Any]:
     return self.spec.inputs
 
   @property
-  def outputs(self) -> Dict[str, channel.OutputChannel]:
+  def outputs(self) -> Dict[str, Any]:
     """Component's output channel dict."""
     return self.spec.outputs
 

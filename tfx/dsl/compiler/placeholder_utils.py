@@ -59,14 +59,11 @@ class ResolutionContext:
   platform_config: message.Message = None
 
 
-# A Placeholder Expression can be resolved to the following types:
-#   - basic types from MLMD: int, float, str
-#   - primitive type from proto field access: bool
-#   - container type from list exec property or proto field access: list
-#
+# Includes three basic types from MLMD: int, float, str
+# and an additional primitive type from proto field access: bool
 # Note: Pytype's int includes long from Python3
-# Placeholder does not support bytes, which may result from proto field access.
-# Please use base64 encode operator to explicitly convert it into str.
+# We does not support bytes, which may result from proto field access. Must use
+# base64 encode operator to explicitly convert it into str.
 _PlaceholderResolvedTypes = (int, float, str, bool, type(None), list, dict)
 _PlaceholderResolvedTypeHints = Union[_PlaceholderResolvedTypes]
 

@@ -188,6 +188,10 @@ class Schema(_TfxArtifact):
   TYPE_NAME = 'Schema'
 
 
+class StudyConfigArtifact(_TfxArtifact):
+  TYPE_NAME = 'StudyConfigArtifact'
+
+
 class TransformCache(_TfxArtifact):
   TYPE_NAME = 'TransformCache'
 
