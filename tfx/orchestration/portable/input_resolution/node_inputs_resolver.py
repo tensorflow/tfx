@@ -209,6 +209,8 @@ def _get_dependencies(
       for node_def in input_graph.nodes.values():
         if node_def.WhichOneof('kind') == 'input_node':
           result[input_key].append(node_def.input_node.input_key)
+    elif input_spec.mixed_inputs.input_keys:
+      result[input_key].extend(input_spec.mixed_inputs.input_keys)
   return result
 
 
@@ -328,6 +330,28 @@ def _resolve_input_graph_ref(
               (new_partition, each_result[input_graph_ref.key]))
 
 
+def _resolve_mixed_inputs(
+    node_inputs: pipeline_pb2.NodeInputs,
+    input_key: str,
+    resolved: Dict[str, List[_Entry]],
+) -> None:
+  """Resolves an InputSpec.Mixed."""
+  mixed_inputs = node_inputs.inputs[input_key].mixed_inputs
+  result = []
+  for partition, input_dict in _join_artifacts(
+      resolved, mixed_inputs.input_keys):
+    if mixed_inputs.method == pipeline_pb2.InputSpec.Mixed.Method.UNION:
+      artifacts_by_id = {}
+      for sub_key in mixed_inputs.input_keys:
+        artifacts_by_id.update({
+            artifact.id: artifact for artifact in input_dict[sub_key]
+        })
+      artifacts = list(artifacts_by_id.values())
+    result.append((partition, artifacts))
+
+  resolved[input_key] = result
+
+
 def resolve(
     store: mlmd.MetadataStore,
     node_inputs: pipeline_pb2.NodeInputs,
@@ -353,9 +377,13 @@ def resolve(
       _resolve_input_graph_ref(store, node_inputs, input_key, resolved)
       continue
 
+    if input_spec.mixed_inputs.input_keys:
+      _resolve_mixed_inputs(node_inputs, input_key, resolved)
+      continue
+
     raise exceptions.FailedPreconditionError(
-        'Exactly one of InputSpec.channels or InputSpec.input_graph_ref '
-        'should be set.')
+        'Exactly one of InputSpec.channels, InputSpec.input_graph_ref, or '
+        'InputSpec.mixed_inputs should be set.')
 
   result_with_key = _join_artifacts(resolved, list(node_inputs.inputs.keys()))
   return [t[1] for t in result_with_key]

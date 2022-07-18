@@ -345,11 +345,23 @@ message InputSpec {
     string key = 2;
   }
 
-  // Exactly one of `channels` or `input_graph_ref` field should be set.
+  // A mixture of InputSpecs.
+  message Mixed {
+    enum Method {
+      UNION = 0;
+    }
+    Method method = 1;
+    repeated string input_keys = 2;
+  }
+
+  // Exactly one of `channels`, `input_graph_ref`, or `mixed_inputs` field
+  // should be set.
   // Union of Channels.
   repeated Channel channels = 1;
   // A reference to the InputGraph.
   InputGraphRef input_graph_ref = 3;
+  // A mixture of InputSpecs.
+  Mixed mixed_inputs = 4;
 
   // The minimum number of artifacts desired. If minimum requirement is not met,
   // the execution should not be triggered. If min_count is less than or equal

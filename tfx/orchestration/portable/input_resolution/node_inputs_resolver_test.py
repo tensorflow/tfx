@@ -264,9 +264,10 @@ class NodeInputsResolverTest(tf.test.TestCase):
 
   def create_artifacts(self, n):
     if n == 1:
-      return mock.MagicMock(name='Artifact')
+      return mock.MagicMock(name='Artifact', id=1)
     else:
-      return [mock.MagicMock(name=f'Artifact_{i}') for i in range(n)]
+      return [mock.MagicMock(name=f'Artifact_{i}', id=i)
+              for i in range(1, n + 1)]
 
   def testResolveChannels(self):
     a1 = self.create_artifacts(1)
@@ -486,6 +487,59 @@ class NodeInputsResolverTest(tf.test.TestCase):
 
     with self.assertRaises(exceptions.FailedPreconditionError):
       node_inputs_resolver.resolve(self._store, node_inputs)
+
+  def testMixedInputs(self):
+    a1, a2 = self.create_artifacts(2)
+    x1 = self.parse_input_spec("""
+      channels {
+        artifact_query {
+          type {
+            name: "MyArtifact"
+          }
+        }
+      }
+    """)
+    self.mock_channel_resolution_result(x1, [a1])
+    x2 = self.parse_input_spec("""
+      input_graph_ref {
+        graph_id: "graph_1"
+        key: "a"
+      }
+    """)
+    x3 = self.parse_input_spec("""
+      mixed_inputs {
+        input_keys: "x1"
+        input_keys: "x2"
+      }
+    """)
+    graph_1 = self.parse_input_graph("""
+      nodes {
+        key: "op_1"
+        value {
+          op_node {
+            op_type: "DummyOp"
+          }
+          output_data_type: ARTIFACT_MULTIMAP_LIST
+        }
+      }
+      result_node: "op_1"
+    """)
+    self.mock_graph_fn_result(
+        graph_1,
+        lambda _: [{'a': [a1]}, {'a': [a2]}])
+
+    with self.subTest('UNION'):
+      x3.mixed_inputs.method = pipeline_pb2.InputSpec.Mixed.Method.UNION
+      node_inputs = pipeline_pb2.NodeInputs(
+          inputs={'x1': x1, 'x2': x2, 'x3': x3},
+          input_graphs={'graph_1': graph_1})
+
+      result = node_inputs_resolver.resolve(self._store, node_inputs)
+
+      self.assertEqual(result, [
+          {'x1': [a1], 'x2': [a1], 'x3': [a1]},
+          {'x1': [a1], 'x2': [a2], 'x3': [a1, a2]},
+      ])
 
 
 if __name__ == '__main__':
