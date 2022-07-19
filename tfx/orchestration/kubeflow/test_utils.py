@@ -59,7 +59,6 @@ from tfx.utils import kube_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
 
-
 # TODO(jiyongjung): Merge with kube_utils.PodStatus
 # Various execution status of a KFP pipeline.
 KFP_RUNNING_STATUS = 'running'
@@ -207,9 +206,7 @@ class HelloWorldComponent(BaseComponent):
       image='gcr.io/google.com/cloudsdktool/cloud-sdk:latest',
       command=['sh', '-c'],
       args=[
-          'echo "hello ' +
-          ph.exec_property('word') +
-          '" | gsutil cp - ' +
+          'echo "hello ' + ph.exec_property('word') + '" | gsutil cp - ' +
           ph.output('greeting')[0].uri
       ])
 
@@ -526,7 +523,8 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
   def _pipeline_root(self, pipeline_name: str):
     return os.path.join(self._test_output_dir, pipeline_name)
 
-  def _create_pipeline(self, pipeline_name: str,
+  def _create_pipeline(self,
+                       pipeline_name: str,
                        components: List[BaseComponent],
                        beam_pipeline_args: Optional[List[str]] = None):
     """Creates a pipeline given name and list of components."""

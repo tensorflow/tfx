@@ -16,6 +16,7 @@
 import os
 from unittest import mock
 
+from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_pipeline_kubeflow
@@ -23,20 +24,24 @@ from tfx.utils import test_case_utils
 from tfx.v1 import orchestration
 
 
-class PenguinPipelineKubeflowTest(test_case_utils.TfxTest):
+class PenguinPipelineKubeflowTest(test_case_utils.TfxTest,
+                                  parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
+  @parameterized.named_parameters(
+      dict(testcase_name='Run: Local', use_aip=False, use_vertex=False),
+      dict(testcase_name='Run: AIP', use_aip=True, use_vertex=False),
+      dict(testcase_name='Run: Vertex', use_aip=False, use_vertex=True))
   @mock.patch('tfx.components.util.udf_utils.UserModuleFilePipDependency.'
               'resolve')
   def testPenguinPipelineConstructionAndDefinitionFileExists(
-      self, resolve_mock):
+      self, resolve_mock, use_aip, use_vertex):
     # Avoid actually performing user module packaging because a placeholder
     # GCS bucket is used.
     resolve_mock.side_effect = lambda pipeline_root: None
-
     kubeflow_pipeline = penguin_pipeline_kubeflow.create_pipeline(
         pipeline_name=penguin_pipeline_kubeflow._pipeline_name,
         pipeline_root=penguin_pipeline_kubeflow._pipeline_root,
@@ -51,9 +56,10 @@ class PenguinPipelineKubeflowTest(test_case_utils.TfxTest):
         ._ai_platform_serving_args,
         beam_pipeline_args=penguin_pipeline_kubeflow
         ._beam_pipeline_args_by_runner['DirectRunner'],
-        use_aip_component=False,
+        use_aip=use_aip,
+        use_vertex=use_vertex,
         serving_model_dir=penguin_pipeline_kubeflow._serving_model_dir)
-    self.assertEqual(9, len(kubeflow_pipeline.components))
+    self.assertLen(kubeflow_pipeline.components, 9)
 
     orchestration.experimental.KubeflowDagRunner().run(kubeflow_pipeline)
     file_path = os.path.join(self.tmp_dir, 'penguin_kubeflow.tar.gz')

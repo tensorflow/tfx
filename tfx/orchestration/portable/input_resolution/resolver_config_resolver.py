@@ -19,7 +19,6 @@ InputGraph and InputSpec.InputGraphRef instead.
 
 from typing import Iterable, Union, Sequence, cast, Type
 
-from tfx import types
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
@@ -37,7 +36,6 @@ _ResolverOpClass = Union[
 ]
 # Types that can be used as an argument & return value of an resolver op.
 _ResolverIOType = Union[
-    Sequence[types.Artifact],
     typing_utils.ArtifactMultiMap,
     Sequence[typing_utils.ArtifactMultiMap],
 ]

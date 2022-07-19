@@ -197,7 +197,7 @@ def make_extra_packages_examples():
       'slackclient>=2.8.2,<3',
       'websocket-client>=0.57,<1',
       # Required for bert examples in tfx/examples/bert
-      'tensorflow-text>=1.15.1,<3',
+      'tensorflow-text>=1.15.1,<2.9,!=2.10,!=2.90',
       # Required for tfx/examples/cifar10
       'flatbuffers>=1.12,<3',
       'tflite-support>=0.1.0a1,<0.2.1',
