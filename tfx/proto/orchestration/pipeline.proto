@@ -216,7 +216,7 @@ message InputGraph {
   // ResolverOp instance as a input graph's node. Corresponds to the
   // tfx.dsl.resolver_op.OpNode.
   message OpNode {
-    // ResolverOp type (e.g. "tfx.Unnest").
+    // A canonical_name of ResolverOp (e.g. "tfx.internal.Unnest").
     string op_type = 1;
     // Generic argument type that can express either another Node's outputs
     // or a static value.

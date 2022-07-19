@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, Generic, Mapping, Type, TypeVar, Union, Sequence
+from typing import Any, Generic, Mapping, Type, TypeVar, Union, Sequence, Optional
 
 import attr
 from tfx.proto.orchestration import pipeline_pb2
@@ -71,6 +71,8 @@ class _ResolverOpMeta(abc.ABCMeta):
 
   def __init__(
       cls, name, bases, attrs,
+      *,
+      canonical_name: Optional[str] = None,
       arg_data_types: Sequence[DataType] = (DataType.ARTIFACT_MULTIMAP,),
       return_data_type: DataType = DataType.ARTIFACT_MULTIMAP):
     cls._props_by_name = {
@@ -78,6 +80,7 @@ class _ResolverOpMeta(abc.ABCMeta):
         for prop in attrs.values()
         if isinstance(prop, Property)
     }
+    cls._canonical_name = canonical_name
     if not typing_utils.is_compatible(arg_data_types, Sequence[_ValidDataType]):
       raise ValueError(
           f'Invalid arg_data_types = {arg_data_types}. '
@@ -88,6 +91,10 @@ class _ResolverOpMeta(abc.ABCMeta):
           f'Invalid return_data_type = {return_data_type}. Expected DataType.')
     cls._return_data_type = return_data_type
     super().__init__(name, bases, attrs)
+
+  @property
+  def canonical_name(cls):
+    return cls._canonical_name or cls.__name__
 
   def __call__(cls, *args: Union['Node', Mapping[str, 'Node']], **kwargs: Any):
     """Fake instantiation of the ResolverOp class.

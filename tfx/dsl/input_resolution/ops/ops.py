@@ -13,7 +13,7 @@
 # limitations under the License.
 """Module for pre-importing all known ResolverOp for dependency tracking."""
 
-from typing import Type, Union, Dict, Optional
+from typing import Type, Union, Dict
 
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
@@ -32,27 +32,30 @@ _OPS_BY_CLASSPATH: Dict[str, _OpTypes] = {}
 _OPS_BY_NAME: Dict[str, _ResolverOpType] = {}
 
 
-def _register_op(cls: _ResolverOpType, name: Optional[str] = None) -> None:
+def _register_op(cls: _ResolverOpType) -> None:
   class_path = name_utils.get_full_name(cls, strict_check=False)
+  if class_path in _OPS_BY_CLASSPATH:
+    raise ValueError(f'Duplicated class path {class_path} while registering.')
   _OPS_BY_CLASSPATH[class_path] = cls
-  if name is None:
-    name = class_path
-  if name in _OPS_BY_NAME:
-    raise ValueError(f'Duplicated name {name} while registering.')
-  _OPS_BY_NAME[name] = cls
+  if cls.canonical_name in _OPS_BY_NAME:
+    raise ValueError(f'Duplicated name {cls.canonical_name} while registering.')
+  _OPS_BY_NAME[cls.canonical_name] = cls
 
 # go/keep-sorted start
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
 Unnest = unnest_op.Unnest
 # go/keep-sorted end
 # go/keep-sorted start
-_register_op(SkipIfEmpty, name='tfx.internal.SkipIfEmpty')
-_register_op(Unnest, name='tfx.internal.Unnest')
+_register_op(SkipIfEmpty)
+_register_op(Unnest)
 # go/keep-sorted end
 
 
 def _register_strategy(cls: _ResolverStrategyType) -> None:
-  _OPS_BY_CLASSPATH[name_utils.get_full_name(cls, strict_check=False)] = cls
+  class_path = name_utils.get_full_name(cls, strict_check=False)
+  if class_path in _OPS_BY_CLASSPATH:
+    raise ValueError(f'Duplicated class path {class_path} while registering.')
+  _OPS_BY_CLASSPATH[class_path] = cls
 
 # For ResolverStrategy, register them but do not expose their public name.
 # go/keep-sorted start
@@ -65,7 +68,7 @@ _register_strategy(span_range_strategy.SpanRangeStrategy)
 
 def testonly_register(cls: _OpTypes) -> _OpTypes:
   if issubclass(cls, resolver_op.ResolverOp):
-    _register_op(cls, name=cls.__name__)
+    _register_op(cls)
   else:
     _register_strategy(cls)
   return cls
