@@ -385,5 +385,9 @@ def resolve(
         'Exactly one of InputSpec.channels, InputSpec.input_graph_ref, or '
         'InputSpec.mixed_inputs should be set.')
 
-  result_with_key = _join_artifacts(resolved, list(node_inputs.inputs.keys()))
+  visible_keys = [
+      k for k, input_spec in node_inputs.inputs.items()
+      if not input_spec.hidden
+  ]
+  result_with_key = _join_artifacts(resolved, visible_keys)
   return [t[1] for t in result_with_key]

@@ -367,6 +367,11 @@ message InputSpec {
   // the execution should not be triggered. If min_count is less than or equal
   // to 0, it means this input is optional.
   int32 min_count = 2;
+
+  // Whether the input should be hidden from the final resolved result. Only
+  // the input keys whose corresponding `InputSpec.hidden = false` will be
+  // included in the input map that is passed to the `Executor.Do`.
+  bool hidden = 5;
 }
 
 // The proto message describes specs of all inputs needed for a component

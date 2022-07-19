@@ -541,6 +541,73 @@ class NodeInputsResolverTest(tf.test.TestCase):
           {'x1': [a1], 'x2': [a2], 'x3': [a1, a2]},
       ])
 
+  def testHidden(self):
+    a1, a2 = self.create_artifacts(2)
+    x1 = self.parse_input_spec("""
+      input_graph_ref {
+        graph_id: "graph_1"
+        key: "a"
+      }
+    """)
+    x2 = self.parse_input_spec("""
+      input_graph_ref {
+        graph_id: "graph_2"
+        key: "a"
+      }
+    """)
+    graph_1 = self.parse_input_graph("""
+      nodes {
+        key: "op_1"
+        value {
+          op_node {
+            op_type: "DummyOp"
+          }
+          output_data_type: ARTIFACT_MULTIMAP_LIST
+        }
+      }
+      result_node: "op_1"
+    """)
+    self.mock_graph_fn_result(
+        graph_1,
+        lambda _: [{'a': [a1]}, {'a': [a2]}])
+
+    with self.subTest('Not hidden'):
+      node_inputs = pipeline_pb2.NodeInputs(
+          inputs={'x1': x1, 'x2': x2},
+          input_graphs={'graph_1': graph_1, 'graph_2': graph_1})
+
+      result = node_inputs_resolver.resolve(self._store, node_inputs)
+
+      self.assertCountEqual(result, [
+          {'x1': [a1], 'x2': [a1]},
+          {'x1': [a1], 'x2': [a2]},
+          {'x1': [a2], 'x2': [a1]},
+          {'x1': [a2], 'x2': [a2]},
+      ])
+
+    with self.subTest('x2 is hidden'):
+      x2.hidden = True
+      node_inputs = pipeline_pb2.NodeInputs(
+          inputs={'x1': x1, 'x2': x2},
+          input_graphs={'graph_1': graph_1, 'graph_2': graph_1})
+
+      result = node_inputs_resolver.resolve(self._store, node_inputs)
+
+      self.assertCountEqual(result, [
+          {'x1': [a1]},
+          {'x1': [a2]},
+      ])
+
+    with self.subTest('x1, x2 are hidden'):
+      x1.hidden = True
+      node_inputs = pipeline_pb2.NodeInputs(
+          inputs={'x1': x1, 'x2': x2},
+          input_graphs={'graph_1': graph_1, 'graph_2': graph_1})
+
+      result = node_inputs_resolver.resolve(self._store, node_inputs)
+
+      self.assertEqual(result, [{}])
+
 
 if __name__ == '__main__':
   tf.test.main()
