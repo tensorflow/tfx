@@ -14,6 +14,10 @@
 
 *   Type hint on BaseComponent.inputs and BaseComponent.outputs corrected to be
     Channel subclasses.
+*   Added `input_optional` parameter to `ChannelParameter`. This allows
+    component authors to declare that even if a channel is `optional`, if it is
+    provided during pipeline definition time, then it must have resolved inputs
+    during run time.
 
 ## Dependency Updates
 
@@ -76,7 +80,7 @@
 
 *   Added experimental exit_handler support for KubeflowDagRunner.
 *   Enabled custom labels to be submitted to CAIP training jobs.
-*   Enabled custom resource-setting (vCPU and RAM) for containers orchestrating 
+*   Enabled custom resource-setting (vCPU and RAM) for containers orchestrating
     on Vertex AI.
 
 ## Breaking Changes
