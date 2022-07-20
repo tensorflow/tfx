@@ -37,6 +37,7 @@ from tfx.orchestration.kubeflow import decorators
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
+from tfx.proto.orchestration import pipeline_pb2 as tfx_pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.types.channel import Channel
 from tfx.utils import deprecation_utils
@@ -370,6 +371,12 @@ class StepBuilder:
       task_spec.caching_options.CopyFrom(
           pipeline_pb2.PipelineTaskSpec.CachingOptions(
               enable_cache=self._enable_cache))
+
+    if getattr(self._node, '_trigger_strategy', None) == (
+        tfx_pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED):
+      task_spec.trigger_policy.strategy = (
+          pipeline_pb2.PipelineTaskSpec.TriggerPolicy
+          .ALL_UPSTREAM_TASKS_COMPLETED)
 
     if self._is_exit_handler:
       task_spec.trigger_policy.strategy = (
