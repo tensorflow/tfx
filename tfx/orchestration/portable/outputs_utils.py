@@ -159,7 +159,7 @@ class OutputsResolver:
       # TODO(b/162331170): Update the "0" to the actual index.
       artifact_name = (
           f'{artifact_name}:{self._pipeline_node.node_info.id}:{key}:0')
-      artifact.name = artifact_name
+      artifact.name = 'owner:project_name:' + artifact_name
       _attach_artifact_properties(output_spec.artifact_spec, artifact)
 
       logging.debug('Creating output artifact uri %s', artifact.uri)

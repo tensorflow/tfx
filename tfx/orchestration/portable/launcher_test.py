@@ -441,7 +441,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_trainer:model:0"
+              string_value: "owner:project_name::test_run_%d:my_trainer:model:0"
             }
           }
           custom_properties {
@@ -450,7 +450,7 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_trainer:model:0"
+          name: "owner:project_name::test_run_%d:my_trainer:model:0"
           state: LIVE""" %
           (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
@@ -495,7 +495,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_trainer:model:0"
+              string_value: "owner:project_name::test_run_%d:my_trainer:model:0"
             }
           }
           custom_properties {
@@ -504,7 +504,7 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_trainer:model:0"
+          name: "owner:project_name::test_run_%d:my_trainer:model:0"
           state: LIVE""" %
           (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
@@ -624,7 +624,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_trainer:model:0"
+              string_value: "owner:project_name::test_run_%d:my_trainer:model:0"
             }
           }
           custom_properties {
@@ -633,7 +633,7 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_trainer:model:0"
+          name: "owner:project_name::test_run_%d:my_trainer:model:0"
           state: LIVE""" %
           (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
@@ -672,7 +672,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_trainer:model:0"
+              string_value: "owner:project_name::test_run_%d:my_trainer:model:0"
             }
           }
           custom_properties {
@@ -681,7 +681,7 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_trainer:model:0"
+          name: "owner:project_name::test_run_%d:my_trainer:model:0"
           state: LIVE""" %
           (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifacts[1],
@@ -798,7 +798,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_trainer:model:0"
+              string_value: "owner:project_name::test_run_%d:my_trainer:model:0"
             }
           }
           custom_properties {
@@ -807,7 +807,7 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_trainer:model:0"
+          name: "owner:project_name::test_run_%d:my_trainer:model:0"
           state: LIVE""" %
           (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
@@ -909,7 +909,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_example_gen:output_examples:0"
+              string_value: "owner:project_name::test_run_%d:my_example_gen:output_examples:0"
             }
           }
           custom_properties {
@@ -930,7 +930,7 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_example_gen:output_examples:0"
+          name: "owner:project_name::test_run_%d:my_example_gen:output_examples:0"
           state: LIVE""" %
           (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
@@ -965,7 +965,7 @@ class LauncherTest(test_case_utils.TfxTest):
           custom_properties {
             key: "name"
             value {
-              string_value: ":test_run_%d:my_example_gen:output_examples:0"
+              string_value: "owner:project_name::test_run_%d:my_example_gen:output_examples:0"
             }
           }
           custom_properties {
@@ -986,7 +986,7 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_example_gen:output_examples:0"
+          name: "owner:project_name::test_run_%d:my_example_gen:output_examples:0"
           state: LIVE""" %
           (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
           artifact,
