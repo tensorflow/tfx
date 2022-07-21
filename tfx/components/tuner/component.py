@@ -51,6 +51,9 @@ class Tuner(base_component.BaseComponent):
    - `best_hyperparameters`: Channel of type
                              `standard_artifacts.HyperParameters` for result of
                              the best hparams.
+   - `tuner_results`: Channel of type `standard_artifacts.TunerResults` for
+   results of all trials. Experimental: subject to change and no backwards
+   compatibility guarantees.
 
   See [the Tuner guide](https://www.tensorflow.org/tfx/guide/tuner)
   for more details.
@@ -109,6 +112,7 @@ class Tuner(base_component.BaseComponent):
 
     best_hyperparameters = types.Channel(
         type=standard_artifacts.HyperParameters)
+    tuner_results = types.Channel(type=standard_artifacts.TunerResults)
     spec = standard_component_specs.TunerSpec(
         examples=examples,
         schema=schema,
@@ -120,6 +124,7 @@ class Tuner(base_component.BaseComponent):
         eval_args=eval_args or trainer_pb2.EvalArgs(),
         tune_args=tune_args,
         best_hyperparameters=best_hyperparameters,
+        tuner_results=tuner_results,
         custom_config=json_utils.dumps(custom_config),
     )
     super().__init__(spec=spec)

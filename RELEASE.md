@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Saved tuner results in pandas `records` formatted JSON.
+
 ## Breaking Changes
 
 ### For Pipeline Authors

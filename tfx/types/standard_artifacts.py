@@ -332,6 +332,10 @@ class HyperParameters(_TfxArtifact):
   TYPE_NAME = 'HyperParameters'
 
 
+class TunerResults(_TfxArtifact):
+  TYPE_NAME = 'TunerResults'
+
+
 # WIP and subject to change.
 class DataView(_TfxArtifact):
   TYPE_NAME = 'DataView'

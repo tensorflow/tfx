@@ -67,6 +67,7 @@ REQUEST_SPEC_KEY = 'request_spec'
 TUNER_FN_KEY = 'tuner_fn'
 TUNE_ARGS_KEY = 'tune_args'
 BEST_HYPERPARAMETERS_KEY = 'best_hyperparameters'
+TUNER_RESULTS_KEY = 'tuner_results'
 # Key for bulk_inferer
 MODEL_SPEC_KEY = 'model_spec'
 DATA_SPEC_KEY = 'data_spec'
@@ -423,6 +424,8 @@ class TunerSpec(ComponentSpec):
   OUTPUTS = {
       BEST_HYPERPARAMETERS_KEY:
           ChannelParameter(type=standard_artifacts.HyperParameters),
+      TUNER_RESULTS_KEY:
+          ChannelParameter(type=standard_artifacts.TunerResults),
   }
 
 
