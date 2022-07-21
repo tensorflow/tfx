@@ -160,7 +160,7 @@ def write_pbtxt_file(file_name: str, proto: Message) -> None:
 def write_tfrecord_file(file_name: str, *proto: Message) -> None:
   """Writes a serialized tfrecord to file."""
   try:
-    import tensorflow as tf  # pylint: disable=g-import-not-at-top
+    import tensorflow as tf  # pytype: disable=import-error # pylint: disable=g-import-not-at-top
   except ModuleNotFoundError as e:
     raise Exception(
         'TensorFlow must be installed to use this functionality.') from e
