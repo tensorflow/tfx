@@ -30,12 +30,12 @@ pip install pendulum
 
 printf "${GREEN}Installing TFX${NORMAL}\n"
 pip install pyarrow==5.0.0
-pip install apache_beam==2.37.0
-pip install tfx==1.7.0
-pip install google-api-core==1.26.3
+pip install apache_beam==2.38.0
+pip install tfx==1.8.0
+pip install google-api-core==1.31.6
 
 printf "${GREEN}Installing required packages for tft${NORMAL}\n"
-pip install tensorflow_text tensorflow_decision_forests struct2tensor
+pip install tensorflow-text==2.8.1 tensorflow_decision_forests==0.2.4 struct2tensor==0.39.0
 
 ipython kernel install --user --name=tfx
 
