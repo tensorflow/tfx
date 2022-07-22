@@ -50,11 +50,11 @@ _SUPPORTED_STANDARD_ARTIFACT_TYPES = frozenset(
      standard_artifacts.ModelEvaluation, standard_artifacts.ModelRun,
      standard_artifacts.PushedModel, standard_artifacts.Schema,
      standard_artifacts.TransformGraph, standard_artifacts.TransformCache,
-     standard_artifacts.Float, standard_artifacts.Integer,
-     standard_artifacts.String, standard_artifacts.Boolean,
-     standard_artifacts.JsonValue, simple_artifacts.Metrics,
-     simple_artifacts.Statistics, simple_artifacts.Dataset,
-     simple_artifacts.File))
+     standard_artifacts.TunerResults, standard_artifacts.Float,
+     standard_artifacts.Integer, standard_artifacts.String,
+     standard_artifacts.Boolean, standard_artifacts.JsonValue,
+     simple_artifacts.Metrics, simple_artifacts.Statistics,
+     simple_artifacts.Dataset, simple_artifacts.File))
 
 TITLE_TO_CLASS_PATH = {
     f'tfx.{klass.__qualname__}': name_utils.get_full_name(klass)
