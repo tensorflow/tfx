@@ -13,7 +13,7 @@
 # limitations under the License.
 """Component specifications for the standard set of TFX Components."""
 
-import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis import sdk as tfma
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import evaluator_pb2
 from tfx.proto import example_diff_pb2
