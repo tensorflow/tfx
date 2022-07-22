@@ -14,8 +14,10 @@
 """Tests for tfx.components.example_gen.base_example_gen_executor."""
 
 import os
+from typing import Any, Dict, Iterable
 
 import apache_beam as beam
+import pyarrow as pa
 import tensorflow as tf
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.dsl.io import fileio
@@ -26,20 +28,12 @@ from tfx.types import standard_component_specs
 from tfx.utils import proto_utils
 
 
-@beam.ptransform_fn
-def _TestInputSourceToExamplePTransform(pipeline, exec_properties,
-                                        split_pattern):
-  mock_examples = []
-  size = 0
-  if split_pattern == 'single/*':
-    size = 6000
-  elif split_pattern == 'train/*':
-    size = 4000
-  elif split_pattern == 'eval/*':
-    size = 2000
-  assert size != 0
+def _create_tf_example_records(n,
+                               exec_properties) -> Iterable[tf.train.Example]:
+  records = []
   has_empty = exec_properties.get('has_empty', True)
-  for i in range(size):
+
+  for i in range(n):
     feature = {}
     feature['i'] = tf.train.Feature(
     ) if i % 10 == 0 and has_empty else tf.train.Feature(
@@ -54,14 +48,55 @@ def _TestInputSourceToExamplePTransform(pipeline, exec_properties,
     if exec_properties.get('sequence_example', False):
       feature_list = {}
       feature_list['list'] = tf.train.FeatureList(feature=[feature['s']])
-      example_proto = tf.train.SequenceExample(
-          context=tf.train.Features(feature=feature),
-          feature_lists=tf.train.FeatureLists(feature_list=feature_list))
+      records.append(
+          tf.train.SequenceExample(
+              context=tf.train.Features(feature=feature),
+              feature_lists=tf.train.FeatureLists(feature_list=feature_list)))
     else:
-      example_proto = tf.train.Example(
-          features=tf.train.Features(feature=feature))
+      records.append(
+          tf.train.Example(features=tf.train.Features(feature=feature)))
 
-    mock_examples.append(example_proto)
+  return records
+
+
+def _create_parquet_records(n, exec_properties) -> Iterable[Dict[str, Any]]:
+  records = []
+  has_empty = exec_properties.get('has_empty', True)
+
+  for i in range(n):
+    feature = {}
+    if i % 10 != 0 or not has_empty:
+      feature['i'] = i
+      feature['f'] = float(i)
+      feature['s'] = str(i)
+      records.append(feature)
+
+  exec_properties['pyarrow_schema'] = pa.schema([
+      pa.field('i', pa.int64()),
+      pa.field('f', pa.float64()),
+      pa.field('s', pa.string())
+  ])
+
+  return records
+
+
+@beam.ptransform_fn
+def _test_input_sourceto_example_ptransform(pipeline, exec_properties,
+                                            split_pattern):
+  mock_examples = []
+  size = 0
+  if split_pattern == 'single/*':
+    size = 6000
+  elif split_pattern == 'train/*':
+    size = 4000
+  elif split_pattern == 'eval/*':
+    size = 2000
+  assert size != 0
+
+  if exec_properties.get('format_parquet', False):
+    mock_examples.extend(_create_parquet_records(size, exec_properties))
+  else:
+    mock_examples.extend(_create_tf_example_records(size, exec_properties))
   result = pipeline | beam.Create(mock_examples)
 
   if exec_properties.get('format_proto', False):
@@ -73,7 +108,7 @@ def _TestInputSourceToExamplePTransform(pipeline, exec_properties,
 class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
 
   def GetInputSourceToExamplePTransform(self):
-    return _TestInputSourceToExamplePTransform
+    return _test_input_sourceto_example_ptransform
 
 
 class BaseExampleGenExecutorTest(tf.test.TestCase):
@@ -90,11 +125,6 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     self._output_dict = {
         standard_component_specs.EXAMPLES_KEY: [self._examples]
     }
-
-    self._train_output_file = os.path.join(self._examples.uri, 'Split-train',
-                                           'data_tfrecord-00000-of-00001.gz')
-    self._eval_output_file = os.path.join(self._examples.uri, 'Split-eval',
-                                          'data_tfrecord-00000-of-00001.gz')
 
     # Create exec proterties for output splits.
     self._exec_properties = {
@@ -115,7 +145,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                     ])))
     }
 
-  def _testDo(self):
+  def _test_do(self):
     # Run executor.
     example_gen = TestExampleGenExecutor()
     example_gen.Do({}, self._output_dict, self._exec_properties)
@@ -124,14 +154,25 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
         artifact_utils.encode_split_names(['train', 'eval']),
         self._examples.split_names)
 
+    if self._exec_properties.get('format_parquet', False):
+      train_output_file = os.path.join(self._examples.uri, 'Split-train',
+                                       'data_parquet-00000-of-00001.parquet')
+      eval_output_file = os.path.join(self._examples.uri, 'Split-eval',
+                                      'data_parquet-00000-of-00001.parquet')
+    else:
+      train_output_file = os.path.join(self._examples.uri, 'Split-train',
+                                       'data_tfrecord-00000-of-00001.gz')
+      eval_output_file = os.path.join(self._examples.uri, 'Split-eval',
+                                      'data_tfrecord-00000-of-00001.gz')
+
     # Check example gen outputs.
-    self.assertTrue(fileio.exists(self._train_output_file))
-    self.assertTrue(fileio.exists(self._eval_output_file))
+    self.assertTrue(fileio.exists(train_output_file))
+    self.assertTrue(fileio.exists(eval_output_file))
 
     # Output split ratio: train:eval=2:1.
     self.assertGreater(
-        fileio.open(self._train_output_file).size(),
-        fileio.open(self._eval_output_file).size())
+        fileio.open(train_output_file).size(),
+        fileio.open(eval_output_file).size())
 
   def testDoInputSplit(self):
     # Create exec proterties for input split.
@@ -147,22 +188,32 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
             proto_utils.proto_to_json(example_gen_pb2.Output())
     }
 
-    self._testDo()
+    self._test_do()
 
   def testDoOutputSplit(self):
-    self._testDo()
+    self._test_do()
 
   def testDoOutputSplitWithProto(self):
     # Update exec proterties.
     self._exec_properties['format_proto'] = True
 
-    self._testDo()
+    self._test_do()
 
   def testDoOutputSplitWithSequenceExample(self):
     # Update exec proterties.
     self._exec_properties['sequence_example'] = True
 
-    self._testDo()
+    self._test_do()
+
+  def testDoOutputSplitWithParquet(self):
+    # Update exec proterties.
+    self._exec_properties[
+        standard_component_specs
+        .OUTPUT_DATA_FORMAT_KEY] = example_gen_pb2.FORMAT_PARQUET
+
+    self._exec_properties['format_parquet'] = True
+
+    self._test_do()
 
   def _testFeatureBasedPartition(self, partition_feature_name):
     self._exec_properties[
@@ -182,7 +233,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     self._testFeatureBasedPartition('i')
     self._exec_properties['has_empty'] = False
 
-    self._testDo()
+    self._test_do()
 
   def testFeatureBasedPartitionWithSequenceExample(self):
     # Update exec proterties.
@@ -190,7 +241,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     self._exec_properties['has_empty'] = False
     self._exec_properties['sequence_example'] = True
 
-    self._testDo()
+    self._test_do()
 
   def testInvalidFeatureName(self):
     # Update exec proterties.
