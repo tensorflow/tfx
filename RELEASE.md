@@ -27,6 +27,7 @@
 | Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
 | -- | -- | -- | -- |
 | `google-api-core` | `<2` | N/A | Added to help pip dependency resolution. google-api-core was already a transitive dependency. |
+| `apache-beam[gcp]` | `>=2.39,<3` | `>=2.38,<3` | |
 
 ## Documentation Updates
 
