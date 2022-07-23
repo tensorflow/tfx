@@ -18,6 +18,7 @@ package tfx.orchestration;
 import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "ml_metadata/proto/metadata_store.proto";
+import "tfx/proto/orchestration/garbage_collection_policy.proto";
 import "tfx/proto/orchestration/placeholder.proto";
 
 // ResolverConfig is subject to change. We plan to introduce a flexible
@@ -406,6 +407,9 @@ message OutputSpec {
     map<string, Value> additional_custom_properties = 3;
   }
   ArtifactSpec artifact_spec = 1;
+
+  // Garbage collection policy of the component output channel.
+  GarbageCollectionPolicy garbage_collection_policy = 2;
 }
 
 // TODO(b/163596295): Remove this along with other usages.

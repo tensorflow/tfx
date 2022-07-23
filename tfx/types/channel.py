@@ -21,6 +21,7 @@ from absl import logging
 
 from tfx.dsl.context_managers import dsl_context
 from tfx.dsl.placeholder import placeholder
+from tfx.proto.orchestration import garbage_collection_policy_pb2
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.utils import deprecation_utils
@@ -286,11 +287,12 @@ class Channel(json_utils.Jsonable, BaseChannel):
         output_key=output_key).set_artifacts(artifacts)
 
   @doc_controls.do_not_generate_docs
-  def as_output_channel(
-      self, producer_component: Any, output_key: str) -> 'OutputChannel':
-    """Internal method to derive OutputChannel from the Channel instance.
+  def as_component_output_channel(self, producer_component: Any,
+                                  output_key: str) -> 'ComponentOutputChannel':
+    """Internal method to derive ComponentOutputChannel from the Channel instance.
 
-    Return value (OutputChannel instance) is based on the shallow copy of self,
+    Return value (ComponentOutputChannel instance) is based on the shallow copy
+    of self,
     so that any attribute change in one is reflected on the others.
 
     Args:
@@ -302,9 +304,12 @@ class Channel(json_utils.Jsonable, BaseChannel):
     """
     # Disable pylint false alarm for safe access of protected attributes.
     # pylint: disable=protected-access
-    result = OutputChannel(self.type, producer_component, output_key)
-    result.additional_properties = self.additional_properties
-    result.additional_custom_properties = self.additional_custom_properties
+    result = ComponentOutputChannel(
+        self.type,
+        producer_component,
+        output_key,
+        additional_properties=self.additional_properties,
+        additional_custom_properties=self.additional_custom_properties)
     result.set_artifacts(self._artifacts)
     return result
 
@@ -347,8 +352,55 @@ class OutputChannel(Channel):
     return self._producer_component.id
 
   @doc_controls.do_not_generate_docs
-  def as_output_channel(
-      self, producer_component: Any, output_key: str) -> 'OutputChannel':
+  def as_component_output_channel(self, producer_component: Any,
+                                  output_key: str) -> 'ComponentOutputChannel':
+    if self._producer_component != producer_component:
+      raise ValueError(
+          f'producer_component mismatch: {self._producer_component} != '
+          f'{producer_component}.')
+    if self.output_key != output_key:
+      raise ValueError(
+          f'output_key mismatch: {self.output_key} != {output_key}.')
+    result = ComponentOutputChannel(
+        self.type,
+        producer_component,
+        output_key,
+        additional_properties=self.additional_properties,
+        additional_custom_properties=self.additional_custom_properties)
+    result.set_artifacts(self._artifacts)
+    return result
+
+
+class ComponentOutputChannel(OutputChannel):
+  """Channel subtype that is used for component outputs."""
+
+  def __init__(
+      self,
+      artifact_type: Type[Artifact],
+      producer_component: Any,
+      output_key: str,
+      additional_properties: Optional[Dict[str, Property]] = None,
+      additional_custom_properties: Optional[Dict[str, Property]] = None,
+  ):
+    super().__init__(
+        artifact_type=artifact_type,
+        producer_component=producer_component,
+        output_key=output_key,
+        additional_properties=additional_properties,
+        additional_custom_properties=additional_custom_properties,
+    )
+    self.garbage_collection_policy = None
+
+  def set_garbage_collection_policy(
+      self, garbage_collection_policy: garbage_collection_policy_pb2
+      .GarbageCollectionPolicy
+  ) -> None:
+    """Sets the garbage collection policy for this output channel."""
+    self.garbage_collection_policy = garbage_collection_policy
+
+  @doc_controls.do_not_generate_docs
+  def as_component_output_channel(self, producer_component: Any,
+                                  output_key: str) -> 'ComponentOutputChannel':
     if self._producer_component != producer_component:
       raise ValueError(
           f'producer_component mismatch: {self._producer_component} != '
