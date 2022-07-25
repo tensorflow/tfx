@@ -29,7 +29,7 @@ from tfx.types import artifact
 from tfx.types import standard_artifacts
 
 try:
-  import apache_beam as beam  # pylint: disable=g-import-not-at-top
+  import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
   _BeamPipeline = beam.Pipeline
 except ModuleNotFoundError:
   beam = None

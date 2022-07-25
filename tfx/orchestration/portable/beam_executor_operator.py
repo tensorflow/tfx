@@ -26,7 +26,7 @@ from tfx.utils import import_utils
 from google.protobuf import message
 
 try:
-  from apache_beam import Pipeline as _BeamPipeline  # pylint: disable=g-import-not-at-top
+  from apache_beam import Pipeline as _BeamPipeline  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
 except ModuleNotFoundError:
   _BeamPipeline = Any
 

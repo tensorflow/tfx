@@ -34,7 +34,7 @@ from tfx.types import component_spec
 from tfx.types import system_executions
 
 try:
-  import apache_beam as beam  # pylint: disable=g-import-not-at-top
+  import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
   _BeamPipeline = beam.Pipeline
 except ModuleNotFoundError:
   beam = None
