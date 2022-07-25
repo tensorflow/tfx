@@ -112,10 +112,11 @@ _beam_pipeline_args_by_runner = {
         '--experiments=use_runner_v2',
     ],
     'DirectRunner': [
-        '--direct_running_mode=multi_processing',
-        # 0 means auto-detect based on on the number of CPUs available
-        # during execution time.
-        '--direct_num_workers=0',
+        # TODO(b/234074054): Re-enable multi_processing mode after beam is fixed
+        # '--direct_running_mode=multi_processing',
+        # # 0 means auto-detect based on on the number of CPUs available
+        # # during execution time.
+        # '--direct_num_workers=0',
     ]
 }
 
