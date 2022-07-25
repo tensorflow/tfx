@@ -15,6 +15,7 @@
 
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import evaluator_pb2
+from tfx.proto import example_diff_pb2
 from tfx.proto import example_gen_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
@@ -234,4 +235,16 @@ del tuner_pb2
 
 TuneArgs.__doc__ = """
 Args specific to tuning in `components.Tuner`.
+"""
+
+ExampleDiffConfig = example_diff_pb2.ExampleDiffConfig
+
+ExampleDiffConfig.__doc__ = """
+Configurations related to Example Diff.
+"""
+
+PairedExampleSkew = example_diff_pb2.PairedExampleSkew
+
+PairedExampleSkew.__doc__ = """
+Configurations related to Example Diff on feature pairing level.
 """

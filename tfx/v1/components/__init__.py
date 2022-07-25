@@ -16,6 +16,7 @@
 # Components.
 from tfx.components.bulk_inferrer.component import BulkInferrer
 from tfx.components.evaluator.component import Evaluator
+from tfx.components.example_diff.component import ExampleDiff
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
 from tfx.components.example_validator.component import ExampleValidator

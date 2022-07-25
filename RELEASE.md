@@ -34,6 +34,7 @@
 ## Major Features and Improvements
 
 *   Added Json value artifact.
+*   Added example for using ExampleDiff.
 
 ## Breaking Changes
 

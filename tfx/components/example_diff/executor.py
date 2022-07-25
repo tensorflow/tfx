@@ -111,7 +111,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         output_dict[standard_component_specs.EXAMPLE_DIFF_RESULT_KEY])
     diff_config = exec_properties.get(
         standard_component_specs.EXAMPLE_DIFF_CONFIG_KEY)
-    assert isinstance(diff_config, example_diff_pb2.ExampleDiffConfig)
 
     logging.info('Running examplediff with config %s', diff_config)
 
