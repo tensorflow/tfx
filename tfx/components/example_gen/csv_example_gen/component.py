@@ -64,7 +64,7 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
 
   def __init__(
       self,
-      input_base: Optional[str] = None,
+      input_base: Optional[Union[str, placeholder.Placeholder]] = None,
       input_config: Optional[Union[example_gen_pb2.Input,
                                    data_types.RuntimeParameter]] = None,
       output_config: Optional[Union[example_gen_pb2.Output,

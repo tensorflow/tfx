@@ -67,27 +67,6 @@ class NodeStateTest(test_utils.TfxTest):
     self.assertEqual(pstate.NodeState.STARTING, node_state.state)
     self.assertIsNone(node_state.status)
 
-  def test_node_state_history(self):
-    node_state = pstate.NodeState()
-    self.assertEqual([], node_state.state_history)
-
-    status = status_lib.Status(code=status_lib.Code.CANCELLED, message='foobar')
-    node_state.update(pstate.NodeState.STOPPING, status)
-    self.assertEqual([
-        pstate.StateRecord(
-            state=pstate.NodeState.STARTED, status_code=None, status_msg='')
-    ], node_state.state_history)
-
-    node_state.update(pstate.NodeState.STOPPED)
-    self.assertEqual([
-        pstate.StateRecord(
-            state=pstate.NodeState.STARTED, status_code=None, status_msg=''),
-        pstate.StateRecord(
-            state=pstate.NodeState.STOPPING,
-            status_code=status_lib.Code.CANCELLED,
-            status_msg='foobar')
-    ], node_state.state_history)
-
 
 class PipelineStateTest(test_utils.TfxTest):
 
@@ -382,41 +361,17 @@ class PipelineStateTest(test_utils.TfxTest):
               pipeline_run=None,
               node_id='Trainer',
               old_state=pstate.NodeState(state='started'),
-              new_state=pstate.NodeState(
-                  state='starting',
-                  state_history=[
-                      pstate.StateRecord(
-                          state=pstate.NodeState.STARTED,
-                          status_code=None,
-                          status_msg='')
-                  ])),
+              new_state=pstate.NodeState(state='starting')),
           event_observer.NodeStateChange(
               execution=None,
               pipeline_id='pipeline1',
               pipeline_run=None,
               node_id='Trainer',
-              old_state=pstate.NodeState(
-                  state='starting',
-                  state_history=[
-                      pstate.StateRecord(
-                          state=pstate.NodeState.STARTED,
-                          status_code=None,
-                          status_msg='')
-                  ]),
+              old_state=pstate.NodeState(state='starting'),
               new_state=pstate.NodeState(
                   state='stopping',
                   status_code=status_lib.Code.ABORTED,
-                  status_msg='foo bar',
-                  state_history=[
-                      pstate.StateRecord(
-                          state=pstate.NodeState.STARTED,
-                          status_code=None,
-                          status_msg=''),
-                      pstate.StateRecord(
-                          state=pstate.NodeState.STARTING,
-                          status_code=None,
-                          status_msg='')
-                  ])),
+                  status_msg='foo bar')),
           event_observer.NodeStateChange(
               execution=None,
               pipeline_id='pipeline1',
@@ -425,33 +380,8 @@ class PipelineStateTest(test_utils.TfxTest):
               old_state=pstate.NodeState(
                   state='stopping',
                   status_code=status_lib.Code.ABORTED,
-                  status_msg='foo bar',
-                  state_history=[
-                      pstate.StateRecord(
-                          state=pstate.NodeState.STARTED,
-                          status_code=None,
-                          status_msg=''),
-                      pstate.StateRecord(
-                          state=pstate.NodeState.STARTING,
-                          status_code=None,
-                          status_msg='')
-                  ]),
-              new_state=pstate.NodeState(
-                  state='started',
-                  state_history=[
-                      pstate.StateRecord(
-                          state=pstate.NodeState.STARTED,
-                          status_code=None,
-                          status_msg=''),
-                      pstate.StateRecord(
-                          state=pstate.NodeState.STARTING,
-                          status_code=None,
-                          status_msg=''),
-                      pstate.StateRecord(
-                          state=pstate.NodeState.STOPPING,
-                          status_code=status_lib.Code.ABORTED,
-                          status_msg='foo bar')
-                  ])),
+                  status_msg='foo bar'),
+              new_state=pstate.NodeState(state='started')),
       ]
       # Set execution / pipeline_state to None, so we don't compare those fields
       got = []
@@ -490,32 +420,11 @@ class PipelineStateTest(test_utils.TfxTest):
         self.assertEqual(
             {
                 eg_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.COMPLETE,
-                        state_history=[
-                            pstate.StateRecord(
-                                state=pstate.NodeState.STARTED,
-                                status_code=None,
-                                status_msg='')
-                        ]),
+                    pstate.NodeState(state=pstate.NodeState.COMPLETE),
                 transform_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.RUNNING,
-                        state_history=[
-                            pstate.StateRecord(
-                                state=pstate.NodeState.STARTED,
-                                status_code=None,
-                                status_msg='')
-                        ]),
+                    pstate.NodeState(state=pstate.NodeState.RUNNING),
                 trainer_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.STARTING,
-                        state_history=[
-                            pstate.StateRecord(
-                                state=pstate.NodeState.STARTED,
-                                status_code=None,
-                                status_msg='')
-                        ]),
+                    pstate.NodeState(state=pstate.NodeState.STARTING),
                 evaluator_node_uid:
                     pstate.NodeState(state=pstate.NodeState.STARTED),
             }, pipeline_state.get_node_states_dict())
@@ -704,34 +613,6 @@ class PipelineStateTest(test_utils.TfxTest):
           run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
           run_states_dict['Pusher'])
 
-  def test_pipeline_view_get_node_run_state_history(self):
-    with self._mlmd_connection as m:
-      pipeline = _test_pipeline(
-          'pipeline1',
-          execution_mode=pipeline_pb2.Pipeline.SYNC,
-          pipeline_nodes=['ExampleGen'])
-      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-      eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
-      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
-        with pipeline_state.node_state_update_context(
-            eg_node_uid) as node_state:
-          node_state.update(pstate.NodeState.RUNNING)
-        with pipeline_state.node_state_update_context(
-            eg_node_uid) as node_state:
-          node_state.update(pstate.NodeState.COMPLETE)
-
-      [view] = pstate.PipelineView.load_all(
-          m, task_lib.PipelineUid.from_pipeline(pipeline))
-      run_state_history = view.get_node_run_states_history()
-
-      self.assertEqual(
-          {
-              'ExampleGen': [
-                  run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
-                  run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING)
-              ]
-          }, run_state_history)
-
   def test_node_state_for_skipped_nodes_in_partial_pipeline_run(self):
     """Tests that nodes marked to be skipped have the right node state and previous node state."""
     with self._mlmd_connection as m:
@@ -780,23 +661,9 @@ class PipelineStateTest(test_utils.TfxTest):
         self.assertEqual(
             {
                 eg_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.COMPLETE,
-                        state_history=[
-                            pstate.StateRecord(
-                                state=pstate.NodeState.STARTED,
-                                status_code=None,
-                                status_msg='')
-                        ]),
+                    pstate.NodeState(state=pstate.NodeState.COMPLETE),
                 transform_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.FAILED,
-                        state_history=[
-                            pstate.StateRecord(
-                                state=pstate.NodeState.STARTED,
-                                status_code=None,
-                                status_msg='')
-                        ]),
+                    pstate.NodeState(state=pstate.NodeState.FAILED),
             }, pipeline_state.get_previous_node_states_dict())
 
   def test_get_previous_node_run_states_for_skipped_nodes(self):
@@ -841,14 +708,6 @@ class PipelineStateTest(test_utils.TfxTest):
               'Transform':
                   run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING)
           }, view_run_1.get_previous_node_run_states())
-
-    self.assertEqual(
-        {
-            'ExampleGen':
-                [run_state_pb2.RunState(state=run_state_pb2.RunState.READY)],
-            'Transform':
-                [run_state_pb2.RunState(state=run_state_pb2.RunState.READY)]
-        }, view_run_1.get_previous_node_run_states_history())
 
 if __name__ == '__main__':
   tf.test.main()

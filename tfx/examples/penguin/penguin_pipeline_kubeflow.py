@@ -17,8 +17,8 @@ import os
 import sys
 from typing import Dict, List, Optional
 
-import absl
 from absl import flags
+from absl import logging
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
 
@@ -125,7 +125,14 @@ _beam_pipeline_args_by_runner = {
 _serving_model_dir = os.path.join(_output_root, 'serving_model', _pipeline_name)
 
 
-def create_pipeline(
+@tfx.dsl.components.component
+def ExamplePathGenerator(input_path: tfx.dsl.components.Parameter[str],
+                         output_path: tfx.dsl.components.OutputArtifact[
+                             tfx.types.standard_artifacts.String]):
+  output_path.value = input_path
+
+
+def create_pipeline(  # pylint: disable=invalid-name
     pipeline_name: str,
     pipeline_root: str,
     data_root: str,
@@ -176,9 +183,12 @@ def create_pipeline(
       ptype=str,
   )
 
+  path_generator = ExamplePathGenerator(  # pylint: disable=no-value-for-parameter
+      input_path=os.path.join(data_root, 'labelled'))
+
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = tfx.components.CsvExampleGen(
-      input_base=os.path.join(data_root, 'labelled'))
+      input_base=path_generator.outputs['output_path'].future()[0].value)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = tfx.components.StatisticsGen(
@@ -358,6 +368,7 @@ def create_pipeline(
         )
 
   components = [
+      path_generator,
       example_gen,
       statistics_gen,
       schema_gen,
@@ -380,8 +391,8 @@ def create_pipeline(
 
 
 def main():
-  absl.logging.set_verbosity(absl.logging.INFO)
-  absl.flags.FLAGS(sys.argv)
+  logging.set_verbosity(logging.INFO)
+  flags.FLAGS(sys.argv)
 
   # Metadata config. The defaults works work with the installation of
   # KF Pipelines using Kubeflow. If installing KF Pipelines using the

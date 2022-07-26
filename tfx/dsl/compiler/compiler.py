@@ -268,6 +268,7 @@ class Compiler:
       A PipelineNode proto that encodes information of the node.
     """
     node = pipeline_pb2.PipelineNode()
+    print('debugging compiler 1 tfx_node.id:', tfx_node.id)
 
     # Step 1: Node info
     node.node_info.type.name = tfx_node.type
@@ -303,6 +304,8 @@ class Compiler:
     # Step 3.2: Handle ForEach.
     _set_for_each(node, tfx_node, compile_context, tfx_node_inputs)
 
+    print('debugging compiler 2 tfx_node_inputs:', tfx_node_inputs)
+    print('debugging compiler 2 implicit_input_channels:', implicit_input_channels)
     # Step 3.3: Fill node inputs
     _set_node_inputs(node, tfx_node, compile_context, tfx_node_inputs,
                      implicit_input_channels)
