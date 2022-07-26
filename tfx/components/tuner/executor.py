@@ -72,7 +72,7 @@ def write_best_hyperparameters(
 
   # Saves tuner results in pandas `records` format (list of rows).
   results = []
-  for trial_obj in tuner.oracle.trials.values():
+  for trial_obj in tuner.oracle.get_best_trials(tuner.oracle.max_trials):
     if trial_obj.status == trial.TrialStatus.COMPLETED and trial_obj.hyperparameters.values:
       results.append({
           'trial_id': trial_obj.trial_id,
