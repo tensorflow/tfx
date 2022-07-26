@@ -154,6 +154,8 @@ import collections
 from typing import List, TypeVar, Mapping, Tuple, Sequence, Dict, Iterable
 
 from tfx import types
+from tfx.dsl.compiler import placeholder_utils
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.input_resolution import input_graph_resolver
@@ -243,14 +245,14 @@ def _topologically_sorted_input_keys(
   return result
 
 
-_Entry = Tuple[partition_utils.Partition, Sequence[types.Artifact]]
+_Entry = Tuple[partition_utils.Partition, List[types.Artifact]]
 
 
 def _join_artifacts(
     entries_map: Mapping[str, Sequence[_Entry]],
     input_keys: Sequence[str],
-) -> Sequence[Tuple[partition_utils.Partition, typing_utils.ArtifactMultiMap]]:
-  """Materialize entries map into actual List[ArtifactMultiMap] to be used."""
+) -> Sequence[Tuple[partition_utils.Partition, typing_utils.ArtifactMultiDict]]:
+  """Materialize entries map into actual List[ArtifactMultiDict] to be used."""
   accumulated = [(partition_utils.NO_PARTITION, {})]
 
   for input_key in input_keys:
@@ -352,6 +354,29 @@ def _resolve_mixed_inputs(
   resolved[input_key] = result
 
 
+def _filter_conditionals(
+    artifact_maps: List[typing_utils.ArtifactMultiDict],
+    conditionals: Mapping[str, pipeline_pb2.NodeInputs.Conditional],
+) -> List[typing_utils.ArtifactMultiMap]:
+  """Filter artifact maps by conditionals."""
+  result = []
+  for artifact_map in artifact_maps:
+    context = placeholder_utils.ResolutionContext(
+        exec_info=data_types.ExecutionInfo(input_dict=artifact_map))
+    for cond_id, cond in conditionals.items():
+      ok = placeholder_utils.resolve_placeholder_expression(
+          cond.placeholder_expression, context)
+      if not isinstance(ok, bool):
+        raise exceptions.FailedPreconditionError(
+            f'Invalid conditional expression for {cond_id}; '
+            f'Expected boolean type but got {type(ok)} type.')
+      if not ok:
+        break
+    else:
+      result.append(artifact_map)
+  return result
+
+
 def resolve(
     store: mlmd.MetadataStore,
     node_inputs: pipeline_pb2.NodeInputs,
@@ -389,5 +414,12 @@ def resolve(
       k for k, input_spec in node_inputs.inputs.items()
       if not input_spec.hidden
   ]
-  result_with_key = _join_artifacts(resolved, visible_keys)
-  return [t[1] for t in result_with_key]
+  result = [
+      artifact_map for composite_key, artifact_map
+      in _join_artifacts(resolved, visible_keys)
+  ]
+
+  if node_inputs.conditionals:
+    result = _filter_conditionals(result, node_inputs.conditionals)
+
+  return result

@@ -22,12 +22,31 @@ from tfx.orchestration.portable.input_resolution import input_graph_resolver
 from tfx.orchestration.portable.input_resolution import node_inputs_resolver
 from tfx.orchestration.portable.input_resolution import partition_utils
 from tfx.proto.orchestration import pipeline_pb2
+import tfx.types
 
 from google.protobuf import text_format
 
 
 def partition(**kwargs):
   return partition_utils.Partition(kwargs)
+
+
+class DummyArtifact(tfx.types.Artifact):
+  TYPE_NAME = 'DummyArtifact'
+
+  def __init__(self, **kwargs):
+    super().__init__()
+    self._artifact.id = kwargs.pop('id')
+
+  def __repr__(self):
+    return f'<{self.id}>'
+
+
+class DummyChannel(tfx.types.BaseChannel):
+
+  def __init__(self, name):
+    super().__init__(type=DummyArtifact)
+    self.name = name
 
 
 class ProtectedFunctionTest(tf.test.TestCase):
@@ -264,10 +283,9 @@ class NodeInputsResolverTest(tf.test.TestCase):
 
   def create_artifacts(self, n):
     if n == 1:
-      return mock.MagicMock(name='Artifact', id=1)
+      return DummyArtifact(id=1)
     else:
-      return [mock.MagicMock(name=f'Artifact_{i}', id=i)
-              for i in range(1, n + 1)]
+      return [DummyArtifact(id=i) for i in range(1, n + 1)]
 
   def testResolveChannels(self):
     a1 = self.create_artifacts(1)
@@ -607,6 +625,78 @@ class NodeInputsResolverTest(tf.test.TestCase):
       result = node_inputs_resolver.resolve(self._store, node_inputs)
 
       self.assertEqual(result, [{}])
+
+  def testConditionals(self):
+    a1, a2, a3, a4 = self.create_artifacts(4)
+
+    # Set blessed custom property
+    a1.set_int_custom_property('blessed', 1)
+    a2.set_int_custom_property('blessed', 0)
+    a3.set_int_custom_property('blessed', 0)
+    a4.set_int_custom_property('blessed', 1)
+
+    # Set tag custom property
+    a1.set_string_custom_property('tag', 'foo')
+    a2.set_string_custom_property('tag', 'foo')
+    a3.set_string_custom_property('tag', 'bar')
+    a4.set_string_custom_property('tag', 'bar')
+
+    x = self.parse_input_spec("""
+      input_graph_ref {
+        graph_id: "graph_1"
+        key: "a"
+      }
+    """)
+    graph_1 = self.parse_input_graph("""
+      nodes {
+        key: "op_1"
+        value {
+          op_node {
+            op_type: "DummyOp"
+          }
+          output_data_type: ARTIFACT_MULTIMAP_LIST
+        }
+      }
+      result_node: "op_1"
+    """)
+    self.mock_graph_fn_result(
+        graph_1,
+        lambda _: [{'a': [a1]}, {'a': [a2]}, {'a': [a3]}, {'a': [a4]}])
+
+    # Only allows artifact.custom_properties['blessed'] == 1,
+    # which is a1 and a4.
+    is_blessed = (
+        DummyChannel('x').future()[0].custom_property('blessed') == 1
+    ).encode_with_keys(lambda channel: channel.name)
+
+    # Only allows artifact.custom_properties['tag'] == 'foo'
+    # which is a1 and a2.
+    is_foo = (
+        (DummyChannel('x').future()[0].custom_property('tag') == 'foo')
+    ).encode_with_keys(lambda channel: channel.name)
+
+    cond_1 = pipeline_pb2.NodeInputs.Conditional(
+        placeholder_expression=is_blessed)
+    cond_2 = pipeline_pb2.NodeInputs.Conditional(
+        placeholder_expression=is_foo)
+
+    with self.subTest('blessed == 1'):
+      node_inputs = pipeline_pb2.NodeInputs(
+          inputs={'x': x},
+          input_graphs={'graph_1': graph_1},
+          conditionals={'cond_1': cond_1})
+
+      result = node_inputs_resolver.resolve(self._store, node_inputs)
+      self.assertEqual(result, [{'x': [a1]}, {'x': [a4]}])
+
+    with self.subTest('blessed == 1 and tag == foo'):
+      node_inputs = pipeline_pb2.NodeInputs(
+          inputs={'x': x},
+          input_graphs={'graph_1': graph_1},
+          conditionals={'cond_1': cond_1, 'cond_2': cond_2})
+
+      result = node_inputs_resolver.resolve(self._store, node_inputs)
+      self.assertEqual(result, [{'x': [a1]}])
 
 
 if __name__ == '__main__':

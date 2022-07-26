@@ -387,10 +387,16 @@ message NodeInputs {
   // Optional InputGraphs mapping where key is an ID. Graph is referenced from
   // InputSpec.input_graph_ref.
   map<string, InputGraph> input_graphs = 3;
+
+  // Conditional representation.
+  message Conditional {
+    PlaceholderExpression placeholder_expression = 1;
+  }
+
   // Optional conditionals to filter the valid inputs that satisfy the
   // predicate. Conditional evaluation and filtering would happen after
   // resolving all inputs from NodeInputs.inputs and NodeInputs.input_graphs.
-  repeated PlaceholderExpression conditionals = 4;
+  map<string, Conditional> conditionals = 4;
 }
 
 // A proto message wrapping all information needed to query one set of artifacts
