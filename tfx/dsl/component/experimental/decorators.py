@@ -29,7 +29,7 @@ from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
-from tfx.types import channel_utils
+from tfx.types import channel
 from tfx.types import component_spec
 from tfx.types import system_executions
 
@@ -104,8 +104,12 @@ def _extract_func_args(
 
 
 def _assign_returned_values(
-    function, outputs: Dict[str, Any], returned_values: Dict[str, Any],
-    output_dict: Dict[str, List[tfx_types.Artifact]]
+    function,
+    outputs: Dict[str, Any],
+    returned_values: Dict[str, Any],
+    output_dict: Dict[str, List[tfx_types.Artifact]],
+    json_typehints: Dict[str, Type],  # pylint: disable=g-bare-generic
+    module: str
 ) -> Dict[str, List[tfx_types.Artifact]]:
   """Validates and assigns the outputs to the output_dict."""
   result = copy.deepcopy(output_dict)
@@ -130,6 +134,15 @@ def _assign_returned_values(
           ('Return value %r for output %r is incompatible with output type '
            '%r.') %
           (outputs[name], name, result[name][0].__class__)) from e
+    # Handle JsonValue runtime type check.
+    if name in json_typehints:
+      ret = function_parser.check_strict_json_compat(outputs[name],
+                                                     json_typehints[name],
+                                                     module)
+      if not ret:
+        raise TypeError(
+            ('Return value %r for output %r is incompatible with output type '
+             '%r.') % (outputs[name], name, json_typehints[name]))
   return result
 
 
@@ -161,7 +174,13 @@ class _SimpleComponent(base_component.BaseComponent):
           'Unknown arguments to %r: %s.' %
           (self.__class__.__name__, ', '.join(sorted(unseen_args))))
     for key, channel_parameter in self.SPEC_CLASS.OUTPUTS.items():
-      spec_kwargs[key] = channel_utils.as_channel([channel_parameter.type()])
+      artifact = channel_parameter.type()
+      spec_kwargs[key] = channel.OutputChannel(artifact.type, self,
+                                               key).set_artifacts([artifact])
+      json_compat_typehint = getattr(channel_parameter, '_JSON_COMPAT_TYPEHINT',
+                                     None)
+      if json_compat_typehint:
+        setattr(spec_kwargs[key], '_JSON_COMPAT_TYPEHINT', json_compat_typehint)
     spec = self.SPEC_CLASS(**spec_kwargs)
     super().__init__(spec)
     # Set class name, which is the decorated function name, as the default id.
@@ -194,6 +213,7 @@ class _FunctionExecutor(base_executor.BaseExecutor):
   # the user function to whether they are optional (and thus has a nullable
   # return value).
   _RETURNED_VALUES = {}
+  _JSON_COMPAT_TYPEHINT = {}
 
   def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
          output_dict: Dict[str, List[tfx_types.Artifact]],
@@ -215,6 +235,8 @@ class _FunctionExecutor(base_executor.BaseExecutor):
             outputs=outputs,
             returned_values=self._RETURNED_VALUES,
             output_dict=output_dict,
+            json_typehints=self._JSON_COMPAT_TYPEHINT,
+            module=self.__module__
         ))
 
 
@@ -243,6 +265,8 @@ class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
             outputs=outputs,
             returned_values=self._RETURNED_VALUES,
             output_dict=output_dict,
+            json_typehints=self._JSON_COMPAT_TYPEHINT,
+            module=self.__module__
         ))
 
 
@@ -267,11 +291,11 @@ def component(
     construction time, will be passed for this argument. These parameters will
     be recorded in ML Metadata as part of the component's execution record. Can
     be an optional argument.
-  * `int`, `float`, `str`, `bytes`: indicates that a primitive type value will
-    be passed for this argument. This value is tracked as an `Integer`, `Float`
-    `String` or `Bytes` artifact (see `tfx.types.standard_artifacts`) whose
-    value is read and passed into the given Python component function. Can be
-    an optional argument.
+  * `int`, `float`, `str`, `bytes`, `bool`, `Dict`, `List`: indicates that a
+    primitive type value will be passed for this argument. This value is tracked
+    as an `Integer`, `Float`, `String`, `Bytes`, `Boolean` or `JsonValue`
+    artifact (see `tfx.types.standard_artifacts`) whose value is read and passed
+    into the given Python component function. Can be an optional argument.
   * `InputArtifact[ArtifactType]`: indicates that an input artifact object of
     type `ArtifactType` (deriving from `tfx.types.Artifact`) will be passed for
     this argument. This artifact is intended to be consumed as an input by this
@@ -286,10 +310,10 @@ def component(
   The return value typehint should be either empty or `None`, in the case of a
   component function that has no return values, or an instance of
   `OutputDict(key_1=type_1, ...)`, where each key maps to a given type (each
-  type is a primitive value type, i.e. `int`, `float`, `str` or `bytes`; or
-  `Optional[T]`, where T is a primitive type value, in which case `None` can be
-  returned), to indicate that the return value is a dictionary with specified
-  keys and value types.
+  type is a primitive value type, i.e. `int`, `float`, `str`, `bytes`, `bool`
+  `Dict` or  `List`; or `Optional[T]`, where T is a primitive type value, in
+  which case `None` can be returned), to indicate that the return value is a
+  dictionary with specified keys and value types.
 
   Note that output artifacts should not be included in the return value
   typehint; they should be included as `OutputArtifact` annotations in the
@@ -412,8 +436,9 @@ def component(
         'at the module level. It cannot be used to construct a component for a '
         'function defined in a nested class or function closure.')
 
-  inputs, outputs, parameters, arg_formats, arg_defaults, returned_values = (
-      function_parser.parse_typehint_component_function(func))
+  (inputs, outputs, parameters, arg_formats, arg_defaults, returned_values,
+   json_typehints, return_json_typehints) = (
+       function_parser.parse_typehint_component_function(func))
   if use_beam and list(parameters.values()).count(_BeamPipeline) != 1:
     raise ValueError('The decorated function must have one and only one '
                      'optional parameter of type '
@@ -426,9 +451,20 @@ def component(
   for key, artifact_type in inputs.items():
     spec_inputs[key] = component_spec.ChannelParameter(
         type=artifact_type, optional=(key in arg_defaults))
+    if key in json_typehints:
+      setattr(spec_inputs[key], '_JSON_COMPAT_TYPEHINT', json_typehints[key])
+      setattr(
+          spec_inputs[key], '_CHECK_STRICT_JSON_COMPAT',
+          functools.partial(
+              function_parser.check_strict_json_compat,
+              expect_type=json_typehints[key],
+              module=func.__module__))
   for key, artifact_type in outputs.items():
     assert key not in arg_defaults, 'Optional outputs are not supported.'
     spec_outputs[key] = component_spec.ChannelParameter(type=artifact_type)
+    if key in return_json_typehints:
+      setattr(spec_outputs[key], '_JSON_COMPAT_TYPEHINT',
+              return_json_typehints[key])
   for key, primitive_type in parameters.items():
     spec_parameters[key] = component_spec.ExecutionParameter(
         type=primitive_type, optional=(key in arg_defaults))
@@ -451,6 +487,8 @@ def component(
           # one with `self` as its first parameter).
           '_FUNCTION': staticmethod(func),
           '_RETURNED_VALUES': returned_values,
+          '_JSON_COMPAT_TYPEHINT': return_json_typehints,
+          '_RETURN_JSON_COMPAT_TYPEHINT': return_json_typehints,
           '__module__': func.__module__,
       })
 

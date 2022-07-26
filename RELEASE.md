@@ -35,6 +35,7 @@
 
 *   Added Json value artifact.
 *   Added example for using ExampleDiff.
+*   Allow JSON value artifacts to be passed in and returned by components as JsonValue artifacts.
 
 ## Breaking Changes
 

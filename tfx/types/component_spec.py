@@ -491,10 +491,17 @@ class ChannelParameter:
             other.type == self.type and other.optional == self.optional and
             other.allow_empty == self.allow_empty)
 
-  def type_check(self, arg_name: str, value: channel.BaseChannel):
+  def type_check(self, arg_name: str, value: channel.BaseChannel):  # pylint: disable=missing-function-docstring
     if ((not isinstance(value, channel.BaseChannel)) or
         not (value.type is self.type or
              value.type.__name__ == self.type.__name__ or
              value.type in getattr(self.type, COMPATIBLE_TYPES_KEY, ()))):
       raise TypeError('Argument %s should be a Channel of type %r (got %s).' %
                       (arg_name, self.type, value))
+    if hasattr(self, '_CHECK_STRICT_JSON_COMPAT'):
+      expect_json_typehint = getattr(self, '_JSON_COMPAT_TYPEHINT', None)
+      in_json_typehint = getattr(value, '_JSON_COMPAT_TYPEHINT', None)
+      if not self._CHECK_STRICT_JSON_COMPAT(
+          in_type=in_json_typehint, expect_type=expect_json_typehint):
+        raise TypeError('Argument %s should be a Channel of type %r (got %s).' %
+                        (arg_name, expect_json_typehint, in_json_typehint))

@@ -21,6 +21,8 @@ Internal use only. No backwards compatibility guarantees.
 
 import enum
 import inspect
+import itertools
+import sys
 import types
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
@@ -57,6 +59,188 @@ _PRIMITIVE_TO_ARTIFACT = {
 # to extract the value of `T` from its optional typehint, since the internal
 # fields of the typehint vary depending on the Python version.
 _OPTIONAL_PRIMITIVE_MAP = dict((Optional[t], t) for t in _PRIMITIVE_TO_ARTIFACT)
+_JSONABLE_PRIMITIVES = frozenset([int, float, str, bool, type(None)])
+
+
+def is_json_compatible(
+    typehint: Type,  # pylint: disable=g-bare-generic
+    func: Optional[types.FunctionType] = None
+) -> bool:
+  """Check if a type hint represents a JSON-compatible type.
+
+  Currently, 'JSON-compatible' means a type conforms with T, where T is defined
+  as `X = Union['T', int, float, str, bool, NoneType]`,
+  `T = Union[List['X'], Dict[str, 'X'], T]`, It can be Optional.
+
+  Args:
+    typehint: The typehint to check. It can accept `ForwardRef` types. Note that
+      all `ForwardRef` types must be defined at the top level of the same Python
+      module as where func is defined.
+    func: The function annotated by typehint.
+  Returns:
+    True if typehint is a JSON-compatible type.
+  """
+  has_leaf = False   # Used to handle invalid types like T = Dict[str, 'T'].
+  seen = set()
+  def check(typehint: Any, not_primitive: bool = True) -> bool:
+    # Return False for [int, str, float, bytes, bool, type(None)]
+    # if not_primitive is True.
+    nonlocal has_leaf
+    if typehint.__class__.__name__ == 'ForwardRef':
+      typename = typehint.__forward_arg__
+      if typename in seen:
+        return True
+      module_name = getattr(func, '__module__', None)
+      globaln = getattr(sys.modules.get(module_name, None), '__dict__', {})
+      seen.add(typename)
+      return check(
+          typehint=globaln.get(typename, None), not_primitive=not_primitive)
+    origin = getattr(typehint, '__origin__', typehint)
+    args = getattr(typehint, '__args__', None)
+    if origin is dict or origin is list or origin is Union:
+      # Starting from Python 3.9 Dict won't have default args (~KT, ~VT)
+      # and List won't have default args (~T).
+      if not args:
+        return False
+      elif origin is dict and args[0] is not str:
+        return False
+      elif origin is dict and args[0] is str:
+        return check(typehint=args[1], not_primitive=False)
+      # Handle top level optional.
+      elif origin is Union and not_primitive:
+        return all([
+            arg is type(None) or
+            check(typehint=arg, not_primitive=True) for arg in args
+        ])
+      else:
+        return all([check(typehint=arg, not_primitive=False) for arg in args])
+    else:
+      res = origin in _JSONABLE_PRIMITIVES
+      if res and not not_primitive:
+        has_leaf = True
+      return not not_primitive and res
+  return check(typehint) and has_leaf
+
+
+def check_strict_json_compat(
+    in_type: Type, expect_type: Type, module: str) -> bool:  # pylint: disable=g-bare-generic
+  """Check if in_type conforms with expect_type.
+
+  Args:
+    in_type: Input type hint. It can be any JSON-serializable `Dict[str, T]`
+      `List[T]` or `ForwardRef`.
+    expect_type: Expected type hint. It can be any JSON-serializable
+      `Dict[str, X]`, `List` or `ForwardRef`.
+    module: Module name used to look up `ForwardRef`.
+
+  Returns:
+    True if in_type is valid w.r.t. expect_type.
+  """
+  seen_forwardref = {}
+  check_instance = False
+  if getattr(in_type, '__module__', None) not in {'typing', 'builtins'}:
+    check_instance = True
+
+  # Skip circular states when doing all and any.
+  def _all(iter_args, seen_pairs):
+    for arg in iter_args:
+      if check_instance:
+        pair = (id(arg[0]), arg[1])
+      else:
+        pair = arg
+      if pair in seen_pairs:
+        continue
+      elif not _helper(*arg, seen_pairs):
+        return False
+    return True
+
+  def _any(iter_args, seen_pairs):
+    for arg in iter_args:
+      if check_instance:
+        pair = (id(arg[0]), arg[1])
+      else:
+        pair = arg
+      if pair in seen_pairs:
+        continue
+      elif _helper(*arg, seen_pairs):
+        return True
+    return False
+
+  def _resolve_forwardref(typename):
+    """Turning ForwardRef typename into the reference type."""
+    resolved_typehint = None
+    if typename in seen_forwardref:
+      resolved_typehint = seen_forwardref[typename]
+    else:
+      globaln = getattr(sys.modules.get(module, None), '__dict__', {})
+      resolved_typehint = globaln.get(typename, None)
+      if resolved_typehint:
+        seen_forwardref[typename] = resolved_typehint
+    return resolved_typehint
+
+  def _helper(in_type, expect_type, seen_pairs):
+    new_seen_pairs = seen_pairs.copy()
+    in_obj = None
+    if check_instance:
+      in_obj, in_type = in_type, type(in_type)
+
+    resolve_in, resolve_expect = None, None
+    if in_type.__class__.__name__ == 'ForwardRef':
+      resolve_in = _resolve_forwardref(in_type.__forward_arg__)
+      if not resolve_in:
+        return False
+    if expect_type.__class__.__name__ == 'ForwardRef':
+      resolve_expect = _resolve_forwardref(expect_type.__forward_arg__)
+      if not resolve_expect:
+        return False
+
+    if resolve_in or resolve_expect:
+      if check_instance:
+        new_seen_pairs.add((id(in_obj), expect_type))
+      else:
+        new_seen_pairs.add((in_type, expect_type))
+      in_type = resolve_in if resolve_in else in_type
+      expect_type = resolve_expect if resolve_expect else expect_type
+
+    in_args = getattr(in_type, '__args__', ())
+    in_origin = getattr(in_type, '__origin__', in_type)
+    expect_args = getattr(expect_type, '__args__', ())
+    expect_origin = getattr(expect_type, '__origin__', expect_type)
+
+    if in_origin is Union:
+      return _all(zip(in_args, itertools.repeat(expect_type)), new_seen_pairs)
+    if expect_origin is Union:
+      if check_instance:
+        return _any(zip(itertools.repeat(in_obj), expect_args), new_seen_pairs)
+      else:
+        return _any(zip(itertools.repeat(in_type), expect_args), new_seen_pairs)
+    if in_origin != expect_origin:
+      return False
+    elif in_origin in (
+        dict, list
+    ) and expect_args and expect_args[0].__class__.__name__ == 'TypeVar':
+      return True
+    elif check_instance:
+      if isinstance(in_obj, list):
+        return not expect_args or _all(
+            zip(in_obj, itertools.repeat(expect_args[0])),
+            new_seen_pairs)
+      elif isinstance(in_obj, dict):
+        return not expect_args or (_all(
+            zip(in_obj.keys(), itertools.repeat(expect_args[0])),
+            new_seen_pairs) and _all(
+                zip(in_obj.values(), itertools.repeat(expect_args[1])),
+                new_seen_pairs))
+      else:
+        return True
+    # For List -> List[X] and Dict -> Dict[X, Y].
+    elif len(in_args) < len(expect_args):
+      return False
+    # For Python 3.7, where Dict and List have args KT, KV, T. Return True
+    # whenever the expect type is Dict or List.
+    else:
+      return _all(zip(in_args, expect_args), new_seen_pairs)
+  return _helper(in_type, expect_type, set())
 
 
 def _validate_signature(
@@ -111,7 +295,9 @@ def _parse_signature(
     Dict[str, Type[Union[int, float, str, bytes, _BeamPipeline]]],
     Dict[str, Any],
     Dict[str, ArgFormats],
-    Dict[str, bool]]:
+    Dict[str, bool],
+    Dict[str, Any],
+    Dict[str, Any]]:
   """Parses signature of a typehint-annotated component executor function.
 
   Args:
@@ -137,6 +323,10 @@ def _parse_signature(
     returned_outputs: A dictionary mapping output names that are declared as
       ValueArtifact returned outputs to whether the output was declared
       Optional (and thus has a nullable return value).
+    json_typehints: A dictionary mapping input names that is declared as
+      a json compatible type to the annotation.
+    return_json_typehints: A dictionary mapping output names that is declared as
+      a json compatible type to the annotation.
   """
   # Extract optional arguments as dict from name to its declared optional value.
   arg_defaults = {}
@@ -150,6 +340,8 @@ def _parse_signature(
   parameters = {}
   arg_formats = {}
   returned_outputs = {}
+  json_typehints = {}
+  return_json_typehints = {}
   for arg in argspec.args:
     arg_typehint = typehints[arg]
     # If the typehint is `Optional[T]` for a primitive type `T`, unwrap it.
@@ -197,6 +389,10 @@ def _parse_signature(
                'instead)') % (arg, func, arg_typehint, arg_defaults[arg]))
       arg_formats[arg] = ArgFormats.ARTIFACT_VALUE
       inputs[arg] = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
+    elif is_json_compatible(arg_typehint, func):
+      json_typehints[arg] = arg_typehint
+      arg_formats[arg] = ArgFormats.ARTIFACT_VALUE
+      inputs[arg] = standard_artifacts.JsonValue
     elif (inspect.isclass(arg_typehint) and
           issubclass(arg_typehint, artifact.Artifact)):
       raise ValueError((
@@ -219,13 +415,20 @@ def _parse_signature(
       elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
         outputs[arg] = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
         returned_outputs[arg] = False
+      elif is_json_compatible(arg_typehint, func):
+        outputs[arg] = standard_artifacts.JsonValue
+        return_json_typehints[arg] = arg_typehint
+        # check if Optional
+        origin = getattr(arg_typehint, '__origin__', None)
+        args = getattr(arg_typehint, '__args__', None)
+        returned_outputs[arg] = origin is Union and type(None) in args
       else:
         raise ValueError(
             ('Unknown type hint annotation %r for returned output %r on '
              'function %r') % (arg_typehint, arg, func))
 
   return (inputs, outputs, parameters, arg_formats, arg_defaults,
-          returned_outputs)
+          returned_outputs, json_typehints, return_json_typehints)
 
 
 def parse_typehint_component_function(
@@ -236,7 +439,9 @@ def parse_typehint_component_function(
     Dict[str, Type[Union[int, float, str, bytes]]],
     Dict[str, Any],
     Dict[str, ArgFormats],
-    Dict[str, bool]]:
+    Dict[str, bool],
+    Dict[str, Any],
+    Dict[str, Any]]:
   """Parses the given component executor function.
 
   This method parses a typehinted-annotated Python function that is intended to
@@ -278,8 +483,9 @@ def parse_typehint_component_function(
   _validate_signature(func, argspec, typehints, subject_message)
 
   # Parse the function and return its details.
-  inputs, outputs, parameters, arg_formats, arg_defaults, returned_outputs = (
-      _parse_signature(func, argspec, typehints))
+  (inputs, outputs, parameters, arg_formats, arg_defaults, returned_outputs,
+   json_typehints, return_json_typehints) = (
+       _parse_signature(func, argspec, typehints))
 
   return (inputs, outputs, parameters, arg_formats, arg_defaults,
-          returned_outputs)
+          returned_outputs, json_typehints, return_json_typehints)
