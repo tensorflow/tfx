@@ -16,6 +16,7 @@
 import base64
 import contextlib
 import copy
+import dataclasses
 import threading
 import time
 from typing import Dict, Iterator, List, Mapping, Optional, Tuple
@@ -59,6 +60,7 @@ _UPDATE_OPTIONS = 'update_options'
 _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
+_MAX_STATE_HISTORY_LEN = 10
 
 _last_state_change_time_secs = -1.0
 _state_change_time_lock = threading.Lock()
@@ -75,6 +77,13 @@ _EXECUTION_STATE_TO_RUN_STATE_MAP = {
     metadata_store_pb2.Execution.State.CANCELED:
         run_state_pb2.RunState.STOPPED,
 }
+
+
+@dataclasses.dataclass
+class StateRecord(json_utils.Jsonable):
+  state: str
+  status_code: Optional[int]
+  status_msg: str
 
 
 # TODO(b/228198652): Stop using json_util.Jsonable. Before we do,
@@ -113,6 +122,8 @@ class NodeState(json_utils.Jsonable):
   status_code: Optional[int] = None
   status_msg: str = ''
 
+  state_history: List[StateRecord] = attr.ib(default=attr.Factory(list))
+
   @property
   def status(self) -> Optional[status_lib.Status]:
     if self.status_code is not None:
@@ -122,13 +133,18 @@ class NodeState(json_utils.Jsonable):
   def update(self,
              state: str,
              status: Optional[status_lib.Status] = None) -> None:
+    if self.state != state:
+      self.state_history.append(
+          StateRecord(
+              state=self.state,
+              status_code=self.status_code,
+              status_msg=self.status_msg))
+      if len(self.state_history) > _MAX_STATE_HISTORY_LEN:
+        self.state_history = self.state_history[-_MAX_STATE_HISTORY_LEN:]
+
     self.state = state
-    if status is not None:
-      self.status_code = status.code
-      self.status_msg = status.message
-    else:
-      self.status_code = None
-      self.status_msg = ''
+    self.status_code = status.code if status is not None else None
+    self.status_msg = status.message if status is not None else ''
 
   def is_startable(self) -> bool:
     """Returns True if the node can be started."""
@@ -160,6 +176,16 @@ class NodeState(json_utils.Jsonable):
         state=_NODE_STATE_TO_RUN_STATE_MAP[self.state],
         status_code=status_code_value,
         status_msg=self.status_msg)
+
+  def to_run_state_history(self) -> List[run_state_pb2.RunState]:
+    run_state_history = []
+    for state in self.state_history:
+      run_state_history.append(
+          NodeState(
+              state=state.state,
+              status_code=state.status_code,
+              status_msg=state.status_msg).to_run_state())
+    return run_state_history
 
 
 def is_node_state_success(state: str) -> bool:
@@ -746,6 +772,16 @@ class PipelineView:
       result[node.node_info.id] = node_state.to_run_state()
     return result
 
+  def get_node_run_states_history(
+      self) -> Dict[str, List[run_state_pb2.RunState]]:
+    """Returns the history of node run states."""
+    node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
+    result = {}
+    for node in get_all_pipeline_nodes(self.pipeline):
+      node_state = node_states_dict.get(node.node_info.id, NodeState())
+      result[node.node_info.id] = node_state.to_run_state_history()
+    return result
+
   def get_previous_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to previous run state."""
     result = {}
@@ -756,6 +792,19 @@ class PipelineView:
         continue
       node_state = node_states_dict[node.node_info.id]
       result[node.node_info.id] = node_state.to_run_state()
+    return result
+
+  def get_previous_node_run_states_history(
+      self) -> Dict[str, List[run_state_pb2.RunState]]:
+    """Returns a dict mapping node id to previous run state."""
+    prev_node_states_dict = _get_node_states_dict(self.execution,
+                                                  _PREVIOUS_NODE_STATES)
+    result = {}
+    for node in get_all_pipeline_nodes(self.pipeline):
+      if node.node_info.id not in prev_node_states_dict:
+        continue
+      node_state = prev_node_states_dict[node.node_info.id]
+      result[node.node_info.id] = node_state.to_run_state_history()
     return result
 
   def get_property(self, property_key: str) -> Optional[types.Property]:
