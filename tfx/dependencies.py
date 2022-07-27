@@ -126,9 +126,7 @@ def make_required_install_packages():
 def make_extra_packages_airflow():
   """Prepare extra packages needed for Apache Airflow orchestrator."""
   return [
-      # TODO(b/230996502): Rollback the upper version cap to 3 after kfp
-      # releases a new version.
-      'apache-airflow[mysql]>=1.10.14,<2.3',
+      'apache-airflow[mysql]>=1.10.14,<3',
   ]
 
 
