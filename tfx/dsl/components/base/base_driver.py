@@ -216,7 +216,7 @@ class BaseDriver:
 
       is_single_artifact = len(output_list) == 1
       for i, artifact in enumerate(output_list):
-        artifact.name = name
+        artifact.name = f'{name}:{pipeline_info.run_id}'
         artifact.producer_component = component_info.component_id
         artifact.uri = _generate_output_uri(base_output_dir, name, execution_id,
                                             is_single_artifact, i)
