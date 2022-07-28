@@ -292,7 +292,13 @@ class BaseDriver:
           exec_properties=exec_properties,
           pipeline_info=pipeline_info,
           component_info=component_info)
-    if output_artifacts is not None:
+
+      # Check that cached output artifacts will actually be considered a cache hit by downstream
+      # components
+      if output_artifacts is not None:
+        use_cached_results = self.verify_input_artifacts(output_artifacts)
+
+    if use_cached_results:
       # If cache should be used, updates execution to reflect that. Note that
       # with this update, publisher should / will be skipped.
       self._metadata_handler.update_execution(
@@ -301,9 +307,8 @@ class BaseDriver:
           output_artifacts=output_artifacts,
           execution_state=metadata.EXECUTION_STATE_CACHED,
           contexts=contexts)
-      use_cached_results = True
     else:
-      absl.logging.debug('Cached results not found, move on to new execution')
+      absl.logging.debug('Cached results not available, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
           input_artifacts=input_artifacts,
