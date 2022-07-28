@@ -79,6 +79,7 @@ class ExecutorClassSpec(ExecutorSpec):
     if not executor_class:
       raise ValueError('executor_class is required')
     self.executor_class = executor_class
+    self._class_path = None
     self.extra_flags = []
     super().__init__()
 
@@ -93,6 +94,10 @@ class ExecutorClassSpec(ExecutorSpec):
     return (ExecutorClassSpec._reconstruct_from_executor_class_path,
             (self.class_path,))
 
+  def _set_class_path(self):
+    if self._class_path is None:
+      self._class_path = name_utils.get_full_name(self.executor_class)
+
   @property
   def class_path(self):
     """Fully qualified class name for the executor class.
@@ -102,7 +107,8 @@ class ExecutorClassSpec(ExecutorSpec):
     Returns:
       Fully qualified class name for the executor class.
     """
-    return name_utils.get_full_name(self.executor_class)
+    self._set_class_path()
+    return self._class_path
 
   @staticmethod
   def _reconstruct_from_executor_class_path(executor_class_path):
