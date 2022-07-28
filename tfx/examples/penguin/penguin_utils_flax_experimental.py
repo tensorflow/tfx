@@ -35,6 +35,7 @@ import absl
 import flax
 from flax import linen as nn
 from flax.metrics import tensorboard
+import flax.optim
 
 import jax
 from jax import numpy as jnp
