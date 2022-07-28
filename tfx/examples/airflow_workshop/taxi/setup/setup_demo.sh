@@ -75,7 +75,7 @@ pip install tensorflow-text==2.8.1 tensorflow_decision_forests==0.2.4 struct2ten
 
 ipython kernel install --user --name=tfx
 
-jupyter labextension install tensorflow_model_analysis
+jupyter labextension install tensorflow_model_analysis@0.39.0
 jupyter lab build --dev-build=False --minimize=False
 
 # Airflow
