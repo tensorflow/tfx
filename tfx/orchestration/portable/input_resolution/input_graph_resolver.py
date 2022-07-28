@@ -35,12 +35,11 @@ from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.orchestration import data_types_utils
+from tfx.orchestration import metadata
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
 from tfx.utils import typing_utils
-
-import ml_metadata as mlmd
 
 _Data = Union[
     Sequence[types.Artifact],
@@ -52,7 +51,7 @@ _GraphFn = Callable[[Mapping[str, _Data]], _Data]
 
 @dataclasses.dataclass
 class _Context:
-  store: mlmd.MetadataStore
+  mlmd_handler: metadata.Metadata
   input_graph: pipeline_pb2.InputGraph
 
 
@@ -120,7 +119,7 @@ def _evaluate_op_node(
     raise exceptions.InternalError(
         f'nodes[{node_id}] has unknown op_type {op_node.op_type}.') from e
   op: resolver_op.ResolverOp = op_type.create(**kwargs)
-  op.set_context(resolver_op.Context(store=ctx.store))
+  op.set_context(resolver_op.Context(store=ctx.mlmd_handler.store))
   result = op.apply(*args)
   return result
 
@@ -180,7 +179,7 @@ def _reduce_graph_fn(ctx: _Context, node_id: str, graph_fn: _GraphFn):
 
 
 def build_graph_fn(
-    store: mlmd.MetadataStore,
+    mlmd_handler: metadata.Metadata,
     input_graph: pipeline_pb2.InputGraph,
 ) -> Tuple[_GraphFn, List[str]]:
   """Build a functional interface for the `input_graph`.
@@ -190,12 +189,12 @@ def build_graph_fn(
 
   Example:
     inputs = previously_resolved_inputs()
-    graph_fn, input_keys = build_graph_fn(store, input_graph)
+    graph_fn, input_keys = build_graph_fn(mlmd_handler, input_graph)
     # input_keys == ['x', 'y']
     z = graph_fn({'x': inputs['x'], 'y': inputs['y']})
 
   Args:
-    store: A `MetadataStore` instance.
+    mlmd_handler: A `Metadata` instance.
     input_graph: An `pipeline_pb2.InputGraph` proto.
 
   Returns:
@@ -208,7 +207,7 @@ def build_graph_fn(
         f'result_node {input_graph.result_node} does not exist in input_graph. '
         f'Valid node ids: {list(input_graph.nodes.keys())}')
 
-  context = _Context(store=store, input_graph=input_graph)
+  context = _Context(mlmd_handler=mlmd_handler, input_graph=input_graph)
 
   input_key_to_node_id = {}
   for node_id in input_graph.nodes:

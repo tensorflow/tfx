@@ -82,7 +82,7 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    self._store = mock.MagicMock()
+    self._mlmd_handler = mock.MagicMock()
 
   def parse_input_graph(self, input_graph_text):
     return text_format.Parse(input_graph_text, pipeline_pb2.InputGraph())
@@ -102,7 +102,7 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
     """)
 
     graph_fn, input_keys = input_graph_resolver.build_graph_fn(
-        self._store, input_graph)
+        self._mlmd_handler, input_graph)
 
     self.assertEqual(input_keys, ['x'])
 
@@ -150,7 +150,7 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
     """)
 
     graph_fn, input_keys = input_graph_resolver.build_graph_fn(
-        self._store, input_graph)
+        self._mlmd_handler, input_graph)
 
     self.assertCountEqual(input_keys, ['x', 'y'])
 
@@ -202,7 +202,7 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
     """)
 
     graph_fn, input_keys = input_graph_resolver.build_graph_fn(
-        self._store, input_graph)
+        self._mlmd_handler, input_graph)
 
     self.assertCountEqual(input_keys, ['x', 'y'])
 
@@ -249,7 +249,7 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
     """)
 
     graph_fn, input_keys = input_graph_resolver.build_graph_fn(
-        self._store, input_graph)
+        self._mlmd_handler, input_graph)
 
     self.assertEqual(input_keys, ['x'])
 
@@ -272,7 +272,7 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.assertRaisesRegex(
         exceptions.FailedPreconditionError, 'result_node meh does not exist'):
-      input_graph_resolver.build_graph_fn(self._store, input_graph)
+      input_graph_resolver.build_graph_fn(self._mlmd_handler, input_graph)
 
   def testBuildGraphFn_CyclicNodes(self):
     input_graph = self.parse_input_graph("""
@@ -311,7 +311,7 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.assertRaisesRegex(
         exceptions.FailedPreconditionError, 'InputGraph has a cycle'):
-      input_graph_resolver.build_graph_fn(self._store, input_graph)
+      input_graph_resolver.build_graph_fn(self._mlmd_handler, input_graph)
 
   @parameterized.parameters(
       # (1 + 2) * (3 + (++4 * 5)) = 3 * 28 = 84
@@ -443,7 +443,7 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
     """)
 
     graph_fn, input_keys = input_graph_resolver.build_graph_fn(
-        self._store, input_graph)
+        self._mlmd_handler, input_graph)
 
     self.assertCountEqual(input_keys, ['a', 'b', 'c', 'd', 'e'])
     inputs = {k: [Integer(v)] for k, v in raw_inputs.items()}

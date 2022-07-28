@@ -34,7 +34,7 @@ def _resolve_channels_dict(
   for key, input_spec in node_inputs.inputs.items():
     if input_spec.channels:
       result[key] = channel_resolver.resolve_union_channels(
-          metadata_handler.store, input_spec.channels)
+          metadata_handler, input_spec.channels)
   return result
 
 
@@ -139,8 +139,7 @@ def resolve_input_artifacts(
       resolved = _resolve_node_inputs_with_resolver_config(
           metadata_handler, node_inputs)
     else:
-      resolved = node_inputs_resolver.resolve(
-          metadata_handler.store, node_inputs)
+      resolved = node_inputs_resolver.resolve(metadata_handler, node_inputs)
     return Trigger(resolved) if resolved else Skip()
   except exceptions.InputResolutionError as e:
     error_msg = (

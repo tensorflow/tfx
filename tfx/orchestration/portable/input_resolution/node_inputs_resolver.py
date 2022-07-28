@@ -155,6 +155,7 @@ from typing import List, TypeVar, Mapping, Tuple, Sequence, Dict, Iterable
 
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
+from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -163,8 +164,6 @@ from tfx.orchestration.portable.input_resolution import partition_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
 from tfx.utils import typing_utils
-
-import ml_metadata as mlmd
 
 _T = TypeVar('_T')
 _DataType = pipeline_pb2.InputGraph.DataType
@@ -281,7 +280,7 @@ def _join_artifacts(
 
 
 def _resolve_input_graph_ref(
-    store: mlmd.MetadataStore,
+    mlmd_handler: metadata.Metadata,
     node_inputs: pipeline_pb2.NodeInputs,
     input_key: str,
     resolved: Dict[str, List[_Entry]],
@@ -292,7 +291,7 @@ def _resolve_input_graph_ref(
   (i.e. `InputGraphRef` with the same `graph_id`).
 
   Args:
-    store: A `MetadataStore` instance.
+    mlmd_handler: A `Metadata` instance.
     node_inputs: A `NodeInputs` proto.
     input_key: A target input key whose corresponding `InputSpec` has an
         `InputGraphRef`.
@@ -312,7 +311,7 @@ def _resolve_input_graph_ref(
   }
 
   graph_fn, graph_input_keys = input_graph_resolver.build_graph_fn(
-      store, node_inputs.input_graphs[graph_id])
+      mlmd_handler, node_inputs.input_graphs[graph_id])
   for partition, input_dict in _join_artifacts(resolved, graph_input_keys):
     result = graph_fn(input_dict)
     if graph_output_type == _DataType.ARTIFACT_LIST:
@@ -378,7 +377,7 @@ def _filter_conditionals(
 
 
 def resolve(
-    store: mlmd.MetadataStore,
+    mlmd_handler: metadata.Metadata,
     node_inputs: pipeline_pb2.NodeInputs,
 ) -> List[typing_utils.ArtifactMultiMap]:
   """Resolve a NodeInputs."""
@@ -395,10 +394,10 @@ def resolve(
 
     if input_spec.channels:
       artifacts = channel_resolver.resolve_union_channels(
-          store, input_spec.channels)
+          mlmd_handler, input_spec.channels)
       resolved[input_key] = [(partition_utils.NO_PARTITION, artifacts)]
     elif input_spec.input_graph_ref.graph_id:
-      _resolve_input_graph_ref(store, node_inputs, input_key, resolved)
+      _resolve_input_graph_ref(mlmd_handler, node_inputs, input_key, resolved)
     elif input_spec.mixed_inputs.input_keys:
       _resolve_mixed_inputs(node_inputs, input_key, resolved)
     else:

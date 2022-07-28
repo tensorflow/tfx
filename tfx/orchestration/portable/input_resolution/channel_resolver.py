@@ -17,6 +17,7 @@ from typing import Sequence, List, Optional, Tuple
 
 from absl import logging
 from tfx import types
+from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -116,10 +117,11 @@ def _filter_by_artifact_query(
 
 # TODO(b/234806996): Migrate to MLMD filter query.
 def resolve_single_channel(
-    store: mlmd.MetadataStore,
+    mlmd_handler: metadata.Metadata,
     channel: pipeline_pb2.InputSpec.Channel,
 ) -> List[types.Artifact]:
   """Evaluate a single InputSpec.Channel."""
+  store = mlmd_handler.store
   contexts = []
   for context_query in channel.context_queries:
     maybe_context = _get_context_from_context_query(store, context_query)
@@ -143,14 +145,14 @@ def resolve_single_channel(
 
 
 def resolve_union_channels(
-    store: mlmd.MetadataStore,
+    mlmd_handler: metadata.Metadata,
     channels: Sequence[pipeline_pb2.InputSpec.Channel],
 ) -> List[types.Artifact]:
   """Evaluate InputSpec.channels."""
   seen = set()
   result = []
   for channel in channels:
-    for artifact in resolve_single_channel(store, channel):
+    for artifact in resolve_single_channel(mlmd_handler, channel):
       if artifact.id not in seen:
         seen.add(artifact.id)
         result.append(artifact)
