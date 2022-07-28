@@ -1,4 +1,4 @@
-# TFleX Centralized Kubernetes Orchestrator
+# TFX Centralized Kubernetes Orchestrator
 
 Code in this directory is under development.
 This orchestrator is experimental and we don't have any plans to support this 
