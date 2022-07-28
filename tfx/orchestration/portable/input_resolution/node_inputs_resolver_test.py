@@ -698,6 +698,64 @@ class NodeInputsResolverTest(tf.test.TestCase):
       result = node_inputs_resolver.resolve(self._store, node_inputs)
       self.assertEqual(result, [{'x': [a1]}])
 
+  def testMinCount(self):
+    a1, a2 = self.create_artifacts(2)
+    x1 = self.parse_input_spec("""
+      channels {
+        artifact_query {
+          type {
+            name: "MyArtifact"
+          }
+        }
+      }
+    """)
+    self.mock_channel_resolution_result(x1, [])
+    node_inputs = pipeline_pb2.NodeInputs(inputs={'x1': x1})
+
+    with self.subTest('min_count = 0'):
+      node_inputs.inputs['x1'].min_count = 0
+      result = node_inputs_resolver.resolve(self._store, node_inputs)
+      self.assertEqual(result, [{'x1': []}])
+
+    with self.subTest('min_count = 1'):
+      node_inputs.inputs['x1'].min_count = 1
+      with self.assertRaisesRegex(
+          exceptions.FailedPreconditionError,
+          r'inputs\[x1\] has min_count = 1 but only got 0 artifacts'):
+        node_inputs_resolver.resolve(self._store, node_inputs)
+
+    x2 = self.parse_input_spec("""
+      input_graph_ref {
+        graph_id: "graph_1"
+        key: "a"
+      }
+      min_count: 1
+    """)
+    graph_1 = self.parse_input_graph("""
+      nodes {
+        key: "op_1"
+        value {
+          op_node {
+            op_type: "DummyOp"
+          }
+          output_data_type: ARTIFACT_MULTIMAP_LIST
+        }
+      }
+      result_node: "op_1"
+    """)
+    self.mock_graph_fn_result(
+        graph_1,
+        lambda _: [{'a': [a1]}, {'a': [a2]}, {'a': []}])
+
+    with self.subTest('Multiple results should all satisfy min_count'):
+      node_inputs = pipeline_pb2.NodeInputs(
+          inputs={'x2': x2},
+          input_graphs={'graph_1': graph_1})
+      with self.assertRaisesRegex(
+          exceptions.FailedPreconditionError,
+          r'inputs\[x2\] has min_count = 1 but only got 0 artifacts'):
+        node_inputs_resolver.resolve(self._store, node_inputs)
+
 
 if __name__ == '__main__':
   tf.test.main()

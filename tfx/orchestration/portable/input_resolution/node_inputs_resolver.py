@@ -392,23 +392,28 @@ def resolve(
       continue
 
     input_spec = node_inputs.inputs[input_key]
+
     if input_spec.channels:
       artifacts = channel_resolver.resolve_union_channels(
           store, input_spec.channels)
       resolved[input_key] = [(partition_utils.NO_PARTITION, artifacts)]
-      continue
-
-    if input_spec.input_graph_ref.graph_id:
+    elif input_spec.input_graph_ref.graph_id:
       _resolve_input_graph_ref(store, node_inputs, input_key, resolved)
-      continue
-
-    if input_spec.mixed_inputs.input_keys:
+    elif input_spec.mixed_inputs.input_keys:
       _resolve_mixed_inputs(node_inputs, input_key, resolved)
-      continue
+    else:
+      raise exceptions.FailedPreconditionError(
+          'Exactly one of InputSpec.channels, InputSpec.input_graph_ref, or '
+          'InputSpec.mixed_inputs should be set.')
 
-    raise exceptions.FailedPreconditionError(
-        'Exactly one of InputSpec.channels, InputSpec.input_graph_ref, or '
-        'InputSpec.mixed_inputs should be set.')
+    if input_spec.min_count:
+      for _, artifacts in resolved[input_key]:
+        if len(artifacts) < input_spec.min_count:
+          raise exceptions.FailedPreconditionError(
+              'InputSpec min_count violation; '
+              f'inputs[{input_key}] has min_count = {input_spec.min_count} '
+              f'but only got {len(artifacts)} artifacts. '
+              f'(Artifact IDs: {[a.id for a in artifacts]})')
 
   visible_keys = [
       k for k, input_spec in node_inputs.inputs.items()
