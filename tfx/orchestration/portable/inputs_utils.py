@@ -20,6 +20,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
+from tfx.orchestration.portable.input_resolution import node_inputs_resolver
 from tfx.orchestration.portable.input_resolution import resolver_config_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import typing_utils
@@ -101,11 +102,6 @@ def _resolve_node_inputs_with_resolver_config(
         node_inputs.resolver_config)
   except exceptions.SkipSignal:
     return []
-  except exceptions.InputResolutionError:
-    raise
-  except Exception as e:
-    raise exceptions.InputResolutionError(
-        f'Error occurred during input resolution: {str(e)}.') from e
 
   if typing_utils.is_artifact_multimap(resolved):
     resolved = [resolved]
@@ -113,28 +109,8 @@ def _resolve_node_inputs_with_resolver_config(
     raise exceptions.FailedPreconditionError(
         'Invalid input resolution result; expected Sequence[ArtifactMultiMap] '
         f'type but got {resolved}.')
+  _check_sufficient(resolved, node_inputs)
   return resolved  # pytype: disable=bad-return-type
-
-
-def _resolve_node_inputs(
-    metadata_handler: metadata.Metadata,
-    node_inputs: pipeline_pb2.NodeInputs
-) -> Sequence[typing_utils.ArtifactMultiMap]:
-  """Resolve input artifacts from pipeline_pb2.NodeInputs.
-
-  Given `node_inputs` should not contain `resolver_config` field which is an
-  older IR format that should be handled from a function
-  `_resolve_node_inputs_with_resolver_config`.
-
-  Args:
-    metadata_handler: A Metadata instance.
-    node_inputs: A NodeInput message without `resolver_config` field.
-
-  Returns:
-    A resolved list of dicts (can be empty).
-  """
-  channels_dict = _resolve_channels_dict(metadata_handler, node_inputs)
-  return [channels_dict]
 
 
 def resolve_input_artifacts(
@@ -157,14 +133,23 @@ def resolve_input_artifacts(
     Skip: an empty list. Should effectively skip the current component
         execution.
   """
-  node_inputs = pipeline_node.inputs
-  if node_inputs.resolver_config.resolver_steps:
-    resolved = _resolve_node_inputs_with_resolver_config(
-        metadata_handler, node_inputs)
-  else:
-    resolved = _resolve_node_inputs(metadata_handler, node_inputs)
-  _check_sufficient(resolved, node_inputs)
-  return Trigger(resolved) if resolved else Skip()
+  try:
+    node_inputs = pipeline_node.inputs
+    if node_inputs.resolver_config.resolver_steps:
+      resolved = _resolve_node_inputs_with_resolver_config(
+          metadata_handler, node_inputs)
+    else:
+      resolved = node_inputs_resolver.resolve(
+          metadata_handler.store, node_inputs)
+    return Trigger(resolved) if resolved else Skip()
+  except exceptions.InputResolutionError as e:
+    error_msg = (
+        f'Error while resolving inputs for {pipeline_node.node_info.id}: {e}')
+    e.args = (error_msg,)
+    raise
+  except Exception as e:
+    raise exceptions.InputResolutionError(
+        f'Error while resolving inputs for {pipeline_node.node_info.id}') from e
 
 
 def resolve_parameters(
