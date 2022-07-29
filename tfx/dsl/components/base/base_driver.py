@@ -296,7 +296,11 @@ class BaseDriver:
       # Check that cached output artifacts will actually be considered a cache hit by downstream
       # components
       if output_artifacts is not None:
-        use_cached_results = self.verify_input_artifacts(output_artifacts)
+        try:
+          self.verify_input_artifacts(output_artifacts)
+          use_cached_results = True
+        except RuntimeError:
+          use_cached_results = False
 
     if use_cached_results:
       # If cache should be used, updates execution to reflect that. Note that
