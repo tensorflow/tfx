@@ -14,7 +14,7 @@
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
 import inspect
 import itertools
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, cast, Mapping
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple, Type, cast
 
 from tfx import types
 from tfx.dsl.compiler import compiler_context
@@ -32,6 +32,7 @@ from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
+from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -859,6 +860,29 @@ def _set_node_inputs(node: pipeline_pb2.PipelineNode,
           raise ValueError(
               f"Failed to find producer info for the input channel '{key}' "
               f"of node {tfx_node.id}.")
+      elif isinstance(input_channel, types.SourceChannel):
+        # Add pipeline context query.
+        node_context_query = channel_pb.context_queries.add()
+        node_context_query.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
+        node_context_query.name.field_value.string_value = (
+            input_channel.pipeline_name)
+        # Add node context query.
+        if input_channel.producer_component_id:
+          channel_pb.producer_node_query.id = (
+              input_channel.producer_component_id)
+          node_context_query = channel_pb.context_queries.add()
+          node_context_query.type.name = constants.NODE_CONTEXT_TYPE_NAME
+          node_context_query.name.field_value.string_value = "{}.{}".format(
+              input_channel.pipeline_name, input_channel.producer_component_id)
+
+        channel_pb.metadata_connection_config.Pack(
+            metadata.metadata_service_config(input_channel.owner,
+                                             input_channel.project_name,
+                                             input_channel.mlmd_service_target))
+
+        artifact_type = input_channel.type._get_artifact_type()  # pylint: disable=protected-access
+        channel_pb.artifact_query.type.CopyFrom(artifact_type)
+        channel_pb.artifact_query.type.ClearField("properties")
       else:
         # If the node input is not an OutputChannel, fill the context queries
         # based on Channel info. We requires every channel to have pipeline

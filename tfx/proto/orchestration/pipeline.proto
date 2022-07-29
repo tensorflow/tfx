@@ -297,6 +297,8 @@ message InputSpec {
     // where 'some_output_key' is the output key for the channel that evaluator
     // uses as one of its input.
     string output_key = 4;
+
+    google.protobuf.Any metadata_connection_config = 5;
   }
 
   // Reference to the InputGraph result.

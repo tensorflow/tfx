@@ -359,6 +359,31 @@ class OutputChannel(Channel):
     return self
 
 
+class SourceChannel(BaseChannel):
+  """Channel subtype that is used for node.outputs."""
+
+  def __init__(
+      self,
+      artifact_type: Type[Artifact],
+      owner: str = '',
+      project_name: str = '',
+      pipeline_name: str = '',
+      producer_component_id: str = '',
+      mlmd_service_target: str = '',
+  ):
+    super().__init__(type=artifact_type)
+    self.owner = owner
+    self.project_name = project_name
+    self.pipeline_name = pipeline_name
+    self.producer_component_id = producer_component_id
+    self.mlmd_service_target = mlmd_service_target
+
+  def __repr__(self) -> str:
+    return (f'{self.__class__.__name__}('
+            f'pipeline_name={self.pipeline_name}, '
+            f'producer_component_id={self.producer_component_id}, ')
+
+
 @doc_controls.do_not_generate_docs
 class UnionChannel(BaseChannel):
   """Union of multiple Channels with the same type.

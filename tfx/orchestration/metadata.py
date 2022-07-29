@@ -122,6 +122,22 @@ def mysql_metadata_connection_config(
           password=password))
 
 
+def metadata_service_config(owner: str, name: str, mlmd_service_target: str):
+  """Convenience function to create mysql-based metadata connection config.
+
+  Args:
+    owner: Owner of the mlmd db.
+    name: Name of the mlmd db.
+    mlmd_service_target: Service .
+
+  Returns:
+    A mlmd_service_pb2.MLMDServiceClientConfig.
+  """
+  return mlmd_service_pb2.MLMDServiceClientConfig(
+      server_address=mlmd_service_target,
+      pipeline_asset=mlmd_service_pb2.PipelineAsset(owner=owner, name=name))
+
+
 # TODO(ruoyu): Figure out the story mutable UDFs. We should not reuse previous
 # run when having different UDFs.
 class Metadata:
