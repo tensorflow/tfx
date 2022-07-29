@@ -26,7 +26,7 @@ from tfx.types import standard_artifacts
 from ml_metadata.proto import metadata_store_pb2
 
 # Mock value for string artifact.
-_STRING_VALUE = u'This is a string'
+_STRING_VALUE = 'This is a string'
 
 # Mock byte value for string artifact.
 _BYTE_VALUE = b'This is a string'
@@ -34,10 +34,10 @@ _BYTE_VALUE = b'This is a string'
 
 def fake_read(self):
   """Mock read method for ValueArtifact."""
-  if not self._has_value:
-    self._has_value = True
-    self._value = self.decode(_BYTE_VALUE)
-  return self._value
+  if not self._has_value:  # pylint: disable=protected-access
+    self._has_value = True  # pylint: disable=protected-access
+    self._value = self.decode(_BYTE_VALUE)  # pylint: disable=protected-access
+  return self._value  # pylint: disable=protected-access
 
 
 class _InputArtifact(types.Artifact):
@@ -104,7 +104,7 @@ class BaseDriverTest(tf.test.TestCase):
   @mock.patch(
       'tfx.dsl.components.base.base_driver.BaseDriver.verify_input_artifacts')
   @mock.patch.object(types.ValueArtifact, 'read', fake_read)
-  def testPreExecutionNewExecution(self, mock_verify_input_artifacts_fn):
+  def testPreExecutionNewExecution(self, _):
     self._mock_metadata.search_artifacts.return_value = list(
         self._input_dict['input_string'].get())
     self._mock_metadata.register_execution.side_effect = [self._execution]
@@ -178,7 +178,7 @@ class BaseDriverTest(tf.test.TestCase):
   @mock.patch(
       'tfx.dsl.components.base.base_driver.BaseDriver.verify_input_artifacts')
   @mock.patch.object(types.ValueArtifact, 'read', fake_read)
-  def testPreExecutionCached(self, mock_verify_input_artifacts_fn):
+  def testPreExecutionCached(self, _):
     """With cache enabled, if cached output artifacts are found, execution decision is to use cache"""
     self._mock_metadata.search_artifacts.return_value = list(
         self._input_dict['input_string'].get())

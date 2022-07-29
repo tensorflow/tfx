@@ -41,8 +41,8 @@ def _generate_output_uri(base_output_dir: str,
 def _prepare_output_paths(artifact: types.Artifact):
   """Create output directories for output artifact."""
   if fileio.exists(artifact.uri):
-    msg = 'Output artifact uri %s already exists' % artifact.uri
-    absl.logging.warning(msg)
+    absl.logging.warning(
+      'Output artifact uri %s already exists', artifact.uri)
     # TODO(b/158689199): We currently simply return as a short-term workaround
     # to unblock execution retires. A comprehensive solution to guarantee
     # idempotent executions is needed.
@@ -88,9 +88,9 @@ class BaseDriver:
     for single_artifacts_list in artifacts_dict.values():
       for artifact in single_artifacts_list:
         if not artifact.uri:
-          raise RuntimeError('Artifact %s does not have uri' % artifact)
+          raise RuntimeError(f'Artifact {artifact} does not have uri')
         if not fileio.exists(artifact.uri):
-          raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
+          raise RuntimeError(f'Artifact uri {artifact.uri} is missing')
 
   def _log_properties(self, input_dict: Dict[str, List[types.Artifact]],
                       output_dict: Dict[str, List[types.Artifact]],
@@ -145,11 +145,11 @@ class BaseDriver:
             # 0.
             if not artifact.uri or not artifact.id:
               raise ValueError((
-                  'Unresolved input channel %r for input %r was passed in '
+                  'Unresolved input channel {repr(artifact)} for input {repr(name)} was passed in '
                   'interactive mode. When running in interactive mode, upstream '
                   'components must first be run with '
                   '`interactive_context.run(component)` before their outputs can '
-                  'be used in downstream components.') % (artifact, name))
+                  'be used in downstream components.'))
             artifacts_by_id.update({a.id: a for a in artifacts})
         else:
           artifacts = self._metadata_handler.search_artifacts(
@@ -312,7 +312,8 @@ class BaseDriver:
           execution_state=metadata.EXECUTION_STATE_CACHED,
           contexts=contexts)
     else:
-      absl.logging.debug('Cached results not available, move on to new execution')
+      absl.logging.debug(
+        'Cached results not available, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
           input_artifacts=input_artifacts,
