@@ -214,8 +214,8 @@ class BaseDriverTest(tf.test.TestCase):
     # mock such that the input artifacts for the current component are present, but the output
     # artifacts as pulled from cache are not present
     mock_verify_input_artifacts_fn.side_effect = [
-        True,
-        False,
+        None,
+        RuntimeError(),
     ]
 
     self._mock_metadata.search_artifacts.return_value = list(

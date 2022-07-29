@@ -297,7 +297,7 @@ class BaseDriver:
       # components
       if output_artifacts is not None:
         try:
-          self.verify_input_artifacts(output_artifacts)
+          self.verify_input_artifacts(artifacts_dict=output_artifacts)
           use_cached_results = True
         except RuntimeError:
           use_cached_results = False
