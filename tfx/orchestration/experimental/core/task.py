@@ -23,6 +23,7 @@ from typing import Dict, Hashable, List, Optional, Type, TypeVar
 
 import attr
 from tfx import types
+from tfx.orchestration import node_proto_view
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
@@ -57,9 +58,11 @@ class NodeUid:
   pipeline_uid: PipelineUid
   node_id: str
 
+  # TODO(b/240483367): Rename *_pipeline_node to *_node because it supports node
+  # and subpipeline. Rename other similar function names in this file as well.
   @classmethod
   def from_pipeline_node(cls: Type['NodeUid'], pipeline: pipeline_pb2.Pipeline,
-                         node: pipeline_pb2.PipelineNode) -> 'NodeUid':
+                         node: node_proto_view.NodeProtoView) -> 'NodeUid':
     return cls(
         pipeline_uid=PipelineUid.from_pipeline(pipeline),
         node_id=node.node_info.id)
@@ -139,10 +142,11 @@ class ExecNodeTask(Task):
   def task_id(self) -> TaskId:
     return _exec_node_task_id(self.task_type_id(), self.node_uid)
 
-  def get_pipeline_node(self) -> pipeline_pb2.PipelineNode:
-    for node in self.pipeline.nodes:
-      if node.pipeline_node.node_info.id == self.node_uid.node_id:
-        return node.pipeline_node
+  def get_pipeline_node(self) -> node_proto_view.NodeProtoView:
+    for pipeline_or_node in self.pipeline.nodes:
+      view = node_proto_view.get_view(pipeline_or_node)
+      if view.node_info.id == self.node_uid.node_id:
+        return view
     raise ValueError(
         f'Node not found in pipeline IR; node uid: {self.node_uid}')
 
@@ -193,7 +197,8 @@ class UpdateNodeStateTask(Task):
 
 
 def exec_node_task_id_from_pipeline_node(
-    pipeline: pipeline_pb2.Pipeline, node: pipeline_pb2.PipelineNode) -> TaskId:
+    pipeline: pipeline_pb2.Pipeline,
+    node: node_proto_view.NodeProtoView) -> TaskId:
   """Returns task id of an `ExecNodeTask` from pipeline and node."""
   return _exec_node_task_id(ExecNodeTask.task_type_id(),
                             NodeUid.from_pipeline_node(pipeline, node))

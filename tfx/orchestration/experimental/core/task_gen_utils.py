@@ -23,6 +23,7 @@ import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
@@ -56,7 +57,7 @@ class ResolvedInfo:
 def generate_task_from_execution(
     metadata_handler: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
-    node: pipeline_pb2.PipelineNode,
+    node: node_proto_view.NodeProtoView,
     execution: metadata_store_pb2.Execution,
     cancel_type: Optional[task_lib.NodeCancelType] = None) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
@@ -91,7 +92,7 @@ def generate_task_from_execution(
 def generate_task_from_active_execution(
     metadata_handler: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
-    node: pipeline_pb2.PipelineNode,
+    node: node_proto_view.NodeProtoView,
     executions: Iterable[metadata_store_pb2.Execution],
     cancel_type: Optional[task_lib.NodeCancelType] = None,
 ) -> Optional[task_lib.Task]:
@@ -158,7 +159,7 @@ def extract_properties(
 
 
 def resolve_exec_properties(
-    node: pipeline_pb2.PipelineNode) -> Dict[str, types.ExecPropertyTypes]:
+    node: node_proto_view.NodeProtoView) -> Dict[str, types.ExecPropertyTypes]:
   """Resolves execution properties for executing the node."""
   return data_types_utils.build_parsed_value_dict(
       inputs_utils.resolve_parameters_with_schema(
@@ -167,7 +168,7 @@ def resolve_exec_properties(
 
 def generate_resolved_info(
     metadata_handler: metadata.Metadata,
-    node: pipeline_pb2.PipelineNode) -> Optional[ResolvedInfo]:
+    node: node_proto_view.NodeProtoView) -> Optional[ResolvedInfo]:
   """Returns a `ResolvedInfo` object for executing the node or `None` to skip.
 
   Args:
@@ -224,7 +225,7 @@ def generate_resolved_info(
 
 def get_executions(
     metadata_handler: metadata.Metadata,
-    node: pipeline_pb2.PipelineNode) -> List[metadata_store_pb2.Execution]:
+    node: node_proto_view.NodeProtoView) -> List[metadata_store_pb2.Execution]:
   """Returns all executions for the given pipeline node.
 
   This finds all executions having the same set of contexts as the pipeline

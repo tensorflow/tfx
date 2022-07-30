@@ -23,6 +23,7 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
@@ -786,13 +787,13 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           mock.call(
               m,
               pipeline_state.pipeline,
-              pipeline.nodes[2].pipeline_node,
+              node_proto_view.get_view(pipeline.nodes[2].pipeline_node),
               mock.ANY,
               cancel_type=task_lib.NodeCancelType.CANCEL_EXEC),
           mock.call(
               m,
               pipeline_state.pipeline,
-              pipeline.nodes[3].pipeline_node,
+              node_proto_view.get_view(pipeline.nodes[3].pipeline_node),
               mock.ANY,
               cancel_type=task_lib.NodeCancelType.CANCEL_EXEC)
       ])

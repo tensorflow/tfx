@@ -24,6 +24,7 @@ from absl import logging
 import attr
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import event_observer
@@ -641,7 +642,7 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
 def _cancel_node(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
                  service_job_manager: service_jobs.ServiceJobManager,
                  pipeline_state: pstate.PipelineState,
-                 node: pipeline_pb2.PipelineNode, pause: bool) -> bool:
+                 node: node_proto_view.NodeProtoView, pause: bool) -> bool:
   """Returns `True` if node cancelled successfully or no cancellation needed."""
   if service_job_manager.is_pure_service_node(pipeline_state,
                                               node.node_info.id):
@@ -787,7 +788,7 @@ def _orchestrate_update_initiated_pipeline(
 @attr.s(auto_attribs=True, kw_only=True)
 class _NodeInfo:
   """A convenience container of pipeline node and its state."""
-  node: pipeline_pb2.PipelineNode
+  node: node_proto_view.NodeProtoView
   state: pstate.NodeState
 
 
@@ -937,7 +938,7 @@ def _get_node_infos(pipeline_state: pstate.PipelineState) -> List[_NodeInfo]:
 
 def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
                                      pipeline_state: pstate.PipelineState,
-                                     node: pipeline_pb2.PipelineNode,
+                                     node: node_proto_view.NodeProtoView,
                                      task_queue: tq.TaskQueue,
                                      pause: bool = False) -> bool:
   """Enqueues a node cancellation task if not already stopped.

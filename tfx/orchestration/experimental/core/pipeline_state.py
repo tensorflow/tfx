@@ -27,6 +27,7 @@ import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
@@ -871,18 +872,13 @@ def pipeline_uid_from_orchestrator_context(
 
 
 def get_all_pipeline_nodes(
-    pipeline: pipeline_pb2.Pipeline) -> List[pipeline_pb2.PipelineNode]:
-  """Returns all pipeline nodes in the given pipeline."""
-  result = []
-  for pipeline_or_node in pipeline.nodes:
-    which = pipeline_or_node.WhichOneof('node')
-    # TODO(goutham): Handle sub-pipelines.
-    # TODO(goutham): Handle system nodes.
-    if which == 'pipeline_node':
-      result.append(pipeline_or_node.pipeline_node)
-    else:
-      raise NotImplementedError('Only pipeline nodes supported.')
-  return result
+    pipeline: pipeline_pb2.Pipeline) -> List[node_proto_view.NodeProtoView]:
+  """Returns the views of nodes or inner pipelines in the given pipeline."""
+  # TODO(goutham): Handle system nodes.
+  return [
+      node_proto_view.get_view(pipeline_or_node)
+      for pipeline_or_node in pipeline.nodes
+  ]
 
 
 def get_all_node_executions(

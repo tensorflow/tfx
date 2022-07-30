@@ -20,6 +20,7 @@ from typing import Callable, Dict, List, Optional
 from absl import logging
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -104,7 +105,7 @@ class _Generator:
 
   def __call__(self) -> List[task_lib.Task]:
     result = []
-    for node in [n.pipeline_node for n in self._pipeline.nodes]:
+    for node in [node_proto_view.get_view(n) for n in self._pipeline.nodes]:
       node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
       node_id = node.node_info.id
 
@@ -158,7 +159,7 @@ class _Generator:
 
   def _generate_tasks_for_node(
       self, metadata_handler: metadata.Metadata,
-      node: pipeline_pb2.PipelineNode) -> List[task_lib.Task]:
+      node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates a node execution task.
 
     If a node execution is not feasible, `None` is returned.

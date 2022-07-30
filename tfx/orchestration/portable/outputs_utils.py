@@ -16,13 +16,14 @@
 import collections
 import datetime
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from absl import logging
 from tfx import types
 from tfx import version
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
+from tfx.orchestration import node_proto_view
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
@@ -122,7 +123,8 @@ class OutputsResolver:
   """This class has methods to handle launcher output related logic."""
 
   def __init__(self,
-               pipeline_node: pipeline_pb2.PipelineNode,
+               pipeline_node: Union[pipeline_pb2.PipelineNode,
+                                    node_proto_view.NodeProtoView],
                pipeline_info: pipeline_pb2.PipelineInfo,
                pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
                execution_mode: 'pipeline_pb2.Pipeline.ExecutionMode' = (
