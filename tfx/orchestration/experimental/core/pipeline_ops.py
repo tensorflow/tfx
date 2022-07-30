@@ -771,15 +771,9 @@ def _orchestrate_update_initiated_pipeline(
     with pipeline_state:
       pipeline = pipeline_state.pipeline
       for node in pstate.get_all_pipeline_nodes(pipeline):
-        # TODO(b/217584342): Partial reload which excludes service nodes is not
-        # fully supported in async pipelines since we don't have a mechanism to
-        # reload them later for new executions.
-        if (reload_node_ids is not None and
-            node.node_info.id not in reload_node_ids):
-          continue
         node_uid = task_lib.NodeUid.from_pipeline_node(pipeline, node)
         with pipeline_state.node_state_update_context(node_uid) as node_state:
-          if node_state.is_startable():
+          if node_state.state == pstate.NodeState.PAUSED:
             node_state.update(pstate.NodeState.STARTED)
 
       pipeline_state.apply_pipeline_update()
