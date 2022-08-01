@@ -73,7 +73,7 @@ def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
-      'apache-beam[gcp]>=2.38,<3',
+      'apache-beam[gcp]>=2.40,<3',
       'attrs>=19.3.0,<21',
       'click>=7,<8',
       # TODO(b/238946565): Remove pinned version when pip can find depenencies
