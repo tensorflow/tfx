@@ -17,10 +17,14 @@ import itertools
 import unittest
 
 import tensorflow as tf
-from tfx.examples.ranking import struct2tensor_parsing_utils
 
 from google.protobuf import text_format
 from tensorflow_serving.apis import input_pb2
+
+try:
+  from tfx.examples.ranking import struct2tensor_parsing_utils  # pylint: disable=g-import-not-at-top
+except ImportError:
+  struct2tensor_parsing_utils = None
 
 
 _ELWCS = [
@@ -166,6 +170,9 @@ examples {
 
 
 @unittest.skipIf(tf.__version__ < '2', reason='TF 1.x not supported.')
+@unittest.skipIf(struct2tensor_parsing_utils is None,
+                 'Cannot import required modules. This can happen when'
+                 ' struct2tensor is not available.')
 class ELWCDecoderTest(tf.test.TestCase):
 
   def testAllDTypes(self):
