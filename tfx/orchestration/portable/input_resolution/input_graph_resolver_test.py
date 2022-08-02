@@ -16,6 +16,7 @@ from unittest import mock
 
 from absl.testing import parameterized
 import tensorflow as tf
+from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -76,6 +77,19 @@ class Dot(
   def apply(self, xs, ys):
     result = sum([x.value * y.value for x, y in zip(xs, ys)])
     return [Integer(result)]
+
+
+@ops.testonly_register
+class RenameStrategy(resolver.ResolverStrategy):
+
+  def __init__(self, new_key: str):
+    self._new_key = new_key
+
+  def resolve_artifacts(self, store, input_dict):
+    only_key = list(input_dict)[0]
+    return {
+        self._new_key: input_dict[only_key],
+    }
 
 
 class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
@@ -449,6 +463,58 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
     inputs = {k: [Integer(v)] for k, v in raw_inputs.items()}
     result = graph_fn(inputs)
     self.assertEqual(result, [Integer(expected)])
+
+  def testResolverStrategy(self):
+    input_graph = self.parse_input_graph("""
+      nodes {
+        key: "input_1"
+        value {
+          input_node {
+            input_key: "x"
+          }
+          output_data_type: ARTIFACT_LIST
+        }
+      }
+      nodes {
+        key: "dict_1"
+        value {
+          dict_node {
+            node_ids {
+              key: "x"
+              value: "input_1"
+            }
+          }
+        }
+      }
+      nodes {
+        key: "op_1"
+        value {
+          op_node {
+            op_type: "__main__.RenameStrategy"
+            args {
+              node_id: "dict_1"
+            }
+            kwargs {
+              key: "new_key"
+              value {
+                value {
+                  field_value {
+                    string_value: "y"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      result_node: "op_1"
+    """)
+
+    graph_fn, input_keys = input_graph_resolver.build_graph_fn(
+        self._mlmd_handler, input_graph)
+    self.assertEqual(input_keys, ['x'])
+    result = graph_fn({'x': [Integer(42)]})
+    self.assertEqual(result, {'y': [Integer(42)]})
 
 
 if __name__ == '__main__':

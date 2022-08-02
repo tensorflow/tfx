@@ -32,6 +32,7 @@ import functools
 from typing import Union, Sequence, Mapping, Tuple, List, Iterable, Callable
 
 from tfx import types
+from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.orchestration import data_types_utils
@@ -116,12 +117,27 @@ def _evaluate_op_node(
   try:
     op_type = ops.get_by_name(op_node.op_type)
   except KeyError as e:
-    raise exceptions.InternalError(
-        f'nodes[{node_id}] has unknown op_type {op_node.op_type}.') from e
-  op: resolver_op.ResolverOp = op_type.create(**kwargs)
-  op.set_context(resolver_op.Context(store=ctx.mlmd_handler.store))
-  result = op.apply(*args)
-  return result
+    try:
+      # Currently ResolverStrategy is stored as a class path.
+      op_type = ops.get_by_class_path(op_node.op_type)
+    except ValueError:
+      raise exceptions.InternalError(
+          f'nodes[{node_id}] has unknown op_type {op_node.op_type}.') from e
+  if issubclass(op_type, resolver_op.ResolverOp):
+    op: resolver_op.ResolverOp = op_type.create(**kwargs)
+    op.set_context(resolver_op.Context(store=ctx.mlmd_handler.store))
+    return op.apply(*args)
+  elif issubclass(op_type, resolver.ResolverStrategy):
+    if len(args) != 1 or not typing_utils.is_artifact_multimap(args[0]):
+      raise exceptions.FailedPreconditionError(
+          f'Invalid {op_type} argument: {args!r}')
+    strategy: resolver.ResolverStrategy = op_type(**kwargs)
+    result = strategy.resolve_artifacts(ctx.mlmd_handler.store, args[0])
+    if result is None:
+      raise exceptions.InputResolutionError(f'{strategy} returned None.')
+    return result
+  else:
+    raise exceptions.InternalError(f'Unknown op_type {op_type}.')
 
 
 def _evaluate_dict_node(

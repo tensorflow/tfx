@@ -17,7 +17,6 @@ Note that ResolverConfig is deprecated; newly compiled pipeline should contain
 InputGraph and InputSpec.InputGraphRef instead.
 """
 
-import inspect
 from typing import Iterable, Union, Sequence, cast, Type
 
 from tfx.dsl.components.common import resolver
@@ -26,7 +25,6 @@ from tfx.dsl.input_resolution.ops import ops
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
-from tfx.utils import name_utils
 from tfx.utils import typing_utils
 
 import ml_metadata as mlmd
@@ -41,21 +39,6 @@ _ResolverIOType = Union[
     typing_utils.ArtifactMultiMap,
     Sequence[typing_utils.ArtifactMultiMap],
 ]
-
-
-def _resolve_class_path(class_path: str) -> _ResolverOpClass:
-  """Resolves ResolverOp or ResolverStrategy class from class path."""
-  try:
-    return ops.get_by_class_path(class_path)
-  except KeyError:
-    pass
-  # Op not registered (custom ResolverOp or custom ResolverStrategy). It is
-  # user's responsibility to package the custom op definition code together.
-  result = name_utils.resolve_full_name(class_path)
-  if not inspect.isclass(result):
-    raise TypeError(
-        f'Invalid symbol {class_path}. Expected class type but got {result}.')
-  return result
 
 
 def _run_resolver_strategy(
@@ -108,7 +91,7 @@ def resolve(
   result = input_dict
   context = resolver_op.Context(store=store)
   for step in resolver_config.resolver_steps:
-    cls = _resolve_class_path(step.class_path)
+    cls = ops.get_by_class_path(step.class_path)
     if step.config_json:
       kwargs = json_utils.loads(step.config_json)
     else:
