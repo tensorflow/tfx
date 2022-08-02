@@ -15,6 +15,7 @@
 
 import dataclasses
 import os
+import time
 from typing import List
 from unittest import mock
 
@@ -67,7 +68,9 @@ class NodeStateTest(test_utils.TfxTest):
     self.assertEqual(pstate.NodeState.STARTING, node_state.state)
     self.assertIsNone(node_state.status)
 
-  def test_node_state_history(self):
+  @mock.patch.object(pstate, 'time')
+  def test_node_state_history(self, mock_time):
+    mock_time.time.return_value = time.time()
     node_state = pstate.NodeState()
     self.assertEqual([], node_state.state_history)
 
@@ -75,17 +78,24 @@ class NodeStateTest(test_utils.TfxTest):
     node_state.update(pstate.NodeState.STOPPING, status)
     self.assertEqual([
         pstate.StateRecord(
-            state=pstate.NodeState.STARTED, status_code=None, status_msg='')
+            state=pstate.NodeState.STARTED,
+            status_code=None,
+            status_msg='',
+            create_time=mock_time.time.return_value)
     ], node_state.state_history)
 
     node_state.update(pstate.NodeState.STOPPED)
     self.assertEqual([
         pstate.StateRecord(
-            state=pstate.NodeState.STARTED, status_code=None, status_msg=''),
+            state=pstate.NodeState.STARTED,
+            status_code=None,
+            status_msg='',
+            create_time=mock_time.time.return_value),
         pstate.StateRecord(
             state=pstate.NodeState.STOPPING,
             status_code=status_lib.Code.CANCELLED,
-            status_msg='foobar')
+            status_msg='foobar',
+            create_time=mock_time.time.return_value)
     ], node_state.state_history)
 
 
@@ -317,8 +327,9 @@ class PipelineStateTest(test_utils.TfxTest):
           pipeline_state.initiate_update(updated_pipeline,
                                          pipeline_pb2.UpdateOptions())
 
-  def test_initiate_node_start_stop(self):
-
+  @mock.patch.object(pstate, 'time')
+  def test_initiate_node_start_stop(self, mock_time):
+    mock_time.time.return_value = time.time()
     events = []
 
     def recorder(event):
@@ -388,7 +399,8 @@ class PipelineStateTest(test_utils.TfxTest):
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
                           status_code=None,
-                          status_msg='')
+                          status_msg='',
+                          create_time=mock_time.time.return_value)
                   ])),
           event_observer.NodeStateChange(
               execution=None,
@@ -401,7 +413,8 @@ class PipelineStateTest(test_utils.TfxTest):
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
                           status_code=None,
-                          status_msg='')
+                          status_msg='',
+                          create_time=mock_time.time.return_value)
                   ]),
               new_state=pstate.NodeState(
                   state='stopping',
@@ -411,11 +424,13 @@ class PipelineStateTest(test_utils.TfxTest):
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
                           status_code=None,
-                          status_msg=''),
+                          status_msg='',
+                          create_time=mock_time.time.return_value),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
                           status_code=None,
-                          status_msg='')
+                          status_msg='',
+                          create_time=mock_time.time.return_value)
                   ])),
           event_observer.NodeStateChange(
               execution=None,
@@ -430,11 +445,13 @@ class PipelineStateTest(test_utils.TfxTest):
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
                           status_code=None,
-                          status_msg=''),
+                          status_msg='',
+                          create_time=mock_time.time.return_value),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
                           status_code=None,
-                          status_msg='')
+                          status_msg='',
+                          create_time=mock_time.time.return_value)
                   ]),
               new_state=pstate.NodeState(
                   state='started',
@@ -442,15 +459,18 @@ class PipelineStateTest(test_utils.TfxTest):
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
                           status_code=None,
-                          status_msg=''),
+                          status_msg='',
+                          create_time=mock_time.time.return_value),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
                           status_code=None,
-                          status_msg=''),
+                          status_msg='',
+                          create_time=mock_time.time.return_value),
                       pstate.StateRecord(
                           state=pstate.NodeState.STOPPING,
                           status_code=status_lib.Code.ABORTED,
-                          status_msg='foo bar')
+                          status_msg='foo bar',
+                          create_time=mock_time.time.return_value)
                   ])),
       ]
       # Set execution / pipeline_state to None, so we don't compare those fields
@@ -465,7 +485,9 @@ class PipelineStateTest(test_utils.TfxTest):
 
       self.assertListEqual(want, got)
 
-  def test_get_node_states_dict(self):
+  @mock.patch.object(pstate, 'time')
+  def test_get_node_states_dict(self, mock_time):
+    mock_time.time.return_value = time.time()
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
@@ -496,7 +518,8 @@ class PipelineStateTest(test_utils.TfxTest):
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
                                 status_code=None,
-                                status_msg='')
+                                status_msg='',
+                                create_time=mock_time.time.return_value)
                         ]),
                 transform_node_uid:
                     pstate.NodeState(
@@ -505,7 +528,8 @@ class PipelineStateTest(test_utils.TfxTest):
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
                                 status_code=None,
-                                status_msg='')
+                                status_msg='',
+                                create_time=mock_time.time.return_value)
                         ]),
                 trainer_node_uid:
                     pstate.NodeState(
@@ -514,7 +538,8 @@ class PipelineStateTest(test_utils.TfxTest):
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
                                 status_code=None,
-                                status_msg='')
+                                status_msg='',
+                                create_time=mock_time.time.return_value)
                         ]),
                 evaluator_node_uid:
                     pstate.NodeState(state=pstate.NodeState.STARTED),
@@ -704,7 +729,9 @@ class PipelineStateTest(test_utils.TfxTest):
           run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
           run_states_dict['Pusher'])
 
-  def test_pipeline_view_get_node_run_state_history(self):
+  @mock.patch.object(pstate, 'time')
+  def test_pipeline_view_get_node_run_state_history(self, mock_time):
+    mock_time.time.return_value = time.time()
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
@@ -727,13 +754,21 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertEqual(
           {
               'ExampleGen': [
-                  run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
-                  run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING)
+                  (run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
+                   mock_time.time.return_value),
+                  (run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING),
+                   mock_time.time.return_value),
+                  (run_state_pb2.RunState(
+                      state=run_state_pb2.RunState.COMPLETE),
+                   mock_time.time.return_value),
               ]
           }, run_state_history)
 
-  def test_node_state_for_skipped_nodes_in_partial_pipeline_run(self):
+  @mock.patch.object(pstate, 'time')
+  def test_node_state_for_skipped_nodes_in_partial_pipeline_run(
+      self, mock_time):
     """Tests that nodes marked to be skipped have the right node state and previous node state."""
+    mock_time.time.return_value = time.time()
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
@@ -786,7 +821,8 @@ class PipelineStateTest(test_utils.TfxTest):
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
                                 status_code=None,
-                                status_msg='')
+                                status_msg='',
+                                create_time=mock_time.time.return_value)
                         ]),
                 transform_node_uid:
                     pstate.NodeState(
@@ -795,12 +831,15 @@ class PipelineStateTest(test_utils.TfxTest):
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
                                 status_code=None,
-                                status_msg='')
+                                status_msg='',
+                                create_time=mock_time.time.return_value)
                         ]),
             }, pipeline_state.get_previous_node_states_dict())
 
-  def test_get_previous_node_run_states_for_skipped_nodes(self):
+  @mock.patch.object(pstate, 'time')
+  def test_get_previous_node_run_states_for_skipped_nodes(self, mock_time):
     """Tests that nodes marked to be skipped have the right previous run state."""
+    mock_time.time.return_value = time.time()
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
@@ -844,10 +883,18 @@ class PipelineStateTest(test_utils.TfxTest):
 
     self.assertEqual(
         {
-            'ExampleGen':
-                [run_state_pb2.RunState(state=run_state_pb2.RunState.READY)],
-            'Transform':
-                [run_state_pb2.RunState(state=run_state_pb2.RunState.READY)]
+            'ExampleGen': [
+                (run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
+                 mock_time.time.return_value),
+                (run_state_pb2.RunState(state=run_state_pb2.RunState.FAILED),
+                 mock_time.time.return_value),
+            ],
+            'Transform': [
+                (run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
+                 mock_time.time.return_value),
+                (run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING),
+                 mock_time.time.return_value)
+            ]
         }, view_run_1.get_previous_node_run_states_history())
 
 if __name__ == '__main__':

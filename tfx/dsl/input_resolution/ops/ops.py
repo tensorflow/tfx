@@ -24,7 +24,6 @@ from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.dsl.input_resolution.strategies import span_range_strategy
 from tfx.utils import name_utils
-from tfx.utils import typing_utils
 
 _ResolverOpType = Type[resolver_op.ResolverOp]
 _ResolverStrategyType = Type[resolver.ResolverStrategy]
@@ -76,14 +75,8 @@ def testonly_register(cls: _OpTypes) -> _OpTypes:
 
 
 def get_by_class_path(class_path: str) -> _OpTypes:
-  """Get ResolverOp or ResolverStrategy class from class path string."""
-  if class_path in _OPS_BY_CLASSPATH:
-    result = _OPS_BY_CLASSPATH[class_path]
-  else:
-    result = name_utils.resolve_full_name(class_path)
-  if not typing_utils.is_compatible(result, _OpTypes):
-    raise ValueError(f'{class_path} is not compatible with {_OpTypes}.')
-  return result
+  """Get ResolverOp class from class path string."""
+  return _OPS_BY_CLASSPATH[class_path]
 
 
 def get_by_name(name: str) -> _ResolverOpType:
