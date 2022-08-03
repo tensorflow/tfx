@@ -32,5 +32,16 @@ class ExecutorV2Test(executor_test.ExecutorTest):
     return False
 
 
+class ExecutorWithSequenceExampleV2Test(
+    executor_test.ExecutorWithSequenceExampleTest):
+  # Should not rely on inherited _SOURCE_DATA_DIR for integration tests to work
+  # when TFX is installed as a non-editable package.
+  _SOURCE_DATA_DIR = os.path.join(
+      os.path.dirname(os.path.dirname(__file__)), 'testdata')
+
+  def _use_force_tf_compat_v1(self):
+    return False
+
+
 if __name__ == '__main__':
   tf.test.main()

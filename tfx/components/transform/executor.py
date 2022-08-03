@@ -683,12 +683,15 @@ class TransformProcessor:
       A dataset_metadata.DatasetMetadata representing the provided set of
           columns.
     """
-
-    if (self._IsDataFormatSequenceExample(data_format) or
-        self._IsDataFormatProto(data_format)):
+    if self._IsDataFormatProto(data_format):
       return dataset_metadata.DatasetMetadata(_RAW_EXAMPLE_SCHEMA)
+
     schema_proto = self._GetSchema(schema_path)
-    return dataset_metadata.DatasetMetadata(schema_proto)
+    input_dataset_metadata = dataset_metadata.DatasetMetadata(schema_proto)
+    if self._DecodesSequenceExamplesAsRawRecords(data_format,
+                                                 input_dataset_metadata.schema):
+      return dataset_metadata.DatasetMetadata(_RAW_EXAMPLE_SCHEMA)
+    return input_dataset_metadata
 
   @staticmethod
   @beam.ptransform_fn
@@ -779,9 +782,9 @@ class TransformProcessor:
 
     return (stats_result, schema_result, validation_result)
 
-  # TODO(b/130807807): This is still used by pre-transform stats to decode
-  # sequence example as tf.example. Once the support is implemented this can be
-  # removed.
+  # TODO(b/130807807): This is still used by pre-transform stats to decode raw
+  # sequence examples as tf.example. Once only native sequence example path is
+  # supported this can be removed.
   @beam.typehints.with_input_types(List[bytes])
   @beam.typehints.with_output_types(pa.RecordBatch)
   class _ToArrowRecordBatchesFn(beam.DoFn):
@@ -1200,7 +1203,8 @@ class TransformProcessor:
     for d in transform_data_list:
       d.tfxio = d.tfxio.Project(transform_input_columns)
 
-    desired_batch_size = self._GetDesiredBatchSize(raw_examples_data_format)
+    desired_batch_size = self._GetDesiredBatchSize(
+        raw_examples_data_format, input_dataset_metadata.schema)
 
     with make_beam_pipeline_fn() as pipeline:
       with tft_beam.Context(
@@ -1315,12 +1319,14 @@ class TransformProcessor:
           if (not disable_statistics and
               not self._IsDataFormatProto(raw_examples_data_format)):
             # Aggregated feature stats before transformation.
-            if self._IsDataFormatSequenceExample(raw_examples_data_format):
+            if (self._DecodesSequenceExamplesAsRawRecords(
+                raw_examples_data_format, input_dataset_metadata.schema)):
               schema_proto = None
             else:
               schema_proto = input_dataset_metadata.schema
 
-            if self._IsDataFormatSequenceExample(raw_examples_data_format):
+            if (self._DecodesSequenceExamplesAsRawRecords(
+                raw_examples_data_format, input_dataset_metadata.schema)):
 
               def _ExtractRawExampleBatches(record_batch):
                 return record_batch.column(
@@ -1583,17 +1589,19 @@ class TransformProcessor:
     return result
 
   def _ShouldDecodeAsRawExample(self, data_format: int,
-                                data_view_uri: Optional[str]) -> bool:
+                                data_view_uri: Optional[str],
+                                schema: schema_pb2.Schema) -> bool:
     """Returns true if data format should be decoded as raw example.
 
     Args:
       data_format: One of the enums from example_gen_pb2.PayloadFormat.
       data_view_uri: URI to the DataView to be used to parse the data.
+      schema: A schema_pb2.Schema for the input data.
 
     Returns:
       True if data format should be decoded as raw example.
     """
-    return (self._IsDataFormatSequenceExample(data_format) or
+    return (self._DecodesSequenceExamplesAsRawRecords(data_format, schema) or
             (self._IsDataFormatProto(data_format) and data_view_uri is None))
 
   @staticmethod
@@ -1620,18 +1628,40 @@ class TransformProcessor:
     """
     return data_format == example_gen_pb2.FORMAT_PROTO
 
-  def _GetDesiredBatchSize(self, data_format: int) -> Optional[int]:
+  def _GetDesiredBatchSize(self, data_format: int,
+                           schema: schema_pb2.Schema) -> Optional[int]:
     """Returns batch size.
 
     Args:
       data_format: One of the enums from example_gen_pb2.PayloadFormat.
+      schema: A schema for the input data.
 
     Returns:
       Batch size or None.
     """
-    if self._IsDataFormatSequenceExample(data_format):
+    if self._DecodesSequenceExamplesAsRawRecords(data_format, schema):
       return 1
     return None
+
+  def _DecodesSequenceExamplesAsRawRecords(self, data_format: int,
+                                           schema: schema_pb2.Schema) -> bool:
+    """Indicates whether data format is tf.SequenceExample and it should be decoded as raw records.
+
+    Implemented to allow backward compatibility with users exercising hack
+    implementation of SequenceExamples.
+
+    Args:
+      data_format: One of the enums from example_gen_pb2.PayloadFormat.
+      schema: A schema_pb2.Schema for the input data.
+
+    Returns:
+      True if tensor_representation_group absent in Schema for SequenceExample
+      indicating processing SequenceExample as raw records, else False,
+      indicating native execution.
+    """
+
+    return (self._IsDataFormatSequenceExample(data_format) and
+            not bool(schema.tensor_representation_group))
 
   @staticmethod
   def _GetCacheSource():
@@ -1650,7 +1680,7 @@ class TransformProcessor:
                    schema: schema_pb2.Schema) -> tfxio_module.TFXIO:
     """Creates a TFXIO instance for `dataset`."""
     read_as_raw_records = self._ShouldDecodeAsRawExample(
-        dataset.data_format, dataset.data_view_uri)
+        dataset.data_format, dataset.data_view_uri, schema)
     return tfxio_utils.make_tfxio(
         file_pattern=dataset.file_pattern,
         file_format=dataset.file_format,

@@ -17,6 +17,7 @@ import copy
 import json
 import os
 import tempfile
+import unittest
 from unittest import mock
 
 from absl.testing import parameterized
@@ -27,8 +28,10 @@ import tensorflow_transform as tft
 from tensorflow_transform.beam import tft_unit
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
+from tfx.components.testdata.module_file import transform_sequence_module
 from tfx.components.transform import executor
 from tfx.dsl.io import fileio
+from tfx.proto import example_gen_pb2
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -60,8 +63,41 @@ class ExecutorTest(tft_unit.TransformTestCase):
   _TEMP_EXAMPLE_DIR = tempfile.mkdtemp()
   _SOURCE_DATA_DIR = os.path.join(
       os.path.dirname(os.path.dirname(__file__)), 'testdata')
-  _ARTIFACT1_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'csv_example_gen1')
-  _ARTIFACT2_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'csv_example_gen2')
+  _ARTIFACT1_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'example_gen1')
+  _ARTIFACT2_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'example_gen2')
+
+  _INPUT_TYPE = example_gen_pb2.FORMAT_TF_EXAMPLE
+  _SOURCE_EXAMPLE_DIR = 'csv_example_gen'
+  _PAYLOAD_FORMAT = 'FORMAT_TF_EXAMPLE'
+  _SCHEMA_ARTIFACT_DIR = 'schema_gen'
+  _MODULE_FILE = 'module_file/transform_module.py'
+
+  _TEST_COUNTERS = {
+      'num_instances': 24909,
+      'total_columns_count': 18,
+      'analyze_columns_count': 9,
+      'transform_columns_count': 17,
+      'metric_committed_sum': 90
+  }
+
+  _CACHE_TEST_METRICS = {
+      'num_instances_tfx.Transform_1st_run': 24909,
+      'num_instances_tfx.Transform_2nd_run': 15000,
+      'num_instances_tfx.DataValidation_1st_run': 24909,
+      'num_instances_tfx.DataValidation_2nd_run': 24909
+  }
+
+  def _get_preprocessing_fn(self):
+    module = (
+        transform_module if self._INPUT_TYPE
+        == example_gen_pb2.FORMAT_TF_EXAMPLE else transform_sequence_module)
+    return module.preprocessing_fn
+
+  def _get_stats_options_updater_fn(self):
+    module = (
+        transform_module if self._INPUT_TYPE
+        == example_gen_pb2.FORMAT_TF_EXAMPLE else transform_sequence_module)
+    return module.stats_options_updater_fn
 
   # executor_v2_test.py overrides this to False.
   def _use_force_tf_compat_v1(self):
@@ -70,7 +106,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
   @classmethod
   def setUpClass(cls):
     super(ExecutorTest, cls).setUpClass()
-    source_example_dir = os.path.join(cls._SOURCE_DATA_DIR, 'csv_example_gen')
+
+    source_example_dir = os.path.join(cls._SOURCE_DATA_DIR,
+                                      cls._SOURCE_EXAMPLE_DIR)
 
     io_utils.copy_dir(source_example_dir, cls._ARTIFACT1_URI)
     io_utils.copy_dir(source_example_dir, cls._ARTIFACT2_URI)
@@ -96,13 +134,16 @@ class ExecutorTest(tft_unit.TransformTestCase):
     example1 = standard_artifacts.Examples()
     example1.uri = self._ARTIFACT1_URI
     example1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    example1.set_string_custom_property(
+        key='payload_format', value=self._PAYLOAD_FORMAT)
     example2 = copy.deepcopy(example1)
     example2.uri = self._ARTIFACT2_URI
 
     self._example_artifacts = [example1, example2]
 
     schema_artifact = standard_artifacts.Schema()
-    schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
+    schema_artifact.uri = os.path.join(source_data_dir,
+                                       self._SCHEMA_ARTIFACT_DIR)
 
     self._input_dict = {
         standard_component_specs.EXAMPLES_KEY: self._example_artifacts[:1],
@@ -181,12 +222,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._make_base_do_params(self._SOURCE_DATA_DIR, self._output_data_dir)
 
     # Create exec properties skeleton.
-    self._module_file = os.path.join(self._SOURCE_DATA_DIR,
-                                     'module_file/transform_module.py')
+    self._module_file = os.path.join(self._SOURCE_DATA_DIR, self._MODULE_FILE)
     self._preprocessing_fn = name_utils.get_full_name(
-        transform_module.preprocessing_fn)
+        self._get_preprocessing_fn())
     self._stats_options_updater_fn = name_utils.get_full_name(
-        transform_module.stats_options_updater_fn)
+        self._get_stats_options_updater_fn())
     self._exec_properties[standard_component_specs.SPLITS_CONFIG_KEY] = None
     self._exec_properties[
         standard_component_specs.FORCE_TF_COMPAT_V1_KEY] = int(
@@ -414,8 +454,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def test_do_with_preprocessing_fn_custom_config(self):
     self._exec_properties[
-        standard_component_specs.PREPROCESSING_FN_KEY] = (
-            name_utils.get_full_name(transform_module.preprocessing_fn))
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
     self._exec_properties[
         standard_component_specs.CUSTOM_CONFIG_KEY] = json.dumps({
             'VOCAB_SIZE': 1000,
@@ -427,8 +466,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def test_do_with_preprocessing_fn_and_none_custom_config(self):
     self._exec_properties[
-        standard_component_specs.PREPROCESSING_FN_KEY] = (
-            name_utils.get_full_name(transform_module.preprocessing_fn))
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
     self._exec_properties['custom_config'] = json.dumps(None)
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
@@ -530,8 +568,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # )
     # Since the analysis dataset (train) is read twice (once for analysis and
     # once for transform), the expected value of the num_instances counter is:
-    # 9909 * 2 + 5091 = 24909.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
+    # 9909 * 2 + 5091 = 24909. (SE - 10500 * 2 + 4500 = 25500)
+    self.assertMetricsCounterEqual(metrics, 'num_instances',
+                                   self._TEST_COUNTERS['num_instances'],
                                    ['tfx.Transform'])
 
     # Since disable_statistics is True, TFDV should see 0 instances.
@@ -543,16 +582,20 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self.assertMetricsCounterEqual(metrics, 'saved_models_created', 2)
 
     # This should be the size of the preprocessing_fn's inputs dictionary which
-    # is 18 according to the schema.
-    self.assertMetricsCounterEqual(metrics, 'total_columns_count', 18)
+    # is 18 (SE - 3) according to the schema.
+    self.assertMetricsCounterEqual(metrics, 'total_columns_count',
+                                   self._TEST_COUNTERS['total_columns_count'])
 
-    # There are 9 features that are passed into tft analyzers in the
+    # There are 9 (SE - 2) features that are passed into tft analyzers in the
     # preprocessing_fn.
-    self.assertMetricsCounterEqual(metrics, 'analyze_columns_count', 9)
+    self.assertMetricsCounterEqual(metrics, 'analyze_columns_count',
+                                   self._TEST_COUNTERS['analyze_columns_count'])
 
     # In addition, 7 features go through a pure TF map, not including the label,
     # so we expect 9 + 7 + 1 = 17 transform columns.
-    self.assertMetricsCounterEqual(metrics, 'transform_columns_count', 17)
+    self.assertMetricsCounterEqual(
+        metrics, 'transform_columns_count',
+        self._TEST_COUNTERS['transform_columns_count'])
 
     # There should be 1 path used for analysis since that's what input_dict
     # specifies.
@@ -572,7 +615,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
     metric = metrics.query(beam.metrics.MetricsFilter().with_name(
         'estimated_stage_count_with_cache'))['distributions']
     self.assertLen(metric, 1)
-    self.assertEqual(metric[0].committed.sum, 90)
+    self.assertEqual(metric[0].committed.sum,
+                     self._TEST_COUNTERS['metric_committed_sum'])
 
   @parameterized.named_parameters([('no_1st_input_cache', False),
                                    ('empty_1st_input_cache', True)])
@@ -588,12 +632,18 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # in the eval dataset. Since the analysis dataset (train) is read twice when
     # no input cache is present (once for analysis and once for transform), the
     # expected value of the num_instances counter is: 9909 * 2 + 5091 = 24909.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
-                                   ['tfx.Transform'])
+    # (SE - 10500 * 2 + 4500 = 25500)
+    self.assertMetricsCounterEqual(
+        metrics, 'num_instances',
+        self._CACHE_TEST_METRICS['num_instances_tfx.Transform_1st_run'],
+        ['tfx.Transform'])
 
-    # Additionally we have 24909 instances due to generating statistics.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
-                                   ['tfx.DataValidation'])
+    # Additionally we have 24909 (SE - 25500) instances due to generating
+    # statistics.
+    self.assertMetricsCounterEqual(
+        metrics, 'num_instances',
+        self._CACHE_TEST_METRICS['num_instances_tfx.DataValidation_1st_run'],
+        ['tfx.DataValidation'])
     self._verify_transform_outputs(store_cache=True)
 
     # Second run from cache.
@@ -614,15 +664,21 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Since input cache should now cover all analysis (train) paths, the train
     # and eval sets are each read exactly once for transform. Thus, the
     # expected value of the num_instances counter is: 9909 + 5091 = 15000.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 15000,
-                                   ['tfx.Transform'])
+    # (SE - 10500 + 4500 = 15000)
+    self.assertMetricsCounterEqual(
+        metrics, 'num_instances',
+        self._CACHE_TEST_METRICS['num_instances_tfx.Transform_2nd_run'],
+        ['tfx.Transform'])
 
-    # Additionally we have 24909 instances due to generating statistics.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
-                                   ['tfx.DataValidation'])
+    # Additionally we have 24909 (SE - 25500) instances due to generating
+    # statistics.
+    self.assertMetricsCounterEqual(
+        metrics, 'num_instances',
+        self._CACHE_TEST_METRICS['num_instances_tfx.DataValidation_2nd_run'],
+        ['tfx.DataValidation'])
     self._verify_transform_outputs(store_cache=True)
 
-  @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 21)
+  @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 10)
   def test_do_with_cache_disabled_too_many_stages(self):
     self._exec_properties[
         standard_component_specs.MODULE_FILE_KEY] = self._module_file
@@ -631,6 +687,31 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._verify_transform_outputs(store_cache=False)
     self.assertFalse(fileio.exists(self._updated_analyzer_cache_artifact.uri))
 
+
+@unittest.skipIf(tf.__version__ < '2',
+                 'Native SequenceExample support not available with TF1')
+class ExecutorWithSequenceExampleTest(ExecutorTest):
+
+  _INPUT_TYPE = example_gen_pb2.FORMAT_TF_SEQUENCE_EXAMPLE
+  _SOURCE_EXAMPLE_DIR = 'tfrecord_sequence'
+  _PAYLOAD_FORMAT = 'FORMAT_TF_SEQUENCE_EXAMPLE'
+  _SCHEMA_ARTIFACT_DIR = 'schema_gen_sequence'
+  _MODULE_FILE = 'module_file/transform_sequence_module.py'
+
+  _TEST_COUNTERS = {
+      'num_instances': 25500,
+      'total_columns_count': 3,
+      'analyze_columns_count': 2,
+      'transform_columns_count': 2,
+      'metric_committed_sum': 20
+  }
+
+  _CACHE_TEST_METRICS = {
+      'num_instances_tfx.Transform_1st_run': 25500,
+      'num_instances_tfx.Transform_2nd_run': 15000,
+      'num_instances_tfx.DataValidation_1st_run': 25500,
+      'num_instances_tfx.DataValidation_2nd_run': 25500
+  }
 
 if __name__ == '__main__':
   tf.test.main()

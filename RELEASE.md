@@ -3,6 +3,7 @@
 ## Major Features and Improvements
 
 *   Saved tuner results in pandas `records` formatted JSON.
+*   TFX Transform now supports `tf.SequenceExample` natively. The native path can be activated by providing `TensorRepresentation`s in the Schema.
 
 ## Breaking Changes
 
