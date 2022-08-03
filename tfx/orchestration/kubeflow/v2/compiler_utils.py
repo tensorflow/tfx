@@ -165,6 +165,24 @@ def build_input_artifact_spec(
   return result
 
 
+def build_output_parameter_spec(
+    output_type: Any) -> pipeline_pb2.ComponentOutputsSpec.ParameterSpec:
+  """Builds parameter type spec for an output channel."""
+  parameter_types = {
+      'Integer': pipeline_pb2.ParameterType.NUMBER_INTEGER,
+      'Double': pipeline_pb2.ParameterType.NUMBER_DOUBLE,
+      'String': pipeline_pb2.ParameterType.STRING,
+      'Boolean': pipeline_pb2.ParameterType.BOOLEAN,
+  }
+  result = pipeline_pb2.ComponentOutputsSpec.ParameterSpec()
+  if output_type not in parameter_types:
+    raise ValueError(
+        '{} is an unsupported component output type. Currently, we support Integer, Double, String, and Boolean types only.'
+        .format(output_type))
+  result.parameter_type = parameter_types[output_type]
+  return result
+
+
 def build_output_artifact_spec(
     channel_spec: channel.Channel
 ) -> pipeline_pb2.ComponentOutputsSpec.ArtifactSpec:

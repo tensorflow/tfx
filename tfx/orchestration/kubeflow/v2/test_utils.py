@@ -13,6 +13,7 @@
 # limitations under the License.
 """Test utilities for kubeflow v2 runner."""
 
+import datetime
 import os
 from typing import List
 
@@ -30,11 +31,13 @@ from tfx.dsl.experimental.conditionals import conditional
 from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types.experimental import simple_artifacts
+from tfx.utils import proto_utils
 
 from google.protobuf import message
 
-
 _TEST_TWO_STEP_PIPELINE_NAME = 'two-step-pipeline'
+
+_TEST_TWO_STEP_PIPELINE_WITH_DYNAMIC_EXEC_PROPERTIES_NAME = 'two-step-pipeline-with-dynamic-exec-properties'
 
 _TEST_FULL_PIPELINE_NAME = 'full-taxi-pipeline'
 
@@ -72,8 +75,50 @@ def two_step_pipeline() -> tfx.dsl.Pipeline:
       ])
 
 
-def simple_pipeline_components(csv_input_location: str = ''
-                               ) -> List[base_node.BaseNode]:
+@tfx.dsl.components.component
+def range_config_generator(input_date: tfx.dsl.components.Parameter[str],
+                           range_config: tfx.dsl.components.OutputArtifact[
+                               tfx.types.standard_artifacts.String]):
+  """Implements the custom compo`Rannent to convert date into span number.
+
+  Args:
+    input_date: input date to generate range_config.
+    range_config: range_config to ExampleGen.
+  """
+  start_time = datetime.datetime(2022, 1,
+                                 1)  # start time calculate span number from.
+  datem = datetime.datetime.strptime(input_date, '%Y%m%d')
+  span_number = (datetime.datetime(datem.year, datem.month, datem.day) -
+                 start_time).days
+  range_config_str = proto_utils.proto_to_json(
+      tfx.proto.RangeConfig(
+          static_range=tfx.proto.StaticRange(
+              start_span_number=span_number, end_span_number=span_number)))
+  range_config.value = range_config_str
+
+
+def two_step_pipeline_with_dynamic_exec_properties():
+  """Returns a simple 2-step pipeline under test with the second component's execution property depending dynamically on the first one's output."""
+
+  input_config_generator = range_config_generator(  # pylint: disable=no-value-for-parameter
+      input_date='07-13-22')
+  example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(
+      query='SELECT * FROM TABLE',
+      range_config=input_config_generator.outputs['range_config'].future()
+      [0].value).with_beam_pipeline_args([
+          '--runner=DataflowRunner',
+      ])
+  return tfx.dsl.Pipeline(
+      pipeline_name=_TEST_TWO_STEP_PIPELINE_WITH_DYNAMIC_EXEC_PROPERTIES_NAME,
+      pipeline_root=_TEST_PIPELINE_ROOT,
+      components=[input_config_generator, example_gen],
+      beam_pipeline_args=[
+          '--project=my-gcp-project',
+      ])
+
+
+def simple_pipeline_components(
+    csv_input_location: str = '') -> List[base_node.BaseNode]:
   """Creates very basic components for test a pipeline execution.
 
   Args:
@@ -120,7 +165,6 @@ def create_pipeline_components(
         query=bigquery_query)
   else:
     example_gen = tfx.components.CsvExampleGen(input_base=csv_input_location)
-
   statistics_gen = tfx.components.StatisticsGen(
       examples=example_gen.outputs['examples'])
   schema_gen = tfx.components.SchemaGen(
@@ -321,7 +365,6 @@ dummy_transformer_component = tfx.dsl.experimental.create_container_component(
         placeholders.InputValuePlaceholder('param1'),
     ],
 )
-
 
 dummy_exit_handler = tfx.dsl.experimental.create_container_component(
     name='ExitHandlerComponent',
