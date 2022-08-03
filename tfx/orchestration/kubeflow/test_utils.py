@@ -34,7 +34,7 @@ from tfx.components import Pusher
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
-from tfx.components import Transform
+from tfx.components.transform.component import Transform
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.dsl.components.common import resolver
@@ -43,7 +43,7 @@ from tfx.dsl.io import fileio
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
-from tfx.orchestration.kubeflow import kubeflow_dag_runner
+import tfx.orchestration.kubeflow.kubeflow_dag_runner
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
@@ -58,7 +58,6 @@ from tfx.utils import io_utils
 from tfx.utils import kube_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
-
 
 # TODO(jiyongjung): Merge with kube_utils.PodStatus
 # Various execution status of a KFP pipeline.
@@ -207,9 +206,7 @@ class HelloWorldComponent(BaseComponent):
       image='gcr.io/google.com/cloudsdktool/cloud-sdk:latest',
       command=['sh', '-c'],
       args=[
-          'echo "hello ' +
-          ph.exec_property('word') +
-          '" | gsutil cp - ' +
+          'echo "hello ' + ph.exec_property('word') + '" | gsutil cp - ' +
           ph.output('greeting')[0].uri
       ])
 
@@ -526,7 +523,8 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
   def _pipeline_root(self, pipeline_name: str):
     return os.path.join(self._test_output_dir, pipeline_name)
 
-  def _create_pipeline(self, pipeline_name: str,
+  def _create_pipeline(self,
+                       pipeline_name: str,
                        components: List[BaseComponent],
                        beam_pipeline_args: Optional[List[str]] = None):
     """Creates a pipeline given name and list of components."""

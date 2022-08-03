@@ -20,7 +20,7 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_pipeline_kubeflow
 from tfx.utils import test_case_utils
-from tfx.v1 import orchestration
+from tfx.v1.orchestration.experimental import KubeflowDagRunner
 
 
 class PenguinPipelineKubeflowTest(test_case_utils.TfxTest):
@@ -55,7 +55,7 @@ class PenguinPipelineKubeflowTest(test_case_utils.TfxTest):
         serving_model_dir=penguin_pipeline_kubeflow._serving_model_dir)
     self.assertEqual(9, len(kubeflow_pipeline.components))
 
-    orchestration.experimental.KubeflowDagRunner().run(kubeflow_pipeline)
+    KubeflowDagRunner().run(kubeflow_pipeline)
     file_path = os.path.join(self.tmp_dir, 'penguin_kubeflow.tar.gz')
     self.assertTrue(fileio.exists(file_path))
 

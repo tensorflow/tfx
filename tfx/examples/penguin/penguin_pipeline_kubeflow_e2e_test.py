@@ -22,7 +22,6 @@ from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.utils import io_utils
 
-
 class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):
