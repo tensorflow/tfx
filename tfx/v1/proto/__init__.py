@@ -236,7 +236,6 @@ del tuner_pb2
 TuneArgs.__doc__ = """
 Args specific to tuning in `components.Tuner`.
 """
-
 ExampleDiffConfig = example_diff_pb2.ExampleDiffConfig
 
 ExampleDiffConfig.__doc__ = """
