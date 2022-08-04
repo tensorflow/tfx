@@ -18,6 +18,7 @@ import abc
 from typing import Any, Generic, Mapping, Type, TypeVar, Union, Sequence, Optional
 
 import attr
+from tfx import types
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
 from tfx.utils import typing_utils
@@ -46,6 +47,13 @@ _ValidDataType = typing_extensions.Literal[
     DataType.ARTIFACT_LIST,
     DataType.ARTIFACT_MULTIMAP,
     DataType.ARTIFACT_MULTIMAP_LIST,
+]
+# Actual data corresponding to ARTIFACT_LIST, ARTIFACT_MULTIMAP, and
+# ARTIFACT_MULTIMAP_LIST.
+_Data = Union[
+    Sequence[types.Artifact],
+    typing_utils.ArtifactMultiMap,
+    Sequence[typing_utils.ArtifactMultiMap],
 ]
 
 
@@ -259,13 +267,7 @@ class ResolverOp(metaclass=_ResolverOpMeta):
     """Dummy constructor to bypass false negative pytype alarm."""
 
   @abc.abstractmethod
-  def apply(
-      self,
-      input_dict: typing_utils.ArtifactMultiMap,
-  ) -> Union[
-      typing_utils.ArtifactMultiMap,
-      Sequence[typing_utils.ArtifactMultiMap]
-  ]:
+  def apply(self, *args: _Data) -> _Data:
     """Implementation of the operator."""
 
   def set_context(self, context: Context):
