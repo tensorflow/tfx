@@ -139,12 +139,12 @@ class BaseDriver:
             # Note: when not initialized, artifact.uri is '' and artifact.id is
             # 0.
             if not artifact.uri or not artifact.id:
-              raise ValueError((
-                  'Unresolved input channel {repr(artifact)} for input {repr(name)} was passed in '
-                  'interactive mode. When running in interactive mode, upstream '
-                  'components must first be run with '
-                  '`interactive_context.run(component)` before their outputs can '
-                  'be used in downstream components.'))
+              raise ValueError(
+                f'Unresolved input channel {repr(artifact)} for input '
+                f'{repr(name)} was passed in interactive mode. When running '
+                'in interactive mode, upstream components must first be run '
+                'with `interactive_context.run(component)` before their '
+                'outputs can be used in downstream components.')
             artifacts_by_id.update({a.id: a for a in artifacts})
         else:
           artifacts = self._metadata_handler.search_artifacts(
