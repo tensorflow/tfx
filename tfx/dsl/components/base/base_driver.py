@@ -22,7 +22,7 @@ from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.types import channel_utils
+from tfx.types import artifact_utils, channel_utils
 
 
 def _generate_output_uri(base_output_dir: str,
@@ -85,12 +85,7 @@ class BaseDriver:
     Raises:
       RuntimeError: if any input as an empty or non-existing uri.
     """
-    for single_artifacts_list in artifacts_dict.values():
-      for artifact in single_artifacts_list:
-        if not artifact.uri:
-          raise RuntimeError(f'Artifact {artifact} does not have uri')
-        if not fileio.exists(artifact.uri):
-          raise RuntimeError(f'Artifact uri {artifact.uri} is missing')
+    artifact_utils.verify_artifacts(artifacts_dict)
 
   def _log_properties(self, input_dict: Dict[str, List[types.Artifact]],
                       output_dict: Dict[str, List[types.Artifact]],
@@ -297,10 +292,10 @@ class BaseDriver:
       # components
       if output_artifacts is not None:
         try:
-          self.verify_input_artifacts(artifacts_dict=output_artifacts)
+          artifact_utils.verify_artifacts(output_artifacts)
           use_cached_results = True
         except RuntimeError:
-          use_cached_results = False
+          absl.logging.debug('Cached results found but could not be verified to still exist')
 
     if use_cached_results:
       # If cache should be used, updates execution to reflect that. Note that
