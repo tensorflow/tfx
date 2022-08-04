@@ -295,7 +295,8 @@ class BaseDriver:
           artifact_utils.verify_artifacts(output_artifacts)
           use_cached_results = True
         except RuntimeError:
-          absl.logging.debug('Cached results found but could not be verified to still exist')
+          absl.logging.debug(
+            'Cached results found but could not be verified to still exist')
 
     if use_cached_results:
       # If cache should be used, updates execution to reflect that. Note that

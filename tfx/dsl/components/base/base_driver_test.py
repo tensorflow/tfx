@@ -211,7 +211,9 @@ class BaseDriverTest(tf.test.TestCase):
   @mock.patch(
     'tfx.dsl.components.base.base_driver.BaseDriver.verify_input_artifacts')
   @mock.patch.object(types.ValueArtifact, 'read', fake_read)
-  def testPreExecutionCachedMissing(self, mock_verify_input_artifacts_fn, mock_artifact_utils_verify_artifacts_fn):
+  def testPreExecutionCachedMissing(
+    self, _, mock_artifact_utils_verify_artifacts_fn
+  ):
     """With cache enabled, if cached output artifacts are found but are missing, execution decision is to not use cache"""
 
     # mock such that the output artifacts as pulled from cache are not present
