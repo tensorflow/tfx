@@ -124,7 +124,7 @@ class _Generator:
     for layer_nodes in layers:
       for node in layer_nodes:
         node_id = node.node_info.id
-        node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+        node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
         node_state = self._node_states_dict[node_uid]
         if node_state.is_success():
           successful_node_ids.add(node_id)
@@ -207,7 +207,7 @@ class _Generator:
   def _generate_tasks_for_node(
       self, node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates list of tasks for the given node."""
-    node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
     node_id = node.node_info.id
     result = []
 
@@ -248,7 +248,7 @@ class _Generator:
     # not be considered for generation again but we ensure node services
     # in case of a mixed service node.
     if self._is_task_id_tracked_fn(
-        task_lib.exec_node_task_id_from_node(self._pipeline, node)):
+        task_lib.exec_node_task_id_from_pipeline_node(self._pipeline, node)):
       service_status = self._ensure_node_services_if_mixed(node_id)
       if service_status == service_jobs.ServiceStatus.FAILED:
         error_msg = f'associated service job failed; node uid: {node_uid}'
@@ -325,7 +325,7 @@ class _Generator:
   ) -> List[task_lib.Task]:
     """Generates tasks for a node by freshly resolving inputs."""
     result = []
-    node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
     resolved_info = task_gen_utils.generate_resolved_info(
         self._mlmd_handle, node)
     if resolved_info is None:
@@ -458,7 +458,7 @@ class _Generator:
 def _skipped_node_ids(pipeline: pipeline_pb2.Pipeline) -> Set[str]:
   """Returns the set of nodes that are marked as skipped in partial run."""
   skipped_node_ids = set()
-  for node in pstate.get_all_nodes(pipeline):
+  for node in pstate.get_all_pipeline_nodes(pipeline):
     if node.execution_options.HasField('skip'):
       skipped_node_ids.add(node.node_info.id)
   return skipped_node_ids

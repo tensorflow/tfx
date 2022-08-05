@@ -57,119 +57,6 @@ _PRIMITIVE_TO_ARTIFACT = {
 # to extract the value of `T` from its optional typehint, since the internal
 # fields of the typehint vary depending on the Python version.
 _OPTIONAL_PRIMITIVE_MAP = dict((Optional[t], t) for t in _PRIMITIVE_TO_ARTIFACT)
-_JSON_COMPATIBLE_PRIMITIVES = frozenset(
-    [int, float, str, bool, type(None), Any])
-
-
-def is_json_compatible(
-    typehint: Type,  # pylint: disable=g-bare-generic
-) -> bool:
-  """Check if a type hint represents a JSON-compatible type.
-
-  Currently, 'JSON-compatible' can be the following two cases:
-    1. A type conforms with T, where T is defined
-    as `X = Union['T', int, float, str, bool, NoneType]`,
-    `T = Union[List['X'], Dict[str, 'X']]`, It can be Optional. ForwardRef is
-    not allowed.
-    2. Use `Any` to indicate any type conforms with case 1. Note Any is only
-    allowed with Dict or List. A standalone `Any` is invalid.
-
-  Args:
-    typehint: The typehint to check.
-  Returns:
-    True if typehint is a JSON-compatible type.
-  """
-  def check(typehint: Any, not_primitive: bool = True) -> bool:
-    origin = getattr(typehint, '__origin__', typehint)
-    args = getattr(typehint, '__args__', None)
-    if origin is dict or origin is list or origin is Union:
-
-    # Starting from Python 3.9 Dict won't have default args (~KT, ~VT)
-    # and List won't have default args (~T).
-      if not args:
-        return False
-      elif origin is dict and args[0] is not str:
-        return False
-      elif origin is dict and args[0] is str:
-        return check(typehint=args[1], not_primitive=False)
-      # Handle top level optional.
-      elif origin is Union and not_primitive:
-        return all([
-            arg is type(None) or
-            check(typehint=arg, not_primitive=True) for arg in args
-        ])
-      else:
-        return all([check(typehint=arg, not_primitive=False) for arg in args])
-    else:
-      return not not_primitive and origin in _JSON_COMPATIBLE_PRIMITIVES
-  return check(typehint, not_primitive=True)
-
-
-def check_strict_json_compat(
-    in_type: Any, expect_type: Type) -> bool:  # pylint: disable=g-bare-generic
-  """Check if in_type conforms with expect_type.
-
-  Args:
-    in_type: Input type hint. It can be any JSON-compatible type. It can also be
-    an instance.
-    expect_type: Expected type hint. It can be any JSON-compatible type.
-
-  Returns:
-    True if in_type is valid w.r.t. expect_type.
-  """
-  check_instance = False
-  if getattr(in_type, '__module__', None) not in {'typing', 'builtins'}:
-    check_instance = True
-
-  def _check(in_type: Any, expect_type: Type) -> bool:  # pylint: disable=g-bare-generic
-    """Check if in_type conforms with expect_type."""
-    if in_type is Any:
-      return expect_type is Any
-    elif expect_type is Any:
-      return True
-
-    in_obj = None
-    if check_instance:
-      in_obj, in_type = in_type, type(in_type)
-
-    in_args = getattr(in_type, '__args__', ())
-    in_origin = getattr(in_type, '__origin__', in_type)
-    expect_args = getattr(expect_type, '__args__', ())
-    expect_origin = getattr(expect_type, '__origin__', expect_type)
-
-    if in_origin is Union:
-      return all(_check(arg, expect_type) for arg in in_args)
-    if expect_origin is Union:
-      if check_instance:
-        return any(_check(in_obj, arg) for arg in expect_args)
-      else:
-        return any(_check(in_type, arg) for arg in expect_args)
-
-    if in_origin != expect_origin:
-      return False
-    elif in_origin in (
-        dict, list
-    ) and expect_args and expect_args[0].__class__.__name__ == 'TypeVar':
-      return True
-    elif check_instance:
-      if isinstance(in_obj, list):
-        return not expect_args or all(
-            [_check(o, expect_args[0]) for o in in_obj])
-      elif isinstance(in_obj, dict):
-        return not expect_args or (
-            all(_check(k, expect_args[0]) for k in in_obj.keys()) and
-            all(_check(v, expect_args[1]) for v in in_obj.values()))
-      else:
-        return True
-    # For List -> List[X] and Dict -> Dict[X, Y].
-    elif len(in_args) < len(expect_args):
-      return False
-    # For Python 3.7, where Dict and List have args KT, KV, T. Return True
-    # whenever the expect type is Dict or List.
-    else:
-      return all(_check(*arg) for arg in zip(in_args, expect_args))
-
-  return _check(in_type, expect_type)
 
 
 def _validate_signature(
@@ -224,9 +111,7 @@ def _parse_signature(
     Dict[str, Type[Union[int, float, str, bytes, _BeamPipeline]]],
     Dict[str, Any],
     Dict[str, ArgFormats],
-    Dict[str, bool],
-    Dict[str, Any],
-    Dict[str, Any]]:
+    Dict[str, bool]]:
   """Parses signature of a typehint-annotated component executor function.
 
   Args:
@@ -252,10 +137,6 @@ def _parse_signature(
     returned_outputs: A dictionary mapping output names that are declared as
       ValueArtifact returned outputs to whether the output was declared
       Optional (and thus has a nullable return value).
-    json_typehints: A dictionary mapping input names that is declared as
-      a json compatible type to the annotation.
-    return_json_typehints: A dictionary mapping output names that is declared as
-      a json compatible type to the annotation.
   """
   # Extract optional arguments as dict from name to its declared optional value.
   arg_defaults = {}
@@ -269,8 +150,6 @@ def _parse_signature(
   parameters = {}
   arg_formats = {}
   returned_outputs = {}
-  json_typehints = {}
-  return_json_typehints = {}
   for arg in argspec.args:
     arg_typehint = typehints[arg]
     # If the typehint is `Optional[T]` for a primitive type `T`, unwrap it.
@@ -318,10 +197,6 @@ def _parse_signature(
                'instead)') % (arg, func, arg_typehint, arg_defaults[arg]))
       arg_formats[arg] = ArgFormats.ARTIFACT_VALUE
       inputs[arg] = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
-    elif is_json_compatible(arg_typehint):
-      json_typehints[arg] = arg_typehint
-      arg_formats[arg] = ArgFormats.ARTIFACT_VALUE
-      inputs[arg] = standard_artifacts.JsonValue
     elif (inspect.isclass(arg_typehint) and
           issubclass(arg_typehint, artifact.Artifact)):
       raise ValueError((
@@ -344,20 +219,13 @@ def _parse_signature(
       elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
         outputs[arg] = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
         returned_outputs[arg] = False
-      elif is_json_compatible(arg_typehint):
-        outputs[arg] = standard_artifacts.JsonValue
-        return_json_typehints[arg] = arg_typehint
-        # check if Optional
-        origin = getattr(arg_typehint, '__origin__', None)
-        args = getattr(arg_typehint, '__args__', None)
-        returned_outputs[arg] = origin is Union and type(None) in args
       else:
         raise ValueError(
             ('Unknown type hint annotation %r for returned output %r on '
              'function %r') % (arg_typehint, arg, func))
 
   return (inputs, outputs, parameters, arg_formats, arg_defaults,
-          returned_outputs, json_typehints, return_json_typehints)
+          returned_outputs)
 
 
 def parse_typehint_component_function(
@@ -368,9 +236,7 @@ def parse_typehint_component_function(
     Dict[str, Type[Union[int, float, str, bytes]]],
     Dict[str, Any],
     Dict[str, ArgFormats],
-    Dict[str, bool],
-    Dict[str, Any],
-    Dict[str, Any]]:
+    Dict[str, bool]]:
   """Parses the given component executor function.
 
   This method parses a typehinted-annotated Python function that is intended to
@@ -398,10 +264,6 @@ def parse_typehint_component_function(
     returned_outputs: A dictionary mapping output names that are declared as
       ValueArtifact returned outputs to whether the output was declared
       Optional (and thus has a nullable return value).
-    json_typehints: A dictionary mapping input names that are declared as json
-      compatible types to the annotation.
-    return_json_typehints: A dictionary mapping output names that are declared
-      as json compatible types to the annotation.
   """
   # Check input argument type.
   if not isinstance(func, types.FunctionType):
@@ -416,9 +278,8 @@ def parse_typehint_component_function(
   _validate_signature(func, argspec, typehints, subject_message)
 
   # Parse the function and return its details.
-  (inputs, outputs, parameters, arg_formats, arg_defaults, returned_outputs,
-   json_typehints, return_json_typehints) = (
-       _parse_signature(func, argspec, typehints))
+  inputs, outputs, parameters, arg_formats, arg_defaults, returned_outputs = (
+      _parse_signature(func, argspec, typehints))
 
   return (inputs, outputs, parameters, arg_formats, arg_defaults,
-          returned_outputs, json_typehints, return_json_typehints)
+          returned_outputs)

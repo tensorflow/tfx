@@ -91,6 +91,7 @@ def _run_driver(
 
 
 def main(_):
+
   flags.mark_flag_as_required(EXECUTION_INVOCATION_FLAG.name)
   flags.mark_flags_as_mutual_exclusive(
       (EXECUTABLE_SPEC_FLAG.name, BEAM_EXECUTABLE_SPEC_FLAG.name),

@@ -216,7 +216,7 @@ class TaskSchedulerRegistry:
       cls: Type[T], task: task_lib.ExecNodeTask
   ) -> Union[Type[TaskScheduler], TaskSchedulerBuilder]:
     """Returns a scheduler class or a builder function for node type or raises error if none registered."""
-    node_type = task.get_node().node_info.type.name
+    node_type = task.get_pipeline_node().node_info.type.name
     scheduler_cls_or_builder = cls._task_scheduler_registry.get(node_type)
     if scheduler_cls_or_builder is None:
       raise ValueError(
