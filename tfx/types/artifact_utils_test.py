@@ -182,7 +182,7 @@ class ArtifactUtilsTest(tf.test.TestCase):
   @mock.patch("tfx.types.artifact_utils.fileio", autospec=True)
   def testVerifyArtifacts(self, mock_fileio):
     """Test that artifacts (in various input formats) are verified to exist"""
-    artifact_instance= standard_artifacts.Examples()
+    artifact_instance = standard_artifacts.Examples()
     uri = '/tmp/artifact'
     artifact_instance.uri = uri
     mock_fileio.exists.side_effect = lambda path: path == uri
@@ -194,6 +194,22 @@ class ArtifactUtilsTest(tf.test.TestCase):
     for artifacts, artifacts_format in inputs:
       with self.subTest(artifacts_format):
         artifact_utils.verify_artifacts(artifacts)
+
+  @mock.patch("tfx.types.artifact_utils.fileio", autospec=True)
+  def testVerifyArtifactsFailsNoUri(self, _):
+    """When an artifact has no uri, verify_artifacts fails"""
+    artifact_instance = standard_artifacts.Examples()
+    with self.assertRaises(RuntimeError):
+      artifact_utils.verify_artifacts(artifact_instance)
+
+  @mock.patch("tfx.types.artifact_utils.fileio", autospec=True)
+  def testVerifyArtifactsFailsMissingFile(self, mock_fileio):
+    """When an artifact's uri points to a non-existent file, verify_artifacts fails"""
+    artifact_instance = standard_artifacts.Examples()
+    artifact_instance.uri = '/tmp/artifact'
+    mock_fileio.exists.side_effect = lambda path: False
+    with self.assertRaises(RuntimeError):
+      artifact_utils.verify_artifacts(artifact_instance)
 
 if __name__ == '__main__':
   tf.test.main()
