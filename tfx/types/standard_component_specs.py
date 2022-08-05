@@ -48,6 +48,7 @@ EVAL_ARGS_KEY = 'eval_args'
 MODULE_FILE_KEY = 'module_file'
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
+FILTER_FUNCTIONS_KEY = 'filter_functions'
 # Key for example_validator
 ANOMALIES_KEY = 'anomalies'
 # Key for evaluator
@@ -194,7 +195,21 @@ class ExampleValidatorSpec(ComponentSpec):
       ANOMALIES_KEY: ChannelParameter(type=standard_artifacts.ExampleAnomalies),
   }
 
+class ExampleFilterSpec(ComponentSpec):
+  """ExampleValidator component spec."""
 
+  PARAMETERS = {
+      EXCLUDE_SPLITS_KEY: ExecutionParameter(type=str, optional=True),
+  }
+  INPUTS = {
+      STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
+      SCHEMA_KEY:
+          ChannelParameter(type=standard_artifacts.Schema),
+  }
+  OUTPUTS = {
+      ANOMALIES_KEY: ChannelParameter(type=standard_artifacts.ExampleAnomalies),
+  }
 class FileBasedExampleGenSpec(ComponentSpec):
   """File-based ExampleGen component spec."""
 
