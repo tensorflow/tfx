@@ -11,5 +11,5 @@ the Beam orchestrator can be used for local debugging without incurring the
 extra Airflow or Kubeflow dependencies, which simplifies system configuration.
 
 See the
-[TFX example on Beam](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_beam.py)
+[TFX example on Beam](https://blog.tensorflow.org/2020/03/tensorflow-extended-tfx-using-apache-beam-large-scale-data-processing.html)
 for details.
