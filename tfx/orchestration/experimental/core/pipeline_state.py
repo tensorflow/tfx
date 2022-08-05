@@ -85,7 +85,6 @@ class StateRecord(json_utils.Jsonable):
   state: str
   status_code: Optional[int]
   status_msg: str
-  update_time: float
 
 
 # TODO(b/228198652): Stop using json_util.Jsonable. Before we do,
@@ -123,7 +122,6 @@ class NodeState(json_utils.Jsonable):
       on_setattr=attr.setters.validate)
   status_code: Optional[int] = None
   status_msg: str = ''
-  last_updated_time: float = attr.ib(factory=lambda: time.time())  # pylint:disable=unnecessary-lambda
 
   state_history: List[StateRecord] = attr.ib(default=attr.Factory(list))
 
@@ -141,15 +139,13 @@ class NodeState(json_utils.Jsonable):
           StateRecord(
               state=self.state,
               status_code=self.status_code,
-              status_msg=self.status_msg,
-              update_time=self.last_updated_time))
+              status_msg=self.status_msg))
       if len(self.state_history) > _MAX_STATE_HISTORY_LEN:
         self.state_history = self.state_history[-_MAX_STATE_HISTORY_LEN:]
 
     self.state = state
     self.status_code = status.code if status is not None else None
     self.status_msg = status.message if status is not None else ''
-    self.last_updated_time = time.time()
 
   def is_startable(self) -> bool:
     """Returns True if the node can be started."""
@@ -180,8 +176,7 @@ class NodeState(json_utils.Jsonable):
     return run_state_pb2.RunState(
         state=_NODE_STATE_TO_RUN_STATE_MAP[self.state],
         status_code=status_code_value,
-        status_msg=self.status_msg,
-        update_time=int(self.last_updated_time*1000))
+        status_msg=self.status_msg)
 
   def to_run_state_history(self) -> List[run_state_pb2.RunState]:
     run_state_history = []
@@ -190,8 +185,7 @@ class NodeState(json_utils.Jsonable):
           NodeState(
               state=state.state,
               status_code=state.status_code,
-              status_msg=state.status_msg,
-              last_updated_time=state.update_time).to_run_state())
+              status_msg=state.status_msg).to_run_state())
     return run_state_history
 
 
@@ -768,8 +762,7 @@ class PipelineView:
     return run_state_pb2.RunState(
         state=state,
         status_code=self.pipeline_status_code,
-        status_msg=self.pipeline_status_message,
-        update_time=self.execution.last_update_time_since_epoch)
+        status_msg=self.pipeline_status_message)
 
   def get_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to current run state."""
@@ -782,7 +775,7 @@ class PipelineView:
 
   def get_node_run_states_history(
       self) -> Dict[str, List[run_state_pb2.RunState]]:
-    """Returns the history of node run states and timestamps."""
+    """Returns the history of node run states."""
     node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
     result = {}
     for node in get_all_pipeline_nodes(self.pipeline):
@@ -804,7 +797,7 @@ class PipelineView:
 
   def get_previous_node_run_states_history(
       self) -> Dict[str, List[run_state_pb2.RunState]]:
-    """Returns a dict mapping node id to previous run state and timestamps."""
+    """Returns a dict mapping node id to previous run state."""
     prev_node_states_dict = _get_node_states_dict(self.execution,
                                                   _PREVIOUS_NODE_STATES)
     result = {}
