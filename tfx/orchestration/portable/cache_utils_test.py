@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.cache_utils."""
 import os
+import tensorflow as tf
 from unittest import mock
 
 from tfx.dsl.io import fileio
@@ -27,7 +28,6 @@ from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
-import tensorflow as tf
 
 class CacheUtilsTest(test_case_utils.TfxTest):
 
