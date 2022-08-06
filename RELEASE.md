@@ -40,6 +40,8 @@
 
 *   Added Json value artifact.
 *   Added example for using ExampleDiff.
+*   Allow lists and dicts to be consumed and produced by decorator components as
+    input and output JsonValue artifacts.
 
 ## Breaking Changes
 
