@@ -15,11 +15,13 @@
 
 from absl.testing import parameterized
 import tensorflow as tf
+from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.utils import test_case_utils
 
+from google.protobuf import struct_pb2
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
@@ -166,6 +168,24 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
             }
           }
         """, pipeline_pb2.Value())
+    struct_value = text_format.Parse(
+        """
+        field_value {
+          struct_value: {
+            fields: {
+              key: 'key1',
+              value: {
+                string_value: 'abc'
+              }
+            }
+            fields: {
+              key: 'key2',
+              value: {
+                bool_value: true
+              }
+            }
+          }
+        }""", pipeline_pb2.Value())
     value_dict = {
         'int_val': int_value,
         'string_val': string_value,
@@ -173,6 +193,7 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         'proto_val': proto_value,
         'list_boolean_value': list_boolean_value,
         'list_str_value': list_str_value,
+        'struct_value': struct_value
     }
     expected_parsed_dict = {
         'int_val': 1,
@@ -180,7 +201,11 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         'bool_val': False,
         'list_boolean_value': [False, True],
         'list_str_value': ['true', 'false', 'random'],
-        'proto_val': metadata_store_pb2.Value(string_value='hello')
+        'proto_val': metadata_store_pb2.Value(string_value='hello'),
+        'struct_value': {
+            'key1': 'abc',
+            'key2': True,
+        }
     }
     self.assertEqual(expected_parsed_dict,
                      data_types_utils.build_parsed_value_dict(value_dict))
@@ -196,9 +221,35 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         data_types_utils.get_metadata_value_type(tfx_value),
         metadata_store_pb2.INT)
 
+    tfx_value = pipeline_pb2.Value()
+    text_format.Parse(
+        """
+        field_value {
+          struct_value: {
+            fields: {
+              key: 'key1',
+              value: {
+                string_value: 'abc'
+              }
+            }
+            fields: {
+              key: 'key2',
+              value: {
+                number_value: 123.0
+              }
+            }
+          }
+        }""", tfx_value)
+    self.assertEqual(
+        data_types_utils.get_metadata_value_type(tfx_value),
+        metadata_store_pb2.STRUCT)
+
   def testGetMetadataValueTypePrimitiveValue(self):
     self.assertEqual(
         data_types_utils.get_metadata_value_type(1), metadata_store_pb2.INT)
+    self.assertEqual(
+        data_types_utils.get_metadata_value_type({'key': 'value'}),
+        metadata_store_pb2.STRUCT)
 
   def testGetMetadataValueTypeFailed(self):
     tfx_value = pipeline_pb2.Value()
@@ -258,7 +309,17 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
       ('FloatValue', 42.0, metadata_store_pb2.Value(double_value=42.0)),
       ('StrValue', '42', metadata_store_pb2.Value(string_value='42')),
       ('BooleanValue', True, metadata_store_pb2.Value(string_value='true')),
-      ('ListValue', [1, 2], metadata_store_pb2.Value(string_value='[1, 2]')))
+      ('ListValue', [1, 2], metadata_store_pb2.Value(string_value='[1, 2]')),
+      ('StructValue', {
+          'key1': 'abc',
+          'key2': 123.0
+      },
+       metadata_store_pb2.Value(
+           struct_value=struct_pb2.Struct(
+               fields={
+                   'key1': struct_pb2.Value(string_value='abc'),
+                   'key2': struct_pb2.Value(number_value=123.0),
+               }))))
   def testSetMetadataValueWithPrimitiveValue(self, value, expected_pb):
     pb = metadata_store_pb2.Value()
     data_types_utils.set_metadata_value(pb, value)
@@ -267,7 +328,7 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
   def testSetMetadataValueUnsupportedType(self):
     pb = metadata_store_pb2.Value()
     with self.assertRaises(ValueError):
-      data_types_utils.set_metadata_value(pb, {'a': 1})
+      data_types_utils.set_metadata_value(pb, types.Artifact())
 
   def testSetParameterValue(self):
     actual_int = pipeline_pb2.Value()
@@ -358,10 +419,36 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         expected_list,
         data_types_utils.set_parameter_value(actual_list, ['true', 'false']))
 
+    actual_struct = pipeline_pb2.Value()
+    expected_struct = text_format.Parse(
+        """
+        field_value {
+          struct_value: {
+            fields: {
+              key: 'key1',
+              value: {
+                string_value: 'abc'
+              }
+            }
+            fields: {
+              key: 'key2',
+              value: {
+                number_value: 123.0
+              }
+            }
+          }
+        }""", pipeline_pb2.Value())
+    self.assertEqual(
+        expected_struct,
+        data_types_utils.set_parameter_value(actual_struct, {
+            'key1': 'abc',
+            'key2': 123.0
+        }))
+
   def testSetParameterValueUnsupportedType(self):
     actual_value = pipeline_pb2.Value()
     with self.assertRaises(ValueError):
-      data_types_utils.set_parameter_value(actual_value, {'a': 1})
+      data_types_utils.set_parameter_value(actual_value, types.Artifact())
 
 
 if __name__ == '__main__':

@@ -20,6 +20,8 @@ from tfx.types import artifact_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
+from google.protobuf import struct_pb2
+from google.protobuf import json_format
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
@@ -123,6 +125,8 @@ def get_parsed_value(
       return json_utils.loads(value.string_value)
     else:
       return parse_value(value.string_value, schema.value_type)
+  elif value.HasField('struct_value'):
+    return json_format.MessageToDict(value.struct_value)
   else:
     return getattr(value, value.WhichOneof('value'))
 
@@ -173,10 +177,14 @@ def get_metadata_value_type(
       return metadata_store_pb2.DOUBLE
     elif value_type == 'string_value':
       return metadata_store_pb2.STRING
+    elif value_type == 'struct_value':
+      return metadata_store_pb2.STRUCT
     else:
       raise ValueError('Unexpected value type %s' % value_type)
   elif isinstance(value, (str, bool, message.Message, list)):
     return metadata_store_pb2.STRING
+  elif isinstance(value, dict):
+    return metadata_store_pb2.STRUCT
   else:
     raise ValueError('Unexpected value type %s' % type(value))
 
@@ -303,6 +311,10 @@ def set_parameter_value(
   elif isinstance(value, (list, message.Message)):
     parameter_value.field_value.string_value = get_value_and_set_type(
         value, parameter_value.schema.value_type)
+  elif isinstance(value, dict):
+    converted_struct = struct_pb2.Struct()
+    json_format.ParseDict(value, converted_struct)
+    parameter_value.field_value.struct_value.CopyFrom(converted_struct)
   else:
     raise ValueError('Unexpected type %s' % type(value))
 
