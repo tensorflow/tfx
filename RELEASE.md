@@ -31,6 +31,7 @@
 | -- | -- | -- | -- |
 | `google-api-core` | `<2` | N/A | Added to help pip dependency resolution. google-api-core was already a transitive dependency. |
 | `apache-beam[gcp]` | `>=2.40,<3` | `>=2.38,<3` | Synced release train |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.10.0` | `>=1.15.5,<2` or `~=2.9.0` | |
 
 ## Documentation Updates
 
