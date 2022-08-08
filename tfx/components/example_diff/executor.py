@@ -29,7 +29,7 @@ from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx_bsl.tfxio import record_based_tfxio
 
-_STATS_FILE_NAME = 'skew_stats'
+STATS_FILE_NAME = 'skew_stats'
 _SAMPLE_FILE_NAME = 'sample_pairs'
 
 _TELEMETRY_DESCRIPTORS = ['ExampleDiff']
@@ -161,7 +161,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           _ = (
               skew_stats
               | 'WriteStats' >> feature_skew_detector.skew_results_sink(
-                  os.path.join(output_uri, _STATS_FILE_NAME)))
+                  os.path.join(output_uri, STATS_FILE_NAME)))
           _ = (
               samples | 'WriteSample' >> feature_skew_detector.skew_pair_sink(
                   os.path.join(output_uri, _SAMPLE_FILE_NAME)))
