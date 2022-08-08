@@ -122,6 +122,15 @@ def mysql_metadata_connection_config(
           password=password))
 
 
+def metadata_service_config():
+  """Convenience function to create mysql-based metadata connection config.
+
+  Returns:
+    A mlmd_service_pb2.MLMDServiceClientConfig.
+  """
+  return mlmd_service_pb2.MLMDServiceClientConfig()
+
+
 # TODO(ruoyu): Figure out the story mutable UDFs. We should not reuse previous
 # run when having different UDFs.
 class Metadata:

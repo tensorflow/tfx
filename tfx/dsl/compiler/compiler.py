@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
+
 import inspect
 import itertools
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, cast, Mapping
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple, Type, cast
 
 from tfx import types
 from tfx.dsl.compiler import compiler_context
@@ -32,6 +33,7 @@ from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
+from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -851,6 +853,8 @@ def _set_node_inputs(node: pipeline_pb2.PipelineNode,
               compiler_utils.node_context_name(
                   input_channel.pipeline.pipeline_name,
                   input_channel.wrapped.producer_component_id))
+
+          print(metadata.metadata_service_config())
 
           artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
           channel_pb.artifact_query.type.CopyFrom(artifact_type)
