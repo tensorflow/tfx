@@ -10,6 +10,3 @@
 
 # TODO(b/232490018) Remove pinned Cython after pycocotools issue resolved.
 Cython<1
-
-# TODO(b/240657867): Remove this after consulting with grpcio.
-grpcio<1.48
