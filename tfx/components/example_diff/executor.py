@@ -152,9 +152,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           test_examples = (
               p | 'TFXIORead[test]' >> base_tfxio.RawRecordBeamSource()
               | 'Parse[test]' >> beam.Map(_parse_example))
-          skew_stats, samples = ((base_examples, test_examples)
-                                 | feature_skew_detector.DetectFeatureSkewImpl(
-                                     **_config_to_kwargs(diff_config)))
+          results = ((base_examples, test_examples)
+                     | feature_skew_detector.DetectFeatureSkewImpl(
+                         **_config_to_kwargs(diff_config)))
+          skew_stats = results[feature_skew_detector.SKEW_RESULTS_KEY]
+          samples = results[feature_skew_detector.SKEW_PAIRS_KEY]
           output_uri = os.path.join(example_diff_artifact.uri,
                                     'SplitPair-%s' % split_pair)
 
