@@ -562,7 +562,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         ignore_update_node_state_tasks=True,
         fail_fast=fail_fast)
     self.assertEqual(
-        task_lib.NodeUid.from_pipeline_node(self._pipeline, self._stats_gen),
+        task_lib.NodeUid.from_node(self._pipeline, self._stats_gen),
         stats_gen_task.node_uid)
     with self._mlmd_connection as m:
       with mlmd_state.mlmd_execution_atomic_op(
@@ -607,8 +607,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
             m, self._pipeline)
         with pipeline_state:
           with pipeline_state.node_state_update_context(
-              task_lib.NodeUid.from_pipeline_node(
-                  self._pipeline, self._stats_gen)) as node_state:
+              task_lib.NodeUid.from_node(self._pipeline,
+                                         self._stats_gen)) as node_state:
             node_state.update(pstate.NodeState.STOPPING,
                               status_lib.Status(code=status_lib.Code.CANCELLED))
     else:
@@ -636,8 +636,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_new_executions=1,
         num_active_executions=1,
         ignore_update_node_state_tasks=True)
-    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline,
-                                                   self._stats_gen)
+    node_uid = task_lib.NodeUid.from_node(self._pipeline, self._stats_gen)
     self.assertEqual(node_uid, stats_gen_task.node_uid)
 
     # Simulate stopping the node while it is under execution, which leads to

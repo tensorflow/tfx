@@ -336,8 +336,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
             m, self._pipeline)
         with pipeline_state:
           with pipeline_state.node_state_update_context(
-              task_lib.NodeUid.from_pipeline_node(
-                  self._pipeline, self._transform)) as node_state:
+              task_lib.NodeUid.from_node(self._pipeline,
+                                         self._transform)) as node_state:
             node_state.update(pstate.NodeState.STOPPING,
                               status_lib.Status(code=status_lib.Code.CANCELLED))
     else:

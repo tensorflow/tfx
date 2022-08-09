@@ -449,8 +449,7 @@ class PipelineState:
         pipeline: pipeline_pb2.Pipeline
     ) -> List[Tuple[str, List[str], List[str]]]:
       return [(node.node_info.id, list(node.upstream_nodes),
-               list(node.downstream_nodes))
-              for node in get_all_pipeline_nodes(pipeline)]
+               list(node.downstream_nodes)) for node in get_all_nodes(pipeline)]
 
     if _structure(self.pipeline) != _structure(updated_pipeline):
       raise status_lib.StatusNotOkError(
@@ -560,8 +559,8 @@ class PipelineState:
     self._check_context()
     node_states_dict = _get_node_states_dict(self._execution, _NODE_STATES)
     result = {}
-    for node in get_all_pipeline_nodes(self.pipeline):
-      node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
+    for node in get_all_nodes(self.pipeline):
+      node_uid = task_lib.NodeUid.from_node(self.pipeline, node)
       result[node_uid] = node_states_dict.get(node_uid.node_id, NodeState())
     return result
 
@@ -571,8 +570,8 @@ class PipelineState:
     node_states_dict = _get_node_states_dict(self._execution,
                                              _PREVIOUS_NODE_STATES)
     result = {}
-    for node in get_all_pipeline_nodes(self.pipeline):
-      node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
+    for node in get_all_nodes(self.pipeline):
+      node_uid = task_lib.NodeUid.from_node(self.pipeline, node)
       if node_uid.node_id not in node_states_dict:
         continue
       result[node_uid] = node_states_dict[node_uid.node_id]
@@ -768,7 +767,7 @@ class PipelineView:
     """Returns a dict mapping node id to current run state."""
     result = {}
     node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
-    for node in get_all_pipeline_nodes(self.pipeline):
+    for node in get_all_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
       result[node.node_info.id] = node_state.to_run_state()
     return result
@@ -778,7 +777,7 @@ class PipelineView:
     """Returns the history of node run states."""
     node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
     result = {}
-    for node in get_all_pipeline_nodes(self.pipeline):
+    for node in get_all_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
       result[node.node_info.id] = node_state.to_run_state_history()
     return result
@@ -788,7 +787,7 @@ class PipelineView:
     result = {}
     node_states_dict = _get_node_states_dict(self.execution,
                                              _PREVIOUS_NODE_STATES)
-    for node in get_all_pipeline_nodes(self.pipeline):
+    for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in node_states_dict:
         continue
       node_state = node_states_dict[node.node_info.id]
@@ -801,7 +800,7 @@ class PipelineView:
     prev_node_states_dict = _get_node_states_dict(self.execution,
                                                   _PREVIOUS_NODE_STATES)
     result = {}
-    for node in get_all_pipeline_nodes(self.pipeline):
+    for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in prev_node_states_dict:
         continue
       node_state = prev_node_states_dict[node.node_info.id]
@@ -817,7 +816,7 @@ class PipelineView:
     """Returns a dict mapping node id to node state."""
     result = {}
     node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
-    for node in get_all_pipeline_nodes(self.pipeline):
+    for node in get_all_nodes(self.pipeline):
       result[node.node_info.id] = node_states_dict.get(node.node_info.id,
                                                        NodeState())
     return result
@@ -827,7 +826,7 @@ class PipelineView:
     result = {}
     node_states_dict = _get_node_states_dict(self.execution,
                                              _PREVIOUS_NODE_STATES)
-    for node in get_all_pipeline_nodes(self.pipeline):
+    for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in node_states_dict:
         continue
       result[node.node_info.id] = node_states_dict[node.node_info.id]
@@ -871,7 +870,7 @@ def pipeline_uid_from_orchestrator_context(
   return task_lib.PipelineUid(context.name)
 
 
-def get_all_pipeline_nodes(
+def get_all_nodes(
     pipeline: pipeline_pb2.Pipeline) -> List[node_proto_view.NodeProtoView]:
   """Returns the views of nodes or inner pipelines in the given pipeline."""
   # TODO(goutham): Handle system nodes.
@@ -887,7 +886,7 @@ def get_all_node_executions(
   """Returns all executions of all pipeline nodes if present."""
   return {
       node.node_info.id: task_gen_utils.get_executions(mlmd_handle, node)
-      for node in get_all_pipeline_nodes(pipeline)
+      for node in get_all_nodes(pipeline)
   }
 
 
@@ -926,8 +925,8 @@ def get_all_node_artifacts(
 def _is_node_uid_in_pipeline(node_uid: task_lib.NodeUid,
                              pipeline: pipeline_pb2.Pipeline) -> bool:
   """Returns `True` if the `node_uid` belongs to the given pipeline."""
-  for node in get_all_pipeline_nodes(pipeline):
-    if task_lib.NodeUid.from_pipeline_node(pipeline, node) == node_uid:
+  for node in get_all_nodes(pipeline):
+    if task_lib.NodeUid.from_node(pipeline, node) == node_uid:
       return True
   return False
 
@@ -1044,7 +1043,7 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
   ) if reused_pipeline_view else {}
   reused_pipeline_previous_node_states_dict = reused_pipeline_view.get_previous_node_states_dict(
   ) if reused_pipeline_view else {}
-  for node in get_all_pipeline_nodes(pipeline):
+  for node in get_all_nodes(pipeline):
     node_id = node.node_info.id
     if node.execution_options.HasField('skip'):
       logging.info('Node %s is skipped in this partial run.', node_id)

@@ -1155,19 +1155,19 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
 
-      example_gen_node_uid = task_lib.NodeUid.from_pipeline_node(
+      example_gen_node_uid = task_lib.NodeUid.from_node(
           pipeline, pipeline.nodes[0].pipeline_node)
 
-      transform_node_uid = task_lib.NodeUid.from_pipeline_node(
+      transform_node_uid = task_lib.NodeUid.from_node(
           pipeline, pipeline.nodes[1].pipeline_node)
       transform_task = test_utils.create_exec_node_task(
           node_uid=transform_node_uid)
 
-      trainer_node_uid = task_lib.NodeUid.from_pipeline_node(
+      trainer_node_uid = task_lib.NodeUid.from_node(
           pipeline, pipeline.nodes[2].pipeline_node)
       trainer_task = test_utils.create_exec_node_task(node_uid=trainer_node_uid)
 
-      evaluator_node_uid = task_lib.NodeUid.from_pipeline_node(
+      evaluator_node_uid = task_lib.NodeUid.from_node(
           pipeline, pipeline.nodes[3].pipeline_node)
       evaluator_task = test_utils.create_exec_node_task(
           node_uid=evaluator_node_uid)
@@ -1328,7 +1328,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
     with self._mlmd_connection as m:
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
-      trainer_node_uid = task_lib.NodeUid.from_pipeline_node(
+      trainer_node_uid = task_lib.NodeUid.from_node(
           pipeline, pipeline.nodes[0].pipeline_node)
 
       # Start pipeline and stop trainer.
@@ -1391,7 +1391,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
 
-      example_gen_node_uid = task_lib.NodeUid.from_pipeline_node(
+      example_gen_node_uid = task_lib.NodeUid.from_node(
           pipeline, pipeline.nodes[0].pipeline_node)
 
       pipeline_ops.initiate_pipeline_start(m, pipeline)
@@ -1435,7 +1435,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
 
-      transform_node_uid = task_lib.NodeUid.from_pipeline_node(
+      transform_node_uid = task_lib.NodeUid.from_node(
           pipeline, pipeline.nodes[0].pipeline_node)
 
       pipeline_ops.initiate_pipeline_start(m, pipeline)
@@ -1625,9 +1625,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
 
-      example_gen_node_uid = task_lib.NodeUid.from_pipeline_node(
+      example_gen_node_uid = task_lib.NodeUid.from_node(
           pipeline, pipeline.nodes[0].pipeline_node)
-      transform_node_uid = task_lib.NodeUid.from_pipeline_node(
+      transform_node_uid = task_lib.NodeUid.from_node(
           pipeline, pipeline.nodes[1].pipeline_node)
 
       pipeline_ops.initiate_pipeline_start(m, pipeline)

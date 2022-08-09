@@ -22,7 +22,7 @@ from tfx.utils import test_case_utils as tu
 
 class TaskTest(tu.TfxTest):
 
-  def test_node_uid_from_pipeline_node(self):
+  def test_node_uid_from_node(self):
     pipeline = pipeline_pb2.Pipeline()
     pipeline.pipeline_info.id = 'pipeline'
     node = pipeline_pb2.PipelineNode()
@@ -31,7 +31,7 @@ class TaskTest(tu.TfxTest):
         task_lib.NodeUid(
             pipeline_uid=task_lib.PipelineUid(pipeline_id='pipeline'),
             node_id='Trainer'),
-        task_lib.NodeUid.from_pipeline_node(pipeline, node))
+        task_lib.NodeUid.from_node(pipeline, node))
 
   def test_task_type_ids(self):
     self.assertEqual('ExecNodeTask', task_lib.ExecNodeTask.task_type_id())

@@ -106,7 +106,7 @@ class _Generator:
   def __call__(self) -> List[task_lib.Task]:
     result = []
     for node in [node_proto_view.get_view(n) for n in self._pipeline.nodes]:
-      node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
+      node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
       node_id = node.node_info.id
 
       with self._pipeline_state:
@@ -141,7 +141,7 @@ class _Generator:
       # not be considered for generation again but we ensure node services
       # in case of a mixed service node.
       if self._is_task_id_tracked_fn(
-          task_lib.exec_node_task_id_from_pipeline_node(self._pipeline, node)):
+          task_lib.exec_node_task_id_from_node(self._pipeline, node)):
         service_status = self._ensure_node_services_if_mixed(node_id)
         if service_status is not None:
           if service_status != service_jobs.ServiceStatus.RUNNING:
@@ -172,7 +172,7 @@ class _Generator:
       Returns a `Task` or `None` if task generation is deemed infeasible.
     """
     result = []
-    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
+    node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
     executions = task_gen_utils.get_executions(metadata_handler, node)
     exec_node_task = task_gen_utils.generate_task_from_active_execution(

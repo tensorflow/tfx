@@ -177,7 +177,7 @@ def get_node(pipeline, node_id):
 
 def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
   """Simulates node execution given ExecNodeTask."""
-  node = task.get_pipeline_node()
+  node = task.get_node()
   with mlmd_connection as m:
     if node.HasField('outputs'):
       output_key, output_value = next(iter(node.outputs.outputs.items()))
@@ -350,7 +350,7 @@ def run_generator_and_test(test_case,
 def _verify_exec_node_task(test_case, pipeline, node, execution_id, task):
   """Verifies that generated ExecNodeTask has the expected properties for the node."""
   test_case.assertEqual(
-      task_lib.NodeUid.from_pipeline_node(pipeline, node), task.node_uid)
+      task_lib.NodeUid.from_node(pipeline, node), task.node_uid)
   test_case.assertEqual(execution_id, task.execution_id)
   expected_context_names = ['my_pipeline', f'my_pipeline.{node.node_info.id}']
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:

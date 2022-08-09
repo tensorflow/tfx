@@ -28,7 +28,7 @@ class ImporterTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]
   """A task scheduler for Importer system node."""
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
-    pipeline_node = self.task.get_pipeline_node()
+    pipeline_node = self.task.get_node()
     output_key = cast(str, self.task.exec_properties[importer.OUTPUT_KEY_KEY])
     output_spec = pipeline_node.outputs.outputs[output_key]
     properties = data_types_utils.build_parsed_value_dict(
