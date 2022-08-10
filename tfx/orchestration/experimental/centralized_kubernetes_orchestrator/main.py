@@ -22,8 +22,10 @@ from concurrent import futures
 from absl import app
 from absl import flags
 import grpc
+from tfx.orchestration import metadata
 from tfx.orchestration.experimental.centralized_kubernetes_orchestrator.service import kubernetes_orchestrator_service
 from tfx.orchestration.experimental.centralized_kubernetes_orchestrator.service.proto import service_pb2_grpc
+
 
 # Flags to use in the command line to specifiy the port and the number of
 # threads. Commands can be changed later.
@@ -31,10 +33,18 @@ FLAGS = flags.FLAGS
 flags.DEFINE_integer('port', 10000, 'port to listen on')
 
 
-def _start_grpc_server() -> grpc.Server:
+def _create_mlmd_connection():
+  # TODO(ysyang): remove hardcoded variables.
+  connection_config = metadata.mysql_metadata_connection_config(
+      host='mysql', port=3306, username='root', database='mysql', password='')
+  return metadata.Metadata(connection_config=connection_config)
+
+
+def _start_grpc_server(
+    servicer: kubernetes_orchestrator_service.KubernetesOrchestratorServicer
+) -> grpc.Server:
   """Starts GRPC server."""
   server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-  servicer = kubernetes_orchestrator_service.KubernetesOrchestratorServicer()
   service_pb2_grpc.add_KubernetesOrchestratorServicer_to_server(
       servicer, server)
   server_creds = grpc.local_server_credentials()
@@ -45,8 +55,11 @@ def _start_grpc_server() -> grpc.Server:
 
 
 def main(unused_argv):
-  # unused_server will be used later.
-  unused_server = _start_grpc_server()
+  """Runs the main orchestration loop."""
+  mlmd_handle = _create_mlmd_connection()
+  servicer = kubernetes_orchestrator_service.KubernetesOrchestratorServicer(
+      mlmd_handle)
+  unused_server = _start_grpc_server(servicer)
 
 
 if __name__ == '__main__':
