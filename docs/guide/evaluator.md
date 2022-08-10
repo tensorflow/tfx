@@ -40,7 +40,7 @@ To setup the evaluator the following information is needed:
     outside of those saved with the model). See
     [Tensorflow Model Analysis Metrics](https://github.com/tensorflow/model-analysis/blob/master/g3doc/metrics.md)
     for more information.
-*   Slices to configure (if not slices are given then an "overall" slice will be
+*   Slices to configure (if no slices are given then an "overall" slice will be
     added by default). See
     [Tensorflow Model Analysis Setup](https://github.com/tensorflow/model-analysis/blob/master/g3doc/setup.md)
     for more information.
