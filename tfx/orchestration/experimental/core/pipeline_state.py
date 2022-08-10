@@ -84,6 +84,7 @@ _EXECUTION_STATE_TO_RUN_STATE_MAP = {
 class StateRecord(json_utils.Jsonable):
   state: str
   status_code: Optional[int]
+  status_msg: str
 
 
 # TODO(b/228198652): Stop using json_util.Jsonable. Before we do,
@@ -135,7 +136,10 @@ class NodeState(json_utils.Jsonable):
              status: Optional[status_lib.Status] = None) -> None:
     if self.state != state:
       self.state_history.append(
-          StateRecord(state=self.state, status_code=self.status_code))
+          StateRecord(
+              state=self.state,
+              status_code=self.status_code,
+              status_msg=self.status_msg))
       if len(self.state_history) > _MAX_STATE_HISTORY_LEN:
         self.state_history = self.state_history[-_MAX_STATE_HISTORY_LEN:]
 
@@ -178,8 +182,10 @@ class NodeState(json_utils.Jsonable):
     run_state_history = []
     for state in self.state_history:
       run_state_history.append(
-          NodeState(state=state.state,
-                    status_code=state.status_code).to_run_state())
+          NodeState(
+              state=state.state,
+              status_code=state.status_code,
+              status_msg=state.status_msg).to_run_state())
     return run_state_history
 
 

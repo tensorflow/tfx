@@ -1663,7 +1663,8 @@ class TransformProcessor:
       return 1
     return None
 
-  def _DecodesSequenceExamplesAsRawRecords(self, data_format: int,
+  @classmethod
+  def _DecodesSequenceExamplesAsRawRecords(cls, data_format: int,
                                            schema: schema_pb2.Schema) -> bool:
     """Indicates whether data format is tf.SequenceExample and it should be decoded as raw records.
 
@@ -1680,7 +1681,7 @@ class TransformProcessor:
       indicating native execution.
     """
 
-    return (self._IsDataFormatSequenceExample(data_format) and
+    return (cls._IsDataFormatSequenceExample(data_format) and
             not bool(schema.tensor_representation_group))
 
   @staticmethod

@@ -75,16 +75,17 @@ class NodeStateTest(test_utils.TfxTest):
     node_state.update(pstate.NodeState.STOPPING, status)
     self.assertEqual([
         pstate.StateRecord(
-            state=pstate.NodeState.STARTED, status_code=None)
+            state=pstate.NodeState.STARTED, status_code=None, status_msg='')
     ], node_state.state_history)
 
     node_state.update(pstate.NodeState.STOPPED)
     self.assertEqual([
         pstate.StateRecord(
-            state=pstate.NodeState.STARTED, status_code=None),
+            state=pstate.NodeState.STARTED, status_code=None, status_msg=''),
         pstate.StateRecord(
             state=pstate.NodeState.STOPPING,
-            status_code=status_lib.Code.CANCELLED)
+            status_code=status_lib.Code.CANCELLED,
+            status_msg='foobar')
     ], node_state.state_history)
 
 
@@ -386,7 +387,8 @@ class PipelineStateTest(test_utils.TfxTest):
                   state_history=[
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
-                          status_code=None)
+                          status_code=None,
+                          status_msg='')
                   ])),
           event_observer.NodeStateChange(
               execution=None,
@@ -398,7 +400,8 @@ class PipelineStateTest(test_utils.TfxTest):
                   state_history=[
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
-                          status_code=None)
+                          status_code=None,
+                          status_msg='')
                   ]),
               new_state=pstate.NodeState(
                   state='stopping',
@@ -407,10 +410,12 @@ class PipelineStateTest(test_utils.TfxTest):
                   state_history=[
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
-                          status_code=None),
+                          status_code=None,
+                          status_msg=''),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
-                          status_code=None)
+                          status_code=None,
+                          status_msg='')
                   ])),
           event_observer.NodeStateChange(
               execution=None,
@@ -424,23 +429,28 @@ class PipelineStateTest(test_utils.TfxTest):
                   state_history=[
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
-                          status_code=None),
+                          status_code=None,
+                          status_msg=''),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
-                          status_code=None)
+                          status_code=None,
+                          status_msg='')
                   ]),
               new_state=pstate.NodeState(
                   state='started',
                   state_history=[
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
-                          status_code=None),
+                          status_code=None,
+                          status_msg=''),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
-                          status_code=None),
+                          status_code=None,
+                          status_msg=''),
                       pstate.StateRecord(
                           state=pstate.NodeState.STOPPING,
-                          status_code=status_lib.Code.ABORTED)
+                          status_code=status_lib.Code.ABORTED,
+                          status_msg='foo bar')
                   ])),
       ]
       # Set execution / pipeline_state to None, so we don't compare those fields
@@ -485,7 +495,8 @@ class PipelineStateTest(test_utils.TfxTest):
                         state_history=[
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
-                                status_code=None)
+                                status_code=None,
+                                status_msg='')
                         ]),
                 transform_node_uid:
                     pstate.NodeState(
@@ -493,7 +504,8 @@ class PipelineStateTest(test_utils.TfxTest):
                         state_history=[
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
-                                status_code=None)
+                                status_code=None,
+                                status_msg='')
                         ]),
                 trainer_node_uid:
                     pstate.NodeState(
@@ -501,7 +513,8 @@ class PipelineStateTest(test_utils.TfxTest):
                         state_history=[
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
-                                status_code=None)
+                                status_code=None,
+                                status_msg='')
                         ]),
                 evaluator_node_uid:
                     pstate.NodeState(state=pstate.NodeState.STARTED),
@@ -772,7 +785,8 @@ class PipelineStateTest(test_utils.TfxTest):
                         state_history=[
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
-                                status_code=None)
+                                status_code=None,
+                                status_msg='')
                         ]),
                 transform_node_uid:
                     pstate.NodeState(
@@ -780,7 +794,8 @@ class PipelineStateTest(test_utils.TfxTest):
                         state_history=[
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
-                                status_code=None)
+                                status_code=None,
+                                status_msg='')
                         ]),
             }, pipeline_state.get_previous_node_states_dict())
 

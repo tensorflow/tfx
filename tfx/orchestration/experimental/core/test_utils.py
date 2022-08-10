@@ -20,7 +20,6 @@ import uuid
 from absl.testing.absltest import mock
 from tfx import types
 from tfx.orchestration import metadata
-from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -171,9 +170,8 @@ def fake_cached_example_gen_run(mlmd_connection: metadata.Metadata,
 
 def get_node(pipeline, node_id):
   for node in pipeline.nodes:
-    node_view = node_proto_view.get_view(node)
-    if node_view.node_info.id == node_id:
-      return node_view
+    if node.pipeline_node.node_info.id == node_id:
+      return node.pipeline_node
   raise ValueError(f'could not find {node_id}')
 
 
@@ -308,8 +306,7 @@ def run_generator_and_test(test_case,
                            num_active_executions,
                            expected_exec_nodes=None,
                            ignore_update_node_state_tasks=False,
-                           fail_fast=None,
-                           expected_context_names=None):
+                           fail_fast=None):
   """Runs generator.generate() and tests the effects."""
   if service_job_manager is None:
     service_job_manager = service_jobs.DummyServiceJobManager()
@@ -346,19 +343,16 @@ def run_generator_and_test(test_case,
       for i, task in enumerate(
           t for t in tasks if isinstance(t, task_lib.ExecNodeTask)):
         _verify_exec_node_task(test_case, pipeline, expected_exec_nodes[i],
-                               active_executions[i].id, task,
-                               expected_context_names)
+                               active_executions[i].id, task)
     return tasks
 
 
-def _verify_exec_node_task(test_case, pipeline, node, execution_id, task,
-                           expected_context_names):
+def _verify_exec_node_task(test_case, pipeline, node, execution_id, task):
   """Verifies that generated ExecNodeTask has the expected properties for the node."""
-  if not expected_context_names:
-    expected_context_names = ['my_pipeline', f'my_pipeline.{node.node_info.id}']
   test_case.assertEqual(
       task_lib.NodeUid.from_node(pipeline, node), task.node_uid)
   test_case.assertEqual(execution_id, task.execution_id)
+  expected_context_names = ['my_pipeline', f'my_pipeline.{node.node_info.id}']
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
     expected_context_names.append(
         pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
