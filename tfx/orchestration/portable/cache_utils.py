@@ -166,11 +166,15 @@ def get_cached_outputs(
       cached_executions)
 
   # Defensively traverses candidate executions and returns once we find an
-  # execution with valid outputs.
+  # execution with valid outputs that can be confirmed to still exist.
   for execution in cached_executions:
     cached_output_artifacts = _get_outputs_of_execution(metadata_handler,
                                                         execution.id)
     if cached_output_artifacts is not None:
-      return cached_output_artifacts
+      try:
+        artifact_utils.verify_artifacts(cached_output_artifacts)
+        return cached_output_artifacts
+      except RuntimeError:
+        pass
 
   return None
