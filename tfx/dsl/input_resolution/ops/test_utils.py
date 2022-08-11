@@ -16,12 +16,18 @@ from typing import Type, Any, Optional
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
+from tfx.types import artifact
 
 
 class DummyArtifact(types.Artifact):
   """A dummy Artifact used for testing."""
 
   TYPE_NAME = 'DummyArtifact'
+
+  PROPERTIES = {
+      'span': artifact.Property(type=artifact.PropertyType.INT),
+      'version': artifact.Property(type=artifact.PropertyType.INT),
+  }
 
   # pylint: disable=redefined-builtin
   def __init__(self,
