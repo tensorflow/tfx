@@ -17,6 +17,7 @@ from typing import Type, Union, Dict
 
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.input_resolution.ops import latest_create_time_op
 from tfx.dsl.input_resolution.ops import skip_if_empty_op
 from tfx.dsl.input_resolution.ops import unnest_op
 from tfx.dsl.input_resolution.strategies import conditional_strategy
@@ -43,10 +44,12 @@ def _register_op(cls: _ResolverOpType) -> None:
   _OPS_BY_NAME[cls.canonical_name] = cls
 
 # go/keep-sorted start
+LatestCreateTime = latest_create_time_op.LatestCreateTime
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
 Unnest = unnest_op.Unnest
 # go/keep-sorted end
 # go/keep-sorted start
+_register_op(LatestCreateTime)
 _register_op(SkipIfEmpty)
 _register_op(Unnest)
 # go/keep-sorted end
