@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.resolver_op."""
+
 import copy
-from typing import Optional, Mapping
+from typing import Mapping, Optional
 
 import tensorflow as tf
-
 from tfx.dsl.input_resolution import resolver_op
+import tfx.types
 
 
 class Foo(resolver_op.ResolverOp):
@@ -62,6 +63,20 @@ class ManyArtifacts(
 
 DUMMY_INPUT_NODE = resolver_op.InputNode(
     None, resolver_op.DataType.ARTIFACT_MULTIMAP)
+
+
+class DummyChannel(tfx.types.BaseChannel):
+
+  def __eq__(self, other):
+    return isinstance(other, DummyChannel) and self.type == other.type
+
+
+class X(tfx.types.Artifact):
+  TYPE_NAME = 'X'
+
+
+class Y(tfx.types.Artifact):
+  TYPE_NAME = 'Y'
 
 
 class ResolverOpTest(tf.test.TestCase):
@@ -186,6 +201,29 @@ class OpNodeTest(tf.test.TestCase):
 
     with self.assertRaises(TypeError):
       resolver_op.OpNode(op_type=Foo, args=[42])  # Element is not OpNode!
+
+  def testOpNode_InputNodes_And_DependentChannels(self):
+    x = DummyChannel(X)
+    y1 = DummyChannel(Y)
+    y2 = DummyChannel(Y)
+    input_x = resolver_op.InputNode(x, resolver_op.DataType.ARTIFACT_LIST)
+    input_y = resolver_op.InputNode(y1, resolver_op.DataType.ARTIFACT_LIST)
+    input_xy = resolver_op.InputNode({
+        'x': x,
+        'y': y2
+    }, resolver_op.DataType.ARTIFACT_MULTIMAP)
+
+    x_plus_y = resolver_op.OpNode(
+        op_type='add',
+        output_data_type=resolver_op.DataType.ARTIFACT_LIST,
+        args=(input_x, input_y))
+    z = resolver_op.DictNode({'z': x_plus_y})
+    result = resolver_op.OpNode(
+        op_type='merge',
+        output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP,
+        args=(input_xy, z))
+
+    self.assertCountEqual(result.dependent_channels, [x, y1, y2])
 
 
 if __name__ == '__main__':

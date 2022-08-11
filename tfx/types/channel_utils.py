@@ -15,7 +15,6 @@
 
 from typing import cast, Dict, Iterable, List
 
-from tfx.dsl.input_resolution import resolver_function
 from tfx.types import artifact
 from tfx.types import channel
 from tfx.types import resolved_channel
@@ -89,8 +88,7 @@ def get_dependent_node_ids(channel_: channel.BaseChannel) -> Iterable[str]:
   elif isinstance(channel_, channel.LoopVarChannel):
     yield from get_dependent_node_ids(channel_.wrapped)
   elif isinstance(channel_, resolved_channel.ResolvedChannel):
-    for each_channel in resolver_function.get_dependent_channels(
-        channel_.output_node):
+    for each_channel in channel_.output_node.dependent_channels:
       yield from get_dependent_node_ids(each_channel)
   else:
     raise TypeError(f'Invalid channel type {type(channel_)}')

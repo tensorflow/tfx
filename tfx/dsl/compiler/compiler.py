@@ -953,7 +953,7 @@ def _set_resolved_channel_inputs(
         f"Node {tfx_node.id} should consume from single input function but "
         f"detected {len(output_nodes)}.")
   output_node = output_nodes.pop()
-  input_nodes = set(resolver_function.get_input_nodes(output_node))
+  input_nodes = set(output_node.input_nodes)
   if len(input_nodes) != 1:
     # This is the weird limitation we have using the ResolverConfig based IR.
     # New InputGraph based IR can solve the problem.

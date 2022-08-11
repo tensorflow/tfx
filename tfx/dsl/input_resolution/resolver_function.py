@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Module for ResolverFunction."""
-import functools
-from typing import Callable, Type, Union, Mapping, Any, Optional, cast, Iterable
+from typing import Callable, Type, Union, Mapping, Any, Optional, cast
 
 from tfx.dsl.input_resolution import resolver_op
 from tfx.types import artifact
@@ -165,45 +164,3 @@ def resolver_function(
     return decorator
   else:
     return ResolverFunction(f)
-
-
-def _deduplicate(f: Callable[..., Iterable[Any]]):
-  """A decorator that removes duplicative element from iterables."""
-
-  @functools.wraps(f)
-  def wrapped(*args, **kwargs):
-    seen = set()
-    result = []
-    for item in f(*args, **kwargs):
-      if id(item) not in seen:
-        seen.add(id(item))
-        result.append(item)
-    return result
-
-  return wrapped
-
-
-@doc_controls.do_not_generate_docs
-@_deduplicate
-def get_dependent_channels(
-    node: resolver_op.Node) -> Iterable[channel.BaseChannel]:
-  """Get a list of BaseChannels that the given node depends on."""
-  for input_node in get_input_nodes(node):
-    if isinstance(input_node.wrapped, channel.BaseChannel):
-      yield input_node.wrapped
-    elif isinstance(input_node.wrapped, dict):
-      yield from input_node.wrapped.values()
-
-
-@doc_controls.do_not_generate_docs
-@_deduplicate
-def get_input_nodes(node: resolver_op.Node) -> Iterable[resolver_op.InputNode]:
-  """Get a list of input nodes that given node depends on."""
-  if isinstance(node, resolver_op.InputNode):
-    yield node
-  elif isinstance(node, resolver_op.OpNode):
-    for arg_node in node.args:
-      yield from get_input_nodes(arg_node)
-  elif isinstance(node, resolver_op.DictNode):
-    for wrapped in node.nodes.values():
-      yield from get_input_nodes(wrapped)

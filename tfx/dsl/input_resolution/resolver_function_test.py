@@ -52,6 +52,12 @@ class DummyNode(resolver_op.Node):
   def __init__(self, output_data_type):
     self.output_data_type = output_data_type
 
+  def input_nodes(self):
+    pass
+
+  def get_direct_dependent_nodes(self):
+    pass
+
 
 class X(tfx.types.Artifact):
   TYPE_NAME = 'X'
@@ -266,32 +272,6 @@ class ResolverFunctionTest(tf.test.TestCase):
     with self.subTest('ARTIFACT_MULTIMAP_LIST with a single type hint'):
       with self.assertRaises(RuntimeError):
         resolve_artifact_multimap_list.with_type_hint(X)()
-
-  def testGetInputNodes_And_GetDependentChannels(self):
-    x = DummyChannel(X)
-    y1 = DummyChannel(Y)
-    y2 = DummyChannel(Y)
-    input_x = resolver_op.InputNode(x, resolver_op.DataType.ARTIFACT_LIST)
-    input_y = resolver_op.InputNode(y1, resolver_op.DataType.ARTIFACT_LIST)
-    input_xy = resolver_op.InputNode(
-        {'x': x, 'y': y2}, resolver_op.DataType.ARTIFACT_MULTIMAP)
-
-    x_plus_y = resolver_op.OpNode(
-        op_type='add',
-        output_data_type=resolver_op.DataType.ARTIFACT_LIST,
-        args=(input_x, input_y))
-    z = resolver_op.DictNode({'z': x_plus_y})
-    result = resolver_op.OpNode(
-        op_type='merge',
-        output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP,
-        args=(input_xy, z))
-
-    self.assertCountEqual(
-        resolver_function.get_input_nodes(result),
-        [input_x, input_y, input_xy])
-    self.assertCountEqual(
-        resolver_function.get_dependent_channels(result),
-        [x, y1, y2])
 
 
 if __name__ == '__main__':

@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Module for ResolverOp and its related definitions."""
+
 from __future__ import annotations
 
 import abc
-from typing import Any, Generic, Mapping, Type, TypeVar, Union, Sequence, Optional
+import functools
+from typing import Any, Callable, Generic, Iterable, Mapping, Optional, Sequence, Type, TypeVar, Union, List
 
 import attr
 from tfx import types
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import channel
 from tfx.utils import json_utils
 from tfx.utils import typing_utils
 import typing_extensions
@@ -275,8 +278,67 @@ class ResolverOp(metaclass=_ResolverOpMeta):
     self.context = context
 
 
-class Node:
+def _deduplicate(f: Callable[..., Iterable[Any]]):
+  """A decorator that removes duplicative element from iterables."""
+
+  @functools.wraps(f)
+  def wrapped(*args, **kwargs):
+    seen = set()
+    result = []
+    for item in f(*args, **kwargs):
+      if id(item) not in seen:
+        seen.add(id(item))
+        result.append(item)
+    return result
+
+  return wrapped
+
+
+class Node(abc.ABC):
+  """An abstract type for ResolverOps nodes."""
+
   output_data_type: DataType
+
+  @abc.abstractmethod
+  def get_direct_dependent_nodes(self) -> List[Node]:
+    """Returns a direct dependent nodes."""
+    return []
+
+  def get_direct_dependent_channels(self) -> List[channel.BaseChannel]:
+    """Returns a direct dependent channels."""
+    return []
+
+  @property
+  @_deduplicate
+  def input_nodes(self) -> List[Node]:
+    """Returns all dependent nodes."""
+    nodes = []
+    visited = set()
+    unvisited = self.get_direct_dependent_nodes()
+    while unvisited:
+      node = unvisited.pop()
+      if id(node) not in visited:
+        visited.add(id(node))
+        nodes.append(node)
+        unvisited.extend(node.get_direct_dependent_nodes())
+
+    return nodes
+
+  @property
+  @_deduplicate
+  def dependent_channels(self) -> List[channel.BaseChannel]:
+    """Returns all dependent channel."""
+    channels = []
+    visited = set()
+    unvisited = [self]
+    while unvisited:
+      node = unvisited.pop()
+      if id(node) not in visited:
+        visited.add(id(node))
+        channels.extend(node.get_direct_dependent_channels())
+        unvisited.extend(node.get_direct_dependent_nodes())
+
+    return channels
 
 
 @attr.s(kw_only=True, repr=False, eq=False)
@@ -304,6 +366,9 @@ class OpNode(Node):
     all_args.extend(f'{k}={repr(v)}' for k, v in self.kwargs.items())
     return f'{self.op_type.__qualname__}({", ".join(all_args)})'
 
+  def get_direct_dependent_nodes(self) -> List[Node]:
+    return list(self.args)
+
 
 class InputNode(Node):
   """Node that represents the input arguments of the resolver function."""
@@ -316,6 +381,18 @@ class InputNode(Node):
 
   def __repr__(self) -> str:
     return 'Input()'
+
+  def get_direct_dependent_nodes(self) -> List[Node]:
+    return []
+
+  def get_direct_dependent_channels(self) -> List[channel.BaseChannel]:
+    if isinstance(self.wrapped, channel.BaseChannel):
+      return [self.wrapped]
+    elif typing_utils.is_compatible(self.wrapped, Mapping[str,
+                                                          channel.BaseChannel]):
+      return list(self.wrapped.values())
+    else:
+      return []
 
 
 class DictNode(Node):
@@ -333,3 +410,6 @@ class DictNode(Node):
   def __repr__(self) -> str:
     args = [f'{k}={v!r}' for k, v in self.nodes.items()]
     return f'Dict({", ".join(args)})'
+
+  def get_direct_dependent_nodes(self) -> List[Node]:
+    return list(self.nodes.values())
