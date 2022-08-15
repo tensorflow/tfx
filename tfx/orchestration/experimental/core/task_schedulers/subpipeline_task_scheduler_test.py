@@ -71,7 +71,7 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest):
     return pipeline
 
   def _get_orchestrator_executions(self):
-    """Returns all the executions with '__ORCHESTRATOR__' execution type."""
+    """Returns all the executions with '__ORCHESTRATOR__' execution type b."""
     with self._mlmd_connection as m:
       executions = m.store.get_executions()
       result = []
