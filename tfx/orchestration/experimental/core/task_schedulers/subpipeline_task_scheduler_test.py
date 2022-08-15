@@ -83,65 +83,65 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest):
 
   @flagsaver.flagsaver(subpipeline_scheduler_polling_interval_secs=1.0)
   def test_subpipeline_task_scheduler(self):
-    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
-                                    1)
+    with self._mlmd_connection as mlmd_connection:
+      test_utils.fake_example_gen_run(mlmd_connection, self._example_gen, 1, 1)
 
-    [sub_pipeline_task] = test_utils.run_generator_and_test(
-        test_case=self,
-        mlmd_connection=self._mlmd_connection,
-        generator_class=sptg.SyncPipelineTaskGenerator,
-        pipeline=self._pipeline,
-        task_queue=self._task_queue,
-        use_task_queue=True,
-        service_job_manager=None,
-        num_initial_executions=1,
-        num_tasks_generated=1,
-        num_new_executions=1,
-        num_active_executions=1,
-        expected_exec_nodes=[self._sub_pipeline],
-        ignore_update_node_state_tasks=True,
-        expected_context_names=[
-            'my_sub_pipeline', f'my_sub_pipeline_{self._pipeline_run_id}',
-            'my_pipeline', self._pipeline_run_id,
-            'my_sub_pipeline.my_sub_pipeline'
-        ])
+      [sub_pipeline_task] = test_utils.run_generator_and_test(
+          test_case=self,
+          mlmd_connection=self._mlmd_connection,
+          generator_class=sptg.SyncPipelineTaskGenerator,
+          pipeline=self._pipeline,
+          task_queue=self._task_queue,
+          use_task_queue=True,
+          service_job_manager=None,
+          num_initial_executions=1,
+          num_tasks_generated=1,
+          num_new_executions=1,
+          num_active_executions=1,
+          expected_exec_nodes=[self._sub_pipeline],
+          ignore_update_node_state_tasks=True,
+          expected_context_names=[
+              'my_sub_pipeline', f'my_sub_pipeline_{self._pipeline_run_id}',
+              'my_pipeline', self._pipeline_run_id,
+              'my_sub_pipeline.my_sub_pipeline'
+          ])
 
-    ts_result = []
+      ts_result = []
 
-    def start_scheduler(ts_result):
-      with self._mlmd_connection as m:
+      def start_scheduler(ts_result):
         ts_result.append(
             subpipeline_task_scheduler.SubPipelineTaskScheduler(
-                mlmd_handle=m, pipeline=self._pipeline,
+                mlmd_handle=mlmd_connection,
+                pipeline=self._pipeline,
                 task=sub_pipeline_task).schedule())
 
-    # There should be only 1 orchestrator execution for the outer pipeline.
-    self.assertLen(self._get_orchestrator_executions(), 1)
+      # There should be only 1 orchestrator execution for the outer pipeline.
+      self.assertLen(self._get_orchestrator_executions(), 1)
 
-    # Shortens the polling interval during test.
-    threading.Thread(target=start_scheduler, args=(ts_result,)).start()
+      # Shortens the polling interval during test.
+      threading.Thread(target=start_scheduler, args=(ts_result,)).start()
 
-    # Wait for sometime for the update to go through.
-    time.sleep(subpipeline_task_scheduler._POLLING_INTERVAL_SECS.value * 5)
+      # Wait for sometime for the update to go through.
+      time.sleep(subpipeline_task_scheduler._POLLING_INTERVAL_SECS.value * 5)
 
-    # The scheduler is still waiting for subpipeline to finish.
-    self.assertEqual(len(ts_result), 0)
-    # There should be another orchestrator execution for the inner pipeline.
-    orchestrator_executions = self._get_orchestrator_executions()
-    self.assertLen(orchestrator_executions, 2)
+      # The scheduler is still waiting for subpipeline to finish.
+      self.assertEqual(len(ts_result), 0)
+      # There should be another orchestrator execution for the inner pipeline.
+      orchestrator_executions = self._get_orchestrator_executions()
+      self.assertLen(orchestrator_executions, 2)
 
-    # Mark inner pipeline as COMPLETE.
-    with mlmd_state.mlmd_execution_atomic_op(
-        mlmd_handle=self._mlmd_connection,
-        execution_id=orchestrator_executions[1].id) as execution:
-      execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+      # Mark inner pipeline as COMPLETE.
+      with mlmd_state.mlmd_execution_atomic_op(
+          mlmd_handle=mlmd_connection,
+          execution_id=orchestrator_executions[1].id) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
 
-    # Wait for the update to go through.
-    time.sleep(subpipeline_task_scheduler._POLLING_INTERVAL_SECS.value * 5)
+      # Wait for the update to go through.
+      time.sleep(subpipeline_task_scheduler._POLLING_INTERVAL_SECS.value * 5)
 
-    self.assertEqual(len(ts_result), 1)
-    self.assertEqual(status_lib.Code.OK, ts_result[0].status.code)
-    self.assertIsInstance(ts_result[0].output, ts.ExecutorNodeOutput)
+      self.assertEqual(len(ts_result), 1)
+      self.assertEqual(status_lib.Code.OK, ts_result[0].status.code)
+      self.assertIsInstance(ts_result[0].output, ts.ExecutorNodeOutput)
 
 
 if __name__ == '__main__':
