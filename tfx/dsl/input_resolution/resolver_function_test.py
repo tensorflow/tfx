@@ -138,6 +138,17 @@ class ResolverFunctionTest(tf.test.TestCase):
       with self.assertRaisesRegex(RuntimeError, 'type_hint not set'):
         output = resolve(x=DummyChannel(X), y=DummyChannel(Y))
 
+  def testCall_WithNoTypeHint_ArtifactList(self):
+
+    @resolver_function.resolver_function
+    def resolve(*args, **kwargs):
+      del args, kwargs
+      return DummyNode(resolver_op.DataType.ARTIFACT_LIST)
+
+    output = resolve(DummyChannel(X))
+    self.assertTrue(typing_utils.is_compatible(output, tfx.types.BaseChannel))
+    self.assertEqual(output.type, X)
+
   def testCall_TypeHintCompatibility(self):
 
     @resolver_function.resolver_function
