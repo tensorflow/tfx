@@ -85,6 +85,11 @@ class StateRecord(json_utils.Jsonable):
   state: str
   status_code: Optional[int]
   update_time: float
+  # TODO(b/242083811) Some status_msg have already been written into MLMD.
+  # Keeping this field is for backward compatibility to avoid json failing to
+  # parse existing status_msg. We can remove it once we are sure no status_msg
+  # in MLMD is in use.
+  status_msg: str = ''
 
 
 # TODO(b/228198652): Stop using json_util.Jsonable. Before we do,
