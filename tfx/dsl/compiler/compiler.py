@@ -936,7 +936,7 @@ def _set_resolved_channel_inputs(
     inputs: An input ResolvedChannels with keys.
   """
   for input_key, channel in inputs.items():
-    if channel.output_key != input_key:
+    if channel.output_key and channel.output_key != input_key:
       # Resolved dict key should match the consumer input key. For example
       #    inputs = resolve_inputs(...)
       #    consumer_a = A(x=inputs['x'])  # valid
@@ -946,31 +946,40 @@ def _set_resolved_channel_inputs(
       raise ValueError(
           f"Node {tfx_node.id}.inputs[{input_key!r}] should have the same key "
           f"as the output key value but got {channel.output_key!r}.")
-  output_nodes = {channel.output_node for channel in inputs.values()}
-  if len(output_nodes) != 1:
+  if len(inputs) != 1:
     # This is the weird limitation we have using the ResolverConfig based IR.
     # New InputGraph based IR can solve the problem.
     raise ValueError(
         f"Node {tfx_node.id} should consume from single input function but "
-        f"detected {len(output_nodes)}.")
-  output_node = output_nodes.pop()
-  input_nodes = set(resolver_function.get_input_nodes(output_node))
+        f"detected {len(inputs)}.")
+
+  channel = list(inputs.values())[0]
+  input_key = list(inputs.keys())[0]
+  input_nodes = set(resolver_function.get_input_nodes(channel.output_node))
+
   if len(input_nodes) != 1:
     # This is the weird limitation we have using the ResolverConfig based IR.
     # New InputGraph based IR can solve the problem.
     raise ValueError(
         "Resolver function with multiple input nodes are not yet supported.")
   input_node: resolver_op.InputNode = input_nodes.pop()
-  if any(isinstance(channel, resolved_channel.ResolvedChannel)
-         for channel in input_node.wrapped.values()):
+
+  if getattr(input_node.wrapped, "values", None) and any(
+      isinstance(channel, resolved_channel.ResolvedChannel)
+      for channel in input_node.wrapped.values()):
     # This is the weird limitation we have using the ResolverConfig based IR.
     # New InputGraph based IR can solve the problem.
     raise ValueError(
         "Cannot use input function output as an input to another input "
         "function.")
-  _set_node_inputs(node, tfx_node, pipeline_ctx, input_node.wrapped, {})
+
+  if isinstance(input_node.wrapped, types.Channel):
+    _set_node_inputs(node, tfx_node, pipeline_ctx,
+                     {input_key: input_node.wrapped}, {})
+  else:
+    _set_node_inputs(node, tfx_node, pipeline_ctx, input_node.wrapped, {})
   node.inputs.resolver_config.resolver_steps.extend(
-      _compile_trace_result(output_node))
+      _compile_trace_result(channel.output_node))
 
 
 def _set_node_outputs(node: pipeline_pb2.PipelineNode,
