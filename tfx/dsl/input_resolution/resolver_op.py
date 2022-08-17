@@ -278,6 +278,14 @@ class ResolverOp(metaclass=_ResolverOpMeta):
 class Node:
   output_data_type: DataType
 
+  def __eq__(self, other):
+    if not isinstance(other, Node):
+      return NotImplemented
+    return self is other
+
+  def __hash__(self):
+    return hash(id(self))
+
 
 @attr.s(kw_only=True, repr=False, eq=False)
 class OpNode(Node):
@@ -317,6 +325,16 @@ class InputNode(Node):
   def __repr__(self) -> str:
     return 'Input()'
 
+  def __eq__(self, others):
+    if not isinstance(others, InputNode):
+      return NotImplemented
+    return self.wrapped == others.wrapped
+
+  def __hash__(self):
+    if isinstance(self.wrapped, dict):
+      return hash(tuple(sorted(self.wrapped.items())))
+    return hash(self.wrapped)
+
 
 class DictNode(Node):
   """Node that represents a dict of Node values."""
@@ -329,6 +347,14 @@ class DictNode(Node):
           'Expected dict[str, Node] s.t. all node.output_data_type == '
           f'ARTIFACT_LIST, but got {nodes}.')
     self.nodes = nodes
+
+  def __eq__(self, other):
+    if not isinstance(other, DictNode):
+      return NotImplemented
+    return self.nodes == other.nodes
+
+  def __hash__(self):
+    return hash(tuple(sorted(self.nodes.items())))
 
   def __repr__(self) -> str:
     args = [f'{k}={v!r}' for k, v in self.nodes.items()]
