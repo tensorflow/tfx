@@ -58,9 +58,11 @@ class NodeUid:
   pipeline_uid: PipelineUid
   node_id: str
 
+  # TODO(b/240483367): Rename *_pipeline_node to *_node because it supports node
+  # and subpipeline. Rename other similar function names in this file as well.
   @classmethod
-  def from_node(cls: Type['NodeUid'], pipeline: pipeline_pb2.Pipeline,
-                node: node_proto_view.NodeProtoView) -> 'NodeUid':
+  def from_pipeline_node(cls: Type['NodeUid'], pipeline: pipeline_pb2.Pipeline,
+                         node: node_proto_view.NodeProtoView) -> 'NodeUid':
     return cls(
         pipeline_uid=PipelineUid.from_pipeline(pipeline),
         node_id=node.node_info.id)
@@ -140,7 +142,7 @@ class ExecNodeTask(Task):
   def task_id(self) -> TaskId:
     return _exec_node_task_id(self.task_type_id(), self.node_uid)
 
-  def get_node(self) -> node_proto_view.NodeProtoView:
+  def get_pipeline_node(self) -> node_proto_view.NodeProtoView:
     for pipeline_or_node in self.pipeline.nodes:
       view = node_proto_view.get_view(pipeline_or_node)
       if view.node_info.id == self.node_uid.node_id:
@@ -194,11 +196,12 @@ class UpdateNodeStateTask(Task):
     return (self.task_type_id(), self.node_uid)
 
 
-def exec_node_task_id_from_node(pipeline: pipeline_pb2.Pipeline,
-                                node: node_proto_view.NodeProtoView) -> TaskId:
+def exec_node_task_id_from_pipeline_node(
+    pipeline: pipeline_pb2.Pipeline,
+    node: node_proto_view.NodeProtoView) -> TaskId:
   """Returns task id of an `ExecNodeTask` from pipeline and node."""
   return _exec_node_task_id(ExecNodeTask.task_type_id(),
-                            NodeUid.from_node(pipeline, node))
+                            NodeUid.from_pipeline_node(pipeline, node))
 
 
 def _exec_node_task_id(task_type_id: str, node_uid: NodeUid) -> TaskId:

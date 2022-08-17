@@ -21,6 +21,7 @@ import "ml_metadata/proto/metadata_store_service.proto";
 import "tfx/proto/orchestration/pipeline.proto";
 
 // All the information needed for a TFX component execution.
+// TODO(b/172391062): Make this `ExecutionInvocation` for broader usages.
 // Next ID: 15
 message ExecutionInvocation {
   reserved 1, 2;

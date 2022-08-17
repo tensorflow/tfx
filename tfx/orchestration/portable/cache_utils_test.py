@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.cache_utils."""
 import os
-from unittest import mock
 import tensorflow as tf
 
 from tfx.dsl.io import fileio
@@ -25,7 +24,6 @@ from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
-
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
@@ -168,9 +166,7 @@ class CacheUtilsTest(test_case_utils.TfxTest):
       # Different executor spec will result in new cache context.
       self.assertLen(m.store.get_contexts(), 2)
 
-  @mock.patch(
-      'tfx.orchestration.portable.cache_utils.artifact_utils.verify_artifacts')
-  def testGetCachedOutputArtifacts(self, mock_verify_artifacts):
+  def testGetCachedOutputArtifacts(self):
     # Output artifacts that will be used by the first execution with the same
     # cache key.
     output_model_one = standard_artifacts.Model()
@@ -192,12 +188,10 @@ class CacheUtilsTest(test_case_utils.TfxTest):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       cache_context = context_lib.register_context_if_not_exists(
           m, context_lib.CONTEXT_TYPE_EXECUTION_CACHE, 'cache_key')
-
+      cached_output = cache_utils.get_cached_outputs(m, cache_context)
       # No succeed execution is associate with this context yet, so the cached
       # output is None
-      cached_output = cache_utils.get_cached_outputs(m, cache_context)
       self.assertIsNone(cached_output)
-
       execution_one = execution_publish_utils.register_execution(
           m, metadata_store_pb2.ExecutionType(name='my_type'), [cache_context])
       execution_publish_utils.publish_succeeded_execution(
@@ -216,7 +210,6 @@ class CacheUtilsTest(test_case_utils.TfxTest):
               output_models_key: [output_model_three, output_model_four],
               output_examples_key: [output_example_two]
           })
-
       # The cached output got should be the artifacts produced by the most
       # recent execution under the given cache context.
       cached_output = cache_utils.get_cached_outputs(m, cache_context)
@@ -241,12 +234,6 @@ class CacheUtilsTest(test_case_utils.TfxTest):
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
-
-      # There should again be no cached outputs if the artifacts cannot be
-      # verified as still existing
-      mock_verify_artifacts.side_effect = RuntimeError()
-      cached_output = cache_utils.get_cached_outputs(m, cache_context)
-      self.assertIsNone(cached_output)
 
   def testGetCachedOutputArtifactsForNodesWithNoOuput(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

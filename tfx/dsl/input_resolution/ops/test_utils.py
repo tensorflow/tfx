@@ -16,31 +16,18 @@ from typing import Type, Any, Optional
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
-from tfx.types import artifact
 
 
 class DummyArtifact(types.Artifact):
-  """A dummy Artifact used for testing."""
-
   TYPE_NAME = 'DummyArtifact'
 
-  PROPERTIES = {
-      'span': artifact.Property(type=artifact.PropertyType.INT),
-      'version': artifact.Property(type=artifact.PropertyType.INT),
-  }
-
   # pylint: disable=redefined-builtin
-  def __init__(self,
-               id: Optional[str] = None,
-               uri: Optional[str] = None,
-               create_time_since_epoch: Optional[int] = None):
+  def __init__(self, id: Optional[str] = None, uri: Optional[str] = None):
     super().__init__()
     if id is not None:
       self.id = id
     if uri is not None:
       self.uri = uri
-    if create_time_since_epoch is not None:
-      self.mlmd_artifact.create_time_since_epoch = create_time_since_epoch
 
 
 def run_resolver_op(op_type: Type[resolver_op.ResolverOp],

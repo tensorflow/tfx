@@ -24,14 +24,6 @@
           }
         ]
       }
-    },
-    "parameters": {
-      "key_1": {
-        "stringValue": "value_1"
-      },
-      "key_2": {
-        "intValue": "536870911"
-      }
     }
   },
   "outputs": {
@@ -48,7 +40,7 @@
       "blessing": {
         "artifacts": [
           {
-            "uri": "gs://root/blessing/",
+            "uri": "artifact1",
             "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/4",
             "type": { "instanceSchema": "title: tfx.ModelBlessing\ntype: object\nproperties:\n" }
           }

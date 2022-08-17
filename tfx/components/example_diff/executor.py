@@ -29,7 +29,7 @@ from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx_bsl.tfxio import record_based_tfxio
 
-STATS_FILE_NAME = 'skew_stats'
+_STATS_FILE_NAME = 'skew_stats'
 _SAMPLE_FILE_NAME = 'sample_pairs'
 
 _TELEMETRY_DESCRIPTORS = ['ExampleDiff']
@@ -152,18 +152,16 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           test_examples = (
               p | 'TFXIORead[test]' >> base_tfxio.RawRecordBeamSource()
               | 'Parse[test]' >> beam.Map(_parse_example))
-          results = ((base_examples, test_examples)
-                     | feature_skew_detector.DetectFeatureSkewImpl(
-                         **_config_to_kwargs(diff_config)))
-          skew_stats = results[feature_skew_detector.SKEW_RESULTS_KEY]
-          samples = results[feature_skew_detector.SKEW_PAIRS_KEY]
+          skew_stats, samples = ((base_examples, test_examples)
+                                 | feature_skew_detector.DetectFeatureSkewImpl(
+                                     **_config_to_kwargs(diff_config)))
           output_uri = os.path.join(example_diff_artifact.uri,
                                     'SplitPair-%s' % split_pair)
 
           _ = (
               skew_stats
               | 'WriteStats' >> feature_skew_detector.skew_results_sink(
-                  os.path.join(output_uri, STATS_FILE_NAME)))
+                  os.path.join(output_uri, _STATS_FILE_NAME)))
           _ = (
               samples | 'WriteSample' >> feature_skew_detector.skew_pair_sink(
                   os.path.join(output_uri, _SAMPLE_FILE_NAME)))

@@ -11,19 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Entrypoint for the Kubernetes Job Runner.
-
-Users can use this entrypoint to run pipeline with the centralized kubernetes
-orchestrator.
-"""
-
-from absl import app
-from tfx.orchestration.python_execution_binary import entrypoint
-
-
-def main(argv):
-  entrypoint.main(argv)
-
-
-if __name__ == '__main__':
-  app.run(main)

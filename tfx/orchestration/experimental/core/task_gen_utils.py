@@ -74,7 +74,7 @@ def generate_task_from_execution(
   output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
   outputs_utils.make_output_dirs(output_artifacts)
   return task_lib.ExecNodeTask(
-      node_uid=task_lib.NodeUid.from_node(pipeline, node),
+      node_uid=task_lib.NodeUid.from_pipeline_node(pipeline, node),
       execution_id=execution.id,
       contexts=contexts,
       exec_properties=exec_properties,

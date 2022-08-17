@@ -154,12 +154,13 @@ class OutputsResolver:
       artifact_name = f'{self._pipeline_info.id}'
       if self._execution_mode == pipeline_pb2.Pipeline.SYNC:
         artifact_name = f'{artifact_name}:{self._pipeline_run_id}'
+      else:
+        artifact_name = f'{artifact_name}:{execution_id}'
       # The index of this artifact, since we only has one artifact per output
       # for now, it is always 0.
       # TODO(b/162331170): Update the "0" to the actual index.
       artifact_name = (
-          f'{artifact_name}:{self._pipeline_node.node_info.id}:{execution_id}:{key}:0'
-      )
+          f'{artifact_name}:{self._pipeline_node.node_info.id}:{key}:0')
       artifact.name = artifact_name
       _attach_artifact_properties(output_spec.artifact_spec, artifact)
 

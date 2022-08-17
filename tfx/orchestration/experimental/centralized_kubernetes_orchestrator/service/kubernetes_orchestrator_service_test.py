@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.centralized_kubernetes_orchestrator.service.kubernetes_orchestrator_service."""
 
-from unittest import mock
 import grpc
 from grpc.framework.foundation import logging_pool
 import portpicker
@@ -21,10 +20,6 @@ import tensorflow as tf
 from tfx.orchestration.experimental.centralized_kubernetes_orchestrator.service import kubernetes_orchestrator_service
 from tfx.orchestration.experimental.centralized_kubernetes_orchestrator.service.proto import service_pb2
 from tfx.orchestration.experimental.centralized_kubernetes_orchestrator.service.proto import service_pb2_grpc
-from tfx.orchestration.experimental.core import pipeline_ops
-from tfx.orchestration.experimental.core import task as task_lib
-from tfx.proto.orchestration import pipeline_pb2
-from tfx.utils import status as status_lib
 
 
 class KubernetesOrchestratorServiceTest(tf.test.TestCase):
@@ -38,8 +33,7 @@ class KubernetesOrchestratorServiceTest(tf.test.TestCase):
     cls._server = grpc.server(server_pool)
     cls._server.add_secure_port(f'[::]:{port}'.format(port),
                                 grpc.local_server_credentials())
-    servicer = kubernetes_orchestrator_service.KubernetesOrchestratorServicer(
-        mock.Mock())
+    servicer = kubernetes_orchestrator_service.KubernetesOrchestratorServicer()
     service_pb2_grpc.add_KubernetesOrchestratorServicer_to_server(
         servicer, cls._server)
     cls._server.start()
@@ -60,29 +54,6 @@ class KubernetesOrchestratorServiceTest(tf.test.TestCase):
 
     self.assertEqual(response.msg, msg)
 
-  def test_start_pipeline_success(self):
-    pipeline_uid = task_lib.PipelineUid(pipeline_id='foo')
-    with mock.patch.object(pipeline_ops,
-                           'initiate_pipeline_start') as mock_start:
-      mock_start.return_value.pipeline_uid = pipeline_uid
-      pipeline = pipeline_pb2.Pipeline(
-          pipeline_info=pipeline_pb2.PipelineInfo(id='pipeline1'))
-      request = service_pb2.StartPipelineRequest(pipeline=pipeline)
-      response = self._stub.StartPipeline(request)
-      self.assertEqual(service_pb2.StartPipelineResponse(), response)
-      mock_start.assert_called_once_with(mock.ANY, pipeline)
-
-  @mock.patch.object(pipeline_ops, 'initiate_pipeline_start')
-  def test_start_pipeline_failure_to_initiate(self, mock_start):
-    mock_start.side_effect = status_lib.StatusNotOkError(
-        code=status_lib.Code.ALREADY_EXISTS, message='already exists')
-    request = service_pb2.StartPipelineRequest(pipeline=pipeline_pb2.Pipeline())
-    with self.assertRaisesRegex(grpc.RpcError,
-                                'already exists') as exception_context:
-      self._stub.StartPipeline(request)
-    self.assertIs(grpc.StatusCode.ALREADY_EXISTS,
-                  exception_context.exception.code())
-    mock_start.assert_called_once()
 
 if __name__ == '__main__':
   tf.test.main()

@@ -74,7 +74,7 @@ def make_required_install_packages():
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
       'apache-beam[gcp]>=2.40,<3',
-      'attrs>=19.3.0,<22',
+      'attrs>=19.3.0,<21',
       'click>=7,<8',
       # TODO(b/238946565): Remove pinned version when pip can find depenencies
       # without this. `google-api-core` is needed for many google cloud
@@ -88,7 +88,7 @@ def make_required_install_packages():
       'keras-tuner>=1.0.4,<2',
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
-      'pyarrow>=6,<7',
+      'pyarrow>=1,<6',
       'pyyaml>=3.12,<6',
       # Keep the TF version same as TFT to help Pip version resolution.
       # Pip might stuck in a TF 1.15 dependency although there is a working

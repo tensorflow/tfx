@@ -242,14 +242,6 @@ def get_data_view_decode_fn_from_artifact(
       raw_record_column_name=None).DecodeFunction()
 
 
-# TODO(b/216604827): Deprecate str file format.
-def _file_format_from_string(file_format: str) -> example_gen_pb2.FileFormat:
-  if file_format == 'tfrecords_gzip':
-    return example_gen_pb2.FileFormat.FORMAT_TFRECORDS_GZIP
-  else:
-    return example_gen_pb2.FileFormat.Value(file_format)
-
-
 def make_tfxio(
     file_pattern: OneOrMorePatterns,
     telemetry_descriptors: List[str],
@@ -303,11 +295,17 @@ def make_tfxio(
             f'The length of file_pattern and file_formats should be the same.'
             f'Given: file_pattern={file_pattern}, file_format={file_format}')
       else:
-        file_format = [_file_format_from_string(item) for item in file_format]
+        # TODO(b/216604827): deprecated str file format.
+        file_format = [
+            example_gen_pb2.FileFormat.FORMAT_TFRECORDS_GZIP
+            if item == 'tfrecords_gzip' else item for item in file_format
+        ]
         if any(item not in _SUPPORTED_FILE_FORMATS for item in file_format):
           raise NotImplementedError(f'{file_format} is not supported yet.')
     else:  # file_format is str type.
-      file_format = _file_format_from_string(file_format)
+      # TODO(b/216604827): deprecated str file format.
+      if file_format == 'tfrecords_gzip':
+        file_format = example_gen_pb2.FileFormat.FORMAT_TFRECORDS_GZIP
       if file_format not in _SUPPORTED_FILE_FORMATS:
         raise NotImplementedError(f'{file_format} is not supported yet.')
 

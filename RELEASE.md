@@ -4,8 +4,6 @@
 
 *   Saved tuner results in pandas `records` formatted JSON.
 *   TFX Transform now supports `tf.SequenceExample` natively. The native path can be activated by providing `TensorRepresentation`s in the Schema.
-*   TFX Transform now supports reading raw and materializing transformed data in
-    Apache Parquet format.
 
 ## Breaking Changes
 
@@ -31,8 +29,6 @@
 | -- | -- | -- | -- |
 | `google-api-core` | `<2` | N/A | Added to help pip dependency resolution. google-api-core was already a transitive dependency. |
 | `apache-beam[gcp]` | `>=2.40,<3` | `>=2.38,<3` | Synced release train |
-| `attrs` | `>=19.3.0,<22` | `>=19.3.0,<21` | Allow more recent versions |
-| `pyarrow` | `>=6,<7` | `>=1,<6` | Synced release train |
 
 ## Documentation Updates
 
@@ -42,8 +38,6 @@
 
 *   Added Json value artifact.
 *   Added example for using ExampleDiff.
-*   Allow lists and dicts to be consumed and produced by decorator components as
-    input and output JsonValue artifacts.
 
 ## Breaking Changes
 

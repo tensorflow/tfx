@@ -23,7 +23,4 @@ tfx_py_proto_library(
     name = "service_py_pb2",
     srcs = ["service.proto"],
     use_grpc_plugin = True,
-    deps = [
-        "//tfx/proto/orchestration:pipeline_py_pb2",
-    ],
 )

@@ -93,9 +93,6 @@ _SCHEMA_KEY = 'schema'
 _STATS_KEY = 'stats'
 _SHARDED_STATS_KEY = 'sharded_stats'
 
-_FILE_FORMAT_PARQUET = example_gen_pb2.FileFormat.Name(
-    example_gen_pb2.FileFormat.FILE_FORMAT_PARQUET)
-
 
 # TODO(b/122478841): Move it to a common place that is shared across components.
 class _Status:
@@ -637,46 +634,29 @@ class TransformProcessor:
         | 'CreateSole' >> beam.Create([None])
         | 'Count' >> beam.Map(_MakeAndIncrementCounters))
 
-  # TODO(b/139538871): Implement telemetry, on top of pa.Table once available.
   @staticmethod
   @beam.ptransform_fn
-  @beam.typehints.with_input_types(Tuple[pa.RecordBatch, Dict[str, pa.Array]])
-  def _EncodeAndWrite(pcoll: beam.PCollection, schema: schema_pb2.Schema,
-                      file_format: str, output_path: str) -> beam.pvalue.PDone:
-    """Encodes and writes transformed RecordBatches in the given file format.
+  @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
+  def _WriteExamples(pcoll: beam.pvalue.PCollection, file_format: str,
+                     transformed_example_path: str) -> beam.pvalue.PDone:
+    """Writes transformed examples compressed in gzip format.
 
     Args:
-      pcoll: PCollection of transformed RecordBatches and unary pass-through
-        features.
-      schema: TFMD schema for the transformed data.
+      pcoll: PCollection of serialized transformed examples.
       file_format: The output file format.
-      output_path: Path that will serve as a prefix for the produced files.
+      transformed_example_path: path to write to.
 
     Returns:
       beam.pvalue.PDone.
     """
-    if file_format == labels.FORMAT_TFRECORD:
-      return (pcoll
-              | 'EncodeAndSerialize' >> beam.ParDo(
-                  TransformProcessor._RecordBatchToExamplesFn(schema))
-              | 'ExtractExamples' >> beam.Values()
-              | 'WriteToTFRecord' >> beam.io.WriteToTFRecord(
-                  output_path, file_name_suffix='.gz'))
-    elif file_format == _FILE_FORMAT_PARQUET:
-      arrow_schema = (
-          impl_helper.make_tensor_to_arrow_converter(schema).arrow_schema())
-      return (pcoll | 'ExtractRecordBatches' >> beam.Keys()
-              | 'ToRecords' >>
-              beam.FlatMap(lambda x: x.to_pandas().to_dict('records'))
-              | 'WriteToParquet' >> beam.io.WriteToParquet(
-                  output_path,
-                  arrow_schema,
-                  file_name_suffix='.parquet',
-                  codec='snappy'))
-    else:
-      raise NotImplementedError(
-          f'Unsupported output file format: {file_format}. Supported formats '
-          f'are {labels.FORMAT_TFRECORD} and {_FILE_FORMAT_PARQUET}.')
+    assert file_format == labels.FORMAT_TFRECORD, file_format
+
+    # TODO(b/139538871): Implement telemetry, on top of pa.Table once available.
+    return (
+        pcoll
+        | 'Values' >> beam.Values()
+        | 'Write' >> beam.io.WriteToTFRecord(
+            transformed_example_path, file_name_suffix='.gz'))
 
   def _GetSchema(self, schema_path: str) -> schema_pb2.Schema:
     """Gets a tf.metadata schema.
@@ -1520,10 +1500,10 @@ class TransformProcessor:
             for dataset in transform_data_list:
               infix = 'TransformIndex{}'.format(dataset.index)
               (dataset.transformed
-               | 'EncodeAndWrite[{}]'.format(infix) >> self._EncodeAndWrite(
-                   schema=transformed_schema_proto,
-                   file_format=materialization_format,
-                   output_path=dataset.materialize_output_path))
+               | 'EncodeAndSerialize[{}]'.format(infix) >> beam.ParDo(
+                   self._RecordBatchToExamplesFn(transformed_schema_proto))
+               | 'Materialize[{}]'.format(infix) >> self._WriteExamples(
+                   materialization_format, dataset.materialize_output_path))
 
     return _Status.OK()
     # pylint: enable=expression-not-assigned, no-value-for-parameter

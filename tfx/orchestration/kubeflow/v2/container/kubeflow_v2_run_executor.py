@@ -15,6 +15,7 @@
 
 import argparse
 import os
+import shutil
 from typing import List, Tuple
 
 from absl import app
@@ -41,28 +42,33 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   """Selects a particular executor and run it based on name.
 
   Args:
-    args:
-      --executor_class_path: The import path of the executor class.
+    args: --executor_class_path: The import path of the executor class.
       --json_serialized_invocation_args: Full JSON-serialized parameters for
-        this execution.
+      this execution.
     beam_args: Optional parameter that maps to the optional_pipeline_args
       parameter in the pipeline, which provides additional configuration options
-      for apache-beam and tensorflow.logging.
-    For more about the beam arguments please refer to:
+      for apache-beam and tensorflow.logging. For more about the beam arguments
+      please refer to:
     https://cloud.google.com/dataflow/docs/guides/specifying-exec-params
   """
   logging.set_verbosity(logging.INFO)
-
+  print('\nInvocation Args: ', args.json_serialized_invocation_args, '\n')
   # Rehydrate inputs/outputs/exec_properties from the serialized metadata.
   executor_input = pipeline_spec_pb2.ExecutorInput()
   json_format.Parse(
       args.json_serialized_invocation_args,
       executor_input,
       ignore_unknown_fields=True)
-
+  print('JSON is: ', args.json_serialized_invocation_args)
   inputs_dict = executor_input.inputs.artifacts
   outputs_dict = executor_input.outputs.artifacts
   inputs_parameter = executor_input.inputs.parameters
+  print('Input Parameters Yahooey: ', inputs_parameter)
+  # map<string, OutputParameter>
+  # OutputParameter.output_file
+  outputs_parameters = executor_input.outputs.parameters
+  print('Output Parameters Yahooey: ', outputs_parameters)
+
   # Format {pipelineJob.runtimeConfig.gcsOutputDirectory}/{project_number}
   #       /{pipeline_job_user_id}/{task_name}_{task_uuid}/executor_output.json
   task_root = os.path.dirname(executor_input.outputs.output_file)
@@ -81,7 +87,6 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
         inputs_parameter[k].CopyFrom(v)
 
   name_from_id = {}
-
   inputs = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(
       inputs_dict, name_from_id)
   outputs = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(
@@ -101,7 +106,14 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
         extra_flags=beam_args, unique_id=task_unique_id, tmp_dir=tmp_path)
   executor = executor_cls(executor_context)
   logging.info('Starting executor')
+
   executor.Do(inputs, outputs, exec_properties)
+
+  for param in outputs_parameters.keys():
+    if param in outputs_dict.keys():
+      print('Common param found! ', param)
+      shutil.copyfile(outputs_dict[param].artifacts[0].uri,
+                      outputs_parameters[param].output_file)
 
   # TODO(b/182316162): Unify publisher handling so that post-execution artifact
   # logic is more cleanly handled.
@@ -135,19 +147,15 @@ def _parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
   Args:
     argv: Unparsed arguments for run_executor.py. Known argument names include
       --executor_class_path: Python class of executor in format of
-        <module>.<class>.
-      --json_serialized_invocation_args: Full JSON-serialized parameters for
-        this execution.
-
-      The remaining part of the arguments will be parsed as the beam args used
-      by each component executors. Some commonly used beam args are as follows:
-        --runner: The beam pipeline runner environment. Can be DirectRunner (for
-          running locally) or DataflowRunner (for running on GCP Dataflow
-          service).
-        --project: The GCP project ID. Neede when runner==DataflowRunner
-        --direct_num_workers: Number of threads or subprocesses executing the
-          work load.
-      For more about the beam arguments please refer to:
+      <module>.<class>. --json_serialized_invocation_args: Full JSON-serialized
+      parameters for this execution.  The remaining part of the arguments will
+      be parsed as the beam args used by each component executors. Some commonly
+      used beam args are as follows: --runner: The beam pipeline runner
+      environment. Can be DirectRunner (for running locally) or DataflowRunner
+      (for running on GCP Dataflow service). --project: The GCP project ID.
+      Neede when runner==DataflowRunner --direct_num_workers: Number of threads
+      or subprocesses executing the work load. For more about the beam arguments
+      please refer to:
       https://cloud.google.com/dataflow/docs/guides/specifying-exec-params
 
   Returns:

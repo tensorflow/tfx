@@ -15,7 +15,6 @@
 
 import dataclasses
 import os
-import time
 from typing import List
 from unittest import mock
 
@@ -68,9 +67,7 @@ class NodeStateTest(test_utils.TfxTest):
     self.assertEqual(pstate.NodeState.STARTING, node_state.state)
     self.assertIsNone(node_state.status)
 
-  @mock.patch.object(pstate, 'time')
-  def test_node_state_history(self, mock_time):
-    mock_time.time.return_value = time.time()
+  def test_node_state_history(self):
     node_state = pstate.NodeState()
     self.assertEqual([], node_state.state_history)
 
@@ -78,28 +75,18 @@ class NodeStateTest(test_utils.TfxTest):
     node_state.update(pstate.NodeState.STOPPING, status)
     self.assertEqual([
         pstate.StateRecord(
-            state=pstate.NodeState.STARTED,
-            status_code=None,
-            update_time=mock_time.time.return_value)
+            state=pstate.NodeState.STARTED, status_code=None, status_msg='')
     ], node_state.state_history)
 
     node_state.update(pstate.NodeState.STOPPED)
     self.assertEqual([
         pstate.StateRecord(
-            state=pstate.NodeState.STARTED,
-            status_code=None,
-            update_time=mock_time.time.return_value),
+            state=pstate.NodeState.STARTED, status_code=None, status_msg=''),
         pstate.StateRecord(
             state=pstate.NodeState.STOPPING,
             status_code=status_lib.Code.CANCELLED,
-            update_time=mock_time.time.return_value)
+            status_msg='foobar')
     ], node_state.state_history)
-
-  def test_node_state_json(self):
-    node_state = pstate.NodeState.from_json_dict({
-        'state': pstate.NodeState.STARTING})
-    self.assertTrue(hasattr(node_state, 'state'))
-    self.assertTrue(hasattr(node_state, 'last_updated_time'))
 
 
 class PipelineStateTest(test_utils.TfxTest):
@@ -330,9 +317,8 @@ class PipelineStateTest(test_utils.TfxTest):
           pipeline_state.initiate_update(updated_pipeline,
                                          pipeline_pb2.UpdateOptions())
 
-  @mock.patch.object(pstate, 'time')
-  def test_initiate_node_start_stop(self, mock_time):
-    mock_time.time.return_value = time.time()
+  def test_initiate_node_start_stop(self):
+
     events = []
 
     def recorder(event):
@@ -402,7 +388,7 @@ class PipelineStateTest(test_utils.TfxTest):
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
                           status_code=None,
-                          update_time=mock_time.time.return_value)
+                          status_msg='')
                   ])),
           event_observer.NodeStateChange(
               execution=None,
@@ -415,7 +401,7 @@ class PipelineStateTest(test_utils.TfxTest):
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
                           status_code=None,
-                          update_time=mock_time.time.return_value)
+                          status_msg='')
                   ]),
               new_state=pstate.NodeState(
                   state='stopping',
@@ -425,11 +411,11 @@ class PipelineStateTest(test_utils.TfxTest):
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
                           status_code=None,
-                          update_time=mock_time.time.return_value),
+                          status_msg=''),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
                           status_code=None,
-                          update_time=mock_time.time.return_value)
+                          status_msg='')
                   ])),
           event_observer.NodeStateChange(
               execution=None,
@@ -444,11 +430,11 @@ class PipelineStateTest(test_utils.TfxTest):
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
                           status_code=None,
-                          update_time=mock_time.time.return_value),
+                          status_msg=''),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
                           status_code=None,
-                          update_time=mock_time.time.return_value)
+                          status_msg='')
                   ]),
               new_state=pstate.NodeState(
                   state='started',
@@ -456,15 +442,15 @@ class PipelineStateTest(test_utils.TfxTest):
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
                           status_code=None,
-                          update_time=mock_time.time.return_value),
+                          status_msg=''),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
                           status_code=None,
-                          update_time=mock_time.time.return_value),
+                          status_msg=''),
                       pstate.StateRecord(
                           state=pstate.NodeState.STOPPING,
                           status_code=status_lib.Code.ABORTED,
-                          update_time=mock_time.time.return_value)
+                          status_msg='foo bar')
                   ])),
       ]
       # Set execution / pipeline_state to None, so we don't compare those fields
@@ -479,9 +465,7 @@ class PipelineStateTest(test_utils.TfxTest):
 
       self.assertListEqual(want, got)
 
-  @mock.patch.object(pstate, 'time')
-  def test_get_node_states_dict(self, mock_time):
-    mock_time.time.return_value = time.time()
+  def test_get_node_states_dict(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
@@ -512,7 +496,7 @@ class PipelineStateTest(test_utils.TfxTest):
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
                                 status_code=None,
-                                update_time=mock_time.time.return_value)
+                                status_msg='')
                         ]),
                 transform_node_uid:
                     pstate.NodeState(
@@ -521,7 +505,7 @@ class PipelineStateTest(test_utils.TfxTest):
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
                                 status_code=None,
-                                update_time=mock_time.time.return_value)
+                                status_msg='')
                         ]),
                 trainer_node_uid:
                     pstate.NodeState(
@@ -530,7 +514,7 @@ class PipelineStateTest(test_utils.TfxTest):
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
                                 status_code=None,
-                                update_time=mock_time.time.return_value)
+                                status_msg='')
                         ]),
                 evaluator_node_uid:
                     pstate.NodeState(state=pstate.NodeState.STARTED),
@@ -646,9 +630,7 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertProtoEquals(pipeline2, view2.pipeline)
       self.assertProtoEquals(pipeline2, latest_view.pipeline)
 
-  @mock.patch.object(pstate, 'time')
-  def test_pipeline_view_get_pipeline_run_state(self, mock_time):
-    mock_time.time.return_value = 5
+  def test_pipeline_view_get_pipeline_run_state(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1', pipeline_pb2.Pipeline.SYNC, pipeline_nodes=['Trainer'])
@@ -658,21 +640,19 @@ class PipelineStateTest(test_utils.TfxTest):
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.RUNNING)
       [view] = pstate.PipelineView.load_all(m, pipeline_uid)
-      self.assertProtoPartiallyEquals(
+      self.assertProtoEquals(
           run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING),
-          view.get_pipeline_run_state(), ignored_fields=['update_time'])
+          view.get_pipeline_run_state())
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE)
       [view] = pstate.PipelineView.load_all(m, pipeline_uid)
-      self.assertProtoPartiallyEquals(
+      self.assertProtoEquals(
           run_state_pb2.RunState(state=run_state_pb2.RunState.COMPLETE),
-          view.get_pipeline_run_state(), ignored_fields=['update_time'])
+          view.get_pipeline_run_state())
 
-  @mock.patch.object(pstate, 'time')
-  def test_pipeline_view_get_node_run_states(self, mock_time):
-    mock_time.time.return_value = time.time()
+  def test_pipeline_view_get_node_run_states(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
@@ -706,37 +686,25 @@ class PipelineStateTest(test_utils.TfxTest):
           m, task_lib.PipelineUid.from_pipeline(pipeline))
       run_states_dict = view.get_node_run_states()
       self.assertEqual(
-          run_state_pb2.RunState(
-              state=run_state_pb2.RunState.RUNNING,
-              update_time=int(mock_time.time.return_value * 1000)),
+          run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING),
           run_states_dict['ExampleGen'])
       self.assertEqual(
-          run_state_pb2.RunState(
-              state=run_state_pb2.RunState.UNKNOWN,
-              update_time=int(mock_time.time.return_value * 1000)),
+          run_state_pb2.RunState(state=run_state_pb2.RunState.UNKNOWN),
           run_states_dict['Transform'])
       self.assertEqual(
-          run_state_pb2.RunState(
-              state=run_state_pb2.RunState.READY,
-              update_time=int(mock_time.time.return_value * 1000)),
+          run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
           run_states_dict['Trainer'])
       self.assertEqual(
           run_state_pb2.RunState(
               state=run_state_pb2.RunState.FAILED,
               status_code=run_state_pb2.RunState.StatusCodeValue(
                   value=status_lib.Code.ABORTED),
-              status_msg='foobar error',
-              update_time=int(mock_time.time.return_value * 1000)),
-          run_states_dict['Evaluator'])
+              status_msg='foobar error'), run_states_dict['Evaluator'])
       self.assertEqual(
-          run_state_pb2.RunState(
-              state=run_state_pb2.RunState.READY,
-              update_time=int(mock_time.time.return_value * 1000)),
+          run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
           run_states_dict['Pusher'])
 
-  @mock.patch.object(pstate, 'time')
-  def test_pipeline_view_get_node_run_state_history(self, mock_time):
-    mock_time.time.return_value = time.time()
+  def test_pipeline_view_get_node_run_state_history(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
@@ -758,20 +726,14 @@ class PipelineStateTest(test_utils.TfxTest):
 
       self.assertEqual(
           {
-              'ExampleGen': [(run_state_pb2.RunState(
-                  state=run_state_pb2.RunState.READY,
-                  update_time=int(mock_time.time.return_value * 1000))),
-                             (run_state_pb2.RunState(
-                                 state=run_state_pb2.RunState.RUNNING,
-                                 update_time=int(
-                                     mock_time.time.return_value * 1000)))]
+              'ExampleGen': [
+                  run_state_pb2.RunState(state=run_state_pb2.RunState.READY),
+                  run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING)
+              ]
           }, run_state_history)
 
-  @mock.patch.object(pstate, 'time')
-  def test_node_state_for_skipped_nodes_in_partial_pipeline_run(
-      self, mock_time):
+  def test_node_state_for_skipped_nodes_in_partial_pipeline_run(self):
     """Tests that nodes marked to be skipped have the right node state and previous node state."""
-    mock_time.time.return_value = time.time()
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
@@ -807,17 +769,13 @@ class PipelineStateTest(test_utils.TfxTest):
         self.assertEqual(
             {
                 eg_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.SKIPPED_PARTIAL_RUN,
-                        last_updated_time=mock_time.time.return_value),
+                    pstate.NodeState(state=pstate.NodeState.SKIPPED_PARTIAL_RUN
+                                    ),
                 transform_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.SKIPPED_PARTIAL_RUN,
-                        last_updated_time=mock_time.time.return_value),
+                    pstate.NodeState(state=pstate.NodeState.SKIPPED_PARTIAL_RUN
+                                    ),
                 trainer_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.STARTED,
-                        last_updated_time=mock_time.time.return_value),
+                    pstate.NodeState(state=pstate.NodeState.STARTED),
             }, pipeline_state.get_node_states_dict())
         self.assertEqual(
             {
@@ -828,7 +786,7 @@ class PipelineStateTest(test_utils.TfxTest):
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
                                 status_code=None,
-                                update_time=mock_time.time.return_value)
+                                status_msg='')
                         ]),
                 transform_node_uid:
                     pstate.NodeState(
@@ -837,14 +795,12 @@ class PipelineStateTest(test_utils.TfxTest):
                             pstate.StateRecord(
                                 state=pstate.NodeState.STARTED,
                                 status_code=None,
-                                update_time=mock_time.time.return_value)
+                                status_msg='')
                         ]),
             }, pipeline_state.get_previous_node_states_dict())
 
-  @mock.patch.object(pstate, 'time')
-  def test_get_previous_node_run_states_for_skipped_nodes(self, mock_time):
+  def test_get_previous_node_run_states_for_skipped_nodes(self):
     """Tests that nodes marked to be skipped have the right previous run state."""
-    mock_time.time.return_value = time.time()
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
@@ -881,27 +837,17 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertEqual(
           {
               'ExampleGen':
-                  run_state_pb2.RunState(
-                      state=run_state_pb2.RunState.FAILED,
-                      update_time=int(mock_time.time.return_value * 1000)),
+                  run_state_pb2.RunState(state=run_state_pb2.RunState.FAILED),
               'Transform':
-                  run_state_pb2.RunState(
-                      state=run_state_pb2.RunState.RUNNING,
-                      update_time=int(mock_time.time.return_value * 1000))
+                  run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING)
           }, view_run_1.get_previous_node_run_states())
 
     self.assertEqual(
         {
-            'ExampleGen': [
-                run_state_pb2.RunState(
-                    state=run_state_pb2.RunState.READY,
-                    update_time=int(mock_time.time.return_value * 1000))
-            ],
-            'Transform': [
-                run_state_pb2.RunState(
-                    state=run_state_pb2.RunState.READY,
-                    update_time=int(mock_time.time.return_value * 1000))
-            ]
+            'ExampleGen':
+                [run_state_pb2.RunState(state=run_state_pb2.RunState.READY)],
+            'Transform':
+                [run_state_pb2.RunState(state=run_state_pb2.RunState.READY)]
         }, view_run_1.get_previous_node_run_states_history())
 
 if __name__ == '__main__':

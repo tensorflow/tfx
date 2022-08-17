@@ -78,8 +78,6 @@ class ResolverFunction:
       if typing_utils.is_compatible(
           only_arg, Mapping[str, channel.BaseChannel]):
         return {k: v.type for k, v in only_arg.items()}
-      if isinstance(only_arg, channel.BaseChannel):
-        return only_arg.type
     return None
 
   def __call__(self, *args, **kwargs):

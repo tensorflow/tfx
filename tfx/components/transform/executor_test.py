@@ -41,6 +41,18 @@ from tfx.utils import name_utils
 from tfx.utils import proto_utils
 
 
+def _get_dataset_size(files):
+  if tf.executing_eagerly():
+    return sum(
+        1 for _ in tf.data.TFRecordDataset(files, compression_type='GZIP'))
+  else:
+    result = 0
+    for file in files:
+      result += sum(1 for _ in tf.compat.v1.io.tf_record_iterator(
+          file, tf.io.TFRecordOptions(compression_type='GZIP')))
+    return result
+
+
 class _TempPath(types.Artifact):
   TYPE_NAME = 'TempPath'
 
@@ -48,21 +60,15 @@ class _TempPath(types.Artifact):
 # TODO(b/122478841): Add more detailed tests.
 class ExecutorTest(tft_unit.TransformTestCase):
 
-  _TEMP_ARTIFACTS_DIR = tempfile.mkdtemp()
+  _TEMP_EXAMPLE_DIR = tempfile.mkdtemp()
   _SOURCE_DATA_DIR = os.path.join(
       os.path.dirname(os.path.dirname(__file__)), 'testdata')
-  _ARTIFACT1_URI = os.path.join(_TEMP_ARTIFACTS_DIR, 'example_gen1')
-  _ARTIFACT2_URI = os.path.join(_TEMP_ARTIFACTS_DIR, 'example_gen2')
+  _ARTIFACT1_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'example_gen1')
+  _ARTIFACT2_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'example_gen2')
 
+  _INPUT_TYPE = example_gen_pb2.FORMAT_TF_EXAMPLE
   _SOURCE_EXAMPLE_DIR = 'csv_example_gen'
-
-  # File format is not specified, will default to 'tfrecords_gzip'.
-  _FILE_FORMAT = None
-  _PAYLOAD_FORMAT = example_gen_pb2.FORMAT_TF_EXAMPLE
-
-  _PREPROCESSING_FN = transform_module.preprocessing_fn
-  _STATS_OPTIONS_UPDATER_FN = transform_module.stats_options_updater_fn
-
+  _PAYLOAD_FORMAT = 'FORMAT_TF_EXAMPLE'
   _SCHEMA_ARTIFACT_DIR = 'schema_gen'
   _MODULE_FILE = 'module_file/transform_module.py'
 
@@ -81,20 +87,21 @@ class ExecutorTest(tft_unit.TransformTestCase):
       'num_instances_tfx.DataValidation_2nd_run': 24909
   }
 
+  def _get_preprocessing_fn(self):
+    module = (
+        transform_module if self._INPUT_TYPE
+        == example_gen_pb2.FORMAT_TF_EXAMPLE else transform_sequence_module)
+    return module.preprocessing_fn
+
+  def _get_stats_options_updater_fn(self):
+    module = (
+        transform_module if self._INPUT_TYPE
+        == example_gen_pb2.FORMAT_TF_EXAMPLE else transform_sequence_module)
+    return module.stats_options_updater_fn
+
   # executor_v2_test.py overrides this to False.
   def _use_force_tf_compat_v1(self):
     return True
-
-  def _get_dataset_size(self, files):
-    if tf.executing_eagerly():
-      return sum(
-          1 for _ in tf.data.TFRecordDataset(files, compression_type='GZIP'))
-    else:
-      result = 0
-      for file in files:
-        result += sum(1 for _ in tf.compat.v1.io.tf_record_iterator(
-            file, tf.io.TFRecordOptions(compression_type='GZIP')))
-      return result
 
   @classmethod
   def setUpClass(cls):
@@ -114,19 +121,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
       directory, filename = os.path.split(filepath)
       io_utils.copy_file(filepath, os.path.join(directory, 'dup_' + filename))
 
-  def _set_up_input_artifacts(self):
-    example1 = standard_artifacts.Examples()
-    example1.uri = self._ARTIFACT1_URI
-    example1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
-    if self._FILE_FORMAT is not None:
-      example1.set_string_custom_property('file_format', self._FILE_FORMAT)
-    example1.set_string_custom_property(
-        key='payload_format',
-        value=example_gen_pb2.PayloadFormat.Name(self._PAYLOAD_FORMAT))
-    example2 = copy.deepcopy(example1)
-    example2.uri = self._ARTIFACT2_URI
-    self._example_artifacts = [example1, example2]
-
   def _get_output_data_dir(self, sub_dir=None):
     test_dir = self._testMethodName
     if sub_dir is not None:
@@ -136,7 +130,16 @@ class ExecutorTest(tft_unit.TransformTestCase):
         test_dir)
 
   def _make_base_do_params(self, source_data_dir, output_data_dir):
-    self._set_up_input_artifacts()
+    # Create input dict.
+    example1 = standard_artifacts.Examples()
+    example1.uri = self._ARTIFACT1_URI
+    example1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    example1.set_string_custom_property(
+        key='payload_format', value=self._PAYLOAD_FORMAT)
+    example2 = copy.deepcopy(example1)
+    example2.uri = self._ARTIFACT2_URI
+
+    self._example_artifacts = [example1, example2]
 
     schema_artifact = standard_artifacts.Schema()
     schema_artifact.uri = os.path.join(source_data_dir,
@@ -220,9 +223,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     # Create exec properties skeleton.
     self._module_file = os.path.join(self._SOURCE_DATA_DIR, self._MODULE_FILE)
-    self._preprocessing_fn = name_utils.get_full_name(self._PREPROCESSING_FN)
+    self._preprocessing_fn = name_utils.get_full_name(
+        self._get_preprocessing_fn())
     self._stats_options_updater_fn = name_utils.get_full_name(
-        self._STATS_OPTIONS_UPDATER_FN)
+        self._get_stats_options_updater_fn())
     self._exec_properties[standard_component_specs.SPLITS_CONFIG_KEY] = None
     self._exec_properties[
         standard_component_specs.FORCE_TF_COMPAT_V1_KEY] = int(
@@ -269,11 +273,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
         self.assertGreater(len(transformed_eval_files), 0)
 
         # Construct datasets and count number of records in each split.
-        examples_train_count = self._get_dataset_size(examples_train_files)
-        transformed_train_count = self._get_dataset_size(
-            transformed_train_files)
-        examples_eval_count = self._get_dataset_size(examples_eval_files)
-        transformed_eval_count = self._get_dataset_size(transformed_eval_files)
+        examples_train_count = _get_dataset_size(examples_train_files)
+        transformed_train_count = _get_dataset_size(transformed_train_files)
+        examples_eval_count = _get_dataset_size(examples_eval_files)
+        transformed_eval_count = _get_dataset_size(transformed_eval_files)
 
         # Check for each split that it contains the same number of records in
         # the input artifact as in the output artifact (i.e 1-to-1 mapping is
@@ -689,10 +692,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
                  'Native SequenceExample support not available with TF1')
 class ExecutorWithSequenceExampleTest(ExecutorTest):
 
+  _INPUT_TYPE = example_gen_pb2.FORMAT_TF_SEQUENCE_EXAMPLE
   _SOURCE_EXAMPLE_DIR = 'tfrecord_sequence'
-  _PAYLOAD_FORMAT = example_gen_pb2.FORMAT_TF_SEQUENCE_EXAMPLE
-  _PREPROCESSING_FN = transform_sequence_module.preprocessing_fn
-  _STATS_OPTIONS_UPDATER_FN = transform_sequence_module.stats_options_updater_fn
+  _PAYLOAD_FORMAT = 'FORMAT_TF_SEQUENCE_EXAMPLE'
   _SCHEMA_ARTIFACT_DIR = 'schema_gen_sequence'
   _MODULE_FILE = 'module_file/transform_sequence_module.py'
 

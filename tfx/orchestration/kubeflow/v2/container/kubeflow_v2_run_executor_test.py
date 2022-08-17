@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for kubeflow_v2_run_executor.py."""
 
+import filecmp
 import json
 import os
 from typing import Any, Mapping, Sequence
@@ -33,7 +34,6 @@ from tfx.utils import name_utils
 from tfx.utils import test_case_utils
 
 from google.protobuf import json_format
-
 
 _TEST_OUTPUT_METADATA_JSON = "testdir/outputmetadata.json"
 
@@ -97,11 +97,12 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
     # Prepare executor input.
     serialized_metadata = self._get_text_from_test_data(
         "executor_invocation.json")
-    metadata_json = json.loads(serialized_metadata)
+    self.metadata_json = json.loads(serialized_metadata)
     # Mutate the outputFile field.
-    metadata_json["outputs"]["outputFile"] = _TEST_OUTPUT_METADATA_JSON
-    self._serialized_metadata = json.dumps(metadata_json)
+    self.metadata_json["outputs"]["outputFile"] = _TEST_OUTPUT_METADATA_JSON
+    self._serialized_metadata = json.dumps(self.metadata_json)
 
+    print("Serialized Invocation Args Yahoo! ", self._serialized_metadata)
     # Prepare executor input using legacy properties and custom properties.
     serialized_metadata_legacy = self._get_text_from_test_data(
         "executor_invocation_legacy.json")
@@ -151,6 +152,35 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
 
       self.assertEqual(actual_output, self._expected_output)
       os.remove(_TEST_OUTPUT_METADATA_JSON)
+
+  def testEntryPointWithDynamicExecutionProperties(self):
+    """Test the entrypoint with output parameters."""
+    self.metadata_json["outputs"]["parameters"] = {}
+    self.metadata_json["outputs"]["parameters"]["blessing"] = {
+        "output_file": "parameter1"
+    }
+    self._serialized_metadata_with_output_parameters = json.dumps(
+        self.metadata_json)
+    # Creates new artifact output file and writes string value to it
+    with open("artifact1", "w+") as f:
+      f.write("String1")
+    # Creates empty parameter output file (string value must be copied from
+    # artifact output file)
+    with open("parameter1", "w+") as f:
+      pass
+
+    with _ArgsCapture() as args_capture:
+      args = [
+          "--executor_class_path",
+          name_utils.get_full_name(_FakeExecutor),
+          "--json_serialized_invocation_args",
+          self._serialized_metadata_with_output_parameters
+      ]
+      kubeflow_v2_run_executor.main(kubeflow_v2_run_executor._parse_flags(args))
+
+    self.assertEqual(
+        set(args_capture.input_dict.keys()), set(["input_1", "input_2"]))
+    self.assertTrue(filecmp.cmp("artifact1", "parameter1"))
 
   def testEntryPointWithDriver(self):
     """Test the entrypoint with Driver's output metadata."""
