@@ -23,9 +23,10 @@ import time
 
 from absl import logging
 from kubernetes import client as k8s_client
+from tfx.orchestration.experimental.core import task_scheduler
 from tfx.orchestration.python_execution_binary import python_execution_binary_utils
 from tfx.utils import kube_utils
-
+from tfx.utils import status as status_lib
 
 _COMMAND = [
     'python',
@@ -42,6 +43,14 @@ def _generate_component_name_suffix() -> str:
   return '-' + ''.join(random.choice(letters) for i in range(10))
 
 
+class JobExceptionError(Exception):
+  """Exception error class to handle exceptions while running Kubernetes job."""
+
+  def __init__(self, message: str):
+    super().__init__(message)
+    self.msg = message
+
+
 class KubernetesJobRunner(abc.ABC):
   """A Kubernetes job runner that launches and executes pipeline components in kubernetes cluster."""
 
@@ -49,7 +58,8 @@ class KubernetesJobRunner(abc.ABC):
                tfx_image,
                job_prefix,
                container_name,
-               name_space='default'):
+               name_space='default',
+               stream_logs=False):
     """Create a kubernetes model server runner.
 
     Args:
@@ -57,6 +67,7 @@ class KubernetesJobRunner(abc.ABC):
       job_prefix: prefix for the job. Unique hash will follow as suffix.
       container_name: name of the container.
       name_space: namespace of the run.
+      stream_logs: whether to stream logs from the pod.
     """
     self._image = tfx_image
     self._k8s_core_api = kube_utils.make_core_v1_api()
@@ -68,13 +79,33 @@ class KubernetesJobRunner(abc.ABC):
     self.ttl_seconds = 5
     # Pod name would be populated once creation request sent.
     self._pod_name = None
+    self._stream_pod_logs = stream_logs
 
-  def run(self, execution_info, executable_spec) -> None:
+  def run(self, execution_info,
+          executable_spec) -> task_scheduler.TaskSchedulerResult:
     """Execute component in the pod."""
-    self._create_job(execution_info, executable_spec)
-    self._wait_until_pod_is_runnable()
-    self._stream_logs()
-    self._wait_until_completion()
+
+    try:
+      self._create_job(execution_info, executable_spec)
+      self._wait_until_pod_is_runnable()
+      if self._stream_pod_logs:
+        self._stream_logs()
+      self._wait_until_completion()
+      return task_scheduler.TaskSchedulerResult(
+          status=status_lib.Status(code=status_lib.Code.OK),
+          output=task_scheduler.ExecutorNodeOutput())
+    except k8s_client.rest.ApiException as e:
+      # TODO(b/240237394): Error type specification.
+      msg = 'Unable to run job. \nReason: %s\nBody: %s' % (
+          e.reason if not None else '', e.body if not None else '')
+      logging.info(msg)
+      return task_scheduler.TaskSchedulerResult(
+          status=status_lib.Status(code=status_lib.Code.CANCELLED, message=msg))
+    except JobExceptionError as e:
+      logging.info(e.msg)
+      return task_scheduler.TaskSchedulerResult(
+          status=status_lib.Status(
+              code=status_lib.Code.CANCELLED, message=e.msg))
 
   def _create_job(self, execution_info, executable_spec) -> None:
     """Create a job and wait for the pod to be runnable."""
@@ -86,13 +117,14 @@ class KubernetesJobRunner(abc.ABC):
         executable_spec)
 
     run_arguments = [
-        '--tfx_execution_info_b64', serialized_execution_info,
-        '--tfx_python_class_executable_spec_b64', serialized_executable_spec,
+        '--tfx_execution_info_b64',
+        serialized_execution_info,
+        '--tfx_python_class_executable_spec_b64',
+        serialized_executable_spec,
     ]
     orchestrator_commands = _COMMAND + run_arguments
 
     batch_api = kube_utils.make_batch_v1_api()
-
     job = kube_utils.make_job_object(
         name=self._job_name,
         container_image=self._image,
@@ -103,11 +135,7 @@ class KubernetesJobRunner(abc.ABC):
         },
         ttl_seconds_after_finished=self.ttl_seconds,
     )
-    try:
-      batch_api.create_namespaced_job(self._namespace, job, pretty=True)
-    except k8s_client.rest.ApiException as e:
-      raise RuntimeError('Failed to create job. \nReason: %s\nBody: %s' %
-                         (e.reason, e.body)) from e
+    batch_api.create_namespaced_job(self._namespace, job, pretty=True)
     logging.info('Job %s created!', self._job_name)
 
   def _wait_until_pod_is_runnable(self) -> None:
@@ -119,14 +147,16 @@ class KubernetesJobRunner(abc.ABC):
     # Wait for the kubernetes job to launch a pod.
     while (datetime.datetime.utcnow() -
            start_time).seconds < _JOB_CREATION_TIMEOUT:
+      orchestrator_pods = self._k8s_core_api.list_namespaced_pod(
+          namespace='default',
+          label_selector='job-name={}'.format(self._job_name)).items
       try:
         orchestrator_pods = self._k8s_core_api.list_namespaced_pod(
             namespace='default',
             label_selector='job-name={}'.format(self._job_name)).items
       except k8s_client.rest.ApiException as e:
         if e.status != 404:
-          raise RuntimeError('Unknown error! \nReason: %s\nBody: %s' %
-                             (e.reason, e.body)) from e
+          raise e
         time.sleep(_DEFAULT_POLLING_INTERVAL_SEC)
       if len(orchestrator_pods) != 1:
         continue
@@ -137,27 +167,22 @@ class KubernetesJobRunner(abc.ABC):
         logging.info('Pod created with name %s', self._pod_name)
         return
       if pod_phase.is_done:
-        raise RuntimeError(
-            'Job has been aborted. Please restart for execution.')
+        raise JobExceptionError(
+            message='Job has been aborted. Please restart for execution.')
       time.sleep(_DEFAULT_POLLING_INTERVAL_SEC)
-    # TODO(ysyang): Error type specification.
-    raise RuntimeError('Deadline exceeded while waiting for pod to be running.')
+    raise JobExceptionError(
+        message='Deadline exceeded while waiting for pod to be running.')
 
   def _stream_logs(self) -> None:
     """Stream logs from orchestrator pod."""
     logging.info('Start log streaming for pod %s:%s.', self._namespace,
                  self._pod_name)
-    try:
-      logs = self._k8s_core_api.read_namespaced_pod_log(
-          name=self._pod_name,
-          namespace='default',
-          container=self._container_name,
-          follow=True,
-          _preload_content=False).stream()
-    except k8s_client.rest.ApiException as e:
-      raise RuntimeError(
-          'Failed to stream the logs from the pod.\nReason: %s\nBody: %s' %
-          (e.reason, e.body)) from e
+    logs = self._k8s_core_api.read_namespaced_pod_log(
+        name=self._pod_name,
+        namespace='default',
+        container=self._container_name,
+        follow=True,
+        _preload_content=False).stream()
     for log in logs:
       logging.info(log.decode().rstrip('\n'))
 
@@ -172,8 +197,8 @@ class KubernetesJobRunner(abc.ABC):
         exponential_backoff=True)
     pod_phase = kube_utils.PodPhase(pod.status.phase)
     if pod_phase == kube_utils.PodPhase.FAILED:
-      raise RuntimeError('Pod "%s" failed with status "%s".' %
-                         (self._pod_name, pod.status))
+      raise JobExceptionError(message='Pod "%s" failed with status "%s".' %
+                              (self._pod_name, pod.status))
     if pod_phase.is_done:
       logging.info('Job completed! Ending log streaming for pod %s:%s.',
                    self._namespace, self._pod_name)

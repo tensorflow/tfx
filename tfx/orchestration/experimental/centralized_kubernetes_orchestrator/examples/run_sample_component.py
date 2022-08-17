@@ -11,9 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Run sample component (ImportSchemaGen) in Kubernetes.
+"""Run sample component (ImportSchemaGen) in Kubernetes, useful for debugging.
 
-Run sample component (ImportSchemaGen) in Kubernetes.
+Sample command:
+```
+python tfx/orchestration/experimental/centralized_kubernetes_orchestrator/
+examples/run_sample_component.py docker_image={your_docker_image}
+job_prefix={your_job_name} container_name={your_container_name}
+storage_bucket={your_gcs_bucket_name}
+```
 """
 from absl import app
 from absl import flags
@@ -84,8 +90,7 @@ def main(unused_argv):
       tfx_image=FLAGS.docker_image,
       job_prefix=FLAGS.job_prefix,
       container_name=FLAGS.container_name)
-
-  runner.run(execution_info=execution_info, executable_spec=executable_spec)
+  _ = runner.run(execution_info=execution_info, executable_spec=executable_spec)
 
 
 if __name__ == '__main__':

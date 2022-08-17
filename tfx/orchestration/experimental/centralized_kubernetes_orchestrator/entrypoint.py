@@ -13,7 +13,8 @@
 # limitations under the License.
 """Entrypoint for the Kubernetes Job Runner.
 
-Users can use this entrypoint to run components with the KubernetesJobRunner.
+Users can use this entrypoint to run pipeline with the centralized kubernetes
+orchestrator.
 """
 
 from absl import app
