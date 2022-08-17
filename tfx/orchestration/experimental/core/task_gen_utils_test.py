@@ -298,6 +298,9 @@ class TaskGenUtilsTest(tu.TfxTest):
       latest_execution_set = task_gen_utils.get_latest_executions_set(
           executions)
       self.assertLen(latest_execution_set, 2)
+
+      newer_execution_set.sort(key=lambda e: e.id)
+      latest_execution_set.sort(key=lambda e: e.id)
       self.assertProtoPartiallyEquals(
           newer_execution_set[0],
           latest_execution_set[0],
@@ -312,6 +315,40 @@ class TaskGenUtilsTest(tu.TfxTest):
               'type_id', 'create_time_since_epoch',
               'last_update_time_since_epoch'
           ])
+
+  def test_register_executions(self):
+    with self._mlmd_connection as m:
+      context_type = metadata_store_pb2.ContextType(name='my_ctx_type')
+      context_type_id = m.store.put_context_type(context_type)
+      context_1 = metadata_store_pb2.Context(
+          name='context-1', type_id=context_type_id)
+      context_2 = metadata_store_pb2.Context(
+          name='context-2', type_id=context_type_id)
+      m.store.put_contexts([context_1, context_2])
+
+      # Registers two executions.
+      task_gen_utils.register_executions(
+          m,
+          execution_type=metadata_store_pb2.ExecutionType(name='my_ex_type'),
+          contexts=[context_1, context_2],
+          input_and_params=[
+              task_gen_utils.InputAndParam(input_artifacts={
+                  'input_example': [standard_artifacts.Examples()]
+              }),
+              task_gen_utils.InputAndParam(input_artifacts={
+                  'input_example': [standard_artifacts.Examples()]
+              })
+          ])
+
+      contexts = m.store.get_contexts()
+      self.assertLen(contexts, 2)
+
+      executions = m.store.get_executions()
+      self.assertLen(executions, 2)
+      executions = m.store.get_executions_by_context(contexts[0].id)
+      self.assertLen(executions, 2)
+      executions = m.store.get_executions_by_context(contexts[1].id)
+      self.assertLen(executions, 2)
 
 
 if __name__ == '__main__':
