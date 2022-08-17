@@ -149,8 +149,9 @@ class Compiler:
     # Step 4: Node outputs
     # PipeineEnd node's outputs are the same as inner pipeline's outputs.
     _set_node_outputs(node, p.outputs)
-    pipeline_ctx.parent_pipeline_context.channels.update(
-        _generate_input_spec_for_outputs(node, p.outputs))
+    if pipeline_ctx.parent_pipeline_context:
+      pipeline_ctx.parent_pipeline_context.channels.update(
+          _generate_input_spec_for_outputs(node, p.outputs))
 
     # PipelineEnd node does not have parameters.
 
@@ -170,7 +171,7 @@ class Compiler:
     downstreams = set(
         _find_runtime_downstream_node_ids(
             pipeline_ctx.parent_pipeline_context, p))
-    if _end_node_is_downstream(
+    if pipeline_ctx.parent_pipeline_context and _end_node_is_downstream(
         p, pipeline_ctx.parent_pipeline_context.pipeline):
       downstreams.add(
           compiler_utils.pipeline_end_node_id(
@@ -1083,6 +1084,8 @@ def _find_runtime_downstream_node_ids(context: compiler_context.PipelineContext,
                                       here: base_node.BaseNode) -> List[str]:
   """Finds all downstream nodes that depend on the current node."""
   result = set()
+  if not context:
+    return result
   for down in itertools.chain(here.downstream_nodes,
                               context.implicit_downstream_nodes(here)):
     if context.is_async_mode and compiler_utils.is_resolver(down):
