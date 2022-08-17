@@ -196,6 +196,9 @@ class NodeState(json_utils.Jsonable):
               last_updated_time=state.update_time).to_run_state())
     return run_state_history
 
+  # By default, json_utils.Jsonable serializes and deserializes objects using
+  # obj.__dict__, which prevents attr.ib from populating default fields.
+  # Overriding this function to ensure default fields are populated.
   @classmethod
   def from_json_dict(cls, dict_data: Dict[str, Any]) -> Any:
     """Convert from dictionary data to an object."""
