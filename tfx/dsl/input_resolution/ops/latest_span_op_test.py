@@ -38,15 +38,15 @@ class ArtifactWithoutSpan(types.Artifact):
 class LatestSpanOpTest(tf.test.TestCase):
 
   def testLatestSpan_Empty(self):
-    actual = test_utils.run_resolver_op(ops.LatestSpan, [])
-    self.assertEqual(actual, [])
+    actual = test_utils.run_resolver_op(ops.LatestSpan, {'key': []})
+    self.assertEqual(actual, {'key': []})
 
   def testLatestSpan_SingleEntry(self):
     a1 = test_utils.DummyArtifact()
     a1.span = 1
 
-    actual = test_utils.run_resolver_op(ops.LatestSpan, [a1])
-    self.assertEqual(actual, [a1])
+    actual = test_utils.run_resolver_op(ops.LatestSpan, {'key': [a1]})
+    self.assertEqual(actual, {'key': [a1]})
 
   def testLatestSpan(self):
     a1 = test_utils.DummyArtifact()
@@ -67,32 +67,44 @@ class LatestSpanOpTest(tf.test.TestCase):
     a4.version = 1
     a5.version = 1
 
-    artifacts = [a1, a2, a3, a4, a5, a6]
+    artifacts = {'key': [a1, a2, a3, a4, a5, a6]}
 
     actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts, n=1)
-    self.assertEqual(actual, [a4])
+    self.assertEqual(actual, {'key': [a4]})
 
     actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts, n=2)
-    self.assertEqual(actual, [a4, a3])
+    self.assertEqual(actual, {'key': [a4, a3]})
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, n=2, keep_all_versions=True)
-    self.assertEqual(actual, [a4, a2, a3])
+    self.assertEqual(actual, {'key': [a4, a2, a3]})
 
     actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts, n=3)
-    self.assertEqual(actual, [a4, a3, a1])
+    self.assertEqual(actual, {'key': [a4, a3, a1]})
 
     actual = test_utils.run_resolver_op(
-        ops.LatestSpan, [a1, a2, a3, a4, a5], n=3, keep_all_versions=True)
-    self.assertEqual(actual, [a4, a2, a3, a1])
+        ops.LatestSpan, {'key': [a1, a2, a3, a4, a5]},
+        n=3,
+        keep_all_versions=True)
+    self.assertEqual(actual, {'key': [a4, a2, a3, a1]})
 
     actual = test_utils.run_resolver_op(
-        ops.LatestSpan, [a1, a2, a3, a4, a5], n=4)
-    self.assertEqual(actual, [a4, a3, a1])
+        ops.LatestSpan, {'key': [a1, a2, a3, a4, a5]}, n=4)
+    self.assertEqual(actual, {'key': [a4, a3, a1]})
 
     actual = test_utils.run_resolver_op(
-        ops.LatestSpan, [a1, a2, a3, a4, a5], n=4, keep_all_versions=True)
-    self.assertEqual(actual, [a4, a2, a3, a1])
+        ops.LatestSpan, {'key': [a1, a2, a3, a4, a5]},
+        n=4,
+        keep_all_versions=True)
+    self.assertEqual(actual, {'key': [a4, a2, a3, a1]})
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, {
+            'key1': [a1, a2, a3, a4, a5],
+            'key2': [a1, a2, a3, a5]
+        },
+        n=1)
+    self.assertEqual(actual, {'key1': [a4], 'key2': [a3]})
 
   def testLatestSpan_AllSameSpanSameVersion(self):
     a1 = test_utils.DummyArtifact()
@@ -111,20 +123,20 @@ class LatestSpanOpTest(tf.test.TestCase):
     a2.id = 2
     a3.id = 3
 
-    artifacts = [a1, a2, a3]
+    artifacts = {'key': [a1, a2, a3]}
 
     actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts, n=1)
-    self.assertEqual(actual, [a3])
+    self.assertEqual(actual, {'key': [a3]})
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, n=1, keep_all_versions=True)
-    self.assertEqual(actual, [a1, a2, a3])
+    self.assertEqual(actual, {'key': [a1, a2, a3]})
 
   def testLatestSpan_InvalidN(self):
     a1 = test_utils.DummyArtifact()
 
     with self.assertRaisesRegex(ValueError, 'n must be > 0'):
-      test_utils.run_resolver_op(ops.LatestSpan, [a1], n=-1)
+      test_utils.run_resolver_op(ops.LatestSpan, {'key': [a1]}, n=-1)
 
 
 if __name__ == '__main__':

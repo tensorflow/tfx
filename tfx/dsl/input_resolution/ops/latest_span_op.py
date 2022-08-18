@@ -17,13 +17,14 @@ from typing import Sequence
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
+from tfx.utils import typing_utils
 
 
 class LatestSpan(
     resolver_op.ResolverOp,
     canonical_name='tfx.LatestSpan',
-    arg_data_types=(resolver_op.DataType.ARTIFACT_LIST,),
-    return_data_type=resolver_op.DataType.ARTIFACT_LIST):
+    arg_data_types=(resolver_op.DataType.ARTIFACT_MULTIMAP,),
+    return_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP):
   """LatestSpan operator."""
 
   # The number of latest spans to return, must be > 0.
@@ -33,23 +34,8 @@ class LatestSpan(
   # version is returned.
   keep_all_versions = resolver_op.Property(type=bool, default=False)
 
-  def apply(self,
-            input_list: Sequence[types.Artifact]) -> Sequence[types.Artifact]:
-    """Returns artifacts with the n latest spans.
-
-    For example, if n=2, then only 2 artifacts with the latest 2 spans and
-    latest versions are returned. If n=2 and all_versions=True, then all
-    artifacts with the latest 2 spans but with all versions are included.
-
-    Args:
-      input_list: The list of Artifacts to parse.
-
-    Returns:
-      Artifacts with the n latest spans, all versions included.
-    """
-    if self.n < 1:
-      raise ValueError(f'n must be > 0, but was set to {self.n}.')
-
+  def _select_latest_span(
+      self, input_list: Sequence[types.Artifact]) -> Sequence[types.Artifact]:
     # Only consider artifacts that have both "span" and "version" in PROPERTIES
     # with PropertyType.INT.
     valid_artifacts = []
@@ -96,3 +82,26 @@ class LatestSpan(
           artifact, span_artifact_map[span], key=lambda a: (a.version, a.id))
 
     return list(span_artifact_map.values())
+
+  def apply(
+      self, input_list: typing_utils.ArtifactMultiMap
+  ) -> typing_utils.ArtifactMultiMap:
+    """Returns artifacts with the n latest spans.
+
+    For example, if n=2, then only 2 artifacts with the latest 2 spans and
+    latest versions are returned. If n=2 and all_versions=True, then all
+    artifacts with the latest 2 spans but with all versions are included.
+
+    Args:
+      input_list: The list of Artifacts to parse.
+
+    Returns:
+      Artifacts with the n latest spans, all versions included.
+    """
+    if self.n < 1:
+      raise ValueError(f'n must be > 0, but was set to {self.n}.')
+
+    return {
+        key: self._select_latest_span(value)
+        for key, value in input_list.items()
+    }
