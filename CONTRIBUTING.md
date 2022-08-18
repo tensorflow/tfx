@@ -160,9 +160,11 @@ find ./tfx -name '*_test.py' | grep -v e2e | xargs -I {} python {}
 
 ## Running pylint
 
-All new / changed code should pass [pylint](https://pylint.pycqa.org/) linter
-using the dedicated [pylintrc](./pylintrc). Use pylint to check lint errors
-before sending a pull request.
+We follow
+[Google Python Style Guide](https://google.github.io/styleguide/pyguide.html) in
+our code. All new / changed code should pass [pylint](https://pylint.pycqa.org/)
+linter using the dedicated [pylintrc](./pylintrc). Use pylint to check lint
+errors before sending a pull request.
 
 ```shell
 pylint --rcfile ./pylintrc some_python.py
