@@ -15,6 +15,7 @@
 import functools
 from typing import Callable, Type, Union, Mapping, Any, Optional, cast, Iterable
 
+from tfx.dsl.control_flow import for_each_internal
 from tfx.dsl.input_resolution import resolver_op
 from tfx.types import artifact
 from tfx.types import channel
@@ -133,9 +134,15 @@ class ResolverFunction:
       if not typing_utils.is_compatible(type_hint, _ArtifactTypeMap):
         raise RuntimeError(
             f'Invalid type_hint {type_hint}. Expected {_ArtifactTypeMap}')
-      # TODO(b/237363715): Return ForEach-able value.
-      raise NotImplementedError(
-          'ARTIFACT_MULTIMAP_LIST return value is not yet supported.')
+
+      def loop_var_factory(context: for_each_internal.ForEachContext):
+        return {
+            key: resolved_channel.ResolvedChannel(
+                artifact_type, out, key, context)
+            for key, artifact_type in type_hint.items()
+        }
+
+      return for_each_internal.Loopable(loop_var_factory)
 
   # TODO(b/236140660): Make trace() private and only use __call__.
   def trace(

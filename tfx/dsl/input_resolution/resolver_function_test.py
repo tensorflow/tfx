@@ -16,6 +16,7 @@
 from typing import Mapping
 
 import tensorflow as tf
+from tfx.dsl.control_flow import for_each_internal
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
 import tfx.types
@@ -271,8 +272,8 @@ class ResolverFunctionTest(tf.test.TestCase):
         resolve_artifact_multimap.with_type_hint(X)()
 
     with self.subTest('ARTIFACT_MULTIMAP_LIST with dict type hint'):
-      with self.assertRaises(NotImplementedError):
-        resolve_artifact_multimap_list.with_type_hint({'x': X})()
+      result = resolve_artifact_multimap_list.with_type_hint({'x': X})()
+      self.assertIsInstance(result, for_each_internal.Loopable)
 
     with self.subTest('ARTIFACT_MULTIMAP_LIST with a single type hint'):
       with self.assertRaises(RuntimeError):
