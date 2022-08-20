@@ -236,7 +236,7 @@ def create_node_uid(pipeline_id, node_id):
       node_id=node_id)
 
 
-def run_generator(mlmd_connection,
+def run_generator(mlmd_connection_manager,
                   generator_class,
                   pipeline,
                   task_queue,
@@ -245,10 +245,11 @@ def run_generator(mlmd_connection,
                   ignore_update_node_state_tasks=False,
                   fail_fast=None):
   """Generates tasks for testing."""
-  with mlmd_connection as m:
+  with mlmd_connection_manager:
+    m = mlmd_connection_manager.primary_mlmd_handle
     pipeline_state = get_or_create_pipeline_state(m, pipeline)
     generator_params = dict(
-        mlmd_handle=m,
+        mlmd_connection_manager=mlmd_connection_manager,
         is_task_id_tracked_fn=task_queue.contains_task_id,
         service_job_manager=service_job_manager)
     if fail_fast is not None:
@@ -296,7 +297,7 @@ def get_or_create_pipeline_state(mlmd_handle, pipeline):
 
 
 def run_generator_and_test(test_case,
-                           mlmd_connection,
+                           mlmd_connection_manager,
                            generator_class,
                            pipeline,
                            task_queue,
@@ -313,13 +314,14 @@ def run_generator_and_test(test_case,
   """Runs generator.generate() and tests the effects."""
   if service_job_manager is None:
     service_job_manager = service_jobs.DummyServiceJobManager()
-  with mlmd_connection as m:
+  with mlmd_connection_manager:
+    m = mlmd_connection_manager.primary_mlmd_handle
     executions = get_non_orchestrator_executions(m)
     test_case.assertLen(
         executions, num_initial_executions,
         f'Expected {num_initial_executions} execution(s) in MLMD.')
   tasks = run_generator(
-      mlmd_connection,
+      mlmd_connection_manager,
       generator_class,
       pipeline,
       task_queue,
@@ -327,7 +329,8 @@ def run_generator_and_test(test_case,
       service_job_manager,
       ignore_update_node_state_tasks=ignore_update_node_state_tasks,
       fail_fast=fail_fast)
-  with mlmd_connection as m:
+  with mlmd_connection_manager:
+    m = mlmd_connection_manager.primary_mlmd_handle
     test_case.assertLen(
         tasks, num_tasks_generated,
         f'Expected {num_tasks_generated} task(s) to be generated.')

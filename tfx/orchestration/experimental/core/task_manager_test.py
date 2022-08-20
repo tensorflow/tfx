@@ -25,6 +25,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -307,6 +308,9 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(
         connection_config=connection_config)
+    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        self._mlmd_connection,
+        mlmd_cm.MLMDConnectionConfig('owner', 'project', '', 'base_dir'))
 
     # Sets up the pipeline.
     pipeline = test_async_pipeline.create_pipeline()
@@ -342,10 +346,11 @@ class TaskManagerE2ETest(test_utils.TfxTest):
 
     # Task generator should produce two tasks for transform. The first one is
     # UpdateNodeStateTask and the second one is ExecNodeTask.
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_manager:
+      m = mlmd_manager.primary_mlmd_handle
       pipeline_state = pstate.PipelineState.new(m, self._pipeline)
       tasks = asptg.AsyncPipelineTaskGenerator(
-          m, self._task_queue.contains_task_id,
+          mlmd_manager, self._task_queue.contains_task_id,
           service_jobs.DummyServiceJobManager()).generate(pipeline_state)
     self.assertLen(tasks, 4)
     self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
@@ -386,7 +391,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
             exception=exception))
 
   def _run_task_manager(self):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_manager:
+      m = mlmd_manager.primary_mlmd_handle
       with tm.TaskManager(
           m,
           self._task_queue,
@@ -397,7 +403,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     return task_manager
 
   def _get_execution(self):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_manager:
+      m = mlmd_manager.primary_mlmd_handle
       executions = m.store.get_executions_by_id([self._execution_id])
     return executions[0]
 

@@ -20,6 +20,7 @@ import uuid
 import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task_manager as tm
 from tfx.orchestration.experimental.core import task_queue as tq
@@ -50,6 +51,9 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(
         connection_config=connection_config)
+    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        self._mlmd_connection,
+        mlmd_cm.MLMDConnectionConfig('owner', 'project', '', 'base_dir'))
 
     pipeline = self._make_pipeline(pipeline_root, str(uuid.uuid4()))
     self._pipeline = pipeline
@@ -58,7 +62,7 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
     self._task_queue = tq.TaskQueue()
     [importer_task] = test_utils.run_generator_and_test(
         test_case=self,
-        mlmd_connection=self._mlmd_connection,
+        mlmd_connection_manager=self._mlmd_connection_manager,
         generator_class=sptg.SyncPipelineTaskGenerator,
         pipeline=self._pipeline,
         task_queue=self._task_queue,

@@ -22,6 +22,7 @@ from absl.testing import flagsaver
 import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
@@ -51,6 +52,9 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest):
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(
         connection_config=connection_config)
+    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        self._mlmd_connection,
+        mlmd_cm.MLMDConnectionConfig('owner', 'project', '', 'base_dir'))
 
     self._pipeline_run_id = str(uuid.uuid4())
     self._pipeline = self._make_pipeline(pipeline_root, self._pipeline_run_id)
@@ -88,7 +92,7 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest):
 
       [sub_pipeline_task] = test_utils.run_generator_and_test(
           test_case=self,
-          mlmd_connection=self._mlmd_connection,
+          mlmd_connection_manager=self._mlmd_connection_manager,
           generator_class=sptg.SyncPipelineTaskGenerator,
           pipeline=self._pipeline,
           task_queue=self._task_queue,

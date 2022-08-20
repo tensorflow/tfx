@@ -20,6 +20,7 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
+from tfx.orchestration.experimental.core import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -53,6 +54,9 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(
         connection_config=connection_config)
+    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        self._mlmd_connection,
+        mlmd_cm.MLMDConnectionConfig('owner', 'project', '', 'base_dir'))
 
     # Sets up the pipeline.
     pipeline = test_async_pipeline.create_pipeline()
@@ -111,7 +115,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     """Generates tasks and tests the effects."""
     return test_utils.run_generator_and_test(
         self,
-        self._mlmd_connection,
+        self._mlmd_connection_manager,
         asptg.AsyncPipelineTaskGenerator,
         self._pipeline,
         self._task_queue,
