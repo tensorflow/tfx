@@ -28,6 +28,7 @@ from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import event_observer
+from tfx.orchestration.experimental.core import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -579,7 +580,8 @@ def _wait_for_predicate(predicate_fn: Callable[[], bool], waiting_for_desc: str,
 
 @_to_status_not_ok_error
 @_pipeline_ops_lock
-def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
+def orchestrate(mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
+                task_queue: tq.TaskQueue,
                 service_job_manager: service_jobs.ServiceJobManager) -> bool:
   """Performs a single iteration of the orchestration loop.
 
@@ -587,7 +589,8 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
   pipeline execution states, generates and enqueues the tasks to be performed.
 
   Args:
-    mlmd_handle: A handle to the MLMD db.
+    mlmd_connection_manager: A `MLMDConnectionManager` instance to manager
+      multiple mlmd connections.
     task_queue: A `TaskQueue` instance into which any tasks will be enqueued.
     service_job_manager: A `ServiceJobManager` instance for handling service
       jobs.
@@ -598,7 +601,8 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
   Raises:
     status_lib.StatusNotOkError: If error generating tasks.
   """
-  pipeline_states = pstate.get_pipeline_states(mlmd_handle)
+  pipeline_states = pstate.get_pipeline_states(
+      mlmd_connection_manager.primary_mlmd_handle)
   if not pipeline_states:
     logging.info('No active pipelines to run.')
     return False
@@ -623,19 +627,21 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
   for pipeline_state in stop_initiated_pipeline_states:
     logging.info('Orchestrating stop-initiated pipeline: %s',
                  pipeline_state.pipeline_uid)
-    _orchestrate_stop_initiated_pipeline(mlmd_handle, task_queue,
-                                         service_job_manager, pipeline_state)
+    _orchestrate_stop_initiated_pipeline(
+        mlmd_connection_manager.primary_mlmd_handle, task_queue,
+        service_job_manager, pipeline_state)
 
   for pipeline_state in update_initiated_pipeline_states:
     logging.info('Orchestrating update-initiated pipeline: %s',
                  pipeline_state.pipeline_uid)
-    _orchestrate_update_initiated_pipeline(mlmd_handle, task_queue,
-                                           service_job_manager, pipeline_state)
+    _orchestrate_update_initiated_pipeline(
+        mlmd_connection_manager.primary_mlmd_handle, task_queue,
+        service_job_manager, pipeline_state)
 
   for pipeline_state in active_pipeline_states:
     logging.info('Orchestrating pipeline: %s', pipeline_state.pipeline_uid)
-    _orchestrate_active_pipeline(mlmd_handle, task_queue, service_job_manager,
-                                 pipeline_state)
+    _orchestrate_active_pipeline(mlmd_connection_manager, task_queue,
+                                 service_job_manager, pipeline_state)
   return True
 
 
@@ -793,7 +799,8 @@ class _NodeInfo:
 
 
 def _orchestrate_active_pipeline(
-    mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
+    task_queue: tq.TaskQueue,
     service_job_manager: service_jobs.ServiceJobManager,
     pipeline_state: pstate.PipelineState) -> None:
   """Orchestrates active pipeline."""
@@ -834,7 +841,7 @@ def _orchestrate_active_pipeline(
   # Create cancellation tasks for nodes in state STOPPING.
   for node_info in stopping_node_infos:
     if _cancel_node(
-        mlmd_handle,
+        mlmd_connection_manager.primary_mlmd_handle,
         task_queue,
         service_job_manager,
         pipeline_state,
@@ -853,13 +860,14 @@ def _orchestrate_active_pipeline(
   # Initialize task generator for the pipeline.
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
     generator = sync_pipeline_task_gen.SyncPipelineTaskGenerator(
-        mlmd_handle,
+        mlmd_connection_manager.primary_mlmd_handle,
         task_queue.contains_task_id,
         service_job_manager,
         fail_fast=orchestration_options.fail_fast)
   elif pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
     generator = async_pipeline_task_gen.AsyncPipelineTaskGenerator(
-        mlmd_handle, task_queue.contains_task_id, service_job_manager)
+        mlmd_connection_manager.primary_mlmd_handle,
+        task_queue.contains_task_id, service_job_manager)
   else:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.FAILED_PRECONDITION,
