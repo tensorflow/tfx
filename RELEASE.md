@@ -33,6 +33,7 @@
 | `apache-beam[gcp]` | `>=2.40,<3` | `>=2.38,<3` | Synced release train |
 | `attrs` | `>=19.3.0,<22` | `>=19.3.0,<21` | Allow more recent versions |
 | `pyarrow` | `>=6,<7` | `>=1,<6` | Synced release train |
+| `tflite-support` | `~=0.4.2` | `>=0.1.0a1,<0.2.1` | Update to a TF-2.10 compatible version. |
 
 ## Documentation Updates
 
