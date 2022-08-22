@@ -67,6 +67,9 @@ def get_individual_channels(
   elif isinstance(input_channel, channel.LoopVarChannel):
     return get_individual_channels(
         cast(channel.LoopVarChannel, input_channel).wrapped)
+  elif isinstance(input_channel, resolved_channel.ResolvedChannel):
+    input_channel = cast(resolved_channel.ResolvedChannel, input_channel)
+    return resolver_function.get_dependent_channels(input_channel.output_node)
   else:
     raise RuntimeError(f'Unexpected Channel type: {type(input_channel)}')
 

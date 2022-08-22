@@ -159,7 +159,7 @@ def _parse_predict_log(
       output_values = output_values.tolist()
     else:  # output_values.ndim == 0
       # Get a scalar for output_values.
-      output_values = [np.asscalar(output_values)]
+      output_values = [output_values.item()]
     output_features.append((col.output_column, output_values))
   return example, output_features
 

@@ -20,6 +20,8 @@ import uuid
 from absl.testing.absltest import mock
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -54,7 +56,17 @@ def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
   output_example.uri = 'my_examples_uri'
   contexts = context_lib.prepare_contexts(mlmd_handle, example_gen.contexts)
   execution = execution_publish_utils.register_execution(
-      mlmd_handle, example_gen.node_info.type, contexts)
+      mlmd_handle,
+      example_gen.node_info.type,
+      contexts,
+      exec_properties={
+          # We use an arbitrary SHA256 hash here for testing. Note that it's
+          # a constant hash that doesn't depend on the parameters, which happens
+          # to be fine since in the tests we never generate more than one
+          # fake example gen run.
+          constants.EXECUTOR_SPEC_FINGERPRINT_KEY:
+              '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'
+      })
   execution_publish_utils.publish_succeeded_execution(
       mlmd_handle, execution.id, contexts, {
           'examples': [output_example],
@@ -159,14 +171,15 @@ def fake_cached_example_gen_run(mlmd_connection: metadata.Metadata,
 
 def get_node(pipeline, node_id):
   for node in pipeline.nodes:
-    if node.pipeline_node.node_info.id == node_id:
-      return node.pipeline_node
+    node_view = node_proto_view.get_view(node)
+    if node_view.node_info.id == node_id:
+      return node_view
   raise ValueError(f'could not find {node_id}')
 
 
 def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
   """Simulates node execution given ExecNodeTask."""
-  node = task.get_pipeline_node()
+  node = task.get_node()
   with mlmd_connection as m:
     if node.HasField('outputs'):
       output_key, output_value = next(iter(node.outputs.outputs.items()))
@@ -295,7 +308,8 @@ def run_generator_and_test(test_case,
                            num_active_executions,
                            expected_exec_nodes=None,
                            ignore_update_node_state_tasks=False,
-                           fail_fast=None):
+                           fail_fast=None,
+                           expected_context_names=None):
   """Runs generator.generate() and tests the effects."""
   if service_job_manager is None:
     service_job_manager = service_jobs.DummyServiceJobManager()
@@ -332,16 +346,19 @@ def run_generator_and_test(test_case,
       for i, task in enumerate(
           t for t in tasks if isinstance(t, task_lib.ExecNodeTask)):
         _verify_exec_node_task(test_case, pipeline, expected_exec_nodes[i],
-                               active_executions[i].id, task)
+                               active_executions[i].id, task,
+                               expected_context_names)
     return tasks
 
 
-def _verify_exec_node_task(test_case, pipeline, node, execution_id, task):
+def _verify_exec_node_task(test_case, pipeline, node, execution_id, task,
+                           expected_context_names):
   """Verifies that generated ExecNodeTask has the expected properties for the node."""
+  if not expected_context_names:
+    expected_context_names = ['my_pipeline', f'my_pipeline.{node.node_info.id}']
   test_case.assertEqual(
-      task_lib.NodeUid.from_pipeline_node(pipeline, node), task.node_uid)
+      task_lib.NodeUid.from_node(pipeline, node), task.node_uid)
   test_case.assertEqual(execution_id, task.execution_id)
-  expected_context_names = ['my_pipeline', f'my_pipeline.{node.node_info.id}']
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
     expected_context_names.append(
         pipeline.runtime_spec.pipeline_run_id.field_value.string_value)

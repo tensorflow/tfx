@@ -134,6 +134,22 @@ class CompilerUtilsTest(tf.test.TestCase):
           compiler_utils.build_parameter_type_spec(value).type,
           expected_type_enum)
 
+  def testBuildOutputParameterSpecValueArtifact(self):
+    param = pipeline_pb2.ParameterType
+    for output_type, expected_spec_type in [('Integer', param.NUMBER_INTEGER),
+                                            ('Double', param.NUMBER_DOUBLE),
+                                            ('String', param.STRING),
+                                            ('Boolean', param.BOOLEAN)]:
+      spec_type = compiler_utils.build_output_parameter_spec(
+          output_type).parameter_type
+      self.assertEqual(spec_type, expected_spec_type)
+
+  def testBuildOutputParameterSpecNonValueArtifact(self):
+    self.assertRaises(ValueError, compiler_utils.build_output_parameter_spec,
+                      'JSON')
+    self.assertRaises(ValueError, compiler_utils.build_output_parameter_spec,
+                      'Struct')
+
   def testBuildInputArtifactSpec(self):
     spec = compiler_utils.build_input_artifact_spec(
         channel.Channel(type=standard_artifacts.Model))
@@ -225,10 +241,8 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
               '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'int\'] < 1.0)',
       },
       {
-          'testcase_name':
-              'left_side_placeholder_right_side_float',
-          'predicate':
-              _TEST_CHANNEL.future()[0].property('float') < 1.1,
+          'testcase_name': 'left_side_placeholder_right_side_float',
+          'predicate': _TEST_CHANNEL.future()[0].property('float') < 1.1,
           'expected_cel':
               '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'float\'] < '
               '1.1)',

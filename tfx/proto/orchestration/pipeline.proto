@@ -209,13 +209,14 @@ message InputGraph {
     oneof kind {
       OpNode op_node = 2;
       DictNode dict_node = 3;
+      InputNode input_node = 4;
     }
   }
 
   // ResolverOp instance as a input graph's node. Corresponds to the
   // tfx.dsl.resolver_op.OpNode.
   message OpNode {
-    // ResolverOp type (e.g. "tfx.Unnest").
+    // A canonical_name of ResolverOp (e.g. "tfx.internal.Unnest").
     string op_type = 1;
     // Generic argument type that can express either another Node's outputs
     // or a static value.
@@ -239,6 +240,13 @@ message InputGraph {
   message DictNode {
     // Map from dict key to node ID.
     map<string, string> node_ids = 1;
+  }
+
+  // InputNode refers a NodeInputs.inputs[input_key]. Its output_data_type is
+  // always ARTIFACT_LIST.
+  // Corresponds to the tfx.dsl.resolver_op.InputNode.
+  message InputNode {
+    string input_key = 1;
   }
 
   // Nodes of this input graph. Key is the node ID.
@@ -337,16 +345,33 @@ message InputSpec {
     string key = 2;
   }
 
-  // Exactly one of `channels` or `input_graph_ref` field should be set.
+  // A mixture of InputSpecs.
+  message Mixed {
+    enum Method {
+      UNION = 0;
+    }
+    Method method = 1;
+    repeated string input_keys = 2;
+  }
+
+  // Exactly one of `channels`, `input_graph_ref`, or `mixed_inputs` field
+  // should be set.
   // Union of Channels.
   repeated Channel channels = 1;
   // A reference to the InputGraph.
   InputGraphRef input_graph_ref = 3;
+  // A mixture of InputSpecs.
+  Mixed mixed_inputs = 4;
 
   // The minimum number of artifacts desired. If minimum requirement is not met,
   // the execution should not be triggered. If min_count is less than or equal
   // to 0, it means this input is optional.
   int32 min_count = 2;
+
+  // Whether the input should be hidden from the final resolved result. Only
+  // the input keys whose corresponding `InputSpec.hidden = false` will be
+  // included in the input map that is passed to the `Executor.Do`.
+  bool hidden = 5;
 }
 
 // The proto message describes specs of all inputs needed for a component
@@ -362,10 +387,16 @@ message NodeInputs {
   // Optional InputGraphs mapping where key is an ID. Graph is referenced from
   // InputSpec.input_graph_ref.
   map<string, InputGraph> input_graphs = 3;
+
+  // Conditional representation.
+  message Conditional {
+    PlaceholderExpression placeholder_expression = 1;
+  }
+
   // Optional conditionals to filter the valid inputs that satisfy the
   // predicate. Conditional evaluation and filtering would happen after
   // resolving all inputs from NodeInputs.inputs and NodeInputs.input_graphs.
-  repeated PlaceholderExpression conditionals = 4;
+  map<string, Conditional> conditionals = 4;
 }
 
 // A proto message wrapping all information needed to query one set of artifacts
@@ -477,6 +508,7 @@ message NodeExecutionOptions {
     Skip skip = 3;
   }
 
+  // LINT.IfChange
   // An enum defines the trigger strategy of when the node will be ready to be
   // triggered. Only supported in the experimental orchestrator under SYNC mode
   // and ignored when configured for other platforms.
@@ -496,6 +528,7 @@ message NodeExecutionOptions {
   // Unset or set to default value of TRIGGER_STATEGY_UNDEFINED behaves the
   // same as ALL_UPSTREAM_NODES_SUCCEEDED.
   TriggerStrategy strategy = 4;
+  // LINT.ThenChange(tfx/orchestration/experimental/core/sync_pipeline_task_gen.py)
 }
 
 // Pipeline node definition.

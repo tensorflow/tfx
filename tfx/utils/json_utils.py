@@ -77,10 +77,10 @@ class Jsonable(abc.ABC):
     return instance
 
 
-JsonableValue = Union[bool, bytes, float, int, Jsonable, message.Message, str,
-                      Type]
+JsonableValue = Union[bool, float, int, Jsonable, message.Message, str,
+                      Type, 'JsonableType']
 JsonableList = List[JsonableValue]
-JsonableDict = Dict[Union[bytes, str], Union[JsonableValue, JsonableList]]
+JsonableDict = Dict[str, Union[JsonableValue, JsonableList]]
 JsonableType = Union[JsonableValue, JsonableList, JsonableDict]
 
 

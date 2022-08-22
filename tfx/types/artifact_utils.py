@@ -17,10 +17,11 @@ import itertools
 import json
 import os
 import re
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type, Union
 from absl import logging
 from packaging import version
 
+from tfx.dsl.io import fileio
 from tfx.types.artifact import _ArtifactType
 from tfx.types.artifact import Artifact
 from tfx.types.value_artifact import _ValueArtifactType
@@ -73,8 +74,8 @@ def get_single_instance(artifact_list: List[Artifact]) -> Artifact:
     ValueError: If length of artifact_list is not one.
   """
   if len(artifact_list) != 1:
-    raise ValueError('expected list length of one but got {}'.format(
-        len(artifact_list)))
+    raise ValueError(
+        f'expected list length of one but got {len(artifact_list)}')
   return artifact_list[0]
 
 
@@ -119,14 +120,12 @@ def is_artifact_version_older_than(artifact: Artifact,
     # Artifact without version.
     return True
 
-  if (version.parse(
-      artifact.get_string_custom_property(
-          ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY)) <
-      version.parse(artifact_version)):
-    # Artifact with old version.
-    return True
-  else:
-    return False
+  # Artifact with old version
+  return bool(
+      version.parse(
+          artifact.get_string_custom_property(
+              ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY)) < version.parse(
+                  artifact_version))
 
 
 def get_split_uris(artifact_list: List[Artifact], split: str) -> List[str]:
@@ -154,8 +153,8 @@ def get_split_uris(artifact_list: List[Artifact], split: str) -> List[str]:
       else:
         result.append(os.path.join(artifact.uri, f'Split-{split}'))
   if len(result) != len(artifact_list):
-    raise ValueError('Split does not exist over all example artifacts: %s' %
-                     split)
+    raise ValueError(
+        f'Split does not exist over all example artifacts: {split}')
   return result
 
 
@@ -175,8 +174,8 @@ def get_split_uri(artifact_list: List[Artifact], split: str) -> str:
   artifact_split_uris = get_split_uris(artifact_list, split)
   if len(artifact_split_uris) != 1:
     raise ValueError(
-        ('Expected exactly one artifact with split %r, but found matching '
-         'artifacts %s.') % (split, artifact_split_uris))
+        f'Expected exactly one artifact with split {repr(split)}, but found '
+        f'matching artifacts {artifact_split_uris}.')
   return artifact_split_uris[0]
 
 
@@ -198,9 +197,9 @@ def encode_split_names(splits: List[str]) -> str:
       # TODO(ccy): Disallow empty split names once the importer removes split as
       # a property for all artifacts.
       raise ValueError(
-          ('Split names are expected to be alphanumeric (allowing dashes and '
-           'underscores, provided they are not the first character); got %r '
-           'instead.') % (split,))
+          'Split names are expected to be alphanumeric (allowing dashes and '
+          f'underscores, provided they are not the first character); got {repr(split)} '
+          'instead.')
     rewritten_splits.append(split)
   return json.dumps(rewritten_splits)
 
@@ -303,12 +302,12 @@ def deserialize_artifact(
   # Validate inputs.
   if not isinstance(artifact_type, metadata_store_pb2.ArtifactType):
     raise ValueError(
-        ('Expected metadata_store_pb2.ArtifactType for artifact_type, got %s '
-         'instead') % (artifact_type,))
+        'Expected metadata_store_pb2.ArtifactType for artifact_type, got '
+        f'{artifact_type} instead')
   if artifact and not isinstance(artifact, metadata_store_pb2.Artifact):
     raise ValueError(
-        ('Expected metadata_store_pb2.Artifact for artifact, got %s '
-         'instead') % (artifact,))
+        f'Expected metadata_store_pb2.Artifact for artifact, got {artifact} '
+        'instead')
 
   # Get the artifact's class and construct the Artifact object.
   artifact_cls = get_artifact_type_class(artifact_type)
@@ -316,3 +315,32 @@ def deserialize_artifact(
   result.artifact_type.CopyFrom(artifact_type)
   result.set_mlmd_artifact(artifact or metadata_store_pb2.Artifact())
   return result
+
+
+def verify_artifacts(
+    artifacts: Union[Dict[str, List[Artifact]], List[Artifact],
+                     Artifact]) -> None:
+  """Check that all artifacts have uri and exist at that uri.
+
+  Args:
+      artifacts: artifacts dict (key -> types.Artifact), single artifact list,
+        or artifact instance.
+
+  Raises:
+    TypeError: if the input is an invalid type.
+    RuntimeError: if artifact is not valid.
+  """
+  if isinstance(artifacts, Artifact):
+    artifact_list = [artifacts]
+  elif isinstance(artifacts, list):
+    artifact_list = artifacts
+  elif isinstance(artifacts, dict):
+    artifact_list = list(itertools.chain(*artifacts.values()))
+  else:
+    raise TypeError
+
+  for artifact_instance in artifact_list:
+    if not artifact_instance.uri:
+      raise RuntimeError(f'Artifact {artifact_instance} does not have uri')
+    if not fileio.exists(artifact_instance.uri):
+      raise RuntimeError(f'Artifact uri {artifact_instance.uri} is missing')

@@ -471,6 +471,16 @@ class PipelineOutputChannel(OutputChannel):
     self._pipeline = pipeline
     self._producer_component = pipeline
 
+  def __eq__(self, other):
+    if isinstance(other, PipelineOutputChannel):
+      return (self.wrapped == other.wrapped and
+              self.pipeline == other.pipeline and
+              self.output_key == other.output_key)
+    return False
+
+  def __hash__(self):
+    return id(self.wrapped) + id(self.pipeline) + id(self.output_key)
+
 
 @doc_controls.do_not_generate_docs
 class PipelineInputChannel(BaseChannel):

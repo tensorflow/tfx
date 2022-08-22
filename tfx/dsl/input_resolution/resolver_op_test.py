@@ -16,8 +16,9 @@ import copy
 from typing import Optional, Mapping
 
 import tensorflow as tf
-
 from tfx.dsl.input_resolution import resolver_op
+import tfx.types
+from tfx.types import standard_artifacts
 
 
 class Foo(resolver_op.ResolverOp):
@@ -32,6 +33,16 @@ class Bar(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return input_dict
+
+
+class EmptyArtifactList(
+    resolver_op.ResolverOp,
+    canonical_name='testing.Baz',
+    arg_data_types=(),
+    return_data_type=resolver_op.DataType.ARTIFACT_LIST):
+
+  def apply(self):
+    return []
 
 
 class Repeat(
@@ -167,7 +178,7 @@ class ResolverOpTest(tf.test.TestCase):
       CustomOp.create(optional_mapping=[])
 
 
-class OpNodeTest(tf.test.TestCase):
+class NodeTest(tf.test.TestCase):
 
   def testOpNode_Repr(self):
     input_node = DUMMY_INPUT_NODE
@@ -187,6 +198,54 @@ class OpNodeTest(tf.test.TestCase):
     with self.assertRaises(TypeError):
       resolver_op.OpNode(op_type=Foo, args=[42])  # Element is not OpNode!
 
+  def testEqualityAndHash(self):
+    with self.subTest('Node'):
+      n1 = resolver_op.Node()
+      n2 = resolver_op.Node()
+      self.assertNotEqual(n1, n2)
+
+    with self.subTest('OpNode'):
+      n3 = resolver_op.OpNode(
+          op_type=EmptyArtifactList,
+          output_data_type=resolver_op.DataType.ARTIFACT_LIST,
+          args=())
+      n4 = resolver_op.OpNode(
+          op_type=EmptyArtifactList,
+          output_data_type=resolver_op.DataType.ARTIFACT_LIST,
+          args=())
+      self.assertNotEqual(n3, n4)
+
+    with self.subTest('DictNode'):
+      n1.output_data_type = resolver_op.DataType.ARTIFACT_LIST
+      n2.output_data_type = resolver_op.DataType.ARTIFACT_LIST
+      n5 = resolver_op.DictNode({'x': n1, 'y': n3})
+      n6 = resolver_op.DictNode({'x': n1, 'y': n3})
+      n7 = resolver_op.DictNode({'x': n2, 'y': n4})
+      self.assertEqual(n5, n6)
+      self.assertNotEqual(n5, n7)
+      self.assertLen({n5, n6, n7}, 2)
+
+    class DummyChannel(tfx.types.BaseChannel):
+
+      def __hash__(self):
+        return hash(self.type)
+
+      def __eq__(self, other):
+        return isinstance(other, DummyChannel) and self.type == other.type
+
+    with self.subTest('InputNode'):
+      n8 = resolver_op.InputNode(
+          wrapped=DummyChannel(standard_artifacts.Model),
+          output_data_type=resolver_op.DataType.ARTIFACT_LIST)
+      n9 = resolver_op.InputNode(
+          wrapped=DummyChannel(standard_artifacts.Model),
+          output_data_type=resolver_op.DataType.ARTIFACT_LIST)
+      n10 = resolver_op.InputNode(
+          wrapped=DummyChannel(standard_artifacts.Examples),
+          output_data_type=resolver_op.DataType.ARTIFACT_LIST)
+      self.assertEqual(n8, n9)
+      self.assertNotEqual(n8, n10)
+      self.assertLen({n8, n9, n10}, 2)
 
 if __name__ == '__main__':
   tf.test.main()

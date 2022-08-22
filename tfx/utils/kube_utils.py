@@ -179,6 +179,7 @@ def make_job_object(
     container_name: str = 'jobcontainer',
     pod_labels: Optional[Dict[str, str]] = None,
     service_account_name: str = 'default',
+    ttl_seconds_after_finished: Optional[int] = None,
 ) -> k8s_client.V1Job:
   """Make a Kubernetes Job object with a single pod.
 
@@ -193,6 +194,8 @@ def make_job_object(
     container_name: Name of the container.
     pod_labels: Dictionary of metadata labels for the pod.
     service_account_name: Name of the service account for this Job.
+    ttl_seconds_after_finished: Interval before automatic deletion of the job
+      after completion. If not specified, job is not deleted after completion.
 
   Returns:
     `kubernetes.client.V1Job` object.
@@ -207,6 +210,7 @@ def make_job_object(
       ),
       status=k8s_client.V1JobStatus(),
       spec=k8s_client.V1JobSpec(
+          ttl_seconds_after_finished=ttl_seconds_after_finished,
           template=k8s_client.V1PodTemplateSpec(
               metadata=k8s_client.V1ObjectMeta(labels=pod_labels),
               spec=k8s_client.V1PodSpec(

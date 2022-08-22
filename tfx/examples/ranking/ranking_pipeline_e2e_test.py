@@ -13,13 +13,22 @@
 # limitations under the License.
 """Tests for tfx.examples.ranking.ranking_pipeline."""
 import os
+import unittest
 
 import tensorflow as tf
 from tfx.examples.ranking import ranking_pipeline
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
+try:
+  import struct2tensor  # pylint: disable=g-import-not-at-top
+except ImportError:
+  struct2tensor = None
 
+
+@unittest.skipIf(struct2tensor is None,
+                 'Cannot import required modules. This can happen when'
+                 ' struct2tensor is not available.')
 class RankingPipelineTest(tf.test.TestCase):
 
   def setUp(self):

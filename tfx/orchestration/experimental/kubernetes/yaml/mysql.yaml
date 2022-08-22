@@ -11,19 +11,21 @@ spec:
 ---
 # For Kubeflow compatibility, we forward the MySql service to the
 # kubeflow namespace so that resources in this namespace can access the
-# same MLMD. This may be removed in a future version.
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql
-  namespace: kubeflow
-spec:
-  type: ExternalName
-  externalName: mysql.default.svc.cluster.local
-  ports:
-  - port: 3306
----
-apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+# same MLMD. Commenting out as it can not be define with above service.
+# Interested users can uncomment this part and try it out, after
+# commenting above service.
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: mysql
+#   namespace: kubeflow
+# spec:
+#   type: ExternalName
+#   externalName: mysql.default.svc.cluster.local
+#   ports:
+#   - port: 3306
+# ---
+apiVersion: apps/v1  # for versions before 1.9.0 use apps/v1beta2
 kind: Deployment
 metadata:
   name: mysql

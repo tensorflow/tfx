@@ -32,6 +32,7 @@ from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
+from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow import decorators
 from tfx.orchestration.kubeflow import utils
@@ -135,6 +136,8 @@ class StepBuilder:
                deployment_config: pipeline_pb2.PipelineDeploymentConfig,
                component_defs: Dict[str, pipeline_pb2.ComponentSpec],
                dsl_context_reg: dsl_context_registry.DslContextRegistry,
+               dynamic_exec_properties: Optional[Dict[Tuple[str, str],
+                                                      str]] = None,
                image: Optional[str] = None,
                image_cmds: Optional[List[str]] = None,
                beam_pipeline_args: Optional[List[str]] = None,
@@ -158,6 +161,9 @@ class StepBuilder:
         Items in the dict will get updated as the pipeline is built.
       dsl_context_reg: A DslContextRegistry instance from
         Pipeline.dsl_context_registry.
+      dynamic_exec_properties: A dictionary mapping upstream component output
+        names to types used to resolve Placeholder authoring in downstream
+        components.
       image: TFX image used in the underlying container spec. Required if node
         is a TFX component.
       image_cmds: Optional. If not specified the default `ENTRYPOINT` defined in
@@ -191,6 +197,7 @@ class StepBuilder:
     self._node = node
     self._deployment_config = deployment_config
     self._component_defs = component_defs
+    self._dynamic_exec_properties = dynamic_exec_properties
     self._dsl_context_registry = dsl_context_reg
     self._inputs = node.inputs
     self._outputs = node.outputs
@@ -297,11 +304,22 @@ class StepBuilder:
           output_channel)
       component_def.output_definitions.artifacts[name].CopyFrom(
           output_artifact_spec)
+
+      # If output artifact is passed to downstream components as param, emit
+      # an output param.
+      key = (self._node.id, name)
+      if self._dynamic_exec_properties and key in self._dynamic_exec_properties:
+        output_parameter_spec = compiler_utils.build_output_parameter_spec(
+            self._dynamic_exec_properties[key])
+        component_def.output_definitions.parameters[name].CopyFrom(
+            output_parameter_spec)
+
     # Exec properties
     for name, value in self._exec_properties.items():
       # value can be None for unprovided optional exec properties.
       if value is None:
         continue
+
       parameter_type_spec = compiler_utils.build_parameter_type_spec(value)
       component_def.input_definitions.parameters[name].CopyFrom(
           parameter_type_spec)
@@ -338,14 +356,25 @@ class StepBuilder:
                                                    (producer_id, output_key))[0]
       output_key = self._channel_redirect_map.get((producer_id, output_key),
                                                   (producer_id, output_key))[1]
+
       input_artifact_spec = pipeline_pb2.TaskInputsSpec.InputArtifactSpec()
       input_artifact_spec.task_output_artifact.producer_task = producer_id
       input_artifact_spec.task_output_artifact.output_artifact_key = output_key
       task_spec.inputs.artifacts[name].CopyFrom(input_artifact_spec)
+
     for name, value in self._exec_properties.items():
       if value is None:
         continue
-      if isinstance(value, data_types.RuntimeParameter):
+      if isinstance(value, placeholder.ChannelWrappedPlaceholder):
+        input_parameter_spec = pipeline_pb2.TaskInputsSpec.InputParameterSpec()
+        task_output_parameter_spec = pipeline_pb2.TaskInputsSpec.InputParameterSpec.TaskOutputParameterSpec(
+        )
+        task_output_parameter_spec.producer_task = value.channel.producer_component_id + '_task'
+        task_output_parameter_spec.output_parameter_key = value.channel.output_key
+        input_parameter_spec.task_output_parameter.CopyFrom(
+            task_output_parameter_spec)
+        task_spec.inputs.parameters[name].CopyFrom(input_parameter_spec)
+      elif isinstance(value, data_types.RuntimeParameter):
         parameter_utils.attach_parameter(value)
         task_spec.inputs.parameters[name].component_input_parameter = value.name
       elif isinstance(value, decorators.FinalStatusStr):
@@ -359,9 +388,7 @@ class StepBuilder:
         task_spec.inputs.parameters[name].CopyFrom(
             pipeline_pb2.TaskInputsSpec.InputParameterSpec(
                 runtime_value=compiler_utils.value_converter(value)))
-
     task_spec.component_ref.name = self._name
-
     dependency_ids = sorted(dependency_ids)
     for dependency in dependency_ids:
       task_spec.dependent_tasks.append(dependency)
@@ -376,7 +403,6 @@ class StepBuilder:
           pipeline_pb2.PipelineTaskSpec.TriggerPolicy
           .ALL_UPSTREAM_TASKS_COMPLETED)
       task_spec.dependent_tasks.append(utils.TFX_DAG_NAME)
-
     # 4. Build the executor body for other common tasks.
     executor = pipeline_pb2.PipelineDeploymentConfig.ExecutorSpec()
     if isinstance(self._node, importer.Importer):
@@ -385,11 +411,10 @@ class StepBuilder:
       executor.container.CopyFrom(self._build_file_based_example_gen_spec())
     elif isinstance(self._node, (components.InfraValidator)):
       raise NotImplementedError(
-          'The componet type "{}" is not supported'.format(type(self._node)))
+          'The component type "{}" is not supported'.format(type(self._node)))
     else:
       executor.container.CopyFrom(self._build_container_spec())
     self._deployment_config.executors[executor_label].CopyFrom(executor)
-
     return {self._name: task_spec}
 
   def _build_container_spec(self) -> ContainerSpec:

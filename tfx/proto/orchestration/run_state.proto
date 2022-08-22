@@ -59,4 +59,7 @@ message RunState {
 
   StatusCodeValue status_code = 3;
   string status_msg = 2;
+
+  // Milliseconds since epoch when the RunState is created.
+  int64 update_time = 4;
 }

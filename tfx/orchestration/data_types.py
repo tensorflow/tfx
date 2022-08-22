@@ -134,7 +134,7 @@ class ComponentInfo:
 
   Attributes:
     component_type: type of the component. Usually determined by the executor
-      python path or image uri of.
+      python path or image uri.
     component_id: a unique identifier of the component instance within pipeline.
     pipeline_info: the pipeline info of the current pipeline run.
   """

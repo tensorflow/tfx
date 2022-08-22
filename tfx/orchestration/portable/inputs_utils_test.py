@@ -243,7 +243,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # Tries to resolve inputs for trainer. As trainer also requires min_count
       # for both input channels (from example_gen and from transform) but we did
       # not publish anything from transform, it should return nothing.
-      with self.assertRaises(exceptions.FailedPreconditionError):
+      with self.assertRaisesRegex(
+          exceptions.InputResolutionError, 'InputSpec.min_count violation'):
         inputs_utils.resolve_input_artifacts(
             metadata_handler=m, pipeline_node=my_trainer)
 
@@ -254,7 +255,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
           0].context_queries.add()
       context_query.type.name = 'non_existent_context'
       context_query.name.field_value.string_value = 'non_existent_context'
-      with self.assertRaises(exceptions.FailedPreconditionError):
+      with self.assertRaisesRegex(
+          exceptions.InputResolutionError, 'InputSpec.min_count violation'):
         inputs_utils.resolve_input_artifacts(
             metadata_handler=m, pipeline_node=my_transform)
 

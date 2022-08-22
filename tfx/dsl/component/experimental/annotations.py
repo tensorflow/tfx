@@ -21,7 +21,7 @@ from typing import Any, Type, Union
 
 from tfx.types import artifact
 try:
-  import apache_beam as beam  # pylint: disable=g-import-not-at-top
+  import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
   _BeamPipeline = beam.Pipeline
 except ModuleNotFoundError:
   beam = None

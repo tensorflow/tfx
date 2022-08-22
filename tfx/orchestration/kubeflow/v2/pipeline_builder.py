@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 from absl import logging
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 from tfx.dsl.components.base import base_node
+from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import utils
@@ -92,14 +93,14 @@ class PipelineBuilder:
       default_commands: Optionally specifies the commands of the provided
         container image. When not provided, the default `ENTRYPOINT` specified
         in the docker image is used. Note: the commands here refers to the K8S
-          container command, which maps to Docker entrypoint field. If one
-          supplies command but no args are provided for the container, the
-          container will be invoked with the provided command, ignoring the
-          `ENTRYPOINT` and `CMD` defined in the Dockerfile. One can find more
-          details regarding the difference between K8S and Docker conventions at
+        container command, which maps to Docker entrypoint field. If one
+        supplies command but no args are provided for the container, the
+        container will be invoked with the provided command, ignoring the
+        `ENTRYPOINT` and `CMD` defined in the Dockerfile. One can find more
+        details regarding the difference between K8S and Docker conventions at
         https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
       exit_handler: the optional custom component for post actions triggered
-         after all pipeline tasks finish.
+        after all pipeline tasks finish.
     """
     self._pipeline_info = tfx_pipeline.pipeline_info
     self._pipeline = tfx_pipeline
@@ -118,6 +119,15 @@ class PipelineBuilder:
 
     self._pipeline.finalize()
 
+    # Map from (upstream_node_id, output_key) to output_type (ValueArtifact)
+    dynamic_exec_properties = {}
+    for component in self._pipeline.components:
+      for name, value in component.exec_properties.items():
+
+        if isinstance(value, placeholder.ChannelWrappedPlaceholder):
+          node_id = value.channel.producer_component_id
+          dynamic_exec_properties[(
+              node_id, value.channel.output_key)] = value.channel.type.TYPE_NAME
     tfx_tasks = {}
     component_defs = {}
     # Map from (producer component id, output key) to (new producer component
@@ -139,6 +149,7 @@ class PipelineBuilder:
             node=component,
             deployment_config=deployment_config,
             component_defs=component_defs,
+            dynamic_exec_properties=dynamic_exec_properties,
             dsl_context_reg=self._pipeline.dsl_context_registry,
             image=self._default_image,
             image_cmds=self._default_commands,
@@ -162,6 +173,7 @@ class PipelineBuilder:
           deployment_config=deployment_config,
           component_defs=component_defs,
           dsl_context_reg=self._pipeline.dsl_context_registry,
+          dynamic_exec_properties=dynamic_exec_properties,
           image=self._default_image,
           image_cmds=self._default_commands,
           beam_pipeline_args=self._pipeline.beam_pipeline_args,

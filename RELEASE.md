@@ -1,7 +1,11 @@
 # Current Version (Still in Development)
 
 ## Major Features and Improvements
-*   Added Json value artifact.
+
+*   Saved tuner results in pandas `records` formatted JSON.
+*   TFX Transform now supports `tf.SequenceExample` natively. The native path can be activated by providing `TensorRepresentation`s in the Schema.
+*   TFX Transform now supports reading raw and materializing transformed data in
+    Apache Parquet format.
 
 ## Breaking Changes
 
@@ -13,15 +17,74 @@
 
 ## Bug Fixes and Other Changes
 
+*   Type hint on BaseComponent.inputs and BaseComponent.outputs corrected to be
+    Channel subclasses.
+*   Added `input_optional` parameter to `ChannelParameter`. This allows
+    component authors to declare that even if a channel is `optional`, if it is
+    provided during pipeline definition time, then it must have resolved inputs
+    during run time.
+*   Allow latest `apache-airflow` 2.x versions.
+
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.9.0`) | Comments |
+| -- | -- | -- | -- |
+| `google-api-core` | `<2` | N/A | Added to help pip dependency resolution. google-api-core was already a transitive dependency. |
+| `apache-beam[gcp]` | `>=2.40,<3` | `>=2.38,<3` | Synced release train |
+| `attrs` | `>=19.3.0,<22` | `>=19.3.0,<21` | Allow more recent versions |
+| `pyarrow` | `>=6,<7` | `>=1,<6` | Synced release train |
+
+## Documentation Updates
+
+# Version 1.9.0
+
+## Major Features and Improvements
+
+*   Added Json value artifact.
+*   Added example for using ExampleDiff.
+*   Allow lists and dicts to be consumed and produced by decorator components as
+    input and output JsonValue artifacts.
+
+## Breaking Changes
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   N/A
+
 ## Dependency Updates
 
 | Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
 | -- | -- | -- | -- |
 | `tensorflow` | `>=1.15.5,<2` or `~=2.9.0` | `>=1.15.5,<2` or `~=2.8.0` | |
 | `tensorflow-ranking` | `~=0.5.0` | `~=0.3.0` | Required for TF 2.9 |
-| `typing-extensions` | `>=4.2.0,<5` | N/A | For typing utilities |
+| `typing-extensions` | `>=3.10.0.2,<5` | N/A | For typing utilities |
+| `ml-metadata` | `~=1.9.0` | `~=1.8.0` | Synced release train |
+| `struct2tensor` | `~=0.40.0` | `~=0.39.0` | Synced release train |
+| `tensorflow-data-validation` | `~=1.9.0` | `~=1.8.0` | Synced release train |
+| `tensorflow-model-analysis` | `~=0.40.0` | `~=0.39.0` | Synced release train |
+| `tensorflow-serving-api` | `>=1.15,<3` or `~=2.9.0` | `>=1.15,<3` or `~=2.8.0` | |
+| `tensorflow-transform` | `~=1.9.0` | `~=1.8.0` | Synced release train |
+| `tfx-bsl` | `~=1.9.0` | `~=1.8.0` | Synced release train |
+
+
 
 ## Documentation Updates
+
+*   N/A
 
 # Version 1.8.0
 
@@ -29,7 +92,7 @@
 
 *   Added experimental exit_handler support for KubeflowDagRunner.
 *   Enabled custom labels to be submitted to CAIP training jobs.
-*   Enabled custom resource-setting (vCPU and RAM) for containers orchestrating 
+*   Enabled custom resource-setting (vCPU and RAM) for containers orchestrating
     on Vertex AI.
 
 ## Breaking Changes
@@ -65,6 +128,8 @@
   "unexpected keyword argument 'default_args'".
 * StatisticsGen will raise an error if unsupported StatsOptions (i.e.,
   generators or experimental_slice_functions) are passed.
+* Fixed a bug in the Artifact attribute setter that was causing the
+  corresponding getter not to return a value for properties of type JSON_VALUE.
 
 ## Dependency Updates
 

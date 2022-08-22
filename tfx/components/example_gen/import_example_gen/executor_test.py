@@ -67,7 +67,7 @@ class ExecutorTest(tf.test.TestCase):
 
       util.assert_that(examples, check_result)
 
-  def _testDo(self, payload_format):
+  def _test_do(self, payload_format):
     exec_properties = {
         standard_component_specs.INPUT_BASE_KEY: self._input_data_dir,
         standard_component_specs.INPUT_CONFIG_KEY: self._input_config,
@@ -93,16 +93,17 @@ class ExecutorTest(tf.test.TestCase):
         self.examples.split_names)
 
     # Check import_example_gen outputs.
-    train_output_file = os.path.join(self.examples.uri, 'Split-train',
-                                     'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
-                                    'data_tfrecord-00000-of-00001.gz')
+    if payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
+      train_output_file = os.path.join(self.examples.uri, 'Split-train',
+                                       'data_parquet-00000-of-00001.parquet')
+      eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
+                                      'data_parquet-00000-of-00001.parquet')
+    else:
+      train_output_file = os.path.join(self.examples.uri, 'Split-train',
+                                       'data_tfrecord-00000-of-00001.gz')
+      eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
+                                      'data_tfrecord-00000-of-00001.gz')
 
-    # Check import_example_gen outputs.
-    train_output_file = os.path.join(self.examples.uri, 'Split-train',
-                                     'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
-                                    'data_tfrecord-00000-of-00001.gz')
     self.assertTrue(fileio.exists(train_output_file))
     self.assertTrue(fileio.exists(eval_output_file))
     self.assertGreater(
@@ -110,7 +111,7 @@ class ExecutorTest(tf.test.TestCase):
         fileio.open(eval_output_file).size())
 
   def testDoWithExamples(self):
-    self._testDo(example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE)
+    self._test_do(example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE)
     self.assertEqual(
         example_gen_pb2.PayloadFormat.Name(
             example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE),
@@ -118,7 +119,7 @@ class ExecutorTest(tf.test.TestCase):
             utils.PAYLOAD_FORMAT_PROPERTY_NAME))
 
   def testDoWithProto(self):
-    self._testDo(example_gen_pb2.PayloadFormat.FORMAT_PROTO)
+    self._test_do(example_gen_pb2.PayloadFormat.FORMAT_PROTO)
     self.assertEqual(
         example_gen_pb2.PayloadFormat.Name(
             example_gen_pb2.PayloadFormat.FORMAT_PROTO),
@@ -132,10 +133,24 @@ class ExecutorTest(tf.test.TestCase):
                 name='tfrecord_sequence', pattern='tfrecord_sequence/*'),
         ]))
 
-    self._testDo(example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE)
+    self._test_do(example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE)
     self.assertEqual(
         example_gen_pb2.PayloadFormat.Name(
             example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE),
+        self.examples.get_string_custom_property(
+            utils.PAYLOAD_FORMAT_PROPERTY_NAME))
+
+  def testDoWithParquet(self):
+    self._input_config = proto_utils.proto_to_json(
+        example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(
+                name='parquet_records', pattern='parquet/*'),
+        ]))
+
+    self._test_do(example_gen_pb2.PayloadFormat.FORMAT_PARQUET)
+    self.assertEqual(
+        example_gen_pb2.PayloadFormat.Name(
+            example_gen_pb2.PayloadFormat.FORMAT_PARQUET),
         self.examples.get_string_custom_property(
             utils.PAYLOAD_FORMAT_PROPERTY_NAME))
 

@@ -1,0 +1,60 @@
+// Copyright 2022 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.orchestration.experimental.centralized_kubernetes_orchestrator.service;
+
+import "tfx/proto/orchestration/pipeline.proto";
+
+message EchoRequest {
+  string msg = 1;
+}
+
+message EchoResponse {
+  string msg = 1;
+}
+
+// Request to start a pipeline.
+message StartPipelineRequest {
+  // The pipeline IR proto. A pipeline will be started using this pipeline
+  // definition if there is no currently active pipeline having the same
+  // pipeline id. Only a previously stopped or a new pipeline can be started.
+  .tfx.orchestration.Pipeline pipeline = 1;
+}
+
+message StartPipelineResponse {}
+
+// Request to stop a pipeline.
+message StopPipelineRequest {
+  // The id of the pipeline to be stopped.
+  string pipeline_id = 1;
+
+  reserved 2;
+}
+
+message StopPipelineResponse {}
+
+service KubernetesOrchestrator {
+  // Response returns the same msg as request.
+  rpc Echo(EchoRequest) returns (EchoResponse) {}
+
+  // Starts a pipeline. A pipeline will be started using the provided pipeline
+  // definition if there is no currently active pipeline having the same
+  // `pipeline_id`. Only a previously stopped or a new pipeline can be started.
+  // The RPC will fail otherwise.
+  rpc StartPipeline(StartPipelineRequest) returns (StartPipelineResponse) {}
+
+  // Stops a currently active pipeline.
+  rpc StopPipeline(StopPipelineRequest) returns (StopPipelineResponse) {}
+}

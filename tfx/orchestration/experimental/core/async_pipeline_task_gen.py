@@ -20,6 +20,7 @@ from typing import Callable, Dict, List, Optional
 from absl import logging
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -104,8 +105,8 @@ class _Generator:
 
   def __call__(self) -> List[task_lib.Task]:
     result = []
-    for node in [n.pipeline_node for n in self._pipeline.nodes]:
-      node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
+    for node in [node_proto_view.get_view(n) for n in self._pipeline.nodes]:
+      node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
       node_id = node.node_info.id
 
       with self._pipeline_state:
@@ -140,7 +141,7 @@ class _Generator:
       # not be considered for generation again but we ensure node services
       # in case of a mixed service node.
       if self._is_task_id_tracked_fn(
-          task_lib.exec_node_task_id_from_pipeline_node(self._pipeline, node)):
+          task_lib.exec_node_task_id_from_node(self._pipeline, node)):
         service_status = self._ensure_node_services_if_mixed(node_id)
         if service_status is not None:
           if service_status != service_jobs.ServiceStatus.RUNNING:
@@ -158,7 +159,7 @@ class _Generator:
 
   def _generate_tasks_for_node(
       self, metadata_handler: metadata.Metadata,
-      node: pipeline_pb2.PipelineNode) -> List[task_lib.Task]:
+      node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates a node execution task.
 
     If a node execution is not feasible, `None` is returned.
@@ -171,7 +172,7 @@ class _Generator:
       Returns a `Task` or `None` if task generation is deemed infeasible.
     """
     result = []
-    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
+    node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
     executions = task_gen_utils.get_executions(metadata_handler, node)
     exec_node_task = task_gen_utils.generate_task_from_active_execution(
@@ -185,15 +186,21 @@ class _Generator:
 
     resolved_info = task_gen_utils.generate_resolved_info(
         metadata_handler, node)
+
     # TODO(b/207038460): Update async pipeline to support ForEach.
-    if (resolved_info is None or not resolved_info.input_and_params or
-        resolved_info.input_and_params[0] is None or
-        resolved_info.input_and_params[0].input_artifacts is None or
-        not any(resolved_info.input_and_params[0].input_artifacts.values())):
+
+    # Note that some nodes e.g. ImportSchemaGen don't have inputs, and for those
+    # nodes it is okay that there are no resolved input artifacts.
+    if ((resolved_info is None or not resolved_info.input_and_params or
+         resolved_info.input_and_params[0] is None or
+         resolved_info.input_and_params[0].input_artifacts is None) or
+        (node.inputs.inputs and
+         not any(resolved_info.input_and_params[0].input_artifacts.values()))):
       logging.info(
           'Task cannot be generated for node %s since no input artifacts '
           'are resolved.', node.node_info.id)
       return result
+
     input_artifacts = resolved_info.input_and_params[0].input_artifacts
     exec_properties = resolved_info.input_and_params[0].exec_properties
 

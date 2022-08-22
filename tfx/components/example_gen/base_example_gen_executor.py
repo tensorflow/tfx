@@ -16,6 +16,7 @@
 import abc
 import bisect
 import hashlib
+import pickle
 from typing import Any, Dict, List, Union
 
 from absl import logging
@@ -33,13 +34,16 @@ from tfx.utils import proto_utils
 
 
 def _GeneratePartitionKey(record: Union[tf.train.Example,
-                                        tf.train.SequenceExample, bytes],
+                                        tf.train.SequenceExample, bytes,
+                                        Dict[str, Any]],
                           split_config: example_gen_pb2.SplitConfig) -> bytes:
   """Generates key for partition."""
 
   if not split_config.HasField('partition_feature_name'):
     if isinstance(record, bytes):
       return record
+    if isinstance(record, dict):
+      return pickle.dumps(record)
     return record.SerializeToString(deterministic=True)
 
   if isinstance(record, tf.train.Example):
@@ -66,7 +70,8 @@ def _GeneratePartitionKey(record: Union[tf.train.Example,
 
 
 def _PartitionFn(
-    record: Union[tf.train.Example, tf.train.SequenceExample, bytes],
+    record: Union[tf.train.Example, tf.train.SequenceExample, bytes, Dict[str,
+                                                                          Any]],
     num_partitions: int,
     buckets: List[int],
     split_config: example_gen_pb2.SplitConfig,
@@ -279,7 +284,7 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
          | 'WriteSplit[{}]'.format(split_name) >> write_split.WriteSplit(
              artifact_utils.get_split_uri(
                  output_dict[standard_component_specs.EXAMPLES_KEY],
-                 split_name), output_file_format))
+                 split_name), output_file_format, exec_properties))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
 
     output_payload_format = exec_properties.get(

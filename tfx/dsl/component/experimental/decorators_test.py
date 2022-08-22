@@ -14,7 +14,7 @@
 """Tests for tfx.dsl.components.base.decorators."""
 
 import os
-from typing import Optional
+from typing import Dict, List, Optional, Any
 
 import apache_beam as beam
 import tensorflow as tf
@@ -148,18 +148,88 @@ def _verify_with_annotation(e: float, f: float, g: Optional[str],
 def _injector_2(
     examples: OutputArtifact[standard_artifacts.Examples]
 ) -> OutputDict(
-    a=int, b=float, c=str, d=bytes, e=str):
+    a=int,
+    b=float,
+    c=str,
+    d=bytes,
+    e=str,
+    f=List[Dict[str, float]],
+    g=Dict[str, Dict[str, List[bool]]]):
   fileio.makedirs(examples.uri)
-  return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
+  return {
+      'a': 1,
+      'b': 2.0,
+      'c': '3',
+      'd': b'4',
+      'e': 'passed',
+      'f': [{
+          'foo': 1.0
+      }, {
+          'bar': 2.0
+      }],
+      'g': {'foo': {'bar': [True, False]}}
+  }
 
 
 @component
 def _injector_3(
     examples: OutputArtifact[standard_artifacts.Examples]
 ) -> OutputDict(
-    a=int, b=float, c=str, d=bytes, e=str):
+    a=int,
+    b=float,
+    c=str,
+    d=bytes,
+    e=str,
+    f=Dict[str, Dict[str, List[bool]]],
+    g=List[Dict[str, float]]):
   fileio.makedirs(examples.uri)
-  return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': None}
+  return {
+      'a': 1,
+      'b': 2.0,
+      'c': '3',
+      'd': b'4',
+      'e': None,
+      'f': {'foo': {'bar': [True, False]}},
+      'g': [{'foo': 1.0}, {'bar': 2.0}]
+  }
+
+
+@component
+def _injector_4() -> OutputDict(
+    a=Dict[str, List[List[Any]]],
+    b=List[Any],
+    c=Optional[Dict[str, Dict[str, Any]]],
+    d=Dict[str, List[List[int]]],
+    e=List[float],
+    f=Dict[str, Dict[str, List[float]]]):
+  return {
+      'a': {'foo': [[1., 2]]},
+      'b': [[{'e': 1}, {'e': 2}], [{'e': 3}, {'e': 4}]],
+      'c': {'f': {'f': [1., 2.]}},
+      'd': {'d': [[1, 2]]},
+      'e': [1., 2.],
+      'f': {'bar': {'bar': [1., 2.]}},
+  }
+
+
+@component
+def _injector_4_invalid() -> OutputDict(
+    a=Dict[str, List[List[int]]]):
+  return {
+      'a': {'foo': [[1.], [2]]},
+  }
+
+
+@component
+def _json_compat_check_component(
+    a: Optional[Dict[str, List[List[Any]]]] = None,
+    b: Optional[List[Any]] = None,
+    c: Optional[Dict[str, Dict[str, Any]]] = None,
+    d: Optional[Dict[str, List[List[int]]]] = None,
+    e: Optional[List[float]] = None,
+    f: Optional[Dict[str, Dict[str, List[float]]]] = None,
+):
+  del a, b, c, d, e, f
 
 
 @component
@@ -177,7 +247,10 @@ def _optionalarg_component(
     g: Parameter[float] = 1000.0,
     h: Parameter[str] = '2000',
     optional_examples_1: InputArtifact[standard_artifacts.Examples] = None,
-    optional_examples_2: InputArtifact[standard_artifacts.Examples] = None):
+    optional_examples_2: InputArtifact[standard_artifacts.Examples] = None,
+    list_input: List[Dict[str, float]] = None,
+    dict_input: Optional[Dict[str, Dict[str, List[bool]]]] = None,
+    non_passed_dict: Dict[str, int] = None):
   # Test non-optional parameters.
   assert foo == 9
   assert bar == 'secret'
@@ -201,6 +274,12 @@ def _optionalarg_component(
   assert optional_examples_1 and optional_examples_1.uri
   # Test non-passed optional input artifact.
   assert optional_examples_2 is None
+  # Test passed optional list input artifact.
+  assert list_input == [{'foo': 1.0}, {'bar': 2.0}]
+  # Test passed optional list input artifact.
+  assert dict_input == {'foo': {'bar': [True, False]}}
+  # Test non-passed optional list input artifact.
+  assert non_passed_dict is None
 
 
 @component(use_beam=True)
@@ -212,6 +291,7 @@ def _beam_component_with_artifact_inputs(
     d: bytes,
     examples: InputArtifact[standard_artifacts.Examples],
     processed_examples: OutputArtifact[standard_artifacts.Examples],
+    dict_input: Dict[str, Dict[str, List[bool]]],
     e1: str = 'default',
     e2: Optional[str] = 'default',
     f: bytes = b'default',
@@ -227,6 +307,7 @@ def _beam_component_with_artifact_inputs(
   assert b == 2.0
   assert c == '3'
   assert d == b'4'
+  assert dict_input == {'foo': {'bar': [True, False]}}
   # Test passed optional arguments (with and without the `Optional` typehint
   # specifier).
   assert e1 == 'passed'
@@ -389,7 +470,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         RuntimeError, r'AssertionError: \(220.0, 32.0, \'OK\', None\)'):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
-  def testBeamExecutionOptionalInputsAndParameters(self):
+  def testOptionalInputsAndParameters(self):
     """Test execution with optional inputs and parameters."""
     instance_1 = _injector_2()  # pylint: disable=no-value-for-parameter
     self.assertLen(instance_1.outputs['examples'].get(), 1)
@@ -404,7 +485,9 @@ class ComponentDecoratorTest(tf.test.TestCase):
         e1=instance_1.outputs['e'],
         e2=instance_1.outputs['e'],
         g=999.0,
-        optional_examples_1=instance_1.outputs['examples'])
+        optional_examples_1=instance_1.outputs['examples'],
+        list_input=instance_1.outputs['f'],
+        dict_input=instance_1.outputs['g'])
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -423,6 +506,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
     instance_2 = _beam_component_with_artifact_inputs(  # pylint: disable=assignment-from-no-return, no-value-for-parameter
         foo=9,
         examples=instance_1.outputs['examples'],
+        dict_input=instance_1.outputs['g'],
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
         c=instance_1.outputs['c'],
@@ -456,7 +540,9 @@ class ComponentDecoratorTest(tf.test.TestCase):
         e1=instance_1.outputs['e'],
         e2=instance_1.outputs['e'],
         g=999.0,
-        optional_examples_1=instance_1.outputs['examples'])
+        optional_examples_1=instance_1.outputs['examples'],
+        dict_input=instance_1.outputs['f'],
+        list_input=instance_1.outputs['g'])
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -507,6 +593,63 @@ class ComponentDecoratorTest(tf.test.TestCase):
     self.assertEqual(
         test_pipeline.components[2].type_annotation.MLMD_SYSTEM_BASE_TYPE, 3)
 
+  def testJsonCompatible(self):
+    instance_1 = _injector_4()
+    instance_2 = _json_compat_check_component(
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'],
+        e=instance_1.outputs['e'],
+        f=instance_1.outputs['f'],
+    )
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2])
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+    instance_2 = _json_compat_check_component(
+        a=instance_1.outputs['d'],
+        b=instance_1.outputs['e'],
+        c=instance_1.outputs['f'],
+    )
+
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2])
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+    for arg in ({'a': instance_1.outputs['b']},
+                {'b': instance_1.outputs['c']},
+                {'c': instance_1.outputs['d']},
+                {'d': instance_1.outputs['e']},
+                {'e': instance_1.outputs['f']},
+                {'f': instance_1.outputs['a']},
+                ):
+      with self.assertRaisesRegex(
+          TypeError, 'Argument.* should be a Channel of type .* \(got .*\)\.$'):  # pylint: disable=anomalous-backslash-in-string
+        instance_2 = _json_compat_check_component(**arg)
+
+    invalid_instance = _injector_4_invalid()
+    instance_2 = _json_compat_check_component(
+        a=invalid_instance.outputs['a'],
+    )
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[invalid_instance, instance_2])
+    with self.assertRaisesRegex(
+        TypeError,
+        'Return value .* for output \'a\' is incompatible with output type .*$'
+    ):
+      beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
 if __name__ == '__main__':
   tf.test.main()

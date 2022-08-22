@@ -27,7 +27,7 @@ from tfx.utils import name_utils
 from tfx.utils import telemetry_utils
 
 try:
-  import apache_beam as beam  # pylint: disable=g-import-not-at-top
+  import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
   _BeamPipeline = beam.Pipeline
 except ModuleNotFoundError:
   beam = None
@@ -108,8 +108,10 @@ class BaseBeamExecutor(BaseExecutor):
     # TODO(b/159468583): Obivate this code block by moving the warning to Beam.
     #
     # pylint: disable=g-import-not-at-top
+    # pytype: disable=import-error
     from apache_beam.options.pipeline_options import DirectOptions
     from apache_beam.options.pipeline_options import PipelineOptions
+    # pytype: enable=import-error
     options = PipelineOptions(self._beam_pipeline_args)
     direct_running_mode = options.view_as(DirectOptions).direct_running_mode
     direct_num_workers = options.view_as(DirectOptions).direct_num_workers

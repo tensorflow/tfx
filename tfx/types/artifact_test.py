@@ -312,6 +312,22 @@ class ArtifactTest(tf.test.TestCase):
     my_artifact.set_json_value_custom_property('customjson3', 'xyz')
     my_artifact.set_json_value_custom_property('customjson4', 3.14)
 
+    # Test that the JsonValue getters return the same values we just set
+    self.assertEqual(my_artifact.jsonvalue_string, 'aaa')
+    self.assertEqual(my_artifact.jsonvalue_dict, {'k1': ['v1', 'v2', 333]})
+    self.assertEqual(my_artifact.jsonvalue_int, 123)
+    self.assertEqual(my_artifact.jsonvalue_float, 3.14)
+    self.assertEqual(my_artifact.jsonvalue_list, ['a1', '2', 3, {'4': 5.0}])
+    self.assertIsNone(my_artifact.jsonvalue_null)
+    self.assertEmpty(my_artifact.get_json_value_custom_property('customjson1'))
+    self.assertEqual(
+        my_artifact.get_json_value_custom_property('customjson2'),
+        ['a', 'b', 3])
+    self.assertEqual(
+        my_artifact.get_json_value_custom_property('customjson3'), 'xyz')
+    self.assertEqual(
+        my_artifact.get_json_value_custom_property('customjson4'), 3.14)
+
     # Test string and proto serialization.
     self.assertEqual(
         textwrap.dedent("""\

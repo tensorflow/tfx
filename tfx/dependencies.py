@@ -54,9 +54,9 @@ def make_pipeline_sdk_required_install_packages():
       'absl-py>=0.9,<2.0.0',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=1.8.0,<1.9.0',
+          default='>=1.9.0,<1.10.0',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=1.9.0.dev',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
@@ -73,16 +73,22 @@ def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
-      'apache-beam[gcp]>=2.38,<3',
-      'attrs>=19.3.0,<21',
+      'apache-beam[gcp]>=2.40,<3',
+      'attrs>=19.3.0,<22',
       'click>=7,<8',
+      # TODO(b/238946565): Remove pinned version when pip can find depenencies
+      # without this. `google-api-core` is needed for many google cloud
+      # packages. `google-cloud-recommendations-ai==0.2.0` is a dependency of
+      # apache-beam[gcp] and it requires 'google-api-core<2' which cause a lot
+      # of backtracking.
+      'google-api-core<2',
       'google-cloud-aiplatform>=1.6.2,<2',
       'google-cloud-bigquery>=2.26.0,<3',
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2',
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
-      'pyarrow>=1,<6',
+      'pyarrow>=6,<7',
       'pyyaml>=3.12,<6',
       # Keep the TF version same as TFT to help Pip version resolution.
       # Pip might stuck in a TF 1.15 dependency although there is a working
@@ -93,22 +99,22 @@ def make_required_install_packages():
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
-          default='>=1.8.0,<1.9.0',
-          nightly='>=1.9.0.dev',
+          default='>=1.9.0,<1.10.0',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'
       ),
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.39.0,<0.40',
-          nightly='>=0.40.0.dev',
+          default='>=0.40.0,<0.41',
+          nightly='>=0.41.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),
-      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,<3',
+      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=1.8.0,<1.9.0',
-          nightly='>=1.9.0.dev',
+          default='>=1.9.0,<1.10.0',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
-          default='>=1.8.0,<1.9.0',
-          nightly='>=1.9.0.dev',
+          default='>=1.9.0,<1.10.0',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
       # typing-extensions allows consistent & future-proof interface for typing.
       # Since kfp<2 uses typing-extensions<4, lower bound is the latest 3.x, and
@@ -120,9 +126,7 @@ def make_required_install_packages():
 def make_extra_packages_airflow():
   """Prepare extra packages needed for Apache Airflow orchestrator."""
   return [
-      # TODO(b/230996502): Rollback the upper version cap to 3 after kfp
-      # releases a new version.
-      'apache-airflow[mysql]>=1.10.14,<2.3',
+      'apache-airflow[mysql]>=1.10.14,<3',
   ]
 
 
@@ -167,8 +171,8 @@ def make_extra_packages_tf_ranking():
   return [
       'tensorflow-ranking>=0.5,<0.6',
       'struct2tensor' + select_constraint(
-          default='>=0.39,<0.40',
-          nightly='>=0.40.0.dev',
+          default='>=0.40,<0.41',
+          nightly='>=0.41.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
   ]
 

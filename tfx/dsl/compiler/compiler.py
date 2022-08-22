@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
-import collections
 import inspect
 import itertools
-from typing import Any, Dict, Iterator, Iterable, List, Optional, Set, Tuple, Type, cast
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, cast, Mapping
 
 from tfx import types
+from tfx.dsl.compiler import compiler_context
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_component
@@ -37,6 +37,7 @@ from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as tfx_channel
 from tfx.types import channel_utils
+from tfx.types import resolved_channel
 from tfx.types import value_artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
@@ -45,81 +46,13 @@ from tfx.utils import name_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
-class _CompilerContext:
-  """Encapsulates resources needed to compile a pipeline."""
-
-  def __init__(self,
-               tfx_pipeline: pipeline.Pipeline,
-               parent_pipelines: Optional[List[pipeline.Pipeline]] = None,
-               parent_pipeline_context: Optional["_CompilerContext"] = None):
-    self.pipeline = tfx_pipeline
-
-    self.pipeline_info = self.pipeline.pipeline_info
-    self.execution_mode = compiler_utils.resolve_execution_mode(self.pipeline)
-    self.dsl_context_registry = self.pipeline.dsl_context_registry
-    self.parent_pipelines = parent_pipelines or []
-    self.parent_pipeline_context = parent_pipeline_context
-
-    # Stores channels available in the current pipeline scope.
-    # Mapping from Channel object to compiled Channel proto.
-    self.channels = dict()
-
-    self._pipeline_nodes_by_id = {}
-    self._topological_order = {}
-    self._implicit_upstream_nodes = collections.defaultdict(set)
-    self._implicit_downstream_nodes = collections.defaultdict(set)
-    for i, node in enumerate(tfx_pipeline.components, start=1):
-      self._pipeline_nodes_by_id[node.id] = node
-      self._topological_order[node.id] = i
-      self._collect_conditional_dependency(node)
-
-  def _add_implicit_dependency(self, parent_id: str, child_id: str) -> None:
-    self._implicit_upstream_nodes[child_id].add(parent_id)
-    self._implicit_downstream_nodes[parent_id].add(child_id)
-
-  def _collect_conditional_dependency(self, here: base_node.BaseNode) -> None:
-    for predicate in conditional.get_predicates(here,
-                                                self.dsl_context_registry):
-      for chnl in predicate.dependent_channels():
-        if isinstance(chnl, tfx_channel.OutputChannel):
-          self._add_implicit_dependency(chnl.producer_component_id, here.id)
-
-  def topologically_sorted(self, tfx_nodes: Iterable[base_node.BaseNode]):
-    return sorted(tfx_nodes, key=lambda node: self._topological_order[node.id])
-
-  @property
-  def is_sync_mode(self):
-    return self.execution_mode == pipeline_pb2.Pipeline.SYNC
-
-  @property
-  def is_async_mode(self):
-    return self.execution_mode == pipeline_pb2.Pipeline.ASYNC
-
-  @property
-  def pipeline_node_ids(self) -> Set[str]:
-    return set(self._pipeline_nodes_by_id.keys())
-
-  def implicit_upstream_nodes(
-      self, here: base_node.BaseNode) -> List[base_node.BaseNode]:
-    return [
-        self._pipeline_nodes_by_id[node_id]
-        for node_id in self._implicit_upstream_nodes[here.id]
-    ]
-
-  def implicit_downstream_nodes(
-      self, here: base_node.BaseNode) -> List[base_node.BaseNode]:
-    return [
-        self._pipeline_nodes_by_id[node_id]
-        for node_id in self._implicit_downstream_nodes[here.id]
-    ]
-
-
 class Compiler:
   """Compiles a TFX pipeline or a component into a uDSL IR proto."""
 
   def _compile_pipeline_begin_node(
       self, p: pipeline.Pipeline,
-      compile_context: _CompilerContext) -> pipeline_pb2.PipelineNode:
+      pipeline_ctx: compiler_context.PipelineContext,
+  ) -> pipeline_pb2.PipelineNode:
     """Compiles a PipelineBegin node for a composable pipeline."""
     node = pipeline_pb2.PipelineNode()
 
@@ -129,7 +62,7 @@ class Compiler:
 
     # Step 2: Node Context
     # Inner pipeline's contexts.
-    _set_node_context(node, compile_context)
+    _set_node_context(node, pipeline_ctx)
 
     # Step 3: Node inputs
     # Composable pipeline's pipeline-level inputs are stored as the inputs of
@@ -139,19 +72,19 @@ class Compiler:
     # Step 3.1.1: Conditionals
     # Composable pipeline's conditional config is stored in PipelineBegin node.
     implicit_input_channels.update(
-        _set_conditionals(node, p, compile_context, p.inputs))
+        _set_conditionals(node, p, pipeline_ctx, p.inputs))
     # Step 3.1.2: Add placeholder exec props to implicit_input_channels
     implicit_input_channels.update(
         _gather_implicit_inputs_from_exec_properties(p))
 
     # Step 3.2: Handle ForEach.
     # Similarly, pipeline level's foreach config is stored in PipelineBegin node
-    _set_for_each(node, p, compile_context, p.inputs)
+    _set_for_each(node, p, pipeline_ctx, p.inputs)
 
     # Step 3.3: Fill node inputs
     # Note here we use parent_pipeline_context, because a PipelineBegin node
     # uses output channels from its parent pipeline.
-    _set_node_inputs(node, p, compile_context.parent_pipeline_context, p.inputs,
+    _set_node_inputs(node, p, pipeline_ctx.parent_pipeline_context, p.inputs,
                      implicit_input_channels)
 
     # Step 4: Node outputs
@@ -159,7 +92,7 @@ class Compiler:
     # i.e., the composable pipeline's inputs.
     _set_node_outputs(node, p.inputs)
     internal_inputs = p._inputs.inputs if p._inputs else {}  # pylint: disable=protected-access
-    compile_context.channels.update(
+    pipeline_ctx.channels.update(
         _generate_input_spec_for_outputs(node, internal_inputs))
 
     # Pipeline Begin node has no parameters.
@@ -167,16 +100,18 @@ class Compiler:
     # Step 5: Upstream/Downstream nodes
     # PipelineBegin node's upstreams nodes are the inner pipeline's upstream
     # nodes, i.e., the producer nodes of inner pipeline's inputs.
-    upstreams = set(
-        _find_runtime_upstream_node_ids(compile_context.parent_pipeline_context,
-                                        p))
-    if _begin_node_is_upstream(
-        p, compile_context.parent_pipeline_context.pipeline):
-      upstreams.add(
-          compiler_utils.pipeline_begin_node_id(
-              compile_context.parent_pipeline_context.pipeline))
-    # Sort node ids so that compiler generates consistent results.
-    node.upstream_nodes.extend(sorted(upstreams))
+    # Outmost pipeline's PipelineBegin node does not has upstream nodes.
+    if pipeline_ctx.parent_pipeline_context:
+      upstreams = set(
+          _find_runtime_upstream_node_ids(pipeline_ctx.parent_pipeline_context,
+                                          p))
+      if _begin_node_is_upstream(p,
+                                 pipeline_ctx.parent_pipeline_context.pipeline):
+        upstreams.add(
+            compiler_utils.pipeline_begin_node_id(
+                pipeline_ctx.parent_pipeline_context.pipeline))
+      # Sort node ids so that compiler generates consistent results.
+      node.upstream_nodes.extend(sorted(upstreams))
 
     # PipelineBegin node's downstream nodes are the nodes in the inner pipeline
     # that consumes pipeline's input channels.
@@ -192,7 +127,8 @@ class Compiler:
 
   def _compile_pipeline_end_node(
       self, p: pipeline.Pipeline,
-      compile_context: _CompilerContext) -> pipeline_pb2.PipelineNode:
+      pipeline_ctx: compiler_context.PipelineContext,
+  ) -> pipeline_pb2.PipelineNode:
     """Compiles a PipelineEnd node for a composable pipeline."""
     node = pipeline_pb2.PipelineNode()
 
@@ -202,19 +138,20 @@ class Compiler:
 
     # Step 2: Node Context
     # Inner pipeline's contexts.
-    _set_node_context(node, compile_context)
+    _set_node_context(node, pipeline_ctx)
 
     # Step 3: Node inputs
     # Conditionals and Foreach do not apply to PipelineEnd node.
     # The inputs of a PipelineEnd node is the same as inner pipeline's outputs.
-    _set_node_inputs(node, p, compile_context,
+    _set_node_inputs(node, p, pipeline_ctx,
                      {k: c.wrapped for k, c in p.outputs.items()}, {})
 
     # Step 4: Node outputs
     # PipeineEnd node's outputs are the same as inner pipeline's outputs.
     _set_node_outputs(node, p.outputs)
-    compile_context.parent_pipeline_context.channels.update(
-        _generate_input_spec_for_outputs(node, p.outputs))
+    if pipeline_ctx.parent_pipeline_context:
+      pipeline_ctx.parent_pipeline_context.channels.update(
+          _generate_input_spec_for_outputs(node, p.outputs))
 
     # PipelineEnd node does not have parameters.
 
@@ -233,12 +170,12 @@ class Compiler:
     # nodes, i.e., the consumer nodes of inner pipeline's outputs.
     downstreams = set(
         _find_runtime_downstream_node_ids(
-            compile_context.parent_pipeline_context, p))
-    if _end_node_is_downstream(
-        p, compile_context.parent_pipeline_context.pipeline):
+            pipeline_ctx.parent_pipeline_context, p))
+    if pipeline_ctx.parent_pipeline_context and _end_node_is_downstream(
+        p, pipeline_ctx.parent_pipeline_context.pipeline):
       downstreams.add(
           compiler_utils.pipeline_end_node_id(
-              compile_context.parent_pipeline_context.pipeline))
+              pipeline_ctx.parent_pipeline_context.pipeline))
     # Sort node ids so that compiler generates consistent results.
     node.downstream_nodes.extend(sorted(downstreams))
 
@@ -247,7 +184,7 @@ class Compiler:
   def _compile_node(
       self,
       tfx_node: base_node.BaseNode,
-      compile_context: _CompilerContext,
+      pipeline_ctx: compiler_context.PipelineContext,
       deployment_config: pipeline_pb2.IntermediateDeploymentConfig,
       enable_cache: bool,
   ) -> pipeline_pb2.PipelineNode:
@@ -255,7 +192,7 @@ class Compiler:
 
     Args:
       tfx_node: A TFX node.
-      compile_context: Resources needed to compile the node.
+      pipeline_ctx: Resources needed to compile the node.
       deployment_config: Intermediate deployment config to set. Will include
         related specs for executors, drivers and platform specific configs.
       enable_cache: whether cache is enabled
@@ -277,11 +214,11 @@ class Compiler:
     node.node_info.id = tfx_node.id
 
     # Step 2: Node Context
-    _set_node_context(node, compile_context)
+    _set_node_context(node, pipeline_ctx)
 
     # Pre Step 3: Alter graph topology if needed.
-    if compile_context.is_async_mode:
-      tfx_node_inputs = _embed_upstream_resolver_nodes(compile_context,
+    if pipeline_ctx.is_async_mode:
+      tfx_node_inputs = _embed_upstream_resolver_nodes(pipeline_ctx,
                                                        tfx_node, node)
     else:
       tfx_node_inputs = tfx_node.inputs
@@ -293,23 +230,23 @@ class Compiler:
 
     # Step 3.1.1: Conditionals
     implicit_input_channels.update(
-        _set_conditionals(node, tfx_node, compile_context, tfx_node_inputs))
+        _set_conditionals(node, tfx_node, pipeline_ctx, tfx_node_inputs))
 
     # Step 3.1.2: Add placeholder exec props to implicit_input_channels
     implicit_input_channels.update(
         _gather_implicit_inputs_from_exec_properties(tfx_node))
 
     # Step 3.2: Handle ForEach.
-    _set_for_each(node, tfx_node, compile_context, tfx_node_inputs)
+    _set_for_each(node, tfx_node, pipeline_ctx, tfx_node_inputs)
 
     # Step 3.3: Fill node inputs
-    _set_node_inputs(node, tfx_node, compile_context, tfx_node_inputs,
+    _set_node_inputs(node, tfx_node, pipeline_ctx, tfx_node_inputs,
                      implicit_input_channels)
 
     # TODO(b/170694459): Refactor special nodes as plugins.
     # Step 3.4: Special treatment for Resolver node.
     if compiler_utils.is_resolver(tfx_node):
-      assert compile_context.is_sync_mode
+      assert pipeline_ctx.is_sync_mode
       node.inputs.resolver_config.resolver_steps.extend(
           _compile_resolver_node(tfx_node))
 
@@ -317,7 +254,7 @@ class Compiler:
     if (isinstance(tfx_node, base_component.BaseComponent) or
         compiler_utils.is_importer(tfx_node)):
       _set_node_outputs(node, tfx_node.outputs)
-    compile_context.channels.update(
+    pipeline_ctx.channels.update(
         _generate_input_spec_for_outputs(node, tfx_node.outputs))
 
     # Step 5: Node parameters
@@ -339,23 +276,33 @@ class Compiler:
         deployment_config.custom_driver_specs[tfx_node.id].Pack(driver_spec)
 
     # Step 7: Upstream/Downstream nodes
-    upstreams = set(_find_runtime_upstream_node_ids(compile_context, tfx_node))
-    if _begin_node_is_upstream(tfx_node, compile_context.pipeline):
+    upstreams = set(_find_runtime_upstream_node_ids(pipeline_ctx, tfx_node))
+    if _begin_node_is_upstream(tfx_node, pipeline_ctx.pipeline):
       upstreams.add(
-          compiler_utils.pipeline_begin_node_id(compile_context.pipeline))
+          compiler_utils.pipeline_begin_node_id(pipeline_ctx.pipeline))
     # Sort node ids so that compiler generates consistent results.
     node.upstream_nodes.extend(sorted(upstreams))
 
     downstreams = set(
-        _find_runtime_downstream_node_ids(compile_context, tfx_node))
-    if _end_node_is_downstream(tfx_node, compile_context.pipeline):
+        _find_runtime_downstream_node_ids(pipeline_ctx, tfx_node))
+    if _end_node_is_downstream(tfx_node, pipeline_ctx.pipeline):
       downstreams.add(
-          compiler_utils.pipeline_end_node_id(compile_context.pipeline))
+          compiler_utils.pipeline_end_node_id(pipeline_ctx.pipeline))
     # Sort node ids so that compiler generates consistent results.
     node.downstream_nodes.extend(sorted(downstreams))
 
     # Step 8: Node execution options
     node.execution_options.caching_options.enable_cache = enable_cache
+    # TODO(b/211890056): Support non default triggering strategies with
+    # optional artifacts.
+    if getattr(tfx_node, "_trigger_strategy", None):
+      if not pipeline_ctx.is_sync_mode:
+        raise ValueError("Node level triggering strategies are only used in "
+                         "SYNC pipelines.")
+      if tfx_node.inputs:
+        raise NotImplementedError("Non default triggering strategies with "
+                                  "data dependency are not yet supported yet.")
+      node.execution_options.strategy = getattr(tfx_node, "_trigger_strategy")
 
     # Step 9: Per-node platform config
     if isinstance(tfx_node, base_component.BaseComponent):
@@ -370,7 +317,7 @@ class Compiler:
       self,
       tfx_pipeline: pipeline.Pipeline,
       parent_pipelines: Optional[List[pipeline.Pipeline]] = None,
-      parent_pipeline_context: Optional[_CompilerContext] = None,
+      parent_pipeline_ctx: Optional[compiler_context.PipelineContext] = None,
   ) -> pipeline_pb2.Pipeline:
     """Compiles a tfx pipeline into uDSL proto.
 
@@ -378,16 +325,16 @@ class Compiler:
       tfx_pipeline: A TFX pipeline.
       parent_pipelines: Optional all parent pipelines, with the order from outer
         most parent pipeline to inner most parent pipeline.
-      parent_pipeline_context: Optional CompilerContext that includes info for
+      parent_pipeline_ctx: Optional PipelineContext that includes info for
         the immediate parent pipeline. This is mainly used by a pipeline begin
         node get info for artifacts from its parent pipeline.
 
     Returns:
       A Pipeline proto that encodes all necessary information of the pipeline.
     """
-    # Prepare compiler context.
-    context = _CompilerContext(tfx_pipeline, parent_pipelines,
-                               parent_pipeline_context)
+    # Prepare pipeline compiler context.
+    pipeline_ctx = compiler_context.PipelineContext(
+        tfx_pipeline, parent_pipelines, parent_pipeline_ctx)
 
     if parent_pipelines is None:
       parent_pipelines = []
@@ -396,12 +343,13 @@ class Compiler:
     _validate_pipeline(tfx_pipeline, parent_pipelines)
 
     pipeline_pb = pipeline_pb2.Pipeline()
-    pipeline_pb.pipeline_info.id = context.pipeline_info.pipeline_name
-    pipeline_pb.execution_mode = context.execution_mode
+    pipeline_pb.pipeline_info.id = pipeline_ctx.pipeline_info.pipeline_name
+    pipeline_pb.execution_mode = pipeline_ctx.execution_mode
 
-    if isinstance(context.pipeline_info.pipeline_root, placeholder.Placeholder):
+    if isinstance(
+        pipeline_ctx.pipeline_info.pipeline_root, placeholder.Placeholder):
       pipeline_pb.runtime_spec.pipeline_root.placeholder.CopyFrom(
-          context.pipeline_info.pipeline_root.encode())
+          pipeline_ctx.pipeline_info.pipeline_root.encode())
     else:
       # Unless an inner pipeline specified its own pipeline root, it inherits
       # from its closest parent pipeline that has a pipelie root defined.
@@ -438,11 +386,11 @@ class Compiler:
       deployment_config.metadata_connection_config.Pack(
           tfx_pipeline.metadata_connection_config)
 
-    # To make compiled IR strcuture backward compatible, currently only inner
-    # composable pipelines have pipeline begin and end nodes.
-    if parent_pipelines:
+    # Inner pipelines of a composable pipeline, or a outmost pipeline with
+    # pipeline-level inputs have pipeline begin nodes.
+    if parent_pipelines or tfx_pipeline._inputs:  # pylint: disable=protected-access
       pipeline_begin_node_pb = self._compile_pipeline_begin_node(
-          tfx_pipeline, context)
+          tfx_pipeline, pipeline_ctx)
       pipeline_or_node = pipeline_pb.PipelineOrNode()
       pipeline_or_node.pipeline_node.CopyFrom(pipeline_begin_node_pb)
       pipeline_pb.nodes.append(pipeline_or_node)
@@ -450,25 +398,27 @@ class Compiler:
     for node in tfx_pipeline.components:
       # In ASYNC mode Resolver nodes are merged into the downstream node as a
       # ResolverConfig
-      if compiler_utils.is_resolver(node) and context.is_async_mode:
+      if compiler_utils.is_resolver(node) and pipeline_ctx.is_async_mode:
         continue
 
       if isinstance(node, pipeline.Pipeline):
         pipeline_node_pb = self.compile(node, parent_pipelines + [tfx_pipeline],
-                                        context)
+                                        pipeline_ctx)
         pipeline_or_node = pipeline_pb.PipelineOrNode()
         pipeline_or_node.sub_pipeline.CopyFrom(pipeline_node_pb)
         pipeline_pb.nodes.append(pipeline_or_node)
       else:
-        node_pb = self._compile_node(node, context, deployment_config,
+        node_pb = self._compile_node(node, pipeline_ctx, deployment_config,
                                      tfx_pipeline.enable_cache)
         pipeline_or_node = pipeline_pb.PipelineOrNode()
         pipeline_or_node.pipeline_node.CopyFrom(node_pb)
         pipeline_pb.nodes.append(pipeline_or_node)
 
-    if parent_pipelines:
+    # Inner pipelines of a composable pipeline, or a outmost pipeline with
+    # pipeline-level outputs have pipeline end nodes.
+    if parent_pipelines or tfx_pipeline._outputs:  # pylint: disable=protected-access
       pipeline_end_node_pb = self._compile_pipeline_end_node(
-          tfx_pipeline, context)
+          tfx_pipeline, pipeline_ctx)
       pipeline_or_node = pipeline_pb.PipelineOrNode()
       pipeline_or_node.pipeline_node.CopyFrom(pipeline_end_node_pb)
       pipeline_pb.nodes.append(pipeline_or_node)
@@ -527,9 +477,10 @@ def _get_upstream_resolver_nodes(
   return result
 
 
-def _embed_upstream_resolver_nodes(context: _CompilerContext,
-                                   tfx_node: base_node.BaseNode,
-                                   node: pipeline_pb2.PipelineNode):
+def _embed_upstream_resolver_nodes(
+    pipeline_ctx: compiler_context.PipelineContext,
+    tfx_node: base_node.BaseNode,
+    node: pipeline_pb2.PipelineNode):
   """Embeds upstream Resolver nodes as a ResolverConfig.
 
   Iteratively reduces upstream resolver nodes into a resolver config of the
@@ -585,7 +536,7 @@ def _embed_upstream_resolver_nodes(context: _CompilerContext,
   This only applies to the ASYNC mode pipeline compilation.
 
   Args:
-    context: A compiler context.
+    pipeline_ctx: A pipeline context.
     tfx_node: A BaseNode instance.
     node: A PipelineNode IR to compile ResolverConfig into.
 
@@ -600,7 +551,8 @@ def _embed_upstream_resolver_nodes(context: _CompilerContext,
   resolver_nodes = _get_upstream_resolver_nodes(tfx_node)
   # Reduce each resolver node into resolver steps in reversed topological
   # order.
-  for resolver_node in reversed(context.topologically_sorted(resolver_nodes)):
+  for resolver_node in reversed(
+      pipeline_ctx.topologically_sorted(resolver_nodes)):
     # TODO(b/169573945, lidanm): Properly handle channel.union() for resolver
     # node in async mode.
     resolver_channels = {
@@ -696,15 +648,16 @@ def _validate_pipeline(tfx_pipeline: pipeline.Pipeline,
 
 
 def _set_node_context(node: pipeline_pb2.PipelineNode,
-                      compile_context: _CompilerContext):
+                      pipeline_ctx: compiler_context.PipelineContext):
   """Compiles the node contexts of a pipeline node."""
   # Context for the pipeline, across pipeline runs.
   pipeline_context_pb = node.contexts.contexts.add()
   pipeline_context_pb.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
-  pipeline_context_pb.name.field_value.string_value = compile_context.pipeline_info.pipeline_context_name
+  pipeline_context_pb.name.field_value.string_value = (
+      pipeline_ctx.pipeline_info.pipeline_context_name)
 
   # Context for the current pipeline run.
-  if compile_context.is_sync_mode:
+  if pipeline_ctx.is_sync_mode:
     pipeline_run_context_pb = node.contexts.contexts.add()
     pipeline_run_context_pb.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
     # TODO(kennethyang): Miragte pipeline run id to structural_runtime_parameter
@@ -712,10 +665,10 @@ def _set_node_context(node: pipeline_pb2.PipelineNode,
     # structural_runtime_parameter for subpipelines. After the subpipeline being
     # implemented, we will need to migrate normal pipelines to
     # structural_runtime_parameter as well for consistency. Similar for below.
-    if compile_context.parent_pipelines:
+    if pipeline_ctx.parent_pipelines:
       compiler_utils.set_structural_runtime_parameter_pb(
           pipeline_run_context_pb.name.structural_runtime_parameter, [
-              f"{compile_context.pipeline_info.pipeline_context_name}_",
+              f"{pipeline_ctx.pipeline_info.pipeline_context_name}_",
               (constants.PIPELINE_RUN_ID_PARAMETER_NAME, str)
           ])
     else:
@@ -724,21 +677,22 @@ def _set_node_context(node: pipeline_pb2.PipelineNode,
           constants.PIPELINE_RUN_ID_PARAMETER_NAME, str)
 
   # Contexts inherited from the parent pipelines.
-  for i, parent_pipeline in enumerate(compile_context.parent_pipelines[::-1]):
+  for i, parent_pipeline in enumerate(pipeline_ctx.parent_pipelines[::-1]):
     parent_pipeline_context_pb = node.contexts.contexts.add()
     parent_pipeline_context_pb.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
     parent_pipeline_context_pb.name.field_value.string_value = (
         parent_pipeline.pipeline_info.pipeline_context_name)
 
-    if compile_context.is_sync_mode:
+    if pipeline_ctx.is_sync_mode:
       pipeline_run_context_pb = node.contexts.contexts.add()
-      pipeline_run_context_pb.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
+      pipeline_run_context_pb.type.name = (
+          constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
 
       # TODO(kennethyang): Miragte pipeline run id to structural runtime
       # parameter for the similar reason mentioned above.
       # Use structural runtime parameter to represent pipeline_run_id except
       # for the root level pipeline, for backward compatibility.
-      if i == len(compile_context.parent_pipelines) - 1:
+      if i == len(pipeline_ctx.parent_pipelines) - 1:
         compiler_utils.set_runtime_parameter_pb(
             pipeline_run_context_pb.name.runtime_parameter,
             constants.PIPELINE_RUN_ID_PARAMETER_NAME, str)
@@ -754,21 +708,23 @@ def _set_node_context(node: pipeline_pb2.PipelineNode,
   node_context_pb.type.name = constants.NODE_CONTEXT_TYPE_NAME
   node_context_pb.name.field_value.string_value = (
       compiler_utils.node_context_name(
-          compile_context.pipeline_info.pipeline_context_name,
+          pipeline_ctx.pipeline_info.pipeline_context_name,
           node.node_info.id))
 
 
 def _set_conditionals(
     node: pipeline_pb2.PipelineNode, tfx_node: base_node.BaseNode,
-    compile_context: _CompilerContext, tfx_node_inputs: Dict[str, types.Channel]
+    pipeline_ctx: compiler_context.PipelineContext,
+    tfx_node_inputs: Dict[str, types.Channel],
 ) -> Iterator[Tuple[str, types.Channel]]:
   """Compiles the conditionals for a pipeline node."""
-  if isinstance(tfx_node, pipeline.Pipeline):
+  if pipeline_ctx.parent_pipeline_context and isinstance(
+      tfx_node, pipeline.Pipeline):
     predicates = conditional.get_predicates(
-        tfx_node, compile_context.parent_pipeline_context.dsl_context_registry)
+        tfx_node, pipeline_ctx.parent_pipeline_context.dsl_context_registry)
   else:
     predicates = conditional.get_predicates(
-        tfx_node, compile_context.dsl_context_registry)
+        tfx_node, pipeline_ctx.dsl_context_registry)
 
   if predicates:
     implicit_keys_map = {}
@@ -807,10 +763,10 @@ def _gather_implicit_inputs_from_exec_properties(
 
 
 def _set_for_each(node: pipeline_pb2.PipelineNode, tfx_node: base_node.BaseNode,
-                  compile_context: _CompilerContext,
+                  pipeline_ctx: compiler_context.PipelineContext,
                   tfx_node_inputs: Dict[str, Any]):
   """Compiles the ForEach configs for a pipeline node."""
-  dsl_contexts = compile_context.dsl_context_registry.get_contexts(tfx_node)
+  dsl_contexts = pipeline_ctx.dsl_context_registry.get_contexts(tfx_node)
   for dsl_context in dsl_contexts:
     if isinstance(dsl_context, for_each.ForEachContext):
       for input_key, channel in tfx_node_inputs.items():
@@ -836,19 +792,40 @@ def _set_for_each(node: pipeline_pb2.PipelineNode, tfx_node: base_node.BaseNode,
 
 def _set_node_inputs(node: pipeline_pb2.PipelineNode,
                      tfx_node: base_node.BaseNode,
-                     compile_context: _CompilerContext,
+                     pipeline_ctx: compiler_context.PipelineContext,
                      tfx_node_inputs: Dict[str, types.Channel],
                      implicit_input_channels: Dict[str, types.Channel]):
   """Compiles the inputs for a pipeline node."""
-  for key, value in itertools.chain(tfx_node_inputs.items(),
-                                    implicit_input_channels.items()):
+  all_inputs = {**tfx_node_inputs, **implicit_input_channels}
+  resolved_channel_inputs = {}
+
+  for key, input_channel in all_inputs.items():
+    if isinstance(input_channel, resolved_channel.ResolvedChannel):
+      resolved_channel_inputs[key] = input_channel
+
+  if (len(resolved_channel_inputs) != len(all_inputs)
+      and resolved_channel_inputs):
+    bad_input_keys = list(set(all_inputs) - set(resolved_channel_inputs))
+    # TODO(b/236140795): Migrate to InputGraph based IR.
+    # This is the weird limitation we have using the ResolverConfig based IR.
+    # New InputGraph based IR can solve the problem.
+    raise ValueError(
+        f"Node {tfx_node.id} inputs should all be coming from the same input "
+        f"function output, while {bad_input_keys} are not.")
+
+  if resolved_channel_inputs:
+    _set_resolved_channel_inputs(
+        node, tfx_node, pipeline_ctx, resolved_channel_inputs)
+    return
+
+  for key, value in all_inputs.items():
     input_spec = node.inputs.inputs[key]
 
     if isinstance(value, tfx_channel.PipelineInputChannel):
       channel_pb = input_spec.channels.add()
 
-      if value in compile_context.channels:
-        channel_pb.CopyFrom(compile_context.channels[value])
+      if value in pipeline_ctx.channels:
+        channel_pb.CopyFrom(pipeline_ctx.channels[value])
       else:
         raise ValueError(
             f"Failed to find producer info for the input channel '{key}' "
@@ -859,8 +836,26 @@ def _set_node_inputs(node: pipeline_pb2.PipelineNode,
       channel_pb = input_spec.channels.add()
 
       if isinstance(input_channel, types.OutputChannel):
-        if input_channel in compile_context.channels:
-          channel_pb.CopyFrom(compile_context.channels[input_channel])
+        if pipeline_ctx and input_channel in pipeline_ctx.channels:
+          channel_pb.CopyFrom(pipeline_ctx.channels[input_channel])
+        elif isinstance(input_channel, tfx_channel.PipelineOutputChannel):
+          # Add pipeline context query
+          context_query = channel_pb.context_queries.add()
+          context_query.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
+          context_query.name.field_value.string_value = (
+              input_channel.pipeline.pipeline_name)
+
+          # Add node context query
+          node_context_query = channel_pb.context_queries.add()
+          node_context_query.type.name = constants.NODE_CONTEXT_TYPE_NAME
+          node_context_query.name.field_value.string_value = (
+              compiler_utils.node_context_name(
+                  input_channel.pipeline.pipeline_name,
+                  input_channel.wrapped.producer_component_id))
+
+          artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
+          channel_pb.artifact_query.type.CopyFrom(artifact_type)
+          channel_pb.artifact_query.type.ClearField("properties")
         else:
           raise ValueError(
               f"Failed to find producer info for the input channel '{key}' "
@@ -881,7 +876,7 @@ def _set_node_inputs(node: pipeline_pb2.PipelineNode,
           node_context_query = channel_pb.context_queries.add()
           node_context_query.type.name = constants.NODE_CONTEXT_TYPE_NAME
           node_context_query.name.field_value.string_value = "{}.{}".format(
-              compile_context.pipeline_info.pipeline_context_name,
+              pipeline_ctx.pipeline_info.pipeline_context_name,
               input_channel.producer_component_id)
 
         artifact_type = input_channel.type._get_artifact_type()  # pylint: disable=protected-access
@@ -901,20 +896,81 @@ def _set_node_inputs(node: pipeline_pb2.PipelineNode,
       else:
         try:
           # Calculating min_count from ComponentSpec.INPUTS.
-          if tfx_node.spec.is_optional_input(key):
+          # Channel optional in spec, but provided to component.
+          if tfx_node.spec.is_allow_empty_input(key):
+            # Channel is defined as allow_empty in spec. It's okay to
+            # trigger even if it has no resolved input artifacts.
             input_spec.min_count = 0
           else:
+            # Channel is defined as NOT allow_empty in spec.
+            # It must have resolved input artifacts before it triggers.
             input_spec.min_count = 1
         except KeyError:
           # Currently we can fall here if the upstream resolver node inputs
           # are embedded into the current node (in async mode). We always
           # regard resolver's inputs as optional.
-          if compile_context.is_async_mode:
+          if pipeline_ctx.is_async_mode:
             input_spec.min_count = 0
           else:
             raise
     else:
       input_spec.min_count = 0
+
+
+# TODO(b/236140795): Migrate to InputGraph based IR.
+def _set_resolved_channel_inputs(
+    node: pipeline_pb2.PipelineNode,
+    tfx_node: base_node.BaseNode,
+    pipeline_ctx: compiler_context.PipelineContext,
+    inputs: Mapping[str, resolved_channel.ResolvedChannel]) -> None:
+  """Set `node.inputs` where all `inputs` are ResolvedChannel.
+
+  ResolvedChannel is a special BaseChannel that marks the output of the
+  ResolverFunction. If a node has ResolvedChannel input, all resolver function
+  definition should also be compiled as part of the node inputs.
+
+  Args:
+    node: A PipelineNode IR output.
+    tfx_node: A compiling node.
+    pipeline_ctx: A PipelineContext for the current pipeline.
+    inputs: An input ResolvedChannels with keys.
+  """
+  for input_key, channel in inputs.items():
+    if channel.output_key != input_key:
+      # Resolved dict key should match the consumer input key. For example
+      #    inputs = resolve_inputs(...)
+      #    consumer_a = A(x=inputs['x'])  # valid
+      #    consumer_b = B(y=inputs['x'])  # INVALID
+      # This is the weird limitation we have using the ResolverConfig based IR.
+      # New InputGraph based IR can solve the problem.
+      raise ValueError(
+          f"Node {tfx_node.id}.inputs[{input_key!r}] should have the same key "
+          f"as the output key value but got {channel.output_key!r}.")
+  output_nodes = {channel.output_node for channel in inputs.values()}
+  if len(output_nodes) != 1:
+    # This is the weird limitation we have using the ResolverConfig based IR.
+    # New InputGraph based IR can solve the problem.
+    raise ValueError(
+        f"Node {tfx_node.id} should consume from single input function but "
+        f"detected {len(output_nodes)}.")
+  output_node = output_nodes.pop()
+  input_nodes = set(resolver_function.get_input_nodes(output_node))
+  if len(input_nodes) != 1:
+    # This is the weird limitation we have using the ResolverConfig based IR.
+    # New InputGraph based IR can solve the problem.
+    raise ValueError(
+        "Resolver function with multiple input nodes are not yet supported.")
+  input_node: resolver_op.InputNode = input_nodes.pop()
+  if any(isinstance(channel, resolved_channel.ResolvedChannel)
+         for channel in input_node.wrapped.values()):
+    # This is the weird limitation we have using the ResolverConfig based IR.
+    # New InputGraph based IR can solve the problem.
+    raise ValueError(
+        "Cannot use input function output as an input to another input "
+        "function.")
+  _set_node_inputs(node, tfx_node, pipeline_ctx, input_node.wrapped, {})
+  node.inputs.resolver_config.resolver_steps.extend(
+      _compile_trace_result(output_node))
 
 
 def _set_node_outputs(node: pipeline_pb2.PipelineNode,
@@ -1004,29 +1060,32 @@ def _set_node_parameters(node: pipeline_pb2.PipelineNode,
                 tfx_node.id, key, type(value))) from ValueError
 
 
-def _find_runtime_upstream_node_ids(context: _CompilerContext,
-                                    here: base_node.BaseNode) -> List[str]:
+def _find_runtime_upstream_node_ids(
+    pipeline_ctx: compiler_context.PipelineContext,
+    here: base_node.BaseNode) -> List[str]:
   """Finds all upstream nodes that the current node depends on."""
   result = set()
   for up in itertools.chain(here.upstream_nodes,
-                            context.implicit_upstream_nodes(here)):
-    if context.is_async_mode and compiler_utils.is_resolver(up):
-      result.update(_find_runtime_upstream_node_ids(context, up))
+                            pipeline_ctx.implicit_upstream_nodes(here)):
+    if pipeline_ctx.is_async_mode and compiler_utils.is_resolver(up):
+      result.update(_find_runtime_upstream_node_ids(pipeline_ctx, up))
     else:
       result.add(up.id)
   # Validate that upstream nodes are present in the pipeline.
   for up_id in result:
-    if up_id not in context.pipeline_node_ids:
+    if up_id not in pipeline_ctx.pipeline_node_ids:
       raise ValueError(f"Node {here.id} references upstream node {up_id} "
                        "which is not present in the pipeline.")
   # Sort result so that compiler generates consistent results.
   return sorted(result)
 
 
-def _find_runtime_downstream_node_ids(context: _CompilerContext,
+def _find_runtime_downstream_node_ids(context: compiler_context.PipelineContext,
                                       here: base_node.BaseNode) -> List[str]:
   """Finds all downstream nodes that depend on the current node."""
   result = set()
+  if not context:
+    return result
   for down in itertools.chain(here.downstream_nodes,
                               context.implicit_downstream_nodes(here)):
     if context.is_async_mode and compiler_utils.is_resolver(down):

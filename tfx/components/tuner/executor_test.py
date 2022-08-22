@@ -73,11 +73,14 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Create output dict.
-    self._best_hparams = standard_artifacts.Model()
+    self._best_hparams = standard_artifacts.HyperParameters()
     self._best_hparams.uri = os.path.join(self._output_data_dir, 'best_hparams')
+    self._tuner_results = standard_artifacts.TunerResults()
+    self._tuner_results.uri = os.path.join(self._output_data_dir, 'results')
 
     self._output_dict = {
         standard_component_specs.BEST_HYPERPARAMETERS_KEY: [self._best_hparams],
+        standard_component_specs.TUNER_RESULTS_KEY: [self._tuner_results]
     }
 
     # Create exec properties.
@@ -89,15 +92,23 @@ class ExecutorTest(tf.test.TestCase):
     }
 
   def _verify_output(self):
-    # Test best hparams.
+    """Verifies that best hparams and tuning results are saved."""
     best_hparams_path = os.path.join(self._best_hparams.uri,
-                                     'best_hyperparameters.txt')
+                                     executor._DEFAULT_BEST_HP_FILE_NAME)
     self.assertTrue(fileio.exists(best_hparams_path))
     best_hparams_config = json.loads(
         file_io.read_file_to_string(best_hparams_path))
     best_hparams = HyperParameters.from_config(best_hparams_config)
     self.assertIn(best_hparams.get('learning_rate'), (1e-1, 1e-3))
     self.assertBetween(best_hparams.get('num_layers'), 1, 5)
+
+    tuner_results_path = os.path.join(self._tuner_results.uri,
+                                      executor._DEFAULT_TUNER_RESULTS_FILE_NAME)
+    self.assertTrue(fileio.exists(tuner_results_path))
+    tuner_results = json.loads(file_io.read_file_to_string(tuner_results_path))
+    self.assertLen(tuner_results, 3)
+    self.assertEqual({'trial_id', 'score', 'learning_rate', 'num_layers'},
+                     tuner_results[0].keys())
 
   def testDoWithModuleFile(self):
     self._exec_properties[

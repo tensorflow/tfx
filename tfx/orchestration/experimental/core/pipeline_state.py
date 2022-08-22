@@ -16,9 +16,10 @@
 import base64
 import contextlib
 import copy
+import dataclasses
 import threading
 import time
-from typing import Dict, Iterator, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple
 import uuid
 
 from absl import logging
@@ -26,6 +27,7 @@ import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
@@ -59,6 +61,7 @@ _UPDATE_OPTIONS = 'update_options'
 _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
+_MAX_STATE_HISTORY_LEN = 10
 
 _last_state_change_time_secs = -1.0
 _state_change_time_lock = threading.Lock()
@@ -75,6 +78,18 @@ _EXECUTION_STATE_TO_RUN_STATE_MAP = {
     metadata_store_pb2.Execution.State.CANCELED:
         run_state_pb2.RunState.STOPPED,
 }
+
+
+@dataclasses.dataclass
+class StateRecord(json_utils.Jsonable):
+  state: str
+  status_code: Optional[int]
+  update_time: float
+  # TODO(b/242083811) Some status_msg have already been written into MLMD.
+  # Keeping this field is for backward compatibility to avoid json failing to
+  # parse existing status_msg. We can remove it once we are sure no status_msg
+  # in MLMD is in use.
+  status_msg: str = ''
 
 
 # TODO(b/228198652): Stop using json_util.Jsonable. Before we do,
@@ -112,6 +127,9 @@ class NodeState(json_utils.Jsonable):
       on_setattr=attr.setters.validate)
   status_code: Optional[int] = None
   status_msg: str = ''
+  last_updated_time: float = attr.ib(factory=lambda: time.time())  # pylint:disable=unnecessary-lambda
+
+  state_history: List[StateRecord] = attr.ib(default=attr.Factory(list))
 
   @property
   def status(self) -> Optional[status_lib.Status]:
@@ -122,13 +140,19 @@ class NodeState(json_utils.Jsonable):
   def update(self,
              state: str,
              status: Optional[status_lib.Status] = None) -> None:
+    if self.state != state:
+      self.state_history.append(
+          StateRecord(
+              state=self.state,
+              status_code=self.status_code,
+              update_time=self.last_updated_time))
+      if len(self.state_history) > _MAX_STATE_HISTORY_LEN:
+        self.state_history = self.state_history[-_MAX_STATE_HISTORY_LEN:]
+
     self.state = state
-    if status is not None:
-      self.status_code = status.code
-      self.status_msg = status.message
-    else:
-      self.status_code = None
-      self.status_msg = ''
+    self.status_code = status.code if status is not None else None
+    self.status_msg = status.message if status is not None else ''
+    self.last_updated_time = time.time()
 
   def is_startable(self) -> bool:
     """Returns True if the node can be started."""
@@ -159,7 +183,26 @@ class NodeState(json_utils.Jsonable):
     return run_state_pb2.RunState(
         state=_NODE_STATE_TO_RUN_STATE_MAP[self.state],
         status_code=status_code_value,
-        status_msg=self.status_msg)
+        status_msg=self.status_msg,
+        update_time=int(self.last_updated_time*1000))
+
+  def to_run_state_history(self) -> List[run_state_pb2.RunState]:
+    run_state_history = []
+    for state in self.state_history:
+      run_state_history.append(
+          NodeState(
+              state=state.state,
+              status_code=state.status_code,
+              last_updated_time=state.update_time).to_run_state())
+    return run_state_history
+
+  # By default, json_utils.Jsonable serializes and deserializes objects using
+  # obj.__dict__, which prevents attr.ib from populating default fields.
+  # Overriding this function to ensure default fields are populated.
+  @classmethod
+  def from_json_dict(cls, dict_data: Dict[str, Any]) -> Any:
+    """Convert from dictionary data to an object."""
+    return cls(**dict_data)
 
 
 def is_node_state_success(state: str) -> bool:
@@ -422,8 +465,7 @@ class PipelineState:
         pipeline: pipeline_pb2.Pipeline
     ) -> List[Tuple[str, List[str], List[str]]]:
       return [(node.node_info.id, list(node.upstream_nodes),
-               list(node.downstream_nodes))
-              for node in get_all_pipeline_nodes(pipeline)]
+               list(node.downstream_nodes)) for node in get_all_nodes(pipeline)]
 
     if _structure(self.pipeline) != _structure(updated_pipeline):
       raise status_lib.StatusNotOkError(
@@ -533,8 +575,8 @@ class PipelineState:
     self._check_context()
     node_states_dict = _get_node_states_dict(self._execution, _NODE_STATES)
     result = {}
-    for node in get_all_pipeline_nodes(self.pipeline):
-      node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
+    for node in get_all_nodes(self.pipeline):
+      node_uid = task_lib.NodeUid.from_node(self.pipeline, node)
       result[node_uid] = node_states_dict.get(node_uid.node_id, NodeState())
     return result
 
@@ -544,8 +586,8 @@ class PipelineState:
     node_states_dict = _get_node_states_dict(self._execution,
                                              _PREVIOUS_NODE_STATES)
     result = {}
-    for node in get_all_pipeline_nodes(self.pipeline):
-      node_uid = task_lib.NodeUid.from_pipeline_node(self.pipeline, node)
+    for node in get_all_nodes(self.pipeline):
+      node_uid = task_lib.NodeUid.from_node(self.pipeline, node)
       if node_uid.node_id not in node_states_dict:
         continue
       result[node_uid] = node_states_dict[node_uid.node_id]
@@ -735,15 +777,26 @@ class PipelineView:
     return run_state_pb2.RunState(
         state=state,
         status_code=self.pipeline_status_code,
-        status_msg=self.pipeline_status_message)
+        status_msg=self.pipeline_status_message,
+        update_time=self.execution.last_update_time_since_epoch)
 
   def get_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to current run state."""
     result = {}
     node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
-    for node in get_all_pipeline_nodes(self.pipeline):
+    for node in get_all_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
       result[node.node_info.id] = node_state.to_run_state()
+    return result
+
+  def get_node_run_states_history(
+      self) -> Dict[str, List[run_state_pb2.RunState]]:
+    """Returns the history of node run states and timestamps."""
+    node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
+    result = {}
+    for node in get_all_nodes(self.pipeline):
+      node_state = node_states_dict.get(node.node_info.id, NodeState())
+      result[node.node_info.id] = node_state.to_run_state_history()
     return result
 
   def get_previous_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
@@ -751,11 +804,24 @@ class PipelineView:
     result = {}
     node_states_dict = _get_node_states_dict(self.execution,
                                              _PREVIOUS_NODE_STATES)
-    for node in get_all_pipeline_nodes(self.pipeline):
+    for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in node_states_dict:
         continue
       node_state = node_states_dict[node.node_info.id]
       result[node.node_info.id] = node_state.to_run_state()
+    return result
+
+  def get_previous_node_run_states_history(
+      self) -> Dict[str, List[run_state_pb2.RunState]]:
+    """Returns a dict mapping node id to previous run state and timestamps."""
+    prev_node_states_dict = _get_node_states_dict(self.execution,
+                                                  _PREVIOUS_NODE_STATES)
+    result = {}
+    for node in get_all_nodes(self.pipeline):
+      if node.node_info.id not in prev_node_states_dict:
+        continue
+      node_state = prev_node_states_dict[node.node_info.id]
+      result[node.node_info.id] = node_state.to_run_state_history()
     return result
 
   def get_property(self, property_key: str) -> Optional[types.Property]:
@@ -767,7 +833,7 @@ class PipelineView:
     """Returns a dict mapping node id to node state."""
     result = {}
     node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
-    for node in get_all_pipeline_nodes(self.pipeline):
+    for node in get_all_nodes(self.pipeline):
       result[node.node_info.id] = node_states_dict.get(node.node_info.id,
                                                        NodeState())
     return result
@@ -777,7 +843,7 @@ class PipelineView:
     result = {}
     node_states_dict = _get_node_states_dict(self.execution,
                                              _PREVIOUS_NODE_STATES)
-    for node in get_all_pipeline_nodes(self.pipeline):
+    for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in node_states_dict:
         continue
       result[node.node_info.id] = node_states_dict[node.node_info.id]
@@ -821,19 +887,14 @@ def pipeline_uid_from_orchestrator_context(
   return task_lib.PipelineUid(context.name)
 
 
-def get_all_pipeline_nodes(
-    pipeline: pipeline_pb2.Pipeline) -> List[pipeline_pb2.PipelineNode]:
-  """Returns all pipeline nodes in the given pipeline."""
-  result = []
-  for pipeline_or_node in pipeline.nodes:
-    which = pipeline_or_node.WhichOneof('node')
-    # TODO(goutham): Handle sub-pipelines.
-    # TODO(goutham): Handle system nodes.
-    if which == 'pipeline_node':
-      result.append(pipeline_or_node.pipeline_node)
-    else:
-      raise NotImplementedError('Only pipeline nodes supported.')
-  return result
+def get_all_nodes(
+    pipeline: pipeline_pb2.Pipeline) -> List[node_proto_view.NodeProtoView]:
+  """Returns the views of nodes or inner pipelines in the given pipeline."""
+  # TODO(goutham): Handle system nodes.
+  return [
+      node_proto_view.get_view(pipeline_or_node)
+      for pipeline_or_node in pipeline.nodes
+  ]
 
 
 def get_all_node_executions(
@@ -842,7 +903,7 @@ def get_all_node_executions(
   """Returns all executions of all pipeline nodes if present."""
   return {
       node.node_info.id: task_gen_utils.get_executions(mlmd_handle, node)
-      for node in get_all_pipeline_nodes(pipeline)
+      for node in get_all_nodes(pipeline)
   }
 
 
@@ -881,8 +942,8 @@ def get_all_node_artifacts(
 def _is_node_uid_in_pipeline(node_uid: task_lib.NodeUid,
                              pipeline: pipeline_pb2.Pipeline) -> bool:
   """Returns `True` if the `node_uid` belongs to the given pipeline."""
-  for node in get_all_pipeline_nodes(pipeline):
-    if task_lib.NodeUid.from_pipeline_node(pipeline, node) == node_uid:
+  for node in get_all_nodes(pipeline):
+    if task_lib.NodeUid.from_node(pipeline, node) == node_uid:
       return True
   return False
 
@@ -999,7 +1060,7 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
   ) if reused_pipeline_view else {}
   reused_pipeline_previous_node_states_dict = reused_pipeline_view.get_previous_node_states_dict(
   ) if reused_pipeline_view else {}
-  for node in get_all_pipeline_nodes(pipeline):
+  for node in get_all_nodes(pipeline):
     node_id = node.node_info.id
     if node.execution_options.HasField('skip'):
       logging.info('Node %s is skipped in this partial run.', node_id)

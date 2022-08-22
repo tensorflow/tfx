@@ -338,7 +338,7 @@ class Artifact(json_utils.Jsonable):
     elif property_mlmd_type == metadata_store_pb2.DOUBLE:
       if not isinstance(value, float):
         raise Exception(
-            'Expected integer value for property %r; got %r instead.' %
+            'Expected float value for property %r; got %r instead.' %
             (name, value))
       self._artifact.properties[name].double_value = value
     elif property_mlmd_type == metadata_store_pb2.STRUCT:
@@ -346,6 +346,11 @@ class Artifact(json_utils.Jsonable):
         raise Exception(
             ('Expected JSON value (dict, list, string, float, int or None) '
              'for property %r; got %r instead.') % (name, value))
+      encoded_value = _encode_struct_value(value)
+      if encoded_value is None:
+        self._artifact.properties[name].struct_value.Clear()
+      else:
+        self._artifact.properties[name].struct_value.CopyFrom(encoded_value)
       self._cached_json_value_properties[name] = value
     else:
       raise Exception('Unknown MLMD type %r for property %r.' %
