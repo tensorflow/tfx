@@ -195,8 +195,6 @@ class _ExpressionResolver:
             context.exec_info.to_proto(),
         placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE:
             os.environ.get,
-        placeholder_pb2.Placeholder.Type.STRING_VALUE:
-            lambda string_value: string_value,
     }
 
   def resolve(self, expression: placeholder_pb2.PlaceholderExpression) -> Any:
@@ -227,8 +225,7 @@ class _ExpressionResolver:
     # Handle the special case of ENVIRONMENT_VARIABLE and STRING_VALUE
     # placeholders, which needs to be resolved as a function call.
     elif placeholder.type == placeholder_pb2.Placeholder.Type.\
-            ENVIRONMENT_VARIABLE or placeholder.type == placeholder_pb2.\
-            Placeholder.Type.STRING_VALUE:
+            ENVIRONMENT_VARIABLE:
       return context(placeholder.key)
 
     # Handle remaining placeholder types.

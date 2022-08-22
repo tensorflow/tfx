@@ -262,7 +262,6 @@ message Placeholder {
     RUNTIME_INFO = 3;
     EXEC_INVOCATION = 4;
     ENVIRONMENT_VARIABLE = 5;
-    STRING_VALUE = 6;
 
   }
   // Required. Type of the placeholder.

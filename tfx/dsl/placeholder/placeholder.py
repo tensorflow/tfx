@@ -544,17 +544,6 @@ class EnvironmentVariablePlaceholder(Placeholder):
     super().__init__(placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE, key)
 
 
-class StringValuePlaceholder(Placeholder):
-  """String Value Placeholder helps access StringValue proto.
-
-  Prefer to use string_value(...) to create String Value
-  placeholder.
-  """
-
-  def __init__(self, key):
-    super().__init__(placeholder_pb2.Placeholder.Type.STRING_VALUE, key)
-
-
 class _CompareOp(enum.Enum):
   """An alias for placeholder_pb2.ComparisonOperator.Operation."""
 
@@ -1078,22 +1067,6 @@ def environment_variable(key: str) -> EnvironmentVariablePlaceholder:
          Example: 'foo=' + environment_variable('FOO')
   """
   return EnvironmentVariablePlaceholder(key)
-
-
-def string_value(key: str) -> StringValuePlaceholder:
-  """Returns a Placeholder representing StringValue proto.
-
-  Args:
-    key: The string value to persist.
-
-  Returns:
-    A Placeholder that supports
-      1. Rendering the value of an execution property at a given key.
-         Example: exec_property('version')
-      2. Concatenating with other placeholders or strings.
-         Example: 'foo=' + string_value('bar')
-  """
-  return StringValuePlaceholder(key)
 
 
 def to_list(input_placeholders: List['Placeholder']) -> ListPlaceholder:

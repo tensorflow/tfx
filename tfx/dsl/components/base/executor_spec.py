@@ -165,17 +165,13 @@ class BeamExecutorSpec(ExecutorClassSpec):
     placeholder_beam_pipeline_args = []
     for beam_pipeline_arg in self.beam_pipeline_args:
       if isinstance(beam_pipeline_arg, str):
-        # TODO: build a PlaceholderExpression proto that only stores a string.
-        string_placeholder = ph.Placeholder(
-          placeholder_type=placeholder_pb2.Placeholder.STRING_VALUE,
-          key=beam_pipeline_arg).encode()
-        placeholder_beam_pipeline_args.append(string_placeholder)
+        str_ph = placeholder_pb2.PlaceholderExpression()
+        str_ph.value.string_value = beam_pipeline_arg
+        placeholder_beam_pipeline_args.append(str_ph)
       elif isinstance(beam_pipeline_arg, ph.Placeholder):
         placeholder_beam_pipeline_args.append(beam_pipeline_arg.encode())
       else:
         raise ValueError('Unsupported arg type.')
-    print("placeholder_beam_pipeline_args")
-    print(placeholder_beam_pipeline_args)
     result.beam_pipeline_args.extend(placeholder_beam_pipeline_args)
     return result
 
