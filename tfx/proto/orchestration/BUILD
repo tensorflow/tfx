@@ -38,9 +38,15 @@ tfx_py_proto_library(
 )
 
 tfx_py_proto_library(
+    name = "garbage_collection_policy_py_pb2",
+    srcs = ["garbage_collection_policy.proto"],
+)
+
+tfx_py_proto_library(
     name = "pipeline_py_pb2",
     srcs = ["pipeline.proto"],
     deps = [
+        ":garbage_collection_policy_py_pb2",
         ":placeholder_py_pb2",
         "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
     ],
