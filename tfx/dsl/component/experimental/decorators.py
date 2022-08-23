@@ -477,7 +477,7 @@ def component(
           # The function needs to be marked with `staticmethod` so that later
           # references of `self._FUNCTION` do not result in a bound method (i.e.
           # one with `self` as its first parameter).
-          '_FUNCTION': staticmethod(func),
+          '_FUNCTION': staticmethod(func),  # pytype: disable=not-callable
           '_RETURNED_VALUES': returned_values,
           '_RETURN_JSON_COMPAT_TYPEHINT': return_json_typehints,
           '__module__': func.__module__,
