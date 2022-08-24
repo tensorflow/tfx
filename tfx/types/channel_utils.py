@@ -62,6 +62,8 @@ def get_individual_channels(
   """Converts BaseChannel into a list of Channels."""
   if isinstance(input_channel, channel.Channel):
     return [input_channel]
+  elif isinstance(input_channel, channel.SourceChannel):
+    return [input_channel]
   elif isinstance(input_channel, channel.UnionChannel):
     return list(cast(channel.UnionChannel, input_channel).channels)
   elif isinstance(input_channel, channel.LoopVarChannel):
@@ -78,6 +80,8 @@ def get_dependent_node_ids(channel_: channel.BaseChannel) -> Iterable[str]:
   """Returns an iterable of data dependent node ids for the channel."""
   # pytype: disable=attribute-error
   if isinstance(channel_, channel.OutputChannel):
+    yield channel_.producer_component_id
+  elif isinstance(channel_, channel.SourceChannel):
     yield channel_.producer_component_id
   elif isinstance(channel_, channel.PipelineInputChannel):
     yield channel_.pipeline.id
