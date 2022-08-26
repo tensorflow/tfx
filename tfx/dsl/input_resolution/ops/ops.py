@@ -13,7 +13,7 @@
 # limitations under the License.
 """Module for pre-importing all known ResolverOp for dependency tracking."""
 
-from typing import Type, Union, Dict
+from typing import Dict, Type, Union
 
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
@@ -21,6 +21,7 @@ from tfx.dsl.input_resolution.ops import latest_create_time_op
 from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import skip_if_empty_op
 from tfx.dsl.input_resolution.ops import static_span_range_op
+from tfx.dsl.input_resolution.ops import temp_latest_create_time_op
 from tfx.dsl.input_resolution.ops import temp_latest_span_op
 from tfx.dsl.input_resolution.ops import unnest_op
 from tfx.dsl.input_resolution.strategies import conditional_strategy
@@ -51,6 +52,7 @@ LatestCreateTime = latest_create_time_op.LatestCreateTime
 LatestSpan = latest_span_op.LatestSpan
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
 StaticSpanRange = static_span_range_op.StaticSpanRange
+TempLatestCreateTime = temp_latest_create_time_op.TempLatestCreateTime
 TempLatestSpan = temp_latest_span_op.TempLatestSpan
 Unnest = unnest_op.Unnest
 # go/keep-sorted end
@@ -59,6 +61,7 @@ _register_op(LatestCreateTime)
 _register_op(LatestSpan)
 _register_op(SkipIfEmpty)
 _register_op(StaticSpanRange)
+_register_op(TempLatestCreateTime)
 _register_op(TempLatestSpan)
 _register_op(Unnest)
 # go/keep-sorted end
