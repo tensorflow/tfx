@@ -14,9 +14,11 @@
 """Utilities for garbage collecting artifacts."""
 
 import collections
-from typing import List, Mapping
+from typing import List, Mapping, Optional
 from absl import logging
 
+from tfx import types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
@@ -138,6 +140,9 @@ def _artifacts_to_garbage_collect_for_policy(
   if policy.HasField('keep_most_recently_published'):
     return _artifacts_not_most_recently_published(
         artifacts, policy.keep_most_recently_published)
+  elif policy.HasField('keep_property_value_groups'):
+    return _artifacts_not_kept_by_property_value_groups(
+        artifacts, policy.keep_property_value_groups)
   else:
     logging.error('Skipped garbage collection due to unknown policy: %s',
                   policy)
@@ -162,6 +167,63 @@ def _artifacts_not_most_recently_published(
     return [
         a for a in artifacts if a.create_time_since_epoch < cutoff_publish_time
     ]
+
+
+def _get_property_value(artifact: metadata_store_pb2.Artifact,
+                        property_name: str) -> Optional[types.Property]:
+  if property_name in artifact.properties:
+    return data_types_utils.get_metadata_value(
+        artifact.properties[property_name])
+  elif property_name in artifact.custom_properties:
+    return data_types_utils.get_metadata_value(
+        artifact.custom_properties[property_name])
+  return None
+
+
+def _artifacts_not_kept_by_property_value_groups(
+    artifacts: List[metadata_store_pb2.Artifact],
+    keep_property_value_groups: garbage_collection_policy_pb2
+    .GarbageCollectionPolicy.KeepPropertyValueGroups
+) -> List[metadata_store_pb2.Artifact]:
+  """Returns artifacts that are not kept by KeepPropertyValueGroups."""
+  artifact_groups = [artifacts]
+  for grouping in keep_property_value_groups.groupings:
+    next_artifact_groups = []
+    for artifact_group in artifact_groups:
+      artifacts_by_property_value = collections.defaultdict(list)
+      for artifact in artifact_group:
+        property_value = _get_property_value(artifact, grouping.property_name)
+        artifacts_by_property_value[property_value].append(artifact)
+      if grouping.keep_num <= 0:
+        next_artifact_groups.extend(artifacts_by_property_value.values())
+      else:
+        sorted_property_values = sorted(artifacts_by_property_value.keys())
+        if (grouping.keep_order
+            == garbage_collection_policy_pb2.GarbageCollectionPolicy.
+            KeepPropertyValueGroups.Grouping.KeepOrder.KEEP_ORDER_UNSPECIFIED or
+            grouping.keep_order
+            == garbage_collection_policy_pb2.GarbageCollectionPolicy
+            .KeepPropertyValueGroups.Grouping.KeepOrder.KEEP_ORDER_LARGEST):
+          property_values_to_keep = set(
+              v for v in sorted_property_values[-grouping.keep_num:])
+        elif (grouping.keep_order ==
+              garbage_collection_policy_pb2.GarbageCollectionPolicy
+              .KeepPropertyValueGroups.Grouping.KeepOrder.KEEP_ORDER_SMALLEST):
+          property_values_to_keep = set(
+              v for v in sorted_property_values[:grouping.keep_num])
+        else:
+          message = 'Unknown keep_order in grouping: %s' % grouping
+          logging.error(message)
+          raise ValueError(message)
+        for property_value_to_keep in property_values_to_keep:
+          next_artifact_groups.append(
+              artifacts_by_property_value[property_value_to_keep])
+    artifact_groups = next_artifact_groups
+  artifacts_ids_to_keep = []
+  for artifact_group in artifact_groups:
+    for artifact in artifact_group:
+      artifacts_ids_to_keep.append(artifact.id)
+  return [a for a in artifacts if a.id not in artifacts_ids_to_keep]
 
 
 def _artifacts_to_garbage_collect(

@@ -47,12 +47,18 @@ class TfxTest(test_case_utils.TfxTest):
     mlmd_state.clear_in_memory_state()
 
 
-def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
+def fake_example_gen_run_with_handle(mlmd_handle,
+                                     example_gen,
+                                     span,
+                                     version,
+                                     examples_name=None):
   """Writes fake example_gen output and successful execution to MLMD."""
   output_example = types.Artifact(
       example_gen.outputs.outputs['examples'].artifact_spec.type)
   output_example.set_int_custom_property('span', span)
   output_example.set_int_custom_property('version', version)
+  if examples_name is not None:
+    output_example.set_string_custom_property('examples_name', examples_name)
   output_example.uri = 'my_examples_uri'
   contexts = context_lib.prepare_contexts(mlmd_handle, example_gen.contexts)
   execution = execution_publish_utils.register_execution(
