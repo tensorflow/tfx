@@ -29,9 +29,11 @@ from tfx.dsl.input_resolution.ops import unnest_op
 from tfx.dsl.input_resolution.strategies import conditional_strategy
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
+from tfx.dsl.input_resolution.strategies import latest_pipeline_run_artifact_strategy
 from tfx.dsl.input_resolution.strategies import span_range_strategy
 from tfx.utils import name_utils
 from tfx.utils import typing_utils
+
 
 _ResolverOpType = Type[resolver_op.ResolverOp]
 _ResolverStrategyType = Type[resolver.ResolverStrategy]
@@ -84,6 +86,8 @@ def _register_strategy(cls: _ResolverStrategyType) -> None:
 _register_strategy(conditional_strategy.ConditionalStrategy)
 _register_strategy(latest_artifact_strategy.LatestArtifactStrategy)
 _register_strategy(latest_blessed_model_strategy.LatestBlessedModelStrategy)
+_register_strategy(
+    latest_pipeline_run_artifact_strategy.LatestPipelineRunArtifactStrategy)
 _register_strategy(span_range_strategy.SpanRangeStrategy)
 # go/keep-sorted end
 

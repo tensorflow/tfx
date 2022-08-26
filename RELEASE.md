@@ -36,6 +36,7 @@
     Apache Parquet format.
 *   ExampleDiff outputs statistics on the matching process, and optional counts
     of paired feature values.
+*   New resolver strategy. It gets the artifacts from the latest pipeline run.
 
 ## Breaking Changes
 
