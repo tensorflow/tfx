@@ -53,26 +53,34 @@ class ExecutorTest(parameterized.TestCase):
   def get_temp_dir(self):
     return tempfile.mkdtemp()
 
-  def _validate_skew_results(self, diff_path, expect_skew):
+  def _validate_skew_results(self, diff_dir, expect_matches):
+    diff_path = os.path.join(diff_dir, executor.STATS_FILE_NAME)
     # TODO(b/227361696): Validate contents and not just presence.
+    # Validate skew results
     self.assertNotEmpty(fileio.glob(diff_path + '*-of-*'))
     count = 0
     for _ in feature_skew_detector.skew_results_iterator(diff_path):
       count += 1
-    if not expect_skew:
+    if not expect_matches:
       self.assertEqual(count, 0)
     else:
       self.assertGreater(count, 0)
 
-  def _validate_skew_pairs(self, diff_path, expect_skew):
+  def _validate_skew_pairs(self, diff_dir, expect_matches):
+    diff_path = os.path.join(diff_dir, executor._SAMPLE_FILE_NAME)
     self.assertNotEmpty(fileio.glob(diff_path + '*-of-*'))
     count = 0
     for _ in feature_skew_detector.skew_pair_iterator(diff_path):
       count += 1
-    if not expect_skew:
+    if not expect_matches:
       self.assertEqual(count, 0)
     else:
       self.assertGreater(count, 0)
+
+  def _validate_match_stats(self, diff_dir):
+    diff_path = os.path.join(diff_dir, executor.MATCH_STATS_FILE_NAME)
+    count = len(list(feature_skew_detector.match_stats_iterator(diff_path)))
+    self.assertGreater(count, 0)
 
   @parameterized.named_parameters(
       # The identifier defined here is not actually expected to be unique, so
@@ -80,20 +88,20 @@ class ExecutorTest(parameterized.TestCase):
       # not blow up the pipeline.
       {
           'testcase_name':
-              'explicit_split_pairs_skew',
+              'explicit_split_pairs_match',
           'split_pairs': [('train', 'eval')],
           'expected_split_pair_names': ['train_eval'],
-          'expect_skew':
+          'expect_matches':
               True,
           'identifiers': [
               'trip_start_month', 'trip_start_hour', 'trip_start_day', 'company'
           ]
       },
       {
-          'testcase_name': 'explicit_split_pairs_noskew',
+          'testcase_name': 'explicit_split_pairs_nomatch',
           'split_pairs': [('train', 'train')],
           'expected_split_pair_names': ['train_train'],
-          'expect_skew': False,
+          'expect_matches': False,
           'identifiers': _ALL_FEATURE_NAMES,
       },
       {
@@ -101,10 +109,10 @@ class ExecutorTest(parameterized.TestCase):
           'split_pairs': None,
           'expected_split_pair_names':
               ['train_train', 'train_eval', 'eval_train', 'eval_eval'],
-          'expect_skew': False,
+          'expect_matches': False,
           'identifiers': _ALL_FEATURE_NAMES,
       })
-  def testDo(self, split_pairs, expected_split_pair_names, expect_skew,
+  def testDo(self, split_pairs, expected_split_pair_names, expect_matches,
              identifiers):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
@@ -159,12 +167,11 @@ class ExecutorTest(parameterized.TestCase):
     # See tensorflow_data_validation/skew/feature_skew_detector_test.py for
     # detailed examples of feature skew pipeline output.
     for split_pair_name in expected_split_pair_names:
-      self._validate_skew_pairs(
-          os.path.join(example_diff.uri, 'SplitPair-' + split_pair_name,
-                       'sample_pairs'), expect_skew)
-      self._validate_skew_results(
-          os.path.join(example_diff.uri, 'SplitPair-' + split_pair_name,
-                       'skew_stats'), expect_skew)
+      output_dir = os.path.join(example_diff.uri,
+                                'SplitPair-' + split_pair_name)
+      self._validate_skew_pairs(output_dir, expect_matches)
+      self._validate_skew_results(output_dir, expect_matches)
+      self._validate_match_stats(output_dir)
       # Validate that no additional skew pairs exist.
       all_outputs = fileio.glob(os.path.join(example_diff.uri, 'SplitPair-*'))
       for output in all_outputs:

@@ -6,6 +6,8 @@
 *   TFX Transform now supports `tf.SequenceExample` natively. The native path can be activated by providing `TensorRepresentation`s in the Schema.
 *   TFX Transform now supports reading raw and materializing transformed data in
     Apache Parquet format.
+*   ExampleDiff outputs statistics on the matching process, and optional counts
+    of paired feature values.
 
 ## Breaking Changes
 
