@@ -284,11 +284,11 @@ def component(
   Specifically, function arguments can be annotated with the following types and
   associated semantics:
 
-  * `Parameter[T]` where `T` is `int`, `float`, `str`, or `bytes`: indicates
-    that a primitive type execution parameter, whose value is known at pipeline
-    construction time, will be passed for this argument. These parameters will
-    be recorded in ML Metadata as part of the component's execution record. Can
-    be an optional argument.
+  * `Parameter[T]` where `T` is `int`, `float`, `str`, `bytes`, or `bool`:
+    indicates that a primitive type execution parameter, whose value is known at
+    pipeline construction time, will be passed for this argument. These
+    parameters will be recorded in ML Metadata as part of the component's
+    execution record. Can be an optional argument.
   * `int`, `float`, `str`, `bytes`, `bool`, `Dict`, `List`: indicates that a
     primitive type value will be passed for this argument. This value is tracked
     as an `Integer`, `Float`, `String`, `Bytes`, `Boolean` or `JsonValue`
