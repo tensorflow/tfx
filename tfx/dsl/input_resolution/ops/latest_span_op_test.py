@@ -94,6 +94,16 @@ class LatestSpanOpTest(tf.test.TestCase):
         ops.LatestSpan, [a1, a2, a3, a4, a5], n=4, keep_all_versions=True)
     self.assertEqual(actual, [a4, a2, a3, a1])
 
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, [a1, a2, a3, a4, a5], keep_all_spans=True)
+    self.assertEqual(actual, [a4, a3, a1])
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, [a1, a2, a3, a4, a5],
+        keep_all_spans=True,
+        keep_all_versions=True)
+    self.assertEqual(actual, [a4, a2, a3, a1])
+
   def testLatestSpan_AllSameSpanSameVersion(self):
     a1 = test_utils.DummyArtifact()
     a2 = test_utils.DummyArtifact()
@@ -125,7 +135,6 @@ class LatestSpanOpTest(tf.test.TestCase):
 
     with self.assertRaisesRegex(ValueError, 'n must be > 0'):
       test_utils.run_resolver_op(ops.LatestSpan, [a1], n=-1)
-
 
 if __name__ == '__main__':
   tf.test.main()

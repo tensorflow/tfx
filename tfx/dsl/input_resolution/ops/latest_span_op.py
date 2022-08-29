@@ -33,6 +33,9 @@ class LatestSpan(
   # version is returned.
   keep_all_versions = resolver_op.Property(type=bool, default=False)
 
+  # If true, then n is set to the total number of unique spans.
+  keep_all_spans = resolver_op.Property(type=bool, default=False)
+
   def apply(self,
             input_list: Sequence[types.Artifact]) -> Sequence[types.Artifact]:
     """Returns artifacts with the n latest spans.
@@ -76,7 +79,8 @@ class LatestSpan(
     # Only keep artifacts with the n latest spans.
     spans = list(set([a.span for a in valid_artifacts]))
     spans.sort(reverse=True)
-    spans = spans[0:min(self.n, len(spans))]
+    if not self.keep_all_spans:
+      spans = spans[0:min(self.n, len(spans))]
     valid_artifacts = [a for a in valid_artifacts if a.span in spans]
 
     if self.keep_all_versions:
