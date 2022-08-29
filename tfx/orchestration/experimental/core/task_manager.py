@@ -193,6 +193,8 @@ class TaskManager:
               ts.TaskScheduler[task_lib.ExecNodeTask],
               ts.TaskSchedulerRegistry.create_task_scheduler(
                   self._mlmd_handle, task.pipeline, task)))
+      if task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC:
+        scheduler.pause = True
       self._scheduler_by_node_uid[node_uid] = scheduler
       self._ts_futures.add(
           self._ts_executor.submit(self._process_exec_node_task, scheduler,

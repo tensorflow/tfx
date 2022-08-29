@@ -870,10 +870,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
 
-      # stop_node_services should be called for ExampleGen which is a pure
-      # service node.
-      self._mock_service_job_manager.stop_node_services.assert_called_once_with(
-          mock.ANY, 'ExampleGen')
+      # stop_node_services should be called for ExampleGen and Transform.
+      self._mock_service_job_manager.stop_node_services.assert_has_calls(
+          [mock.call(mock.ANY, 'ExampleGen'),
+           mock.call(mock.ANY, 'Transform')])
       self._mock_service_job_manager.reset_mock()
 
       # Simulate completion of all the exec node tasks.
@@ -893,21 +893,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(task.cancel_type, task_lib.NodeCancelType.PAUSE_EXEC)
 
       self.assertTrue(task_queue.is_empty())
-
-      # Pipeline continues to be in update initiated state until all
-      # ExecNodeTasks have been dequeued (which was not the case when last
-      # `orchestrate` call was made).
-      with pipeline_state:
-        self.assertTrue(pipeline_state.is_update_initiated())
-        node_state = pipeline_state.get_node_state(task.node_uid)
-        self.assertEqual(node_state.state, pstate.NodeState.PAUSING)
-
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
-
-      # stop_node_services should be called for Transform (mixed service node)
-      # too since corresponding ExecNodeTask has been processed.
-      self._mock_service_job_manager.stop_node_services.assert_has_calls(
-          [mock.call(mock.ANY, 'Transform')])
 
       # Check that the node states are STARTED.
       [execution] = m.store.get_executions_by_id([pipeline_state.execution_id])
@@ -953,7 +938,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       # stop_node_services should not be called for ExampleGen since it is not
       # reloaded according to the options.
-      self._mock_service_job_manager.stop_node_services.assert_not_called()
+      self._mock_service_job_manager.stop_node_services.assert_has_calls(
+          [mock.call(mock.ANY, 'Transform')])
 
       # Simulate completion of all the exec node tasks except evaluator.
       for node_id in ('Transform', 'Trainer', 'Evaluator'):
@@ -970,19 +956,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertIsInstance(task, task_lib.CancelNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
         self.assertEqual(task.cancel_type, task_lib.NodeCancelType.PAUSE_EXEC)
-
-      # Pipeline continues to be in update initiated state until all
-      # ExecNodeTasks have been dequeued (which was not the case when last
-      # `orchestrate` call was made).
-      with pipeline_state:
-        self.assertTrue(pipeline_state.is_update_initiated())
-
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
-
-      # stop_node_services should be called for Transform (mixed service node)
-      # too since corresponding ExecNodeTask has been processed.
-      self._mock_service_job_manager.stop_node_services.assert_has_calls(
-          [mock.call(mock.ANY, 'Transform')])
 
       # Pipeline should no longer be in update-initiated state but be active.
       with pipeline_state:
@@ -1089,10 +1062,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       ]
       pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
 
-      # stop_node_services should be called for ExampleGen which is a pure
-      # service node.
-      self._mock_service_job_manager.stop_node_services.assert_called_once_with(
-          mock.ANY, 'ExampleGen')
+      # stop_node_services should be called for ExampleGen and Transform.
+      self._mock_service_job_manager.stop_node_services.assert_has_calls(
+          [mock.call(mock.ANY, 'ExampleGen'),
+           mock.call(mock.ANY, 'Transform')])
       self._mock_service_job_manager.reset_mock()
 
       # Verify that cancellation tasks were enqueued in the last `orchestrate`
@@ -1105,21 +1078,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(task.cancel_type, task_lib.NodeCancelType.PAUSE_EXEC)
 
       self.assertTrue(task_queue.is_empty())
-
-      # Pipeline continues to be in update initiated state until all
-      # ExecNodeTasks have been dequeued (which was not the case when last
-      # `orchestrate` call was made).
-      with pipeline_state:
-        self.assertTrue(pipeline_state.is_update_initiated())
-        node_state = pipeline_state.get_node_state(task.node_uid)
-        self.assertEqual(node_state.state, pstate.NodeState.PAUSING)
-
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
-
-      # stop_node_services should be called for Transform (mixed service node)
-      # too since corresponding ExecNodeTask has been processed.
-      self._mock_service_job_manager.stop_node_services.assert_has_calls(
-          [mock.call(mock.ANY, 'Transform')])
 
       # Check that the node states are STARTED.
       [execution] = m.store.get_executions_by_id([pipeline_state.execution_id])
