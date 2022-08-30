@@ -18,7 +18,6 @@ Experimental: no backwards compatibility guarantees.
 
 import copy
 import functools
-import inspect
 import sys
 import types
 from typing import Any, Callable, Dict, List, Optional, Type
@@ -201,52 +200,18 @@ class _FunctionExecutor(base_executor.BaseExecutor):
 
   # Properties that should be overridden by subclass. Defaults are provided to
   # allow pytype to properly type check these properties.
-
-  # Describes the format of each argument passed to the component function, as
-  # a dictionary from name to a `function_parser.ArgFormats` enum value.
-  # _ARG_FORMATS = {}
-  # Map from names of optional arguments to their default argument values.
-  # _ARG_DEFAULTS = {}
-  # User-defined component function. Should be wrapped in staticmethod() to
-  # avoid being interpreted as a bound method (i.e. one taking `self` as its
-  # first argument.
   _FUNCTION = staticmethod(lambda: None)
-  # Dictionary mapping output names that are primitive type values returned from
-  # the user function to whether they are optional (and thus has a nullable
-  # return value).
-  # _RETURNED_VALUES = {}
-  # A dictionary mapping output names that are declared
-  # as json compatible types to the annotation.
-  # _RETURN_JSON_COMPAT_TYPEHINT = {}
-
-  def _get_func_args(self, internal_metadata: Dict[str, Any]):
-    arg_format_dict = json_utils.loads(internal_metadata.get("_ARG_FORMATS", {}))
-    return  {k: function_parser.ArgFormats(v) for k, v in arg_format_dict.items()}
   
-  def _get_returned_values(self, internal_metadata: Dict[str, Any]):
-    return json_utils.loads(internal_metadata.get("_RETURNED_VALUES", []))
-
-  def _get_return_json_compat(self, internal_metadata: Dict[str, Any]):
-    return_json_compat_dict = json_utils.loads(internal_metadata.get("_RETURN_JSON_COMPAT_TYPEHINT", {}))
-    # Nb(gcasassaez): We load using eval as Executor class is registered on the function module
-    # Hence the string representation can and should load correctly using eval()
-    return  {k: eval(v) for k, v in return_json_compat_dict.items()}
-
-  def _get_arg_default(self, internal_metadata: Dict[str, Any]):
-    # NB(gcasassaez): We add default None here in case the input channel is empty to have
-    # input arg be set to None.
-    return {
-      k: None for k, v in self._get_func_args(internal_metadata).items() if v == function_parser.ArgFormats.INPUT_ARTIFACT
-    }
 
   def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
          output_dict: Dict[str, List[tfx_types.Artifact]],
          exec_properties: Dict[str, Any]) -> None:
-    internal_metadata = json_utils.loads(exec_properties.get(_INTERNAL_METADATA_KEY, "{}"))
+    (_, _, _, arg_formats, arg_defaults, returned_values,
+    _, return_json_typehints) = function_parser.parse_typehint_component_function(self._FUNCTION)
     function_args = _extract_func_args(
         obj=str(self),
-        arg_formats=self._get_func_args(internal_metadata),
-        arg_defaults=self._get_arg_default(internal_metadata),
+        arg_formats=arg_formats,
+        arg_defaults=arg_defaults,
         input_dict=input_dict,
         output_dict=output_dict,
         exec_properties=exec_properties)
@@ -258,9 +223,9 @@ class _FunctionExecutor(base_executor.BaseExecutor):
         _assign_returned_values(
             function=self._FUNCTION,
             outputs=outputs,
-            returned_values=self._get_returned_values(internal_metadata),
+            returned_values=returned_values,
             output_dict=output_dict,
-            json_typehints=self._get_return_json_compat(internal_metadata),
+            json_typehints=return_json_typehints,
         ))
 
 
@@ -271,12 +236,12 @@ class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
   def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
          output_dict: Dict[str, List[tfx_types.Artifact]],
          exec_properties: Dict[str, Any]) -> None:
-    internal_metadata = json_utils.loads(exec_properties.get(_INTERNAL_METADATA_KEY, "{}"))
-
+    (_, _, _, arg_formats, arg_defaults, returned_values,
+    _, return_json_typehints) = function_parser.parse_typehint_component_function(self._FUNCTION)
     function_args = _extract_func_args(
         obj=str(self),
-        arg_formats=self._get_func_args(internal_metadata),
-        arg_defaults=self._get_arg_default(internal_metadata),
+        arg_formats=arg_formats,
+        arg_defaults=arg_defaults,
         input_dict=input_dict,
         output_dict=output_dict,
         exec_properties=exec_properties,
@@ -289,9 +254,9 @@ class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
         _assign_returned_values(
             function=self._FUNCTION,
             outputs=outputs,
-            returned_values=self._get_returned_values(internal_metadata),
+            returned_values=returned_values,
             output_dict=output_dict,
-            json_typehints=self._get_return_json_compat(internal_metadata),
+            json_typehints=return_json_typehints,
         ))
 
 
@@ -466,14 +431,10 @@ def component(
       '%s_Executor' % func.__name__,
       (_FunctionBeamExecutor if use_beam else _FunctionExecutor,),
       {
-          # '_ARG_FORMATS': arg_formats,
-          # '_ARG_DEFAULTS': arg_defaults,
           # The function needs to be marked with `staticmethod` so that later
           # references of `self._FUNCTION` do not result in a bound method (i.e.
           # one with `self` as its first parameter).
           '_FUNCTION': staticmethod(func),  # pytype: disable=not-callable
-          # '_RETURNED_VALUES': returned_values,
-          # '_RETURN_JSON_COMPAT_TYPEHINT': return_json_typehints,
           '__module__': func.__module__,
       })
 
@@ -490,10 +451,10 @@ def component(
   executor_spec_instance = executor_spec_class(executor_class=executor_class)
   
   @functools.wraps(func)
-  def factory(*args, **kwargs):
-    bound_kwargs = inspect.getcallargs(func, *args, **kwargs)
-
-    (inputs, outputs, parameters, arg_formats, arg_defaults, returned_values,
+  def factory(*unused_args, **kwargs):
+    if unused_args:
+      raise ValueError("expects arguments to be passed as keyword arguments")
+    (inputs, outputs, parameters, arg_formats, arg_defaults, _,
     json_typehints, return_json_typehints) = (
         function_parser.parse_typehint_component_function(func))
     
@@ -520,13 +481,6 @@ def component(
     for key, primitive_type in parameters.items():
       spec_parameters[key] = component_spec.ExecutionParameter(
           type=primitive_type, optional=(key in arg_defaults))
-    # NB(gcasassaez): We add dynamic metadata needed for executor to work here.
-    spec_parameters[_INTERNAL_METADATA_KEY] = component_spec.ExecutionParameter(type=str, optional=False, use_proto=False)
-    bound_kwargs[_INTERNAL_METADATA_KEY] = json_utils.dumps({
-      "_ARG_FORMATS": json_utils.dumps({k: v.value for k, v in arg_formats.items()}),
-      "_RETURNED_VALUES": json_utils.dumps(returned_values),
-      "_RETURN_JSON_COMPAT_TYPEHINT": json_utils.dumps({k: str(v) for k,v in return_json_typehints.items()})
-    })
 
     component_spec_class = type(
         '%s_Spec' % func.__name__, (tfx_types.ComponentSpec,), {
@@ -544,5 +498,5 @@ def component(
             'EXECUTOR_SPEC': executor_spec_instance,
             '__module__': func.__module__,
         })
-    return component_type(**bound_kwargs)
+    return component_type(**kwargs)
   return factory
