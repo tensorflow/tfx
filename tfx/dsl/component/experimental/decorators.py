@@ -41,8 +41,6 @@ except ModuleNotFoundError:
   beam = None
   _BeamPipeline = Any
 
-_INTERNAL_METADATA_KEY = 'internal_func_metadata'
-
 
 def _extract_func_args(
     obj: str,
