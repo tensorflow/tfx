@@ -32,7 +32,6 @@ from tfx.dsl.components.base import executor_spec
 from tfx.types import channel
 from tfx.types import component_spec
 from tfx.types import system_executions
-from tfx.utils import json_utils
 
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
