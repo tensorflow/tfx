@@ -72,5 +72,6 @@ class Cond(dsl_context_manager.DslContextManager[None]):
   def create_context(self) -> CondContext:
     return CondContext(predicate=self._predicate)
 
-  def enter(self, context: CondContext) -> None:  # pylint: disable=unused-argument
+  def enter(  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
+      self, context: CondContext) -> None:  # pylint: disable=unused-argument
     return None

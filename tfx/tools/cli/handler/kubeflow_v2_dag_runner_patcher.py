@@ -51,9 +51,9 @@ class KubeflowV2DagRunnerPatcher(dag_runner_patcher.DagRunnerPatcher):
     self._build_image_fn = build_image_fn
     self._prepare_dir_fn = prepare_dir_fn
 
-  def _before_run(self, runner: tfx_runner.TfxRunner,
-                  pipeline: tfx_pipeline.Pipeline,
-                  context: MutableMapping[str, Any]) -> None:
+  def _before_run(  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
+      self, runner: tfx_runner.TfxRunner, pipeline: tfx_pipeline.Pipeline,
+      context: MutableMapping[str, Any]) -> None:
     runner = typing.cast(kubeflow_v2_dag_runner.KubeflowV2DagRunner, runner)
     runner_config = typing.cast(
         kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig, runner.config)

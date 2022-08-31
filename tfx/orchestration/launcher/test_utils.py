@@ -39,7 +39,7 @@ class _OutputArtifact(types.Artifact):
 class _FakeDriver(base_driver.BaseDriver):
   """Fake driver for testing purpose only."""
 
-  def pre_execution(
+  def pre_execution(  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
       self,
       input_dict: Dict[str, types.Channel],
       output_dict: Dict[str, types.Channel],
