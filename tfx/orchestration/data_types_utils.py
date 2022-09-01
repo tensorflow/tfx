@@ -109,8 +109,17 @@ def get_parsed_value(
       value: str, value_type: pipeline_pb2.Value.Schema.ValueType
   ) -> types.ExecPropertyTypes:
     if value_type.HasField('list_type'):
-      list_value = json_utils.loads(value)
-      return [parse_value(val, value_type.list_type) for val in list_value]
+      json_value = json_utils.loads(value)
+      if isinstance(json_value, list):
+        return [parse_value(val, value_type.list_type) for val in json_value]
+      elif isinstance(json_value, dict):
+        return {
+            key: parse_value(val, value_type.list_type)
+            for key, val in json_value.items()
+        }
+      else:
+        raise RuntimeError('Expect jsonable type, got %r' % json_value)
+
     elif value_type.HasField('proto_type'):
       return proto_utils.deserialize_proto_message(
           value, value_type.proto_type.message_type,
@@ -175,7 +184,7 @@ def get_metadata_value_type(
       return metadata_store_pb2.STRING
     else:
       raise ValueError('Unexpected value type %s' % value_type)
-  elif isinstance(value, (str, bool, message.Message, list)):
+  elif isinstance(value, (str, bool, message.Message, list, dict)):
     return metadata_store_pb2.STRING
   else:
     raise ValueError('Unexpected value type %s' % type(value))
@@ -281,6 +290,14 @@ def set_parameter_value(
           get_value_and_set_type(val, value_type.list_type) for val in value
       ]
       return json_utils.dumps(value)
+    elif isinstance(value, dict) and len(value):
+      if set_schema:
+        value_type.list_type.SetInParent()
+      value = {
+          key: get_value_and_set_type(val, value_type.list_type)
+          for key, val in value.items()
+      }
+      return json_utils.dumps(value)
     elif isinstance(value, (int, float, str)):
       return value
     else:
@@ -300,7 +317,7 @@ def set_parameter_value(
   elif isinstance(value, bool):
     parameter_value.schema.value_type.boolean_type.SetInParent()
     parameter_value.field_value.string_value = json_utils.dumps(value)
-  elif isinstance(value, (list, message.Message)):
+  elif isinstance(value, (list, dict, message.Message)):
     parameter_value.field_value.string_value = get_value_and_set_type(
         value, parameter_value.schema.value_type)
   else:

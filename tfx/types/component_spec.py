@@ -18,7 +18,7 @@ import inspect
 import itertools
 from typing import Any, Dict, List, Mapping, Optional, Type, cast
 
-from tfx.dsl.component.experimental.function_parser import check_strict_json_compat
+from tfx.dsl.component.experimental.json_compat import check_strict_json_compat
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact
 from tfx.types import channel
@@ -332,11 +332,7 @@ class ExecutionParameter:
     """Perform type check to the parameter passed in."""
 
     # Following helper function is needed due to the lack of subscripted
-    # type check support in Python 3.7. Here we hold the assumption that no
-    # nested container type is declared as the parameter type.
-    # For example:
-    # Dict[Text, List[str]] <------ Not allowed.
-    # Dict[Text, Any] <------ Okay.
+    # type check support in Python 3.7.
     def _type_check_helper(value: Any, declared: Type):  # pylint: disable=g-bare-generic
       """Helper type-checking function."""
       if isinstance(value, placeholder.Placeholder):
@@ -362,43 +358,11 @@ class ExecutionParameter:
       value = _make_default(value)
       if declared == Any:
         return
-      # pylint: disable=line-too-long
-      #            | Dict[X,Y]            | dict[X,Y]          | List[X]              | list[X]            |
-      # ====================================================================================================
-      # type()     | typing._GenericAlias | types.GenericAlias | typing._GenericAlias | types.GenericAlias |
-      # __origin__ | dict                 | dict               | list                 | list               |
-      # pylint: enable=line-too-long
-      # * types.GenericAlias was added in Python 3.9, and we use string
-      # comparisons as a walkaround for Python<3.9.
-      if type(declared).__name__ in ('_GenericAlias', 'GenericAlias'):  # pylint: disable=protected-access
-        if declared.__origin__ is dict:  # pylint: disable=protected-access
-          key_type, val_type = declared.__args__[0], declared.__args__[1]
-          if not isinstance(value, dict):
-            raise TypeError('Expecting a dict for parameter %r, but got %s '
-                            'instead' % (arg_name, type(value)))
-          for k, v in value.items():
-            if key_type != Any and not isinstance(k, key_type):
-              raise TypeError('Expecting key type %s for parameter %r, '
-                              'but got %s instead.' %
-                              (str(key_type), arg_name, type(k)))
-            if val_type != Any and not isinstance(v, val_type):
-              raise TypeError('Expecting value type %s for parameter %r, '
-                              'but got %s instead.' %
-                              (str(val_type), arg_name, type(v)))
-        elif declared.__origin__ is list:  # pylint: disable=protected-access
-          val_type = declared.__args__[0]
-          if not isinstance(value, list):
-            raise TypeError('Expecting a list for parameter %r, '
-                            'but got %s instead.' % (arg_name, type(value)))
-          if val_type == Any:
-            return
-          for item in value:
-            if not isinstance(item, val_type):
-              raise TypeError('Expecting item type %s for parameter %r, '
-                              'but got %s instead.' %
-                              (str(val_type), arg_name, type(item)))
-        else:
-          raise TypeError('Unexpected type of parameter: %r' % arg_name)
+      if type(declared).__name__ in ('_GenericAlias', 'GenericAlias'):
+        if not check_strict_json_compat(value, declared):
+          raise TypeError(('Expected type %s for parameter %r '
+                           'but got %s instead.') %
+                          (str(declared), arg_name, value))
       elif isinstance(value, dict) and issubclass(declared, message.Message):
         # If a dict is passed in and is compared against a pb message,
         # do the type-check by converting it to pb message.

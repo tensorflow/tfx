@@ -264,11 +264,6 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     data_types_utils.set_metadata_value(pb, value)
     self.assertEqual(pb, expected_pb)
 
-  def testSetMetadataValueUnsupportedType(self):
-    pb = metadata_store_pb2.Value()
-    with self.assertRaises(ValueError):
-      data_types_utils.set_metadata_value(pb, {'a': 1})
-
   def testSetParameterValue(self):
     actual_int = pipeline_pb2.Value()
     expected_int = text_format.Parse(
@@ -358,10 +353,132 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         expected_list,
         data_types_utils.set_parameter_value(actual_list, ['true', 'false']))
 
-  def testSetParameterValueUnsupportedType(self):
-    actual_value = pipeline_pb2.Value()
-    with self.assertRaises(ValueError):
-      data_types_utils.set_parameter_value(actual_value, {'a': 1})
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='_dict[str,int]',
+          value={
+              'a': 1,
+              'b': 2
+          },
+          expected=r"""field_value {
+                        string_value: '{\"a\": 1, \"b\": 2}'
+                      }
+                      schema {
+                        value_type {
+                          list_type {
+                          }
+                        }
+                      }"""),
+      dict(
+          testcase_name='_dict[str,float]',
+          value={
+              'a': 1.,
+              'b': 2.
+          },
+          expected=r"""field_value {
+                        string_value: '{\"a\": 1.0, \"b\": 2.0}'
+                      }
+                      schema {
+                        value_type {
+                          list_type {
+                          }
+                        }
+                      }"""),
+      dict(
+          testcase_name='_dict[str,list[bool]]',
+          value={
+              'a': [True, False],
+              'b': [False]
+          },
+          expected=r"""field_value {
+                        string_value: '{\"a\": \"[true, false]\", \"b\": \"[false]\"}'
+                      }
+                      schema {
+                        value_type {
+                          list_type {
+                            list_type {
+                              boolean_type {
+                              }
+                            }
+                          }
+                        }
+                      }"""),
+      dict(
+          testcase_name='_dict[str,dict[str,str]]',
+          value={'a': {
+              'a': 1,
+              'b': 2
+          }},
+          expected=r"""field_value {
+                        string_value: '{\"a\": \"{\\"a\\": 1, \\"b\\": 2}\"}'
+                      }
+                      schema {
+                        value_type {
+                          list_type {
+                            list_type {
+                            }
+                          }
+                        }
+                      }"""),
+      dict(
+          testcase_name='_list[float]',
+          value=[1., 2.],
+          expected=r"""field_value {
+                        string_value: '[1.0, 2.0]'
+                      }
+                      schema {
+                        value_type {
+                          list_type {
+                          }
+                        }
+                      }"""),
+      dict(
+          testcase_name='_list[dict[str,bool]]',
+          value=[{
+              'a': True
+          }, {
+              'b': False
+          }],
+          expected=r"""field_value {
+                        string_value: '[\"{\\"a\\": true}\", \"{\\"b\\": false}\"]'
+                      }
+                      schema {
+                        value_type {
+                          list_type {
+                            list_type {
+                              boolean_type {
+                              }
+                            }
+                          }
+                        }
+                      }"""),
+      dict(
+          testcase_name='_list[dict[str,list[int]]]',
+          value=[{
+              'a': [1, 2]
+          }],
+          expected=r"""field_value {
+                        string_value: '[\"{\\"a\\": \\"[1, 2]\\"}\"]'
+                      }
+                      schema {
+                        value_type {
+                          list_type {
+                            list_type {
+                              list_type {
+                              }
+                            }
+                          }
+                        }
+                      }"""),
+  )
+  def testSetParameterValueJson(self, value, expected):
+    actual_list = pipeline_pb2.Value()
+    expected_list = pipeline_pb2.Value()
+    text_format.Parse(expected, expected_list)
+    self.assertEqual(
+        expected_list,
+        data_types_utils.set_parameter_value(actual_list, value)
+    )
 
 
 if __name__ == '__main__':

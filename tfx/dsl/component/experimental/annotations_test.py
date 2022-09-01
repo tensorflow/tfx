@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.annotations."""
 
+from typing import Dict, List
+
 import apache_beam as beam
 import tensorflow as tf
 from tfx.dsl.component.experimental import annotations
@@ -49,17 +51,20 @@ class AnnotationsTest(tf.test.TestCase):
   def testPrimitiveTypeGenericAnnotation(self):
     # Error: type hint whose parameter is not a primitive type
     with self.assertRaisesRegex(
-        ValueError, 'T to be `int`, `float`, `str`, `bytes` or `bool`'):
+        ValueError, 'T to be `int`, `float`, `str`, `bytes`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric[artifact.Artifact]
     with self.assertRaisesRegex(
-        ValueError, 'T to be `int`, `float`, `str`, `bytes` or `bool`'):
+        ValueError, 'T to be `int`, `float`, `str`, `bytes`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric[object]
     with self.assertRaisesRegex(
-        ValueError, 'T to be `int`, `float`, `str`, `bytes` or `bool`'):
+        ValueError, 'T to be `int`, `float`, `str`, `bytes`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric[123]
     with self.assertRaisesRegex(
-        ValueError, 'T to be `int`, `float`, `str`, `bytes` or `bool`'):
+        ValueError, 'T to be `int`, `float`, `str`, `bytes`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric['string']
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `int`, `float`, `str`, `bytes`, `bool`'):
+      _ = annotations._PrimitiveTypeGeneric[Dict[int, int]]
 
     # OK.
     _ = annotations._PrimitiveTypeGeneric[int]
@@ -67,6 +72,8 @@ class AnnotationsTest(tf.test.TestCase):
     _ = annotations._PrimitiveTypeGeneric[str]
     _ = annotations._PrimitiveTypeGeneric[bytes]
     _ = annotations._PrimitiveTypeGeneric[bool]
+    _ = annotations._PrimitiveTypeGeneric[Dict[str, float]]
+    _ = annotations._PrimitiveTypeGeneric[List[str]]
 
   def testPipelineTypeGenericAnnotation(self):
     # Error: type hint whose parameter is not a primitive type

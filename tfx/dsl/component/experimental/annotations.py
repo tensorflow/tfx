@@ -19,6 +19,7 @@ Experimental. No backwards compatibility guarantees.
 import inspect
 from typing import Any, Type, Union
 
+from tfx.dsl.component.experimental import json_compat
 from tfx.types import artifact
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
@@ -98,13 +99,16 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
   def _generic_getitem(cls, params):
     """Return the result of `_PrimitiveTypeGeneric[T]` for a given type T."""
     # Check that the given parameter is a primitive type.
-    if inspect.isclass(params) and params in (int, float, str, bytes, bool):
+    if (inspect.isclass(params) and
+        params in (int, float, str, bytes,
+                   bool)) or json_compat.is_json_compatible(params):
       return cls(params, _init_via_getitem=True)
     else:
       class_name = cls.__name__
       raise ValueError(
           ('Generic type `%s[T]` expects the single parameter T to be '
-           '`int`, `float`, `str`, `bytes` or `bool` (got %r instead).') %
+           '`int`, `float`, `str`, `bytes`, `bool` or Json compatible types '
+           '(Dict[str, X], List[X]) (got %r instead).') %
           (class_name, params))
 
   def __repr__(self):

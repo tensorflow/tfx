@@ -24,6 +24,7 @@ from typing import Any, Callable, Dict, List, Optional, Type
 
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
+from tfx.dsl.component.experimental import json_compat
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_component
@@ -135,8 +136,8 @@ def _assign_returned_values(
           (outputs[name], name, result[name][0].__class__)) from e
     # Handle JsonValue runtime type check.
     if name in json_typehints:
-      ret = function_parser.check_strict_json_compat(outputs[name],
-                                                     json_typehints[name])
+      ret = json_compat.check_strict_json_compat(outputs[name],
+                                                 json_typehints[name])
       if not ret:
         raise TypeError(
             ('Return value %r for output %r is incompatible with output type '
