@@ -36,6 +36,12 @@ class LatestSpan(
   # If true, then n is set to the total number of unique spans.
   keep_all_spans = resolver_op.Property(type=bool, default=False)
 
+  # Minimum span before which no span will be considered.
+  min_span = resolver_op.Property(type=int, default=0)
+
+  # Number of most recently available spans to skip.
+  offset = resolver_op.Property(type=int, default=0)
+
   def apply(self,
             input_list: Sequence[types.Artifact]) -> Sequence[types.Artifact]:
     """Returns artifacts with the n latest spans.
@@ -44,14 +50,31 @@ class LatestSpan(
     latest versions are returned. If n=2 and all_versions=True, then all
     artifacts with the latest 2 spans but with all versions are included.
 
+    Spans that are < min_span will be ignored. Additionally, the first
+    offset number of spans will be ignored. For example, if min_span=2,
+    offset=1, and the spans are [4, 3, 2, 1], then only spans [3, 2] will be
+    kept.
+
+    min_span and offset correspond to start_span_num and skip_num_recent_spans
+    in the TFX RollingRange proto.
+
     Args:
       input_list: The list of Artifacts to parse.
 
     Returns:
       Artifacts with the n latest spans, all versions included.
     """
+    # Verify that n, min_span, and offset are >= to their minimum values.
     if self.n < 1:
       raise ValueError(f'n must be > 0, but was set to {self.n}.')
+
+    if self.offset < 0:
+      raise ValueError(f'offset must be >= 0, but was set to '
+                       f'{self.offset}.')
+
+    if self.min_span < 0:
+      raise ValueError(f'min_span must be >= 0, but was set to '
+                       f'{self.min_span}.')
 
     # Only consider artifacts that have both "span" and "version" in PROPERTIES
     # with PropertyType.INT.
@@ -76,11 +99,21 @@ class LatestSpan(
 
     valid_artifacts.sort(key=lambda a: a.span, reverse=True)
 
-    # Only keep artifacts with the n latest spans.
+    # Only keep artifacts with spans >= self.min_span.
     spans = list(set([a.span for a in valid_artifacts]))
+    spans = [s for s in spans if s >= self.min_span]
     spans.sort(reverse=True)
-    if not self.keep_all_spans:
-      spans = spans[0:min(self.n, len(spans))]
+
+    if not spans:
+      return []
+
+    # Only keep artifacts with the n latest spans, accounting for
+    # offset.
+    if self.keep_all_spans:
+      spans = spans[self.offset:]
+    else:
+      spans = spans[self.offset:self.offset + self.n]
+
     valid_artifacts = [a for a in valid_artifacts if a.span in spans]
 
     if self.keep_all_versions:

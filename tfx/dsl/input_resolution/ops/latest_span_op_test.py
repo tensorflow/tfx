@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.latest_span_op."""
 
+from typing import Sequence
+
 import tensorflow as tf
 
 from tfx import types
@@ -36,6 +38,24 @@ class ArtifactWithoutSpan(types.Artifact):
 
 
 class LatestSpanOpTest(tf.test.TestCase):
+
+  def _get_artifacts_for_rolling_range_tests(self) -> Sequence[types.Artifact]:
+    a10 = test_utils.DummyArtifact()
+    a20 = test_utils.DummyArtifact()
+    a31 = test_utils.DummyArtifact()
+    a30 = test_utils.DummyArtifact()
+    a71 = test_utils.DummyArtifact()
+    a82 = test_utils.DummyArtifact()
+
+    artifacts = [a10, a20, a31, a30, a71, a82]
+
+    spans = [1, 2, 3, 3, 7, 8]
+    versions = [0, 0, 1, 0, 1, 2]
+    for dummy_artifact, span, version in zip(artifacts, spans, versions):
+      dummy_artifact.span = span
+      dummy_artifact.version = version
+
+    return artifacts
 
   def testLatestSpan_Empty(self):
     actual = test_utils.run_resolver_op(ops.LatestSpan, [])
@@ -98,6 +118,11 @@ class LatestSpanOpTest(tf.test.TestCase):
         ops.LatestSpan, [a1, a2, a3, a4, a5], keep_all_spans=True)
     self.assertEqual(actual, [a4, a3, a1])
 
+    # Make sure n is ignored when keep_all_spans=True
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, [a1, a2, a3, a4, a5], keep_all_spans=True, n=2)
+    self.assertEqual(actual, [a4, a3, a1])
+
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, [a1, a2, a3, a4, a5],
         keep_all_spans=True,
@@ -135,6 +160,131 @@ class LatestSpanOpTest(tf.test.TestCase):
 
     with self.assertRaisesRegex(ValueError, 'n must be > 0'):
       test_utils.run_resolver_op(ops.LatestSpan, [a1], n=-1)
+
+  def testLatestSpan_Offset(self):
+    artifacts = self._get_artifacts_for_rolling_range_tests()
+    a10, a20, a31, a30, a71, a82 = artifacts
+
+    actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts)
+    self.assertEqual(actual, [a82])
+
+    actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts, offset=1)
+    self.assertEqual(actual, [a71])
+
+    actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts, offset=2)
+    self.assertEqual(actual, [a31])
+
+    # Tests version conflicts when keep_all_versions=False
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, artifacts, offset=2, n=2)
+    self.assertEqual(actual, [a31, a20])
+
+    # Tests version conflicts when keep_all_versions=True. Note that 3 artifacts
+    # are returned even when n=2, because n is the number of spans, NOT the
+    # number of artifacts to return.
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, artifacts, offset=2, n=2, keep_all_versions=True)
+    self.assertEqual(actual, [a31, a30, a20])
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, artifacts, offset=2, n=3, keep_all_versions=True)
+    self.assertEqual(actual, [a31, a30, a20, a10])
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, artifacts, offset=3, n=2)
+    self.assertEqual(actual, [a20, a10])
+
+    # offset=6 is larger than the number of artifacts with unique spans
+    # available.
+    actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts, offset=6)
+    self.assertEqual(actual, [])
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, artifacts, offset=6, n=6)
+    self.assertEqual(actual, [])
+
+    # Test offset when keep_all_spans is set to true.
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, artifacts, offset=2, keep_all_spans=True)
+    self.assertEqual(actual, [a31, a20, a10])
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan,
+        artifacts,
+        offset=2,
+        keep_all_spans=True,
+        keep_all_versions=True)
+    self.assertEqual(actual, [a31, a30, a20, a10])
+
+  def testLatestSpan_MinSpan(self):
+    artifacts = self._get_artifacts_for_rolling_range_tests()
+    _, a20, a31, a30, a71, a82 = artifacts
+
+    # min_span=9 is greater than the largest span in artifacts, which is 8.
+    actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts, min_span=9)
+    self.assertEqual(actual, [])
+
+    # Although n=3, there are only 2 artifacts with a span >= 7.
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, artifacts, min_span=7, n=3)
+    self.assertEqual(actual, [a82, a71])
+
+    # Tests version conflicts when keep_all_versions=False
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, artifacts, min_span=2, n=3)
+    self.assertEqual(actual, [a82, a71, a31])
+
+    # Tests version conflicts when keep_all_versions=True. Note that 5 artifacts
+    # are returned even when n=4, because n is the number of spans, NOT the
+    # number of artifacts to return.
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, artifacts, min_span=2, n=4, keep_all_versions=True)
+    self.assertEqual(actual, [a82, a71, a31, a30, a20])
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan, artifacts, min_span=2, n=5, keep_all_versions=True)
+    self.assertEqual(actual, [a82, a71, a31, a30, a20])
+
+  def testLatestSpan_AllArguments(self):
+    artifacts = self._get_artifacts_for_rolling_range_tests()
+    _, _, a31, a30, a71, _ = artifacts
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan,
+        artifacts,
+        n=5,
+        offset=1,
+        min_span=3,
+        keep_all_versions=True)
+    self.assertEqual(actual, [a71, a31, a30])
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan,
+        artifacts,
+        n=2,
+        offset=1,
+        min_span=3,
+        keep_all_versions=True)
+    self.assertEqual(actual, [a71, a31, a30])
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan,
+        artifacts,
+        n=1,
+        offset=1,
+        min_span=3,
+        keep_all_versions=True)
+    self.assertEqual(actual, [a71])
+
+    actual = test_utils.run_resolver_op(
+        ops.LatestSpan,
+        artifacts,
+        n=5,
+        offset=2,
+        min_span=3,
+        keep_all_spans=True,
+        keep_all_versions=True)
+    self.assertEqual(actual, [a31, a30])
 
 if __name__ == '__main__':
   tf.test.main()
