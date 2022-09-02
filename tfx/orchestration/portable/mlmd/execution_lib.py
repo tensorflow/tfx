@@ -272,6 +272,82 @@ def put_execution(
   return execution
 
 
+def put_executions(
+    metadata_handler: metadata.Metadata,
+    executions: Sequence[metadata_store_pb2.Execution],
+    contexts: Sequence[metadata_store_pb2.Context],
+    input_artifacts_maps: Optional[Sequence[
+        typing_utils.ArtifactMultiMap]] = None,
+    output_artifacts_maps: Optional[Sequence[
+        typing_utils.ArtifactMultiMap]] = None,
+    input_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
+    .INPUT,
+    output_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
+    .OUTPUT
+) -> metadata_store_pb2.Execution:
+  """Writes an execution-centric subgraph to MLMD.
+
+  This function mainly leverages metadata.put_lineage_subgraph() method to write
+  the execution centric subgraph to MLMD.
+
+  Args:
+    metadata_handler: A handler to access MLMD.
+    executions: A list of executions to be written to MLMD.
+    contexts: A list of MLMD contexts to associated with all the executions.
+    input_artifacts_maps: A list of ArtifactMultiMap for input. Each of the
+      ArtifactMultiMap links with one execution. None or empty
+      input_artifacts_maps means no input for the executions.
+    output_artifacts_maps: A list of ArtifactMultiMap for output. Each of the
+      ArtifactMultiMap links with one execution. None or empty
+      output_artifacts_maps means no input for the executions.
+    input_event_type: The type of the input event, default to be INPUT.
+    output_event_type: The type of the output event, default to be OUTPUT.
+
+  Returns:
+    A list of MLMD executions that are written to MLMD, with id pupulated.
+  """
+  if input_artifacts_maps and len(executions) != len(input_artifacts_maps):
+    raise ValueError(
+        f'The number of executions {len(executions)} should be the same as '
+        f'the number of input ArtifactMultiMap {len(input_artifacts_maps)}.')
+  if output_artifacts_maps and len(executions) != len(output_artifacts_maps):
+    raise ValueError(
+        f'The number of executions {len(executions)} should be the same as '
+        f'the number of output ArtifactMultiMap {len(output_artifacts_maps)}.')
+
+  artifacts = []
+  artifact_event_edges = []
+  if input_artifacts_maps:
+    for idx in range(len(executions)):
+      artifact_and_event_pairs = _create_artifact_and_event_pairs(
+          metadata_handler,
+          input_artifacts_maps[idx],
+          event_type=input_event_type)
+      for artifact, event in artifact_and_event_pairs:
+        artifacts.append(artifact)
+        artifact_event_edges.append((idx, len(artifacts) - 1, event))
+  if output_artifacts_maps:
+    for idx in range(len(executions)):
+      artifact_and_event_pairs = _create_artifact_and_event_pairs(
+          metadata_handler,
+          output_artifacts_maps[idx],
+          event_type=output_event_type)
+      for artifact, event in artifact_and_event_pairs:
+        artifacts.append(artifact)
+        artifact_event_edges.append((idx, len(artifacts) - 1, event))
+
+  execution_ids, _, _ = metadata_handler.store.put_lineage_subgraph(
+      executions,
+      artifacts,
+      contexts,
+      artifact_event_edges,
+      reuse_context_if_already_exist=True)
+
+  for execution_id, execution in zip(execution_ids, executions):
+    execution.id = execution_id
+  return executions
+
+
 def get_executions_associated_with_all_contexts(
     metadata_handler: metadata.Metadata,
     contexts: Iterable[metadata_store_pb2.Context]
