@@ -87,5 +87,6 @@ class ForEach(dsl_context_manager.DslContextManager[for_each_internal.LoopVar]):
   def create_context(self) -> ForEachContext:
     return for_each_internal.ForEachContext()
 
-  def enter(self, context: ForEachContext) -> for_each_internal.LoopVar:
+  def enter(  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
+      self, context: ForEachContext) -> for_each_internal.LoopVar:
     return self._loopable.get_loop_var(context)

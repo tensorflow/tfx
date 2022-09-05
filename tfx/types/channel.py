@@ -327,6 +327,7 @@ class OutputChannel(Channel):
         additional_custom_properties=additional_custom_properties,
     )
     self._producer_component = producer_component
+    self._garbage_collection_policy = None
 
   def __repr__(self) -> str:
     return (

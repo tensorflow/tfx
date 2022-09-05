@@ -284,11 +284,11 @@ def component(
   Specifically, function arguments can be annotated with the following types and
   associated semantics:
 
-  * `Parameter[T]` where `T` is `int`, `float`, `str`, or `bytes`: indicates
-    that a primitive type execution parameter, whose value is known at pipeline
-    construction time, will be passed for this argument. These parameters will
-    be recorded in ML Metadata as part of the component's execution record. Can
-    be an optional argument.
+  * `Parameter[T]` where `T` is `int`, `float`, `str`, `bytes`, or `bool`:
+    indicates that a primitive type execution parameter, whose value is known at
+    pipeline construction time, will be passed for this argument. These
+    parameters will be recorded in ML Metadata as part of the component's
+    execution record. Can be an optional argument.
   * `int`, `float`, `str`, `bytes`, `bool`, `Dict`, `List`: indicates that a
     primitive type value will be passed for this argument. This value is tracked
     as an `Integer`, `Float`, `String`, `Bytes`, `Boolean` or `JsonValue`
@@ -477,7 +477,7 @@ def component(
           # The function needs to be marked with `staticmethod` so that later
           # references of `self._FUNCTION` do not result in a bound method (i.e.
           # one with `self` as its first parameter).
-          '_FUNCTION': staticmethod(func),
+          '_FUNCTION': staticmethod(func),  # pytype: disable=not-callable
           '_RETURNED_VALUES': returned_values,
           '_RETURN_JSON_COMPAT_TYPEHINT': return_json_typehints,
           '__module__': func.__module__,

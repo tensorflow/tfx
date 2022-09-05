@@ -1009,6 +1009,12 @@ def _set_node_outputs(node: pipeline_pb2.PipelineNode,
                 node.node_info.id, property_name,
                 type(property_value))) from ValueError
 
+    if isinstance(value, tfx_channel.OutputChannel):
+      # pylint: disable=protected-access
+      if value._garbage_collection_policy is not None:
+        output_spec.garbage_collection_policy.CopyFrom(
+            value._garbage_collection_policy)
+
 
 def _generate_input_spec_for_outputs(
     node: pipeline_pb2.PipelineNode, tfx_node_outputs: Dict[str, types.Channel]

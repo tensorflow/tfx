@@ -357,20 +357,21 @@ def register_executions(
   Args:
     metadata_handler: A handler to access MLMD.
     execution_type: The type of the execution.
-    contexts: MLMD contexts to associated with the executions.
+    contexts: MLMD contexts to associate with the executions.
     input_and_params: A list of InputAndParams, which includes input_dicts
     (dictionaries of artifacts. One execution will be registered for each of the
     input_dict) and corresponding exec_properties.
 
   Returns:
     A list of MLMD executions that are registered in MLMD, with id populated.
-      All regiested executions have state of NEW.
+      All registered executions have a state of NEW.
   """
-  executions = []
   # TODO(b/207038460): Use the new feature of batch executions update once it is
   # implemented (b/209883142).
   timestamp = int(time.time() * 1e6)
+  executions = []
   for input_and_param in input_and_params:
+    # Prepare executions.
     execution = execution_lib.prepare_execution(
         metadata_handler,
         execution_type,
@@ -380,10 +381,17 @@ def register_executions(
     execution.custom_properties[_EXECUTION_SET_SIZE].int_value = len(
         input_and_params)
     execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
-    executions.append(
+    executions.append(execution)
+
+  if len(executions) == 1:
+    return [
         execution_lib.put_execution(
             metadata_handler,
-            execution,
+            executions[0],
             contexts,
-            input_artifacts=input_and_param.input_artifacts))
-  return executions
+            input_artifacts=input_and_params[0].input_artifacts)
+    ]
+
+  return execution_lib.put_executions(
+      metadata_handler, executions, contexts,
+      [input_and_param.input_artifacts for input_and_param in input_and_params])

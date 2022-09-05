@@ -194,7 +194,11 @@ def implicit_channel_key(channel: types.BaseChannel):
     channel = cast(tfx_channel.PipelineInputChannel, channel)
     return f"_{channel.pipeline.id}.{channel.output_key}"
   elif isinstance(channel, types.Channel):
-    return f"_{channel.producer_component_id}.{channel.output_key}"
+    if channel.producer_component_id and channel.output_key:
+      return f"_{channel.producer_component_id}.{channel.output_key}"
+    raise ValueError(
+        "Cannot create implicit input key for Channel that has no"
+        "producer_component_id and output_key.")
   else:
     raise ValueError("Unsupported channel type for implicit channel key.")
 

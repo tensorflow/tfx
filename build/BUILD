@@ -42,6 +42,7 @@ sh_binary(
         "//tfx/proto/orchestration:execution_result_pb2.py",
         "//tfx/proto/orchestration:execution_watcher_pb2.py",
         "//tfx/proto/orchestration:execution_watcher_pb2_grpc.py",
+        "//tfx/proto/orchestration:garbage_collection_policy_pb2.py",
         "//tfx/proto/orchestration:local_deployment_config_pb2.py",
         "//tfx/proto/orchestration:metadata_pb2.py",
         "//tfx/proto/orchestration:pipeline_pb2.py",

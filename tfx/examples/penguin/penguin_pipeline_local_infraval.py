@@ -140,7 +140,8 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
       model=trainer.outputs['model'],
       examples=example_gen.outputs['examples'],
       serving_spec=tfx.proto.ServingSpec(
-          tensorflow_serving=tfx.proto.TensorFlowServing(tags=['latest']),
+          # TODO(b/244254788): Roll back to the 'latest' tag.
+          tensorflow_serving=tfx.proto.TensorFlowServing(tags=['2.8.2']),
           local_docker=tfx.proto.LocalDockerConfig()),
       request_spec=tfx.proto.RequestSpec(
           tensorflow_serving=tfx.proto.TensorFlowServingRequestSpec(),

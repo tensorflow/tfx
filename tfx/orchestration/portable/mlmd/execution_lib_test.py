@@ -304,6 +304,109 @@ class ExecutionLibTest(test_case_utils.TfxTest):
               metadata_store_pb2.Event.OUTPUT: set([output_model.id]),
           }, artifact_ids_by_event_type)
 
+  def testPutExecutions(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      # Prepares input artifacts.
+      input_example_1 = standard_artifacts.Examples()
+      input_example_1.uri = 'example'
+      input_example_1.type_id = common_utils.register_type_if_not_exist(
+          m, input_example_1.artifact_type).id
+      input_example_2 = standard_artifacts.Examples()
+      input_example_2.uri = 'example'
+      input_example_2.type_id = common_utils.register_type_if_not_exist(
+          m, input_example_2.artifact_type).id
+      input_example_3 = standard_artifacts.Examples()
+      input_example_3.uri = 'example'
+      input_example_3.type_id = common_utils.register_type_if_not_exist(
+          m, input_example_3.artifact_type).id
+      [input_example_1.id, input_example_2.id,
+       input_example_3.id] = m.store.put_artifacts([
+           input_example_1.mlmd_artifact, input_example_2.mlmd_artifact,
+           input_example_3.mlmd_artifact
+       ])
+
+      # Prepares output artifacts.
+      output_model_1 = standard_artifacts.Model()
+      output_model_1.uri = 'model'
+      output_model_2 = standard_artifacts.Model()
+      output_model_2.uri = 'model'
+
+      # Prepares executions.
+      execution_1 = execution_lib.prepare_execution(
+          m,
+          metadata_store_pb2.ExecutionType(name='my_execution_type'),
+          state=metadata_store_pb2.Execution.COMPLETE)
+      execution_2 = execution_lib.prepare_execution(
+          m,
+          metadata_store_pb2.ExecutionType(name='my_execution_type'),
+          state=metadata_store_pb2.Execution.COMPLETE)
+
+      # Prepares contexts.
+      contexts = self._generate_contexts(m)
+
+      # Run the function for test.
+      [execution_1, execution_2] = execution_lib.put_executions(
+          m, [execution_1, execution_2],
+          contexts,
+          input_artifacts_maps=[{
+              'examples': [input_example_1, input_example_2]
+          }, {
+              'another_examples': [input_example_3]
+          }],
+          output_artifacts_maps=[{
+              'models': [output_model_1]
+          }, {
+              'another_models': [output_model_2]
+          }])
+
+      # Verifies artifacts.
+      all_artifacts = m.store.get_artifacts()
+      self.assertLen(all_artifacts, 5)
+      [output_model_1, output_model_2] = [
+          artifact for artifact in all_artifacts if artifact.id not in
+          [input_example_1.id, input_example_2.id, input_example_3.id]
+      ]
+
+      # Verifies edges between input artifacts and execution.
+      [input_event] = m.store.get_events_by_artifact_ids([input_example_1.id])
+      self.assertEqual(input_event.execution_id, execution_1.id)
+      self.assertEqual(input_event.type, metadata_store_pb2.Event.INPUT)
+      [input_event] = m.store.get_events_by_artifact_ids([input_example_2.id])
+      self.assertEqual(input_event.execution_id, execution_1.id)
+      self.assertEqual(input_event.type, metadata_store_pb2.Event.INPUT)
+      [input_event] = m.store.get_events_by_artifact_ids([input_example_3.id])
+      self.assertEqual(input_event.execution_id, execution_2.id)
+      self.assertEqual(input_event.type, metadata_store_pb2.Event.INPUT)
+
+      # Verifies edges between output artifacts and execution.
+      [output_event] = m.store.get_events_by_artifact_ids([output_model_1.id])
+      self.assertEqual(output_event.execution_id, execution_1.id)
+      self.assertEqual(output_event.type, metadata_store_pb2.Event.OUTPUT)
+      [output_event] = m.store.get_events_by_artifact_ids([output_model_2.id])
+      self.assertEqual(output_event.execution_id, execution_2.id)
+      self.assertEqual(output_event.type, metadata_store_pb2.Event.OUTPUT)
+
+      # Verifies edges connecting contexts and {artifacts, execution}.
+      context_ids = [context.id for context in contexts]
+      self.assertCountEqual(
+          [c.id for c in m.store.get_contexts_by_artifact(input_example_1.id)],
+          context_ids)
+      self.assertCountEqual(
+          [c.id for c in m.store.get_contexts_by_artifact(output_model_1.id)],
+          context_ids)
+      self.assertCountEqual(
+          [c.id for c in m.store.get_contexts_by_execution(execution_1.id)],
+          context_ids)
+      self.assertCountEqual(
+          [c.id for c in m.store.get_contexts_by_artifact(input_example_2.id)],
+          context_ids)
+      self.assertCountEqual(
+          [c.id for c in m.store.get_contexts_by_artifact(output_model_2.id)],
+          context_ids)
+      self.assertCountEqual(
+          [c.id for c in m.store.get_contexts_by_execution(execution_2.id)],
+          context_ids)
+
   def testGetArtifactsDict(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       # Create and shuffle a few artifacts. The shuffled order should be

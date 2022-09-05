@@ -185,6 +185,20 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
     raise error_types.DeadlineExceeded(
         'Deadline exceeded while waiting for pod to be running.')
 
+  def GetLogs(self) -> Optional[str]:
+    if self._pod_name and self._namespace and self._executor_container:
+      result = self._k8s_core_api.read_namespaced_pod_log(
+          name=self._pod_name,
+          namespace=self._namespace,
+          container=self._executor_container.name,)
+      if isinstance(result, bytes):
+        return result.decode('utf-8')
+      elif isinstance(result, str):
+        return result
+      else:  # Generator of strs:
+        return '\n'.join(result)
+    return None
+
   def Stop(self) -> None:
     try:
       self._DeleteModelServerPod()

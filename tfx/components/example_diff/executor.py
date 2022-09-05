@@ -30,6 +30,8 @@ from tfx.utils import json_utils
 from tfx_bsl.tfxio import record_based_tfxio
 
 STATS_FILE_NAME = 'skew_stats'
+MATCH_STATS_FILE_NAME = 'match_stats'
+CONFUSION_FILE_NAME = 'confusion'
 _SAMPLE_FILE_NAME = 'sample_pairs'
 
 _TELEMETRY_DESCRIPTORS = ['ExampleDiff']
@@ -58,6 +60,15 @@ def _parse_example(serialized: bytes):
   return ex
 
 
+def _get_confusion_configs(
+    config: example_diff_pb2.ExampleDiffConfig
+) -> List[feature_skew_detector.ConfusionConfig]:
+  result = []
+  for confusion in config.paired_example_skew.confusion_config:
+    result.append(feature_skew_detector.ConfusionConfig(confusion.feature_name))
+  return result
+
+
 def _config_to_kwargs(config: example_diff_pb2.ExampleDiffConfig):
   """Convert ExampleDiffConfig to DetectFeatureSkewImpl kwargs."""
   kwargs = {}
@@ -71,6 +82,9 @@ def _config_to_kwargs(config: example_diff_pb2.ExampleDiffConfig):
   kwargs['float_round_ndigits'] = config.paired_example_skew.float_round_ndigits
   kwargs[
       'allow_duplicate_identifiers'] = config.paired_example_skew.allow_duplicate_identifiers
+  # TODO(b/227361696): Add better unit tests here. This will require generating
+  # a new dataset for test purposes.
+  kwargs['confusion_configs'] = _get_confusion_configs(config)
   return kwargs
 
 
@@ -155,18 +169,28 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           results = ((base_examples, test_examples)
                      | feature_skew_detector.DetectFeatureSkewImpl(
                          **_config_to_kwargs(diff_config)))
-          skew_stats = results[feature_skew_detector.SKEW_RESULTS_KEY]
-          samples = results[feature_skew_detector.SKEW_PAIRS_KEY]
+
           output_uri = os.path.join(example_diff_artifact.uri,
                                     'SplitPair-%s' % split_pair)
-
           _ = (
-              skew_stats
+              results[feature_skew_detector.SKEW_RESULTS_KEY]
               | 'WriteStats' >> feature_skew_detector.skew_results_sink(
                   os.path.join(output_uri, STATS_FILE_NAME)))
           _ = (
-              samples | 'WriteSample' >> feature_skew_detector.skew_pair_sink(
+              results[feature_skew_detector.SKEW_PAIRS_KEY]
+              | 'WriteSample' >> feature_skew_detector.skew_pair_sink(
                   os.path.join(output_uri, _SAMPLE_FILE_NAME)))
+          _ = (
+              results[feature_skew_detector.MATCH_STATS_KEY]
+              | 'WriteMatchStats' >> feature_skew_detector.match_stats_sink(
+                  os.path.join(output_uri, MATCH_STATS_FILE_NAME)))
+          if feature_skew_detector.CONFUSION_KEY in results:
+            _ = (
+                results[feature_skew_detector.CONFUSION_KEY]
+                |
+                'WriteConfusion' >> feature_skew_detector.confusion_count_sink(
+                    os.path.join(output_uri, CONFUSION_FILE_NAME)))
+
           # pylint: enable=cell-var-from-loop
 
         _ = p | 'ProcessSplits[%s]' % split_pair >> _iteration()  # pylint: disable=no-value-for-parameter
