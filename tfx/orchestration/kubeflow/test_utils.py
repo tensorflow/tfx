@@ -316,8 +316,9 @@ def create_e2e_components(
       model=trainer.outputs['model'],
       examples=example_gen.outputs['examples'],
       serving_spec=infra_validator_pb2.ServingSpec(
+          # TODO(b/244254788): Roll back to the 'latest' tag.
           tensorflow_serving=infra_validator_pb2.TensorFlowServing(
-              tags=['latest']),
+              tags=['2.8.2']),
           kubernetes=infra_validator_pb2.KubernetesConfig()),
       request_spec=infra_validator_pb2.RequestSpec(
           tensorflow_serving=infra_validator_pb2.TensorFlowServingRequestSpec())
