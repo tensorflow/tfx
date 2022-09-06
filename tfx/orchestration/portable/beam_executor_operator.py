@@ -69,7 +69,7 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
     self.extra_flags.extend(beam_executor_spec.python_executor_spec.extra_flags)
     self.beam_pipeline_args = []
 
-    self.beam_pipeline_args.extend(beam_executor_spec.beam_pipeline_args)
+    self.beam_pipeline_args.extend(beam_executor_spec.beam_pipeline_args_placeholder)
 
   def run_executor(
       self,
