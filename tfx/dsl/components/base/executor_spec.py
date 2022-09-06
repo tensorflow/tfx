@@ -172,7 +172,7 @@ class BeamExecutorSpec(ExecutorClassSpec):
         placeholder_beam_pipeline_args.append(beam_pipeline_arg.encode())
       else:
         raise ValueError('Unsupported arg type.')
-    result.beam_pipeline_args.extend(placeholder_beam_pipeline_args)
+    result.beam_pipeline_args_placeholder.extend(placeholder_beam_pipeline_args)
     return result
 
   def add_beam_pipeline_args(self, beam_pipeline_args: Iterable[Union[str, ph.Placeholder]]) -> None:

@@ -30,7 +30,11 @@ message BeamExecutableSpec {
   // Nested python executor spec.
   PythonClassExecutableSpec python_executor_spec = 1;
   // Args for Apache Beam pipeline.
-  repeated PlaceholderExpression beam_pipeline_args = 2;
+  // NOTE: This is deprecated in favour of beam_pipeline_args_placeholder
+  // which supports strings as well as placeholders.
+  repeated string beam_pipeline_args = 2;
+  // Args for Apache Beam pipeline with support for placeholders.
+  repeated PlaceholderExpression beam_pipeline_args_placeholder = 3;
 }
 
 // Specification for Container based executables.
