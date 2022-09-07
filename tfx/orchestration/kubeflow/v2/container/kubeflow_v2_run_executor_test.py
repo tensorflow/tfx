@@ -28,12 +28,14 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_run_executor
 from tfx.types import artifact
 from tfx.types import artifact_utils
+from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
+from tfx.utils import io_utils
 from tfx.utils import name_utils
 from tfx.utils import test_case_utils
 
+from google.protobuf import struct_pb2
 from google.protobuf import json_format
-
 
 _TEST_OUTPUT_METADATA_JSON = "testdir/outputmetadata.json"
 
@@ -62,22 +64,36 @@ class _FakeExecutor(evaluator_executor.Executor):
     args_capture = _ArgsCapture.instance
     args_capture.input_dict = input_dict
     args_capture.output_dict = output_dict
+
+    for key in args_capture.output_dict:
+      output_artifact = args_capture.output_dict[key][0]
+      if isinstance(output_artifact, standard_artifacts.String):
+        output_artifact.value = "String ValueArtifact"
+      elif isinstance(output_artifact, standard_artifacts.Float):
+        output_artifact.value = 1.1
+      elif isinstance(output_artifact, standard_artifacts.Integer):
+        output_artifact.value = 1
+      elif isinstance(output_artifact, standard_artifacts.Boolean):
+        output_artifact.value = True
+
     args_capture.exec_properties = exec_properties
     artifact_utils.get_single_instance(
         output_dict["output"]).set_string_custom_property(
             _TEST_OUTPUT_PROPERTY_KEY, _TEST_OUTPUT_PROPERTY_VALUE)
-    blessing = artifact_utils.get_single_instance(output_dict["blessing"])
-    # Set to the hash value of
-    # 'projects/123456789/locations/us-central1/metadataStores/default/artifacts/1'
-    blessing.set_int_custom_property(
-        constants.ARTIFACT_PROPERTY_BASELINE_MODEL_ID_KEY, 5743745765020341227)
-    # Set to the hash value of
-    # 'projects/123456789/locations/us-central1/metadataStores/default/artifacts/2'
-    blessing.set_int_custom_property(
-        constants.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY, 7228748496289751000)
-    # Set the blessing result
-    blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
-                                     constants.BLESSED_VALUE)
+    if "blessing" in output_dict:
+      blessing = artifact_utils.get_single_instance(output_dict["blessing"])
+      # Set to the hash value of
+      # 'projects/123456789/locations/us-central1/metadataStores/default/artifacts/1'
+      blessing.set_int_custom_property(
+          constants.ARTIFACT_PROPERTY_BASELINE_MODEL_ID_KEY,
+          5743745765020341227)
+      # Set to the hash value of
+      # 'projects/123456789/locations/us-central1/metadataStores/default/artifacts/2'
+      blessing.set_int_custom_property(
+          constants.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY, 7228748496289751000)
+      # Set the blessing result
+      blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
+                                       constants.BLESSED_VALUE)
 
 
 _EXEC_PROPERTIES = {"key_1": "value_1", "key_2": 536870911}
@@ -101,6 +117,15 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
     # Mutate the outputFile field.
     metadata_json["outputs"]["outputFile"] = _TEST_OUTPUT_METADATA_JSON
     self._serialized_metadata = json.dumps(metadata_json)
+
+    # Prepare executor input using output parameters
+    serialized_metadata_dynamic_execution = self._get_text_from_test_data(
+        "executor_invocation_with_output_parameters.json")
+    self._metadata_json_dynamic_execution = json.loads(
+        serialized_metadata_dynamic_execution)
+    # Mutate the outputFile field.
+    self._metadata_json_dynamic_execution["outputs"][
+        "outputFile"] = _TEST_OUTPUT_METADATA_JSON
 
     # Prepare executor input using legacy properties and custom properties.
     serialized_metadata_legacy = self._get_text_from_test_data(
@@ -151,6 +176,76 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
 
       self.assertEqual(actual_output, self._expected_output)
       os.remove(_TEST_OUTPUT_METADATA_JSON)
+
+  def testDynamicExecutionProperties(self):
+    """Test the entrypoint with dynamic execution properties."""
+
+    test_value_artifact_float_dir = os.path.join(self.tmp_dir,
+                                                 "test_value_artifact_float")
+    test_value_artifact_string_dir = os.path.join(self.tmp_dir,
+                                                  "test_value_artifact_string")
+    test_value_artifact_boolean_dir = os.path.join(
+        self.tmp_dir, "test_value_artifact_boolean")
+    test_value_artifact_integer_dir = os.path.join(
+        self.tmp_dir, "test_value_artifact_integer")
+    test_executor_output_dir = os.path.join(self.tmp_dir,
+                                            "test_executor_output")
+    self._metadata_json_dynamic_execution["outputs"]["artifacts"][
+        "test_value_artifact_float"]["artifacts"][0][
+            "uri"] = test_value_artifact_float_dir
+    self._metadata_json_dynamic_execution["outputs"]["artifacts"][
+        "test_value_artifact_string"]["artifacts"][0][
+            "uri"] = test_value_artifact_string_dir
+    self._metadata_json_dynamic_execution["outputs"]["artifacts"][
+        "test_value_artifact_boolean"]["artifacts"][0][
+            "uri"] = test_value_artifact_boolean_dir
+    self._metadata_json_dynamic_execution["outputs"]["artifacts"][
+        "test_value_artifact_integer"]["artifacts"][0][
+            "uri"] = test_value_artifact_integer_dir
+    self._metadata_json_dynamic_execution["outputs"][
+        "output_file"] = test_executor_output_dir
+    serialized_metadata_dynamic_execution = json.dumps(
+        self._metadata_json_dynamic_execution)
+
+    with _ArgsCapture() as args_capture:
+      args = [
+          "--executor_class_path",
+          name_utils.get_full_name(_FakeExecutor),
+          "--json_serialized_invocation_args",
+          serialized_metadata_dynamic_execution
+      ]
+      kubeflow_v2_run_executor.main(kubeflow_v2_run_executor._parse_flags(args))
+
+      self.assertEqual(
+          set(args_capture.output_dict.keys()),
+          set([
+              "output", "test_value_artifact_float",
+              "test_value_artifact_string", "test_value_artifact_boolean",
+              "test_value_artifact_integer"
+          ]))
+      executor_output = pipeline_spec_pb2.ExecutorOutput()
+      with fileio.open(test_executor_output_dir, "rb") as f:
+        json_format.Parse(f.read(), executor_output, ignore_unknown_fields=True)
+      self.assertDictEqual(
+          dict(executor_output.parameter_values), {
+              "test_value_artifact_boolean":
+                  struct_pb2.Value(bool_value=True),
+              "test_value_artifact_float":
+                  struct_pb2.Value(number_value=1.1),
+              "test_value_artifact_integer":
+                  struct_pb2.Value(number_value=1),
+              "test_value_artifact_string":
+                  struct_pb2.Value(string_value="String ValueArtifact")
+          })
+      self.assertEqual(
+          io_utils.read_string_file(test_value_artifact_float_dir), "1.1")
+      self.assertEqual(
+          io_utils.read_string_file(test_value_artifact_string_dir),
+          "String ValueArtifact")
+      self.assertEqual(
+          io_utils.read_string_file(test_value_artifact_boolean_dir), "1")
+      self.assertEqual(
+          io_utils.read_string_file(test_value_artifact_integer_dir), "1")
 
   def testEntryPointWithDriver(self):
     """Test the entrypoint with Driver's output metadata."""
