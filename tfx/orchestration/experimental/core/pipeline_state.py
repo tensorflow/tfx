@@ -43,6 +43,7 @@ from tfx.utils import status as status_lib
 
 from google.protobuf import message
 import ml_metadata as mlmd
+from ml_metadata.google.tfx import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 
 _ORCHESTRATOR_RESERVED_ID = '__ORCHESTRATOR__'
@@ -319,8 +320,14 @@ class PipelineState:
         context_type_name=_ORCHESTRATOR_RESERVED_ID,
         context_name=orchestrator_context_name(pipeline_uid))
 
-    executions = mlmd_handle.store.get_executions_by_context(context.id)
-    if any(e for e in executions if execution_lib.is_execution_active(e)):
+    executions = mlmd_handle.store.get_executions_by_context(
+        context.id,
+        list_options=metadata_store.ListOptions(
+            limit=1,
+            filter_query='last_known_state = NEW OR last_known_state = RUNNING')
+    )
+    assert all(execution_lib.is_execution_active(e) for e in executions)
+    if executions:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.ALREADY_EXISTS,
           message=f'Pipeline with uid {pipeline_uid} already active.')
@@ -389,9 +396,7 @@ class PipelineState:
       exists for the given context in MLMD. With code=INTERNAL if more than 1
       active execution exists for given pipeline uid.
     """
-    pipeline_uid = pipeline_uid_from_orchestrator_context(context)
-    active_execution = _get_active_execution(
-        pipeline_uid, mlmd_handle.store.get_executions_by_context(context.id))
+    active_execution = _get_single_active_execution(mlmd_handle, context)
     pipeline = _get_pipeline_from_orchestrator_execution(active_execution)
 
     return cls(
@@ -962,14 +967,16 @@ def _get_pipeline_from_orchestrator_execution(
   return _base64_decode_pipeline(pipeline_ir_b64)
 
 
-def _get_active_execution(
-    pipeline_uid: task_lib.PipelineUid,
-    executions: List[metadata_store_pb2.Execution]
-) -> metadata_store_pb2.Execution:
-  """gets a single active execution from the executions."""
-  active_executions = [
-      e for e in executions if execution_lib.is_execution_active(e)
-  ]
+def _get_single_active_execution(
+    mlmd_handle: metadata.Metadata,
+    context: metadata_store_pb2.Context) -> metadata_store_pb2.Execution:
+  """Gets a single active pipeline execution from orchestrator context."""
+  pipeline_uid = pipeline_uid_from_orchestrator_context(context)
+  active_executions = mlmd_handle.store.get_executions_by_context(
+      context.id,
+      list_options=metadata_store.ListOptions(
+          filter_query='last_known_state = NEW OR last_known_state = RUNNING'))
+  assert all(execution_lib.is_execution_active(e) for e in active_executions)
   if not active_executions:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND,
