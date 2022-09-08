@@ -268,10 +268,12 @@ class NodeInputsCompilerTest(tf.test.TestCase):
       input_graph_id = node_inputs_compiler._compile_input_graph(
           ctx, node, channel, result)
       self.assertLen(result.input_graphs, 1)
-      self.assertProtoEquals("""
+      self.assertProtoEquals(
+          """
         nodes {
           key: "op_1"
           value: {
+            output_data_type: ARTIFACT_LIST
             op_node {
               op_type: "testing.DummyArtifactList"
             }

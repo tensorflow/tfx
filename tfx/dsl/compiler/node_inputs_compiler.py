@@ -117,6 +117,7 @@ def _compile_input_graph(
       op_node_ir.args.add().node_id = get_node_id(n)
     for k, v in op_node.kwargs.items():
       data_types_utils.set_parameter_value(op_node_ir.kwargs[k].value, v)
+    input_graph.nodes[node_id].output_data_type = op_node.output_data_type
     return node_id
 
   input_graph.result_node = get_node_id(channel.output_node)
