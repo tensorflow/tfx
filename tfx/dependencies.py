@@ -66,6 +66,10 @@ def make_pipeline_sdk_required_install_packages():
       'google-api-python-client>=1.8,<2',
       # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
       'jinja2>=2.7.3,<4',
+      # typing-extensions allows consistent & future-proof interface for typing.
+      # Since kfp<2 uses typing-extensions<4, lower bound is the latest 3.x, and
+      # upper bound is <5 as the semver started from 4.0 according to their doc.
+      'typing-extensions>=3.10.0.2,<5',
   ]
 
 
@@ -116,10 +120,6 @@ def make_required_install_packages():
           default='>=1.9.0,<1.10.0',
           nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
-      # typing-extensions allows consistent & future-proof interface for typing.
-      # Since kfp<2 uses typing-extensions<4, lower bound is the latest 3.x, and
-      # upper bound is <5 as the semver started from 4.0 according to their doc.
-      'typing-extensions>=3.10.0.2,<5',
   ]
 
 
