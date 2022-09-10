@@ -99,7 +99,7 @@ def make_required_install_packages():
       # dependency set with TF 2.x without the sync.
       # pylint: disable=line-too-long
       'tensorflow' + select_constraint(
-          '>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<2.10'),
+          '>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<2.11'),
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
@@ -181,8 +181,8 @@ def make_extra_packages_tfdf():
   # Packages needed for tensorflow-decision-forests.
   # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
   return [
-      # NOTE: TFDF 0.2.5 is only compatible with TF 2.9.x.
-      'tensorflow-decision-forests==0.2.5',
+      # NOTE: TFDF 1.0.1 is only compatible with TF 2.10.x.
+      'tensorflow-decision-forests==1.0.1',
   ]
 
 
@@ -200,7 +200,7 @@ def make_extra_packages_examples():
       'tensorflow-text>=1.15.1,<3',
       # Required for tfx/examples/cifar10
       'flatbuffers>=1.12,<3',
-      'tflite-support>=0.1.0a1,<0.2.1',
+      'tflite-support>=0.4.2,<0.4.3',
       # Required for tfx/examples/penguin/experimental
       # LINT.IfChange
       'scikit-learn>=0.23,<0.24',

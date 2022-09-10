@@ -1,5 +1,29 @@
 # Current Version (Still in Development)
 
+
+## Major Features and Improvements
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+### For Component Authors
+
+## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.10.0` | `>=1.15.5,<2` or `~=2.9.0` | |
+| `tflite-support` | `~=0.4.2` | `>=0.1.0a1,<0.2.1` | Update to a TF-2.10 compatible version. |
+
+## Documentation Updates
+
+# Version 1.10.0
+
 ## Major Features and Improvements
 
 *   Saved tuner results in pandas `records` formatted JSON.
