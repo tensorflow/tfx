@@ -33,6 +33,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 from tfx.utils import topsort
 
+from ml_metadata.google.services.mlmd_service.proto import mlmd_service_pb2
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -326,6 +327,12 @@ class _Generator:
     """Generates tasks for a node by freshly resolving inputs."""
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+    logging.error(
+        'Guowei %s',
+        mlmd_service_pb2.MLMDServiceClientConfig(
+            server_address='test',
+            pipeline_asset=mlmd_service_pb2.PipelineAsset(
+                owner='test', name='test')))
     resolved_info = task_gen_utils.generate_resolved_info(
         self._mlmd_handle, node)
     if resolved_info is None:
