@@ -14,6 +14,7 @@
 """TFX type definition."""
 
 import importlib
+import importlib.abc
 import sys
 import threading
 from typing import Any, Callable, Type
