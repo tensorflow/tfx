@@ -25,7 +25,6 @@ from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
-from tfx.dsl.components.base import executor_spec as base_executor_spec
 
 from google.protobuf import text_format
 
@@ -51,10 +50,12 @@ class BeamExecutorOperatorTest(test_case_utils.TfxTest):
       python_executor_spec: {
           class_path: "tfx.orchestration.portable.beam_executor_operator_test.ValidateBeamPipelineArgsExecutor"
       }
+      beam_pipeline_args_placeholder {
+        value {
+          string_value: "--runner=DirectRunner"
+        }
+      }
     """, executable_spec_pb2.BeamExecutableSpec())
-    spec = base_executor_spec.BeamExecutorSpec(ValidateBeamPipelineArgsExecutor)
-    spec.add_beam_pipeline_args("--runner=DirectRunner")
-    executor_spec = spec.encode()
     operator = beam_executor_operator.BeamExecutorOperator(executor_spec)
     pipeline_node = pipeline_pb2.PipelineNode(node_info={'id': 'MyBeamNode'})
     pipeline_info = pipeline_pb2.PipelineInfo(id='MyPipeline')
