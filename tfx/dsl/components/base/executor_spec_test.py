@@ -61,7 +61,11 @@ class ExecutorSpecTest(tf.test.TestCase):
             class_path: "__main__._DummyExecutor"
             extra_flags: "a"
         }
-        beam_pipeline_args: "b"
+        beam_pipeline_args_placeholder {
+          value {
+            string_value: "b"
+          }
+        }
         """, spec_copy.encode())
 
   def testExecutorContainerSpecCopy(self):

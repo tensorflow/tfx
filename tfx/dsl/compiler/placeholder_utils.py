@@ -522,7 +522,6 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
         placeholder_pb2.Placeholder.RUNTIME_INFO: "runtime_info",
         placeholder_pb2.Placeholder.EXEC_INVOCATION: "execution_invocation",
         placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE: "environment_variable",
-        placeholder_pb2.Placeholder.STRING_VALUE: "string_value"
     }
     ph_name = ph_names_map[placeholder_pb.type]
     if placeholder_pb.key:
