@@ -14,7 +14,6 @@
 """TaskGenerator implementation for sync pipelines."""
 
 import collections
-import textwrap
 from typing import Callable, Dict, List, Mapping, Optional, Set
 
 from absl import logging
@@ -148,9 +147,7 @@ class _Generator:
               # be used together with ALL_UPSTREAM_NODES_SUCCEEDED since it will
               # fail the pipeline if any node fails.
               if self._fail_fast:
-                finalize_pipeline_task = self._abort_task(
-                    'Pipeline failed fast due to node failures: ' +
-                    _status_dict_to_error_message(failed_nodes_dict))
+                finalize_pipeline_task = self._abort_task(task.status.message)
             update_node_state_tasks.append(task)
           elif isinstance(task, task_lib.ExecNodeTask):
             exec_node_tasks.append(task)
@@ -180,7 +177,7 @@ class _Generator:
         # we can abort the pipeline.
         if unrunnable_descendant_ids:
           finalize_pipeline_task = self._abort_task(
-              'Pipeline could not make progress due to node failures: ' +
+              'Cannot make progress due to node failures: \n' +
               _status_dict_to_error_message(failed_nodes_dict))
         # If all nodes are completed and not all terminal nodes are successful,
         # the pipeline should be marked failed.
@@ -191,7 +188,7 @@ class _Generator:
               if k in terminal_node_ids
           }
           finalize_pipeline_task = self._abort_task(
-              'Pipeline failed due to terminal node failures: ' +
+              'Pipeline failed due to terminal node failures: \n' +
               _status_dict_to_error_message(failed_terminal_nodes))
 
     result = update_node_state_tasks
@@ -293,7 +290,6 @@ class _Generator:
             constants.EXECUTION_ERROR_MSG_KEY)
         error_msg_value = data_types_utils.get_metadata_value(
             error_msg_value) if error_msg_value else ''
-        error_msg_value = textwrap.shorten(error_msg_value, width=512)
         error_msg += f'error: {error_msg_value}; '
       result.append(
           task_lib.UpdateNodeStateTask(
@@ -450,6 +446,8 @@ class _Generator:
 
   def _abort_task(self, error_msg: str) -> task_lib.FinalizePipelineTask:
     """Returns task to abort pipeline execution."""
+    error_msg = (f'Aborting pipeline execution due to node execution failure; '
+                 f'error: {error_msg}')
     logging.error(error_msg)
     return task_lib.FinalizePipelineTask(
         pipeline_uid=self._pipeline_uid,
@@ -528,4 +526,9 @@ def _unrunnable_descendants(node_by_id: Mapping[str,
 
 def _status_dict_to_error_message(failed_nodes_dict: Dict[str,
                                                           status_lib.Status]):
-  return ', '.join(failed_nodes_dict.keys())
+  lines = []
+  for node_id, status in failed_nodes_dict.items():
+    lines.append(
+        f"Node '{node_id}' has status code {status.code} with message:")
+    lines.append('  ' + status.message)
+  return '\n'.join(lines)

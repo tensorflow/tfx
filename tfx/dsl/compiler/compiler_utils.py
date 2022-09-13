@@ -13,18 +13,17 @@
 # limitations under the License.
 """Utility functions for DSL Compiler."""
 
-from typing import cast, List, Optional, Sequence, Tuple, Type, Union, Dict, Any
+from typing import cast, List, Optional, Sequence, Tuple, Type, Union
 
 from tfx import types
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
-from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import channel as channel_types
+from tfx.types import channel as tfx_channel
 from tfx.types import channel_utils
 
 
@@ -191,8 +190,8 @@ def node_context_name(pipeline_context_name: str, node_id: str):
 
 def implicit_channel_key(channel: types.BaseChannel):
   """Key of a channel to the node that consumes the channel as input."""
-  if isinstance(channel, channel_types.PipelineInputChannel):
-    channel = cast(channel_types.PipelineInputChannel, channel)
+  if isinstance(channel, tfx_channel.PipelineInputChannel):
+    channel = cast(tfx_channel.PipelineInputChannel, channel)
     return f"_{channel.pipeline.id}.{channel.output_key}"
   elif isinstance(channel, types.Channel):
     if channel.producer_component_id and channel.output_key:
@@ -227,63 +226,3 @@ def validate_dynamic_exec_ph_operator(placeholder: ph.ArtifactPlaceholder):
       not isinstance(placeholder._operators[1], ph._ArtifactValueOperator)):  # pylint: disable=protected-access
     raise ValueError("dynamic exec property should be in form of "
                      "component.output[\'ouput_key\'].future()[0].value")
-
-
-class _PipelineEnd(base_node.BaseNode):
-  """Virtual pipeline end node.
-
-  While the pipeline end node does not exists nor accessible in DSL, having a
-  PipelineEnd class helps generalizing the compilation.
-
-  Supported features:
-    - Node ID (which is "{pipeline_id}_end")
-    - Node type name
-    - Node inputs, which comes from the inner pipeline (i.e. the raw value
-        used from Pipeline(outputs=raw_outputs))
-    - Node outputs, which is the wrapped OutputChannel of the pipeline node
-        that is visible from the outer pipeline
-
-  Not yet supported:
-    - upstream/downstream nodes relationship
-  """
-
-  def __init__(self, p: pipeline.Pipeline):
-    super().__init__()
-    self._pipeline = p
-    self.with_id(pipeline_end_node_id(p))
-
-  @property
-  def type(self) -> str:
-    return pipeline_end_node_type_name(self._pipeline)
-
-  @property
-  def inputs(self) -> Dict[str, channel_types.BaseChannel]:
-    return {
-        key: pipeline_output_channel.wrapped
-        for key, pipeline_output_channel in self._pipeline.outputs.items()
-    }
-
-  @property
-  def outputs(self) -> Dict[str, channel_types.BaseChannel]:
-    return self._pipeline.outputs
-
-  @property
-  def exec_properties(self) -> Dict[str, Any]:
-    return {}
-
-
-def create_pipeline_end_node(p: pipeline.Pipeline) -> _PipelineEnd:
-  """Create a dummy pipeline end node.
-
-  pipeline end node does not appear in pipeline DSL but only in the pipeline IR.
-  To generalizes compilation process for the pipeline end node, create a dummy
-  BaseNode whose inputs are set as pipeline.outputs.
-
-  Args:
-    p: A Pipeline instance whose pipeline end node will be created.
-
-  Returns:
-    a pipeline end node.
-  """
-  with dsl_context_registry.use_registry(p.dsl_context_registry):
-    return _PipelineEnd(p)

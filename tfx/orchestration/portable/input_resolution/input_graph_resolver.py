@@ -97,17 +97,11 @@ def _topologically_sorted_node_ids(
 
 def _unwrap_arg(
     arg: pipeline_pb2.InputGraph.OpNode.Arg, data: Mapping[str, _Data]):
-  """Unwraps InputGraph.OpNode.Arg."""
   kind = arg.WhichOneof('kind')
   if kind == 'node_id':
     return data[arg.node_id]
   elif kind == 'value':
-    if not arg.value.HasField('field_value'):
-      raise exceptions.UnimplementedError(
-          f'OpNode.Arg should be a static value but got {arg.value}')
-    return data_types_utils.get_parsed_value(
-        arg.value.field_value,
-        arg.value.schema if arg.value.HasField('schema') else None)
+    return data_types_utils.get_value(arg.value)
   else:
     raise exceptions.InternalError('OpNode.Arg not set.')
 

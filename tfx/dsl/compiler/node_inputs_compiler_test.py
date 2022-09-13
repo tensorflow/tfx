@@ -272,7 +272,6 @@ class NodeInputsCompilerTest(tf.test.TestCase):
         nodes {
           key: "op_1"
           value: {
-            output_data_type: ARTIFACT_LIST
             op_node {
               op_type: "testing.DummyArtifactList"
             }
@@ -314,7 +313,7 @@ class NodeInputsCompilerTest(tf.test.TestCase):
 
     self.assertLen(result.inputs, 1)
     cond_input_key = list(result.inputs)[0]
-    self.assertFalse(result.inputs[cond_input_key].hidden)
+    self.assertTrue(result.inputs[cond_input_key].hidden)
     self.assertEqual(result.inputs[cond_input_key].min_count, 1)
     self.assertLen(result.conditionals, 1)
     cond = list(result.conditionals.values())[0]

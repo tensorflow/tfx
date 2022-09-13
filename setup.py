@@ -200,7 +200,6 @@ tfx_extras_requires = {
     'tfjs': dependencies.make_extra_packages_tfjs(),
     'tf-ranking': dependencies.make_extra_packages_tf_ranking(),
     'tfdf': dependencies.make_extra_packages_tfdf(),
-    'tflite-support': dependencies.make_extra_packages_tflite_support(),
     'examples': dependencies.make_extra_packages_examples(),
     'test': dependencies.make_extra_packages_test(),
     'all': dependencies.make_extra_packages_all(),

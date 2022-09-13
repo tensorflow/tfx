@@ -31,7 +31,6 @@ from tfx.orchestration.kubeflow.v2 import vertex_client_utils
 from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
-
 _POLLING_INTERVAL_IN_SECONDS = 60
 _MAX_JOB_EXECUTION_TIME = datetime.timedelta(minutes=90)
 
@@ -119,28 +118,27 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
         components=pipeline_components,
         beam_pipeline_args=beam_pipeline_args)
 
-  def _run_pipeline(self, pipeline: tfx_pipeline.Pipeline,
+  def _run_pipeline(self,
+                    pipeline: tfx_pipeline.Pipeline,
                     exit_handler: Optional[base_node.BaseNode] = None) -> None:
     """Trigger the pipeline execution with a specific job ID."""
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
     self.addCleanup(self._delete_pipeline_output,
                     pipeline.pipeline_info.pipeline_name)
 
-    config = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
-        default_image=self.container_image)
-
-    executing_kubeflow_v2_dag_runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
-        config=config, output_filename='pipeline.json')
+    runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
+        config=kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
+            default_image=self.container_image),
+        output_filename='pipeline.json')
     if exit_handler:
-      executing_kubeflow_v2_dag_runner.set_exit_handler(exit_handler)
-
-    _ = executing_kubeflow_v2_dag_runner.run(pipeline, write_out=True)
+      runner.set_exit_handler(exit_handler)
+    runner.run(pipeline, write_out=True)
 
     job_id = pipeline.pipeline_info.pipeline_name
     job = pipeline_jobs.PipelineJob(
         template_path='pipeline.json',
         job_id=job_id,
-        display_name=pipeline.pipeline_info.pipeline_name)
+        display_name=job_id)
     job.submit()
 
     vertex_client_utils.poll_job_status(job_id, _MAX_JOB_EXECUTION_TIME,

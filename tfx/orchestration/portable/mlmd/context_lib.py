@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable libraries for context related APIs."""
-
 from typing import List
 
 from absl import logging
-from tfx.dsl.compiler import constants
+
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.proto.orchestration import pipeline_pb2
-
 import ml_metadata as mlmd
 from ml_metadata import errors as mlmd_errors
 from ml_metadata.proto import metadata_store_pb2
@@ -150,27 +148,11 @@ def prepare_contexts(
   Returns:
     A list of metadata_store_pb2.Context messages.
   """
-  result = []
-  pipeline_context = None
-  pipeline_run_context = None
-
-  for context_spec in node_contexts.contexts:
-    context = _register_context_if_not_exist(
-        metadata_handler=metadata_handler, context_spec=context_spec)
-    result.append(context)
-    if context_spec.type.name == constants.PIPELINE_CONTEXT_TYPE_NAME:
-      pipeline_context = context
-    elif context_spec.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME:
-      pipeline_run_context = context
-
-  # Sets pipeline context as parent for newly created pipeline run context
-  if pipeline_context and pipeline_run_context:
-    put_parent_context_if_not_exists(
-        metadata_handler,
-        parent_id=pipeline_context.id,
-        child_id=pipeline_run_context.id)
-
-  return result
+  return [
+      _register_context_if_not_exist(
+          metadata_handler=metadata_handler, context_spec=context_spec)
+      for context_spec in node_contexts.contexts
+  ]
 
 
 def put_parent_context_if_not_exists(metadata_handler: metadata.Metadata,

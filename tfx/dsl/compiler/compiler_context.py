@@ -80,9 +80,7 @@ class PipelineContext:
         if isinstance(chnl, channel_types.OutputChannel):
           self._add_implicit_dependency(chnl.producer_component_id, here.id)
 
-  def topologically_sorted(
-      self, tfx_nodes: Iterable[base_node.BaseNode],
-  ) -> List[base_node.BaseNode]:
+  def topologically_sorted(self, tfx_nodes: Iterable[base_node.BaseNode]):
     return sorted(tfx_nodes, key=lambda node: self._topological_order[node.id])
 
   @property

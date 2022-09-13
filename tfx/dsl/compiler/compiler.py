@@ -20,7 +20,6 @@ from tfx import types
 from tfx.dsl.compiler import compiler_context
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
-from tfx.dsl.compiler import node_inputs_compiler
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
@@ -50,9 +49,6 @@ from ml_metadata.proto import metadata_store_pb2
 class Compiler:
   """Compiles a TFX pipeline or a component into a uDSL IR proto."""
 
-  def __init__(self, use_input_v2: bool = False):
-    self._use_input_v2 = use_input_v2
-
   def _compile_pipeline_begin_node(
       self, p: pipeline.Pipeline,
       pipeline_ctx: compiler_context.PipelineContext,
@@ -68,35 +64,28 @@ class Compiler:
     # Inner pipeline's contexts.
     _set_node_context(node, pipeline_ctx)
 
-    if self._use_input_v2:
-      # Pipeline node inputs are stored as the inputs of the PipelineBegin node.
-      node_inputs_compiler.compile_node_inputs(
-          pipeline_ctx.parent_pipeline_context, p, node.inputs)
-    else:
-      # Step 3: Node inputs
-      # Composable pipeline's pipeline-level inputs are stored as the inputs of
-      # PipelineBegin node.
-      implicit_input_channels = {}
+    # Step 3: Node inputs
+    # Composable pipeline's pipeline-level inputs are stored as the inputs of
+    # PipelineBegin node.
+    implicit_input_channels = {}
 
-      # Step 3.1.1: Conditionals
-      # Composable pipeline's conditional config is stored in PipelineBegin
-      # node.
-      implicit_input_channels.update(
-          _set_conditionals(node, p, pipeline_ctx, p.inputs))
-      # Step 3.1.2: Add placeholder exec props to implicit_input_channels
-      implicit_input_channels.update(
-          _gather_implicit_inputs_from_exec_properties(p))
+    # Step 3.1.1: Conditionals
+    # Composable pipeline's conditional config is stored in PipelineBegin node.
+    implicit_input_channels.update(
+        _set_conditionals(node, p, pipeline_ctx, p.inputs))
+    # Step 3.1.2: Add placeholder exec props to implicit_input_channels
+    implicit_input_channels.update(
+        _gather_implicit_inputs_from_exec_properties(p))
 
-      # Step 3.2: Handle ForEach.
-      # Similarly, pipeline level's foreach config is stored in PipelineBegin
-      # node
-      _set_for_each(node, p, pipeline_ctx, p.inputs)
+    # Step 3.2: Handle ForEach.
+    # Similarly, pipeline level's foreach config is stored in PipelineBegin node
+    _set_for_each(node, p, pipeline_ctx, p.inputs)
 
-      # Step 3.3: Fill node inputs
-      # Note here we use parent_pipeline_context, because a PipelineBegin node
-      # uses output channels from its parent pipeline.
-      _set_node_inputs(node, p, pipeline_ctx.parent_pipeline_context, p.inputs,
-                       implicit_input_channels)
+    # Step 3.3: Fill node inputs
+    # Note here we use parent_pipeline_context, because a PipelineBegin node
+    # uses output channels from its parent pipeline.
+    _set_node_inputs(node, p, pipeline_ctx.parent_pipeline_context, p.inputs,
+                     implicit_input_channels)
 
     # Step 4: Node outputs
     # PipeineBegin node's outputs are the same as its inputs,
@@ -127,9 +116,10 @@ class Compiler:
     # PipelineBegin node's downstream nodes are the nodes in the inner pipeline
     # that consumes pipeline's input channels.
     result = set()
-    for inner_node in p.components:
-      if _begin_node_is_upstream(inner_node, p):
-        result.add(inner_node.id)
+    for pipeline_input in internal_inputs.values():
+      for inner_node in p.components:
+        if pipeline_input in inner_node.inputs.values():
+          result.add(inner_node.id)
     # Sort node ids so that compiler generates consistent results.
     node.downstream_nodes.extend(sorted(result))
 
@@ -150,18 +140,11 @@ class Compiler:
     # Inner pipeline's contexts.
     _set_node_context(node, pipeline_ctx)
 
-    if self._use_input_v2:
-      node_inputs_compiler.compile_node_inputs(
-          pipeline_ctx,
-          compiler_utils.create_pipeline_end_node(p),
-          node.inputs)
-    else:
-      # Step 3: Node inputs
-      # Conditionals and Foreach do not apply to PipelineEnd node.
-      # The inputs of a PipelineEnd node is the same as inner pipeline's
-      # outputs.
-      _set_node_inputs(node, p, pipeline_ctx,
-                       {k: c.wrapped for k, c in p.outputs.items()}, {})
+    # Step 3: Node inputs
+    # Conditionals and Foreach do not apply to PipelineEnd node.
+    # The inputs of a PipelineEnd node is the same as inner pipeline's outputs.
+    _set_node_inputs(node, p, pipeline_ctx,
+                     {k: c.wrapped for k, c in p.outputs.items()}, {})
 
     # Step 4: Node outputs
     # PipeineEnd node's outputs are the same as inner pipeline's outputs.
@@ -242,32 +225,30 @@ class Compiler:
 
     # Step 3: Node inputs
 
-    if self._use_input_v2:
-      node_inputs_compiler.compile_node_inputs(
-          pipeline_ctx, tfx_node, node.inputs)
-    else:
-      # Step 3.1: Generate implicit input channels
-      implicit_input_channels = {}
+    # Step 3.1: Generate implicit input channels
+    implicit_input_channels = {}
 
-      # Step 3.1.1: Conditionals
-      implicit_input_channels.update(
-          _set_conditionals(node, tfx_node, pipeline_ctx, tfx_node_inputs))
+    # Step 3.1.1: Conditionals
+    implicit_input_channels.update(
+        _set_conditionals(node, tfx_node, pipeline_ctx, tfx_node_inputs))
 
-      # Step 3.1.2: Add placeholder exec props to implicit_input_channels
-      implicit_input_channels.update(
-          _gather_implicit_inputs_from_exec_properties(tfx_node))
+    # Step 3.1.2: Add placeholder exec props to implicit_input_channels
+    implicit_input_channels.update(
+        _gather_implicit_inputs_from_exec_properties(tfx_node))
 
-      # Step 3.2: Handle ForEach.
-      _set_for_each(node, tfx_node, pipeline_ctx, tfx_node_inputs)
+    # Step 3.2: Handle ForEach.
+    _set_for_each(node, tfx_node, pipeline_ctx, tfx_node_inputs)
 
-      # Step 3.3: Fill node inputs
-      _set_node_inputs(node, tfx_node, pipeline_ctx, tfx_node_inputs,
-                       implicit_input_channels)
+    # Step 3.3: Fill node inputs
+    _set_node_inputs(node, tfx_node, pipeline_ctx, tfx_node_inputs,
+                     implicit_input_channels)
 
-      # TODO(b/170694459): Refactor special nodes as plugins.
-      # Step 3.4: Special treatment for Resolver node.
-      if compiler_utils.is_resolver(tfx_node):
-        assert pipeline_ctx.is_sync_mode
+    # TODO(b/170694459): Refactor special nodes as plugins.
+    # Step 3.4: Special treatment for Resolver node.
+    if compiler_utils.is_resolver(tfx_node):
+      assert pipeline_ctx.is_sync_mode
+      node.inputs.resolver_config.resolver_steps.extend(
+          _compile_resolver_node(tfx_node))
 
     # Step 4: Node outputs
     if (isinstance(tfx_node, base_component.BaseComponent) or
@@ -479,7 +460,7 @@ def _compile_trace_result(
 
 
 def _get_upstream_resolver_nodes(
-    tfx_node: base_node.BaseNode) -> List[resolver.Resolver]:
+    tfx_node: base_node.BaseNode) -> List[base_node.BaseNode]:
   """Gets all transitive upstream resolver nodes in topological order."""
   result = []
   visit_queue = list(tfx_node.upstream_nodes)
@@ -488,7 +469,7 @@ def _get_upstream_resolver_nodes(
     node = visit_queue.pop()
     if not compiler_utils.is_resolver(node):
       continue
-    result.append(cast(resolver.Resolver, node))
+    result.append(node)
     for upstream_node in node.upstream_nodes:
       if upstream_node.id not in seen:
         seen.add(node.id)
@@ -572,7 +553,6 @@ def _embed_upstream_resolver_nodes(
   # order.
   for resolver_node in reversed(
       pipeline_ctx.topologically_sorted(resolver_nodes)):
-    resolver_node = cast(resolver.Resolver, resolver_node)
     # TODO(b/169573945, lidanm): Properly handle channel.union() for resolver
     # node in async mode.
     resolver_channels = {
@@ -595,7 +575,7 @@ def _embed_upstream_resolver_nodes(
       del input_channels[input_key]
     # Step 2.
     # Rewire resolver node inputs to the tfx_node inputs.
-    for parent_input_key, chnl in resolver_node.raw_inputs.items():
+    for parent_input_key, chnl in resolver_node.inputs.items():
       if parent_input_key in input_channels:
         if chnl != input_channels[parent_input_key]:
           raise ValueError(
@@ -613,12 +593,14 @@ def _embed_upstream_resolver_nodes(
 
 
 def _compile_resolver_node(
-    resolver_node: resolver.Resolver,
+    resolver_node: base_node.BaseNode,
 ) -> List[pipeline_pb2.ResolverConfig.ResolverStep]:
   """Converts Resolver node to a corresponding ResolverSteps."""
+  assert compiler_utils.is_resolver(resolver_node)
+  resolver_node = cast(resolver.Resolver, resolver_node)
   result = _compile_trace_result(resolver_node.trace_result)
   for step in result:
-    step.input_keys.extend(resolver_node.raw_inputs.keys())
+    step.input_keys.extend(resolver_node.inputs.keys())
   return result
 
 
@@ -1128,10 +1110,12 @@ def _find_runtime_downstream_node_ids(context: compiler_context.PipelineContext,
 def _begin_node_is_upstream(node: base_node.BaseNode,
                             tfx_pipeline: pipeline.Pipeline) -> bool:
   """Checks if a node needs to declare the begin node as its upstream node."""
-  # Check if the PipelineInputChannel (whose dependent node ID is the pipeline
-  # ID) is either directly or indirectly used for the node inputs.
-  for input_chan in node.inputs.values():
-    if tfx_pipeline.id in channel_utils.get_dependent_node_ids(input_chan):
+  # Given a node N inside a pipeline P, N needs to declare P_begin as its
+  # upstream node iff N consumes at least a same input as P.
+  internal_inputs = tfx_pipeline._inputs.inputs if tfx_pipeline._inputs else {}  # pylint: disable=protected-access
+  pipeline_inputs_set = set(internal_inputs.values())
+  for node_input in node.inputs.values():
+    if node_input in pipeline_inputs_set:
       return True
   return False
 

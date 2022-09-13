@@ -1,8 +1,8 @@
 # proto-file: tfx/proto/orchestration/pipeline.proto
 # proto-message: Pipeline
 #
-# This file contains the IR of an example pipeline
-# tfx/dsl/compiler/testdata/iris_pipeline_sync.py
+# This file contains the IR of an adapted Iris example pipeline
+# tfx/examples/iris/iris_pipeline_beam.py
 
 pipeline_info {
   id: "iris"
@@ -229,6 +229,8 @@ nodes {
         resolver_steps {
           class_path: "tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy.LatestBlessedModelStrategy"
           config_json: "{}"
+          input_keys: "model"
+          input_keys: "model_blessing"
         }
       }
     }

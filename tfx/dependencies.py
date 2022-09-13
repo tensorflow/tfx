@@ -54,9 +54,9 @@ def make_pipeline_sdk_required_install_packages():
       'absl-py>=0.9,<2.0.0',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=1.10.0,<1.11.0',
+          default='>=1.9.0,<1.10.0',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=1.11.0.dev',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
@@ -80,12 +80,12 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.40,<3',
       'attrs>=19.3.0,<22',
       'click>=7,<8',
-      # TODO(b/245393802): Remove pinned version when pip can find depenencies
+      # TODO(b/238946565): Remove pinned version when pip can find depenencies
       # without this. `google-api-core` is needed for many google cloud
-      # packages. `google-api-core==1.33.0` requires
-      # `protobuf<4.0.0dev,>=3.20.1` while `tensorboard` requires
-      # `protobuf<3.20`.
-      'google-api-core<1.33',
+      # packages. `google-cloud-recommendations-ai==0.2.0` is a dependency of
+      # apache-beam[gcp] and it requires 'google-api-core<2' which cause a lot
+      # of backtracking.
+      'google-api-core<2',
       'google-cloud-aiplatform>=1.6.2,<2',
       'google-cloud-bigquery>=2.26.0,<3',
       'grpcio>=1.28.1,<2',
@@ -103,22 +103,22 @@ def make_required_install_packages():
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
-          default='>=1.10.0,<1.11.0',
-          nightly='>=1.11.0.dev',
+          default='>=1.9.0,<1.10.0',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'
       ),
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.41.0,<0.42.0',
-          nightly='>=0.42.0.dev',
+          default='>=0.40.0,<0.41',
+          nightly='>=0.41.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=1.10.1,<1.11.0',
-          nightly='>=1.11.0.dev',
+          default='>=1.9.0,<1.10.0',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
-          default='>=1.10.1,<1.11.0',
-          nightly='>=1.11.0.dev',
+          default='>=1.9.0,<1.10.0',
+          nightly='>=1.10.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
   ]
 
@@ -166,21 +166,13 @@ def make_extra_packages_tfjs():
   ]
 
 
-def make_extra_packages_tflite_support():
-  # Required for tfx/examples/cifar10
-  return [
-      'flatbuffers>=1.12,<3',
-      'tflite-support>=0.4.2,<0.4.3',
-  ]
-
-
 def make_extra_packages_tf_ranking():
   # Packages needed for tf-ranking which is used in tfx/examples/ranking.
   return [
       'tensorflow-ranking>=0.5,<0.6',
       'struct2tensor' + select_constraint(
-          default='>=0.41,<0.42',
-          nightly='>=0.42.0.dev',
+          default='>=0.40,<0.41',
+          nightly='>=0.41.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
   ]
 
@@ -206,6 +198,9 @@ def make_extra_packages_examples():
       'websocket-client>=0.57,<1',
       # Required for bert examples in tfx/examples/bert
       'tensorflow-text>=1.15.1,<3',
+      # Required for tfx/examples/cifar10
+      'flatbuffers>=1.12,<3',
+      'tflite-support>=0.4.2,<0.4.3',
       # Required for tfx/examples/penguin/experimental
       # LINT.IfChange
       'scikit-learn>=0.23,<0.24',
@@ -227,7 +222,6 @@ def make_extra_packages_all():
   return [
       *make_extra_packages_test(),
       *make_extra_packages_tfjs(),
-      *make_extra_packages_tflite_support(),
       *make_extra_packages_tf_ranking(),
       *make_extra_packages_tfdf(),
       *make_extra_packages_examples(),

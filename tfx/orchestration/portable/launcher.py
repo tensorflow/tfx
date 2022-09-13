@@ -261,11 +261,7 @@ class Launcher:
         resolved_inputs = inputs_utils.resolve_input_artifacts(
             pipeline_node=self._pipeline_node,
             metadata_handler=m)
-        logging.info('[%s] Resolved inputs: %s',
-                     self._pipeline_node.node_info.id, resolved_inputs)
       except exceptions.InputResolutionError as e:
-        logging.exception('[%s] Input resolution error: %s',
-                          self._pipeline_node.node_info.id, e)
         execution = self._register_or_reuse_execution(
             metadata_handler=m,
             contexts=contexts,

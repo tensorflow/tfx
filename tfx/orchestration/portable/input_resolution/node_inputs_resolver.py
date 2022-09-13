@@ -356,7 +356,7 @@ def _resolve_mixed_inputs(
 def _filter_conditionals(
     artifact_maps: List[typing_utils.ArtifactMultiDict],
     conditionals: Mapping[str, pipeline_pb2.NodeInputs.Conditional],
-) -> List[typing_utils.ArtifactMultiDict]:
+) -> List[typing_utils.ArtifactMultiMap]:
   """Filter artifact maps by conditionals."""
   result = []
   for artifact_map in artifact_maps:
