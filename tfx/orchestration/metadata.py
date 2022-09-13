@@ -862,7 +862,8 @@ class Metadata:
     for event in self.store.get_events_by_execution_ids(
         candidate_execution_ids):
       candidate_execution_to_events[event.execution_id].append(event)
-    for execution_id, events in candidate_execution_to_events.items():
+
+    for events in candidate_execution_to_events.values():
       # Creates the {key -> artifact id set} for the candidate execution.
       current_input_ids = collections.defaultdict(set)
       for event in events:
@@ -871,27 +872,37 @@ class Metadata:
       # If all inputs match, tries to get the outputs of the execution and uses
       # as the cached outputs of the current execution.
       if current_input_ids == input_ids:
-        cached_outputs = self._get_outputs_of_execution(
-            execution_id=execution_id, events=events)
+        cached_outputs = self._get_outputs_of_events(events)
         if cached_outputs is not None:
           return cached_outputs
 
     return None
 
-  def _get_outputs_of_execution(
-      self, execution_id: int, events: List[metadata_store_pb2.Event]
-  ) -> Optional[Dict[str, List[Artifact]]]:
+  def get_outputs_of_execution(
+      self, execution_id: int) -> Optional[Dict[str, List[Artifact]]]:
     """Fetches outputs produced by a historical execution.
 
     Args:
       execution_id: the id of the execution that produced the outputs.
-      events: events related to the execution id.
 
     Returns:
       A dict of key -> List[Artifact] as the result
     """
+    events = self.store.get_events_by_execution_ids([execution_id])
+    return self._get_outputs_of_events(events)
 
-    absl.logging.debug('Execution %s matches all inputs' % execution_id)
+  def _get_outputs_of_events(
+      self, events: List[metadata_store_pb2.Event]
+  ) -> Optional[Dict[str, List[Artifact]]]:
+    """Fetches outputs produced by a list of events.
+
+    Args:
+      events: events related to the execution id.
+
+    Returns:
+      A dictionary mapping execution ID to a list of artifacts produced in that
+      execution.
+    """
     result = collections.defaultdict(list)
 
     output_events = [
