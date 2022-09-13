@@ -159,7 +159,7 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
   # execution side-effects in local test.
   RAN_COMPONENTS = []
   # List of beam env vars from placeholders
-  BEAM_ARG_VALUES = None
+  BEAM_ARG_VALUES = {}
 
   def setUp(self):
     super().setUp()
@@ -213,13 +213,15 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         metadata_connection_config=sqlite_metadata_connection_config(
             metadata_path),
         components=[dummy_beam_component],
-        beam_pipeline_args=['--runner=DirectRunner',
-                            '--direct_running_mode=' + ph.Placeholder(
-                                placeholder_type=placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE,
-                                key=direct_running_mode_env_var_name),
-                            ph.Placeholder(placeholder_type=placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE,
-                                           key=num_workers_env_var_name)
-                            ],
+        beam_pipeline_args=
+        ['--runner=DirectRunner',
+         '--direct_running_mode=' + ph.Placeholder(
+             placeholder_type=placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE,
+             key=direct_running_mode_env_var_name),
+         ph.Placeholder(
+             placeholder_type=placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE,
+             key=num_workers_env_var_name)
+         ],
     )
 
   def testSimplePipelineRun(self):

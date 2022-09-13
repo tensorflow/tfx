@@ -50,7 +50,7 @@ class BeamExecutorOperatorTest(test_case_utils.TfxTest):
       python_executor_spec: {
           class_path: "tfx.orchestration.portable.beam_executor_operator_test.ValidateBeamPipelineArgsExecutor"
       }
-      beam_pipeline_args_placeholder {
+      beam_pipeline_args_placeholders {
         value {
           string_value: "--runner=DirectRunner"
         }

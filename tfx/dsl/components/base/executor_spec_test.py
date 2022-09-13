@@ -61,7 +61,7 @@ class ExecutorSpecTest(tf.test.TestCase):
             class_path: "__main__._DummyExecutor"
             extra_flags: "a"
         }
-        beam_pipeline_args_placeholder {
+        beam_pipeline_args_placeholders {
           value {
             string_value: "b"
           }

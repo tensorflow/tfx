@@ -34,7 +34,7 @@ message BeamExecutableSpec {
   // which supports strings as well as placeholders.
   repeated string beam_pipeline_args = 2;
   // Args for Apache Beam pipeline with support for placeholders.
-  repeated PlaceholderExpression beam_pipeline_args_placeholder = 3;
+  repeated PlaceholderExpression beam_pipeline_args_placeholders = 3;
 }
 
 // Specification for Container based executables.
