@@ -1612,7 +1612,7 @@ deployment_config {
           }
           beam_pipeline_args_placeholder {
              value {
-               string_value: "--my_testing_beam_pipeline_args=bar"
+               string_value: "--my_testing_beam_pipeline_args=foo"
              }
           }
         }
@@ -1627,7 +1627,7 @@ deployment_config {
           }
           beam_pipeline_args_placeholder {
              value {
-               string_value: "--my_testing_beam_pipeline_args=bar"
+               string_value: "--my_testing_beam_pipeline_args=foo"
              }
           }
         }
@@ -1666,7 +1666,7 @@ deployment_config {
           }
           beam_pipeline_args_placeholder {
              value {
-               string_value: "--my_testing_beam_pipeline_args=bar"
+               string_value: "--my_testing_beam_pipeline_args=foo"
              }
           }
         }
@@ -1689,7 +1689,7 @@ deployment_config {
           }
           beam_pipeline_args_placeholder {
              value {
-               string_value: "--my_testing_beam_pipeline_args=bar"
+               string_value: "--my_testing_beam_pipeline_args=foo"
              }
           }
         }
