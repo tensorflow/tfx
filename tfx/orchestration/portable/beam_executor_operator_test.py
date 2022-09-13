@@ -69,7 +69,7 @@ class BeamExecutorOperatorTest(test_case_utils.TfxTest):
             execution_output_uri=executor_output_uri,
             pipeline_node=pipeline_node,
             pipeline_info=pipeline_info,
-            pipeline_run_id=99))
+            pipeline_run_id="99"))
     self.assertProtoPartiallyEquals(
         """
           output_artifacts {
