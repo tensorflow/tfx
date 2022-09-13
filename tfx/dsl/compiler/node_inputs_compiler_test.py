@@ -272,7 +272,6 @@ class NodeInputsCompilerTest(tf.test.TestCase):
         nodes {
           key: "op_1"
           value: {
-            output_data_type: ARTIFACT_LIST
             op_node {
               op_type: "testing.DummyArtifactList"
             }

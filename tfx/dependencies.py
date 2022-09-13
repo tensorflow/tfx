@@ -166,14 +166,6 @@ def make_extra_packages_tfjs():
   ]
 
 
-def make_extra_packages_tflite_support():
-  # Required for tfx/examples/cifar10
-  return [
-      'flatbuffers>=1.12,<3',
-      'tflite-support>=0.4.2,<0.4.3',
-  ]
-
-
 def make_extra_packages_tf_ranking():
   # Packages needed for tf-ranking which is used in tfx/examples/ranking.
   return [
@@ -206,6 +198,9 @@ def make_extra_packages_examples():
       'websocket-client>=0.57,<1',
       # Required for bert examples in tfx/examples/bert
       'tensorflow-text>=1.15.1,<3',
+      # Required for tfx/examples/cifar10
+      'flatbuffers>=1.12,<3',
+      'tflite-support>=0.4.2,<0.4.3',
       # Required for tfx/examples/penguin/experimental
       # LINT.IfChange
       'scikit-learn>=0.23,<0.24',
@@ -227,7 +222,6 @@ def make_extra_packages_all():
   return [
       *make_extra_packages_test(),
       *make_extra_packages_tfjs(),
-      *make_extra_packages_tflite_support(),
       *make_extra_packages_tf_ranking(),
       *make_extra_packages_tfdf(),
       *make_extra_packages_examples(),
