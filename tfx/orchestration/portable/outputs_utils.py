@@ -99,6 +99,7 @@ def remove_stateful_working_dir(stateful_working_dir: str) -> None:
 def _attach_artifact_properties(spec: pipeline_pb2.OutputSpec.ArtifactSpec,
                                 artifact: types.Artifact):
   """Attaches properties of an artifact using ArtifactSpec."""
+  artifact.mlmd_artifact.type = spec.type.name
   for key, value in spec.additional_properties.items():
     if not value.HasField('field_value'):
       raise RuntimeError('Property value is not a field_value for %s' % key)
