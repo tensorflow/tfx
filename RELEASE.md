@@ -13,6 +13,9 @@
 
 ## Bug Fixes and Other Changes
 
+*   Moved `tflite-support` related dependencies from `[examples]` to a separate
+    `[tflite-support]` extra.
+
 ## Dependency Updates
 
 | Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
