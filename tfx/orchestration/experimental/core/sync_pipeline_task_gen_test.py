@@ -499,13 +499,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(pstate.NodeState.FAILED, update_node_state_task.state)
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
     self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
-    if fail_fast:
-      self.assertRegex(finalize_task.status.message, 'service job failed')
-    else:
-      self.assertRegex(
-          finalize_task.status.message,
-          '(?m:node execution failure.*node failures.*\n.*Node'
-          " 'my_example_gen'.*\n.*pipeline_id='my_pipeline')")
+    self.assertRegex(finalize_task.status.message, 'my_example_gen')
 
   def test_node_success(self):
     """Tests task generation when a node execution succeeds."""
@@ -589,7 +583,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
                           ['foobar error'])
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
     self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
-    self.assertRegexMatch(finalize_task.status.message, ['foobar error'])
+    self.assertRegexMatch(finalize_task.status.message, ['my_statistics_gen'])
 
   @parameterized.parameters(False, True)
   def test_task_generation_when_node_stopped(self, stop_stats_gen):
