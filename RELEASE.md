@@ -38,11 +38,19 @@
 
 ## Breaking Changes
 
+*   N/A
+
 ### For Pipeline Authors
+
+*   N/A
 
 ### For Component Authors
 
+*   N/A
+
 ## Deprecations
+
+*   N/A
 
 ## Bug Fixes and Other Changes
 
@@ -53,7 +61,9 @@
     provided during pipeline definition time, then it must have resolved inputs
     during run time.
 *   Allow latest `apache-airflow` 2.x versions.
-
+*   Output artifacts from multiple invocations of the same component are given
+    unique names, avoiding duplication errors, especially in the
+    InteractiveContext.
 ## Dependency Updates
 
 | Package Name | Version Constraints | Previously (in `v1.9.0`) | Comments |
@@ -62,8 +72,16 @@
 | `apache-beam[gcp]` | `>=2.40,<3` | `>=2.38,<3` | Synced release train |
 | `attrs` | `>=19.3.0,<22` | `>=19.3.0,<21` | Allow more recent versions |
 | `pyarrow` | `>=6,<7` | `>=1,<6` | Synced release train |
+| `ml-metadata` | `~=1.10.0` | `~=1.9.0` | Synced release train |
+| `struct2tensor` | `~=0.41.0` | `~=0.40.0` | Synced release train |
+| `tensorflow-data-validation` | `~=1.10.0` | `~=1.9.0` | Synced release train |
+| `tensorflow-model-analysis` | `~=0.41.0` | `~=0.40.0` | Synced release train |
+| `tensorflow-transform` | `~=1.10.1` | `~=1.9.0` | Synced release train |
+| `tfx-bsl` | `~=1.10.1` | `~=1.9.0` | Synced release train |
 
 ## Documentation Updates
+
+*   N/A
 
 # Version 1.9.0
 
