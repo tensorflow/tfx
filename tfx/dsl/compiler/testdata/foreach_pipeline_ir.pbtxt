@@ -357,7 +357,6 @@ nodes {
         resolver_steps {
           class_path: "tfx.dsl.input_resolution.strategies.latest_artifact_strategy.LatestArtifactStrategy"
           config_json: "{}"
-          input_keys: "statistics"
         }
       }
     }

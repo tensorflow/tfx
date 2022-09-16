@@ -399,11 +399,9 @@ class CompilerResolverTest(TestCase):
     # Check steps[0]
     self.assertEndsWith(resolver_steps[0].class_path, '.Foo')
     self.assertEqual(json.loads(resolver_steps[0].config_json), {'foo': 1})
-    self.assertEqual(resolver_steps[0].input_keys, ['x'])
     # Check steps[1]
     self.assertEndsWith(resolver_steps[1].class_path, '.Bar')
     self.assertEqual(json.loads(resolver_steps[1].config_json), {'bar': 'z'})
-    self.assertEqual(resolver_steps[1].input_keys, ['x'])
 
 if __name__ == '__main__':
   tf.test.main()

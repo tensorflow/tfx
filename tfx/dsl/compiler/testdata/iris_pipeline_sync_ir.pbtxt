@@ -229,8 +229,6 @@ nodes {
         resolver_steps {
           class_path: "tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy.LatestBlessedModelStrategy"
           config_json: "{}"
-          input_keys: "model"
-          input_keys: "model_blessing"
         }
       }
     }

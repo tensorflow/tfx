@@ -116,10 +116,9 @@ class Compiler:
     # PipelineBegin node's downstream nodes are the nodes in the inner pipeline
     # that consumes pipeline's input channels.
     result = set()
-    for pipeline_input in internal_inputs.values():
-      for inner_node in p.components:
-        if pipeline_input in inner_node.inputs.values():
-          result.add(inner_node.id)
+    for inner_node in p.components:
+      if _begin_node_is_upstream(inner_node, p):
+        result.add(inner_node.id)
     # Sort node ids so that compiler generates consistent results.
     node.downstream_nodes.extend(sorted(result))
 
@@ -247,8 +246,6 @@ class Compiler:
     # Step 3.4: Special treatment for Resolver node.
     if compiler_utils.is_resolver(tfx_node):
       assert pipeline_ctx.is_sync_mode
-      node.inputs.resolver_config.resolver_steps.extend(
-          _compile_resolver_node(tfx_node))
 
     # Step 4: Node outputs
     if (isinstance(tfx_node, base_component.BaseComponent) or
@@ -460,7 +457,7 @@ def _compile_trace_result(
 
 
 def _get_upstream_resolver_nodes(
-    tfx_node: base_node.BaseNode) -> List[base_node.BaseNode]:
+    tfx_node: base_node.BaseNode) -> List[resolver.Resolver]:
   """Gets all transitive upstream resolver nodes in topological order."""
   result = []
   visit_queue = list(tfx_node.upstream_nodes)
@@ -469,7 +466,7 @@ def _get_upstream_resolver_nodes(
     node = visit_queue.pop()
     if not compiler_utils.is_resolver(node):
       continue
-    result.append(node)
+    result.append(cast(resolver.Resolver, node))
     for upstream_node in node.upstream_nodes:
       if upstream_node.id not in seen:
         seen.add(node.id)
@@ -553,6 +550,7 @@ def _embed_upstream_resolver_nodes(
   # order.
   for resolver_node in reversed(
       pipeline_ctx.topologically_sorted(resolver_nodes)):
+    resolver_node = cast(resolver.Resolver, resolver_node)
     # TODO(b/169573945, lidanm): Properly handle channel.union() for resolver
     # node in async mode.
     resolver_channels = {
@@ -575,7 +573,7 @@ def _embed_upstream_resolver_nodes(
       del input_channels[input_key]
     # Step 2.
     # Rewire resolver node inputs to the tfx_node inputs.
-    for parent_input_key, chnl in resolver_node.inputs.items():
+    for parent_input_key, chnl in resolver_node.raw_inputs.items():
       if parent_input_key in input_channels:
         if chnl != input_channels[parent_input_key]:
           raise ValueError(
@@ -593,14 +591,12 @@ def _embed_upstream_resolver_nodes(
 
 
 def _compile_resolver_node(
-    resolver_node: base_node.BaseNode,
+    resolver_node: resolver.Resolver,
 ) -> List[pipeline_pb2.ResolverConfig.ResolverStep]:
   """Converts Resolver node to a corresponding ResolverSteps."""
-  assert compiler_utils.is_resolver(resolver_node)
-  resolver_node = cast(resolver.Resolver, resolver_node)
   result = _compile_trace_result(resolver_node.trace_result)
   for step in result:
-    step.input_keys.extend(resolver_node.inputs.keys())
+    step.input_keys.extend(resolver_node.raw_inputs.keys())
   return result
 
 
@@ -1110,12 +1106,10 @@ def _find_runtime_downstream_node_ids(context: compiler_context.PipelineContext,
 def _begin_node_is_upstream(node: base_node.BaseNode,
                             tfx_pipeline: pipeline.Pipeline) -> bool:
   """Checks if a node needs to declare the begin node as its upstream node."""
-  # Given a node N inside a pipeline P, N needs to declare P_begin as its
-  # upstream node iff N consumes at least a same input as P.
-  internal_inputs = tfx_pipeline._inputs.inputs if tfx_pipeline._inputs else {}  # pylint: disable=protected-access
-  pipeline_inputs_set = set(internal_inputs.values())
-  for node_input in node.inputs.values():
-    if node_input in pipeline_inputs_set:
+  # Check if the PipelineInputChannel (whose dependent node ID is the pipeline
+  # ID) is either directly or indirectly used for the node inputs.
+  for input_chan in node.inputs.values():
+    if tfx_pipeline.id in channel_utils.get_dependent_node_ids(input_chan):
       return True
   return False
 

@@ -42,7 +42,6 @@ class ResolverTest(tf.test.TestCase):
                 'desired_num_of_artifacts': 5
             }
         })
-    self.assertEqual(rnode.inputs['channel_to_resolve'], channel_to_resolve)
     self.assertEqual(rnode.outputs['channel_to_resolve'].type_name,
                      channel_to_resolve.type_name)
 
@@ -62,7 +61,6 @@ class ResolverTest(tf.test.TestCase):
                 'desired_num_of_artifacts': 5
             }
         })
-    self.assertEqual(rnode.inputs['unioned_channel'], unioned_channel)
     self.assertEqual(rnode.outputs['unioned_channel'].type_name,
                      unioned_channel.type_name)
 
