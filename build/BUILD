@@ -27,6 +27,7 @@ sh_binary(
         "//tfx/orchestration/experimental/centralized_kubernetes_orchestrator/service/proto:service_pb2_grpc.py",
         "//tfx/orchestration/kubeflow/proto:kubeflow_pb2.py",
         "//tfx/proto:bulk_inferrer_pb2.py",
+        "//tfx/proto:distribution_validator_pb2.py",
         "//tfx/proto:evaluator_pb2.py",
         "//tfx/proto:example_diff_pb2.py",
         "//tfx/proto:example_gen_pb2.py",

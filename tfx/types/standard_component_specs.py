@@ -15,6 +15,7 @@
 
 from tensorflow_model_analysis import sdk as tfma
 from tfx.proto import bulk_inferrer_pb2
+from tfx.proto import distribution_validator_pb2
 from tfx.proto import evaluator_pb2
 from tfx.proto import example_diff_pb2
 from tfx.proto import example_gen_pb2
@@ -116,6 +117,9 @@ BASELINE_EXAMPLES_KEY = 'baseline_examples'
 EXAMPLE_DIFF_CONFIG_KEY = 'example_diff_config'
 EXAMPLE_DIFF_RESULT_KEY = 'example_diff_result'
 INCLUDE_SPLIT_PAIRS_KEY = 'include_split_pairs'
+# Key for distribution_validator
+BASELINE_STATISTICS_KEY = 'baseline_statistics'
+DISTRIBUTION_VALIDATOR_CONFIG_KEY = 'distribution_validator_config'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -500,5 +504,27 @@ class ExampleDiffSpec(ComponentSpec):
   OUTPUTS = {
       EXAMPLE_DIFF_RESULT_KEY:
           ChannelParameter(type=standard_artifacts.ExamplesDiff),
+  }
+  TYPE_ANNOTATION = Process
+
+
+class DistributionValidatorSpec(ComponentSpec):
+  """DistributionValidator component spec."""
+  PARAMETERS = {
+      INCLUDE_SPLIT_PAIRS_KEY:
+          ExecutionParameter(type=str, optional=True),
+      DISTRIBUTION_VALIDATOR_CONFIG_KEY:
+          ExecutionParameter(
+              type=distribution_validator_pb2.DistributionValidatorConfig,
+              use_proto=True),
+  }
+  INPUTS = {
+      STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
+      BASELINE_STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
+  }
+  OUTPUTS = {
+      ANOMALIES_KEY: ChannelParameter(type=standard_artifacts.ExampleAnomalies),
   }
   TYPE_ANNOTATION = Process
