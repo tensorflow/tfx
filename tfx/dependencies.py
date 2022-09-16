@@ -1,4 +1,4 @@
-# Copyright 2019 Google LLC. All Rights Reserved.
+f# Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -166,6 +166,14 @@ def make_extra_packages_tfjs():
   ]
 
 
+def make_extra_packages_tflite_support():
+  # Required for tfx/examples/cifar10
+  return [
+      'flatbuffers>=1.12,<3',
+      'tflite-support>=0.4.2,<0.4.3',
+  ]
+
+
 def make_extra_packages_tf_ranking():
   # Packages needed for tf-ranking which is used in tfx/examples/ranking.
   return [
@@ -200,7 +208,7 @@ def make_extra_packages_examples():
       'tensorflow-text>=1.15.1,<3',
       # Required for tfx/examples/cifar10
       'flatbuffers>=1.12,<3',
-      'tflite-support>=0.1.0a1,<0.2.1',
+      'tflite-support>=0.4.2,<0.4.3',
       # Required for tfx/examples/penguin/experimental
       # LINT.IfChange
       'scikit-learn>=0.23,<0.24',
@@ -222,6 +230,7 @@ def make_extra_packages_all():
   return [
       *make_extra_packages_test(),
       *make_extra_packages_tfjs(),
+      *make_extra_packages_tflite_support(),
       *make_extra_packages_tf_ranking(),
       *make_extra_packages_tfdf(),
       *make_extra_packages_examples(),
