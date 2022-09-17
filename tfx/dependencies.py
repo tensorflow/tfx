@@ -80,12 +80,12 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.40,<3',
       'attrs>=19.3.0,<22',
       'click>=7,<8',
-      # TODO(b/245393802): Remove pinned version when pip can find depenencies
+      # TODO(b/238946565): Remove pinned version when pip can find depenencies
       # without this. `google-api-core` is needed for many google cloud
-      # packages. `google-api-core==1.33.0` requires
-      # `protobuf<4.0.0dev,>=3.20.1` while `tensorboard` requires
-      # `protobuf<3.20`.
-      'google-api-core<1.33',
+      # packages. `google-cloud-recommendations-ai==0.2.0` is a dependency of
+      # apache-beam[gcp] and it requires 'google-api-core<2' which cause a lot
+      # of backtracking.
+      'google-api-core<2',
       'google-cloud-aiplatform>=1.6.2,<2',
       'google-cloud-bigquery>=2.26.0,<3',
       'grpcio>=1.28.1,<2',

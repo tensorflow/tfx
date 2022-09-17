@@ -493,6 +493,8 @@ class ChannelParameter:
             other.allow_empty == self.allow_empty)
 
   def type_check(self, arg_name: str, value: channel.BaseChannel):  # pylint: disable=missing-function-docstring
+    if isinstance(value, channel.FakeInputChannel):
+      return
     if ((not isinstance(value, channel.BaseChannel)) or
         not (value.type is self.type or
              value.type.__name__ == self.type.__name__ or

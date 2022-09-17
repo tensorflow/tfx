@@ -339,3 +339,8 @@ class TunerResults(_TfxArtifact):
 # WIP and subject to change.
 class DataView(_TfxArtifact):
   TYPE_NAME = 'DataView'
+
+
+# A fake input artifact type used by TFX internally.
+class FakeInputArtifact(_TfxArtifact):
+  TYPE_NAME = 'FakeInputArtifact'

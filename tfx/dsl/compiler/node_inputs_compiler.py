@@ -30,7 +30,6 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
 from tfx.types import resolved_channel
 from tfx.types import value_artifact
-from tfx.utils import deprecation_utils
 from tfx.utils import name_utils
 from tfx.utils import typing_utils
 
@@ -113,8 +112,7 @@ def _compile_input_graph(
     if issubclass(op_node.op_type, resolver_op.ResolverOp):
       op_node_ir.op_type = op_node.op_type.canonical_name
     else:
-      op_node_ir.op_type = name_utils.get_full_name(
-          deprecation_utils.get_first_nondeprecated_class(op_node.op_type))
+      op_node_ir.op_type = name_utils.get_full_name(op_node.op_type)
     for n in op_node.args:
       op_node_ir.args.add().node_id = get_node_id(n)
     for k, v in op_node.kwargs.items():
@@ -307,7 +305,7 @@ def _compile_conditionals(
           tfx_node=tfx_node,
           input_key=context.get_node_context(tfx_node).get_input_key(channel),
           channel=channel,
-          hidden=False,
+          hidden=True,
           min_count=1,
           result=result)
     cond_id = context.get_conditional_id(cond_context)
@@ -362,9 +360,8 @@ def compile_node_inputs(
   """Compile NodeInputs from BaseNode input channels."""
   # Compile DSL node inputs.
   for input_key, channel in tfx_node.inputs.items():
-    if (compiler_utils.is_resolver(tfx_node) or
-        (isinstance(tfx_node, base_component.BaseComponent) and
-         tfx_node.spec.is_allow_empty_input(input_key))):
+    if (isinstance(tfx_node, base_component.BaseComponent) and
+        tfx_node.spec.is_allow_empty_input(input_key)):
       min_count = 0
     else:
       min_count = 1

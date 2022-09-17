@@ -23,6 +23,7 @@ from tfx.dsl.context_managers import dsl_context
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
+from tfx.types.standard_artifacts import FakeInputArtifact
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
@@ -512,3 +513,11 @@ class PipelineInputChannel(BaseChannel):
   @pipeline.setter
   def pipeline(self, pipeline: Any):
     self._pipeline = pipeline
+
+
+@doc_controls.do_not_generate_docs
+class FakeInputChannel(BaseChannel):
+  """Used when instantiating custom component for standalone run."""
+
+  def __init__(self):
+    super().__init__(type=FakeInputArtifact)
