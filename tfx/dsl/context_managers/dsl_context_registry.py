@@ -79,6 +79,16 @@ class DslContextRegistry:
     if self._finalized:
       raise RuntimeError('Cannot mutate DslContextRegistry after finalized.')
 
+  @contextlib.contextmanager
+  def temporary_mutable(self):
+    """Temporarily make the registry mutable."""
+    is_finalized = self._finalized
+    self._finalized = False
+    try:
+      yield
+    finally:
+      self._finalized = is_finalized
+
   def push_context(self, context: dsl_context.DslContext):
     """Pushes the context to the top of active context frames."""
     self._check_mutable()
@@ -201,12 +211,19 @@ def get() -> DslContextRegistry:
 
 
 @contextlib.contextmanager
+def use_registry(registry: DslContextRegistry) -> Iterator[DslContextRegistry]:
+  """Use the given registry as a global scope."""
+  old_registry = get()
+  _registry_holder.current = registry
+  try:
+    with registry.temporary_mutable():
+      yield registry
+  finally:
+    _registry_holder.current = old_registry
+
+
+@contextlib.contextmanager
 def new_registry() -> Iterator[DslContextRegistry]:
   """Push the new registry to the global scope."""
-  old_reg = get()
-  new_reg = DslContextRegistry()
-  _registry_holder.current = new_reg
-  try:
-    yield new_reg
-  finally:
-    _registry_holder.current = old_reg
+  with use_registry(DslContextRegistry()) as result:
+    yield result
