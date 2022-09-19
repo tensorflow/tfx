@@ -1,3 +1,9 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+#
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/optional_and_allow_empty_pipeline.py
+
 pipeline_info {
   id: "optional_and_allow_empty_pipeline"
 }

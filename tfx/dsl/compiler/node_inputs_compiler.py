@@ -30,6 +30,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
 from tfx.types import resolved_channel
 from tfx.types import value_artifact
+from tfx.utils import deprecation_utils
 from tfx.utils import name_utils
 from tfx.utils import typing_utils
 
@@ -112,7 +113,8 @@ def _compile_input_graph(
     if issubclass(op_node.op_type, resolver_op.ResolverOp):
       op_node_ir.op_type = op_node.op_type.canonical_name
     else:
-      op_node_ir.op_type = name_utils.get_full_name(op_node.op_type)
+      op_node_ir.op_type = name_utils.get_full_name(
+          deprecation_utils.get_first_nondeprecated_class(op_node.op_type))
     for n in op_node.args:
       op_node_ir.args.add().node_id = get_node_id(n)
     for k, v in op_node.kwargs.items():

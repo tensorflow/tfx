@@ -17,7 +17,7 @@ import os
 from tfx.components import CsvExampleGen
 from tfx.components import StatisticsGen
 from tfx.dsl.components.common import resolver
-from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.orchestration import pipeline
 
 
@@ -38,7 +38,7 @@ def create_test_pipeline():
       {'examples': producer_pipeline.outputs['examples']})
 
   example_gen_resolver = resolver.Resolver(
-      strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,
+      strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
       examples=pipeline_inputs['examples']).with_id(
           'Resolver.example_gen_resolver')
 

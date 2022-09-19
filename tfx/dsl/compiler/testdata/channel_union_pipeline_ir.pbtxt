@@ -1,5 +1,8 @@
 # proto-file: tfx/proto/orchestration/pipeline.proto
 # proto-message: Pipeline
+#
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/channel_union_pipeline.py
 
 pipeline_info {
   id: "channel_union_pipeline"
@@ -770,4 +773,3 @@ deployment_config {
     }
   }
 }
-
