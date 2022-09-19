@@ -1,9 +1,3 @@
-# proto-file: tfx/proto/orchestration/pipeline.proto
-# proto-message: Pipeline
-#
-# This file contains the IR of an example pipeline
-# tfx/dsl/compiler/testdata/pipeline_root_placeholder.py
-
 pipeline_info {
   id: "pipeline_root_placeholder"
 }
