@@ -85,13 +85,6 @@ RUN python -m pip install --upgrade pip
 COPY --from=wheel-builder /tfx/src/dist/*.whl /tfx/src/dist/
 WORKDIR /tfx/src
 
-# TODO(b/237994511): Deletes this workaround when we have regular 2.9.
-RUN if [ "${ADDITIONAL_PACKAGES}" = "tensorflow==2.9.0-rc2" \
-          -a -f "/opt/conda/lib/python3.7/site-packages/tensorflow_serving_api-2.9.0.dist-info/METADATA" ]; then \
-      sed -i "s/Requires-Dist: tensorflow (<3,>=2.9.0)/Requires-Dist: tensorflow (<3,>=2.9.0rc2)/" \
-         "/opt/conda/lib/python3.7/site-packages/tensorflow_serving_api-2.9.0.dist-info/METADATA"  ; \
-    fi
-
 RUN MLSDK_WHEEL=$(find dist -name "ml_pipelines_sdk-*.whl"); \
     TFX_WHEEL=$(find dist -name "tfx-*.whl"); \
     if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
