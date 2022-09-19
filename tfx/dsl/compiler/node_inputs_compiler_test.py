@@ -314,7 +314,7 @@ class NodeInputsCompilerTest(tf.test.TestCase):
 
     self.assertLen(result.inputs, 1)
     cond_input_key = list(result.inputs)[0]
-    self.assertTrue(result.inputs[cond_input_key].hidden)
+    self.assertFalse(result.inputs[cond_input_key].hidden)
     self.assertEqual(result.inputs[cond_input_key].min_count, 1)
     self.assertLen(result.conditionals, 1)
     cond = list(result.conditionals.values())[0]

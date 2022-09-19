@@ -123,7 +123,7 @@ class ResolverConfigResolverTest(test_case_utils.TfxTest):
     self.assertLen(result['examples'], 2)
     self.assertLen(result['model'], 1)
 
-  def testResolve_NoneRaisesSignal(self):
+  def testResolve_NoneRaisesInputResolutionError(self):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse("""
     resolver_steps {

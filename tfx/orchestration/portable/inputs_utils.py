@@ -14,6 +14,7 @@
 """Portable library for input artifacts resolution."""
 from typing import Dict, Sequence, Union
 
+from absl import logging
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import metadata
@@ -141,6 +142,9 @@ def resolve_input_artifacts(
     else:
       resolved = node_inputs_resolver.resolve(metadata_handler, node_inputs)
     return Trigger(resolved) if resolved else Skip()
+  except exceptions.SkipSignal as e:
+    logging.info('Input resolution skipped; reason = %s', e)
+    return Skip()
   except exceptions.InputResolutionError as e:
     error_msg = (
         f'Error while resolving inputs for {pipeline_node.node_info.id}: {e}')

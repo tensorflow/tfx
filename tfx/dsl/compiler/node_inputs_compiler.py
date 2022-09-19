@@ -305,7 +305,7 @@ def _compile_conditionals(
           tfx_node=tfx_node,
           input_key=context.get_node_context(tfx_node).get_input_key(channel),
           channel=channel,
-          hidden=True,
+          hidden=False,
           min_count=1,
           result=result)
     cond_id = context.get_conditional_id(cond_context)
@@ -360,8 +360,9 @@ def compile_node_inputs(
   """Compile NodeInputs from BaseNode input channels."""
   # Compile DSL node inputs.
   for input_key, channel in tfx_node.inputs.items():
-    if (isinstance(tfx_node, base_component.BaseComponent) and
-        tfx_node.spec.is_allow_empty_input(input_key)):
+    if (compiler_utils.is_resolver(tfx_node) or
+        (isinstance(tfx_node, base_component.BaseComponent) and
+         tfx_node.spec.is_allow_empty_input(input_key))):
       min_count = 0
     else:
       min_count = 1
