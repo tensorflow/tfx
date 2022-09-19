@@ -110,14 +110,14 @@ def mark_pipeline(
   _ensure_no_missing_nodes(pipeline, from_nodes, to_nodes)
   _ensure_topologically_sorted(pipeline)
 
-  node_map = _make_ordered_node_map(pipeline)
+  node_map = make_ordered_node_map(pipeline)
 
   from_node_ids = from_nodes or node_map.keys()
   to_node_ids = to_nodes or node_map.keys()
   skip_node_ids = skip_nodes or []
   skip_snapshot_node_ids = set(skip_snapshot_nodes or [])
-  nodes_to_run = _compute_nodes_to_run(node_map, from_node_ids, to_node_ids,
-                                       skip_node_ids)
+  nodes_to_run = compute_nodes_to_run(node_map, from_node_ids, to_node_ids,
+                                      skip_node_ids)
 
   nodes_required_to_reuse, nodes_to_reuse = _compute_nodes_to_reuse(
       node_map, nodes_to_run, skip_snapshot_node_ids)
@@ -298,7 +298,7 @@ def _ensure_topologically_sorted(pipeline: pipeline_pb2.Pipeline):
     visited.add(node.node_info.id)
 
 
-def _make_ordered_node_map(
+def make_ordered_node_map(
     pipeline: pipeline_pb2.Pipeline
 ) -> 'collections.OrderedDict[str, pipeline_pb2.PipelineNode]':
   """Prepares the Pipeline proto for DAG traversal.
@@ -346,7 +346,7 @@ def _traverse(node_map: Mapping[str, pipeline_pb2.PipelineNode],
   return result
 
 
-def _compute_nodes_to_run(
+def compute_nodes_to_run(
     node_map: 'collections.OrderedDict[str, pipeline_pb2.PipelineNode]',
     from_node_ids: Collection[str], to_node_ids: Collection[str],
     skip_node_ids: Collection[str]) -> Set[str]:
