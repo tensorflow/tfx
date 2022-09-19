@@ -31,51 +31,16 @@ pip install pendulum
 printf "${GREEN}Installing TFX${NORMAL}\n"
 pip install pyarrow==5.0.0
 pip install apache_beam==2.38.0
-pip install google-api-core==1.31.6
-pip install google-api-python-client==1.12.11
-pip install google-apitools==0.5.31
-pip install google-auth==1.35.0
-pip install google-auth-httplib2==0.1.0
-pip install google-auth-oauthlib==0.4.6
-pip install google-cloud-aiplatform==1.15.0
-pip install google-cloud-appengine-logging==1.1.2
-pip install google-cloud-audit-log==0.2.2
-pip install google-cloud-bigquery==2.34.4
-pip install google-cloud-bigquery-storage==2.13.2
-pip install google-cloud-bigtable==1.7.2
-pip install google-cloud-core==1.7.3
-pip install google-cloud-dataproc==4.0.3
-pip install google-cloud-datastore==1.15.5
-pip install google-cloud-dlp==3.7.1
-pip install google-cloud-firestore==2.5.3
-pip install google-cloud-kms==2.11.2
-pip install google-cloud-language==1.3.2
-pip install google-cloud-logging==3.1.2
-pip install google-cloud-monitoring==2.9.2
-pip install google-cloud-pubsub==2.13.0
-pip install google-cloud-pubsublite==1.4.2
-pip install google-cloud-recommendations-ai==0.2.0
-pip install google-cloud-resource-manager==1.5.1
-pip install google-cloud-scheduler==2.6.4
-pip install google-cloud-spanner==1.19.3
-pip install google-cloud-speech==2.14.1
-pip install google-cloud-storage==2.2.1
-pip install google-cloud-tasks==2.9.1
-pip install google-cloud-translate==3.7.4
-pip install google-cloud-videointelligence==1.16.3
-pip install google-cloud-vision==1.0.2
-pip install google-crc32c==1.1.2
-pip install google-pasta==0.2.0
-pip install tfx==1.8.0
-pip install numpy==1.20
+pip install tfx==1.9.1
+
 
 
 printf "${GREEN}Installing required packages for tft${NORMAL}\n"
-pip install tensorflow-text==2.8.1 tensorflow_decision_forests==0.2.4 struct2tensor==0.39.0
+pip install tensorflow-text==2.9.0 tensorflow-decision-forests==0.2.7 struct2tensor==0.40.0
 
 ipython kernel install --user --name=tfx
 
-jupyter labextension install tensorflow_model_analysis@0.39.0
+jupyter labextension install tensorflow_model_analysis@0.40.0
 jupyter lab build --dev-build=False --minimize=False
 
 # Airflow
@@ -83,7 +48,7 @@ jupyter lab build --dev-build=False --minimize=False
 printf "${GREEN}Preparing environment for Airflow${NORMAL}\n"
 export SLUGIFY_USES_TEXT_UNIDECODE=yes
 printf "${GREEN}Installing Airflow${NORMAL}\n"
-pip install -q apache-airflow==2.2.5 Flask Werkzeug
+pip install -q apache-airflow==2.3.4 Flask Werkzeug
 printf "${GREEN}Initializing Airflow database${NORMAL}\n"
 airflow db init
 
