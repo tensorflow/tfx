@@ -13,7 +13,7 @@
 # limitations under the License.
 """Portable libraries for context related APIs."""
 
-from typing import List
+from typing import List, Tuple
 
 from absl import logging
 from tfx.dsl.compiler import constants
@@ -69,7 +69,7 @@ def _generate_context_proto(
 def _register_context_if_not_exist(
     metadata_handler: metadata.Metadata,
     context_spec: pipeline_pb2.ContextSpec,
-) -> metadata_store_pb2.Context:
+) -> Tuple[metadata_store_pb2.Context, bool]:
   """Registers a context if not exist, otherwise returns the existing one.
 
   Args:
@@ -78,14 +78,15 @@ def _register_context_if_not_exist(
       of a context.
 
   Returns:
-    An MLMD context.
+    A tuple, in which the first element is an MLMD context, and the second
+      element is a boolean value indicates whether the context is new or not.
   """
   context_type_name = context_spec.type.name
   context_name = data_types_utils.get_value(context_spec.name)
   context = metadata_handler.store.get_context_by_type_and_name(
       type_name=context_type_name, context_name=context_name)
   if context is not None:
-    return context
+    return (context, False)
 
   logging.debug('Failed to get context of type %s and name %s',
                 context_type_name, context_name)
@@ -105,7 +106,7 @@ def _register_context_if_not_exist(
                                      context_name)
 
   logging.debug('ID of context %s is %s.', context_spec, context.id)
-  return context
+  return (context, True)
 
 
 def register_context_if_not_exists(
@@ -130,8 +131,9 @@ def register_context_if_not_exists(
       name=pipeline_pb2.Value(
           field_value=metadata_store_pb2.Value(string_value=context_name)),
       type=metadata_store_pb2.ContextType(name=context_type_name))
-  return _register_context_if_not_exist(
+  context, _ = _register_context_if_not_exist(
       metadata_handler=metadata_handler, context_spec=context_spec)
+  return context
 
 
 def prepare_contexts(
@@ -155,12 +157,13 @@ def prepare_contexts(
   pipeline_run_context = None
 
   for context_spec in node_contexts.contexts:
-    context = _register_context_if_not_exist(
+    context, is_new = _register_context_if_not_exist(
         metadata_handler=metadata_handler, context_spec=context_spec)
     result.append(context)
     if context_spec.type.name == constants.PIPELINE_CONTEXT_TYPE_NAME:
       pipeline_context = context
-    elif context_spec.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME:
+    elif (is_new and
+          context_spec.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME):
       pipeline_run_context = context
 
   # Sets pipeline context as parent for newly created pipeline run context
