@@ -40,9 +40,6 @@ pip install tensorflow-text==2.9.0 tensorflow-decision-forests==0.2.7 struct2ten
 
 ipython kernel install --user --name=tfx
 
-jupyter labextension install tensorflow_model_analysis@0.40.0
-jupyter lab build --dev-build=False --minimize=False
-
 # Airflow
 # Set this to avoid the GPL version; no functionality difference either way
 printf "${GREEN}Preparing environment for Airflow${NORMAL}\n"
