@@ -27,6 +27,7 @@ from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx.utils import test_case_utils
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
 
@@ -35,7 +36,7 @@ from google.protobuf import text_format
 FLAGS = flags.FLAGS
 
 
-class ExecutorTest(parameterized.TestCase):
+class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
   def get_temp_dir(self):
     return tempfile.mkdtemp()
@@ -43,9 +44,8 @@ class ExecutorTest(parameterized.TestCase):
   def assertEqualExceptBaseline(self, expected: anomalies_pb2.Anomalies,
                                 received: anomalies_pb2.Anomalies):
     """Assert that the Anomalies protos are equal without regard to baseline."""
-    expected.ClearField('baseline')
-    received.ClearField('baseline')
-    self.assertEqual(expected, received)
+    self.assertProtoPartiallyEquals(
+        expected, received, ignored_fields=['baseline'])
 
   @parameterized.named_parameters(
       {
