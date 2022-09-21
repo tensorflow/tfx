@@ -82,6 +82,9 @@ class Executor(base_executor.BaseExecutor):
         schema = tfdv.infer_schema(stats, infer_feature_shape)
       else:
         schema = tfdv.update_schema(schema, stats, infer_feature_shape)
+    if schema is None:
+      raise ValueError('No input splits for stats artifact: %s' %
+                       stats_artifact)
 
     output_uri = os.path.join(
         artifact_utils.get_single_uri(

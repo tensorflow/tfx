@@ -222,6 +222,40 @@ class ExecutorTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       stats_gen_executor.Do(input_dict, output_dict, exec_properties)
 
+  def testNoInputSplits(self):
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+    fileio.makedirs(output_data_dir)
+
+    # Create input dict.
+    examples = standard_artifacts.Examples()
+    examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
+    examples.split_names = artifact_utils.encode_split_names([])
+
+    input_dict = {
+        standard_component_specs.EXAMPLES_KEY: [examples],
+    }
+
+    exec_properties = {
+        standard_component_specs.EXCLUDE_SPLITS_KEY:
+            json_utils.dumps([])
+    }
+
+    # Create output dict.
+    stats = standard_artifacts.ExampleStatistics()
+    stats.uri = output_data_dir
+    output_dict = {
+        standard_component_specs.STATISTICS_KEY: [stats],
+    }
+
+    # Run executor.
+    stats_gen_executor = executor.Executor()
+    with self.assertRaises(ValueError):
+      stats_gen_executor.Do(input_dict, output_dict, exec_properties)
+
 
 if __name__ == '__main__':
   absltest.main()

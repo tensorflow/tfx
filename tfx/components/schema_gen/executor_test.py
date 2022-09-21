@@ -60,6 +60,39 @@ class ExecutorTest(tf.test.TestCase):
     schema_gen_executor.Do(input_dict, output_dict, exec_properties)
     self.assertNotEqual(0, len(fileio.listdir(schema_output.uri)))
 
+  def testNoInputSplits(self):
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+
+    statistics_artifact = standard_artifacts.ExampleStatistics()
+    statistics_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
+    statistics_artifact.split_names = artifact_utils.encode_split_names([])
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    schema_output = standard_artifacts.Schema()
+    schema_output.uri = os.path.join(output_data_dir, 'schema_output')
+
+    input_dict = {
+        standard_component_specs.STATISTICS_KEY: [statistics_artifact],
+    }
+
+    exec_properties = {
+        # List needs to be serialized before being passed into Do function.
+        standard_component_specs.EXCLUDE_SPLITS_KEY:
+            json_utils.dumps(['test'])
+    }
+
+    output_dict = {
+        standard_component_specs.SCHEMA_KEY: [schema_output],
+    }
+
+    schema_gen_executor = executor.Executor()
+    with self.assertRaises(ValueError):
+      schema_gen_executor.Do(input_dict, output_dict, exec_properties)
+
 
 if __name__ == '__main__':
   tf.test.main()

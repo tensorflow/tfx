@@ -15,6 +15,7 @@
 
 *   Moved `tflite-support` related dependencies from `[examples]` to a separate
     `[tflite-support]` extra.
+*   Statistics gen and Schema gen now crash on empty input examples and statistics respectively.
 
 ## Dependency Updates
 

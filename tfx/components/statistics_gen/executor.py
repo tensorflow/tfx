@@ -133,6 +133,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       uri = artifact_utils.get_split_uri([examples], split)
       split_and_tfxio.append(
           (split, tfxio_factory(io_utils.all_files_pattern(uri))))
+    if not split_and_tfxio:
+      raise ValueError('No splits for examples artifact: %s' % examples)
     with self._make_beam_pipeline() as p:
       for split, tfxio in split_and_tfxio:
         logging.info('Generating statistics for split %s.', split)
