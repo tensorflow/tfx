@@ -23,6 +23,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import garbage_collection_policy_pb2
+from tfx.utils import io_utils
 from tfx.utils import status as status_lib
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
@@ -194,3 +195,45 @@ def get_artifacts_to_garbage_collect_for_node(
         mlmd_handle, artifacts_by_output_key[output_key], events, policy)
     result.extend(artifacts_to_garbage_collect_for_output_key)
   return result
+
+
+def _update_artifacts_state(mlmd_handle: metadata.Metadata,
+                            artifacts: List[metadata_store_pb2.Artifact],
+                            state: metadata_store_pb2.Artifact.State) -> None:
+  """Update the state in artifacts and upsert them to ML Metadata."""
+  logging.info('Setting state of artifacts with IDs %s to state %s',
+               [a.id for a in artifacts],
+               metadata_store_pb2.Artifact.State.Name(state))
+  for artifact in artifacts:
+    artifact.state = state
+  mlmd_handle.store.put_artifacts(artifacts)
+
+
+def _try_delete_uri(
+    mlmd_handle: metadata.Metadata,
+    uri: str,
+) -> None:
+  """Delete the URI if all artifacts with the URI are marked for deletion."""
+  artifacts = mlmd_handle.store.get_artifacts_by_uri(uri)
+  if any([
+      a.state != metadata_store_pb2.Artifact.State.MARKED_FOR_DELETION
+      for a in artifacts
+  ]):
+    return
+  logging.info('Deleting URI %s', uri)
+  # TODO(b/469807517): Handle deletion properly if the URI is a file.
+  io_utils.delete_dir(uri)
+  _update_artifacts_state(mlmd_handle, artifacts,
+                          metadata_store_pb2.Artifact.State.DELETED)
+
+
+def garbage_collect_artifacts(
+    mlmd_handle: metadata.Metadata,
+    artifacts: List[metadata_store_pb2.Artifact]) -> None:
+  """Garbage collect the artifacts."""
+  # TODO(b/469807517): Do not garbage collect external artifacts.
+  _update_artifacts_state(mlmd_handle, artifacts,
+                          metadata_store_pb2.Artifact.State.MARKED_FOR_DELETION)
+  uris = set(a.uri for a in artifacts)
+  for uri in uris:
+    _try_delete_uri(mlmd_handle, uri)

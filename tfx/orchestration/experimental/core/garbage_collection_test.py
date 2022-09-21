@@ -17,6 +17,7 @@ import os
 import time
 from typing import Iterable, Union
 
+from absl.testing.absltest import mock
 import tensorflow as tf
 
 from tfx.orchestration import metadata
@@ -27,6 +28,7 @@ from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.proto.orchestration import garbage_collection_policy_pb2
 from tfx.types.artifact import Artifact
+from tfx.utils import io_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -130,6 +132,24 @@ class GarbageCollectionTest(test_utils.TfxTest):
         examples,
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
             self._metadata, example_gen_node_uid))
+
+  @mock.patch.object(io_utils, 'delete_dir')
+  def test_garbage_collect_artifacts(self, delete_dir):
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+    example_gen_execution = test_utils.fake_example_gen_run_with_handle(
+        self._metadata, self._example_gen, span=0, version=0)
+    example_gen_output = self._metadata.get_outputs_of_execution(
+        example_gen_execution.id)
+    examples = example_gen_output['examples']
+    examples_protos = self._metadata.store.get_artifacts_by_id(
+        [e.id for e in examples])
+    garbage_collection.garbage_collect_artifacts(self._metadata,
+                                                 examples_protos)
+    delete_dir.assert_called_once_with(examples[0].uri)
+    self.assertEqual(
+        metadata_store_pb2.Artifact.State.DELETED,
+        self._metadata.store.get_artifacts_by_id([e.id for e in examples
+                                                 ])[0].state)
 
 
 if __name__ == '__main__':
