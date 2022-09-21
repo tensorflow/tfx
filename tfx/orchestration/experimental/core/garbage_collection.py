@@ -237,3 +237,13 @@ def garbage_collect_artifacts(
   uris = set(a.uri for a in artifacts)
   for uri in uris:
     _try_delete_uri(mlmd_handle, uri)
+
+
+def run_garbage_collection_for_node(
+    mlmd_handle: metadata.Metadata,
+    node_uid: task_lib.NodeUid) -> None:
+  """Garbage collects output artifacts of the given node."""
+  logging.info('Garbage collection requested for node %s', node_uid)
+  # TODO(b/192718492): Actually run garbage collection
+  del mlmd_handle
+  logging.info('Skipping garbage collection because it is not implemented yet')

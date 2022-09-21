@@ -25,6 +25,7 @@ from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import garbage_collection
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state
 from tfx.orchestration.experimental.core import task as task_lib
@@ -322,6 +323,8 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
         contexts=task.contexts,
         output_artifacts=task.output_artifacts,
         executor_output=executor_output)
+    garbage_collection.run_garbage_collection_for_node(
+        mlmd_handle, task.node_uid)
   elif isinstance(result.output, ts.ImporterNodeOutput):
     output_artifacts = result.output.output_artifacts
     # TODO(b/182316162): Unify publisher handing so that post-execution artifact
