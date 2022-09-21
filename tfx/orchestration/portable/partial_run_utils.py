@@ -540,16 +540,28 @@ class _ArtifactRecycler:
     self._new_run_id = new_run_id
     self._pipeline_run_type_id = self._mlmd.store.get_context_type(
         constants.PIPELINE_RUN_CONTEXT_TYPE_NAME).id
+
     # Query and store all pipeline run contexts. This has multiple advantages:
     # - No need to worry about other pipeline runs that may be taking place
     #   concurrently and changing MLMD state.
     # - Fewer MLMD queries.
-    # TODO(b/196981304): Ensure there are no pipeline runs from other pipelines.
-    self._pipeline_run_contexts = {
-        run_ctx.name: run_ctx
-        for run_ctx in self._mlmd.store.get_contexts_by_type(
-            constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
-    }
+    child_contexts = self._mlmd.store.get_children_contexts_by_context(
+        self._pipeline_context.id)
+    if child_contexts:
+      self._pipeline_run_contexts = {
+          ctx.name: ctx
+          for ctx in child_contexts
+          if ctx.type_id == self._pipeline_run_type_id
+      }
+    else:
+      # The parent-child relationship between pipeline and pipeline run contexts
+      # is set up after the partial run feature is available to users. For
+      # existing pipelines, we need to fall back to the previous logic.
+      self._pipeline_run_contexts = {
+          run_ctx.name: run_ctx
+          for run_ctx in self._mlmd.store.get_contexts_by_type(
+              constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
+      }
 
   def _get_pipeline_context(self) -> metadata_store_pb2.Context:
     result = self._mlmd.store.get_context_by_type_and_name(

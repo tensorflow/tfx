@@ -672,20 +672,23 @@ class PartialRunTest(absltest.TestCase):
     self.result_node_id = Result.__name__
 
   def make_pipeline(
-      self, components,
-      run_id: Optional[str] = None) -> pipeline_pb2.Pipeline:
+      self,
+      components,
+      run_id: Optional[str] = None,
+      pipeline_name: Optional[str] = None) -> pipeline_pb2.Pipeline:
     """Make compiled pipeline from components.
 
     Args:
       components: List of components.
-      run_id: Optional.If provided, will be used to substitute the
+      run_id: Optional. If provided, will be used to substitute the
         pipeline_run_id RuntimeParameter.
+      pipeline_name: Optional. If provided, will use it as pipeline name.
 
     Returns:
       The compiled Pipeline IR.
     """
     pipeline = pipeline_lib.Pipeline(
-        pipeline_name=self.pipeline_name,
+        pipeline_name=pipeline_name if pipeline_name else self.pipeline_name,
         pipeline_root=self.pipeline_root,
         metadata_connection_config=self.metadata_config,
         components=components,
@@ -713,6 +716,38 @@ class PartialRunTest(absltest.TestCase):
         result_artifact = input_resolution_result[0]['result'][0]
         result_artifact.read()
         self.assertEqual(result_artifact.value, exp_result)
+
+  def testArtifactRecyler_MultiplePipelines(self):
+    """Tests that ArtifactRecyler works with multiple pipelines."""
+    load = Load(start_num=1)
+    add_num = AddNum(to_add=1, num=load.outputs['num'])
+    result = Result(result=add_num.outputs['added_num'])
+
+    # Creates the first pipeline and runs it twice.
+    pipeline_pb_run_1 = self.make_pipeline(
+        components=[load, add_num, result], run_id='test_pipeline_run_1')
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_1)
+    pipeline_pb_run_2 = self.make_pipeline(
+        components=[load, add_num, result], run_id='test_pipeline_run_2')
+    beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
+
+    # Creates the second pipeline and runs it once.
+    second_pipeline_pb_run_1 = self.make_pipeline(
+        components=[load, add_num, result],
+        run_id='second_pipeline_run_1',
+        pipeline_name='second_pipeline')
+    beam_dag_runner.BeamDagRunner().run_with_ir(second_pipeline_pb_run_1)
+
+    with metadata.Metadata(self.metadata_config) as m:
+      artifact_recyler = partial_run_utils._ArtifactRecycler(
+          m, pipeline_name='test_pipeline', new_run_id='')
+      self.assertEqual('test_pipeline_run_2',
+                       artifact_recyler.get_latest_pipeline_run_id())
+
+      artifact_recyler = partial_run_utils._ArtifactRecycler(
+          m, pipeline_name='second_pipeline', new_run_id='')
+      self.assertEqual('second_pipeline_run_1',
+                       artifact_recyler.get_latest_pipeline_run_id())
 
   def testSnapshot_removeFirstNode(self):
     """Tests that partial run with the first node removed works."""
