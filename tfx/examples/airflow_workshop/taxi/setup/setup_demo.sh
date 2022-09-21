@@ -22,9 +22,6 @@ NORMAL=$(tput sgr0)
 
 printf "${GREEN}Installing TFX workshop${NORMAL}\n\n"
 
-printf "${GREEN}Refreshing setuptools to avoid _NamespacePath issues${NORMAL}\n"
-pip uninstall setuptools -y && pip install setuptools
-
 printf "${GREEN}Installing pendulum to avoid problem with tzlocal${NORMAL}\n"
 pip install pendulum
 
@@ -37,8 +34,6 @@ pip install tfx==1.9.1
 
 printf "${GREEN}Installing required packages for tft${NORMAL}\n"
 pip install tensorflow-text==2.9.0 tensorflow-decision-forests==0.2.7 struct2tensor==0.40.0
-
-ipython kernel install --user --name=tfx
 
 # Airflow
 # Set this to avoid the GPL version; no functionality difference either way
