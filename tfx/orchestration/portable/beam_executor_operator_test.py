@@ -78,7 +78,6 @@ class BeamExecutorOperatorTest(test_case_utils.TfxTest):
                     string_value: "MyPipeline.MyBeamNode.my_model"
                   }
                 }
-                name: "MyPipeline.MyBeamNode.my_model"
               }
             }
           }""", executor_output)
