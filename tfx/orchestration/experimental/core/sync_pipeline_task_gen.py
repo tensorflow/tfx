@@ -241,7 +241,8 @@ class _Generator:
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid, state=pstate.NodeState.COMPLETE))
-      elif service_status == service_jobs.ServiceStatus.RUNNING:
+      elif (service_status == service_jobs.ServiceStatus.RUNNING and
+            node_state.state != pstate.NodeState.RUNNING):
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid, state=pstate.NodeState.RUNNING))

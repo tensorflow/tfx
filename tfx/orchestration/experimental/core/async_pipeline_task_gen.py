@@ -131,7 +131,7 @@ class _Generator:
                   state=pstate.NodeState.FAILED,
                   status=status_lib.Status(
                       code=status_lib.Code.ABORTED, message=error_msg)))
-        else:
+        elif node_state.state != pstate.NodeState.RUNNING:
           result.append(
               task_lib.UpdateNodeStateTask(
                   node_uid=node_uid, state=pstate.NodeState.RUNNING))
