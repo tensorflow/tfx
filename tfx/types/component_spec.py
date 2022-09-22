@@ -216,6 +216,10 @@ class ComponentSpec(json_utils.Jsonable):
         continue
       arg.type_check(arg_name, value)
 
+    if unparsed_args:
+      raise ValueError(
+          f'Unknown arguments {unparsed_args} to {self.__class__}.')
+
     # Populate the appropriate dictionary for each parameter type.
     for arg_name, arg in self.PARAMETERS.items():
       if arg.optional and arg_name not in raw_args:

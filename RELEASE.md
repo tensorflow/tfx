@@ -8,6 +8,7 @@
 ### For Pipeline Authors
 
 ### For Component Authors
+*   ComponentSpec will raise a ValueError if any unknown arguments are passed.
 
 ## Deprecations
 

@@ -255,6 +255,16 @@ class ComponentSpecTest(tf.test.TestCase):
     # Okay since y is optional.
     SimpleComponentSpec(x=10, z=channel.Channel(type=_Z))
 
+  def testComponentSpec_UnknownArguments(self):
+
+    class SimpleComponentSpec(ComponentSpec):
+      PARAMETERS = {}
+      INPUTS = {}
+      OUTPUTS = {}
+
+    with self.assertRaisesRegex(ValueError, 'Unknown arguments'):
+      SimpleComponentSpec(x=10, y=2)
+
   def testOptionalInputs(self):
 
     class SpecWithOptionalInput(ComponentSpec):
