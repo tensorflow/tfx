@@ -17,7 +17,6 @@ from typing import Dict, Type, Union
 
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
-from tfx.dsl.input_resolution.ops import exclude_spans_op
 from tfx.dsl.input_resolution.ops import latest_create_time_op
 from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import latest_version_op
@@ -50,7 +49,6 @@ def _register_op(cls: _ResolverOpType) -> None:
   _OPS_BY_NAME[cls.canonical_name] = cls
 
 # go/keep-sorted start
-ExcludeSpans = exclude_spans_op.ExcludeSpans
 LatestCreateTime = latest_create_time_op.LatestCreateTime
 LatestSpan = latest_span_op.LatestSpan
 LatestVersion = latest_version_op.LatestVersion
@@ -61,7 +59,6 @@ TempLatestSpan = temp_latest_span_op.TempLatestSpan
 Unnest = unnest_op.Unnest
 # go/keep-sorted end
 # go/keep-sorted start
-_register_op(ExcludeSpans)
 _register_op(LatestCreateTime)
 _register_op(LatestSpan)
 _register_op(LatestVersion)

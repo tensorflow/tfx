@@ -160,62 +160,36 @@ def initiate_pipeline_start(
 
 
 @_to_status_not_ok_error
-def stop_pipelines(mlmd_handle: metadata.Metadata,
-                   pipeline_uids: List[task_lib.PipelineUid],
-                   timeout_secs: Optional[float] = None) -> None:
-  """Stops multiple pipelines.
+def stop_pipeline(mlmd_handle: metadata.Metadata,
+                  pipeline_uid: task_lib.PipelineUid,
+                  timeout_secs: Optional[float] = None) -> None:
+  """Stops a pipeline.
 
-  Initiates pipeline stop operations and waits for the pipeline executions to be
+  Initiates a pipeline stop operation and waits for the pipeline execution to be
   gracefully stopped in the orchestration loop.
 
   Args:
     mlmd_handle: A handle to the MLMD db.
-    pipeline_uids: UIDs of the pipeline to be stopped.
-    timeout_secs: Amount of time in seconds total to wait for all pipelines to
-      stop. If `None`, waits indefinitely.
+    pipeline_uid: Uid of the pipeline to be stopped.
+    timeout_secs: Amount of time in seconds to wait for pipeline to stop. If
+      `None`, waits indefinitely.
 
   Raises:
     status_lib.StatusNotOkError: Failure to initiate pipeline stop.
   """
-  pipeline_ids_str = ', '.join([x.pipeline_id for x in pipeline_uids])
-  pipeline_states = []
-  logging.info('Received request to stop pipelines; pipeline ids: %s',
-               pipeline_ids_str)
+  logging.info('Received request to stop pipeline; pipeline uid: %s',
+               pipeline_uid)
   with _PIPELINE_OPS_LOCK:
-    for pipeline_uid in pipeline_uids:
-      with pstate.PipelineState.load(mlmd_handle,
-                                     pipeline_uid) as pipeline_state:
-        pipeline_state.initiate_stop(
-            status_lib.Status(
-                code=status_lib.Code.CANCELLED,
-                message='Cancellation requested by client.'))
-        pipeline_states.append(pipeline_state)
-  logging.info('Waiting for pipelines to be stopped; pipeline ids: %s',
-               pipeline_ids_str)
-
-  def _are_pipelines_inactivated() -> bool:
-    for pipeline_state in pipeline_states:
-      with pipeline_state:
-        if pipeline_state.is_active():
-          return False
-    return True
-
-  _wait_for_predicate(_are_pipelines_inactivated, 'inactivation of pipelines',
-                      _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS,
-                      timeout_secs)
-  logging.info('Done waiting for pipelines to be stopped; pipeline ids: %s',
-               pipeline_ids_str)
-
-
-@_to_status_not_ok_error
-def stop_pipeline(mlmd_handle: metadata.Metadata,
-                  pipeline_uid: task_lib.PipelineUid,
-                  timeout_secs: Optional[float] = None) -> None:
-  """Stops a a single pipeline. Convenience wrapper around stop_pipelines."""
-  return stop_pipelines(
-      mlmd_handle=mlmd_handle,
-      pipeline_uids=[pipeline_uid],
-      timeout_secs=timeout_secs)
+    with pstate.PipelineState.load(mlmd_handle, pipeline_uid) as pipeline_state:
+      pipeline_state.initiate_stop(
+          status_lib.Status(
+              code=status_lib.Code.CANCELLED,
+              message='Cancellation requested by client.'))
+  logging.info('Waiting for pipeline to be stopped; pipeline uid: %s',
+               pipeline_uid)
+  _wait_for_pipeline_inactivation(pipeline_state, timeout_secs=timeout_secs)
+  logging.info('Done waiting for pipeline to be stopped; pipeline uid: %s',
+               pipeline_uid)
 
 
 @_to_status_not_ok_error
@@ -392,6 +366,30 @@ def update_pipeline(mlmd_handle: metadata.Metadata,
                       timeout_secs)
   logging.info('Done waiting for pipeline update; pipeline uid: %s',
                pipeline_uid)
+
+
+def _wait_for_pipeline_inactivation(pipeline_state: pstate.PipelineState,
+                                    timeout_secs: Optional[float]) -> None:
+  """Waits for the pipeline to become inactive.
+
+  Args:
+    pipeline_state: Pipeline state of the pipeline whose inactivation is
+      awaited.
+    timeout_secs: Amount of time in seconds to wait. If `None`, waits
+      indefinitely.
+
+  Raises:
+    StatusNotOkError: With error code `DEADLINE_EXCEEDED` if pipeline is not
+      inactive after waiting approx. `timeout_secs`.
+  """
+
+  def _is_inactivated() -> bool:
+    with pipeline_state:
+      return not pipeline_state.is_active()
+
+  return _wait_for_predicate(
+      _is_inactivated, 'pipeline inactivation',
+      _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS, timeout_secs)
 
 
 def _wait_for_node_inactivation(pipeline_state: pstate.PipelineState,

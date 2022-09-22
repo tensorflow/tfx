@@ -601,8 +601,7 @@ class _ArtifactRecycler:
         pipeline_run_context = context_lib.register_context_if_not_exists(
             self._mlmd,
             context_type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
-            context_name=run_id,
-            parent_contexts=[self._pipeline_context])
+            context_name=run_id)
         self._pipeline_run_contexts[run_id] = pipeline_run_context
       else:
         raise LookupError(f'pipeline_run_id {run_id} not found in MLMD.')

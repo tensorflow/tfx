@@ -179,6 +179,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     artifact_1 = output_artifacts['output_1'][0]
     self.assertRegex(artifact_1.uri, '.*/test_node/output_1/1')
+    self.assertRegex(artifact_1.name, artifact_name_prefix + ':output_1:0')
     self.assertProtoEquals(
         """
         id: 1
@@ -197,7 +198,8 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         }
         """, artifact_1.artifact_type)
     self.assertLen(artifact_1.mlmd_artifact.properties, 3)
-    self.assertLen(artifact_1.mlmd_artifact.custom_properties, 3)
+    # `name` is already a custom property of the artifact and 3 will be added.
+    self.assertLen(artifact_1.mlmd_artifact.custom_properties, 4)
     self.assertEqual(artifact_1.int_prop, 42)
     self.assertEqual(artifact_1.float_prop, 0.5)
     self.assertEqual(artifact_1.string_prop, 'foo')
@@ -209,16 +211,19 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     artifact_2 = output_artifacts['output_2'][0]
     self.assertRegex(artifact_2.uri, '.*/test_node/output_2/1')
+    self.assertRegex(artifact_2.name, artifact_name_prefix + ':output_2:0')
     self.assertProtoEquals(
         """
         id: 2
         name: "test_type_2"
         """, artifact_2.artifact_type)
     self.assertEmpty(artifact_2.mlmd_artifact.properties)
-    self.assertEmpty(artifact_2.mlmd_artifact.custom_properties)
+    # `name` custom property is automatically generated.
+    self.assertLen(artifact_2.mlmd_artifact.custom_properties, 1)
 
     artifact_3 = output_artifacts['output_3'][0]
     self.assertRegex(artifact_3.uri, '.*/test_node/output_3/1/value')
+    self.assertRegex(artifact_3.name, artifact_name_prefix + ':output_3:0')
     self.assertProtoEquals("""
         id: 3
         name: "String"
@@ -226,6 +231,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     artifact_4 = output_artifacts['output_4'][0]
     self.assertRegex(artifact_4.uri, '.*/test_node/output_4/1/value')
+    self.assertRegex(artifact_4.name, artifact_name_prefix + ':output_4:0')
     self.assertProtoEquals("""
         id: 4
         name: "Integer_Metrics"

@@ -132,28 +132,6 @@ class ContextLibTest(test_case_utils.TfxTest):
           context,
           m.store.get_context_by_type_and_name('my_context_type', 'my_context'))
 
-  def testRegisterContextAndSetParentChildRelationship(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      parent_context = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
-          context_type_name='my_context_type',
-          context_name='parent_context')
-      context_1 = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
-          context_type_name='my_context_type',
-          context_name='context_1')
-      context_2 = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
-          context_type_name='my_context_type',
-          context_name='context_2',
-          parent_contexts=[parent_context])
-
-      context_1_parents = m.store.get_parent_contexts_by_context(context_1.id)
-      self.assertEqual([], context_1_parents)
-      context_2_parents = m.store.get_parent_contexts_by_context(context_2.id)
-      self.assertLen(context_2_parents, 1)
-      self.assertEqual(parent_context.id, context_2_parents[0].id)
-
   def testPutParentContextIfNotExists(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       parent_context = context_lib.register_context_if_not_exists(
