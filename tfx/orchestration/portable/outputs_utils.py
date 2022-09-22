@@ -149,18 +149,6 @@ class OutputsResolver:
       artifact.uri = os.path.join(self._node_dir, key, str(execution_id))
       if isinstance(artifact, ValueArtifact):
         artifact.uri = os.path.join(artifact.uri, _VALUE_ARTIFACT_FILE_NAME)
-      # artifact.name will contain the set of information to track its creation
-      # and is guaranteed to be idempotent across retires of a node.
-      artifact_name = f'{self._pipeline_info.id}'
-      if self._execution_mode == pipeline_pb2.Pipeline.SYNC:
-        artifact_name = f'{artifact_name}:{self._pipeline_run_id}'
-      # The index of this artifact, since we only has one artifact per output
-      # for now, it is always 0.
-      # TODO(b/162331170): Update the "0" to the actual index.
-      artifact_name = (
-          f'{artifact_name}:{self._pipeline_node.node_info.id}:{execution_id}:{key}:0'
-      )
-      artifact.name = artifact_name
       _attach_artifact_properties(output_spec.artifact_spec, artifact)
 
       logging.debug('Creating output artifact uri %s', artifact.uri)

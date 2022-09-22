@@ -439,20 +439,12 @@ class LauncherTest(test_case_utils.TfxTest):
           """
           id: 1
           custom_properties {
-            key: "name"
-            value {
-              string_value: ":test_run_%d:my_trainer:1:model:0"
-            }
-          }
-          custom_properties {
             key: "tfx_version"
             value {
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_trainer:1:model:0"
-          state: LIVE""" %
-          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
+          state: LIVE""",
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -493,20 +485,12 @@ class LauncherTest(test_case_utils.TfxTest):
           """
           id: 3
           custom_properties {
-            key: "name"
-            value {
-              string_value: ":test_run_%d:my_trainer:3:model:0"
-            }
-          }
-          custom_properties {
             key: "tfx_version"
             value {
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_trainer:3:model:0"
-          state: LIVE""" %
-          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
+          state: LIVE""",
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -622,20 +606,12 @@ class LauncherTest(test_case_utils.TfxTest):
           """
           id: 3
           custom_properties {
-            key: "name"
-            value {
-              string_value: ":test_run_%d:my_trainer:3:model:0"
-            }
-          }
-          custom_properties {
             key: "tfx_version"
             value {
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_trainer:3:model:0"
-          state: LIVE""" %
-          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
+          state: LIVE""",
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -670,20 +646,12 @@ class LauncherTest(test_case_utils.TfxTest):
           """
           id: 4
           custom_properties {
-            key: "name"
-            value {
-              string_value: ":test_run_%d:my_trainer:4:model:0"
-            }
-          }
-          custom_properties {
             key: "tfx_version"
             value {
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_trainer:4:model:0"
-          state: LIVE""" %
-          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
+          state: LIVE""",
           artifacts[1],
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -796,20 +764,12 @@ class LauncherTest(test_case_utils.TfxTest):
           """
           id: 3
           custom_properties {
-            key: "name"
-            value {
-              string_value: ":test_run_%d:my_trainer:3:model:0"
-            }
-          }
-          custom_properties {
             key: "tfx_version"
             value {
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_trainer:3:model:0"
-          state: LIVE""" %
-          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
+          state: LIVE""",
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -907,12 +867,6 @@ class LauncherTest(test_case_utils.TfxTest):
           """
           id: 1
           custom_properties {
-            key: "name"
-            value {
-              string_value: ":test_run_%d:my_example_gen:1:output_examples:0"
-            }
-          }
-          custom_properties {
             key: "span"
             value {
               int_value: 2
@@ -930,9 +884,7 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_example_gen:1:output_examples:0"
-          state: LIVE""" %
-          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
+          state: LIVE""",
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
@@ -963,12 +915,6 @@ class LauncherTest(test_case_utils.TfxTest):
           """
           id: 2
           custom_properties {
-            key: "name"
-            value {
-              string_value: ":test_run_%d:my_example_gen:2:output_examples:0"
-            }
-          }
-          custom_properties {
             key: "span"
             value {
               int_value: 2
@@ -986,9 +932,7 @@ class LauncherTest(test_case_utils.TfxTest):
               string_value: "0.123.4.dev"
             }
           }
-          name: ":test_run_%d:my_example_gen:2:output_examples:0"
-          state: LIVE""" %
-          (self._pipeline_run_id_counter, self._pipeline_run_id_counter),
+          state: LIVE""",
           artifact,
           ignored_fields=[
               'type_id', 'uri', 'create_time_since_epoch',
