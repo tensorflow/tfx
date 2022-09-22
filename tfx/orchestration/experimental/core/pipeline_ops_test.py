@@ -553,7 +553,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       with self.assertRaisesRegex(
           status_lib.StatusNotOkError,
-          'Timed out.*waiting for pipeline inactivation.'
+          'Timed out.*waiting for inactivation of pipelines.'
       ) as exception_context:
         pipeline_ops.stop_pipeline(
             m, task_lib.PipelineUid.from_pipeline(pipeline), timeout_secs=1.0)
