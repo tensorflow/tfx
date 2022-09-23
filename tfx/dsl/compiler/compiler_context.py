@@ -13,12 +13,14 @@
 # limitations under the License.
 """Module for compiler context classes definition."""
 
-import collections
+from __future__ import annotations
 
+import collections
 from typing import Optional, List, Set, Iterable, Dict
 
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.components.base import base_node
+from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.control_flow import for_each_internal
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution import resolver_op
@@ -40,15 +42,13 @@ class PipelineContext:
 
   def __init__(self,
                tfx_pipeline: pipeline.Pipeline,
-               parent_pipelines: Optional[List[pipeline.Pipeline]] = None,
-               parent_pipeline_context: Optional['PipelineContext'] = None):
+               parent: Optional[PipelineContext] = None):
     self.pipeline = tfx_pipeline
 
     self.pipeline_info = self.pipeline.pipeline_info
     self.execution_mode = compiler_utils.resolve_execution_mode(self.pipeline)
     self.dsl_context_registry = self.pipeline.dsl_context_registry
-    self.parent_pipelines = parent_pipelines or []
-    self.parent_pipeline_context = parent_pipeline_context
+    self.parent = parent or NullPipelineContext(child=self)
 
     # Stores channels available in the current pipeline scope.
     # Mapping from Channel object to compiled Channel proto.
@@ -68,6 +68,24 @@ class PipelineContext:
       self._pipeline_nodes_by_id[node.id] = node
       self._topological_order[node.id] = i
       self._collect_conditional_dependency(node)
+
+  @property
+  def is_root(self) -> bool:
+    return isinstance(self.parent, NullPipelineContext)
+
+  @property
+  def is_subpipeline(self) -> bool:
+    return self.parent and self.parent.pipeline is not None
+
+  @property
+  def parent_pipelines(self) -> List[pipeline.Pipeline]:
+    """Parent pipelines, in the order of outer -> inner."""
+    result = []
+    ctx = self.parent
+    while ctx and ctx.pipeline:
+      result.append(ctx.pipeline)
+      ctx = ctx.parent
+    return result[::-1]
 
   def _add_implicit_dependency(self, parent_id: str, child_id: str) -> None:
     self._implicit_upstream_nodes[child_id].add(parent_id)
@@ -111,7 +129,7 @@ class PipelineContext:
         for node_id in self._implicit_downstream_nodes[here.id]
     ]
 
-  def get_node_context(self, tfx_node: base_node.BaseNode) -> 'NodeContext':
+  def get_node_context(self, tfx_node: base_node.BaseNode) -> NodeContext:
     if tfx_node.id not in self._node_contexts:
       self._node_contexts[tfx_node.id] = NodeContext(tfx_node)
     return self._node_contexts[tfx_node.id]
@@ -121,6 +139,32 @@ class PipelineContext:
       cond_id = f'cond_{len(self._conditional_ids) + 1}'
       self._conditional_ids[cond_context] = cond_id
     return self._conditional_ids[cond_context]
+
+
+class NullPipelineContext(PipelineContext):
+  """PipelineContext without pipeline.
+
+  NullPipelineContext is the parent PipelineContext for the root level pipeline.
+
+  NullPipelineContext is used when compiling a pipeline begin node of the
+  root level pipeline, since pipeline begin node is compiled as if compiling a
+  pipeline as a node from the parent pipeline, which does not exist for the
+  root level pipeline.
+  """
+
+  def __init__(self, *, child: PipelineContext):
+    # pylint: disable=super-init-not-called
+    # Doesn't invoke super().__init__() as it is not a typical PipelineContext
+    # with a pipeline.
+    self.pipeline = None
+    self.pipeline_info = None
+    self.dsl_context_registry = dsl_context_registry.DslContextRegistry()
+    self.dsl_context_registry.put_node(child.pipeline)
+    self.parent = None
+    self.channels = {}
+
+    # Node ID -> NodeContext
+    self._node_contexts: Dict[str, NodeContext] = {}
 
 
 class NodeContext:

@@ -71,7 +71,7 @@ class Compiler:
     if self._use_input_v2:
       # Pipeline node inputs are stored as the inputs of the PipelineBegin node.
       node_inputs_compiler.compile_node_inputs(
-          pipeline_ctx.parent_pipeline_context, p, node.inputs)
+          pipeline_ctx.parent, p, node.inputs)
     else:
       # Step 3: Node inputs
       # Composable pipeline's pipeline-level inputs are stored as the inputs of
@@ -82,7 +82,7 @@ class Compiler:
       # Composable pipeline's conditional config is stored in PipelineBegin
       # node.
       implicit_input_channels.update(
-          _set_conditionals(node, p, pipeline_ctx, p.inputs))
+          _set_conditionals(node, p, pipeline_ctx.parent, p.inputs))
       # Step 3.1.2: Add placeholder exec props to implicit_input_channels
       implicit_input_channels.update(
           _gather_implicit_inputs_from_exec_properties(p))
@@ -90,12 +90,12 @@ class Compiler:
       # Step 3.2: Handle ForEach.
       # Similarly, pipeline level's foreach config is stored in PipelineBegin
       # node
-      _set_for_each(node, p, pipeline_ctx, p.inputs)
+      _set_for_each(node, p, pipeline_ctx.parent, p.inputs)
 
       # Step 3.3: Fill node inputs
-      # Note here we use parent_pipeline_context, because a PipelineBegin node
+      # Note here we use parent pipeline context, because a PipelineBegin node
       # uses output channels from its parent pipeline.
-      _set_node_inputs(node, p, pipeline_ctx.parent_pipeline_context, p.inputs,
+      _set_node_inputs(node, p, pipeline_ctx.parent, p.inputs,
                        implicit_input_channels)
 
     # Step 4: Node outputs
@@ -112,15 +112,13 @@ class Compiler:
     # PipelineBegin node's upstreams nodes are the inner pipeline's upstream
     # nodes, i.e., the producer nodes of inner pipeline's inputs.
     # Outmost pipeline's PipelineBegin node does not has upstream nodes.
-    if pipeline_ctx.parent_pipeline_context:
+    if pipeline_ctx.is_subpipeline:
       upstreams = set(
-          _find_runtime_upstream_node_ids(pipeline_ctx.parent_pipeline_context,
-                                          p))
-      if _begin_node_is_upstream(p,
-                                 pipeline_ctx.parent_pipeline_context.pipeline):
+          _find_runtime_upstream_node_ids(pipeline_ctx.parent, p))
+      if _begin_node_is_upstream(p, pipeline_ctx.parent.pipeline):
         upstreams.add(
             compiler_utils.pipeline_begin_node_id(
-                pipeline_ctx.parent_pipeline_context.pipeline))
+                pipeline_ctx.parent.pipeline))
       # Sort node ids so that compiler generates consistent results.
       node.upstream_nodes.extend(sorted(upstreams))
 
@@ -166,8 +164,8 @@ class Compiler:
     # Step 4: Node outputs
     # PipeineEnd node's outputs are the same as inner pipeline's outputs.
     _set_node_outputs(node, p.outputs)
-    if pipeline_ctx.parent_pipeline_context:
-      pipeline_ctx.parent_pipeline_context.channels.update(
+    if pipeline_ctx.is_subpipeline:
+      pipeline_ctx.parent.channels.update(
           _generate_input_spec_for_outputs(node, p.outputs))
 
     # PipelineEnd node does not have parameters.
@@ -185,14 +183,11 @@ class Compiler:
 
     # PipelineEnd node's downstream nodes are the inner pipeline's downstream
     # nodes, i.e., the consumer nodes of inner pipeline's outputs.
-    downstreams = set(
-        _find_runtime_downstream_node_ids(
-            pipeline_ctx.parent_pipeline_context, p))
-    if pipeline_ctx.parent_pipeline_context and _end_node_is_downstream(
-        p, pipeline_ctx.parent_pipeline_context.pipeline):
+    downstreams = set(_find_runtime_downstream_node_ids(pipeline_ctx.parent, p))
+    if pipeline_ctx.is_subpipeline and _end_node_is_downstream(
+        p, pipeline_ctx.parent.pipeline):
       downstreams.add(
-          compiler_utils.pipeline_end_node_id(
-              pipeline_ctx.parent_pipeline_context.pipeline))
+          compiler_utils.pipeline_end_node_id(pipeline_ctx.parent.pipeline))
     # Sort node ids so that compiler generates consistent results.
     node.downstream_nodes.extend(sorted(downstreams))
 
@@ -335,15 +330,12 @@ class Compiler:
   def compile(
       self,
       tfx_pipeline: pipeline.Pipeline,
-      parent_pipelines: Optional[List[pipeline.Pipeline]] = None,
       parent_pipeline_ctx: Optional[compiler_context.PipelineContext] = None,
   ) -> pipeline_pb2.Pipeline:
     """Compiles a tfx pipeline into uDSL proto.
 
     Args:
       tfx_pipeline: A TFX pipeline.
-      parent_pipelines: Optional all parent pipelines, with the order from outer
-        most parent pipeline to inner most parent pipeline.
       parent_pipeline_ctx: Optional PipelineContext that includes info for
         the immediate parent pipeline. This is mainly used by a pipeline begin
         node get info for artifacts from its parent pipeline.
@@ -353,13 +345,10 @@ class Compiler:
     """
     # Prepare pipeline compiler context.
     pipeline_ctx = compiler_context.PipelineContext(
-        tfx_pipeline, parent_pipelines, parent_pipeline_ctx)
-
-    if parent_pipelines is None:
-      parent_pipelines = []
+        tfx_pipeline, parent_pipeline_ctx)
 
     tfx_pipeline.finalize()
-    _validate_pipeline(tfx_pipeline, parent_pipelines)
+    _validate_pipeline(tfx_pipeline, pipeline_ctx.parent_pipelines)
 
     pipeline_pb = pipeline_pb2.Pipeline()
     pipeline_pb.pipeline_info.id = pipeline_ctx.pipeline_info.pipeline_name
@@ -376,7 +365,7 @@ class Compiler:
       if tfx_pipeline.pipeline_info.pipeline_root:
         pipeline_root_str = tfx_pipeline.pipeline_info.pipeline_root
       else:
-        for parent_pipeline in reversed(parent_pipelines):
+        for parent_pipeline in reversed(pipeline_ctx.parent_pipelines):
           if parent_pipeline.pipeline_info.pipeline_root:
             pipeline_root_str = parent_pipeline.pipeline_info.pipeline_root
             break
@@ -388,7 +377,7 @@ class Compiler:
       # TODO(kennethyang): Miragte all pipeline run ids to structural runtime
       # parameter. Currently only subpipelines use structural runtime
       # parameter for IR textproto compatibility.
-      if parent_pipelines:
+      if not pipeline_ctx.is_root:
         compiler_utils.set_structural_runtime_parameter_pb(
             pipeline_pb.runtime_spec.pipeline_run_id
             .structural_runtime_parameter, [
@@ -407,7 +396,7 @@ class Compiler:
 
     # Inner pipelines of a composable pipeline, or a outmost pipeline with
     # pipeline-level inputs have pipeline begin nodes.
-    if parent_pipelines or tfx_pipeline._inputs:  # pylint: disable=protected-access
+    if not pipeline_ctx.is_root or tfx_pipeline._inputs:  # pylint: disable=protected-access
       pipeline_begin_node_pb = self._compile_pipeline_begin_node(
           tfx_pipeline, pipeline_ctx)
       pipeline_or_node = pipeline_pb.PipelineOrNode()
@@ -421,8 +410,7 @@ class Compiler:
         continue
 
       if isinstance(node, pipeline.Pipeline):
-        pipeline_node_pb = self.compile(node, parent_pipelines + [tfx_pipeline],
-                                        pipeline_ctx)
+        pipeline_node_pb = self.compile(node, pipeline_ctx)
         pipeline_or_node = pipeline_pb.PipelineOrNode()
         pipeline_or_node.sub_pipeline.CopyFrom(pipeline_node_pb)
         pipeline_pb.nodes.append(pipeline_or_node)
@@ -435,7 +423,7 @@ class Compiler:
 
     # Inner pipelines of a composable pipeline, or a outmost pipeline with
     # pipeline-level outputs have pipeline end nodes.
-    if parent_pipelines or tfx_pipeline._outputs:  # pylint: disable=protected-access
+    if not pipeline_ctx.is_root or tfx_pipeline._outputs:  # pylint: disable=protected-access
       pipeline_end_node_pb = self._compile_pipeline_end_node(
           tfx_pipeline, pipeline_ctx)
       pipeline_or_node = pipeline_pb.PipelineOrNode()
@@ -683,7 +671,7 @@ def _set_node_context(node: pipeline_pb2.PipelineNode,
     # structural_runtime_parameter for subpipelines. After the subpipeline being
     # implemented, we will need to migrate normal pipelines to
     # structural_runtime_parameter as well for consistency. Similar for below.
-    if pipeline_ctx.parent_pipelines:
+    if pipeline_ctx.is_subpipeline:
       compiler_utils.set_structural_runtime_parameter_pb(
           pipeline_run_context_pb.name.structural_runtime_parameter, [
               f"{pipeline_ctx.pipeline_info.pipeline_context_name}_",
@@ -736,13 +724,8 @@ def _set_conditionals(
     tfx_node_inputs: Dict[str, types.Channel],
 ) -> Iterator[Tuple[str, types.Channel]]:
   """Compiles the conditionals for a pipeline node."""
-  if pipeline_ctx.parent_pipeline_context and isinstance(
-      tfx_node, pipeline.Pipeline):
-    predicates = conditional.get_predicates(
-        tfx_node, pipeline_ctx.parent_pipeline_context.dsl_context_registry)
-  else:
-    predicates = conditional.get_predicates(
-        tfx_node, pipeline_ctx.dsl_context_registry)
+  predicates = conditional.get_predicates(
+      tfx_node, pipeline_ctx.dsl_context_registry)
 
   if predicates:
     implicit_keys_map = {}
