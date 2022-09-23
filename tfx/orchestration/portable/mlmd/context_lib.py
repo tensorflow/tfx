@@ -13,7 +13,7 @@
 # limitations under the License.
 """Portable libraries for context related APIs."""
 
-from typing import List
+from typing import List, Optional
 
 from absl import logging
 from tfx.dsl.compiler import constants
@@ -69,6 +69,7 @@ def _generate_context_proto(
 def _register_context_if_not_exist(
     metadata_handler: metadata.Metadata,
     context_spec: pipeline_pb2.ContextSpec,
+    parent_contexts: Optional[List[metadata_store_pb2.Context]] = None,
 ) -> metadata_store_pb2.Context:
   """Registers a context if not exist, otherwise returns the existing one.
 
@@ -76,6 +77,8 @@ def _register_context_if_not_exist(
     metadata_handler: A handler to access MLMD store.
     context_spec: A pipeline_pb2.ContextSpec message that instructs registering
       of a context.
+    parent_contexts: Optional. If it is provided, will set the new context as
+      a child of the parent contexts.
 
   Returns:
     An MLMD context.
@@ -105,6 +108,11 @@ def _register_context_if_not_exist(
                                      context_name)
 
   logging.debug('ID of context %s is %s.', context_spec, context.id)
+
+  if parent_contexts:
+    for parent_context in parent_contexts:
+      put_parent_context_if_not_exists(
+          metadata_handler, parent_id=parent_context.id, child_id=context.id)
   return context
 
 
@@ -112,6 +120,7 @@ def register_context_if_not_exists(
     metadata_handler: metadata.Metadata,
     context_type_name: str,
     context_name: str,
+    parent_contexts: Optional[List[metadata_store_pb2.Context]] = None,
 ) -> metadata_store_pb2.Context:
   """Registers a context if not exist, otherwise returns the existing one.
 
@@ -122,6 +131,8 @@ def register_context_if_not_exists(
     metadata_handler: A handler to access MLMD store.
     context_type_name: The name of the context type.
     context_name: The name of the context.
+    parent_contexts: Optional. If it is provided, will set the new context as
+      a child of the parent contexts.
 
   Returns:
     An MLMD context.
@@ -131,7 +142,9 @@ def register_context_if_not_exists(
           field_value=metadata_store_pb2.Value(string_value=context_name)),
       type=metadata_store_pb2.ContextType(name=context_type_name))
   return _register_context_if_not_exist(
-      metadata_handler=metadata_handler, context_spec=context_spec)
+      metadata_handler=metadata_handler,
+      context_spec=context_spec,
+      parent_contexts=parent_contexts)
 
 
 def prepare_contexts(
@@ -151,24 +164,31 @@ def prepare_contexts(
     A list of metadata_store_pb2.Context messages.
   """
   result = []
-  pipeline_context = None
-  pipeline_run_context = None
+  pipeline_contexts = []
 
+  # Makes sure pipeline context exists.
   for context_spec in node_contexts.contexts:
-    context = _register_context_if_not_exist(
-        metadata_handler=metadata_handler, context_spec=context_spec)
-    result.append(context)
     if context_spec.type.name == constants.PIPELINE_CONTEXT_TYPE_NAME:
-      pipeline_context = context
-    elif context_spec.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME:
-      pipeline_run_context = context
+      pipeline_context = _register_context_if_not_exist(
+          metadata_handler=metadata_handler, context_spec=context_spec)
+      pipeline_contexts.append(pipeline_context)
+      result.append(pipeline_context)
 
-  # Sets pipeline context as parent for newly created pipeline run context
-  if pipeline_context and pipeline_run_context:
-    put_parent_context_if_not_exists(
-        metadata_handler,
-        parent_id=pipeline_context.id,
-        child_id=pipeline_run_context.id)
+  # Registers other contexts and also set parent-child relationship between
+  # pipeline context and pipeline run context.
+  for context_spec in node_contexts.contexts:
+    if context_spec.type.name == constants.PIPELINE_CONTEXT_TYPE_NAME:
+      continue
+
+    if context_spec.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME:
+      parent_contexts = pipeline_contexts
+    else:
+      parent_contexts = []
+    context = _register_context_if_not_exist(
+        metadata_handler=metadata_handler,
+        context_spec=context_spec,
+        parent_contexts=parent_contexts)
+    result.append(context)
 
   return result
 
