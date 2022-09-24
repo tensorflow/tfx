@@ -29,3 +29,16 @@ def latest_created(artifacts, n: int = 1):
     The n latest artifacts.
   """
   return ops.LatestCreateTime(artifacts, n=n)
+
+
+@resolver_function.resolver_function
+def latest_pipeline_run(artifacts):
+  """Returns the n latest createst artifacts, ties broken by artifact id.
+
+  Args:
+    artifacts: The artifacts to parse.
+
+  Returns:
+    The n latest artifacts.
+  """
+  return ops.LatestPipelineRun(artifacts)
