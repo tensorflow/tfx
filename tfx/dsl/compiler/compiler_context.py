@@ -162,6 +162,7 @@ class NullPipelineContext(PipelineContext):
     self.dsl_context_registry.put_node(child.pipeline)
     self.parent = None
     self.channels = {}
+    self._implicit_downstream_nodes = collections.defaultdict(set)
 
     # Node ID -> NodeContext
     self._node_contexts: Dict[str, NodeContext] = {}
