@@ -82,15 +82,20 @@ def _get_test_cases_params(
 ) -> List[Dict[str, Any]]:
   result = []
   for module in pipeline_modules:
-    testcase_name_segments = [module.__name__.rpartition(".")[-1]]
-    testcase_name = "_".join(testcase_name_segments)
-    golden_filename = f"{testcase_name}_ir.pbtxt"
-    result.append(dict(
-        testcase_name=testcase_name,
-        pipeline_module=module,
-        compiler_kwargs={},
-        golden_filename=golden_filename,
-    ))
+    for use_input_v2 in [True, False]:
+      testcase_name_segments = [module.__name__.rpartition(".")[-1]]
+      if use_input_v2:
+        testcase_name_segments.append("input_v2")
+      testcase_name = "_".join(testcase_name_segments)
+      golden_filename = f"{testcase_name}_ir.pbtxt"
+      result.append(dict(
+          testcase_name=testcase_name,
+          pipeline_module=module,
+          compiler_kwargs={
+              "use_input_v2": use_input_v2,
+          },
+          golden_filename=golden_filename,
+      ))
   return result
 
 
