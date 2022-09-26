@@ -39,7 +39,7 @@ class LatestCreateTimeOpTest(tf.test.TestCase):
     self.assertEqual(actual, [a3])
 
     actual = test_utils.run_resolver_op(ops.LatestCreateTime, [a1, a2, a3], n=2)
-    self.assertEqual(actual, [a3, a2])
+    self.assertEqual(actual, [a2, a3])
 
   def testLatestSpan_InvalidN(self):
     a1 = test_utils.DummyArtifact()

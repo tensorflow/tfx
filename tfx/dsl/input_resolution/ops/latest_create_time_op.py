@@ -38,7 +38,7 @@ class LatestCreateTime(
     if self.n < 1:
       raise ValueError(f'n must be > 0, but was set to {self.n}.')
 
+    # Sorts outputs by create time in ascending order.
     input_list.sort(  # pytype: disable=attribute-error
-        key=lambda a: (a.mlmd_artifact.create_time_since_epoch, a.id),
-        reverse=True)
-    return input_list[0:self.n]
+        key=lambda a: (a.mlmd_artifact.create_time_since_epoch, a.id))
+    return input_list[-self.n:]
