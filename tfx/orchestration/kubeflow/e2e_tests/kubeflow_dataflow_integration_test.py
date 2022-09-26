@@ -36,7 +36,7 @@ class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
     # Example artifacts for testing.
     self.raw_examples_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'csv_example_gen'),
+        source_uri=os.path.join(self._test_data_dir, 'csv_example_gen'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
         properties={
@@ -45,13 +45,13 @@ class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
     # Schema artifact for testing.
     self.schema_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'schema_gen'),
+        source_uri=os.path.join(self._test_data_dir, 'schema_gen'),
         artifact_type=standard_artifacts.Schema,
         reimport=True).with_id('schema')
 
     # Model artifact for testing.
     self.model_1_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'trainer', 'previous'),
+        source_uri=os.path.join(self._test_data_dir, 'trainer', 'previous'),
         artifact_type=standard_artifacts.Model,
         reimport=True).with_id('model_1')
 

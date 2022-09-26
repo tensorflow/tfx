@@ -38,6 +38,7 @@ from tfx_bsl.public import tfxio
 
 from tensorflow_cloud.core import machine_config
 from tensorflow_cloud.tuner import tuner as cloud_tuner
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 _FEATURE_KEYS = [
@@ -111,15 +112,14 @@ def _get_transform_features_signature(model, tf_transform_output):
 
 def _input_fn(file_pattern: List[str],
               data_accessor: tfx.components.DataAccessor,
-              tf_transform_output: tft.TFTransformOutput,
+              schema: schema_pb2.Schema,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
   Args:
     file_pattern: List of paths or patterns of input tfrecord files.
     data_accessor: DataAccessor for converting input to RecordBatch.
-    tf_transform_output: A `TFTransformOutput` object, containing statistics
-      and metadata from TFTransform component.
+    schema: Schema from TFTransform component.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch
 
@@ -131,7 +131,7 @@ def _input_fn(file_pattern: List[str],
       file_pattern,
       tfxio.TensorFlowDatasetOptions(
           batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
-      tf_transform_output.transformed_metadata.schema).repeat()
+      schema).repeat()
 
 
 # TFX Transform will call this function.
@@ -292,17 +292,18 @@ def run_fn(fn_args: tfx.components.FnArgs):
       - hyperparameters: An optional keras_tuner.HyperParameters config.
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
+  schema = tf_transform_output.transformed_metadata.schema
 
   train_dataset = _input_fn(
       fn_args.train_files,
       fn_args.data_accessor,
-      tf_transform_output,
+      schema,
       batch_size=_TRAIN_BATCH_SIZE)
 
   eval_dataset = _input_fn(
       fn_args.eval_files,
       fn_args.data_accessor,
-      tf_transform_output,
+      schema,
       batch_size=_EVAL_BATCH_SIZE)
 
   if fn_args.hyperparameters:

@@ -16,7 +16,7 @@
 import datetime
 import os
 import subprocess
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from absl import logging
 
@@ -30,7 +30,6 @@ from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 from tfx.orchestration.kubeflow.v2 import vertex_client_utils
 from tfx.utils import io_utils
 from tfx.utils import test_case_utils
-
 
 _POLLING_INTERVAL_IN_SECONDS = 60
 _MAX_JOB_EXECUTION_TIME = datetime.timedelta(minutes=90)
@@ -58,8 +57,8 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
   _BUCKET_NAME = os.environ.get('KFP_E2E_BUCKET_NAME')
 
   # The location of test user module file.
-  # It is retrieved from inside the container subject to testing.
-  # This location depends on install path of TFX in the docker image.
+  # - Retrieved from inside the container subject to testing.
+  # - Depends on the install path of TFX in the docker image.
   _MODULE_FILE = '/opt/conda/lib/python3.7/site-packages/tfx/examples/chicago_taxi_pipeline/taxi_utils.py'
 
   @classmethod
@@ -90,10 +89,13 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
+    self._test_id = test_utils.random_id()
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
-
-    self._test_dir = self.tmp_dir
     self._test_output_dir = 'gs://{}/test_output'.format(self._BUCKET_NAME)
+    self._test_data_dir = 'gs://{}/test_data/{}'.format(self._BUCKET_NAME,
+                                                        self._test_id)
+    self._output_filename = 'pipeline.json'
+    self._serving_model_dir = os.path.join(self._test_output_dir, 'output')
 
     aiplatform.init(
         project=self._GCP_PROJECT_ID,
@@ -119,29 +121,33 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
         components=pipeline_components,
         beam_pipeline_args=beam_pipeline_args)
 
-  def _run_pipeline(self, pipeline: tfx_pipeline.Pipeline,
+  def _run_pipeline(self,
+                    pipeline: tfx_pipeline.Pipeline,
+                    parameter_values: Optional[Dict[str, Any]] = None,
                     exit_handler: Optional[base_node.BaseNode] = None) -> None:
     """Trigger the pipeline execution with a specific job ID."""
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
     self.addCleanup(self._delete_pipeline_output,
                     pipeline.pipeline_info.pipeline_name)
 
-    config = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
+    # Create DAG runner and add exit handler if present.
+    v2_dag_runner_config = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
         default_image=self.container_image)
-
-    executing_kubeflow_v2_dag_runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
-        config=config, output_filename='pipeline.json')
+    v2_dag_runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
+        config=v2_dag_runner_config, output_filename=self._output_filename)
     if exit_handler:
-      executing_kubeflow_v2_dag_runner.set_exit_handler(exit_handler)
+      v2_dag_runner.set_exit_handler(exit_handler)
+    v2_dag_runner.run(pipeline, write_out=True)
 
-    _ = executing_kubeflow_v2_dag_runner.run(pipeline, write_out=True)
-
-    job_id = pipeline.pipeline_info.pipeline_name
+    # Create and submit Vertex job.
+    self._job_id = pipeline.pipeline_name
     job = pipeline_jobs.PipelineJob(
-        template_path='pipeline.json',
-        job_id=job_id,
-        display_name=pipeline.pipeline_info.pipeline_name)
+        display_name=self._job_id,
+        job_id=self._job_id,
+        template_path=self._output_filename,
+        parameter_values=parameter_values)
     job.submit()
 
-    vertex_client_utils.poll_job_status(job_id, _MAX_JOB_EXECUTION_TIME,
+    # Monitor job status.
+    vertex_client_utils.poll_job_status(self._job_id, _MAX_JOB_EXECUTION_TIME,
                                         _POLLING_INTERVAL_IN_SECONDS)
