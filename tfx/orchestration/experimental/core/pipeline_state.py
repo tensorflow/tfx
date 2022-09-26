@@ -17,6 +17,8 @@ import base64
 import contextlib
 import copy
 import dataclasses
+import json
+import os
 import threading
 import time
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple
@@ -25,6 +27,7 @@ import uuid
 from absl import logging
 import attr
 from tfx import types
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
@@ -184,7 +187,7 @@ class NodeState(json_utils.Jsonable):
         state=_NODE_STATE_TO_RUN_STATE_MAP[self.state],
         status_code=status_code_value,
         status_msg=self.status_msg,
-        update_time=int(self.last_updated_time*1000))
+        update_time=int(self.last_updated_time * 1000))
 
   def to_run_state_history(self) -> List[run_state_pb2.RunState]:
     run_state_history = []
@@ -248,6 +251,69 @@ def last_state_change_time_secs() -> float:
     return _last_state_change_time_secs
 
 
+class _PipelineIRCodec:
+  """A class for encoding / decoding pipeline IR."""
+
+  _ORCHESTRATOR_METADATA_DIR = '.orchestrator'
+  _PIPELINE_IRS_DIR = 'pipeline_irs'
+  _PIPELINE_IR_URL_KEY = 'pipeline_ir_url'
+  _obj = None
+  _lock = threading.Lock()
+
+  @classmethod
+  def get(cls) -> '_PipelineIRCodec':
+    with cls._lock:
+      if not cls._obj:
+        cls._obj = cls()
+      return cls._obj
+
+  @classmethod
+  def testonly_reset(cls) -> None:
+    """Reset global state, for tests only."""
+    with cls._lock:
+      cls._obj = None
+
+  def __init__(self):
+    self.base_dir = env.get_env().get_base_dir()
+    if self.base_dir:
+      self.pipeline_irs_dir = os.path.join(self.base_dir,
+                                           self._ORCHESTRATOR_METADATA_DIR,
+                                           self._PIPELINE_IRS_DIR)
+      fileio.makedirs(self.pipeline_irs_dir)
+    else:
+      self.pipeline_irs_dir = None
+
+  def encode(self, pipeline: pipeline_pb2.Pipeline) -> str:
+    """Encodes pipeline IR."""
+    # Attempt to store as a base64 encoded string. If base_dir is provided
+    # and the length is too large, store the IR on disk and retain the URL.
+    # TODO(b/248786921): Always store pipeline IR to base_dir once the
+    # accessibility issue is resolved.
+    pipeline_encoded = _base64_encode(pipeline)
+    max_mlmd_str_value_len = env.get_env().max_mlmd_str_value_length()
+    if self.base_dir and max_mlmd_str_value_len is not None and len(
+        pipeline_encoded) > max_mlmd_str_value_len:
+      pipeline_id = task_lib.PipelineUid.from_pipeline(pipeline).pipeline_id
+      pipeline_url = os.path.join(self.pipeline_irs_dir,
+                                  f'{pipeline_id}_{uuid.uuid4()}.pb')
+      with fileio.open(pipeline_url, 'wb') as file:
+        file.write(pipeline.SerializeToString())
+      pipeline_encoded = json.dumps({self._PIPELINE_IR_URL_KEY: pipeline_url})
+    return pipeline_encoded
+
+  def decode(self, value: str) -> pipeline_pb2.Pipeline:
+    """Decodes pipeline IR."""
+    # Attempt to load as JSON. If it fails, fallback to decoding it as a base64
+    # encoded string for backward compatibility.
+    try:
+      pipeline_encoded = json.loads(value)
+      with fileio.open(pipeline_encoded[self._PIPELINE_IR_URL_KEY],
+                       'rb') as file:
+        return pipeline_pb2.Pipeline.FromString(file.read())
+    except json.JSONDecodeError:
+      return _base64_decode_pipeline(value)
+
+
 class PipelineState:
   """Context manager class for dealing with pipeline state.
 
@@ -268,7 +334,7 @@ class PipelineState:
     mlmd_handle: Handle to MLMD db.
     pipeline: The pipeline proto associated with this `PipelineState` object.
       TODO(b/201294315): Fix self.pipeline going out of sync with the actual
-        pipeline proto stored in the underlying MLMD execution in some cases.
+      pipeline proto stored in the underlying MLMD execution in some cases.
     execution: The underlying execution in MLMD.
     execution_id: Id of the underlying execution in MLMD.
     pipeline_uid: Unique id of the pipeline.
@@ -325,7 +391,7 @@ class PipelineState:
           code=status_lib.Code.ALREADY_EXISTS,
           message=f'Pipeline with uid {pipeline_uid} already active.')
 
-    exec_properties = {_PIPELINE_IR: _base64_encode(pipeline)}
+    exec_properties = {_PIPELINE_IR: _PipelineIRCodec.get().encode(pipeline)}
     if pipeline_run_metadata:
       exec_properties[_PIPELINE_RUN_METADATA] = json_utils.dumps(
           pipeline_run_metadata)
@@ -475,7 +541,7 @@ class PipelineState:
 
     data_types_utils.set_metadata_value(
         self._execution.custom_properties[_UPDATED_PIPELINE_IR],
-        _base64_encode(updated_pipeline))
+        _PipelineIRCodec.get().encode(updated_pipeline))
     data_types_utils.set_metadata_value(
         self._execution.custom_properties[_UPDATE_OPTIONS],
         _base64_encode(update_options))
@@ -488,12 +554,11 @@ class PipelineState:
   def get_update_options(self) -> pipeline_pb2.UpdateOptions:
     """Gets pipeline update option that was previously configured."""
     self._check_context()
-    update_options = self._execution.custom_properties.get(
-        _UPDATE_OPTIONS)
+    update_options = self._execution.custom_properties.get(_UPDATE_OPTIONS)
     if update_options is None:
-      logging.warning('pipeline execution missing expected custom property %s, '
-                      'defaulting to UpdateOptions(reload_policy=ALL)',
-                      _UPDATE_OPTIONS)
+      logging.warning(
+          'pipeline execution missing expected custom property %s, '
+          'defaulting to UpdateOptions(reload_policy=ALL)', _UPDATE_OPTIONS)
       return pipeline_pb2.UpdateOptions(
           reload_policy=pipeline_pb2.UpdateOptions.ReloadPolicy.ALL)
     return _base64_decode_update_options(_get_metadata_value(update_options))
@@ -511,7 +576,7 @@ class PipelineState:
         self._execution.properties[_PIPELINE_IR], updated_pipeline_ir)
     del self._execution.custom_properties[_UPDATED_PIPELINE_IR]
     del self._execution.custom_properties[_UPDATE_OPTIONS]
-    self.pipeline = _base64_decode_pipeline(updated_pipeline_ir)
+    self.pipeline = _PipelineIRCodec.get().decode(updated_pipeline_ir)
 
   def is_stop_initiated(self) -> bool:
     self._check_context()
@@ -695,12 +760,11 @@ class PipelineView:
     return [cls(pipeline_uid, context, execution) for execution in executions]
 
   @classmethod
-  def load(
-      cls,
-      mlmd_handle: metadata.Metadata,
-      pipeline_uid: task_lib.PipelineUid,
-      pipeline_run_id: Optional[str] = None,
-      **kwargs) -> 'PipelineView':
+  def load(cls,
+           mlmd_handle: metadata.Metadata,
+           pipeline_uid: task_lib.PipelineUid,
+           pipeline_run_id: Optional[str] = None,
+           **kwargs) -> 'PipelineView':
     """Loads pipeline view from MLMD.
 
     Args:
@@ -957,9 +1021,9 @@ def _get_metadata_value(
 
 def _get_pipeline_from_orchestrator_execution(
     execution: metadata_store_pb2.Execution) -> pipeline_pb2.Pipeline:
-  pipeline_ir_b64 = data_types_utils.get_metadata_value(
+  pipeline_ir = data_types_utils.get_metadata_value(
       execution.properties[_PIPELINE_IR])
-  return _base64_decode_pipeline(pipeline_ir_b64)
+  return _PipelineIRCodec.get().decode(pipeline_ir)
 
 
 def _get_active_execution(
@@ -994,13 +1058,14 @@ def _get_latest_execution(
   return max(executions, key=_get_creation_time)
 
 
-def _get_orchestrator_context(
-    mlmd_handle: metadata.Metadata,
-    pipeline_uid: task_lib.PipelineUid, **kwargs) -> metadata_store_pb2.Context:
+def _get_orchestrator_context(mlmd_handle: metadata.Metadata,
+                              pipeline_uid: task_lib.PipelineUid,
+                              **kwargs) -> metadata_store_pb2.Context:
   """Returns the orchestrator context of a particular pipeline."""
   context = mlmd_handle.store.get_context_by_type_and_name(
       type_name=_ORCHESTRATOR_RESERVED_ID,
-      context_name=orchestrator_context_name(pipeline_uid), **kwargs)
+      context_name=orchestrator_context_name(pipeline_uid),
+      **kwargs)
   if not context:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND,

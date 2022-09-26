@@ -14,6 +14,7 @@
 """Tests for tfx.orchestration.experimental.core.pipeline_state."""
 
 import dataclasses
+import json
 import os
 import time
 from typing import List
@@ -21,6 +22,7 @@ from unittest import mock
 
 import tensorflow as tf
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
@@ -96,10 +98,59 @@ class NodeStateTest(test_utils.TfxTest):
     ], node_state.state_history)
 
   def test_node_state_json(self):
-    node_state = pstate.NodeState.from_json_dict({
-        'state': pstate.NodeState.STARTING})
+    node_state = pstate.NodeState.from_json_dict(
+        {'state': pstate.NodeState.STARTING})
     self.assertTrue(hasattr(node_state, 'state'))
     self.assertTrue(hasattr(node_state, 'last_updated_time'))
+
+
+class PipelineIRCodecTest(test_utils.TfxTest):
+
+  def setUp(self):
+    super().setUp()
+    self._pipeline_root = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self.id())
+
+  class _TestEnv(env._DefaultEnv):
+
+    def __init__(self, base_dir, max_str_len):
+      self.base_dir = base_dir
+      self.max_str_len = max_str_len
+
+    def get_base_dir(self):
+      return self.base_dir
+
+    def max_mlmd_str_value_length(self):
+      return self.max_str_len
+
+  def test_encode_decode_no_base_dir(self):
+    with self._TestEnv(None, None):
+      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
+      pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
+    self.assertEqual(pipeline, pstate._base64_decode_pipeline(pipeline_encoded),
+                     'Expected pipeline IR to be base64 encoded.')
+    self.assertEqual(pipeline,
+                     pstate._PipelineIRCodec.get().decode(pipeline_encoded))
+
+  def test_encode_decode_with_base_dir(self):
+    with self._TestEnv(self._pipeline_root, None):
+      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
+      pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
+    self.assertEqual(pipeline, pstate._base64_decode_pipeline(pipeline_encoded),
+                     'Expected pipeline IR to be base64 encoded.')
+    self.assertEqual(pipeline,
+                     pstate._PipelineIRCodec.get().decode(pipeline_encoded))
+
+  def test_encode_decode_exceeds_max_len(self):
+    with self._TestEnv(self._pipeline_root, 0):
+      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
+      pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
+    self.assertEqual(pipeline,
+                     pstate._PipelineIRCodec.get().decode(pipeline_encoded))
+    self.assertEqual(pstate._PipelineIRCodec._PIPELINE_IR_URL_KEY,
+                     next(iter(json.loads(pipeline_encoded).keys())),
+                     'Expected pipeline IR URL to be stored as json.')
 
 
 class PipelineStateTest(test_utils.TfxTest):
@@ -660,7 +711,8 @@ class PipelineStateTest(test_utils.TfxTest):
       [view] = pstate.PipelineView.load_all(m, pipeline_uid)
       self.assertProtoPartiallyEquals(
           run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING),
-          view.get_pipeline_run_state(), ignored_fields=['update_time'])
+          view.get_pipeline_run_state(),
+          ignored_fields=['update_time'])
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
@@ -668,7 +720,8 @@ class PipelineStateTest(test_utils.TfxTest):
       [view] = pstate.PipelineView.load_all(m, pipeline_uid)
       self.assertProtoPartiallyEquals(
           run_state_pb2.RunState(state=run_state_pb2.RunState.COMPLETE),
-          view.get_pipeline_run_state(), ignored_fields=['update_time'])
+          view.get_pipeline_run_state(),
+          ignored_fields=['update_time'])
 
   @mock.patch.object(pstate, 'time')
   def test_pipeline_view_get_node_run_states(self, mock_time):
@@ -903,6 +956,7 @@ class PipelineStateTest(test_utils.TfxTest):
                     update_time=int(mock_time.time.return_value * 1000))
             ]
         }, view_run_1.get_previous_node_run_states_history())
+
 
 if __name__ == '__main__':
   tf.test.main()

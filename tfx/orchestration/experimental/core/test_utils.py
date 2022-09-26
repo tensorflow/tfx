@@ -45,6 +45,7 @@ class TfxTest(test_case_utils.TfxTest):
   def setUp(self):
     super().setUp()
     mlmd_state.clear_in_memory_state()
+    pstate._PipelineIRCodec.testonly_reset()  # pylint: disable=protected-access
 
 
 def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):

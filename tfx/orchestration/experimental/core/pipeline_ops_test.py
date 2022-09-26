@@ -1650,7 +1650,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   def test_pipeline_run_deadline_exceeded(self):
 
-    class _TestEnv(env.Env):
+    class _TestEnv(env._DefaultEnv):
       """TestEnv returns orchestration_options with 1 sec deadline."""
 
       def get_orchestration_options(self, pipeline):

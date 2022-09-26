@@ -23,6 +23,12 @@ class _TestEnv(env.Env):
   def get_orchestration_options(self, pipeline):
     raise NotImplementedError()
 
+  def get_base_dir(self):
+    raise NotImplementedError()
+
+  def max_mlmd_str_value_length(self):
+    raise NotImplementedError()
+
 
 class EnvTest(test_utils.TfxTest):
 
