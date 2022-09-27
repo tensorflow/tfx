@@ -20,6 +20,7 @@ from typing import List
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
+from tfx.components.example_gen import utils
 from tfx.components.trainer.executor import Executor
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
@@ -79,21 +80,19 @@ def two_step_pipeline() -> tfx.dsl.Pipeline:
 def range_config_generator(input_date: tfx.dsl.components.Parameter[str],
                            range_config: tfx.dsl.components.OutputArtifact[
                                tfx.types.standard_artifacts.String]):
-  """Implements the custom compo`Rannent to convert date into span number.
+  """Implements a function-based TFX component to convert date into a span number for downstream use by ExampleGen.
 
   Args:
     input_date: input date to generate range_config.
     range_config: range_config to ExampleGen.
   """
-  start_time = datetime.datetime(2022, 1,
-                                 1)  # start time calculate span number from.
-  datem = datetime.datetime.strptime(input_date, '%Y%m%d')
-  span_number = (datetime.datetime(datem.year, datem.month, datem.day) -
-                 start_time).days
+  date = datetime.datetime.strptime(input_date, '%Y%m%d')
   range_config_str = proto_utils.proto_to_json(
       tfx.proto.RangeConfig(
           static_range=tfx.proto.StaticRange(
-              start_span_number=span_number, end_span_number=span_number)))
+              start_span_number=utils.date_to_span_number(1970, 1, 1),
+              end_span_number=utils.date_to_span_number(date.year, date.month,
+                                                        date.day))))
   range_config.value = range_config_str
 
 
@@ -101,7 +100,7 @@ def two_step_pipeline_with_dynamic_exec_properties():
   """Returns a simple 2-step pipeline under test with the second component's execution property depending dynamically on the first one's output."""
 
   input_config_generator = range_config_generator(  # pylint: disable=no-value-for-parameter
-      input_date='07-13-22')
+      input_date='22-09-26')
   example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(
       query='SELECT * FROM TABLE',
       range_config=input_config_generator.outputs['range_config'].future()
