@@ -49,10 +49,31 @@ def _is_property_dict(value: Any):
 
 
 class BaseChannel:
-  """An abstract type for Channels that connects pipeline nodes.
+  """An abstraction for component (BaseNode) artifact inputs.
 
-  This class should be used by components that wish to handle more than one
-  type of this BaseChannel's child classes.
+  `BaseChannel` is often interchangeably used with the term 'channel' (not
+  capital `Channel` which points to the legacy class name).
+
+  Component takes artifact inputs distinguished by each "input key". For
+  example:
+
+      trainer = Trainer(
+          examples=example_gen.outputs['examples'])
+          ^^^^^^^^
+          input key
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                   channel
+
+  Here "examples" is the input key of the `Examples` artifact type.
+  `example_gen.outputs['examples']` is a channel. Typically a single channel
+  refers to a *list of `Artifact` of a homogeneous type*. Since channel is a
+  declarative abstraction it is not strictly bound to the actual artifact, but
+  is more of an *input selector*.
+
+  The most commonly used channel type is an `OutputChannel` (in the form of
+  `component.outputs["key"]`, which selects the artifact produced by the
+  component in the same pipeline run (in synchronous execution mode; more
+  information on OutputChannel docstring), and is typically a single artifact.
 
   Attributes:
     type: The artifact type class that the Channel takes.
@@ -87,11 +108,19 @@ class BaseChannel:
 
 
 class Channel(json_utils.Jsonable, BaseChannel):
-  """Tfx Channel.
+  """Legacy channel interface.
 
-  TFX Channel is an abstract concept that connects data producers and data
-  consumers. It contains restriction of the artifact type that should be fed
-  into or read from it.
+  `Channel` used to represent the `BaseChannel` concept in the early TFX code,
+  but due to having too much features in the same class, we refactored it to
+  multiple classes:
+
+  - BaseChannel for the general input abstraction
+  - OutputChannel for `component.outputs['key']`.
+  - MLMDQueryChannel for simple filter-based input resolution.
+
+  Please do not use this class directly, but instead use the alternatives. This
+  class won't be removed in TFX 1.x due to backward compatibility guarantee
+  though.
   """
 
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
@@ -310,7 +339,33 @@ class Channel(json_utils.Jsonable, BaseChannel):
 
 
 class OutputChannel(Channel):
-  """Channel subtype that is used for node.outputs."""
+  """Channel that is used for `node.outputs['key']`.
+
+  For OutputChannel being used as another component's inputs, it has the
+  following implications (only in synchronous execution mode):
+
+  - It refers to the output artifact produced from *the same pipeline run*.
+  - Imposes data dependency between producer component and the consumer
+    component.
+
+  It's worth mentioning that in most cases (except for a small portion of
+  special ExampleGens that produces multiple Examples), output channel of
+  standard components in synchronous mode resolved to 1 artifact.
+
+  For asynchronous execution mode, each component is no longer data dependent,
+  and there is no pipeline run context to group artifacts. Therefore an
+  OutputChannel refers to all artifacts produced from the component in the
+  pipeline. This no longer resolves to 1 artifact, so in an asynchronous
+  execution mode you need to further filter output channel with resolver
+  functions (e.g. `tfx.dsl.inputs.latest_created`).
+
+  OutputChannel has additional functionalities to manipulate the component
+  output specification:
+
+  - `additional_properties` or `additional_custom_properties` to statically
+    set output artifacts' properties or custom_properties.
+  - Garbage collection policy per component outputs.
+  """
 
   def __init__(
       self,
@@ -362,7 +417,7 @@ class OutputChannel(Channel):
 
 @doc_controls.do_not_generate_docs
 class UnionChannel(BaseChannel):
-  """Union of multiple Channels with the same type.
+  """Union of multiple channels with the same type.
 
   Prefer to use union() to create UnionChannel.
 
