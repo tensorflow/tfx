@@ -2,7 +2,7 @@
 
 Transform is available as a standalone library.
 
--   [Getting Started with TensorFlow Transform](/tfx/transform/get_started)
+-   [Getting Started with TensorFlow Transform](https://www.tensorflow.org/tfx/transform/get_started)
 -   [TensorFlow Transform API Reference](https://www.tensorflow.org/tfx/transform/api_docs/python/tft)
 
 The `tft` module documentation is the only module that is relevant to TFX users.
