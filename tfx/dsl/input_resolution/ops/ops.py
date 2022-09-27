@@ -20,6 +20,7 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import consecutive_spans_op
 from tfx.dsl.input_resolution.ops import exclude_spans_op
 from tfx.dsl.input_resolution.ops import latest_create_time_op
+from tfx.dsl.input_resolution.ops import latest_pipeline_run_op
 from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import latest_version_op
 from tfx.dsl.input_resolution.ops import skip_if_empty_op
@@ -35,6 +36,7 @@ from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.dsl.input_resolution.strategies import span_range_strategy
 from tfx.utils import name_utils
 from tfx.utils import typing_utils
+
 
 _ResolverOpType = Type[resolver_op.ResolverOp]
 _ResolverStrategyType = Type[resolver.ResolverStrategy]
@@ -56,6 +58,7 @@ def _register_op(cls: _ResolverOpType) -> None:
 ConsecutiveSpans = consecutive_spans_op.ConsecutiveSpans
 ExcludeSpans = exclude_spans_op.ExcludeSpans
 LatestCreateTime = latest_create_time_op.LatestCreateTime
+LatestPipelineRun = latest_pipeline_run_op.LatestPipelineRun
 LatestSpan = latest_span_op.LatestSpan
 LatestVersion = latest_version_op.LatestVersion
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
@@ -70,6 +73,7 @@ Unnest = unnest_op.Unnest
 _register_op(ConsecutiveSpans)
 _register_op(ExcludeSpans)
 _register_op(LatestCreateTime)
+_register_op(LatestPipelineRun)
 _register_op(LatestSpan)
 _register_op(LatestVersion)
 _register_op(SkipIfEmpty)
