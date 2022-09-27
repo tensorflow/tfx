@@ -567,3 +567,16 @@ class PipelineInputChannel(BaseChannel):
   @pipeline.setter
   def pipeline(self, pipeline: Any):
     self._pipeline = pipeline
+
+
+@doc_controls.do_not_generate_docs
+class SingleArtifactChannel(BaseChannel):
+  """Used when instantiating custom component for standalone run."""
+
+  def __init__(self, artifact: Artifact):
+    super().__init__(type=artifact.type)
+    self._artifact = artifact
+
+  @property
+  def artifact(self) -> Artifact:
+    return self._artifact
