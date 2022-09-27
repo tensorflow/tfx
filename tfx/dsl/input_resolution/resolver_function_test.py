@@ -85,9 +85,9 @@ class ResolverFunctionTest(tf.test.TestCase):
     with self.assertRaises(RuntimeError):
       rf.trace(DUMMY_INPUT_NODE)
 
-  def testCall_WithStaticTypeHint(self):
+  def testCall_WithStaticOutputType(self):
 
-    @resolver_function.resolver_function(type_hint={'x': X, 'y': Y})
+    @resolver_function.resolver_function(output_type={'x': X, 'y': Y})
     def resolve(input_dict):
       return input_dict
 
@@ -98,24 +98,24 @@ class ResolverFunctionTest(tf.test.TestCase):
     self.assertEqual(output['x'].type, X)
     self.assertEqual(output['y'].type, Y)
 
-  def testCall_WithDynamicTypeHint(self):
+  def testCall_WithDynamicOutputType(self):
 
     @resolver_function.resolver_function
     def resolve(input_dict):
       return input_dict
 
-    output = resolve.with_type_hint({'x': X, 'y': Y})({})
+    output = resolve.with_output_type({'x': X, 'y': Y})({})
 
     self.assertTrue(
         typing_utils.is_compatible(output, Mapping[str, tfx.types.BaseChannel]))
     self.assertEqual(output['x'].type, X)
     self.assertEqual(output['y'].type, Y)
 
-    with self.subTest('Invalid type_hint'):
-      with self.assertRaisesRegex(ValueError, 'Invalid type_hint'):
-        resolve.with_type_hint('i am not a type hint')
+    with self.subTest('Invalid output_type'):
+      with self.assertRaisesRegex(ValueError, 'Invalid output_type'):
+        resolve.with_output_type('i am not a output type')
 
-  def testCall_WithNoTypeHint(self):
+  def testCall_WithNoOutputType(self):
 
     @resolver_function.resolver_function
     def resolve(*args, **kwargs):
@@ -123,7 +123,7 @@ class ResolverFunctionTest(tf.test.TestCase):
       return DummyNode(resolver_op.DataType.ARTIFACT_MULTIMAP)
 
     with self.subTest(
-        'Infer type hint if len(args) = 1 and args[0] is Mapping[str, '
+        'Infer output type if len(args) = 1 and args[0] is Mapping[str, '
         'BaseChannel].'):
       output = resolve({
           'x': DummyChannel(X),
@@ -136,10 +136,10 @@ class ResolverFunctionTest(tf.test.TestCase):
       self.assertEqual(output['y'].type, Y)
 
     with self.subTest('Cannot infer other kind of args'):
-      with self.assertRaisesRegex(RuntimeError, 'type_hint not set'):
+      with self.assertRaisesRegex(RuntimeError, 'Unable to infer output type'):
         output = resolve(x=DummyChannel(X), y=DummyChannel(Y))
 
-  def testCall_WithNoTypeHint_ArtifactList(self):
+  def testCall_WithNoOutputType_ArtifactList(self):
 
     @resolver_function.resolver_function
     def resolve(*args, **kwargs):
@@ -150,20 +150,20 @@ class ResolverFunctionTest(tf.test.TestCase):
     self.assertTrue(typing_utils.is_compatible(output, tfx.types.BaseChannel))
     self.assertEqual(output.type, X)
 
-  def testCall_TypeHintCompatibility(self):
+  def testCall_OutputTypeCompatibility(self):
 
     @resolver_function.resolver_function
     def resolve():
       return DummyNode(resolver_op.DataType.ARTIFACT_MULTIMAP)
 
-    def okay(type_hint):
-      with self.subTest('Should Pass', type_hint=type_hint):
-        resolve.with_type_hint(type_hint)
+    def okay(output_type):
+      with self.subTest('Should Pass', output_type=output_type):
+        resolve.with_output_type(output_type)
 
-    def fail(type_hint):
-      with self.subTest('Should Fail', type_hint=type_hint):
-        with self.assertRaisesRegex(ValueError, 'Invalid type_hint'):
-          resolve.with_type_hint(type_hint)
+    def fail(output_type):
+      with self.subTest('Should Fail', output_type=output_type):
+        with self.assertRaisesRegex(ValueError, 'Invalid output_type'):
+          resolve.with_output_type(output_type)
 
     # Type[Artifact] is okay
     okay(tfx.types.Artifact)
@@ -181,12 +181,12 @@ class ResolverFunctionTest(tf.test.TestCase):
     fail(1)
     fail([])
     fail([X, Y])
-    fail('not a type hint')
+    fail('not a output type')
 
   def testCall_ArgConversion(self):
     holder = []
 
-    @resolver_function.resolver_function(type_hint={'x': X})
+    @resolver_function.resolver_function(output_type={'x': X})
     def resolve(*args, **kwargs):
       holder.append((args, kwargs))
       return DummyNode(resolver_op.DataType.ARTIFACT_MULTIMAP)
@@ -226,7 +226,7 @@ class ResolverFunctionTest(tf.test.TestCase):
 
   def testCall_ResultConversion(self):
 
-    @resolver_function.resolver_function(type_hint={'x': X})
+    @resolver_function.resolver_function(output_type={'x': X})
     def resolve():
       return {
           'x': DummyNode(resolver_op.DataType.ARTIFACT_LIST)
@@ -238,7 +238,7 @@ class ResolverFunctionTest(tf.test.TestCase):
     self.assertIsInstance(output['x'].output_node, resolver_op.DictNode)
     self.assertEqual(output['x'].output_key, 'x')
 
-  def testCall_TypeHintAndOutputDataTypeMatch(self):
+  def testCall_OutputTypeAndOutputDataTypeMatch(self):
 
     @resolver_function.resolver_function
     def resolve_artifact_list():
@@ -252,32 +252,32 @@ class ResolverFunctionTest(tf.test.TestCase):
     def resolve_artifact_multimap_list():
       return DummyNode(resolver_op.DataType.ARTIFACT_MULTIMAP_LIST)
 
-    with self.subTest('ARTIFACT_LIST with dict type hint'):
+    with self.subTest('ARTIFACT_LIST with dict output type'):
       with self.assertRaises(RuntimeError):
-        resolve_artifact_list.with_type_hint({'x': X})()
+        resolve_artifact_list.with_output_type({'x': X})()
 
-    with self.subTest('ARTIFACT_LIST with a single type hint'):
-      result = resolve_artifact_list.with_type_hint(X)()
+    with self.subTest('ARTIFACT_LIST with a single output type'):
+      result = resolve_artifact_list.with_output_type(X)()
       self.assertIsInstance(result, resolved_channel.ResolvedChannel)
       self.assertEqual(result.type, X)
 
-    with self.subTest('ARTIFACT_MULTIMAP with dict type hint'):
-      result = resolve_artifact_multimap.with_type_hint({'x': X})()
+    with self.subTest('ARTIFACT_MULTIMAP with dict output type'):
+      result = resolve_artifact_multimap.with_output_type({'x': X})()
       self.assertIsInstance(result, dict)
       self.assertIsInstance(result['x'], resolved_channel.ResolvedChannel)
       self.assertEqual(result['x'].type, X)
 
-    with self.subTest('ARTIFACT_MULTIMAP with a single type hint'):
+    with self.subTest('ARTIFACT_MULTIMAP with a single output type'):
       with self.assertRaises(RuntimeError):
-        resolve_artifact_multimap.with_type_hint(X)()
+        resolve_artifact_multimap.with_output_type(X)()
 
-    with self.subTest('ARTIFACT_MULTIMAP_LIST with dict type hint'):
-      result = resolve_artifact_multimap_list.with_type_hint({'x': X})()
+    with self.subTest('ARTIFACT_MULTIMAP_LIST with dict output type'):
+      result = resolve_artifact_multimap_list.with_output_type({'x': X})()
       self.assertIsInstance(result, for_each_internal.Loopable)
 
-    with self.subTest('ARTIFACT_MULTIMAP_LIST with a single type hint'):
+    with self.subTest('ARTIFACT_MULTIMAP_LIST with a single output type'):
       with self.assertRaises(RuntimeError):
-        resolve_artifact_multimap_list.with_type_hint(X)()
+        resolve_artifact_multimap_list.with_output_type(X)()
 
   def testGetInputNodes_And_GetDependentChannels(self):
     x = DummyChannel(X)
@@ -304,6 +304,20 @@ class ResolverFunctionTest(tf.test.TestCase):
     self.assertCountEqual(
         resolver_function.get_dependent_channels(result),
         [x, y1, y2])
+
+  def testTypeInferrer(self):
+
+    @resolver_function.resolver_function
+    def resolve():
+      return DummyNode(output_data_type=resolver_op.DataType.ARTIFACT_LIST)
+
+    @resolve.output_type_inferrer
+    def resolve_output_type():
+      return X
+
+    result = resolve()
+
+    self.assertEqual(result.type, X)
 
 
 if __name__ == '__main__':

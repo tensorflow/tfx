@@ -258,7 +258,7 @@ class NodeInputsCompilerTest(tf.test.TestCase):
             graph_node.input_node.input_key, other_input_key)
 
   def testCompileInputGraph(self):
-    channel = dummy_artifact_list.with_type_hint(DummyArtifact)()
+    channel = dummy_artifact_list.with_output_type(DummyArtifact)()
     node = DummyNode('MyNode', inputs={'x': channel})
     p = self._prepare_pipeline([node])
     ctx = compiler_context.PipelineContext(p)
@@ -287,9 +287,9 @@ class NodeInputsCompilerTest(tf.test.TestCase):
       self.assertEqual(input_graph_id, second_input_graph_id)
 
   def testCompileInputGraphRef(self):
-    x1 = dummy_artifact_list.with_type_hint(DummyArtifact)()
-    x2 = dummy_dict.with_type_hint({'x': DummyArtifact})()['x']
-    dict_list = dummy_dict_list.with_type_hint({'x': DummyArtifact})()
+    x1 = dummy_artifact_list.with_output_type(DummyArtifact)()
+    x2 = dummy_dict.with_output_type({'x': DummyArtifact})()['x']
+    dict_list = dummy_dict_list.with_output_type({'x': DummyArtifact})()
     with for_each.ForEach(dict_list) as each_dict:
       x3 = each_dict['x']
       node = DummyNode('MyNode', inputs={'x1': x1, 'x2': x2, 'x3': x3})

@@ -26,40 +26,104 @@ from tfx.utils import typing_utils
 _ArtifactType = Type[artifact.Artifact]
 _ArtifactTypeMap = Mapping[str, Type[artifact.Artifact]]
 _TypeHint = Union[_ArtifactType, _ArtifactTypeMap]
+_TypeInferrer = Callable[..., Optional[_TypeHint]]
+
+
+def _default_type_inferrer(*args: Any, **kwargs: Any) -> Optional[_TypeHint]:
+  """Default _TypeInferrer that mirrors args[0] type."""
+  del kwargs
+  if len(args) == 1:
+    only_arg = args[0]
+    if typing_utils.is_compatible(
+        only_arg, Mapping[str, channel.BaseChannel]):
+      return {k: v.type for k, v in only_arg.items()}
+    if isinstance(only_arg, channel.BaseChannel):
+      return only_arg.type
+  return None
 
 
 @doc_controls.do_not_generate_docs
 class ResolverFunction:
   """ResolverFunction represents a traceable function of resolver operators.
 
-  ResolverFunction as a whole, takes an ArtifactMultiMap as an argument and
-  returns an ArtifactMultiMap.
+  Resolver function returns some form of channel depending on the function
+  definition.
 
-  Usage:
-      @resolver_function
-      def trainer_resolver_fn(root):
-        result = FooOp(root, foo=1)
-        result = BarOp(result, bar='x')
-        return result
+  It can return a single channel:
 
-      trainer_resolver = Resolver(
-          function=trainer_resolver_fn,
-          examples=example_gen.outputs['examples'],
-          ...)
+      trainer = Trainer(
+          examples=latest_created(example_gen.outputs['examples']))
+
+  or a dictionary of channels:
+
+      k_fold_inputs = k_fold(example_gen.outputs['examples'], splits=5)
+      trainer = Trainer(
+          examples=k_fold_inputs['train'],
+      )
+      evaluator = Evaluator(
+          examples=k_fold_inputs['eval'],
+          model=trainer.outputs['model'],
+      )
+
+  or a ForEach-loopable channels:
+
+    with ForEach(
+        tfx.dsl.inputs.sequential_rolling_range(
+            example_gens.outputs['examples'], n=3)) as train_window:
+      trainer = Trainer(
+          examples=train_window['examples'])
   """
 
   def __init__(
       self, f: Callable[..., resolver_op.Node],
-      type_hint: Optional[_TypeHint] = None):
-    self._function = f
-    self._type_hint = type_hint
-    if type_hint is not None and (
-        not typing_utils.is_compatible(type_hint, _TypeHint)):
-      raise ValueError(
-          f'Invalid type_hint: {type_hint}, should be {_TypeHint}.')
+      *,
+      output_type: Optional[_TypeHint] = None,
+      output_type_inferrer: _TypeInferrer = _default_type_inferrer):
+    """Constructor.
 
-  def with_type_hint(self, type_hint: _TypeHint):
-    return ResolverFunction(self._function, type_hint)
+    Args:
+      f: A python function consists of ResolverOp invocations.
+      output_type: Static output type, either a single ArtifactType or a
+          dict[str, ArtifactType]. If output_type is not given,
+          output_type_inferrer will be used to infer the output type.
+      output_type_inferrer: An output type inferrer function, which takes the
+          same arguments as the resolver function and returns the output_type.
+          If not given, default inferrer (which mirrors the args[0] type) would
+          be used.
+    """
+    self._function = f
+    self._output_type = output_type
+    if output_type is not None and (
+        not typing_utils.is_compatible(output_type, _TypeHint)):
+      raise ValueError(
+          f'Invalid output_type: {output_type}, should be {_TypeHint}.')
+    self._output_type_inferrer = output_type_inferrer
+
+  def with_output_type(self, output_type: _TypeHint):
+    """Statically set output type of the resolver function.
+
+    Use this if type inferrer cannot deterministically infer the output type
+    but only caller knows the real output type.
+
+    Examples:
+
+        @resolver_function
+        def my_resolver_function():
+          ...
+
+        examples = my_resolver_function.with_output_type(
+            standard_artifacts.Examples)()
+
+    Args:
+      output_type: A static output type, either an ArtifactType or a
+          dict[str, ArtifactType].
+
+    Returns:
+      A new resolver function instance with the static output type.
+    """
+    return ResolverFunction(
+        self._function, output_type=output_type,
+        output_type_inferrer=self._output_type_inferrer)
 
   @staticmethod
   def _try_convert_to_node(value: Any) -> Any:
@@ -72,16 +136,26 @@ class ResolverFunction:
           value, resolver_op.DataType.ARTIFACT_MULTIMAP)
     return value
 
-  @staticmethod
-  def _try_infer_type(args) -> Optional[_TypeHint]:
-    if len(args) == 1:
-      only_arg = args[0]
-      if typing_utils.is_compatible(
-          only_arg, Mapping[str, channel.BaseChannel]):
-        return {k: v.type for k, v in only_arg.items()}
-      if isinstance(only_arg, channel.BaseChannel):
-        return only_arg.type
-    return None
+  def output_type_inferrer(self, f: _TypeInferrer) -> _TypeInferrer:
+    """Decorator to register resolver function type inferrer.
+
+    Usage:
+      @resolver_function
+      def latest(channel):
+        ...
+
+      @latest.output_type_inferrer
+      def latest_type(channel):
+        return channel.type
+
+    Args:
+      f: A type inference function to decorate.
+
+    Returns:
+      The given function.
+    """
+    self._output_type_inferrer = f
+    return f
 
   def __call__(self, *args, **kwargs):
     """Invoke a resolver function.
@@ -103,43 +177,47 @@ class ResolverFunction:
       **kwargs: Keyword arguments to the wrapped function.
 
     Raises:
-      RuntimeError: if type_hint is invalid or unset.
+      RuntimeError: if output_type is invalid or unset.
 
     Returns:
       Resolver function result as a BaseChannels.
     """
-    type_hint = self._type_hint or self._try_infer_type(args)
+    output_type = self._output_type or (
+        self._output_type_inferrer(*args, **kwargs))
+    if output_type is None:
+      raise RuntimeError(
+          'Unable to infer output type. Please use '
+          'resolver_function.with_output_type()')
+
     args = [self._try_convert_to_node(v) for v in args]
     kwargs = {k: self._try_convert_to_node(v) for k, v in kwargs.items()}
     out = self.trace(*args, **kwargs)
-    if type_hint is None:
-      raise RuntimeError(
-          'type_hint not set. Please use resolver_function.with_type_hint()')
+
     if out.output_data_type == resolver_op.DataType.ARTIFACT_LIST:
-      if not typing_utils.is_compatible(type_hint, _ArtifactType):
+      if not typing_utils.is_compatible(output_type, _ArtifactType):
         raise RuntimeError(
-            f'Invalid type_hint {type_hint}. Expected {_ArtifactType}')
-      type_hint = cast(_ArtifactType, type_hint)
-      return resolved_channel.ResolvedChannel(type_hint, out)
+            f'Invalid output_type {output_type}. Expected {_ArtifactType}')
+      output_type = cast(_ArtifactType, output_type)
+      return resolved_channel.ResolvedChannel(output_type, out)
     if out.output_data_type == resolver_op.DataType.ARTIFACT_MULTIMAP:
-      if not typing_utils.is_compatible(type_hint, _ArtifactTypeMap):
+      if not typing_utils.is_compatible(output_type, _ArtifactTypeMap):
         raise RuntimeError(
-            f'Invalid type_hint {type_hint}. Expected {_ArtifactTypeMap}')
-      type_hint = cast(_ArtifactTypeMap, type_hint)
+            f'Invalid output_type {output_type}. Expected {_ArtifactTypeMap}')
+      output_type = cast(_ArtifactTypeMap, output_type)
       return {
           key: resolved_channel.ResolvedChannel(artifact_type, out, key)
-          for key, artifact_type in type_hint.items()
+          for key, artifact_type in output_type.items()
       }
     if out.output_data_type == resolver_op.DataType.ARTIFACT_MULTIMAP_LIST:
-      if not typing_utils.is_compatible(type_hint, _ArtifactTypeMap):
+      if not typing_utils.is_compatible(output_type, _ArtifactTypeMap):
         raise RuntimeError(
-            f'Invalid type_hint {type_hint}. Expected {_ArtifactTypeMap}')
+            f'Invalid output_type {output_type}. Expected {_ArtifactTypeMap}')
 
       def loop_var_factory(context: for_each_internal.ForEachContext):
         return {
             key: resolved_channel.ResolvedChannel(
                 artifact_type, out, key, context)
-            for key, artifact_type in type_hint.items()
+            for key, artifact_type in output_type.items()
         }
 
       return for_each_internal.Loopable(loop_var_factory)
@@ -149,7 +227,31 @@ class ResolverFunction:
       self,
       *args: resolver_op.Node,
       **kwargs: Any) -> resolver_op.Node:
-    """Trace resolver function with given node arguments."""
+    """Trace resolver function with given node arguments.
+
+    Do not call this function directly; Use __call__ only.
+
+    Tracing happens by substituting the input arguments (from BaseChannel to
+    InputNode) and calling the inner python function. Traced result is the
+    return value of the inner python function. Since ResolverOp invocation
+    stores all the input arguments (which originated from InputNode), we can
+    analyze the full ResolverOp invocation graph from the return value.
+
+    Trace happens only once during the resolver function invocation. Traced
+    resolver function (which is a resolver_op.Node) is serialized to the
+    pipeline IR during compilation (i.e. inner python function is serialized),
+    and the inner python function is not invoked again on IR interpretation.
+
+    Args:
+      *args: Substituted arguments to the resolver function.
+      **kwargs: Substitued keyword arguments to the resolver function.
+
+    Raises:
+      RuntimeError: if the tracing fails.
+
+    Returns:
+      A traced result, which is a resolver_op.Node.
+    """
     # TODO(b/188023509): Better debug support & error message.
     result = self._function(*args, **kwargs)
     if typing_utils.is_compatible(result, Mapping[str, resolver_op.Node]):
@@ -164,13 +266,14 @@ class ResolverFunction:
 
 def resolver_function(
     f: Optional[Callable[..., resolver_op.OpNode]] = None, *,
-    type_hint: Optional[_TypeHint] = None):
+    output_type: Optional[_TypeHint] = None):
   """Decorator for the resolver function."""
-  if type_hint:
-    if not typing_utils.is_compatible(type_hint, _TypeHint):
-      raise ValueError(f'Invalid type_hint {type_hint}. Expected {_TypeHint}')
+  if output_type:
+    if not typing_utils.is_compatible(output_type, _TypeHint):
+      raise ValueError(
+          f'Invalid output_type {output_type}. Expected {_TypeHint}')
     def decorator(f):
-      return ResolverFunction(f, type_hint)
+      return ResolverFunction(f, output_type=output_type)
     return decorator
   else:
     return ResolverFunction(f)
