@@ -139,6 +139,15 @@ class KubeflowV2EntrypointUtilsTest(tf.test.TestCase):
         kubeflow_v2_entrypoint_utils.parse_execution_properties(
             self._properties))
 
+  def testParseExecutionPropertiesJsonable(self):
+    properties_pb = pipeline_pb2.ExecutorInput()
+    properties_pb.inputs.parameter_values['a'].number_value = 1
+    properties_pb.inputs.parameter_values['b'].struct_value.fields[
+        'a'].string_value = 'b'
+    print(
+        kubeflow_v2_entrypoint_utils.parse_execution_properties(
+            properties_pb.inputs.parameter_values))
+
   def testParseExecutionPropertiesMapsInputBaseUri(self):
     properties_pb = pipeline_pb2.ExecutorInput()
     properties_pb.inputs.parameters[

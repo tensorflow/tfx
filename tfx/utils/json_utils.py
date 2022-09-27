@@ -23,6 +23,7 @@ from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import proto_utils
 
+from google.protobuf import struct_pb2
 from google.protobuf import message
 
 # This is the special key to indicate the serialized object type.
@@ -77,11 +78,23 @@ class Jsonable(abc.ABC):
     return instance
 
 
-JsonableValue = Union[bool, float, int, Jsonable, message.Message, str,
-                      Type, 'JsonableType']
+JsonableValue = Union[bool, float, int, Jsonable, message.Message, str, Type,
+                      'JsonableType']
 JsonableList = List[JsonableValue]
 JsonableDict = Dict[str, Union[JsonableValue, JsonableList]]
 JsonableType = Union[JsonableValue, JsonableList, JsonableDict]
+
+
+def is_jsonable_map(obj: struct_pb2.Struct) -> bool:
+  """Recursively checks if a map contains all Jsonable values."""
+  for value in obj.fields.values():
+    if isinstance(value, struct_pb2.Struct):
+      if not is_jsonable_map(value):
+        return False
+    if not isinstance(value,
+                      (bool, float, int, Jsonable, message.Message, str, Type)):
+      return False
+  return True
 
 
 class _DefaultEncoder(json.JSONEncoder):
@@ -144,8 +157,7 @@ class _DefaultDecoder(json.JSONDecoder):
   """Default JSON Decoder which decodes JSON to Jsonable object."""
 
   def __init__(self, *args, **kwargs):
-    super().__init__(
-        object_hook=self._dict_to_object, *args, **kwargs)
+    super().__init__(object_hook=self._dict_to_object, *args, **kwargs)
 
   def _dict_to_object(self, dict_data: Dict[str, Any]) -> Any:
     """Converts a dictionary to an object."""

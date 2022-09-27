@@ -18,6 +18,8 @@ from tfx.proto import trainer_pb2
 from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 
+from google.protobuf import struct_pb2
+
 
 class _DefaultJsonableObject(json_utils.Jsonable):
 
@@ -34,6 +36,15 @@ _DeprecatedAlias = deprecation_utils.deprecated_alias(
 
 
 class JsonUtilsTest(tf.test.TestCase):
+
+  def testIsJsonableMap(self):
+    obj = struct_pb2.Struct()
+    obj.fields['a'].number_value = 1
+    obj.fields['b'].struct_value.fields['a'].string_value = 'b'
+    obj.fields['c'].bool_value = True
+    obj.fields['d'].list_value.values.append(struct_pb2.Value(number_value=1))
+
+    self.assertTrue(json_utils.is_jsonable_map(obj))
 
   def testDumpsJsonableObjectRoundtrip(self):
     obj = _DefaultJsonableObject(1, {'a': 'b'}, [True])

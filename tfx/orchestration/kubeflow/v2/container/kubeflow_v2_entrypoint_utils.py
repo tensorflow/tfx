@@ -131,19 +131,22 @@ def parse_execution_properties(exec_properties: Any) -> Dict[str, Any]:
     # TODO(b/159835994): Remove this once pipeline populates INPUT_BASE_KEY
     if k == _OLD_INPUT_BASE_PROPERTY_NAME:
       k = standard_component_specs.INPUT_BASE_KEY
-    # Translate each field from Value pb to plain value.
-    result[k] = getattr(v, v.WhichOneof('value'))
+    if isinstance(v, struct_pb2.Value) and v.HasField('kind'):
+      # TODO(b/249805598): Ensure that struct_value is deserialized to Python
+      # String or dictionary
+      # TODO(b/249805604): Ensure that list_value is deserialized to Python list
+      result[k] = getattr(v, v.WhichOneof('kind'))
+    elif isinstance(v, pipeline_pb2.Value) and v.HasField('value'):
+      result[k] = getattr(v, v.WhichOneof('value'))
     if result[k] is None:
       raise TypeError('Unrecognized type encountered at field %s of execution'
                       ' properties %s' % (k, exec_properties))
-
   return result
 
 
 def translate_executor_output(
     output_dict: Mapping[str, List[artifact.Artifact]],
-    name_from_id: Mapping[int,
-                          str]) -> Dict[str, pipeline_pb2.ArtifactList]:
+    name_from_id: Mapping[int, str]) -> Dict[str, pipeline_pb2.ArtifactList]:
   """Translates output_dict to a Kubeflow ArtifactList mapping."""
   result = {}
   for k, v in output_dict.items():
