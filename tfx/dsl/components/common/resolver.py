@@ -231,11 +231,13 @@ class Resolver(base_node.BaseNode):
       function = cast(resolver_function.ResolverFunction, function)
     self._strategy_class = strategy_class
     self._config = config or {}
-    trace_input = resolver_op.InputNode(
-        channels, resolver_op.DataType.ARTIFACT_MULTIMAP)
     if function is not None:
+      trace_input = resolver_op.InputNode(channels,
+                                          resolver_op.DataType.ARTIFACT_LIST)
       self._trace_result = function.trace(trace_input)
     else:
+      trace_input = resolver_op.InputNode(
+          channels, resolver_op.DataType.ARTIFACT_MULTIMAP)
       self._trace_result = resolver_op.OpNode(
           op_type=strategy_class,
           output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP,
