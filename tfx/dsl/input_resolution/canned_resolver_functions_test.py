@@ -57,7 +57,8 @@ class DummyNode(base_node.BaseNode):
     return self._outputs
 
 
-class CannedResolverFunctionsTest(tf.test.TestCase, test_case_utils.MlmdMixins):
+class CannedResolverFunctionsTest(
+    test_case_utils.TfxTest, test_case_utils.MlmdMixins):
 
   def assertArtifactEqual(self, mlmd_artifact: metadata_store_pb2.Artifact,
                           resolved_artifact: metadata_store_pb2.Artifact):
