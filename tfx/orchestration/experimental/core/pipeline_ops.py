@@ -18,7 +18,7 @@ import functools
 import itertools
 import threading
 import time
-from typing import Callable, List, Mapping, Optional, Sequence
+from typing import Callable, List, Mapping, Optional
 
 from absl import logging
 import attr
@@ -65,8 +65,7 @@ def _pipeline_ops_lock(fn):
 
 
 def _to_status_not_ok_error(fn):
-  """Decorator to catch exceptions and re-raise a `status_lib.StatusNotOkError`.
-  """
+  """Decorator to catch exceptions and re-raise a `status_lib.StatusNotOkError`."""
 
   @functools.wraps(fn)
   def _wrapper(*args, **kwargs):
@@ -244,19 +243,6 @@ def initiate_node_start(mlmd_handle: metadata.Metadata,
   return pipeline_state
 
 
-def _check_nodes_exist(node_uids: Sequence[task_lib.NodeUid],
-                       pipeline: pipeline_pb2.Pipeline, op_name: str) -> None:
-  """Raises an error if node_uid does not exist in the pipeline."""
-  node_id_set = set(n.node_id for n in node_uids)
-  nodes = pstate.get_all_nodes(pipeline)
-  filtered_nodes = [n for n in nodes if n.node_info.id in node_id_set]
-  if len(filtered_nodes) != len(node_id_set):
-    raise status_lib.StatusNotOkError(
-        code=status_lib.Code.INVALID_ARGUMENT,
-        message=(f'`f{op_name}` operation failed, cannot find node(s) '
-                 f'{", ".join(node_id_set)} in the pipeline IR.'))
-
-
 @_to_status_not_ok_error
 def stop_node(mlmd_handle: metadata.Metadata,
               node_uid: task_lib.NodeUid,
@@ -279,7 +265,14 @@ def stop_node(mlmd_handle: metadata.Metadata,
   with _PIPELINE_OPS_LOCK:
     with pstate.PipelineState.load(mlmd_handle,
                                    node_uid.pipeline_uid) as pipeline_state:
-      _check_nodes_exist([node_uid], pipeline_state.pipeline, 'stop_node')
+      nodes = pstate.get_all_nodes(pipeline_state.pipeline)
+      filtered_nodes = [n for n in nodes if n.node_info.id == node_uid.node_id]
+      if len(filtered_nodes) != 1:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.INTERNAL,
+            message=(
+                f'`stop_node` operation failed, unable to find node to stop: '
+                f'{node_uid}'))
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         if node_state.is_stoppable():
           node_state.update(
@@ -291,37 +284,6 @@ def stop_node(mlmd_handle: metadata.Metadata,
   # Wait until the node is stopped or time out.
   _wait_for_node_inactivation(
       pipeline_state, node_uid, timeout_secs=timeout_secs)
-
-
-@_to_status_not_ok_error
-@_pipeline_ops_lock
-def skip_nodes(mlmd_handle: metadata.Metadata,
-               node_uids: Sequence[task_lib.NodeUid]) -> None:
-  """Marks node executions to be skipped."""
-  # All node_uids must have the same pipeline_uid.
-  pipeline_uids_set = set(n.pipeline_uid for n in node_uids)
-  if len(pipeline_uids_set) != 1:
-    raise status_lib.StatusNotOkError(
-        code=status_lib.Code.INVALID_ARGUMENT,
-        message='Can skip nodes of a single pipeline at once.')
-  pipeline_uid = pipeline_uids_set.pop()
-  with pstate.PipelineState.load(mlmd_handle, pipeline_uid) as pipeline_state:
-    _check_nodes_exist(node_uids, pipeline_state.pipeline, 'skip_nodes')
-    for node_uid in node_uids:
-      with pipeline_state.node_state_update_context(node_uid) as node_state:
-        if node_state.state == pstate.NodeState.SKIPPED:
-          continue
-        elif node_state.is_programmatically_skippable():
-          node_state.update(
-              pstate.NodeState.SKIPPED,
-              status_lib.Status(
-                  code=status_lib.Code.OK,
-                  message='Node skipped by client request.'))
-        else:
-          raise status_lib.StatusNotOkError(
-              code=status_lib.Code.FAILED_PRECONDITION,
-              message=f'Node in state {node_state.state} is not programmatically skippable.'
-          )
 
 
 @_to_status_not_ok_error
@@ -456,9 +418,9 @@ def _wait_for_node_inactivation(pipeline_state: pstate.PipelineState,
                                   pstate.NodeState.SKIPPED,
                                   pstate.NodeState.STOPPED)
 
-  _wait_for_predicate(_is_inactivated, 'node inactivation',
-                      _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS,
-                      timeout_secs)
+  return _wait_for_predicate(
+      _is_inactivated, 'node inactivation',
+      _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS, timeout_secs)
 
 
 def _get_previously_skipped_nodes(
@@ -595,8 +557,7 @@ def resume_pipeline(mlmd_handle: metadata.Metadata,
 def _wait_for_predicate(predicate_fn: Callable[[], bool], waiting_for_desc: str,
                         polling_interval_secs: float,
                         timeout_secs: Optional[float]) -> None:
-  """Waits for `predicate_fn` to return `True` or until timeout seconds elapse.
-  """
+  """Waits for `predicate_fn` to return `True` or until timeout seconds elapse."""
   if timeout_secs is None:
     while not predicate_fn():
       logging.info('Sleeping %f sec(s) waiting for predicate: %s',
@@ -664,77 +625,19 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
   for pipeline_state in stop_initiated_pipeline_states:
     logging.info('Orchestrating stop-initiated pipeline: %s',
                  pipeline_state.pipeline_uid)
-    try:
-      _orchestrate_stop_initiated_pipeline(mlmd_handle, task_queue,
-                                           service_job_manager, pipeline_state)
-    except Exception:  # pylint: disable=broad-except
-      # If orchestrating a stop-initiated pipeline raises an exception, we log
-      # the exception but do not re-raise since we do not want to crash the
-      # orchestrator. If this issue persists across iterations of the
-      # orchestration loop, the expectation is that user configured alerting
-      # config will eventually fire alerts.
-      logging.exception(
-          'Exception raised while orchestrating stop-initiated pipeline %s',
-          pipeline_state.pipeline_uid)
+    _orchestrate_stop_initiated_pipeline(mlmd_handle, task_queue,
+                                         service_job_manager, pipeline_state)
 
   for pipeline_state in update_initiated_pipeline_states:
     logging.info('Orchestrating update-initiated pipeline: %s',
                  pipeline_state.pipeline_uid)
-    try:
-      _orchestrate_update_initiated_pipeline(mlmd_handle, task_queue,
-                                             service_job_manager,
-                                             pipeline_state)
-    except Exception as e:  # pylint: disable=broad-except
-      logging.exception(
-          'Exception raised while orchestrating update-initiated pipeline %s',
-          pipeline_state.pipeline_uid)
-      logging.info(
-          'Attempting to initiate termination of update-initiated pipeline %s',
-          pipeline_state.pipeline_uid)
-      try:
-        with pipeline_state:
-          pipeline_state.initiate_stop(
-              status_lib.Status(
-                  code=status_lib.Code.INTERNAL,
-                  message=f'Error orchestrating update-initiated pipeline: {str(e)}'
-              ))
-      except Exception:  # pylint: disable=broad-except
-        # If stop initiation also raised an exception , we log the exception but
-        # do not re-raise since we do not want to crash the orchestrator. If
-        # this issue persists across iterations of the orchestration loop, the
-        # expectation is that user configured alerting config will eventually
-        # fire alerts.
-        logging.exception(
-            'Error while attempting to terminate update-initiated pipeline %s due to internal error',
-            pipeline_state.pipeline_uid)
+    _orchestrate_update_initiated_pipeline(mlmd_handle, task_queue,
+                                           service_job_manager, pipeline_state)
 
   for pipeline_state in active_pipeline_states:
     logging.info('Orchestrating pipeline: %s', pipeline_state.pipeline_uid)
-    try:
-      _orchestrate_active_pipeline(mlmd_handle, task_queue, service_job_manager,
-                                   pipeline_state)
-    except Exception as e:  # pylint: disable=broad-except
-      logging.exception(
-          'Exception raised while orchestrating active pipeline %s',
-          pipeline_state.pipeline_uid)
-      logging.info('Attempting to initiate termination of active pipeline %s',
-                   pipeline_state.pipeline_uid)
-      try:
-        with pipeline_state:
-          pipeline_state.initiate_stop(
-              status_lib.Status(
-                  code=status_lib.Code.INTERNAL,
-                  message=f'Error orchestrating active pipeline: {str(e)}'))
-      except Exception:  # pylint: disable=broad-except
-        # If stop initiation also raised an exception , we log the exception but
-        # do not re-raise since we do not want to crash the orchestrator. If
-        # this issue persists across iterations of the orchestration loop, the
-        # expectation is that user configured alerting config will eventually
-        # fire alerts.
-        logging.exception(
-            'Error while attempting to terminate active pipeline %s due to internal error',
-            pipeline_state.pipeline_uid)
-
+    _orchestrate_active_pipeline(mlmd_handle, task_queue, service_job_manager,
+                                 pipeline_state)
   return True
 
 

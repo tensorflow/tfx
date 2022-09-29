@@ -57,6 +57,13 @@ TEST_RUNTIME_CONFIG = pipeline_pb2.PipelineJob.RuntimeConfig(
     })
 
 
+@tfx.dsl.components.component
+def custom_component(input_parameter: tfx.dsl.components.Parameter[str],
+                     output_value_artifact: tfx.dsl.components.OutputArtifact[
+                         tfx.types.standard_artifacts.String]):
+  output_value_artifact.value = input_parameter
+
+
 # TODO(b/158245564): Reevaluate whether to keep this test helper function
 def two_step_pipeline() -> tfx.dsl.Pipeline:
   """Returns a simple 2-step pipeline under test."""

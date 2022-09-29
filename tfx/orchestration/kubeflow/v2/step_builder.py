@@ -369,7 +369,7 @@ class StepBuilder:
         input_parameter_spec = pipeline_pb2.TaskInputsSpec.InputParameterSpec()
         task_output_parameter_spec = pipeline_pb2.TaskInputsSpec.InputParameterSpec.TaskOutputParameterSpec(
         )
-        task_output_parameter_spec.producer_task = value.channel.producer_component_id + '_task'
+        task_output_parameter_spec.producer_task = value.channel.producer_component_id
         task_output_parameter_spec.output_parameter_key = value.channel.output_key
         input_parameter_spec.task_output_parameter.CopyFrom(
             task_output_parameter_spec)

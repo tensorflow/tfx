@@ -136,7 +136,7 @@ class InteractiveContext:
     driver_args = data_types.DriverArgs(
         enable_cache=enable_cache, interactive_resolution=True)
     metadata_connection = metadata.Metadata(self.metadata_connection_config)
-    beam_pipeline_args = list(beam_pipeline_args or self.beam_pipeline_args)
+    beam_pipeline_args = beam_pipeline_args or self.beam_pipeline_args
     additional_pipeline_args = {}
     for name, output in component.outputs.items():
       for artifact in output.get():

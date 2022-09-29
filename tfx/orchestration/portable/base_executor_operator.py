@@ -80,7 +80,3 @@ class BaseExecutorOperator(abc.ABC):
     """
     self._execution_watcher_address = execution_watcher_address
     return self
-
-  def handle_stop(self) -> None:
-    """Executor Operator specific logic to clean up after it is stopped."""
-    pass

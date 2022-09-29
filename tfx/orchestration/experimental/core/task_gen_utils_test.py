@@ -316,31 +316,6 @@ class TaskGenUtilsTest(tu.TfxTest):
               'last_update_time_since_epoch'
           ])
 
-  def test_get_oldest_active_execution_by_index_from_a_set(self):
-    with self._mlmd_connection as m:
-      # Registers a set of executions.
-      task_gen_utils.register_executions(
-          m,
-          metadata_store_pb2.ExecutionType(name='my_ex_type'), {},
-          input_and_params=[
-              task_gen_utils.InputAndParam(input_artifacts={
-                  'input_example': [standard_artifacts.Examples()]
-              }),
-              task_gen_utils.InputAndParam(input_artifacts={
-                  'input_example': [standard_artifacts.Examples()]
-              })
-          ])
-
-      # Tests the function.
-      executions = m.store.get_executions()
-      self.assertLen(executions, 2)
-      oldest_execution = task_gen_utils.get_oldest_active_execution_by_index_from_a_set(
-          executions)
-      self.assertEqual(
-          0,
-          oldest_execution.custom_properties.get(
-              task_gen_utils._EXTERNAL_EXECUTION_INDEX).int_value)
-
   def test_register_executions(self):
     with self._mlmd_connection as m:
       context_type = metadata_store_pb2.ContextType(name='my_ctx_type')

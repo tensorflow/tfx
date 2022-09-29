@@ -196,7 +196,6 @@ tfx_extras_requires = {
     # under 'tfx/tools/docker/Dockerfile' are required
     'docker-image': dependencies.make_extra_packages_docker_image(),
     'airflow': dependencies.make_extra_packages_airflow(),
-    'flax': dependencies.make_extra_packages_flax(),
     'kfp': dependencies.make_extra_packages_kfp(),
     'tfjs': dependencies.make_extra_packages_tfjs(),
     'tf-ranking': dependencies.make_extra_packages_tf_ranking(),
