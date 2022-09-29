@@ -39,13 +39,12 @@ class Executor(base_executor.BaseExecutor):
          exec_properties: Dict[str, Any]) -> None:
     """TensorFlow SchemaGen executor entrypoint.
 
-    This infers the schema using tensorflow_data_validation on the precomputed
-    stats of 'train' split.
+    This infers the schema using tensorflow_data_validation on precomputed
+    stats.
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - 'statistics': A list of 'ExampleStatistics' type which must contain
-          split 'train'.
+        - 'statistics': A list of 'ExampleStatistics' type.
       output_dict: Output dict from key to a list of artifacts, including:
         - schema: A list of 'Schema' artifact of size one.
       exec_properties: A dict of execution properties, includes:
