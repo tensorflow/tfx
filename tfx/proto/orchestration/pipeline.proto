@@ -519,7 +519,6 @@ message NodeExecutionOptions {
   // Note that for all trigger strategies outlined below, all
   // upstream nodes with either task or data dependency needs to be in a final
   // state.
-  // TODO(b/211890056): consider mapping this to kfp in step builder.
   enum TriggerStrategy {
     // Unspecified.  Behave the same as ALL_UPSTREAM_NODES_SUCCEEDED.
     TRIGGER_STRATEGY_UNSPECIFIED = 0;
@@ -532,6 +531,14 @@ message NodeExecutionOptions {
   // Unset or set to default value of TRIGGER_STATEGY_UNDEFINED behaves the
   // same as ALL_UPSTREAM_NODES_SUCCEEDED.
   TriggerStrategy strategy = 4;
+
+  // If set, the node's success is optional for orchestration. In other words,
+  // the node will always be treated as a succeeded node when it completes, both
+  // when triggering downstream nodes with either task or data dependency and
+  // when determining final pipeline run outcome. Only supported in the
+  // experimental orchestrator under SYNC mode and ignored when configured for
+  // other platforms.
+  bool node_success_optional = 5;
   // LINT.ThenChange(tfx/orchestration/experimental/core/sync_pipeline_task_gen.py)
 }
 
