@@ -24,6 +24,7 @@ from tfx.orchestration import metadata
 from tfx.types import channel_utils
 from tfx.utils import doc_controls
 
+from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
 
 # Constant to access Importer importing result from Importer output dict.
@@ -64,9 +65,9 @@ def _prepare_artifact(
 ) -> types.Artifact:
   """Prepares the Importer's output artifact.
 
-  If there is already an artifact in MLMD with the same URI and properties /
-  custom properties, that artifact will be reused unless the `reimport`
-  argument is set to True.
+  If there is already an artifact in MLMD with the same URI, properties /
+  custom properties, and type, that artifact will be reused unless the
+  `reimport` argument is set to True.
 
   Args:
     metadata_handler: The handler of MLMD.
@@ -95,30 +96,45 @@ def _prepare_artifact(
           ('Custom property value for key %r must be a string or integer '
            '(got %r instead)') % (key, value))
 
-  unfiltered_previous_artifacts = metadata_handler.get_artifacts_by_uri(
-      uri)
-  # Only consider previous artifacts as candidates to reuse, if the properties
-  # of the imported artifact match those of the existing artifact.
+  unfiltered_previous_artifacts = metadata_handler.get_artifacts_by_uri(uri)
+  new_artifact_type = False
+  if mlmd_artifact_type and not mlmd_artifact_type.id:
+    try:
+      mlmd_artifact_type = metadata_handler.store.get_artifact_type(
+          mlmd_artifact_type.name)
+    except errors.NotFoundError:
+      # Artifact type is not registered, so it must be new.
+      new_artifact_type = True
+
+  # Only consider previous artifacts as candidates to reuse if:
+  #  * the given artifact type is recognized by MLMD
+  #  * reimport is False
+  #  * the type and properties match the imported artifact
   previous_artifacts = []
-  for candidate_mlmd_artifact in unfiltered_previous_artifacts:
-    is_candidate = True
-    candidate_artifact = output_artifact_class(mlmd_artifact_type)
-    candidate_artifact.set_mlmd_artifact(candidate_mlmd_artifact)
-    for key, value in properties.items():
-      if getattr(candidate_artifact, key) != value:
-        is_candidate = False
-        break
-    for key, value in custom_properties.items():
-      if isinstance(value, int):
-        if candidate_artifact.get_int_custom_property(key) != value:
+  if not reimport and not new_artifact_type:
+    for candidate_mlmd_artifact in unfiltered_previous_artifacts:
+      if mlmd_artifact_type and candidate_mlmd_artifact.type_id != mlmd_artifact_type.id:
+        # If mlmd_artifact_type is defined, don't reuse existing artifacts if
+        # they don't match the given type.
+        continue
+      is_candidate = True
+      candidate_artifact = output_artifact_class(mlmd_artifact_type)
+      candidate_artifact.set_mlmd_artifact(candidate_mlmd_artifact)
+      for key, value in properties.items():
+        if getattr(candidate_artifact, key) != value:
           is_candidate = False
           break
-      elif isinstance(value, (str, bytes)):
-        if candidate_artifact.get_string_custom_property(key) != value:
-          is_candidate = False
-          break
-    if is_candidate:
-      previous_artifacts.append(candidate_mlmd_artifact)
+      for key, value in custom_properties.items():
+        if isinstance(value, int):
+          if candidate_artifact.get_int_custom_property(key) != value:
+            is_candidate = False
+            break
+        elif isinstance(value, (str, bytes)):
+          if candidate_artifact.get_string_custom_property(key) != value:
+            is_candidate = False
+            break
+      if is_candidate:
+        previous_artifacts.append(candidate_mlmd_artifact)
 
   result = output_artifact_class(mlmd_artifact_type)
   result.uri = uri

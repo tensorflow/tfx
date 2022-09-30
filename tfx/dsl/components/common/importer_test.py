@@ -29,6 +29,86 @@ from ml_metadata.proto import metadata_store_pb2
 
 class ImporterTest(tf.test.TestCase):
 
+  # tests that when the type of an existing artifact matches the
+  # mlmd_artifact_type, the existing artifact is reused.
+  def testImporterDriverGenerateOutputDict_ReuseTypeMatch(self):
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.fake_database.SetInParent()
+
+    source_uri = 'artifact_uri'
+    existing_artifact = standard_artifacts.Examples()
+    existing_artifact.uri = source_uri
+    artifact_type = metadata_store_pb2.ArtifactType(
+        name=existing_artifact.TYPE_NAME)
+    with metadata.Metadata(connection_config=connection_config) as m:
+      m.publish_artifacts([existing_artifact])
+      result = importer.generate_output_dict(
+          metadata_handler=m,
+          uri=source_uri,
+          properties={},
+          custom_properties={},
+          reimport=False,
+          output_artifact_class=types.Artifact(artifact_type).type,
+          mlmd_artifact_type=artifact_type,
+          output_key=importer.IMPORT_RESULT_KEY)
+      self.assertEqual(existing_artifact.id,
+                       result[importer.IMPORT_RESULT_KEY][0].id)
+
+  # tests that when the type of an existing artifact does not match the
+  # mlmd_artifact_type, the existing artifact is _not_ reused.
+  def testImporterDriverGenerateOutputDict_DontReuseTypeMismatch(self):
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.fake_database.SetInParent()
+
+    source_uri = 'artifact1_uri'
+    existing_artifact1 = standard_artifacts.Examples()
+    existing_artifact1.uri = source_uri
+    # existing_artifact2 is to load the artifact type into MLMD.
+    existing_artifact2 = standard_artifacts.Model()
+    existing_artifact2.uri = 'x'
+    artifact2_type = metadata_store_pb2.ArtifactType(
+        name=existing_artifact2.TYPE_NAME)
+    with metadata.Metadata(connection_config=connection_config) as m:
+      m.publish_artifacts([existing_artifact1, existing_artifact2])
+      result = importer.generate_output_dict(
+          metadata_handler=m,
+          uri=source_uri,
+          properties={},
+          custom_properties={},
+          reimport=False,
+          output_artifact_class=types.Artifact(artifact2_type).type,
+          mlmd_artifact_type=artifact2_type,
+          output_key=importer.IMPORT_RESULT_KEY)
+      self.assertNotEqual(result[importer.IMPORT_RESULT_KEY][0].id,
+                          existing_artifact1.id)
+      self.assertNotEqual(result[importer.IMPORT_RESULT_KEY][0].id,
+                          existing_artifact2.id)
+
+  # tests that when the output type has not yet been registered, the existing
+  # artifact is _not_ reused.
+  def testImporterDriverGenerateOutputDict_DontReuseNewType(self):
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.fake_database.SetInParent()
+
+    source_uri = 'artifact_uri'
+    existing_artifact = standard_artifacts.Examples()
+    existing_artifact.uri = source_uri
+    artifact_type = metadata_store_pb2.ArtifactType(
+        name='NewNeverBeforeSeenType')
+    with metadata.Metadata(connection_config=connection_config) as m:
+      m.publish_artifacts([existing_artifact])
+      result = importer.generate_output_dict(
+          metadata_handler=m,
+          uri=source_uri,
+          properties={},
+          custom_properties={},
+          reimport=False,
+          output_artifact_class=types.Artifact(artifact_type).type,
+          mlmd_artifact_type=artifact_type,
+          output_key=importer.IMPORT_RESULT_KEY)
+      self.assertNotEqual(result[importer.IMPORT_RESULT_KEY][0].id,
+                          existing_artifact.id)
+
   def testImporterDefinitionWithSingleUri(self):
     impt = importer.Importer(
         source_uri='m/y/u/r/i',
@@ -89,7 +169,7 @@ class ImporterDriverTest(tf.test.TestCase, parameterized.TestCase):
     self.connection_config = metadata_store_pb2.ConnectionConfig()
     self.connection_config.sqlite.SetInParent()
     self.properties = {
-        'split_names': artifact_utils.encode_split_names(['train', 'eval'])
+        'split_names': artifact_utils.encode_split_names(['train', 'eval']),
     }
     self.custom_properties = {
         'string_custom_property': 'abc',
@@ -118,9 +198,8 @@ class ImporterDriverTest(tf.test.TestCase, parameterized.TestCase):
         pipeline_info=self.pipeline_info)
     self.driver_args = data_types.DriverArgs(enable_cache=True)
 
-  @parameterized.named_parameters(
-      ('with_reimport', True),
-      ('without_reimport', False))
+  @parameterized.named_parameters(('with_reimport', True),
+                                  ('without_reimport', False))
   def testImporterDriver(self, reimport: bool):
     with metadata.Metadata(connection_config=self.connection_config) as m:
       m.publish_artifacts(self.existing_artifacts)

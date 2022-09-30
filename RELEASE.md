@@ -16,6 +16,7 @@
 *   Moved `tflite-support` related dependencies from `[examples]` to a separate
     `[tflite-support]` extra.
 *   Statistics gen and Schema gen now crash on empty input examples and statistics respectively.
+*   Importer will now check that an existing artifact has the same type as the intended output before reusing the existing artifact.
 
 ## Dependency Updates
 
