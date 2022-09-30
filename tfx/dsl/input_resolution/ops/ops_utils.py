@@ -13,13 +13,41 @@
 # limitations under the License.
 """Shared utility functions for ResolverOps."""
 
-from typing import List
+from typing import Dict, List, Sequence
 
 from tfx import types
 
-# TODO(b/241109157): Add a artifacts utility method.
-# TODO(b/241109157): Add a verify_n, verify_offset, verify_min_span, etc.
-# methods.
+# Maps from "span" and "version" to PropertyType.INT. Many ResolverOps require
+# one or both of these properties, so we define constants here for convenience.
+SPAN_PROPERTY = {'span': types.artifact.PropertyType.INT}
+
+VERSION_PROPERTY = {'version': types.artifact.PropertyType.INT}
+
+SPAN_AND_VERSION_PROPERTIES = {
+    'span': types.artifact.PropertyType.INT,
+    'version': types.artifact.PropertyType.INT
+}
+
+
+def get_valid_artifacts(
+    artifacts: Sequence[types.Artifact],
+    property_types: Dict[str,
+                         types.artifact.PropertyType]) -> List[types.Artifact]:
+  """Returns artifacts that have the required property names and types."""
+
+  valid_artifacts = []
+  for artifact in artifacts:
+    if artifact.PROPERTIES is None:
+      continue
+
+    for property_name, property_type in property_types.items():
+      if (property_name not in artifact.PROPERTIES or
+          artifact.PROPERTIES[property_name].type != property_type):
+        break
+    else:
+      valid_artifacts.append(artifact)
+
+  return valid_artifacts
 
 
 def filter_artifacts_by_span(

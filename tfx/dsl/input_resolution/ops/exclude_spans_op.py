@@ -17,6 +17,7 @@ from typing import Sequence
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.input_resolution.ops import ops_utils
 
 
 class ExcludeSpans(
@@ -47,18 +48,8 @@ class ExcludeSpans(
     Returns:
       Artifacts with spans not in denylist.
     """
-
-    # Only consider artifacts that "span" in PROPERTIES with PropertyType.INT.
-    valid_artifacts = []
-    for artifact in input_list:
-      if artifact.PROPERTIES is None:
-        continue
-
-      if ('span' not in artifact.PROPERTIES or
-          artifact.PROPERTIES['span'].type != types.artifact.PropertyType.INT):
-        continue
-
-      valid_artifacts.append(artifact)
+    valid_artifacts = ops_utils.get_valid_artifacts(input_list,
+                                                    ops_utils.SPAN_PROPERTY)
 
     # Only return artifacts that do not have spans in denylist.
     return [a for a in valid_artifacts if a.span not in set(self.denylist)]

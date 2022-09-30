@@ -64,33 +64,13 @@ class ConsecutiveSpans(
       Artifacts with spans in the range [first_span, max_span - skip_last_n].
       The artifacts are sorted in ascending order, first by span and then by
       version (if keep_all_versions = True).
-
-    Raises:
-      SkipSignal if the artifacts do not have all the spans in the range
-      [first_span, max_span - skip_last_n] present.
     """
     if self.skip_last_n < 0:
       raise ValueError(f'skip_last_n must be >= 0, but was set to '
                        f'{self.skip_last_n}.')
 
-    # Only consider artifacts that have both "span" and "version" in PROPERTIES
-    # with PropertyType.INT.
-    valid_artifacts = []
-    for artifact in input_list:
-      if artifact.PROPERTIES is None:
-        continue
-
-      if ('span' not in artifact.PROPERTIES or
-          artifact.PROPERTIES['span'].type != types.artifact.PropertyType.INT):
-        continue
-
-      if ('version' not in artifact.PROPERTIES or
-          artifact.PROPERTIES['version'].type !=
-          types.artifact.PropertyType.INT):
-        continue
-
-      valid_artifacts.append(artifact)
-
+    valid_artifacts = ops_utils.get_valid_artifacts(
+        input_list, ops_utils.SPAN_AND_VERSION_PROPERTIES)
     if not valid_artifacts:
       return []
 

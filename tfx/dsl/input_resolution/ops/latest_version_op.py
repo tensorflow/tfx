@@ -17,6 +17,7 @@ from typing import Sequence
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.input_resolution.ops import ops_utils
 
 
 class LatestVersion(
@@ -38,20 +39,8 @@ class LatestVersion(
     if not input_list:
       return []
 
-    # Only consider artifacts that have "version" in PROPERTIES with
-    # PropertyType.INT.
-    valid_artifacts = []
-    for artifact in input_list:
-      if artifact.PROPERTIES is None:
-        continue
-
-      if ('version' not in artifact.PROPERTIES or
-          artifact.PROPERTIES['version'].type !=
-          types.artifact.PropertyType.INT):
-        continue
-
-      valid_artifacts.append(artifact)
-
+    valid_artifacts = ops_utils.get_valid_artifacts(input_list,
+                                                    ops_utils.VERSION_PROPERTY)
     if not valid_artifacts:
       return []
 

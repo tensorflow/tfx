@@ -17,6 +17,7 @@ from typing import Optional, Sequence
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.input_resolution.ops import ops_utils
 
 
 class StaticSpanRange(
@@ -52,22 +53,8 @@ class StaticSpanRange(
     Args:
       input_list: A list of artifacts.
     """
-    valid_artifacts = []
-    for artifact in input_list:
-      if artifact.PROPERTIES is None:
-        continue
-
-      if ('span' not in artifact.PROPERTIES or
-          artifact.PROPERTIES['span'].type != types.artifact.PropertyType.INT):
-        continue
-
-      if ('version' not in artifact.PROPERTIES or
-          artifact.PROPERTIES['version'].type !=
-          types.artifact.PropertyType.INT):
-        continue
-
-      valid_artifacts.append(artifact)
-
+    valid_artifacts = ops_utils.get_valid_artifacts(
+        input_list, ops_utils.SPAN_AND_VERSION_PROPERTIES)
     if not valid_artifacts:
       return []
 
