@@ -248,20 +248,23 @@ class _Generator:
                 node_uid=node_uid, state=pstate.NodeState.RUNNING))
       return result
 
+    # For mixed service nodes, we ensure node services and check service
+    # status; pipeline is aborted if the service jobs have failed.
+    service_status = self._ensure_node_services_if_mixed(node.node_info.id)
+    if service_status == service_jobs.ServiceStatus.FAILED:
+      error_msg = f'associated service job failed; node uid: {node_uid}'
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid,
+              state=pstate.NodeState.FAILED,
+              status=status_lib.Status(
+                  code=status_lib.Code.ABORTED, message=error_msg)))
+      return result
+
     # If a task for the node is already tracked by the task queue, it need
-    # not be considered for generation again but we ensure node services
-    # in case of a mixed service node.
+    # not be considered for generation again.
     if self._is_task_id_tracked_fn(
         task_lib.exec_node_task_id_from_node(self._pipeline, node)):
-      service_status = self._ensure_node_services_if_mixed(node_id)
-      if service_status == service_jobs.ServiceStatus.FAILED:
-        error_msg = f'associated service job failed; node uid: {node_uid}'
-        result.append(
-            task_lib.UpdateNodeStateTask(
-                node_uid=node_uid,
-                state=pstate.NodeState.FAILED,
-                status=status_lib.Status(
-                    code=status_lib.Code.ABORTED, message=error_msg)))
       return result
 
     node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
@@ -362,26 +365,12 @@ class _Generator:
         mlmd_handle=self._mlmd_handle,
         execution_id=executions[0].id) as execution:
       execution.last_known_state = metadata_store_pb2.Execution.RUNNING
-
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
         self._pipeline.execution_mode)
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
-
-    # For mixed service nodes, we ensure node services and check service
-    # status; pipeline is aborted if the service jobs have failed.
-    service_status = self._ensure_node_services_if_mixed(node.node_info.id)
-    if service_status == service_jobs.ServiceStatus.FAILED:
-      error_msg = f'associated service job failed; node uid: {node_uid}'
-      result.append(
-          task_lib.UpdateNodeStateTask(
-              node_uid=node_uid,
-              state=pstate.NodeState.FAILED,
-              status=status_lib.Status(
-                  code=status_lib.Code.ABORTED, message=error_msg)))
-      return result
-
     outputs_utils.make_output_dirs(output_artifacts)
+
     result.append(
         task_lib.UpdateNodeStateTask(
             node_uid=node_uid, state=pstate.NodeState.RUNNING))

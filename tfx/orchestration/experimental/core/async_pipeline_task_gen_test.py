@@ -346,8 +346,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     """Tests task generation when example-gen service job fails."""
 
     def _ensure_node_services(unused_pipeline_state, node_id):
-      self.assertEqual('my_example_gen', node_id)
-      return service_jobs.ServiceStatus.FAILED
+      if node_id == 'my_example_gen':
+        return service_jobs.ServiceStatus.FAILED
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
@@ -359,6 +359,27 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_active_executions=0)
     self.assertIsInstance(update_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(status_lib.Code.ABORTED, update_task.status.code)
+
+  def test_mix_service_job_failed(self):
+    """Tests task generation when my_transform mix service job fails."""
+
+    def _ensure_node_services(unused_pipeline_state, node_id):
+      if node_id == 'my_example_gen':
+        return service_jobs.ServiceStatus.RUNNING
+      if node_id == 'my_transform':
+        return service_jobs.ServiceStatus.FAILED
+
+    self._mock_service_job_manager.ensure_node_services.side_effect = (
+        _ensure_node_services)
+    [example_gen_update_task, transform_update_task] = self._generate_and_test(
+        True,
+        num_initial_executions=0,
+        num_tasks_generated=2,
+        num_new_executions=0,
+        num_active_executions=0)
+    self.assertIsInstance(example_gen_update_task, task_lib.UpdateNodeStateTask)
+    self.assertIsInstance(transform_update_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(status_lib.Code.ABORTED, transform_update_task.status.code)
 
   def test_triggering_upon_exec_properties_change(self):
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
