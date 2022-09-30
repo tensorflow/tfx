@@ -81,7 +81,9 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
         pipeline_root=self._pipeline_root,
         metadata_path=self._metadata_path,
         labels_path=self._labels_path,
-        beam_pipeline_args=[])
+        beam_pipeline_args=[],
+        accuracy_threshold=0.01,  # Use a very low value to make test stable.
+        )
 
     LocalDagRunner().run(pipeline)
 
