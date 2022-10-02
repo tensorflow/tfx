@@ -66,6 +66,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
   _SCHEMA_ARTIFACT_DIR = 'schema_gen'
   _MODULE_FILE = 'module_file/transform_module.py'
 
+  _PREVIOUS_MODEL_DIR = "trainer/pervious"
+
   _TEST_COUNTERS = {
       'num_instances': 24909,
       'total_columns_count': 18,
@@ -146,6 +148,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
         standard_component_specs.EXAMPLES_KEY: self._example_artifacts[:1],
         standard_component_specs.SCHEMA_KEY: [schema_artifact],
     }
+
+    # base model (optional)
+    self.previous_model = standard_artifacts.Model()
+    self.previous_model.uri = os.path.join(source_data_dir, 
+                                           self._PREVIOUS_MODEL_DIR)
 
     # Create output dict.
     self._transformed_output = standard_artifacts.TransformGraph()
@@ -388,6 +395,20 @@ class ExecutorTest(tft_unit.TransformTestCase):
             self._exec_properties))
 
     self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs()
+
+  def test_do_with_base_model(self):
+    self._exec_properties[
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
+    input_dict = self._input_dict.copy()
+    input_dict[standard_component_specs.BASE_MODEL_KEY] = [self.previous_model]
+       
+    self.assertIsNone(
+        self._transform_executor._GetStatsOptionsUpdaterFn(
+            self._exec_properties))
+
+    self._transform_executor.Do(input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
 

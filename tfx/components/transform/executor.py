@@ -43,7 +43,7 @@ from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
-from tfx.utils import io_utils
+from tfx.utils import io_utils, json_utils
 import tfx_bsl
 from tfx_bsl.tfxio import tfxio as tfxio_module
 
@@ -92,6 +92,8 @@ _ANOMALIES_KEY = 'anomalies'
 _SCHEMA_KEY = 'schema'
 _STATS_KEY = 'stats'
 _SHARDED_STATS_KEY = 'sharded_stats'
+
+_BASE_MODEL_KEY = "base_model"
 
 _FILE_FORMAT_PARQUET = example_gen_pb2.FileFormat.Name(
     example_gen_pb2.FileFormat.FILE_FORMAT_PARQUET)
@@ -397,6 +399,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           not provided, this should contain two splits 'train' and 'eval'.
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
+        - base_model: A list of type `standard_artifacts.Model` to be used
+          for transformation.
         - analyzer_cache: Cache input of 'tf.Transform', where cached
           information for analyzed examples from previous runs will be read.
       output_dict: Output dict from key to a list of artifacts, including:
@@ -523,6 +527,17 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         labels.SCHEMA_PATH_LABEL:
             schema_file,
     }
+    # Adding the base model artifacts
+    if  input_dict.get(_BASE_MODEL_KEY) is not None:
+        if inputs_for_fn_resolution.get(labels.CUSTOM_CONFIG) is None:
+          inputs_for_fn_resolution[labels.CUSTOM_CONFIG] = "{}"
+        base_model_uri = artifact_utils.get_single_uri(input_dict[_BASE_MODEL_KEY])
+        custom_config = json_utils.loads(inputs_for_fn_resolution[labels.CUSTOM_CONFIG])
+        custom_config.update(
+            {_BASE_MODEL_KEY: base_model_uri}
+        )
+        inputs_for_fn_resolution[labels.CUSTOM_CONFIG] = json_utils.dumps(custom_config)
+
     # Used in nitroml/automl/autodata/transform/executor.py
     outputs_for_fn_resolution = {
         labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: transform_output,

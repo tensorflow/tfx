@@ -89,6 +89,7 @@ class Transform(base_beam_component.BaseBeamComponent):
       self,
       examples: types.BaseChannel,
       schema: types.BaseChannel,
+      base_model: Optional[types.BaseChannel] = None,
       module_file: Optional[Union[str, data_types.RuntimeParameter]] = None,
       preprocessing_fn: Optional[Union[str,
                                        data_types.RuntimeParameter]] = None,
@@ -109,6 +110,9 @@ class Transform(base_beam_component.BaseBeamComponent):
         'eval'.
       schema: A BaseChannel of type `standard_artifacts.Schema`. This should
         contain a single schema artifact.
+      base_model: A BaseChannel of type `standard_artifacts.Model`. This
+        tensorflow model / function must be executable in graph mode. The path
+        of this model will be accessible from custom_configs.
       module_file: The file path to a python module file, from which the
         'preprocessing_fn' function will be loaded.
         Exactly one of 'module_file' or 'preprocessing_fn' must be supplied.
@@ -215,6 +219,7 @@ class Transform(base_beam_component.BaseBeamComponent):
     spec = standard_component_specs.TransformSpec(
         examples=examples,
         schema=schema,
+        base_model=base_model,
         module_file=module_file,
         preprocessing_fn=preprocessing_fn,
         stats_options_updater_fn=stats_options_updater_fn,

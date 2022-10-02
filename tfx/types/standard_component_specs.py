@@ -462,6 +462,9 @@ class TransformSpec(ComponentSpec):
       ANALYZER_CACHE_KEY:
           ChannelParameter(
               type=standard_artifacts.TransformCache, optional=True),
+      BASE_MODEL_KEY:
+          ChannelParameter(
+              type=standard_artifacts.Model, optional=True),
   }
   OUTPUTS = {
       TRANSFORM_GRAPH_KEY:

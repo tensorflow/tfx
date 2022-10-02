@@ -36,6 +36,8 @@ class ComponentTest(tf.test.TestCase):
     self.examples = channel_utils.as_channel([examples_artifact])
     self.schema = channel_utils.as_channel(
         [standard_artifacts.Schema()])
+    self.base_model = channel_utils.as_channel(
+        [standard_artifacts.Model()])
 
   def _verify_outputs(self,
                       transform,
@@ -169,6 +171,28 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(
         json.dumps(custom_config), transform.spec.exec_properties[
             standard_component_specs.CUSTOM_CONFIG_KEY])
+
+  def test_construct_with_base_model(self):
+    preprocessing_fn = 'path.to.my_preprocessing_fn'
+    custom_config = {'param': 1}
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        base_model=self.base_model,
+        preprocessing_fn=preprocessing_fn,
+        custom_config=custom_config,
+    )
+    self._verify_outputs(transform)
+    self.assertEqual(
+        preprocessing_fn, transform.spec.exec_properties[
+            standard_component_specs.PREPROCESSING_FN_KEY])
+    self.assertEqual(
+        json.dumps(custom_config), transform.spec.exec_properties[
+            standard_component_specs.CUSTOM_CONFIG_KEY])
+    self.assertIsNotNone(
+        json.loads(transform.spec.exec_properties[
+            standard_component_specs.CUSTOM_CONFIG_KEY]
+        ).get("base_model"))
 
   def test_construct_missing_user_module(self):
     with self.assertRaises(ValueError):
