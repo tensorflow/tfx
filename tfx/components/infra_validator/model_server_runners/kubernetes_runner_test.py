@@ -190,7 +190,7 @@ class KubernetesRunnerTest(tf.test.TestCase):
   def testBuildPodManifest_InsideKfp_OverrideConfig(self):
     # Prepare mocks and variables.
     self._AssumeInsideKfp()
-    runner = self._CreateKubernetesRunner(k8s_config_dict={
+    k8s_config_dict = {
         'service_account_name': 'chocolate-latte',
         'active_deadline_seconds': 123,
         'serving_pod_overrides': {
@@ -202,9 +202,14 @@ class KubernetesRunnerTest(tf.test.TestCase):
                     'secret_key_ref': {
                         'name': 'my_secret',
                         'key': 'my_key'}}}
-            ]
+            ],
+            'resources': {
+              'requests': {'memory': '2Gi', 'cpu': '1'},
+              'limits': {'memory': '4Gi', 'cpu': '2'},
+            }
         }
-    })
+    }
+    runner = self._CreateKubernetesRunner(k8s_config_dict=k8s_config_dict)
 
     # Act.
     pod_manifest = runner._BuildPodManifest()
@@ -221,6 +226,10 @@ class KubernetesRunnerTest(tf.test.TestCase):
                      'my_secret')
     self.assertEqual(container_envs['SECRET'].value_from.secret_key_ref.key,
                      'my_key')
+    container_resources = pod_manifest.spec.containers[0].resources
+    self.assertEqual(
+      container_resources == k8s_config_dict.get(
+        "serving_pod_overrides").get("resources"))
 
   def testStart_FailsIfOutsideKfp(self):
     # Prepare mocks and variables.

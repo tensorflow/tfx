@@ -89,6 +89,13 @@ def _convert_to_kube_env(
     # Note that env.value can be empty.
     return k8s_client.V1EnvVar(name=env.name, value=env.value)
 
+def _convert_resources(
+    resources: infra_validator_pb2.Resources
+  ) -> k8s_client.V1ResourceRequirements:
+  return k8s_client.V1ResourceRequirements(
+    requests=resources.requests,
+    limits=resources.limits,
+  )
 
 class KubernetesRunner(base_runner.BaseModelServerRunner):
   """A model server runner that launches model server in kubernetes cluster."""
@@ -233,6 +240,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
   def _BuildPodManifest(self) -> k8s_client.V1Pod:
     annotations = {}
     env_vars = []
+    resources = None
 
     if isinstance(self._serving_binary, serving_bins.TensorFlowServing):
       env_vars_dict = self._serving_binary.MakeEnvVars(
@@ -247,6 +255,8 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
         annotations.update(overrides.annotations)
       if overrides.env:
         env_vars.extend(_convert_to_kube_env(env) for env in overrides.env)
+      if overrides.resources:
+        resources = _convert_resources(overrides.resources)
 
     service_account_name = (self._config.service_account_name or
                             self._executor_pod.spec.service_account_name)
@@ -279,6 +289,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
                     name=_MODEL_SERVER_CONTAINER_NAME,
                     image=self._serving_binary.image,
                     env=env_vars,
+                    resources=resources,
                     volume_mounts=[],
                 ),
             ],
