@@ -189,10 +189,9 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(
         json.dumps(custom_config), transform.spec.exec_properties[
             standard_component_specs.CUSTOM_CONFIG_KEY])
-    self.assertIsNotNone(
-        json.loads(transform.spec.exec_properties[
-            standard_component_specs.CUSTOM_CONFIG_KEY]
-        ).get("base_model"))
+    self.assertIsNotNone(transform.spec.inputs.get("base_model"))
+    self.assertEqual(
+        transform.spec.inputs["base_model"].type_name, "Model")
 
   def test_construct_missing_user_module(self):
     with self.assertRaises(ValueError):
