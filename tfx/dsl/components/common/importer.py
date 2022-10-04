@@ -106,12 +106,16 @@ def _prepare_artifact(
       # Artifact type is not registered, so it must be new.
       new_artifact_type = True
 
+  result = output_artifact_class(mlmd_artifact_type)
+  result.uri = uri
+  _set_artifact_properties(result, properties, custom_properties)
+
   # Only consider previous artifacts as candidates to reuse if:
-  #  * the given artifact type is recognized by MLMD
   #  * reimport is False
+  #  * the given artifact type is recognized by MLMD
   #  * the type and properties match the imported artifact
-  previous_artifacts = []
   if not reimport and not new_artifact_type:
+    previous_artifacts = []
     for candidate_mlmd_artifact in unfiltered_previous_artifacts:
       if mlmd_artifact_type and candidate_mlmd_artifact.type_id != mlmd_artifact_type.id:
         # If mlmd_artifact_type is defined, don't reuse existing artifacts if
@@ -135,16 +139,11 @@ def _prepare_artifact(
             break
       if is_candidate:
         previous_artifacts.append(candidate_mlmd_artifact)
-
-  result = output_artifact_class(mlmd_artifact_type)
-  result.uri = uri
-  _set_artifact_properties(result, properties, custom_properties)
-
-  # If a registered artifact has the same uri and properties and the user does
-  # not explicitly ask for reimport, reuse that artifact.
-  if bool(previous_artifacts) and not reimport:
-    absl.logging.info('Reusing existing artifact')
-    result.set_mlmd_artifact(max(previous_artifacts, key=lambda m: m.id))
+    # If a registered artifact has the same uri and properties and the user does
+    # not explicitly ask for reimport, reuse that artifact.
+    if previous_artifacts:
+      absl.logging.info('Reusing existing artifact')
+      result.set_mlmd_artifact(max(previous_artifacts, key=lambda m: m.id))
 
   return result
 
