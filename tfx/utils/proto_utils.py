@@ -16,6 +16,7 @@
 import itertools
 from typing import Any, Dict, Iterator, TypeVar, Optional
 
+from google.protobuf import any_pb2
 from google.protobuf import descriptor_pb2
 from google.protobuf import descriptor as descriptor_lib
 from google.protobuf import descriptor_pool
@@ -108,6 +109,15 @@ def build_file_descriptor_set(
   return fd_set
 
 
+def _create_proto_instance_from_name(
+    message_name: str, pool: descriptor_pool.DescriptorPool) -> ProtoMessage:
+  """Creates a protobuf message instance from a given message name."""
+  message_descriptor = pool.FindMessageTypeByName(message_name)
+  factory = message_factory.MessageFactory(pool)
+  message_type = factory.GetPrototype(message_descriptor)
+  return message_type()
+
+
 def deserialize_proto_message(
     serialized_message: str,
     message_name: str,
@@ -119,8 +129,15 @@ def deserialize_proto_message(
     for file_descriptor in file_descriptors.file:
       pool.Add(file_descriptor)
 
-  message_descriptor = pool.FindMessageTypeByName(message_name)
-  factory = message_factory.MessageFactory(pool)
-  message_type = factory.GetPrototype(message_descriptor)
+  proto_instance = _create_proto_instance_from_name(message_name, pool)
   return json_format.Parse(
-      serialized_message, message_type(), descriptor_pool=pool)
+      serialized_message, proto_instance, descriptor_pool=pool)
+
+
+def unpack_proto_any(any_proto: any_pb2.Any) -> ProtoMessage:
+  """Unpacks a google.protobuf.Any message into its concrete type."""
+  pool = descriptor_pool.Default()
+  message_name = any_proto.type_url.split('/')[-1]
+  proto_instance = _create_proto_instance_from_name(message_name, pool)
+  any_proto.Unpack(proto_instance)
+  return proto_instance

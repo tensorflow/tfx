@@ -18,6 +18,8 @@ from tfx.utils import proto_utils
 from tfx.utils import test_case_utils
 from tfx.utils.testdata import foo_pb2
 
+from google.protobuf import any_pb2
+from google.protobuf import struct_pb2
 from google.protobuf import descriptor_pb2
 
 
@@ -171,6 +173,12 @@ class ProtoUtilsTest(test_case_utils.TfxTest):
         proto_utils.deserialize_proto_message(serialized_message, message_type,
                                               fd_set))
 
+  def test_unpack_proto_any(self):
+    original_proto = struct_pb2.Value(string_value='aaa')
+    any_proto = any_pb2.Any()
+    any_proto.Pack(original_proto)
+    unpacked_proto = proto_utils.unpack_proto_any(any_proto)
+    self.assertProtoEquals(original_proto, unpacked_proto)
 
 if __name__ == '__main__':
   tf.test.main()

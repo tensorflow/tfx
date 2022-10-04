@@ -89,6 +89,48 @@ nodes {
           }
         }
       }
+      outputs {
+        key: "stats_metadata"
+        value {
+          artifact_spec {
+            type {
+              name: "StatsMetadata"
+              properties {
+                key: "timestamp"
+                value: PROTO
+              }
+              properties {
+                key: "ttl"
+                value: PROTO
+              }
+            }
+            additional_properties {
+              key: "timestamp"
+              value {
+                field_value {
+                  proto_value {
+                    [type.googleapis.com/google.protobuf.Timestamp] {
+                      seconds: 999999
+                    }
+                  }
+                }
+              }
+            }
+            additional_properties {
+              key: "ttl"
+              value {
+                field_value {
+                  proto_value {
+                    [type.googleapis.com/google.protobuf.Duration] {
+                      seconds: 600
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
     downstream_nodes: "CustomConsumer"
     execution_options {

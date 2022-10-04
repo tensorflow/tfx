@@ -24,9 +24,11 @@ from absl import logging
 from tfx.types.system_artifacts import SystemArtifact
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
+from tfx.utils import proto_utils
 
 from google.protobuf import struct_pb2
 from google.protobuf import json_format
+from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -69,6 +71,8 @@ class PropertyType(enum.Enum):
   # Note: when a dictionary value is used, the top-level "__value__" key is
   # reserved.
   JSON_VALUE = 4
+  # Protocol buffer.
+  PROTO = 5
 
 
 class Property:
@@ -78,6 +82,7 @@ class Property:
       PropertyType.FLOAT: metadata_store_pb2.DOUBLE,
       PropertyType.STRING: metadata_store_pb2.STRING,
       PropertyType.JSON_VALUE: metadata_store_pb2.STRUCT,
+      PropertyType.PROTO: metadata_store_pb2.PROTO,
   }
 
   def __init__(self, type):  # pylint: disable=redefined-builtin
@@ -213,12 +218,12 @@ class Artifact(json_utils.Jsonable):
     self._artifact_type = mlmd_artifact_type
     # Underlying MLMD artifact proto object.
     self._artifact = metadata_store_pb2.Artifact()
-    # When list or dict JSON value properties or custom properties are read, it
-    # is possible they will be modified without knowledge of this class.
-    # Therefore, deserialized values need to be cached here and reserialized
-    # into the metadata proto when requested.
-    self._cached_json_value_properties = {}
-    self._cached_json_value_custom_properties = {}
+    # When list/dict JSON or proto value properties are read, it is possible
+    # they will be modified without knowledge of this class. Therefore,
+    # deserialized values need to be cached here and reserialized into the
+    # metadata proto when requested.
+    self._cached_modifiable_properties = {}
+    self._cached_modifiable_custom_properties = {}
     # Initialization flag to prevent recursive getattr / setattr errors.
     self._initialized = True
 
@@ -292,14 +297,26 @@ class Artifact(json_utils.Jsonable):
       if name not in self._artifact.properties:
         # Avoid populating empty property protobuf with the [] operator.
         return None
-      if name in self._cached_json_value_properties:
-        return self._cached_json_value_properties[name]
+      if name in self._cached_modifiable_properties:
+        return self._cached_modifiable_properties[name]
       value = _decode_struct_value(self._artifact.properties[name].struct_value)
       # We must cache the decoded lists or dictionaries returned here so that
       # if their recursive contents are modified, the Metadata proto message
       # can be updated to reflect this.
       if isinstance(value, (dict, list)):
-        self._cached_json_value_properties[name] = value
+        self._cached_modifiable_properties[name] = value
+      return value
+    elif property_mlmd_type == metadata_store_pb2.PROTO:
+      if name not in self._artifact.properties:
+        # Avoid populating empty property protobuf with the [] operator.
+        return None
+      if name in self._cached_modifiable_properties:
+        return self._cached_modifiable_properties[name]
+      value = proto_utils.unpack_proto_any(
+          self._artifact.properties[name].proto_value)
+      # We must cache the protobuf message here so that if its contents are
+      # modified, the Metadata proto message can be updated to reflect this.
+      self._cached_modifiable_properties[name] = value
       return value
     else:
       raise Exception('Unknown MLMD type %r for property %r.' %
@@ -351,7 +368,17 @@ class Artifact(json_utils.Jsonable):
         self._artifact.properties[name].struct_value.Clear()
       else:
         self._artifact.properties[name].struct_value.CopyFrom(encoded_value)
-      self._cached_json_value_properties[name] = value
+      self._cached_modifiable_properties[name] = value
+    elif property_mlmd_type == metadata_store_pb2.PROTO:
+      if not isinstance(value, (message.Message, type(None))):
+        raise Exception(
+            'Expected proto value or None for property %r; got %r instead.' %
+            (name, value))
+      if value is None:
+        self._artifact.properties[name].proto_value.Clear()
+      else:
+        self._artifact.properties[name].proto_value.Pack(value)
+      self._cached_modifiable_properties[name] = value
     else:
       raise Exception('Unknown MLMD type %r for property %r.' %
                       (property_mlmd_type, name))
@@ -364,8 +391,8 @@ class Artifact(json_utils.Jsonable):
           ('Expected instance of metadata_store_pb2.Artifact, got %s '
            'instead.') % (artifact,))
     self._artifact = artifact
-    self._cached_json_value_properties = {}
-    self._cached_json_value_custom_properties = {}
+    self._cached_modifiable_properties = {}
+    self._cached_modifiable_custom_properties = {}
 
   @doc_controls.do_not_doc_inheritable
   def set_mlmd_artifact_type(self,
@@ -460,17 +487,19 @@ class Artifact(json_utils.Jsonable):
     # possibly-modified JSON value properties, which may be dicts or lists
     # modifiable by the user.
     for cache_map, target_proto_properties in [
-        (self._cached_json_value_properties, self._artifact.properties),
-        (self._cached_json_value_custom_properties,
+        (self._cached_modifiable_properties, self._artifact.properties),
+        (self._cached_modifiable_custom_properties,
          self._artifact.custom_properties)
     ]:
-      for key, value in cache_map.items():
-        struct_value = _encode_struct_value(value)
-        if struct_value is not None:
-          target_proto_properties[key].struct_value.CopyFrom(struct_value)
-        else:
+      for key, cached_value in cache_map.items():
+        if cached_value is None:
           if key in target_proto_properties:
             del target_proto_properties[key]
+        elif isinstance(cached_value, message.Message):
+          target_proto_properties[key].proto_value.Pack(cached_value)
+        else:
+          struct_value = _encode_struct_value(cached_value)
+          target_proto_properties[key].struct_value.CopyFrom(struct_value)
     return self._artifact
 
   # Settable properties for all artifact types.
@@ -603,8 +632,13 @@ class Artifact(json_utils.Jsonable):
 
   @doc_controls.do_not_doc_inheritable
   def set_json_value_custom_property(self, key: str, value: JsonValueType):
-    """Sets a custom property of float type."""
-    self._cached_json_value_custom_properties[key] = value
+    """Sets a custom property of json type."""
+    self._cached_modifiable_custom_properties[key] = value
+
+  @doc_controls.do_not_doc_inheritable
+  def set_proto_custom_property(self, key: str, value: message.Message):
+    """Sets a custom property of proto type."""
+    self._cached_modifiable_custom_properties[key] = value
 
   @doc_controls.do_not_doc_in_subclasses
   def has_custom_property(self, key: str) -> bool:
@@ -663,9 +697,9 @@ class Artifact(json_utils.Jsonable):
 
   @doc_controls.do_not_doc_inheritable
   def get_json_value_custom_property(self, key: str) -> JsonValueType:
-    """Get a custom property of int type."""
-    if key in self._cached_json_value_custom_properties:
-      return self._cached_json_value_custom_properties[key]
+    """Get a custom property of json type."""
+    if key in self._cached_modifiable_custom_properties:
+      return self._cached_modifiable_custom_properties[key]
     if (key not in self._artifact.custom_properties or
         not self._artifact.custom_properties[key].HasField('struct_value')):
       return None
@@ -675,7 +709,23 @@ class Artifact(json_utils.Jsonable):
     # if their recursive contents are modified, the Metadata proto message
     # can be updated to reflect this.
     if isinstance(value, (dict, list)):
-      self._cached_json_value_custom_properties[key] = value
+      self._cached_modifiable_custom_properties[key] = value
+    return value
+
+  @doc_controls.do_not_doc_inheritable
+  def get_proto_custom_property(self, key: str) -> Optional[message.Message]:
+    """Get a custom property of proto type."""
+    if key in self._cached_modifiable_custom_properties:
+      return self._cached_modifiable_custom_properties[key]
+    if (key not in self._artifact.custom_properties or
+        not self._artifact.custom_properties[key].HasField('proto_value')):
+      return None
+    value = proto_utils.unpack_proto_any(
+        self._artifact.custom_properties[key].proto_value)
+    # We must cache the protobuf message here so that if its contents are
+    # modified, the Metadata proto message can be updated to reflect this.
+    if isinstance(value, message.Message):
+      self._cached_modifiable_custom_properties[key] = value
     return value
 
   @doc_controls.do_not_doc_inheritable
@@ -691,6 +741,10 @@ class Artifact(json_utils.Jsonable):
     self._artifact.custom_properties.clear()
     self._artifact.custom_properties.MergeFrom(
         other._artifact.custom_properties)  # pylint: disable=protected-access
+    self._cached_modifiable_properties = copy.deepcopy(
+        other._cached_modifiable_properties)  # pylint: disable=protected-access
+    self._cached_modifiable_custom_properties = copy.deepcopy(
+        other._cached_modifiable_custom_properties)  # pylint: disable=protected-access
 
 
 def _ArtifactType(  # pylint: disable=invalid-name
@@ -736,6 +790,8 @@ def _ArtifactType(  # pylint: disable=invalid-name
         properties[name] = Property(PropertyType.INT)
       elif property_type == metadata_store_pb2.PropertyType.DOUBLE:
         properties[name] = Property(PropertyType.FLOAT)
+      elif property_type == metadata_store_pb2.PropertyType.PROTO:
+        properties[name] = Property(PropertyType.PROTO)
       elif property_type == metadata_store_pb2.PropertyType.STRING:
         properties[name] = Property(PropertyType.STRING)
       else:

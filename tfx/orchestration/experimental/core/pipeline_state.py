@@ -151,11 +151,11 @@ class NodeState(json_utils.Jsonable):
               update_time=self.last_updated_time))
       if len(self.state_history) > _MAX_STATE_HISTORY_LEN:
         self.state_history = self.state_history[-_MAX_STATE_HISTORY_LEN:]
-      self.last_updated_time = time.time()
 
     self.state = state
     self.status_code = status.code if status is not None else None
     self.status_msg = status.message if status is not None else ''
+    self.last_updated_time = time.time()
 
   def is_startable(self) -> bool:
     """Returns True if the node can be started."""

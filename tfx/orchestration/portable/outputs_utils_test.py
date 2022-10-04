@@ -25,6 +25,7 @@ from tfx.types import standard_artifacts
 from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import test_case_utils
 
+from google.protobuf import struct_pb2
 from google.protobuf import text_format
 
 _PIPELINE_INFO = text_format.Parse("""
@@ -56,6 +57,10 @@ _PIPELINE_NODE = text_format.Parse(
               key: "float_prop"
               value: DOUBLE
             }
+            properties {
+              key: "proto_prop"
+              value: PROTO
+            }
           }
           additional_properties {
             key: "int_prop"
@@ -81,6 +86,17 @@ _PIPELINE_NODE = text_format.Parse(
               }
             }
           }
+          additional_properties {
+            key: "proto_prop"
+            value {
+              field_value {
+                proto_value {
+                  type_url: "type.googleapis.com/google.protobuf.Value"
+                  value: "\\032\\003aaa"
+                }
+              }
+            }
+          }
           additional_custom_properties {
             key: "float_custom_prop"
             value {
@@ -102,6 +118,17 @@ _PIPELINE_NODE = text_format.Parse(
             value {
               field_value {
                 string_value: "bar"
+              }
+            }
+          }
+          additional_custom_properties {
+            key: "proto_custom_prop"
+            value {
+              field_value {
+                proto_value {
+                  type_url: "type.googleapis.com/google.protobuf.Value"
+                  value: "\\032\\003bbb"
+                }
               }
             }
           }
@@ -195,17 +222,26 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           key: "float_prop"
           value: DOUBLE
         }
+        properties {
+          key: "proto_prop"
+          value: PROTO
+        }
         """, artifact_1.artifact_type)
-    self.assertLen(artifact_1.mlmd_artifact.properties, 3)
-    self.assertLen(artifact_1.mlmd_artifact.custom_properties, 3)
+    self.assertLen(artifact_1.mlmd_artifact.properties, 4)
+    self.assertLen(artifact_1.mlmd_artifact.custom_properties, 4)
     self.assertEqual(artifact_1.int_prop, 42)
     self.assertEqual(artifact_1.float_prop, 0.5)
     self.assertEqual(artifact_1.string_prop, 'foo')
+    self.assertProtoEquals(artifact_1.proto_prop,
+                           struct_pb2.Value(string_value='aaa'))
     self.assertEqual(artifact_1.get_int_custom_property('int_custom_prop'), 21)
     self.assertEqual(
         artifact_1.get_string_custom_property('string_custom_prop'), 'bar')
     self.assertEqual(
         artifact_1.get_float_custom_property('float_custom_prop'), 0.25)
+    self.assertProtoEquals(
+        artifact_1.get_proto_custom_property('proto_custom_prop'),
+        struct_pb2.Value(string_value='bbb'))
 
     artifact_2 = output_artifacts['output_2'][0]
     self.assertRegex(artifact_2.uri, '.*/test_node/output_2/1')

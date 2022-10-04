@@ -2,6 +2,7 @@
 
 
 ## Major Features and Improvements
+*  Artifact/Channel properties now support the new MLMD PROTO property type.
 
 ## Breaking Changes
 

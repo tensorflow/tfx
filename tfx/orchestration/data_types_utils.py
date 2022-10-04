@@ -173,6 +173,8 @@ def get_metadata_value_type(
       return metadata_store_pb2.DOUBLE
     elif value_type == 'string_value':
       return metadata_store_pb2.STRING
+    elif value_type == 'proto_value':
+      return metadata_store_pb2.PROTO
     else:
       raise ValueError('Unexpected value type %s' % value_type)
   elif isinstance(value, (str, bool, message.Message, list)):
