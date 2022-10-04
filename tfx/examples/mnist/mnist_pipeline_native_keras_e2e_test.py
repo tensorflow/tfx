@@ -93,7 +93,8 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
             serving_model_dir_lite=self._serving_model_dir_lite,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            beam_pipeline_args=[]))
+            beam_pipeline_args=[],
+            accuracy_threshold=0.5))  # Use a low value to make test stable.
 
     self.assertTrue(fileio.exists(self._serving_model_dir))
     self.assertTrue(fileio.exists(self._serving_model_dir_lite))
@@ -120,7 +121,8 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
             serving_model_dir_lite=self._serving_model_dir_lite,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            beam_pipeline_args=[]))
+            beam_pipeline_args=[],
+            accuracy_threshold=0.5))  # Use a low value to make test stable.
 
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
