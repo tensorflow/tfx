@@ -16,7 +16,6 @@ syntax = "proto3";
 package tfx.orchestration;
 
 import "ml_metadata/proto/metadata_store.proto";
-import "ml_metadata/proto/metadata_store_service.proto";
 
 // Connection config for ML Metadata.
 message MLMDConnectionConfig {
