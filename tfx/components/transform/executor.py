@@ -274,7 +274,7 @@ def _InvokeStatsOptionsUpdaterFn(
                               tf.saved_model.ASSETS_DIRECTORY)
     vocab_paths = {k: os.path.join(asset_path, v) for k, v in asset_map.items()}
     options['vocab_paths'] = vocab_paths
-  options['experimental_use_sketch_based_topk_uniques'] = True
+  options['use_sketch_based_topk_uniques'] = True
   return stats_options_updater_fn(stats_type, tfdv.StatsOptions(**options))
 
 
