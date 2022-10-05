@@ -198,10 +198,19 @@ class Executor(base_executor.BaseExecutor):
         elif not include_splits and test_split == baseline_split:
           split_pairs.append((test_split, baseline_split))
     if not split_pairs:
-      # TODO(b/246585352): Update treatment of missing splits.
       raise ValueError(
           'No split pairs from test and baseline statistics: %s, %s' %
-          test_statistics, baseline_statistics)
+          (test_statistics, baseline_statistics))
+    if include_splits:
+      missing_split_pairs = include_splits - set(split_pairs)
+      if missing_split_pairs:
+        raise ValueError(
+            'Missing split pairs identified in include_split_pairs: %s' %
+            ', '.join([
+                '%s_%s' % (test, baseline)
+                for test, baseline in missing_split_pairs
+            ]))
+
     anomalies_artifact = artifact_utils.get_single_instance(
         output_dict[standard_component_specs.ANOMALIES_KEY])
     anomalies_artifact.split_names = artifact_utils.encode_split_names(
