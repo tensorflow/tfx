@@ -1015,6 +1015,9 @@ def _set_node_outputs(node: pipeline_pb2.PipelineNode,
       if value._garbage_collection_policy is not None:
         output_spec.garbage_collection_policy.CopyFrom(
             value._garbage_collection_policy)
+      if value._predefined_artifact_uris is not None:
+        output_spec.artifact_spec.external_artifact_uris.extend(
+            value._predefined_artifact_uris)
 
 
 def _generate_input_spec_for_outputs(

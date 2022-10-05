@@ -383,6 +383,7 @@ class OutputChannel(Channel):
     )
     self._producer_component = producer_component
     self._garbage_collection_policy = None
+    self._predefined_artifact_uris = None
 
   def __repr__(self) -> str:
     return (
@@ -413,6 +414,10 @@ class OutputChannel(Channel):
       raise ValueError(
           f'output_key mismatch: {self.output_key} != {output_key}.')
     return self
+
+  @doc_controls.do_not_generate_docs
+  def set_external(self, predefined_artifact_uris: List[str]) -> None:
+    self._predefined_artifact_uris = predefined_artifact_uris
 
 
 @doc_controls.do_not_generate_docs
