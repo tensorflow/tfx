@@ -131,6 +131,12 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
             }
           }
           custom_properties {
+            key: "__external_execution_index__"
+            value {
+              int_value: 0
+            }
+          }
+          custom_properties {
             key: "artifact_uri"
             value {
               string_value: "my_url"
