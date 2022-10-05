@@ -213,10 +213,9 @@ def make_extra_packages_examples():
       #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
       # Required for the experimental tfx/examples using Flax, e.g.,
       # tfx/examples/penguin.
-      # TODO(b/193362300): Unblock the version cap after TF 2.7 becomes minimum.
-      'jax>=0.2.13,<0.2.17',
-      'jaxlib>=0.1.64,<0.2',
-      'flax>=0.3.3,<0.4',
+      'jax>=0.2.13<1',
+      'jaxlib>=0.1.64,<1',
+      'flax>=0.3.3,<0.6',
       # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
       'tensorflow-cloud>=0.1,<0.2',
   ]
