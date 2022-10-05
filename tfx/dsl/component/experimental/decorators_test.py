@@ -14,6 +14,8 @@
 """Tests for tfx.dsl.components.base.decorators."""
 
 import os
+import sys
+
 from typing import Dict, List, Optional, Any
 
 import apache_beam as beam
@@ -37,6 +39,11 @@ from tfx.orchestration.beam import beam_dag_runner
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.system_executions import SystemExecution
+
+if sys.version_info >= (3, 8):
+  from typing import TypedDict
+else:
+  from typing_extensions import TypedDict
 
 _TestBeamPipelineArgs = ['--my_testing_beam_pipeline_args=foo']
 
@@ -93,6 +100,19 @@ def _injector_1(
   assert bar == 'secret'
   return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
 
+class InjectorOutput(TypedDict):
+  a: int
+  b: int
+  c: str
+  d: bytes
+
+@component
+def _injector_1_with_custom_typed_dict(
+    foo: Parameter[int], bar: Parameter[str]) -> InjectorOutput(
+        a=int, b=int, c=str, d=bytes):
+  assert foo == 9
+  assert bar == 'secret'
+  return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
 
 @component(component_annotation=_InjectorAnnotation)
 def _injector_1_with_annotation(
@@ -421,16 +441,17 @@ class ComponentDecoratorTest(tf.test.TestCase):
   def testBeamExecutionSuccess(self):
     """Test execution with return values; success case."""
     instance_1 = _injector_1(foo=9, bar='secret')
-    instance_2 = _simple_component(
+    instance_2 = _injector_1_with_custom_typed_dict(foo=9, bar='secret')
+    instance_3 = _simple_component(
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
-        c=instance_1.outputs['c'],
-        d=instance_1.outputs['d'])
-    instance_3 = _verify(
-        e=instance_2.outputs['e'],
-        f=instance_2.outputs['f'],
-        g=instance_2.outputs['g'],
-        h=instance_2.outputs['h'])  # pylint: disable=assignment-from-no-return
+        c=instance_2.outputs['c'],
+        d=instance_2.outputs['d'])
+    instance_4 = _verify(
+        e=instance_3.outputs['e'],
+        f=instance_3.outputs['f'],
+        g=instance_3.outputs['g'],
+        h=instance_3.outputs['h'])  # pylint: disable=assignment-from-no-return
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -438,7 +459,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         pipeline_name='test_pipeline_1',
         pipeline_root=self._test_dir,
         metadata_connection_config=metadata_config,
-        components=[instance_1, instance_2, instance_3])
+        components=[instance_1, instance_2, instance_3, instance_4])
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
