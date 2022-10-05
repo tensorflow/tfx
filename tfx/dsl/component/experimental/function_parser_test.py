@@ -345,7 +345,8 @@ class FunctionParserTest(tf.test.TestCase):
     # Function with *args and **kwargs.
     with self.assertRaisesRegex(
         ValueError,
-        'must have either an OutputDict instance or `None` as its return'):
+        'must have either an OutputDict instance, '
+        'typing.TypedDict instance or `None` as its return'):
 
       def func_a(a: int, b: int) -> object:
         del a, b
