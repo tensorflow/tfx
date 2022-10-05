@@ -73,8 +73,8 @@ def _validate_signature(
                        subject_message)
 
   # Validate return type hints.
-  if isinstance(typehints.get('return', None), annotations.OutputDict):
-    for arg, arg_typehint in typehints['return'].kwargs.items():
+  if isinstance(typehints.get('return', None), Dict):
+    for arg, arg_typehint in typehints['return'].items():
       if (isinstance(arg_typehint, annotations.OutputArtifact) or
           (inspect.isclass(arg_typehint) and
            issubclass(arg_typehint, artifact.Artifact))):
@@ -88,8 +88,9 @@ def _validate_signature(
     pass
   else:
     raise ValueError(
-        ('%s must have either an OutputDict instance or `None` as its return '
-         'value typehint.') % subject_message)
+        ('%s must have either an OutputDict instance, '
+         'typing.TypedDict instance '
+         'or `None` as its return value typehint.') % subject_message)
 
 
 def _parse_signature(
@@ -226,7 +227,7 @@ def _parse_signature(
       )
 
   if 'return' in typehints and typehints['return'] not in (None, type(None)):
-    for arg, arg_typehint in typehints['return'].kwargs.items():
+    for arg, arg_typehint in typehints['return'].items():
       if arg_typehint in _OPTIONAL_PRIMITIVE_MAP:
         unwrapped_typehint = _OPTIONAL_PRIMITIVE_MAP[arg_typehint]
         outputs[arg] = _PRIMITIVE_TO_ARTIFACT[unwrapped_typehint]

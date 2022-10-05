@@ -17,10 +17,17 @@ Experimental. No backwards compatibility guarantees.
 """
 
 import inspect
-from typing import Any, Dict, List, Type, Union, get_args, get_origin
+import sys
+
+from typing import Any, Dict, List, Type, Union
 
 from tfx.dsl.component.experimental import json_compat
 from tfx.types import artifact
+
+if sys.version_info >= (3, 8):
+  from typing import TypedDict
+else:
+  from typing_extensions import TypedDict
 
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
@@ -230,10 +237,9 @@ class BeamComponentParameter(_PipelineTypeGeneric):
   pass
 
 
+# TODO(olgai): change this comment
 # TODO(ccy): potentially make this compatible `typing.TypedDict` in
 # Python 3.8, to allow for component return value type checking.
-class OutputDict:
-  """Decorator declaring component executor function outputs."""
-
-  def __init__(self, **kwargs):
-    self.kwargs = kwargs
+class OutputDict(TypedDict):
+  """Component return type annotation."""
+  pass
