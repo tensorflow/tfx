@@ -22,10 +22,13 @@ from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
 from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.placeholder import placeholder as ph
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
 from tfx.types import channel_utils
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 def set_runtime_parameter_pb(
@@ -227,6 +230,67 @@ def validate_dynamic_exec_ph_operator(placeholder: ph.ArtifactPlaceholder):
       not isinstance(placeholder._operators[1], ph._ArtifactValueOperator)):  # pylint: disable=protected-access
     raise ValueError("dynamic exec property should be in form of "
                      "component.output[\'ouput_key\'].future()[0].value")
+
+
+def output_spec_from_channel(channel_value: types.Channel,
+                             node_id: str) -> pipeline_pb2.OutputSpec:
+  """Generates OutputSpec proto given OutputChannel."""
+  result = pipeline_pb2.OutputSpec()
+  artifact_type = channel_value.type._get_artifact_type()  # pylint: disable=protected-access
+  result.artifact_spec.type.CopyFrom(artifact_type)
+
+  if isinstance(channel_value, channel_types.PipelineInputChannel):
+    return result
+
+  # Attach additional properties for artifacts produced by importer nodes.
+  for property_name, property_value in (
+      channel_value.additional_properties.items()):
+    _check_property_value_type(property_name, property_value, artifact_type)
+    value_field = result.artifact_spec.additional_properties[
+        property_name].field_value
+    try:
+      data_types_utils.set_metadata_value(value_field, property_value)
+    except ValueError:
+      raise ValueError(
+          f"Node {node_id} got unsupported parameter {property_name} with type "
+          f"{type(property_value)}.") from ValueError
+
+  for property_name, property_value in (
+      channel_value.additional_custom_properties.items()):
+    value_field = result.artifact_spec.additional_custom_properties[
+        property_name].field_value
+    try:
+      data_types_utils.set_metadata_value(value_field, property_value)
+    except ValueError:
+      raise ValueError(
+          f"Node {node_id} got unsupported parameter {property_name} with type "
+          f"{type(property_value)}.") from ValueError
+
+  if isinstance(channel_value, channel_types.OutputChannel):
+    # pylint: disable=protected-access
+    if channel_value._garbage_collection_policy is not None:
+      result.garbage_collection_policy.CopyFrom(
+          channel_value._garbage_collection_policy)
+    if channel_value._predefined_artifact_uris is not None:
+      result.artifact_spec.external_artifact_uris.extend(
+          channel_value._predefined_artifact_uris)
+
+  return result
+
+
+def _check_property_value_type(property_name: str,
+                               property_value: types.Property,
+                               artifact_type: metadata_store_pb2.ArtifactType):
+  prop_value_type = data_types_utils.get_metadata_value_type(property_value)
+  if prop_value_type != artifact_type.properties[property_name]:
+    raise TypeError(
+        "Unexpected value type of property '{}' in output artifact '{}': "
+        "Expected {} but given {} (value:{!r})".format(
+            property_name, artifact_type.name,
+            metadata_store_pb2.PropertyType.Name(
+                artifact_type.properties[property_name]),
+            metadata_store_pb2.PropertyType.Name(prop_value_type),
+            property_value))
 
 
 class _PipelineEnd(base_node.BaseNode):

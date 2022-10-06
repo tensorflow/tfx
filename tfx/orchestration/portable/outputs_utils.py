@@ -16,7 +16,7 @@
 import collections
 import datetime
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 from absl import logging
 from tfx import types
@@ -142,19 +142,10 @@ class OutputsResolver:
   def generate_output_artifacts(
       self, execution_id: int) -> Dict[str, List[types.Artifact]]:
     """Generates output artifacts given execution_id."""
-    output_artifacts = collections.defaultdict(list)
-    for key, output_spec in self._pipeline_node.outputs.outputs.items():
-      artifact = artifact_utils.deserialize_artifact(
-          output_spec.artifact_spec.type)
-      artifact.uri = os.path.join(self._node_dir, key, str(execution_id))
-      if isinstance(artifact, ValueArtifact):
-        artifact.uri = os.path.join(artifact.uri, _VALUE_ARTIFACT_FILE_NAME)
-      _attach_artifact_properties(output_spec.artifact_spec, artifact)
-
-      logging.debug('Creating output artifact uri %s', artifact.uri)
-      output_artifacts[key].append(artifact)
-
-    return output_artifacts
+    return generate_output_artifacts(
+        execution_id=execution_id,
+        outputs=self._pipeline_node.outputs.outputs,
+        node_dir=self._node_dir)
 
   def get_executor_output_uri(self, execution_id: int) -> str:
     """Generates executor output uri given execution_id."""
@@ -224,6 +215,25 @@ class OutputsResolver:
                           str(execution_id), '.temp', '')
     fileio.makedirs(result)
     return result
+
+
+def generate_output_artifacts(execution_id: int,
+                              outputs: Mapping[str, pipeline_pb2.OutputSpec],
+                              node_dir: str) -> Dict[str, List[types.Artifact]]:
+  """Generates output artifacts."""
+  output_artifacts = collections.defaultdict(list)
+  for key, value in outputs.items():
+    artifact = artifact_utils.deserialize_artifact(value.artifact_spec.type)
+    artifact.uri = os.path.join(node_dir, key, str(execution_id))
+    if isinstance(artifact, ValueArtifact):
+      artifact.uri = os.path.join(artifact.uri, _VALUE_ARTIFACT_FILE_NAME)
+
+    _attach_artifact_properties(value.artifact_spec, artifact)
+
+    logging.debug('Creating output artifact uri %s', artifact.uri)
+    output_artifacts[key].append(artifact)
+
+  return output_artifacts
 
 
 def tag_output_artifacts_with_version(
