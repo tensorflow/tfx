@@ -65,7 +65,8 @@ def _pipeline_ops_lock(fn):
 
 
 def _to_status_not_ok_error(fn):
-  """Decorator to catch exceptions and re-raise a `status_lib.StatusNotOkError`."""
+  """Decorator to catch exceptions and re-raise a `status_lib.StatusNotOkError`.
+  """
 
   @functools.wraps(fn)
   def _wrapper(*args, **kwargs):
@@ -243,6 +244,18 @@ def initiate_node_start(mlmd_handle: metadata.Metadata,
   return pipeline_state
 
 
+def _check_node_exists(node_uid: task_lib.NodeUid,
+                       pipeline: pipeline_pb2.Pipeline) -> bool:
+  """Raises an error if node_uid does not exist in the pipeline."""
+  nodes = pstate.get_all_nodes(pipeline)
+  filtered_nodes = [n for n in nodes if n.node_info.id == node_uid.node_id]
+  if len(filtered_nodes) != 1:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INTERNAL,
+        message=(f'`stop_node` operation failed, unable to find node to stop: '
+                 f'{node_uid}'))
+
+
 @_to_status_not_ok_error
 def stop_node(mlmd_handle: metadata.Metadata,
               node_uid: task_lib.NodeUid,
@@ -265,14 +278,7 @@ def stop_node(mlmd_handle: metadata.Metadata,
   with _PIPELINE_OPS_LOCK:
     with pstate.PipelineState.load(mlmd_handle,
                                    node_uid.pipeline_uid) as pipeline_state:
-      nodes = pstate.get_all_nodes(pipeline_state.pipeline)
-      filtered_nodes = [n for n in nodes if n.node_info.id == node_uid.node_id]
-      if len(filtered_nodes) != 1:
-        raise status_lib.StatusNotOkError(
-            code=status_lib.Code.INTERNAL,
-            message=(
-                f'`stop_node` operation failed, unable to find node to stop: '
-                f'{node_uid}'))
+      _check_node_exists(node_uid, pipeline_state.pipeline)
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         if node_state.is_stoppable():
           node_state.update(
@@ -284,6 +290,28 @@ def stop_node(mlmd_handle: metadata.Metadata,
   # Wait until the node is stopped or time out.
   _wait_for_node_inactivation(
       pipeline_state, node_uid, timeout_secs=timeout_secs)
+
+
+@_to_status_not_ok_error
+@_pipeline_ops_lock
+def skip_node(mlmd_handle: metadata.Metadata,
+              node_uid: task_lib.NodeUid) -> None:
+  """Skips a node."""
+  with pstate.PipelineState.load(mlmd_handle,
+                                 node_uid.pipeline_uid) as pipeline_state:
+    _check_node_exists(node_uid, pipeline_state.pipeline)
+    with pipeline_state.node_state_update_context(node_uid) as node_state:
+      if node_state.is_programmatically_skippable():
+        node_state.update(
+            pstate.NodeState.SKIPPED,
+            status_lib.Status(
+                code=status_lib.Code.OK,
+                message='Node skipped by client request.'))
+      else:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.FAILED_PRECONDITION,
+            message=f'Node in state {node_state.state} is not programmatically skippable.'
+        )
 
 
 @_to_status_not_ok_error
@@ -418,7 +446,7 @@ def _wait_for_node_inactivation(pipeline_state: pstate.PipelineState,
                                   pstate.NodeState.SKIPPED,
                                   pstate.NodeState.STOPPED)
 
-  return _wait_for_predicate(
+  _wait_for_predicate(
       _is_inactivated, 'node inactivation',
       _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS, timeout_secs)
 
@@ -557,7 +585,8 @@ def resume_pipeline(mlmd_handle: metadata.Metadata,
 def _wait_for_predicate(predicate_fn: Callable[[], bool], waiting_for_desc: str,
                         polling_interval_secs: float,
                         timeout_secs: Optional[float]) -> None:
-  """Waits for `predicate_fn` to return `True` or until timeout seconds elapse."""
+  """Waits for `predicate_fn` to return `True` or until timeout seconds elapse.
+  """
   if timeout_secs is None:
     while not predicate_fn():
       logging.info('Sleeping %f sec(s) waiting for predicate: %s',

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for customizing tf.test.TestCase class."""
-from __future__ import annotations
 
 import contextlib
 import copy
@@ -21,9 +20,7 @@ import os
 from typing import Dict, Iterable, Optional, Union
 
 import tensorflow as tf
-from tfx import types
 from tfx.dsl.io import fileio
-from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.utils import io_utils
@@ -164,58 +161,21 @@ class MlmdMixins:
     result.id = self.store.put_contexts([result])[0]
     return result
 
-  def _get_artifact_type_id(
-      self,
-      type_name: str,
-      properties: Optional[Dict[str, metadata_store_pb2.PropertyType]] = None
-  ) -> metadata_store_pb2.Artifact:
-    """Gets type ID of the artifact type."""
-    artifact_type = metadata_store_pb2.ArtifactType(name=type_name)
-    if properties:
-      for key, value in properties.items():
-        artifact_type.properties[key] = value
+  def _get_artifact_type_id(self, type_name: str):
     if type_name not in self._artifact_type_ids:
-      result = self.store.put_artifact_type(artifact_type)
+      result = self.store.put_artifact_type(
+          metadata_store_pb2.ArtifactType(name=type_name))
       self._artifact_type_ids[type_name] = result
     return self._artifact_type_ids[type_name]
 
-  def put_artifact(
-      self,
-      artifact_type: str,
-      uri: str = '/fake',
-      properties: Optional[Dict[str, types.ExecPropertyTypes]] = None
-  ) -> metadata_store_pb2.Artifact:
-    """Put an Artifact in the MLMD database.
-
-    Args:
-      artifact_type: The artifact type. For example, "DummyArtifact".
-      uri: The uniform resource identifier of the physical artifact. Defaults to
-        '/fake'.
-      properties: The raw values to insert in the Artifact. For example:
-        {"span": 3, "version": 1}
-
-    Returns:
-      The MLMD artifact.
-    """
-    if properties is not None:
-      property_types = {
-          key: data_types_utils.get_metadata_value_type(value)
-          for key, value in properties.items()
-      }
-    else:
-      property_types = None
-
-    type_id = self._get_artifact_type_id(
-        type_name=artifact_type, properties=property_types)
-    mlmd_properties = data_types_utils.build_metadata_value_dict(properties)
-
-    mlmd_artifact = metadata_store_pb2.Artifact(
-        type_id=type_id,
+  def put_artifact(self, artifact_type: str, uri: str = '/fake'):
+    """Put an Artifact in the MLMD database."""
+    result = metadata_store_pb2.Artifact(
+        type_id=self._get_artifact_type_id(artifact_type),
         uri=uri,
-        state=metadata_store_pb2.Artifact.LIVE,
-        properties=mlmd_properties)
-    mlmd_artifact.id = self.store.put_artifacts([mlmd_artifact])[0]
-    return mlmd_artifact
+        state=metadata_store_pb2.Artifact.LIVE)
+    result.id = self.store.put_artifacts([result])[0]
+    return result
 
   def _get_execution_type_id(self, type_name: str):
     if type_name not in self._execution_type_ids:

@@ -55,33 +55,17 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
       }, {
           'testcase_name': 'implicit_split_pairs',
           'split_pairs': None,
-          'expected_split_pair_names': {'train_train', 'eval_eval'},
-      }, {
-          'testcase_name':
-              'specified_pair_missing',
-          'split_pairs': [('eval', 'train'), ('serving', 'eval')],
-          'expected_split_pair_names': {},
-          'expected_error_regex':
-              'Missing split pairs .* serving_eval'
-      }, {
-          'testcase_name':
-              'all_splits_missing',
-          'split_pairs': None,
-          'expected_split_pair_names': {},
-          'expected_error_regex':
-              'No split pairs .*',
-          'exclude_artifact_splits': True
+          'expected_split_pair_names':
+              {'train_train', 'eval_eval'},
       })
-  def testSplitPairs(self, split_pairs, expected_split_pair_names,
-                     expected_error_regex=None, exclude_artifact_splits=False):
+  def testSplitPairs(self, split_pairs, expected_split_pair_names):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
     stats_artifact = standard_artifacts.ExampleStatistics()
     stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
-    if not exclude_artifact_splits:
-      stats_artifact.split_names = artifact_utils.encode_split_names(
-          ['train', 'eval'])
+    stats_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -108,26 +92,20 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     }
 
     distribution_validator_executor = executor.Executor()
-    if expected_error_regex:
-      with self.assertRaisesRegex(ValueError, expected_error_regex):
-        distribution_validator_executor.Do(input_dict, output_dict,
-                                           exec_properties)
-    else:
-      distribution_validator_executor.Do(input_dict, output_dict,
-                                         exec_properties)
+    distribution_validator_executor.Do(input_dict, output_dict, exec_properties)
 
-      for split_pair_name in expected_split_pair_names:
-        output_path = os.path.join(validation_output.uri,
-                                   'SplitPair-' + split_pair_name,
-                                   'SchemaDiff.pb')
-        self.assertTrue(fileio.exists(output_path))
+    for split_pair_name in expected_split_pair_names:
+      output_path = os.path.join(validation_output.uri,
+                                 'SplitPair-' + split_pair_name,
+                                 'SchemaDiff.pb')
+      self.assertTrue(fileio.exists(output_path))
 
-      # Confirm that no unexpected result files exist.
-      all_outputs = fileio.glob(
-          os.path.join(validation_output.uri, 'SplitPair-*'))
-      for output in all_outputs:
-        split_pair = output.split('SplitPair-')[1]
-        self.assertIn(split_pair, expected_split_pair_names)
+    # Confirm that no unexpected result files exist.
+    all_outputs = fileio.glob(
+        os.path.join(validation_output.uri, 'SplitPair-*'))
+    for output in all_outputs:
+      split_pair = output.split('SplitPair-')[1]
+      self.assertIn(split_pair, expected_split_pair_names)
 
   @parameterized.named_parameters(
       {

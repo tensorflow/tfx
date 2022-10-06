@@ -111,31 +111,9 @@ class ExecutorTest(parameterized.TestCase):
               ['train_train', 'train_eval', 'eval_train', 'eval_eval'],
           'expect_matches': False,
           'identifiers': _ALL_FEATURE_NAMES,
-      },
-      {
-          'testcase_name': 'specified_pair_missing',
-          'split_pairs': [('train', 'train'), ('train', 'serving')],
-          'expected_split_pair_names': [],
-          'expect_matches': False,
-          'identifiers': _ALL_FEATURE_NAMES,
-          'expected_error_regex': 'Missing split pairs .* train_serving'
-      },
-      {
-          'testcase_name': 'all_splits_missing',
-          'split_pairs': None,
-          'expected_split_pair_names': [],
-          'expect_matches': False,
-          'identifiers': _ALL_FEATURE_NAMES,
-          'expected_error_regex': 'No split pairs .*',
-          'exclude_artifact_splits': True
       })
-  def testDo(self,
-             split_pairs,
-             expected_split_pair_names,
-             expect_matches,
-             identifiers,
-             expected_error_regex=None,
-             exclude_artifact_splits=False):
+  def testDo(self, split_pairs, expected_split_pair_names, expect_matches,
+             identifiers):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     output_data_dir = os.path.join(
@@ -160,9 +138,7 @@ class ExecutorTest(parameterized.TestCase):
     # Create input dict.
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    if not exclude_artifact_splits:
-      examples.split_names = artifact_utils.encode_split_names(
-          ['train', 'eval'])
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
     input_dict = {
         standard_component_specs.EXAMPLES_KEY: [examples],
@@ -186,11 +162,7 @@ class ExecutorTest(parameterized.TestCase):
 
     # Run executor.
     example_diff_executor = executor.Executor()
-    if expected_error_regex:
-      with self.assertRaisesRegex(ValueError, expected_error_regex):
-        example_diff_executor.Do(input_dict, output_dict, exec_properties)
-    else:
-      example_diff_executor.Do(input_dict, output_dict, exec_properties)
+    example_diff_executor.Do(input_dict, output_dict, exec_properties)
 
     # See tensorflow_data_validation/skew/feature_skew_detector_test.py for
     # detailed examples of feature skew pipeline output.

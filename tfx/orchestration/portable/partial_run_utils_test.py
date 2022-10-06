@@ -237,7 +237,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     with self.assertRaisesRegex(
         ValueError,
         r"Nodes \['x', 'y'\] specified in from_nodes/to_nodes are not present "
-        r"in the pipeline. Valid nodes are {'a'}"):
+        'in the pipeline.'):
       partial_run_utils.mark_pipeline(input_pipeline,
                                       from_nodes=['x'],
                                       to_nodes=['y'])

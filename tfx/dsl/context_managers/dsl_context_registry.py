@@ -25,10 +25,6 @@ _BaseNode = Any
 _Pipeline = Any
 
 
-def _format_node(node: _BaseNode) -> str:
-  return f'{type(node).__name__}({node.id})#{id(node)}'
-
-
 class DslContextRegistry:
   """Registry for DslContexts and associated BaseNodes of a pipeline DSL.
 
@@ -156,9 +152,7 @@ class DslContextRegistry:
     """
     # This is O(N^2), but not performance critical.
     if node not in self._all_nodes:
-      raise ValueError(
-          f'Node {_format_node(node)} does not exist in the registry. '
-          f'Valid: {", ".join([_format_node(n) for n in self._all_nodes])})')
+      raise ValueError(f'Node {node} does not exist in the registry.')
     result = []
     for context in self._all_contexts:
       if node in self._nodes_by_context[context]:

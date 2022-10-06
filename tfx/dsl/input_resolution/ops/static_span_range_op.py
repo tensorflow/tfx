@@ -13,7 +13,7 @@
 # limitations under the License.
 """Module for StaticSpanRange operator."""
 
-from typing import Sequence
+from typing import Optional, Sequence
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
@@ -27,17 +27,15 @@ class StaticSpanRange(
     return_data_type=resolver_op.DataType.ARTIFACT_LIST):
   """StaticSpanRange operator."""
 
-  # The smallest span number to keep, inclusive. If < 0, set to the the smallest
-  # span in the artifacts.
-  start_span = resolver_op.Property(type=int, default=-1)
+  # The smallest span number to keep, inclusive.
+  start_span = resolver_op.Property(type=Optional[int], default=None)
 
-  # The largest span number to keep, inclusive. If < 0, set to the the largest
-  # span in the artifacts.
-  end_span = resolver_op.Property(type=int, default=-1)
+  # The largest span number to keep, inclusive
+  end_span = resolver_op.Property(type=Optional[int], default=None)
 
-  # If true, all versions of the spans in the range are returned. Else, only the
-  # latest version for each span is returned.
-  keep_all_versions = resolver_op.Property(type=bool, default=False)
+  # If true, all spans are kept. If false, then if multiple artifacts have the
+  # same span, only the span with the latest version is kept.
+  keep_all = resolver_op.Property(type=bool, default=False)
 
   def apply(self,
             input_list: Sequence[types.Artifact]) -> Sequence[types.Artifact]:
@@ -60,10 +58,10 @@ class StaticSpanRange(
     if not valid_artifacts:
       return []
 
-    if self.start_span < 0:
+    if self.start_span is None:
       self.start_span = min(valid_artifacts, key=lambda a: a.span).span
 
-    if self.end_span < 0:
+    if self.end_span is None:
       self.end_span = max(valid_artifacts, key=lambda a: a.span).span
 
     # Sort the artifacts by span and then by version, in ascending order.
@@ -78,10 +76,10 @@ class StaticSpanRange(
 
     result = []
     for artifacts in span_artifact_map.values():
-      if self.keep_all_versions:
+      if self.keep_all:
         result.extend(sorted(artifacts, key=lambda a: a.version))
       else:
-        # If keep_all_versions is False we take the artifact with the latest
-        # (largest) version.
+        # If keep_all is False we take the artifact with the latest (largest)
+        # version.
         result.append(max(artifacts, key=lambda a: a.version))
     return result

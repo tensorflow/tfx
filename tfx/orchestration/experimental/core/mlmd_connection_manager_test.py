@@ -13,8 +13,6 @@
 # limitations under the License.
 """Tests for mlmd_connection_manager."""
 
-import contextlib
-
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import metadata
@@ -23,7 +21,7 @@ from tfx.orchestration.experimental.core import test_utils
 
 
 def _fake_create_reader_mlmd_connection_fn(unused_args):
-  return contextlib.nullcontext()
+  return None
 
 
 class MlmdConnectionManagerTest(test_utils.TfxTest):
@@ -48,14 +46,11 @@ class MlmdConnectionManagerTest(test_utils.TfxTest):
 
   @mock.patch.object(metadata, 'Metadata')
   def test_exit_context(self, mock_metadata):
-    original_reader_handles = self._mlmd_connection_manager._reader_mlmd_handles
     self._mlmd_connection_manager.__exit__()
-    self.assertNotEmpty(original_reader_handles)
 
     self._mock_primary_metadata_handle.__exit__.assert_called_once()
-    for _, handle in original_reader_handles.items():
+    for _, handle in self._mlmd_connection_manager._reader_mlmd_handles.items():
       handle.__exit__.assert_called_once()
-    self.assertEmpty(self._mlmd_connection_manager._reader_mlmd_handles)
 
   def test_primary_mlmd_handle(self):
     self.assertEqual(self._mock_primary_metadata_handle,

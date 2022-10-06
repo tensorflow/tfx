@@ -52,9 +52,6 @@ class _IncludedSplitPairs(object):
       return True
     return (test_split, base_split) in self._include_split_pairs
 
-  def get_included_split_pairs(self):
-    return self._include_split_pairs
-
 
 def _parse_example(serialized: bytes):
   # TODO(b/227361696): Validate that data are examples.
@@ -144,20 +141,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           base_examples.split_names):
         if included_split_pairs.included(test_split, base_split):
           split_pairs.append((test_split, base_split))
-    if not split_pairs:
-      raise ValueError(
-          'No split pairs from test and baseline examples: %s, %s' %
-          (test_examples, base_examples))
-    if included_split_pairs.get_included_split_pairs():
-      missing_split_pairs = included_split_pairs.get_included_split_pairs(
-      ) - set(split_pairs)
-      if missing_split_pairs:
-        raise ValueError(
-            'Missing split pairs identified in include_split_pairs: %s' %
-            ', '.join([
-                '%s_%s' % (test, baseline)
-                for test, baseline in missing_split_pairs
-            ]))
+
     with self._make_beam_pipeline() as p:
       for test_split, base_split in split_pairs:
         test_uri = artifact_utils.get_split_uri([test_examples], test_split)

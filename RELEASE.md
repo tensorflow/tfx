@@ -1,9 +1,5 @@
 # Current Version (Still in Development)
 
-*   This is the last version that supports TensorFlow 1.15.x. TF 1.15.x support
-    will be removed in the next version. Please check the
-    [TF2 migration guide](https://www.tensorflow.org/guide/migrate) to migrate
-    to TF2.
 
 ## Major Features and Improvements
 
@@ -21,8 +17,6 @@
     `[tflite-support]` extra.
 *   Statistics gen and Schema gen now crash on empty input examples and statistics respectively.
 *   Importer will now check that an existing artifact has the same type as the intended output before reusing the existing artifact.
-*   Importer will now use the most recently created artifact when reusing an existing artifact instead of the one with the highest ID.
-*   Proto placeholder now works with proto files that have non-trivial transitive dependencies.
 
 ## Dependency Updates
 
@@ -30,7 +24,6 @@
 | -- | -- | -- | -- |
 | `tensorflow` | `>=1.15.5,<2` or `~=2.10.0` | `>=1.15.5,<2` or `~=2.9.0` | |
 | `tflite-support` | `~=0.4.2` | `>=0.1.0a1,<0.2.1` | Update to a TF-2.10 compatible version. |
-| `google-cloud-aiplatform` | `>=1.6.2,<1.18` | `>=1.6.2,<2` | Added to help pip dependency resolution. |
 
 ## Documentation Updates
 
@@ -77,7 +70,7 @@
 
 | Package Name | Version Constraints | Previously (in `v1.9.0`) | Comments |
 | -- | -- | -- | -- |
-| `google-api-core` | `<1.33` | N/A | Added to help pip dependency resolution. google-api-core was already a transitive dependency. |
+| `google-api-core` | `<2` | N/A | Added to help pip dependency resolution. google-api-core was already a transitive dependency. |
 | `apache-beam[gcp]` | `>=2.40,<3` | `>=2.38,<3` | Synced release train |
 | `attrs` | `>=19.3.0,<22` | `>=19.3.0,<21` | Allow more recent versions |
 | `pyarrow` | `>=6,<7` | `>=1,<6` | Synced release train |

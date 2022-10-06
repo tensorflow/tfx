@@ -61,7 +61,6 @@ class MLMDConnectionManager:
     self._create_reader_mlmd_connection_fn = create_reader_mlmd_connection_fn
 
   def __enter__(self):
-    self._primary_mlmd_handle.__enter__()
     return self
 
   def __exit__(self,
@@ -71,10 +70,8 @@ class MLMDConnectionManager:
     if self._primary_mlmd_handle:
       self._primary_mlmd_handle.__exit__(exc_type, exc_value, exc_tb)
 
-    # Exit reader handles and make sure they are recreated upon reentry.
     for _, mlmd_handle in self._reader_mlmd_handles.items():
       mlmd_handle.__exit__(exc_type, exc_value, exc_tb)
-    self._reader_mlmd_handles = {}
 
   @property
   def primary_mlmd_handle(self) -> metadata.Metadata:
@@ -91,10 +88,9 @@ class MLMDConnectionManager:
     elif connection_config in self._reader_mlmd_handles:
       return self._reader_mlmd_handles[connection_config]
     elif self._create_reader_mlmd_connection_fn:
-      reader_mlmd_handle = self._create_reader_mlmd_connection_fn(
-          connection_config)
-      reader_mlmd_handle.__enter__()
-      self._reader_mlmd_handles[connection_config] = reader_mlmd_handle
+      self._reader_mlmd_handles[
+          connection_config] = self._create_reader_mlmd_connection_fn(
+              connection_config)
       return self._reader_mlmd_handles.get(connection_config)
 
     return None

@@ -171,6 +171,10 @@ class NodeState(json_utils.Jsonable):
     """Returns True if the node can be stopped."""
     return self.state in set([self.STARTING, self.STARTED, self.RUNNING])
 
+  def is_programmatically_skippable(self) -> bool:
+    """Returns True if the node can be skipped via programmatic operaiton."""
+    return self.state in set([self.STARTED])
+
   def is_success(self) -> bool:
     return is_node_state_success(self.state)
 

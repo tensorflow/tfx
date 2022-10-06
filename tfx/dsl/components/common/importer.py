@@ -143,8 +143,7 @@ def _prepare_artifact(
     # not explicitly ask for reimport, reuse that artifact.
     if previous_artifacts:
       absl.logging.info('Reusing existing artifact')
-      result.set_mlmd_artifact(
-          max(previous_artifacts, key=lambda m: m.create_time_since_epoch))
+      result.set_mlmd_artifact(max(previous_artifacts, key=lambda m: m.id))
 
   return result
 

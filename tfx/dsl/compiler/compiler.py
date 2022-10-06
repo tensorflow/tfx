@@ -44,6 +44,8 @@ from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 from tfx.utils import name_utils
 
+from ml_metadata.proto import metadata_store_pb2
+
 
 class Compiler:
   """Compiles a TFX pipeline or a component into a uDSL IR proto."""
@@ -622,6 +624,21 @@ def _compile_for_each_context(
   return _compile_trace_result(impl.trace(dummy_input_node))
 
 
+def _check_property_value_type(property_name: str,
+                               property_value: types.Property,
+                               artifact_type: metadata_store_pb2.ArtifactType):
+  prop_value_type = data_types_utils.get_metadata_value_type(property_value)
+  if prop_value_type != artifact_type.properties[property_name]:
+    raise TypeError(
+        "Unexpected value type of property '{}' in output artifact '{}': "
+        "Expected {} but given {} (value:{!r})".format(
+            property_name, artifact_type.name,
+            metadata_store_pb2.PropertyType.Name(
+                artifact_type.properties[property_name]),
+            metadata_store_pb2.PropertyType.Name(prop_value_type),
+            property_value))
+
+
 def _validate_pipeline(tfx_pipeline: pipeline.Pipeline,
                        parent_pipelines: List[pipeline.Pipeline]):
   """Performs pre-compile validations."""
@@ -961,9 +978,46 @@ def _set_node_outputs(node: pipeline_pb2.PipelineNode,
                       tfx_node_outputs: Dict[str, types.Channel]):
   """Compiles the outputs of a pipeline node."""
   for key, value in tfx_node_outputs.items():
-    node.outputs.outputs[key].CopyFrom(
-        compiler_utils.output_spec_from_channel(
-            channel_value=value, node_id=node.node_info.id))
+    output_spec = node.outputs.outputs[key]
+    artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
+    output_spec.artifact_spec.type.CopyFrom(artifact_type)
+
+    if isinstance(value, tfx_channel.PipelineInputChannel):
+      continue
+
+    # Attach additional properties for artifacts produced by importer nodes.
+    for property_name, property_value in value.additional_properties.items():
+      _check_property_value_type(property_name, property_value, artifact_type)
+      value_field = output_spec.artifact_spec.additional_properties[
+          property_name].field_value
+      try:
+        data_types_utils.set_metadata_value(value_field, property_value)
+      except ValueError:
+        raise ValueError(
+            "Node {} got unsupported parameter {} with type {}.".format(
+                node.node_info.id, property_name,
+                type(property_value))) from ValueError
+
+    for property_name, property_value in (
+        value.additional_custom_properties.items()):
+      value_field = output_spec.artifact_spec.additional_custom_properties[
+          property_name].field_value
+      try:
+        data_types_utils.set_metadata_value(value_field, property_value)
+      except ValueError:
+        raise ValueError(
+            "Node {} got unsupported parameter {} with type {}.".format(
+                node.node_info.id, property_name,
+                type(property_value))) from ValueError
+
+    if isinstance(value, tfx_channel.OutputChannel):
+      # pylint: disable=protected-access
+      if value._garbage_collection_policy is not None:
+        output_spec.garbage_collection_policy.CopyFrom(
+            value._garbage_collection_policy)
+      if value._predefined_artifact_uris is not None:
+        output_spec.artifact_spec.external_artifact_uris.extend(
+            value._predefined_artifact_uris)
 
 
 def _generate_input_spec_for_outputs(

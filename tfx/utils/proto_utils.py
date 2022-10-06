@@ -13,6 +13,7 @@
 # limitations under the License.
 """Utilities for proto related manipulations."""
 
+import itertools
 from typing import Any, Dict, Iterator, TypeVar, Optional
 
 from google.protobuf import descriptor_pb2
@@ -24,34 +25,51 @@ from google.protobuf import message_factory
 
 
 def gather_file_descriptors(
-    file_descriptor: descriptor_lib.FileDescriptor
-) -> Iterator[descriptor_lib.FileDescriptor]:
-  """Yields the file descriptor and all of its dependencies.
+    descriptor: descriptor_lib.Descriptor,
+    enable_extensions: bool = False) -> Iterator[descriptor_lib.FileDescriptor]:
+  """Yield all depdendent file descriptors of a given proto descriptor.
 
   Args:
-    file_descriptor: The proto descriptor to start the dependency search from.
+    descriptor: The proto descriptor to start the dependency search from.
+    enable_extensions: Optional. True if proto extensions are enabled. Default
+      to False.
 
   Yields:
-    All file descriptors in the transitive dependencies of the input descriptor,
-    in topological order (i.e. dependencies before dependents).
+    All file descriptors in the transitive dependencies of descriptor.
     Each file descriptor is returned only once.
   """
-  visited_files = set()  # To avoid duplicate outputs.
+  visited_files = set()
+  visited_messages = set()
+  messages = [descriptor]
 
-  def process_file(
-      file: descriptor_lib.FileDescriptor
-  ) -> Iterator[descriptor_lib.FileDescriptor]:
-    """Yields the file's dependencies and then the file itself."""
-    if file in visited_files:
-      return
-    visited_files.add(file)
+  # Walk in depth through all the fields and extensions of the given descriptor
+  # and all the referenced messages.
+  while messages:
+    descriptor = messages.pop()
+    visited_files.add(descriptor.file)
 
-    for dependency_file in file.dependencies:
-      yield from process_file(dependency_file)
-    yield file  # It's important that this is last.
+    if enable_extensions:
+      extensions = descriptor.file.pool.FindAllExtensions(descriptor)
+    else:
+      extensions = []
+    for field in itertools.chain(descriptor.fields, extensions):
+      if field.message_type and field.message_type not in visited_messages:
+        visited_messages.add(field.message_type)
+        messages.append(field.message_type)
 
-  # Kick off the recursion.
-  yield from process_file(file_descriptor)
+    for extension in extensions:
+      # Note: extension.file may differ from descriptor.file.
+      visited_files.add(extension.file)
+
+  # Go through the collected files and add their explicit dependencies.
+  files = list(visited_files)
+  while files:
+    file_descriptor = files.pop()
+    yield file_descriptor
+    for dependency in file_descriptor.dependencies:
+      if dependency not in visited_files:
+        visited_files.add(dependency)
+        files.append(dependency)
 
 
 def proto_to_json(proto: message.Message) -> str:
@@ -85,7 +103,7 @@ def build_file_descriptor_set(
     pb_message: message.Message, fd_set: descriptor_pb2.FileDescriptorSet
 ) -> descriptor_pb2.FileDescriptorSet:
   """Builds file descriptor set for input pb message."""
-  for fd in gather_file_descriptors(pb_message.DESCRIPTOR.file):
+  for fd in gather_file_descriptors(pb_message.DESCRIPTOR):
     fd.CopyToProto(fd_set.file.add())
   return fd_set
 
