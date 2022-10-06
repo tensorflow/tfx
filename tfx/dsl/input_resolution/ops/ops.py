@@ -23,6 +23,7 @@ from tfx.dsl.input_resolution.ops import latest_create_time_op
 from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import latest_version_op
 from tfx.dsl.input_resolution.ops import skip_if_empty_op
+from tfx.dsl.input_resolution.ops import sliding_window_op
 from tfx.dsl.input_resolution.ops import static_span_range_op
 from tfx.dsl.input_resolution.ops import temp_latest_create_time_op
 from tfx.dsl.input_resolution.ops import temp_latest_span_op
@@ -57,6 +58,7 @@ LatestCreateTime = latest_create_time_op.LatestCreateTime
 LatestSpan = latest_span_op.LatestSpan
 LatestVersion = latest_version_op.LatestVersion
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
+SlidingWindow = sliding_window_op.SlidingWindow
 StaticSpanRange = static_span_range_op.StaticSpanRange
 TempLatestCreateTime = temp_latest_create_time_op.TempLatestCreateTime
 TempLatestSpan = temp_latest_span_op.TempLatestSpan
@@ -69,6 +71,7 @@ _register_op(LatestCreateTime)
 _register_op(LatestSpan)
 _register_op(LatestVersion)
 _register_op(SkipIfEmpty)
+_register_op(SlidingWindow)
 _register_op(StaticSpanRange)
 _register_op(TempLatestCreateTime)
 _register_op(TempLatestSpan)
