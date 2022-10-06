@@ -34,9 +34,10 @@ class ProtoUtilsTest(test_case_utils.TfxTest):
     }
 
   def test_gather_file_descriptors(self):
-    fd_names = set()
-    for fd in proto_utils.gather_file_descriptors(foo_pb2.Foo.DESCRIPTOR):
-      fd_names.add(fd.name)
+    fd_names = {
+        fd.name for fd in proto_utils.gather_file_descriptors(
+            foo_pb2.Foo.DESCRIPTOR.file)
+    }
     self.assertEqual(
         fd_names, {
             'tfx/utils/testdata/bar.proto',
@@ -151,7 +152,7 @@ class ProtoUtilsTest(test_case_utils.TfxTest):
     ]
     actual_file_descriptor = descriptor_pb2.FileDescriptorSet()
     proto_utils.build_file_descriptor_set(foo_pb2.Foo, actual_file_descriptor)
-    self.assertEqual(len(actual_file_descriptor.file), 2)
+    self.assertLen(actual_file_descriptor.file, 2)
     actual_file_descriptor_sorted = sorted(
         list(actual_file_descriptor.file), key=lambda fd: fd.name)
     for expected, actual in zip(expected_file_descriptor_list,
