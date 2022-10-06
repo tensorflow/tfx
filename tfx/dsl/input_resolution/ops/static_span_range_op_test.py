@@ -53,7 +53,7 @@ class StaticSpanRangeOpTest(tf.test.TestCase):
         self.artifacts,
         start_span=3,
         end_span=4,
-        keep_all=True)
+        keep_all_versions=True)
     self.assertEqual(actual, [self.a3, self.a4, self.a5, self.a6])
 
   def testStaticSpanRange_OutOfBoundStartEndSpan(self):
