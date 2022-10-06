@@ -479,12 +479,5 @@ def set_execution_result(execution_result: execution_result_pb2.ExecutionResult,
       executor.
     execution: The execution to set to.
   """
-  # TODO(b/161832842): Switch to PROTO value type to circumvent TypeError which
-  # may be raised when converting embedded `Any` protos.
-  try:
-    execution.custom_properties[_EXECUTION_RESULT].string_value = (
-        json_format.MessageToJson(execution_result))
-  except TypeError:
-    logging.exception(
-        'Skipped setting execution_result as custom property of the '
-        'execution due to error')
+  execution.custom_properties[_EXECUTION_RESULT].string_value = (
+      json_format.MessageToJson(execution_result))

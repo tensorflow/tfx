@@ -13,6 +13,7 @@
 # limitations under the License.
 """Penguin example using TFX."""
 
+import datetime
 import os
 import sys
 from typing import Dict, List, Optional, Union
@@ -21,8 +22,11 @@ from absl import flags
 from absl import logging
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
+from tfx.utils import proto_utils
 
 # TODO(b/197359030): test a persistent volume (PV) mounted scenario.
+flags.DEFINE_string('range_config_date', None,
+                    'Input date to RangeConfigGenerator')
 flags.DEFINE_bool('use_dataflow', False, 'whether to use Beam Dataflow')
 flags.DEFINE_bool('use_cloud_component', False,
                   'whether to use Cloud component')
@@ -158,7 +162,29 @@ _beam_pipeline_args_by_runner = {
 _serving_model_dir = os.path.join(_output_root, 'serving_model', _pipeline_name)
 
 
-def create_pipeline(
+@tfx.dsl.components.component
+def RangeConfigGenerator(input_date: tfx.dsl.components.Parameter[str],
+                         range_config: tfx.dsl.components.OutputArtifact[
+                             tfx.types.standard_artifacts.String]):
+  """Implements the custom component to convert date into span number.
+
+  Args:
+    input_date: input date to generate range_config.
+    range_config: range_config to ExampleGen.
+  """
+  start_time = datetime.datetime(2022, 1,
+                                 1)  # start time calculate span number from.
+  datem = datetime.datetime.strptime(input_date, '%Y%m%d')
+  span_number = (datetime.datetime(datem.year, datem.month, datem.day) -
+                 start_time).days
+  range_config_str = proto_utils.proto_to_json(
+      tfx.proto.RangeConfig(
+          static_range=tfx.proto.StaticRange(
+              start_span_number=span_number, end_span_number=span_number)))
+  range_config.value = range_config_str
+
+
+def create_pipeline(  # pylint: disable=invalid-name
     pipeline_name: str,
     pipeline_root: str,
     data_root: str,
@@ -169,6 +195,7 @@ def create_pipeline(
     enable_cache: bool,
     user_provided_schema_path: str,
     beam_pipeline_args: List[str],
+    range_config_date: Optional[str],
     use_cloud_component: bool,
     use_aip: bool,
     use_vertex: bool,
@@ -192,6 +219,7 @@ def create_pipeline(
     user_provided_schema_path: Path to the schema of the input data.
     beam_pipeline_args: List of Beam pipeline options. Please refer to
       https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options.
+    range_config_date: Optional date to pass to RangeConfigGenerator
     use_cloud_component: whether to use tfx.extensions components, namely Tuner,
       Trainer, and Pusher.
     use_aip: whether to use AI platform config with Cloud components; implicitly
@@ -230,9 +258,17 @@ def create_pipeline(
     train_args = tfx.proto.TrainArgs(num_steps=100)
     eval_args = tfx.proto.EvalArgs(num_steps=50)
 
+  if range_config_date:
+    input_config_generator = RangeConfigGenerator(  # pylint: disable=no-value-for-parameter
+        input_date=range_config_date)
+    range_config = input_config_generator.outputs['range_config'].future(
+    )[0].value
+  else:
+    range_config = None
+
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = tfx.components.CsvExampleGen(
-      input_base=os.path.join(data_root, 'labelled'))
+      input_base=os.path.join(data_root, 'labelled'), range_config=range_config)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = tfx.components.StatisticsGen(
@@ -484,6 +520,7 @@ def create_pipeline(
 def main():
   logging.set_verbosity(logging.INFO)
   flags.FLAGS(sys.argv)
+  range_config_date = flags.FLAGS.range_config_date
   use_dataflow = flags.FLAGS.use_dataflow
   use_cloud_component = flags.FLAGS.use_cloud_component
   use_aip = flags.FLAGS.use_aip
@@ -520,6 +557,7 @@ def main():
             ai_platform_training_args=_ai_platform_training_args,
             ai_platform_serving_args=_ai_platform_serving_args,
             beam_pipeline_args=beam_pipeline_args,
+            range_config_date=range_config_date,
             use_cloud_component=use_cloud_component,
             use_aip=use_aip,
             use_vertex=use_vertex,

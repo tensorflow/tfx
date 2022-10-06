@@ -58,6 +58,7 @@ class PenguinPipelineKubeflowV2Test(base_test_case.BaseKubeflowV2Test):
         ._ai_platform_serving_args,
         beam_pipeline_args=penguin_pipeline_kubeflow
         ._beam_pipeline_args_by_runner['DirectRunner'],
+        range_config_date='20221010',
         use_cloud_component=False,
         use_aip=False,
         use_vertex=False,

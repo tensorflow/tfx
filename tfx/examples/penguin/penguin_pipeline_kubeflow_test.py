@@ -32,13 +32,25 @@ class PenguinPipelineKubeflowTest(test_case_utils.TfxTest,
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
 
   @parameterized.named_parameters(
-      dict(testcase_name=' Local', use_aip=False, use_vertex=False),
-      dict(testcase_name=' AIP', use_aip=True, use_vertex=False),
-      dict(testcase_name=' Vertex', use_aip=False, use_vertex=True))
+      dict(
+          testcase_name=' Local',
+          use_aip=False,
+          use_vertex=False,
+          range_config_date=None),
+      dict(
+          testcase_name=' AIP',
+          use_aip=True,
+          use_vertex=False,
+          range_config_date=None),
+      dict(
+          testcase_name=' Vertex',
+          use_aip=False,
+          use_vertex=True,
+          range_config_date='20221006'))
   @mock.patch('tfx.components.util.udf_utils.UserModuleFilePipDependency.'
               'resolve')
   def testPenguinPipelineConstructionAndDefinitionFileExists(
-      self, resolve_mock, use_aip, use_vertex):
+      self, resolve_mock, use_aip, use_vertex, range_config_date):
     # Avoid actually performing user module packaging because a placeholder
     # GCS bucket is used.
     resolve_mock.side_effect = lambda pipeline_root: None
@@ -58,6 +70,7 @@ class PenguinPipelineKubeflowTest(test_case_utils.TfxTest,
         ._ai_platform_serving_args,
         beam_pipeline_args=penguin_pipeline_kubeflow
         ._beam_pipeline_args_by_runner['DirectRunner'],
+        range_config_date=range_config_date,
         use_cloud_component=False,
         use_aip=use_aip,
         use_vertex=use_vertex,
