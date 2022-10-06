@@ -17,6 +17,7 @@
     `[tflite-support]` extra.
 *   Statistics gen and Schema gen now crash on empty input examples and statistics respectively.
 *   Importer will now check that an existing artifact has the same type as the intended output before reusing the existing artifact.
+*   Importer will now use the most recently created artifact when reusing an existing artifact instead of the one with the highest ID.
 
 ## Dependency Updates
 
