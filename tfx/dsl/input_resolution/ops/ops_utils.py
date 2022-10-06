@@ -23,10 +23,7 @@ SPAN_PROPERTY = {'span': types.artifact.PropertyType.INT}
 
 VERSION_PROPERTY = {'version': types.artifact.PropertyType.INT}
 
-SPAN_AND_VERSION_PROPERTIES = {
-    'span': types.artifact.PropertyType.INT,
-    'version': types.artifact.PropertyType.INT
-}
+SPAN_AND_VERSION_PROPERTIES = {**SPAN_PROPERTY, **VERSION_PROPERTY}
 
 
 def get_valid_artifacts(

@@ -24,6 +24,11 @@ try:
 except ModuleNotFoundError:
   tf = None
 
+try:
+  import tensorflow_io as _  # pylint: disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
+
 if tf:
 
   class TensorflowFilesystem(filesystem.Filesystem):
