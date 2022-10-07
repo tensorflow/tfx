@@ -1672,6 +1672,81 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
               'Pipeline aborted due to exceeding deadline (1 secs)',
               status.message)
 
+  def test_exception_while_orchestrating_active_pipeline(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)
+      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
+      with mock.patch.object(
+          pipeline_ops,
+          '_orchestrate_active_pipeline') as mock_orchestrate_active_pipeline:
+        mock_orchestrate_active_pipeline.side_effect = Exception('test error')
+        pipeline_ops.orchestrate(m, tq.TaskQueue(),
+                                 self._mock_service_job_manager)
+        mock_orchestrate_active_pipeline.assert_called_once()
+        # Verify that the active pipeline is stop-initiated.
+        with pipeline_state:
+          self.assertTrue(pipeline_state.is_stop_initiated())
+
+  def test_exception_while_orchestrating_stop_initiated_pipeline(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)
+      with pipeline_ops.initiate_pipeline_start(m, pipeline) as pipeline_state:
+        pipeline_state.initiate_stop(
+            status_lib.Status(
+                code=status_lib.Code.CANCELLED, message='test cancellation'))
+        self.assertTrue(pipeline_state.is_stop_initiated())
+      with mock.patch.object(pipeline_ops,
+                             '_orchestrate_stop_initiated_pipeline'
+                            ) as mock_orchestrate_stop_initiated_pipeline:
+        mock_orchestrate_stop_initiated_pipeline.side_effect = Exception(
+            'test error')
+        pipeline_ops.orchestrate(m, tq.TaskQueue(),
+                                 self._mock_service_job_manager)
+        # No exception should be raised.
+        mock_orchestrate_stop_initiated_pipeline.assert_called_once()
+
+  def test_exception_while_orchestrating_update_initiated_pipeline(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+      with pipeline_ops._initiate_pipeline_update(
+          m,
+          pipeline,
+          update_options=pipeline_pb2.UpdateOptions(
+              reload_policy=pipeline_pb2.UpdateOptions.ALL)) as pipeline_state:
+        self.assertTrue(pipeline_state.is_update_initiated())
+      with mock.patch.object(pipeline_ops,
+                             '_orchestrate_update_initiated_pipeline'
+                            ) as mock_orchestrate_update_initiated_pipeline:
+        mock_orchestrate_update_initiated_pipeline.side_effect = Exception(
+            'test error')
+        pipeline_ops.orchestrate(m, tq.TaskQueue(),
+                                 self._mock_service_job_manager)
+        mock_orchestrate_update_initiated_pipeline.assert_called_once()
+        # Verify that the update-initiated pipeline is stop-initiated.
+        with pipeline_state:
+          self.assertTrue(pipeline_state.is_stop_initiated())
+
+  def test_exception_while_stop_initiating_on_internal_error(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)
+      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
+      with mock.patch.object(
+          pipeline_ops,
+          '_orchestrate_active_pipeline') as mock_orchestrate_active_pipeline:
+        with mock.patch.object(pstate.PipelineState,
+                               'initiate_stop') as mock_initiate_stop:
+          mock_orchestrate_active_pipeline.side_effect = Exception('test error')
+          mock_initiate_stop.side_effect = Exception('test error 2')
+          pipeline_ops.orchestrate(m, tq.TaskQueue(),
+                                   self._mock_service_job_manager)
+          mock_orchestrate_active_pipeline.assert_called_once()
+          mock_initiate_stop.assert_called_once()
+          # Verify that the active pipeline is not stop-initiated but no
+          # exception should be raised.
+          with pipeline_state:
+            self.assertFalse(pipeline_state.is_stop_initiated())
+
 
 if __name__ == '__main__':
   tf.test.main()
