@@ -81,55 +81,32 @@ mv tfx src
 
 # All items must start with 'tfx/'.
 SKIP_LIST=(
-  # Following example code was not included in the package.
-  'tfx/examples/bigquery_ml/taxi_utils_bqml_test.py'
   # Skip tests which require additional packages.
-  'tfx/examples/custom_components/*'
-  'tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple_test.py'
-  'tfx/examples/penguin/experimental/penguin_pipeline_sklearn_gcp_test.py'
-  'tfx/examples/ranking/*'
+  'tfx/examples/*'
   'tfx/*airflow*'
   'tfx/*kubeflow*'
   'tfx/*vertex*'
+  'tfx/experimental/*'
+  'tfx/orchestration/experimental/*'
+  'tfx/orchestration/portable/*'
   'tfx/*e2e*'
+  'tfx/tools/*'
   'tfx/*integration*'
-  'tfx/components/trainer/rewriting/rewriter_factory_test.py'
-  'tfx/components/trainer/rewriting/tfjs_rewriter_test.py'
+  'tfx/components/trainer/*'
 )
 
 # TODO(b/179861879): Delete the following tests after TF1 images using TFX 0.28
 #                    which includes skipIf branches for TF2 only tests.
 if [[ "${TENSORFLOW_VERSION}" == 1.* ]]; then
   SKIP_LIST+=(
-    "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/beam_pipeline_test.py"
-    "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/graph_partition_test.py"
-    # Output of components test result is only compatible with TF2.
-    "tfx/components/bulk_inferrer/executor_test.py"
-    "tfx/components/evaluator/executor_test.py"
-    "tfx/components/model_validator/executor_test.py"
-    "tfx/components/tuner/executor_test.py"
-    # Native keras models only work with TF2.
-    "tfx/examples/chicago_taxi_pipeline/taxi_pipeline_native_keras_e2e_test.py"
-    "tfx/examples/imdb/imdb_pipeline_native_keras_e2e_test.py"
-    "tfx/examples/penguin/*"
-    "tfx/examples/mnist/mnist_pipeline_native_keras_e2e_test.py"
-    "tfx/experimental/templates/penguin/e2e_tests/local_e2e_test.py"
-    "tfx/experimental/templates/taxi/e2e_tests/local_e2e_test.py"
+    "tfx/*"
   )
 fi
 
 # TODO(b/179328863): TF 2.1 is LTS and we should keep TFX 0.21.x until TF 2.1 retires.
 if [[ "${TFX_VERSION}" == 0.21.* ]]; then
   SKIP_LIST+=(
-    "tfx/utils/dependency_utils_test.py"
-    "tfx/components/transform/executor_with_tfxio_test.py"
-    "tfx/components/statistics_gen/executor_test.py"
-    "tfx/components/evaluator/executor_test.py"
-    "tfx/orchestration/beam/beam_dag_runner_test.py"
-    "tfx/examples/chicago_taxi_pipeline/taxi_pipeline_portable_beam_test.py"
-    "tfx/examples/chicago_taxi_pipeline/taxi_utils_test.py"
-    "tfx/tools/cli/container_builder/dockerfile_test.py"
-    "tfx/tools/cli/handler/beam_handler_test.py"
+    "tfx/*"
   )
 fi
 
@@ -146,22 +123,7 @@ fi
 
 if [[ "${TENSORFLOW_VERSION}" == 1.* && "${TFX_VERSION}" == 0.23.* ]]; then
   SKIP_LIST+=(
-    "tfx/components/*"
-    "tfx/dsl/*"
-    "tfx/examples/*"
-    "tfx/experimental/distributed_inference/*"
-    "tfx/experimental/pipeline_testing/*"
-    "tfx/experimental/templates/*"
-    "tfx/extensions/*"
-    "tfx/orchestration/*"
-    "tfx/scripts/*"
-    "tfx/tools/cli/*"
-    "tfx/types/artifact_test.py"
-    "tfx/types/artifact_utils_test.py"
-    "tfx/types/standard_artifacts_test.py"
-    "tfx/utils/channel_test.py"
-    "tfx/utils/dependency_utils_test.py"
-    "tfx/utils/io_utils_test.py"
+    "tfx/*"
   )
 fi
 
