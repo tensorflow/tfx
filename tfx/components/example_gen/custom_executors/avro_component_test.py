@@ -92,6 +92,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     mock_publisher.return_value.publish_execution.assert_called_once()
 
     # Check output paths.
+    self.assertTrue(fileio.exists(pipeline_root))
     self.assertTrue(fileio.exists(os.path.join(pipeline_root, example_gen.id)))
 
 
