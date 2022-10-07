@@ -194,6 +194,17 @@ def make_extra_packages_tfdf():
   ]
 
 
+def make_extra_packages_flax():
+  # Packages needed for the flax example.
+  # Required for the experimental tfx/examples using Flax, e.g.,
+  # tfx/examples/penguin.
+  return [
+      'jax>=0.2.13<1',
+      'jaxlib>=0.1.64,<1',
+      'flax>=0.3.3,<0.6',
+  ]
+
+
 def make_extra_packages_examples():
   # Extra dependencies required for tfx/examples.
   return [
@@ -211,11 +222,6 @@ def make_extra_packages_examples():
       'scikit-learn>=0.23,<0.24',
       # LINT.ThenChange(
       #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
-      # Required for the experimental tfx/examples using Flax, e.g.,
-      # tfx/examples/penguin.
-      'jax>=0.2.13<1',
-      'jaxlib>=0.1.64,<1',
-      'flax>=0.3.3,<0.6',
       # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
       'tensorflow-cloud>=0.1,<0.2',
   ]
@@ -229,5 +235,6 @@ def make_extra_packages_all():
       *make_extra_packages_tflite_support(),
       *make_extra_packages_tf_ranking(),
       *make_extra_packages_tfdf(),
+      *make_extra_packages_flax(),
       *make_extra_packages_examples(),
   ]
