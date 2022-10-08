@@ -40,6 +40,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 _EXECUTION_SET_SIZE = '__execution_set_size__'
 _EXECUTION_TIMESTAMP = '__execution_timestamp__'
+_EXTERNAL_EXECUTION_INDEX = '__external_execution_index__'
 
 
 @attr.s(auto_attribs=True)
@@ -314,11 +315,6 @@ def get_latest_executions_set(
   if not size:
     return [sorted_executions[0]]
 
-  # TODO(b/217390865): After we can register several executions in one
-  # transaction, the following code can be simplified.
-  # But before the feature is implemented, we can abandon those partially
-  # registered executions. For example, if orchestrator fail after publishing
-  # 1/3 and 2/3 but before 3/3, this function return empty array.
   timestamp = sorted_executions[0].custom_properties.get(
       _EXECUTION_TIMESTAMP).int_value
   latest_execution_set = [
@@ -327,6 +323,32 @@ def get_latest_executions_set(
   ]
   return [] if len(latest_execution_set) != size.int_value else list(
       reversed(latest_execution_set))
+
+
+def get_oldest_active_execution_from_a_set(
+    execution_set: Iterable[metadata_store_pb2.Execution]
+) -> Optional[metadata_store_pb2.Execution]:
+  """Returns the oldest active execution or `None` if no active executions exist.
+
+  Args:
+    execution_set: A set of executions created by one transation in API
+      put_lineage_subgraph
+
+  Returns:
+    Execution if the oldest active execution exist or `None` if not exist.
+  """
+  active_executions = [
+      e for e in execution_set if execution_lib.is_execution_active(e)
+  ]
+  if not active_executions:
+    return None
+
+  index_to_execution = {
+      e.custom_properties.get(_EXTERNAL_EXECUTION_INDEX).int_value: e
+      for e in active_executions
+  }
+  sorted_indexes = sorted(index_to_execution.keys())
+  return index_to_execution[sorted_indexes[0]]
 
 
 # TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
@@ -366,11 +388,9 @@ def register_executions(
     A list of MLMD executions that are registered in MLMD, with id populated.
       All registered executions have a state of NEW.
   """
-  # TODO(b/207038460): Use the new feature of batch executions update once it is
-  # implemented (b/209883142).
   timestamp = int(time.time() * 1e6)
   executions = []
-  for input_and_param in input_and_params:
+  for index, input_and_param in enumerate(input_and_params):
     # Prepare executions.
     execution = execution_lib.prepare_execution(
         metadata_handler,
@@ -381,6 +401,7 @@ def register_executions(
     execution.custom_properties[_EXECUTION_SET_SIZE].int_value = len(
         input_and_params)
     execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
+    execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     executions.append(execution)
 
   if len(executions) == 1:

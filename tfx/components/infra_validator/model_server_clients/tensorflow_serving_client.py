@@ -19,12 +19,31 @@ from tfx.components.infra_validator import types
 from tfx.components.infra_validator.model_server_clients import base_client
 
 from tensorflow_serving.apis import classification_pb2
-from tensorflow_serving.apis import get_model_status_pb2
 from tensorflow_serving.apis import model_pb2
-from tensorflow_serving.apis import model_service_pb2_grpc
 from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2_grpc
 from tensorflow_serving.apis import regression_pb2
+
+# TODO(b/250016998): Remove this hack after tensorflow-serving-api 1.11 release.
+try:
+  # pylint: disable=g-import-not-at-top
+  from tensorflow_serving.apis import get_model_status_pb2
+  from tensorflow_serving.apis import model_service_pb2_grpc
+except AttributeError as err:
+  # pylint: disable=g-import-not-at-top
+  # pylint: disable=g-direct-tensorflow-import
+  # Workaround for the moved error_code proto. See b/146764310.
+  logging.warning('Failed to import tensorflow serving protos. It can fail if '
+                  'the TF version doesn\'t match with the TF Serving version. '
+                  'We will try importing again with a workaround:%s', err)
+  from tensorflow.core.protobuf import error_codes_pb2 as old_error_codes_pb2
+  from tensorflow.tsl.protobuf import error_codes_pb2 as new_error_codes_pb2
+  old_error_codes_pb2._CODE = new_error_codes_pb2._CODE  # pylint: disable=protected-access  # pytype: disable=module-attr
+
+  # Retry.
+  from tensorflow_serving.apis import get_model_status_pb2
+  from tensorflow_serving.apis import model_service_pb2_grpc
+
 
 State = get_model_status_pb2.ModelVersionStatus.State
 

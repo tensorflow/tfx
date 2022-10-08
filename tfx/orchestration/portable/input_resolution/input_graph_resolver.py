@@ -153,7 +153,7 @@ def _evaluate_dict_node(
   result = {}
   for dict_key, node_id in dict_node.node_ids.items():
     result[dict_key] = data[node_id]
-  return result
+  return result  # pytype: disable=bad-return-type  # mapping-is-not-sequence
 
 
 def _reduce_graph_fn(ctx: _Context, node_id: str, graph_fn: _GraphFn):

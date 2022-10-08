@@ -15,7 +15,6 @@ syntax = "proto3";
 
 package tfx.orchestration.deployment_config;
 
-import "ml_metadata/proto/metadata_store.proto";
 import "tfx/proto/orchestration/executable_spec.proto";
 import "tfx/proto/orchestration/metadata.proto";
 import "tfx/proto/orchestration/platform_config.proto";

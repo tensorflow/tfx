@@ -18,7 +18,7 @@ import inspect
 import itertools
 from typing import Any, Dict, List, Mapping, Optional, Type, cast
 
-from tfx.dsl.component.experimental.function_parser import check_strict_json_compat
+from tfx.dsl.component.experimental.json_compat import check_strict_json_compat
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact
 from tfx.types import channel

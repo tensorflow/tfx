@@ -307,12 +307,14 @@ class _Generator:
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
 
-    latest_active_execution = task_gen_utils.get_latest_active_execution(
+    # Gets the oldest active execution. If the oldest active execution exists,
+    # generates a task from it.
+    oldest_active_execution = task_gen_utils.get_oldest_active_execution_from_a_set(
         latest_executions_set)
-    if latest_active_execution:
+    if oldest_active_execution:
       with mlmd_state.mlmd_execution_atomic_op(
           mlmd_handle=self._mlmd_handle,
-          execution_id=latest_active_execution.id) as execution:
+          execution_id=oldest_active_execution.id) as execution:
         execution.last_known_state = metadata_store_pb2.Execution.RUNNING
       result.append(
           task_lib.UpdateNodeStateTask(

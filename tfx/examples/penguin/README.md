@@ -96,6 +96,15 @@ Additionally, you can use essentially the same TFX configuration with
 using a Keras model are in `penguin_utils_flax_experimental.py`.
 
 To execute the pipeline with a Flax model:
+
+Install the dependencies required by the flax example:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+pip install -U tfx[flax]
+</pre>
+
+Then, run the flax pipeline.
+
 <pre class="devsite-terminal devsite-click-to-copy">
 python ~/penguin/penguin_pipeline_local.py --model_framework=flax_experimental
 </pre>

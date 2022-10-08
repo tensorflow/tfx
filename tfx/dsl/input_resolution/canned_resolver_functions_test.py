@@ -13,8 +13,11 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.canned_resolver_functions."""
 
+from typing import Dict
+
 import tensorflow as tf
 
+from tfx import types
 from tfx.dsl.compiler import compiler_context
 from tfx.dsl.compiler import node_inputs_compiler
 from tfx.dsl.components.base import base_node
@@ -23,7 +26,6 @@ from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration import pipeline
 from tfx.orchestration.portable import inputs_utils
 from tfx.proto.orchestration import pipeline_pb2
-import tfx.types
 from tfx.types import channel as channel_types
 from tfx.utils import test_case_utils
 
@@ -57,34 +59,61 @@ class DummyNode(base_node.BaseNode):
     return self._outputs
 
 
+def _compile_inputs(
+    inputs: Dict[str, channel_types.BaseChannel]) -> pipeline_pb2.PipelineNode:
+  """Returns a compiled PipelineNode from the DummyNode inputs dictionary."""
+  node = DummyNode('MyNode', inputs=inputs)
+  p = pipeline.Pipeline(pipeline_name='pipeline', components=[node])
+  ctx = compiler_context.PipelineContext(p)
+  node_inputs = pipeline_pb2.NodeInputs()
+
+  # Compile the NodeInputs and wrap in a PipelineNode.
+  node_inputs_compiler.compile_node_inputs(ctx, node, node_inputs)
+  return pipeline_pb2.PipelineNode(inputs=node_inputs)
+
+
 class CannedResolverFunctionsTest(
     test_case_utils.TfxTest, test_case_utils.MlmdMixins):
 
-  def assertArtifactEqual(self, mlmd_artifact: metadata_store_pb2.Artifact,
-                          resolved_artifact: metadata_store_pb2.Artifact):
-    """Checks that a mlmd Artifact and resolved artifact are equivalent."""
+  def setUp(self):
+    super().setUp()
+    self.init_mlmd()
+    self.enter_context(self.mlmd_handler)
+
+  def assertArtifactEqual(self,
+                          resolved_artifact: metadata_store_pb2.Artifact,
+                          mlmd_artifact: metadata_store_pb2.Artifact,
+                          check_span_and_version: bool = False):
+    """Checks that a MLMD artifacts and resolved artifact are equal."""
     self.assertEqual(mlmd_artifact.id, resolved_artifact.id)
     self.assertEqual(mlmd_artifact.type_id, resolved_artifact.type_id)
     self.assertEqual(mlmd_artifact.uri, resolved_artifact.uri)
     self.assertEqual(mlmd_artifact.state, resolved_artifact.state)
 
-  def testLatestResolverFn_E2E(self):
-    resolved_channel = canned_resolver_functions.latest_created(
-        tfx.types.Channel(test_utils.DummyArtifact, output_key='x'), n=2)
-    node = DummyNode('MyNode', inputs={'x': resolved_channel})
+    if check_span_and_version:
+      self.assertEqual(mlmd_artifact.properties['span'],
+                       resolved_artifact.properties['span'])
+      self.assertEqual(mlmd_artifact.properties['version'],
+                       resolved_artifact.properties['version'])
 
-    p = pipeline.Pipeline(pipeline_name='pipeline', components=[node])
-    ctx = compiler_context.PipelineContext(p)
-    node_inputs = pipeline_pb2.NodeInputs()
+  def assertArtifactListEqual(self,
+                              resolved_artifacts: metadata_store_pb2.Artifact,
+                              mlmd_artifacts: metadata_store_pb2.Artifact,
+                              check_span_and_version: bool = False):
+    """Checks that a list of MLMD artifacts and resolved artifacts are equal."""
+    self.assertEqual(len(mlmd_artifacts), len(resolved_artifacts))
+    for mlmd_artifact, resolved_artifact in zip(mlmd_artifacts,
+                                                resolved_artifacts):
+      self.assertArtifactEqual(resolved_artifact, mlmd_artifact,
+                               check_span_and_version)
 
-    # Compile the node's inputs.
-    node_inputs_compiler.compile_node_inputs(ctx, node, node_inputs)
+  def testLatestCreatedResolverFn_E2E(self):
+    channel = canned_resolver_functions.latest_created(
+        types.Channel(test_utils.DummyArtifact, output_key='x'), n=2)
+    pipeline_node = _compile_inputs({'x': channel})
 
     # Populate the MLMD database with DummyArtifacts to test the input
     # resolution end to end.
-    pipeline_node = pipeline_pb2.PipelineNode(inputs=node_inputs)
-    self.init_mlmd()
-    self.enter_context(self.mlmd_handler)
     mlmd_context = self.put_context('pipeline', 'pipeline')
     mlmd_artifact_1 = self.put_artifact('DummyArtifact')
     mlmd_artifact_2 = self.put_artifact('DummyArtifact')
@@ -99,15 +128,53 @@ class CannedResolverFunctionsTest(
 
     resolved = inputs_utils.resolve_input_artifacts(
         pipeline_node=pipeline_node, metadata_handler=self.mlmd_handler)
-
-    actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
     self.assertIsInstance(resolved, inputs_utils.Trigger)
-    self.assertLen(actual_artifacts, 2)
 
     # Check that actual_artifacts = [mlmd_artifact_2, mlmd_artifact_3] because
     # those two artifacts are the latest artifacts and n=2.
-    self.assertArtifactEqual(actual_artifacts[0], mlmd_artifact_2)
-    self.assertArtifactEqual(actual_artifacts[1], mlmd_artifact_3)
+    actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
+    expected_artifacts = [mlmd_artifact_2, mlmd_artifact_3]
+    self.assertArtifactListEqual(actual_artifacts, expected_artifacts)
+
+  def testStaticRangeResolverFn_E2E(self):
+    channel = canned_resolver_functions.static_range(
+        types.Channel(test_utils.DummyArtifact, output_key='x'),
+        end_span_number=5,
+        keep_all_versions=True,
+        exclude_span_numbers=[2])
+    pipeline_node = _compile_inputs({'x': channel})
+
+    mlmd_context = self.put_context('pipeline', 'pipeline')
+
+    spans = [0, 1, 2, 3, 3, 5, 7, 10]
+    versions = [0, 0, 0, 0, 3, 0, 0, 0]
+    mlmd_artifacts = []
+    for span, version in zip(spans, versions):
+      mlmd_artifacts.append(
+          self.put_artifact(
+              artifact_type='DummyArtifact',
+              properties={
+                  'span': span,
+                  'version': version
+              }))
+
+    for mlmd_artifact in mlmd_artifacts:
+      self.put_execution(
+          'ProducerNode',
+          inputs={},
+          outputs={'x': [mlmd_artifact]},
+          contexts=[mlmd_context])
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handler)
+    self.assertIsInstance(resolved, inputs_utils.Trigger)
+
+    # The resolved artifacts should have (span, version) tuples of:
+    # [(0, 0), (1, 0), (3, 0), (3, 3), (5, 0)].
+    actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
+    expected_artifacts = [mlmd_artifacts[i] for i in [0, 1, 3, 4, 5]]
+    self.assertArtifactListEqual(
+        actual_artifacts, expected_artifacts, check_span_and_version=True)
 
 
 if __name__ == '__main__':

@@ -258,7 +258,7 @@ def _ensure_no_missing_nodes(pipeline: pipeline_pb2.Pipeline,
   if missing_nodes:
     raise ValueError(
         f'Nodes {sorted(missing_nodes)} specified in from_nodes/to_nodes '
-        'are not present in the pipeline.')
+        f'are not present in the pipeline. Valid nodes are {all_node_ids}.')
 
 
 def _ensure_topologically_sorted(pipeline: pipeline_pb2.Pipeline):

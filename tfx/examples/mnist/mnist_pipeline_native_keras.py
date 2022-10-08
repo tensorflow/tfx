@@ -72,7 +72,8 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
                      module_file: str, module_file_lite: str,
                      serving_model_dir: str, serving_model_dir_lite: str,
                      metadata_path: str,
-                     beam_pipeline_args: List[str]) -> pipeline.Pipeline:
+                     beam_pipeline_args: List[str],
+                     accuracy_threshold: float = 0.8) -> pipeline.Pipeline:
   """Implements the handwritten digit classification example using TFX."""
   # Brings data into the pipeline.
   example_gen = ImportExampleGen(input_base=data_root)
@@ -123,7 +124,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
                   class_name='SparseCategoricalAccuracy',
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.8})))
+                          lower_bound={'value': accuracy_threshold})))
           ])
       ])
 
