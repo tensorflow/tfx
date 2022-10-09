@@ -325,6 +325,28 @@ def get_latest_executions_set(
       reversed(latest_execution_set))
 
 
+def get_oldest_active_execution(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> Optional[metadata_store_pb2.Execution]:
+  """Returns the oldest active execution or `None` if no active executions exist.
+
+  Args:
+    executions: A list of executions
+
+  Returns:
+    Execution if the oldest active execution exist or `None` if not exist.
+  """
+  active_executions = [
+      e for e in executions if execution_lib.is_execution_active(e)
+  ]
+  if not active_executions:
+    return None
+
+  sorted_executions = execution_lib.sort_executions_newest_to_oldest(
+      active_executions)
+  return sorted_executions[-1] if sorted_executions else None
+
+
 def get_oldest_active_execution_from_a_set(
     execution_set: Iterable[metadata_store_pb2.Execution]
 ) -> Optional[metadata_store_pb2.Execution]:
