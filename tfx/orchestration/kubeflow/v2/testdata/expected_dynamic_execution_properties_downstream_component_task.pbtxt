@@ -49,7 +49,7 @@ inputs {
     key: "range_config"
     value {
       task_output_parameter {
-        producer_task: "range_config_generator_task"
+        producer_task: "range_config_generator"
         output_parameter_key: "range_config"
       }
     }
