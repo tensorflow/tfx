@@ -91,6 +91,8 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     launcher.launch()
     mock_publisher.return_value.publish_execution.assert_called_once()
 
+    # DELETE ME - Some no OP change to trigger tfx kokoro tests.
+    self.assertTrue(fileio.exists(pipeline_root))
     # Check output paths.
     self.assertTrue(fileio.exists(os.path.join(pipeline_root, example_gen.id)))
 
