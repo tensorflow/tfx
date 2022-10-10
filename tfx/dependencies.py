@@ -199,9 +199,10 @@ def make_extra_packages_flax():
   # Required for the experimental tfx/examples using Flax, e.g.,
   # tfx/examples/penguin.
   return [
-      'jax>=0.2.13<1',
-      'jaxlib>=0.1.64,<1',
-      'flax>=0.3.3,<0.6',
+      'jax<1',
+      'jaxlib<1',
+      'flax<1',
+      'optax<1',
   ]
 
 
