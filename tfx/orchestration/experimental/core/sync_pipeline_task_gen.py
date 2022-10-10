@@ -267,6 +267,10 @@ class _Generator:
         task_lib.exec_node_task_id_from_node(self._pipeline, node)):
       return result
 
+    logging.error(
+        'Guowei: %s',
+        self._mlmd_handle.store.get_artifacts_by_external_ids(['test']))
+
     node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
     latest_executions_set = task_gen_utils.get_latest_executions_set(
         node_executions)
