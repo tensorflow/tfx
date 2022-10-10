@@ -347,7 +347,7 @@ def get_oldest_active_execution(
   return sorted_executions[-1] if sorted_executions else None
 
 
-def get_oldest_active_execution_from_a_set(
+def get_oldest_active_execution_by_index_from_a_set(
     execution_set: Iterable[metadata_store_pb2.Execution]
 ) -> Optional[metadata_store_pb2.Execution]:
   """Returns the oldest active execution or `None` if no active executions exist.
@@ -364,6 +364,24 @@ def get_oldest_active_execution_from_a_set(
   ]
   if not active_executions:
     return None
+
+  # Some existing executions in MLMD may not have _EXTERNAL_EXECUTION_INDEX.
+  # In such cases, we sort the execution by creation time for backward
+  # compatible.
+  # TODO(b/207038460) Once we are sure that all active executions in MLMD have
+  # _EXTERNAL_EXECUTION_INDEX, we can delete the following codes of sorting
+  # executions by creation time.
+  external_execution_index = [
+      e.custom_properties.get(_EXTERNAL_EXECUTION_INDEX)
+      for e in active_executions
+  ]
+  if not all(external_execution_index):
+    logging.warning(
+        'Sorting executions by timestamp, because one or more executions do '
+        'not have _EXTERNAL_EXECUTION_INDEX.')
+    sorted_executions = execution_lib.sort_executions_newest_to_oldest(
+        active_executions)
+    return sorted_executions[-1] if sorted_executions else None
 
   index_to_execution = {
       e.custom_properties.get(_EXTERNAL_EXECUTION_INDEX).int_value: e
