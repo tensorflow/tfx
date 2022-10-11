@@ -22,7 +22,7 @@ Internal use only. No backwards compatibility guarantees.
 import enum
 import inspect
 import types
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from typing import Any, Dict, NamedTuple, Optional, Type, Union
 
 from tfx.dsl.component.experimental import annotations
 from tfx.dsl.component.experimental import json_compat
@@ -43,6 +43,19 @@ class ArgFormats(enum.Enum):
   ARTIFACT_VALUE = 3
   PARAMETER = 4
   BEAM_PARAMETER = 5
+
+
+class FunctionSignature(NamedTuple):
+  """Signature for a component function signature."""
+
+  inputs: Dict[str, Type[artifact.Artifact]]
+  outputs: Dict[str, Type[artifact.Artifact]]
+  parameters: Dict[str, Type[Union[int, float, str, bytes, _BeamPipeline]]]
+  arg_formats: Dict[str, Any]
+  arg_defaults: Dict[str, ArgFormats]
+  returned_outputs: Dict[str, bool]
+  json_typehints: Dict[str, Any]
+  return_json_typehints: Dict[str, Any]
 
 
 _PRIMITIVE_TO_ARTIFACT = {
@@ -105,16 +118,7 @@ def _validate_signature(
 def _parse_signature(
     func: types.FunctionType,
     argspec: inspect.FullArgSpec,  # pytype: disable=module-attr
-    typehints: Dict[str, Any]
-) -> Tuple[
-    Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[Union[int, float, str, bytes, _BeamPipeline]]],
-    Dict[str, Any],
-    Dict[str, ArgFormats],
-    Dict[str, bool],
-    Dict[str, Any],
-    Dict[str, Any]]:
+    typehints: Dict[str, Any]) -> FunctionSignature:
   """Parses signature of a typehint-annotated component executor function.
 
   Args:
@@ -244,21 +248,13 @@ def _parse_signature(
             ('Unknown type hint annotation %r for returned output %r on '
              'function %r') % (arg_typehint, arg, func))
 
-  return (inputs, outputs, parameters, arg_formats, arg_defaults,
-          returned_outputs, json_typehints, return_json_typehints)
+  return FunctionSignature(inputs, outputs, parameters, arg_formats,
+                           arg_defaults, returned_outputs, json_typehints,
+                           return_json_typehints)
 
 
 def parse_typehint_component_function(
-    func: types.FunctionType
-) -> Tuple[
-    Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[Union[int, float, str, bytes]]],
-    Dict[str, Any],
-    Dict[str, ArgFormats],
-    Dict[str, bool],
-    Dict[str, Any],
-    Dict[str, Any]]:
+    func: types.FunctionType) -> FunctionSignature:
   """Parses the given component executor function.
 
   This method parses a typehinted-annotated Python function that is intended to
@@ -308,5 +304,6 @@ def parse_typehint_component_function(
    json_typehints, return_json_typehints) = (
        _parse_signature(func, argspec, typehints))
 
-  return (inputs, outputs, parameters, arg_formats, arg_defaults,
-          returned_outputs, json_typehints, return_json_typehints)
+  return FunctionSignature(inputs, outputs, parameters, arg_formats,
+                           arg_defaults, returned_outputs, json_typehints,
+                           return_json_typehints)

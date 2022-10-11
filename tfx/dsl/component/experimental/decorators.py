@@ -215,11 +215,13 @@ class _FunctionExecutor(base_executor.BaseExecutor):
   # A dictionary mapping output names that are declared
   # as json compatible types to the annotation.
   _RETURN_JSON_COMPAT_TYPEHINT = {}
+  # The ComponentDecoratorInternal class to use for execution.
+  _DECORATOR_INTERNAL_CLASS = None
 
   def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
          output_dict: Dict[str, List[tfx_types.Artifact]],
          exec_properties: Dict[str, Any]) -> None:
-    function_args = _extract_func_args(
+    function_args = self._DECORATOR_INTERNAL_CLASS.extract_func_args(
         obj=str(self),
         arg_formats=self._ARG_FORMATS,
         arg_defaults=self._ARG_DEFAULTS,
@@ -247,7 +249,7 @@ class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
   def Do(self, input_dict: Dict[str, List[tfx_types.Artifact]],
          output_dict: Dict[str, List[tfx_types.Artifact]],
          exec_properties: Dict[str, Any]) -> None:
-    function_args = _extract_func_args(
+    function_args = self._DECORATOR_INTERNAL_CLASS.extract_func_args(
         obj=str(self),
         arg_formats=self._ARG_FORMATS,
         arg_defaults=self._ARG_DEFAULTS,
@@ -267,6 +269,139 @@ class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
             output_dict=output_dict,
             json_typehints=self._RETURN_JSON_COMPAT_TYPEHINT,
         ))
+
+
+class ComponentDecoratorInternal:
+  """Internal component decorator implementation class.
+
+  No backwards compatibility guarantees.
+  """
+
+  @classmethod
+  def decorator(cls,
+                func: Optional[types.FunctionType] = None,
+                component_annotation: Optional[Type[
+                    system_executions.SystemExecution]] = None,
+                use_beam: bool = False) -> Callable[..., Any]:
+    """Internal component decorator implementation."""
+    if func is None:
+      return functools.partial(
+          cls.decorator,
+          component_annotation=component_annotation,
+          use_beam=use_beam)
+
+    # Defining a component within a nested class or function closure causes
+    # problems because in this case, the generated component classes can't be
+    # referenced via their qualified module path.
+    #
+    # See https://www.python.org/dev/peps/pep-3155/ for details about the
+    # special '<locals>' namespace marker.
+    if '<locals>' in func.__qualname__.split('.'):
+      raise ValueError(
+          'The @component decorator can only be applied to a function defined '
+          'at the module level. It cannot be used to construct a component for '
+          'a function defined in a nested class or function closure.')
+
+    signature = function_parser.parse_typehint_component_function(func)
+    if use_beam and list(
+        signature.parameters.values()).count(_BeamPipeline) != 1:
+      raise ValueError('The decorated function must have one and only one '
+                       'optional parameter of type '
+                       'BeamComponentParameter[beam.Pipeline] with '
+                       'default value None when use_beam=True.')
+
+    spec_inputs = {}
+    spec_outputs = {}
+    spec_parameters = {}
+    for key, artifact_type in signature.inputs.items():
+      spec_inputs[key] = component_spec.ChannelParameter(
+          type=artifact_type, optional=(key in signature.arg_defaults))
+      if key in signature.json_typehints:
+        setattr(spec_inputs[key], '_JSON_COMPAT_TYPEHINT',
+                signature.json_typehints[key])
+    for key, artifact_type in signature.outputs.items():
+      assert key not in signature.arg_defaults, ('Optional outputs are not '
+                                                 'supported.')
+      spec_outputs[key] = component_spec.ChannelParameter(type=artifact_type)
+      if key in signature.return_json_typehints:
+        setattr(spec_outputs[key], '_JSON_COMPAT_TYPEHINT',
+                signature.return_json_typehints[key])
+    for key, primitive_type in signature.parameters.items():
+      spec_parameters[key] = component_spec.ExecutionParameter(
+          type=primitive_type, optional=(key in signature.arg_defaults))
+    component_spec_class = type(
+        '%s_Spec' % func.__name__, (tfx_types.ComponentSpec,), {
+            'INPUTS': spec_inputs,
+            'OUTPUTS': spec_outputs,
+            'PARAMETERS': spec_parameters,
+            'TYPE_ANNOTATION': component_annotation,
+        })
+
+    executor_class = type(
+        '%s_Executor' % func.__name__,
+        (_FunctionBeamExecutor if use_beam else _FunctionExecutor,),
+        {
+            '_ARG_FORMATS': signature.arg_formats,
+            '_ARG_DEFAULTS': signature.arg_defaults,
+            # The function needs to be marked with `staticmethod` so that later
+            # references of `self._FUNCTION` do not result in a bound method
+            # (i.e. one with `self` as its first parameter).
+            '_FUNCTION': staticmethod(func),  # pytype: disable=not-callable
+            '_RETURNED_VALUES': signature.returned_outputs,
+            '_RETURN_JSON_COMPAT_TYPEHINT': signature.return_json_typehints,
+            '_DECORATOR_INTERNAL_CLASS': cls,
+            '__module__': func.__module__,
+        })
+
+    # Expose the generated executor class in the same module as the decorated
+    # function. This is needed so that the executor class can be accessed at the
+    # proper module path. One place this is needed is in the Dill pickler used
+    # by Apache Beam serialization.
+    module = sys.modules[func.__module__]
+    setattr(module, '%s_Executor' % func.__name__, executor_class)
+
+    executor_spec_class = (
+        executor_spec.BeamExecutorSpec
+        if use_beam else executor_spec.ExecutorClassSpec)
+    executor_spec_instance = executor_spec_class(executor_class=executor_class)
+
+    return cls.wrap_call_interface(type(
+        func.__name__,
+        (_SimpleBeamComponent if use_beam else _SimpleComponent,), {
+            'SPEC_CLASS': component_spec_class,
+            'EXECUTOR_SPEC': executor_spec_instance,
+            '__module__': func.__module__,
+        }))
+
+  @classmethod
+  def parse_interface(
+      cls, func: Callable[..., Any]) -> function_parser.FunctionSignature:
+    return function_parser.parse_typehint_component_function(func)
+
+  @classmethod
+  def wrap_call_interface(cls, fn: Callable[..., Any]) -> Callable[..., Any]:
+    return fn
+
+  @classmethod
+  def extract_func_args(
+      cls,
+      obj: str,
+      arg_formats: Dict[str, int],
+      arg_defaults: Dict[str, Any],
+      input_dict: Dict[str, List[tfx_types.Artifact]],
+      output_dict: Dict[str, List[tfx_types.Artifact]],
+      exec_properties: Dict[str, Any],
+      beam_pipeline: Optional[_BeamPipeline] = None,
+  ) -> Dict[str, Any]:
+    """Extracts function arguments for the decorated function."""
+    return _extract_func_args(
+        obj=obj,
+        arg_formats=arg_formats,
+        arg_defaults=arg_defaults,
+        input_dict=input_dict,
+        output_dict=output_dict,
+        exec_properties=exec_properties,
+        beam_pipeline=beam_pipeline)
 
 
 def component(
@@ -401,7 +536,7 @@ def component(
         with beam_pipeline as p:
           ...
 
-  Experimental: no backwards compatibility guarantees.
+  Experimental: no backwards / forwards compatibility guarantees.
 
   Args:
     func: Typehint-annotated component executor function.
@@ -419,87 +554,5 @@ def component(
   Raises:
     EnvironmentError: if the current Python interpreter is not Python 3.
   """
-  if func is None:
-    return functools.partial(
-        component, component_annotation=component_annotation, use_beam=use_beam)
-
-  # Defining a component within a nested class or function closure causes
-  # problems because in this case, the generated component classes can't be
-  # referenced via their qualified module path.
-  #
-  # See https://www.python.org/dev/peps/pep-3155/ for details about the special
-  # '<locals>' namespace marker.
-  if '<locals>' in func.__qualname__.split('.'):
-    raise ValueError(
-        'The @component decorator can only be applied to a function defined '
-        'at the module level. It cannot be used to construct a component for a '
-        'function defined in a nested class or function closure.')
-
-  (inputs, outputs, parameters, arg_formats, arg_defaults, returned_values,
-   json_typehints, return_json_typehints) = (
-       function_parser.parse_typehint_component_function(func))
-  if use_beam and list(parameters.values()).count(_BeamPipeline) != 1:
-    raise ValueError('The decorated function must have one and only one '
-                     'optional parameter of type '
-                     'BeamComponentParameter[beam.Pipeline] with '
-                     'default value None when use_beam=True.')
-
-  spec_inputs = {}
-  spec_outputs = {}
-  spec_parameters = {}
-  for key, artifact_type in inputs.items():
-    spec_inputs[key] = component_spec.ChannelParameter(
-        type=artifact_type, optional=(key in arg_defaults))
-    if key in json_typehints:
-      setattr(spec_inputs[key], '_JSON_COMPAT_TYPEHINT', json_typehints[key])
-  for key, artifact_type in outputs.items():
-    assert key not in arg_defaults, 'Optional outputs are not supported.'
-    spec_outputs[key] = component_spec.ChannelParameter(type=artifact_type)
-    if key in return_json_typehints:
-      setattr(spec_outputs[key], '_JSON_COMPAT_TYPEHINT',
-              return_json_typehints[key])
-  for key, primitive_type in parameters.items():
-    spec_parameters[key] = component_spec.ExecutionParameter(
-        type=primitive_type, optional=(key in arg_defaults))
-  component_spec_class = type(
-      '%s_Spec' % func.__name__, (tfx_types.ComponentSpec,), {
-          'INPUTS': spec_inputs,
-          'OUTPUTS': spec_outputs,
-          'PARAMETERS': spec_parameters,
-          'TYPE_ANNOTATION': component_annotation,
-      })
-
-  executor_class = type(
-      '%s_Executor' % func.__name__,
-      (_FunctionBeamExecutor if use_beam else _FunctionExecutor,),
-      {
-          '_ARG_FORMATS': arg_formats,
-          '_ARG_DEFAULTS': arg_defaults,
-          # The function needs to be marked with `staticmethod` so that later
-          # references of `self._FUNCTION` do not result in a bound method (i.e.
-          # one with `self` as its first parameter).
-          '_FUNCTION': staticmethod(func),  # pytype: disable=not-callable
-          '_RETURNED_VALUES': returned_values,
-          '_RETURN_JSON_COMPAT_TYPEHINT': return_json_typehints,
-          '__module__': func.__module__,
-      })
-
-  # Expose the generated executor class in the same module as the decorated
-  # function. This is needed so that the executor class can be accessed at the
-  # proper module path. One place this is needed is in the Dill pickler used by
-  # Apache Beam serialization.
-  module = sys.modules[func.__module__]
-  setattr(module, '%s_Executor' % func.__name__, executor_class)
-
-  executor_spec_class = (
-      executor_spec.BeamExecutorSpec
-      if use_beam else executor_spec.ExecutorClassSpec)
-  executor_spec_instance = executor_spec_class(executor_class=executor_class)
-
-  return type(
-      func.__name__, (_SimpleBeamComponent if use_beam else _SimpleComponent,),
-      {
-          'SPEC_CLASS': component_spec_class,
-          'EXECUTOR_SPEC': executor_spec_instance,
-          '__module__': func.__module__,
-      })
+  return ComponentDecoratorInternal.decorator(
+      func=func, component_annotation=component_annotation, use_beam=use_beam)
