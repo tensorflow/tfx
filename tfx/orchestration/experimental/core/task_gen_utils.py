@@ -15,7 +15,7 @@
 
 import itertools
 import time
-from typing import Dict, Iterable, List, Optional, Sequence, MutableMapping
+from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence
 import uuid
 
 from absl import logging
@@ -23,6 +23,7 @@ import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import inputs_utils
@@ -166,12 +167,13 @@ def resolve_exec_properties(
 
 
 def generate_resolved_info(
-    metadata_handler: metadata.Metadata,
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     node: node_proto_view.NodeProtoView) -> Optional[ResolvedInfo]:
   """Returns a `ResolvedInfo` object for executing the node or `None` to skip.
 
   Args:
-    metadata_handler: A handler to access MLMD db.
+    mlmd_connection_manager: MLMDConnectionManager instance for handling
+      multiple mlmd db connections.
     node: The pipeline node for which to generate.
 
   Returns:
@@ -184,7 +186,8 @@ def generate_resolved_info(
   """
   # Register node contexts.
   contexts = context_lib.prepare_contexts(
-      metadata_handler=metadata_handler, node_contexts=node.contexts)
+      metadata_handler=mlmd_connection_manager.primary_mlmd_handle,
+      node_contexts=node.contexts)
 
   # Resolve execution properties.
   exec_properties = resolve_exec_properties(node)
@@ -195,7 +198,7 @@ def generate_resolved_info(
   # Resolve inputs.
   try:
     resolved_input_artifacts = inputs_utils.resolve_input_artifacts(
-        metadata_handler=metadata_handler, pipeline_node=node)
+        metadata_handler=mlmd_connection_manager, pipeline_node=node)
   except exceptions.InputResolutionError as e:
     logging.warning('[%s] Input resolution error: %s',
                     node.node_info.id, e, exc_info=True)

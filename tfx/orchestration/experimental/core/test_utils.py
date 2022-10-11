@@ -21,6 +21,7 @@ from absl.testing.absltest import mock
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import mlmd_state
@@ -281,8 +282,10 @@ def run_generator(mlmd_connection,
   """Generates tasks for testing."""
   with mlmd_connection as m:
     pipeline_state = get_or_create_pipeline_state(m, pipeline)
+    mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        m, mlmd_cm.MLMDConnectionConfig())
     generator_params = dict(
-        mlmd_handle=m,
+        mlmd_connection_manager=mlmd_connection_manager,
         is_task_id_tracked_fn=task_queue.contains_task_id,
         service_job_manager=service_job_manager)
     if fail_fast is not None:

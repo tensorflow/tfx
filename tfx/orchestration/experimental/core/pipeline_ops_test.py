@@ -23,6 +23,7 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import env
@@ -80,6 +81,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(
         connection_config=connection_config)
+    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        primary_mlmd_handle=self._mlmd_connection)
 
     mock_service_job_manager = mock.create_autospec(
         service_jobs.ServiceJobManager, instance=True)
@@ -616,7 +619,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
   def test_orchestrate_active_pipelines(self, mock_async_task_gen,
                                         mock_sync_task_gen):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       # Sync and async active pipelines.
       async_pipelines = [
           _test_pipeline('pipeline1'),
@@ -667,7 +671,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       ]
 
       task_queue = tq.TaskQueue()
-      pipeline_ops.orchestrate(m, task_queue,
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
                                service_jobs.DummyServiceJobManager())
 
       self.assertEqual(2, mock_async_task_gen.return_value.generate.call_count)
@@ -714,7 +718,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         return
       events.append(event)
 
-    with event_observer.init(), self._mlmd_connection as m:
+    with event_observer.init(
+    ), self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       event_observer.register_observer(recorder)
 
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
@@ -750,7 +756,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       ]
 
       self.assertTrue(
-          pipeline_ops.orchestrate(m, task_queue,
+          pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
                                    self._mock_service_job_manager))
 
       # PipelineFinished event should not trigger since not all the nodes are
@@ -809,7 +815,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Call `orchestrate` again; this time there are no more active node
       # executions so the pipeline should be marked as cancelled.
       self.assertTrue(
-          pipeline_ops.orchestrate(m, task_queue,
+          pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
                                    self._mock_service_job_manager))
       self.assertTrue(task_queue.is_empty())
       [execution] = m.store.get_executions_by_id([pipeline_execution_id])
@@ -839,14 +845,15 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Call `orchestrate` again; expecting False as the pipeline is no longer
       # active.
       self.assertFalse(
-          pipeline_ops.orchestrate(m, task_queue,
+          pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
                                    self._mock_service_job_manager))
 
   @parameterized.parameters(
       _test_pipeline('pipeline1'),
       _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC))
   def test_orchestrate_update_initiated_pipelines(self, pipeline):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
@@ -870,7 +877,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       with pipeline_state:
         self.assertTrue(pipeline_state.is_update_initiated())
 
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
 
       # stop_node_services should be called for ExampleGen and Transform.
       self._mock_service_job_manager.stop_node_services.assert_has_calls(
@@ -911,7 +919,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   def test_orchestrate_update_initiated_pipelines_options(self):
     pipeline = _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC)
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
@@ -936,7 +945,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       with pipeline_state:
         self.assertTrue(pipeline_state.is_update_initiated())
 
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
 
       # stop_node_services should not be called for ExampleGen since it is not
       # reloaded according to the options.
@@ -967,7 +977,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertTrue(task_queue.is_empty())
 
   def test_update_pipeline_waits_for_update_application(self):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline('pipeline1')
       pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
 
@@ -994,7 +1005,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       thread.join()
 
   def test_update_pipeline_wait_for_update_timeout(self):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline('pipeline1')
       pipeline_ops.initiate_pipeline_start(m, pipeline)
       with self.assertRaisesRegex(status_lib.StatusNotOkError,
@@ -1017,7 +1029,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline,
       mock_gen_task_from_active,
   ):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
@@ -1063,7 +1076,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                   node_id='Evaluator'),
               cancel_type=task_lib.NodeCancelType.PAUSE_EXEC), None, None, None
       ]
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
 
       # stop_node_services should be called for ExampleGen and Transform.
       self._mock_service_job_manager.stop_node_services.assert_has_calls(
@@ -1111,7 +1125,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
     else:
       mock_task_gen = mock_async_task_gen
 
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
@@ -1163,7 +1178,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Simulate Evaluator having an active execution in MLMD.
       mock_gen_task_from_active.side_effect = [evaluator_task]
 
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
       self.assertEqual(1, mock_task_gen.return_value.generate.call_count)
 
       # stop_node_services should be called on example-gen which is a pure
@@ -1199,7 +1215,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   def test_handling_finalize_pipeline_task(self, task_gen):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC)
       pipeline_ops.initiate_pipeline_start(m, pipeline)
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
@@ -1213,7 +1230,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       ]
 
       task_queue = tq.TaskQueue()
-      pipeline_ops.orchestrate(m, task_queue,
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
                                service_jobs.DummyServiceJobManager())
       task_gen.return_value.generate.assert_called_once()
       self.assertTrue(task_queue.is_empty())
@@ -1225,7 +1242,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
   def test_handling_finalize_node_task(self, task_gen):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline('pipeline1')
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
@@ -1244,7 +1262,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       ]
 
       task_queue = tq.TaskQueue()
-      pipeline_ops.orchestrate(m, task_queue,
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
                                service_jobs.DummyServiceJobManager())
       task_gen.return_value.generate.assert_called_once()
       task = task_queue.dequeue()
@@ -1287,7 +1305,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                                               mock_async_task_gen,
                                               mock_sync_task_gen):
     service_job_manager = service_jobs.DummyServiceJobManager()
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
       trainer_node_uid = task_lib.NodeUid.from_node(
@@ -1307,7 +1326,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       trainer_task = test_utils.create_exec_node_task(node_uid=trainer_node_uid)
       task_queue.enqueue(trainer_task)
 
-      pipeline_ops.orchestrate(m, task_queue, service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               service_job_manager)
 
       # Dequeue pre-existing trainer task.
       task = task_queue.dequeue()
@@ -1327,7 +1347,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
         self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
 
-      pipeline_ops.orchestrate(m, task_queue, service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               service_job_manager)
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         node_state = pipeline_state.get_node_state(trainer_node_uid)
@@ -1335,7 +1356,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
 
       pipeline_ops.initiate_node_start(m, trainer_node_uid)
-      pipeline_ops.orchestrate(m, task_queue, service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               service_job_manager)
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         node_state = pipeline_state.get_node_state(trainer_node_uid)
@@ -1349,7 +1371,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   def test_pure_service_node_stop_then_start_flow(self, pipeline,
                                                   mock_async_task_gen,
                                                   mock_sync_task_gen):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
 
@@ -1366,7 +1389,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       task_queue = tq.TaskQueue()
 
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
 
       # stop_node_services should be called for ExampleGen which is a pure
       # service node.
@@ -1379,7 +1403,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
 
       pipeline_ops.initiate_node_start(m, example_gen_node_uid)
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         node_state = pipeline_state.get_node_state(example_gen_node_uid)
@@ -1393,7 +1418,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   def test_mixed_service_node_stop_then_start_flow(self, pipeline,
                                                    mock_async_task_gen,
                                                    mock_sync_task_gen):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
 
@@ -1416,7 +1442,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           node_uid=transform_node_uid)
       task_queue.enqueue(transform_task)
 
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
 
       # stop_node_services should not be called as there was an active
       # ExecNodeTask for Transform which is a mixed service node.
@@ -1438,7 +1465,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
         self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
 
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
 
       # stop_node_services should be called for Transform which is a mixed
       # service node and corresponding ExecNodeTask has been dequeued.
@@ -1451,7 +1479,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(status_lib.Code.CANCELLED, node_state.status.code)
 
       pipeline_ops.initiate_node_start(m, transform_node_uid)
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         node_state = pipeline_state.get_node_state(transform_node_uid)
@@ -1480,7 +1509,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
             constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'test-pipeline-run',
         })
     manual_node = pipeline.nodes[0].pipeline_node
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pstate.PipelineState.new(m, pipeline)
       contexts = context_lib.prepare_contexts(m, manual_node.contexts)
       execution = execution_publish_utils.register_execution(
@@ -1512,7 +1542,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   def test_update_node_state_tasks_handling(self, mock_sync_task_gen):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline(
           'pipeline1', execution_mode=pipeline_pb2.Pipeline.SYNC)
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
@@ -1555,7 +1586,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       ]
 
       task_queue = tq.TaskQueue()
-      pipeline_ops.orchestrate(m, task_queue,
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
                                service_jobs.DummyServiceJobManager())
       self.assertEqual(1, mock_sync_task_gen.return_value.generate.call_count)
 
@@ -1582,7 +1613,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
   def test_stop_node_services_failure(self, pipeline, mock_async_task_gen,
                                       mock_sync_task_gen):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
@@ -1609,7 +1641,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Simulate failure of stop_node_services.
       self._mock_service_job_manager.stop_node_services.return_value = False
 
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
 
       self._mock_service_job_manager.stop_node_services.assert_has_calls(
           [mock.call(mock.ANY, 'ExampleGen'),
@@ -1627,7 +1660,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   def test_stop_node_services_called_for_mixed_service_node_in_terminal_state(
       self, task_gen):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline(
           'pipeline1', execution_mode=pipeline_pb2.Pipeline.SYNC)
       pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
@@ -1642,7 +1676,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           ],
       ]
       task_queue = tq.TaskQueue()
-      pipeline_ops.orchestrate(m, task_queue, self._mock_service_job_manager)
+      pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
+                               self._mock_service_job_manager)
       task_gen.return_value.generate.assert_called_once()
       self._mock_service_job_manager.stop_node_services.assert_called_once_with(
           mock.ANY, 'Transform')
@@ -1661,12 +1696,13 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         return orchestration_options.OrchestrationOptions(deadline_secs=1)
 
     with _TestEnv():
-      with self._mlmd_connection as m:
+      with self._mlmd_connection_manager as mlmd_connection_manager:
+        m = mlmd_connection_manager.primary_mlmd_handle
         pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)
         pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
         pipeline_ops.initiate_pipeline_start(m, pipeline)
         time.sleep(3)  # To trigger the deadline.
-        pipeline_ops.orchestrate(m, tq.TaskQueue(),
+        pipeline_ops.orchestrate(mlmd_connection_manager, tq.TaskQueue(),
                                  self._mock_service_job_manager)
         with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
           self.assertTrue(pipeline_state.is_stop_initiated())
@@ -1677,7 +1713,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
               status.message)
 
   def test_skip_nodes(self):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline(
           'pipeline1', execution_mode=pipeline_pb2.Pipeline.SYNC)
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
@@ -1729,14 +1766,15 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
             states_dict[task_lib.NodeUid(pipeline_uid, 'Pusher')].state)
 
   def test_exception_while_orchestrating_active_pipeline(self):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)
       pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
       with mock.patch.object(
           pipeline_ops,
           '_orchestrate_active_pipeline') as mock_orchestrate_active_pipeline:
         mock_orchestrate_active_pipeline.side_effect = Exception('test error')
-        pipeline_ops.orchestrate(m, tq.TaskQueue(),
+        pipeline_ops.orchestrate(mlmd_connection_manager, tq.TaskQueue(),
                                  self._mock_service_job_manager)
         mock_orchestrate_active_pipeline.assert_called_once()
         # Verify that the active pipeline is stop-initiated.
@@ -1744,7 +1782,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           self.assertTrue(pipeline_state.is_stop_initiated())
 
   def test_exception_while_orchestrating_stop_initiated_pipeline(self):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)
       with pipeline_ops.initiate_pipeline_start(m, pipeline) as pipeline_state:
         pipeline_state.initiate_stop(
@@ -1756,13 +1795,14 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                             ) as mock_orchestrate_stop_initiated_pipeline:
         mock_orchestrate_stop_initiated_pipeline.side_effect = Exception(
             'test error')
-        pipeline_ops.orchestrate(m, tq.TaskQueue(),
+        pipeline_ops.orchestrate(mlmd_connection_manager, tq.TaskQueue(),
                                  self._mock_service_job_manager)
         # No exception should be raised.
         mock_orchestrate_stop_initiated_pipeline.assert_called_once()
 
   def test_exception_while_orchestrating_update_initiated_pipeline(self):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)
       pipeline_ops.initiate_pipeline_start(m, pipeline)
       with pipeline_ops._initiate_pipeline_update(
@@ -1776,7 +1816,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                             ) as mock_orchestrate_update_initiated_pipeline:
         mock_orchestrate_update_initiated_pipeline.side_effect = Exception(
             'test error')
-        pipeline_ops.orchestrate(m, tq.TaskQueue(),
+        pipeline_ops.orchestrate(mlmd_connection_manager, tq.TaskQueue(),
                                  self._mock_service_job_manager)
         mock_orchestrate_update_initiated_pipeline.assert_called_once()
         # Verify that the update-initiated pipeline is stop-initiated.
@@ -1784,7 +1824,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           self.assertTrue(pipeline_state.is_stop_initiated())
 
   def test_exception_while_stop_initiating_on_internal_error(self):
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)
       pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
       with mock.patch.object(
@@ -1794,7 +1835,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                                'initiate_stop') as mock_initiate_stop:
           mock_orchestrate_active_pipeline.side_effect = Exception('test error')
           mock_initiate_stop.side_effect = Exception('test error 2')
-          pipeline_ops.orchestrate(m, tq.TaskQueue(),
+          pipeline_ops.orchestrate(mlmd_connection_manager, tq.TaskQueue(),
                                    self._mock_service_job_manager)
           mock_orchestrate_active_pipeline.assert_called_once()
           mock_initiate_stop.assert_called_once()
@@ -1805,7 +1846,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   def test_start_concurrent_pipeline_runs(self):
     with test_utils.concurrent_pipeline_runs_enabled_env():
-      with self._mlmd_connection as m:
+      with self._mlmd_connection_manager as mlmd_connection_manager:
+        m = mlmd_connection_manager.primary_mlmd_handle
         pipeline1 = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC,
                                    'run0')
         pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline1)
@@ -1828,7 +1870,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                          exception_context.exception.code)
 
   def test_start_concurrent_pipeline_runs_when_disabled(self) -> bool:
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       pipeline1 = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC, 'run0')
       pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline1)
       self.assertEqual(pipeline_state.pipeline_uid,
@@ -1845,7 +1888,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   def test_orchestrate_concurrent_pipeline_runs(self, mock_sync_task_gen):
     with test_utils.concurrent_pipeline_runs_enabled_env():
-      with self._mlmd_connection as m:
+      with self._mlmd_connection_manager as mlmd_connection_manager:
+        m = mlmd_connection_manager.primary_mlmd_handle
         # Sync pipelines with same pipeline_id but different run ids.
         sync_pipelines = [
             _test_pipeline(
@@ -1878,7 +1922,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         ]
 
         task_queue = tq.TaskQueue()
-        pipeline_ops.orchestrate(m, task_queue,
+        pipeline_ops.orchestrate(mlmd_connection_manager, task_queue,
                                  service_jobs.DummyServiceJobManager())
 
         self.assertEqual(2, mock_sync_task_gen.return_value.generate.call_count)
