@@ -13,7 +13,7 @@
 # limitations under the License.
 """TFX Channel utilities."""
 
-from typing import cast, Dict, Iterable, List
+from typing import cast, Dict, Iterable, List, Type, Optional
 
 from tfx.dsl.input_resolution import resolver_function
 from tfx.types import artifact
@@ -97,3 +97,59 @@ def get_dependent_node_ids(channel_: channel.BaseChannel) -> Iterable[str]:
       yield from get_dependent_node_ids(each_channel)
   else:
     raise TypeError(f'Invalid channel type {type(channel_)}')
+
+
+def artifact_query(
+    artifact_type: Type[artifact.Artifact], *,
+    producer_id: Optional[str] = None,
+    output_key: Optional[str] = None) -> channel.BaseChannel:
+  """Selects artifacts based on the simple filter queries.
+
+  All filtering arguments are AND clauses. If you want an OR condition, please
+  use the union of channel.
+
+  Only the artifacts of the same type could be queried at a single time. The
+  resulting channel can have multiple artifacts, or no artifacts at all if there
+  are no matching artifacts.
+
+  Usage:
+    examples = artifact_query(Examples, producer_id='my_examplegen_1')
+    trainer = Trainer(examples=examples, ...)
+
+  Args:
+    artifact_type: Artifact class type for the query. In other words, only the
+        single artifact type query is allowed.
+    producer_id: (Optional) producer component's ID.
+    output_key: (Optional) The key to the producer component's output dict.
+        If the matching output key has a different artifact type, it will
+        resolves to an empty list.
+
+  Returns:
+    A channel that resolves the artifacts of given filter queries.
+  """
+  # TODO(b/240720905): Use MLMDQueryChannel instead.
+  return channel.Channel(
+      type=artifact_type,
+      producer_component_id=producer_id,
+      output_key=output_key)
+
+
+def union(channels: Iterable[channel.BaseChannel]):
+  """Make union of artifacts.
+
+  Unioned artifacts are deduplicated based on its ID. No same artifacts are
+  included twice. Order of results are unknown and no order is not guaranteed.
+
+  Args:
+    channels: A list of multiple channels.
+
+  Raises:
+    ValueError: If input channels are empty.
+
+  Returns:
+    A channel that union all artifacts of multiple input channels.
+  """
+  channels = list(channels)
+  if not channels:
+    raise ValueError('Expected one or more channels but got zero.')
+  return channel.UnionChannel(channels[0].type, channels)

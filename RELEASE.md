@@ -25,6 +25,9 @@
 *   Importer will now check that an existing artifact has the same type as the intended output before reusing the existing artifact.
 *   Importer will now use the most recently created artifact when reusing an existing artifact instead of the one with the highest ID.
 *   Proto placeholder now works with proto files that have non-trivial transitive dependencies.
+*   Introducing `tfx.dsl.inputs.artifact_query()`, which is a replacement for
+    the `tfx.types.Channel`.
+
 
 ## Dependency Updates
 
