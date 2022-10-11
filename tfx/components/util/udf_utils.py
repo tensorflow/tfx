@@ -131,8 +131,9 @@ class UserModuleFilePipDependency(base_component._PipDependencyFuture):  # pylin
           self.component)
       return None
     elif not fileio.exists(module_file):
-      raise ValueError(f'Specified module file {module_file!r} '
-                       f'for component {self.component} does not exist.')
+      raise ValueError(
+          'Specified module file %r for component %s does not exist.' %
+          (module_file, self.component))
 
     # Perform validation on the `pipeline_root`.
     if not pipeline_root:
@@ -200,9 +201,9 @@ def package_user_module_file(instance_name: str, module_path: str,
   """
   module_path = os.path.abspath(io_utils.ensure_local(module_path))
   if not module_path.endswith('.py'):
-    raise ValueError(f'Module path {module_path!r} is not a ".py" file.')
+    raise ValueError('Module path %r is not a ".py" file.' % module_path)
   if not os.path.exists(module_path):
-    raise ValueError(f'Module path {module_path!r} does not exist.')
+    raise ValueError('Module path %r does not exist.' % module_path)
 
   user_module_dir, module_file_name = os.path.split(module_path)
   user_module_name = re.sub(r'\.py$', '', module_file_name)
@@ -236,10 +237,10 @@ def package_user_module_file(instance_name: str, module_path: str,
                version_hash)
 
   setup_py_path = os.path.join(build_dir, _EPHEMERAL_SETUP_PY_FILE_NAME)
-  with open(setup_py_path, 'w', encoding='utf-8') as f:
+  with open(setup_py_path, 'w') as f:
     f.write(
-        _get_ephemeral_setup_py_contents(f'tfx-user-code-{instance_name}',
-                                         f'0.0+{version_hash}', module_names))
+        _get_ephemeral_setup_py_contents('tfx-user-code-%s' % instance_name,
+                                         '0.0+%s' % version_hash, module_names))
 
   temp_dir = tempfile.mkdtemp()
   dist_dir = tempfile.mkdtemp()
@@ -255,8 +256,9 @@ def package_user_module_file(instance_name: str, module_path: str,
 
   dist_files = os.listdir(dist_dir)
   if len(dist_files) != 1:
-    raise RuntimeError(f'Unexpectedly found {len(dist_files)} output files '
-                       f'in wheel output directory {dist_dir}.')
+    raise RuntimeError(
+        'Unexpectedly found %d output files in wheel output directory %s.' %
+        (len(dist_files), dist_dir))
   build_dist_file_path = os.path.join(dist_dir, dist_files[0])
   # Copy wheel file atomically to wheel staging directory.
   dist_wheel_directory = os.path.join(pipeline_root, '_wheels')
@@ -271,9 +273,9 @@ def package_user_module_file(instance_name: str, module_path: str,
 
   # Encode the user module key as a specification of a user module name within
   # a packaged wheel path.
-  assert '@' not in user_module_name, ('Unexpected invalid module name: ' +
+  assert '@' not in user_module_name, ('Unexpected invalid module name: %s' %
                                        user_module_name)
-  user_module_path = f'{user_module_name}@{dist_file_path}'
+  user_module_path = '%s@%s' % (user_module_name, dist_file_path)
   logging.info('Full user module path is %r', user_module_path)
 
   return dist_file_path, user_module_path
@@ -293,35 +295,24 @@ class TempPipInstallContext:
 
   def __init__(self, pip_dependencies: List[str]):
     if not isinstance(pip_dependencies, list):
-      raise ValueError('Expected list of dependencies, '
-                       f'got {pip_dependencies!r} instead.')
+      raise ValueError('Expected list of dependencies, got %r instead.' %
+                       (pip_dependencies,))
     self.pip_dependencies = pip_dependencies
     self.temp_directory = None
-    self.orig_syspath = None
-    self.orig_pypath = None
 
   def __enter__(self) -> 'TempPipInstallContext':
     if self.pip_dependencies:
       self.temp_directory = tempfile.mkdtemp()
       for dependency in self.pip_dependencies:
         install_to_temp_directory(dependency, temp_dir=self.temp_directory)
-      self.orig_syspath = sys.path
       sys.path = sys.path + [self.temp_directory]
-      if 'PYTHONPATH' in os.environ:
-        self.orig_pypath = os.environ['PYTHONPATH']
-        os.environ['PYTHONPATH'] = (
-            self.orig_pypath + os.pathsep + self.temp_directory)
-      else:
-        os.environ['PYTHONPATH'] = self.temp_directory
+      os.environ['PYTHONPATH'] = ':'.join(sys.path)
     return self
 
   def __exit__(self, *unused_exc_info):
     if self.pip_dependencies:
-      sys.path = self.orig_syspath
-      if self.orig_pypath is not None:
-        os.environ['PYTHONPATH'] = self.orig_pypath
-      else:
-        del os.environ['PYTHONPATH']
+      sys.path = list(path for path in sys.path if path != self.temp_directory)
+      os.environ['PYTHONPATH'] = ':'.join(sys.path)
 
 
 def install_to_temp_directory(pip_dependency: str,
