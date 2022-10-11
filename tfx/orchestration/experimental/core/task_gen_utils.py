@@ -15,7 +15,7 @@
 
 import itertools
 import time
-from typing import Dict, Iterable, List, Optional, Sequence, MutableMapping
+from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence
 import uuid
 
 from absl import logging
@@ -23,6 +23,7 @@ import attr
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable import inputs_utils
@@ -195,9 +196,12 @@ def generate_resolved_info(
   input_and_params = []
 
   # Resolve inputs.
+  mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+      primary_mlmd_handle=metadata_handler,
+      primary_mlmd_handle_config=mlmd_cm.MLMDConnectionConfig())
   try:
     resolved_input_artifacts = inputs_utils.resolve_input_artifacts(
-        metadata_handler=metadata_handler, pipeline_node=node)
+        mlmd_connection_manager=mlmd_connection_manager, pipeline_node=node)
   except exceptions.InputResolutionError as e:
     logging.warning('Input resolution error raised for node: %s; error: %s',
                     node.node_info.id, e)

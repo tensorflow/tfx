@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.launcher."""
+
 import contextlib
 import copy
 import os
@@ -24,6 +25,7 @@ from tfx.dsl.compiler import constants
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import base_driver
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import data_types
@@ -41,6 +43,7 @@ from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
+
 
 _PYTHON_CLASS_EXECUTABLE_SPEC = executable_spec_pb2.PythonClassExecutableSpec
 
@@ -182,9 +185,13 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
     # Fake a constant span number, which, on prod, is usually calculated based
     # on date.
     span = 2
-    with self._mlmd_connection as m:
+    mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        primary_mlmd_handle=self._mlmd_connection,
+        primary_mlmd_handle_config=mlmd_cm.MLMDConnectionConfig())
+    with mlmd_connection_manager:
       previous_output = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=self._pipeline_node)[0]
+          mlmd_connection_manager=mlmd_connection_manager,
+          pipeline_node=self._pipeline_node)[0]
 
       # Version should be the max of existing version + 1 if span exists,
       # otherwise 0.
@@ -703,17 +710,21 @@ class LauncherTest(test_case_utils.TfxTest):
 
     # Retrieve execution from the first launch, which should be in RUNNING
     # state.
-    with self._mlmd_connection as m:
+    mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        primary_mlmd_handle=self._mlmd_connection,
+        primary_mlmd_handle_config=mlmd_cm.MLMDConnectionConfig())
+    with mlmd_connection_manager:
       contexts = context_lib.prepare_contexts(
-          metadata_handler=m,
+          metadata_handler=mlmd_connection_manager.primary_mlmd_handle,
           node_contexts=test_launcher._pipeline_node.contexts)
       exec_properties = data_types_utils.build_parsed_value_dict(
           inputs_utils.resolve_parameters_with_schema(
               node_parameters=test_launcher._pipeline_node.parameters))
       input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=test_launcher._pipeline_node)[0]
+          mlmd_connection_manager=mlmd_connection_manager,
+          pipeline_node=test_launcher._pipeline_node)[0]
       first_execution = test_launcher._register_or_reuse_execution(
-          metadata_handler=m,
+          metadata_handler=mlmd_connection_manager.primary_mlmd_handle,
           contexts=contexts,
           input_artifacts=input_artifacts,
           exec_properties=exec_properties)

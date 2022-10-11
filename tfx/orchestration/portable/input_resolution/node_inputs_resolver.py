@@ -151,11 +151,13 @@ result can easily be deduced from this intermediate data.
 """
 
 import collections
-from typing import List, TypeVar, Mapping, Tuple, Sequence, Dict, Iterable
+from typing import Dict, Iterable, List, Mapping, Sequence, Tuple, TypeVar
 
+from absl import logging
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -377,7 +379,7 @@ def _filter_conditionals(
 
 
 def resolve(
-    mlmd_handler: metadata.Metadata,
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     node_inputs: pipeline_pb2.NodeInputs,
 ) -> List[typing_utils.ArtifactMultiMap]:
   """Resolve a NodeInputs."""
@@ -392,12 +394,23 @@ def resolve(
 
     input_spec = node_inputs.inputs[input_key]
 
+    mlmd_handle = mlmd_connection_manager.primary_mlmd_handle
+    logging.error('Guowei node_inputs_resolver')
+    if input_spec.HasField('channel_mlmd_connection_config'):
+      logging.error('Guowei has field')
+      config = pipeline_pb2.InputSpec.MLMDServiceConfig()
+      input_spec.channel_mlmd_connection_config.Pack(config)
+      mlmd_handle = mlmd_connection_manager.get_mlmd_handle(
+          owner_name=config.owner,
+          project_name=config.name,
+          mlmd_service_target_name=config.mlmd_service_target)
+
     if input_spec.channels:
       artifacts = channel_resolver.resolve_union_channels(
-          mlmd_handler, input_spec.channels)
+          mlmd_handle, input_spec.channels)
       resolved[input_key] = [(partition_utils.NO_PARTITION, artifacts)]
     elif input_spec.input_graph_ref.graph_id:
-      _resolve_input_graph_ref(mlmd_handler, node_inputs, input_key, resolved)
+      _resolve_input_graph_ref(mlmd_handle, node_inputs, input_key, resolved)
     elif input_spec.mixed_inputs.input_keys:
       _resolve_mixed_inputs(node_inputs, input_key, resolved)
     else:

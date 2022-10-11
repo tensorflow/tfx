@@ -20,6 +20,7 @@ import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import resolver_node_handler
@@ -95,7 +96,11 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec)
 
-    with self._mlmd_connection as m:
+    mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        primary_mlmd_handle=self._mlmd_connection,
+        primary_mlmd_handle_config=mlmd_cm.MLMDConnectionConfig())
+    with mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       # There is no way to directly verify the output artifact of the resolver
       # So here a fake downstream component is created which listens to the
       # resolver's output and we verify its input.
@@ -143,7 +148,8 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
         upstream_nodes: "my_resolver"
         """, pipeline_pb2.PipelineNode())
       downstream_input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=down_stream_node)[0]
+          mlmd_connection_manager=mlmd_connection_manager,
+          pipeline_node=down_stream_node)[0]
       downstream_input_model = downstream_input_artifacts['input_models']
       self.assertLen(downstream_input_model, 1)
       self.assertProtoPartiallyEquals(

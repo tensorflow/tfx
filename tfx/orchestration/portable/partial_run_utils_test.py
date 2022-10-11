@@ -20,7 +20,6 @@ from unittest import mock
 from absl import logging
 from absl.testing import absltest
 from absl.testing import parameterized
-
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
@@ -29,6 +28,7 @@ from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import component
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import pipeline as pipeline_lib
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.orchestration.portable import execution_publish_utils
@@ -41,6 +41,7 @@ from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
 
 from ml_metadata.proto import metadata_store_pb2
+
 
 _PIPELINE_RUN_CONTEXT_KEY = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
 
@@ -707,11 +708,15 @@ class PartialRunTest(absltest.TestCase):
     else:
       node_id_exp_result_tups = expected_result
 
-    with metadata.Metadata(self.metadata_config) as m:
+    mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        primary_mlmd_handle=metadata.Metadata(self.metadata_config),
+        primary_mlmd_handle_config=mlmd_cm.MLMDConnectionConfig())
+    with mlmd_connection_manager:
       for node_id, exp_result in node_id_exp_result_tups:
         result_node_inputs = _node_inputs_by_id(pipeline_pb, node_id=node_id)
         input_resolution_result = inputs_utils.resolve_input_artifacts(
-            metadata_handler=m, pipeline_node=result_node_inputs)
+            mlmd_connection_manager=mlmd_connection_manager,
+            pipeline_node=result_node_inputs)
         self.assertIsInstance(input_resolution_result, inputs_utils.Trigger)
         result_artifact = input_resolution_result[0]['result'][0]
         result_artifact.read()

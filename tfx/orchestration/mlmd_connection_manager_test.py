@@ -18,15 +18,14 @@ import contextlib
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import mlmd_connection_manager as mlmd_cm
-from tfx.orchestration.experimental.core import test_utils
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 
 
 def _fake_create_reader_mlmd_connection_fn(unused_args):
   return contextlib.nullcontext()
 
 
-class MlmdConnectionManagerTest(test_utils.TfxTest):
+class MlmdConnectionManagerTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -46,8 +45,7 @@ class MlmdConnectionManagerTest(test_utils.TfxTest):
         mlmd_cm.MLMDConnectionConfig(
             'owner', 'reader', 'prod')] = self._mock_reader_metadata_handle
 
-  @mock.patch.object(metadata, 'Metadata')
-  def test_exit_context(self, mock_metadata):
+  def test_exit_context(self):
     original_reader_handles = self._mlmd_connection_manager._reader_mlmd_handles
     self._mlmd_connection_manager.__exit__()
     self.assertNotEmpty(original_reader_handles)

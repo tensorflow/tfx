@@ -355,6 +355,17 @@ message InputSpec {
     repeated string input_keys = 2;
   }
 
+  // Information about the MLMD db.
+  message MLMDServiceConfig {
+    // Owner of the MLMD db.
+    string owner = 1;
+    // Name of the MLMD db.
+    string name = 2;
+    // MLMD service target.
+    string mlmd_service_target = 3;
+  }
+
+  google.protobuf.Any channel_mlmd_connection_config = 6;
   // Exactly one of `channels`, `input_graph_ref`, or `mixed_inputs` field
   // should be set.
   // Union of Channels.

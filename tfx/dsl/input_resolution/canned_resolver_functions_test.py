@@ -16,13 +16,13 @@
 from typing import Dict
 
 import tensorflow as tf
-
 from tfx import types
 from tfx.dsl.compiler import compiler_context
 from tfx.dsl.compiler import node_inputs_compiler
 from tfx.dsl.components.base import base_node
 from tfx.dsl.input_resolution import canned_resolver_functions
 from tfx.dsl.input_resolution.ops import test_utils
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import pipeline
 from tfx.orchestration.portable import inputs_utils
 from tfx.proto.orchestration import pipeline_pb2
@@ -80,6 +80,10 @@ class CannedResolverFunctionsTest(
     self.init_mlmd()
     self.enter_context(self.mlmd_handler)
 
+    self.mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        primary_mlmd_handle=self.mlmd_handler,
+        primary_mlmd_handle_config=mlmd_cm.MLMDConnectionConfig())
+
   def assertArtifactEqual(self,
                           resolved_artifact: metadata_store_pb2.Artifact,
                           mlmd_artifact: metadata_store_pb2.Artifact,
@@ -127,7 +131,8 @@ class CannedResolverFunctionsTest(
           contexts=[mlmd_context])
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handler)
+        pipeline_node=pipeline_node,
+        mlmd_connection_manager=self.mlmd_connection_manager)
     self.assertIsInstance(resolved, inputs_utils.Trigger)
 
     # Check that actual_artifacts = [mlmd_artifact_2, mlmd_artifact_3] because
@@ -166,7 +171,8 @@ class CannedResolverFunctionsTest(
           contexts=[mlmd_context])
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handler)
+        pipeline_node=pipeline_node,
+        mlmd_connection_manager=self.mlmd_connection_manager)
     self.assertIsInstance(resolved, inputs_utils.Trigger)
 
     # The resolved artifacts should have (span, version) tuples of:

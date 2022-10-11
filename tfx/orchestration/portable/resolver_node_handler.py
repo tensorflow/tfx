@@ -20,6 +20,7 @@ from absl import logging
 import grpc
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
@@ -61,7 +62,11 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
       The execution of the run.
     """
     logging.info('Running as an resolver node.')
-    with mlmd_connection as m:
+    mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        primary_mlmd_handle=mlmd_connection,
+        primary_mlmd_handle_config=mlmd_cm.MLMDConnectionConfig())
+    with mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
       # 1.Prepares all contexts.
       contexts = context_lib.prepare_contexts(
           metadata_handler=m, node_contexts=pipeline_node.contexts)
@@ -73,7 +78,7 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
       try:
         resolved_inputs = inputs_utils.resolve_input_artifacts(
             pipeline_node=pipeline_node,
-            metadata_handler=m)
+            mlmd_connection_manager=mlmd_connection_manager)
         logging.info('[%s] Resolved inputs: %s', pipeline_node.node_info.id,
                      resolved_inputs)
       except exceptions.InputResolutionError as e:

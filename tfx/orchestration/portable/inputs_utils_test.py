@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.inputs_utils."""
+
 import collections
 import importlib
 import os
 import unittest
 
 import tensorflow as tf
-
 from tfx import types
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -98,7 +99,11 @@ class _TestMixin:
     connection_config.sqlite.SetInParent()
     connection_config.sqlite.filename_uri = os.path.join(
         self.get_temp_dir(), 'metadata.db')
-    return metadata.Metadata(connection_config)
+    mlmd_handle = metadata.Metadata(connection_config)
+    mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        mlmd_handle,
+        mlmd_cm.MLMDConnectionConfig('owner', 'project', '', 'base_dir'))
+    return mlmd_connection_manager
 
   def load_pipeline_proto(self, filename):
     result = pipeline_pb2.Pipeline()
@@ -206,13 +211,14 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     my_transform = pipeline.nodes[2].pipeline_node
     my_trainer = pipeline.nodes[3].pipeline_node
 
-    with self.get_metadata() as m:
+    mlmd_connection_manager = self.get_metadata()
+    with mlmd_connection_manager:
       # Publishes first ExampleGen with two output channels. `output_examples`
       # will be consumed by downstream Transform.
       output_example = self.make_examples(uri='my_examples_uri')
       side_examples = self.make_examples(uri='side_examples_uri')
       output_artifacts = self.fake_execute(
-          m,
+          mlmd_connection_manager.primary_mlmd_handle,
           my_example_gen,
           input_map=None,
           output_map={
@@ -226,16 +232,17 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # key as the first ExampleGen. However this is not consumed by downstream
       # nodes.
       another_output_example = self.make_examples(uri='another_examples_uri')
-      self.fake_execute(m, another_example_gen,
-                        input_map=None,
-                        output_map={
-                            'output_examples': [another_output_example]
-                        })
+      self.fake_execute(
+          mlmd_connection_manager.primary_mlmd_handle,
+          another_example_gen,
+          input_map=None,
+          output_map={'output_examples': [another_output_example]})
 
       # Gets inputs for transform. Should get back what the first ExampleGen
       # published in the `output_examples` channel.
       transform_inputs = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=my_transform)[0]
+          mlmd_connection_manager=mlmd_connection_manager,
+          pipeline_node=my_transform)[0]
       self.assertArtifactMapEqual({'examples_1': [output_example],
                                    'examples_2': [output_example]},
                                   transform_inputs)
@@ -246,7 +253,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       with self.assertRaisesRegex(
           exceptions.InputResolutionError, 'InputSpec.min_count violation'):
         inputs_utils.resolve_input_artifacts(
-            metadata_handler=m, pipeline_node=my_trainer)
+            mlmd_connection_manager=mlmd_connection_manager,
+            pipeline_node=my_trainer)
 
       # Tries to resolve inputs for transform after adding a new context query
       # to the input spec that refers to a non-existent context. Inputs cannot
@@ -258,7 +266,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       with self.assertRaisesRegex(
           exceptions.InputResolutionError, 'InputSpec.min_count violation'):
         inputs_utils.resolve_input_artifacts(
-            metadata_handler=m, pipeline_node=my_transform)
+            mlmd_connection_manager=mlmd_connection_manager,
+            pipeline_node=my_transform)
 
   def testResolveInputArtifacts_LatestArtifactStrategy(self):
     pipeline = self.load_pipeline_proto(
@@ -266,13 +275,14 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     my_example_gen = pipeline.nodes[0].pipeline_node
     my_transform = pipeline.nodes[2].pipeline_node
 
-    with self.get_metadata() as m:
+    mlmd_connection_manager = self.get_metadata()
+    with mlmd_connection_manager as m:
       # Publishes first ExampleGen with two output channels. `output_examples`
       # will be consumed by downstream Transform.
       output_example_1 = self.make_examples(uri='my_examples_uri_1')
       output_example_2 = self.make_examples(uri='my_examples_uri_2')
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_example_gen,
           input_map=None,
           output_map={'output_examples': [output_example_1, output_example_2]})
@@ -288,7 +298,8 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # Gets inputs for transform. Should get back what the first ExampleGen
       # published in the `output_examples` channel.
       transform_inputs = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=my_transform)[0]
+          mlmd_connection_manager=mlmd_connection_manager,
+          pipeline_node=my_transform)[0]
       self.assertArtifactMapEqual({'examples_1': [output_example_2],
                                    'examples_2': [output_example_2]},
                                   transform_inputs)
@@ -299,18 +310,23 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     my_trainer = pipeline.nodes[0].pipeline_node
     my_pusher = pipeline.nodes[1].pipeline_node
 
-    with self.get_metadata() as m:
+    mlmd_connection_manager = self.get_metadata()
+    with mlmd_connection_manager as m:
       # Publishes Trainer with one output channels. `output_model`
       # will be consumed by the Pusher in the different run.
       output_model = self.make_model(uri='my_output_model_uri')
       output_artifacts = self.fake_execute(
-          m, my_trainer, input_map=None, output_map={'model': [output_model]})
+          m.primary_mlmd_handle,
+          my_trainer,
+          input_map=None,
+          output_map={'model': [output_model]})
       output_model = output_artifacts['model'][0]
 
       # Gets inputs for pusher. Should get back what the first Model
       # published in the `output_model` channel.
       pusher_inputs = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=my_pusher)[0]
+          mlmd_connection_manager=mlmd_connection_manager,
+          pipeline_node=my_pusher)[0]
       self.assertArtifactMapEqual({'model': [output_model]},
                                   pusher_inputs)
 
@@ -319,12 +335,13 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
         'pipeline_for_input_resolver_test.pbtxt')
     self._my_example_gen = self._pipeline.nodes[0].pipeline_node
     self._my_transform = self._pipeline.nodes[2].pipeline_node
-    self._metadata_handler = self.enter_context(self.get_metadata())
+    self._mlmd_connection_manager = self.get_metadata()
+    self.enter_context(self._mlmd_connection_manager)
 
     examples = [self.make_examples(uri=f'examples/{i+1}')
                 for i in range(num_examples)]
     output_dict = self.fake_execute(
-        self._metadata_handler,
+        self._mlmd_connection_manager.primary_mlmd_handle,
         self._my_example_gen,
         input_map=None,
         output_map={'output_examples': examples})
@@ -340,7 +357,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
     result = inputs_utils.resolve_input_artifacts(
         pipeline_node=self._my_transform,
-        metadata_handler=self._metadata_handler)
+        mlmd_connection_manager=self._mlmd_connection_manager)
     self.assertIsInstance(result, inputs_utils.Trigger)
     self.assertArtifactMapListEqual([{'examples_1': self._examples,
                                       'examples_2': self._examples}], result)
@@ -351,7 +368,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
     result = inputs_utils.resolve_input_artifacts(
         pipeline_node=self._my_transform,
-        metadata_handler=self._metadata_handler)
+        mlmd_connection_manager=self._mlmd_connection_manager)
     self.assertIsInstance(result, inputs_utils.Trigger)
     self.assertArtifactMapListEqual([
         {'examples_1': self._examples, 'examples_2': self._examples},
@@ -364,7 +381,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
     result = inputs_utils.resolve_input_artifacts(
         pipeline_node=self._my_transform,
-        metadata_handler=self._metadata_handler)
+        mlmd_connection_manager=self._mlmd_connection_manager)
     self.assertIsInstance(result, inputs_utils.Skip)
     self.assertArtifactMapListEqual(result, [])
 
@@ -377,7 +394,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
         r'inputs\[examples_1\] has min_count = 2 but only got 1'):
       inputs_utils.resolve_input_artifacts(
           pipeline_node=self._my_transform,
-          metadata_handler=self._metadata_handler)
+          mlmd_connection_manager=self._mlmd_connection_manager)
 
   def testResolveInputArtifacts_TypeCheckResult(self):
     self._setup_pipeline_for_input_resolver_test()
@@ -387,7 +404,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
                                 'Invalid input resolution result'):
       inputs_utils.resolve_input_artifacts(
           pipeline_node=self._my_transform,
-          metadata_handler=self._metadata_handler)
+          mlmd_connection_manager=self._mlmd_connection_manager)
 
   def testResolveInputArtifacts_MixedStrategyAndOp(self):
     self._setup_pipeline_for_input_resolver_test()
@@ -396,7 +413,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
 
     result = inputs_utils.resolve_input_artifacts(
         pipeline_node=self._my_transform,
-        metadata_handler=self._metadata_handler)
+        mlmd_connection_manager=self._mlmd_connection_manager)
     self.assertIsInstance(result, inputs_utils.Trigger)
     self.assertArtifactMapListEqual([{'examples_1': self._examples,
                                       'examples_2': self._examples}], result)
@@ -492,7 +509,8 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
 
   def setUp(self):
     super().setUp()
-    with self.get_metadata() as m:
+    mlmd_connection_manager = self.get_metadata()
+    with mlmd_connection_manager.primary_mlmd_handle as m:
       common_utils.register_type_if_not_exist(
           m, metadata_store_pb2.ExecutionType(name='Transform'))
       common_utils.register_type_if_not_exist(
@@ -517,17 +535,18 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
         '.LatestArtifactStrategy')
     step2_pb.config_json = '{}'
 
-    with self.get_metadata() as m:
+    mlmd_connection_manager = self.get_metadata()
+    with mlmd_connection_manager as m:
       ex1 = self.make_examples(uri='a')
       ex2 = self.make_examples(uri='b')
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_example_gen,
           input_map=None,
           output_map={'output_examples': [ex1]})
       ex1 = output_artifacts['output_examples'][0]
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_example_gen,
           input_map=None,
           output_map={'output_examples': [ex2]})
@@ -558,27 +577,34 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
         '.LatestArtifactStrategy')
     step2_pb.config_json = '{}'
 
-    with self.get_metadata() as m:
+    mlmd_connection_manager = self.get_metadata()
+    with mlmd_connection_manager as m:
       ex1 = self.make_examples(uri='a')
       ex2 = self.make_examples(uri='b')
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_example_gen,
           input_map=None,
           output_map={'output_examples': [ex1]})
       ex1 = output_artifacts['output_examples'][0]
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_example_gen,
           input_map=None,
           output_map={'output_examples': [ex2]})
       ex2 = output_artifacts['output_examples'][0]
       self.fake_execute(
-          m, my_transform, input_map={'examples_1': [ex2],
-                                      'examples_2': [ex2]}, output_map=None)
+          m.primary_mlmd_handle,
+          my_transform,
+          input_map={
+              'examples_1': [ex2],
+              'examples_2': [ex2]
+          },
+          output_map=None)
 
       result = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=my_transform)[0]
+          mlmd_connection_manager=mlmd_connection_manager,
+          pipeline_node=my_transform)[0]
 
     self.assertArtifactMapEqual({'examples_1': [ex1],
                                  'examples_2': [ex1]}, result)
@@ -602,31 +628,43 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
         '.LatestArtifactStrategy')
     step2_pb.config_json = '{}'
 
-    with self.get_metadata() as m:
+    mlmd_connection_manager = self.get_metadata()
+    with mlmd_connection_manager as m:
       ex1 = self.make_examples(uri='a')
       ex2 = self.make_examples(uri='b')
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_example_gen,
           input_map=None,
           output_map={'output_examples': [ex1]})
       ex1 = output_artifacts['output_examples'][0]
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_example_gen,
           input_map=None,
           output_map={'output_examples': [ex2]})
       ex2 = output_artifacts['output_examples'][0]
-      self.fake_execute(m, my_transform,
-                        input_map={'examples_1': [ex1], 'examples_2': [ex1]},
-                        output_map=None)
-      self.fake_execute(m, my_transform,
-                        input_map={'examples_1': [ex2], 'examples_2': [ex2]},
-                        output_map=None)
+      self.fake_execute(
+          m.primary_mlmd_handle,
+          my_transform,
+          input_map={
+              'examples_1': [ex1],
+              'examples_2': [ex1]
+          },
+          output_map=None)
+      self.fake_execute(
+          m.primary_mlmd_handle,
+          my_transform,
+          input_map={
+              'examples_1': [ex2],
+              'examples_2': [ex2]
+          },
+          output_map=None)
 
       with self.assertRaises(exceptions.InputResolutionError):
         inputs_utils.resolve_input_artifacts(
-            metadata_handler=m, pipeline_node=my_transform)
+            mlmd_connection_manager=mlmd_connection_manager,
+            pipeline_node=my_transform)
 
   def testLatestArtifacts_withInputKeys(self):
     pipeline = self.load_pipeline_proto(
@@ -643,37 +681,45 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
     step_pb.config_json = '{}'
     step_pb.input_keys.append('transform_graph')
 
-    with self.get_metadata() as m:
+    mlmd_connection_manager = self.get_metadata()
+    with mlmd_connection_manager as m:
       ex1 = self.make_examples(uri='examples/1')
       ex2 = self.make_examples(uri='examples/2')
       tf1 = self.make_transform_graph(uri='transform_graph/1')
       tf2 = self.make_transform_graph(uri='transform_graph/2')
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_example_gen,
           input_map=None,
           output_map={'output_examples': [ex1]})
       ex1 = output_artifacts['output_examples'][0]
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_example_gen,
           input_map=None,
           output_map={'output_examples': [ex2]})
       ex2 = output_artifacts['output_examples'][0]
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_transform,
-          input_map={'examples_1': [ex1], 'examples_2': [ex1]},
+          input_map={
+              'examples_1': [ex1],
+              'examples_2': [ex1]
+          },
           output_map={'transform_graph': [tf1]})
       tf1 = output_artifacts['transform_graph'][0]
       output_artifacts = self.fake_execute(
-          m,
+          m.primary_mlmd_handle,
           my_transform,
-          input_map={'examples_1': [ex2], 'examples_2': [ex2]},
+          input_map={
+              'examples_1': [ex2],
+              'examples_2': [ex2]
+          },
           output_map={'transform_graph': [tf2]})
       tf2 = output_artifacts['transform_graph'][0]
       result = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=my_trainer)[0]
+          mlmd_connection_manager=mlmd_connection_manager,
+          pipeline_node=my_trainer)[0]
 
     # "examples" input channel doesn't go through the resolver and its order is
     # undeterministic. Sort artifacts by ID for testing convenience.

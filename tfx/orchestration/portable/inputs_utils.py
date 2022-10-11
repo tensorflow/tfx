@@ -17,7 +17,7 @@ from typing import Dict, Sequence, Union
 from absl import logging
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
-from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -28,14 +28,25 @@ from tfx.utils import typing_utils
 
 
 def _resolve_channels_dict(
-    metadata_handler: metadata.Metadata,
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     node_inputs: pipeline_pb2.NodeInputs) -> typing_utils.ArtifactMultiMap:
   """Resolves initial input dict from input channel definition."""
   result = {}
   for key, input_spec in node_inputs.inputs.items():
+    mlmd_handle = mlmd_connection_manager.primary_mlmd_handle
+    logging.error('Guowei node_inputs_resolver')
+    if input_spec.HasField('channel_mlmd_connection_config'):
+      logging.error('Guowei has field')
+      config = pipeline_pb2.InputSpec.MLMDServiceConfig()
+      input_spec.channel_mlmd_connection_config.Pack(config)
+      mlmd_handle = mlmd_connection_manager.get_mlmd_handle(
+          owner_name=config.owner,
+          project_name=config.name,
+          mlmd_service_target_name=config.mlmd_service_target)
+
     if input_spec.channels:
       result[key] = channel_resolver.resolve_union_channels(
-          metadata_handler, input_spec.channels)
+          mlmd_handle, input_spec.channels)
   return result
 
 
@@ -71,7 +82,7 @@ class Skip(tuple, Sequence[typing_utils.ArtifactMultiMap]):
 
 
 def _resolve_node_inputs_with_resolver_config(
-    metadata_handler: metadata.Metadata,
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     node_inputs: pipeline_pb2.NodeInputs,
 ) -> Sequence[typing_utils.ArtifactMultiMap]:
   """Resolve inputs with pipeline_pb2.ResolverConfig.
@@ -86,7 +97,8 @@ def _resolve_node_inputs_with_resolver_config(
      return as-is.
 
   Args:
-    metadata_handler: MetadataHandler instance for MLMD access.
+    mlmd_connection_manager: MLMDConnectionManager instance for handling
+      multiple mlmd db connections.
     node_inputs: Current NodeInputs on which input resolution is running.
 
   Raises:
@@ -95,11 +107,10 @@ def _resolve_node_inputs_with_resolver_config(
   Returns:
     A resolved list of dicts (can be empty).
   """
-  initial_dict = _resolve_channels_dict(metadata_handler, node_inputs)
+  initial_dict = _resolve_channels_dict(mlmd_connection_manager, node_inputs)
   try:
     resolved = resolver_config_resolver.resolve(
-        metadata_handler.store,
-        initial_dict,
+        mlmd_connection_manager.primary_mlmd_handle.store, initial_dict,
         node_inputs.resolver_config)
   except exceptions.SkipSignal:
     return []
@@ -117,13 +128,14 @@ def _resolve_node_inputs_with_resolver_config(
 def resolve_input_artifacts(
     *,
     pipeline_node: pipeline_pb2.PipelineNode,
-    metadata_handler: metadata.Metadata,
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
 ) -> Union[Trigger, Skip]:
   """Resolve input artifacts according to a pipeline node IR definition.
 
   Args:
     pipeline_node: Current PipelineNode on which input resolution is running.
-    metadata_handler: MetadataHandler instance for MLMD access.
+    mlmd_connection_manager: MLMDConnectionManager instance for handling
+      multiple mlmd db connections.
 
   Raises:
     InputResolutionError: If input resolution went wrong.
@@ -138,9 +150,10 @@ def resolve_input_artifacts(
     node_inputs = pipeline_node.inputs
     if node_inputs.resolver_config.resolver_steps:
       resolved = _resolve_node_inputs_with_resolver_config(
-          metadata_handler, node_inputs)
+          mlmd_connection_manager, node_inputs)
     else:
-      resolved = node_inputs_resolver.resolve(metadata_handler, node_inputs)
+      resolved = node_inputs_resolver.resolve(mlmd_connection_manager,
+                                              node_inputs)
     return Trigger(resolved) if resolved else Skip()
   except exceptions.SkipSignal as e:
     logging.info('Input resolution skipped; reason = %s', e)
