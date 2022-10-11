@@ -79,13 +79,21 @@ def publish_cached_execution(
 
 def _set_execution_result_if_not_empty(
     executor_output: Optional[execution_result_pb2.ExecutorOutput],
-    execution: metadata_store_pb2.Execution) -> None:
+    execution: metadata_store_pb2.Execution) -> bool:
   """Sets execution result as a custom property of the execution."""
   if executor_output and (executor_output.execution_result.result_message or
                           executor_output.execution_result.metadata_details or
                           executor_output.execution_result.code):
-    execution_lib.set_execution_result(executor_output.execution_result,
-                                       execution)
+    # TODO(b/190001754): Consider either switching to base64 encoding or using
+    # a proto descriptor pool to circumvent TypeError which may be raised when
+    # converting embedded `Any` protos.
+    try:
+      execution_lib.set_execution_result(executor_output.execution_result,
+                                         execution)
+    except TypeError:
+      logging.exception(
+          'Skipped setting execution_result as custom property of the '
+          'execution due to error')
 
 
 def publish_succeeded_execution(

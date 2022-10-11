@@ -1672,58 +1672,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
               'Pipeline aborted due to exceeding deadline (1 secs)',
               status.message)
 
-  def test_skip_nodes(self):
-    with self._mlmd_connection as m:
-      pipeline = _test_pipeline(
-          'pipeline1', execution_mode=pipeline_pb2.Pipeline.SYNC)
-      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
-      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
-      pipeline.nodes.add().pipeline_node.node_info.id = 'Trainer'
-      pipeline.nodes.add().pipeline_node.node_info.id = 'Evaluator'
-      pipeline.nodes.add().pipeline_node.node_info.id = 'ModelValidator'
-      pipeline.nodes.add().pipeline_node.node_info.id = 'Pusher'
-      pipeline_ops.initiate_pipeline_start(m, pipeline)
-      pipeline_ops.skip_nodes(m, [
-          task_lib.NodeUid(pipeline_uid, 'Transform'),
-          task_lib.NodeUid(pipeline_uid, 'Evaluator')
-      ])
-      with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
-        states_dict = pipeline_state.get_node_states_dict()
-        for node_id in ('ExampleGen', 'Trainer', 'ModelValidator', 'Pusher'):
-          self.assertEqual(
-              pstate.NodeState.STARTED,
-              states_dict[task_lib.NodeUid(pipeline_uid, node_id)].state)
-        for node_id in ('Transform', 'Evaluator'):
-          self.assertEqual(
-              pstate.NodeState.SKIPPED,
-              states_dict[task_lib.NodeUid(pipeline_uid, node_id)].state)
-
-        # Change state of Trainer node to RUNNING.
-        with pipeline_state.node_state_update_context(
-            task_lib.NodeUid(pipeline_uid, 'Trainer')) as node_state:
-          node_state.state = pstate.NodeState.RUNNING
-
-      # Calling skip_nodes for Trainer should raise an error as the node is in
-      # state RUNNING.
-      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
-        pipeline_ops.skip_nodes(m, [
-            task_lib.NodeUid(pipeline_uid, 'Trainer'),
-            task_lib.NodeUid(pipeline_uid, 'Pusher')
-        ])
-      self.assertEqual(status_lib.Code.FAILED_PRECONDITION,
-                       exception_context.exception.code)
-      with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
-        states_dict = pipeline_state.get_node_states_dict()
-        self.assertEqual(
-            pstate.NodeState.RUNNING,
-            states_dict[task_lib.NodeUid(pipeline_uid, 'Trainer')].state)
-        self.assertEqual(
-            pstate.NodeState.STARTED,
-            states_dict[task_lib.NodeUid(pipeline_uid, 'Pusher')].state)
-
   def test_exception_while_orchestrating_active_pipeline(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC)

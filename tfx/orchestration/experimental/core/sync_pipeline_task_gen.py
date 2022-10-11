@@ -34,6 +34,8 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 from tfx.utils import topsort
 
+from ml_metadata.google.services.client.cross_db import reference_utils
+from ml_metadata.google.services.mlmd_service.proto import mlmd_service_pb2
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -373,6 +375,14 @@ class _Generator:
         self._pipeline.execution_mode)
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
     outputs_utils.make_output_dirs(output_artifacts)
+
+    pipeline_asset = mlmd_service_pb2.PipelineAsset(owner='test', name='test')
+    for artifacts in input_artifacts.values():
+      for artifact in artifacts:
+        reference_utils.add_reference_to_artifact(
+            artifact=artifact.mlmd_artifact,
+            pipeline_asset=pipeline_asset,
+            artifact_id=1)
 
     result.append(
         task_lib.UpdateNodeStateTask(
