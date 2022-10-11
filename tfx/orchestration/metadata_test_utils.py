@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.orchestration.metadata."""
 
+# TODO(chavoshi) - DELETE ME ! This is a no-op change to force run the tfx tests
+
 import tensorflow as tf
 from tfx import types
 from tfx.orchestration import data_types
