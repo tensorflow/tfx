@@ -33,6 +33,8 @@ from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
+from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -264,8 +266,13 @@ class TaskManager:
 
 
 def _update_execution_state_in_mlmd(
-    mlmd_handle: metadata.Metadata, execution_id: int,
-    new_state: metadata_store_pb2.Execution.State, error_msg: str) -> None:
+    mlmd_handle: metadata.Metadata,
+    execution_id: int,
+    new_state: metadata_store_pb2.Execution.State,
+    error_msg: str,
+    execution_result: Optional[execution_result_pb2.ExecutionResult] = None
+) -> None:
+  """Updates the execution state and sets execution_result if provided."""
   with mlmd_state.mlmd_execution_atomic_op(mlmd_handle,
                                            execution_id) as execution:
     execution.last_known_state = new_state
@@ -273,6 +280,8 @@ def _update_execution_state_in_mlmd(
       data_types_utils.set_metadata_value(
           execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
           error_msg)
+    if execution_result:
+      execution_lib.set_execution_result(execution_result, execution)
 
 
 def _publish_execution_results(mlmd_handle: metadata.Metadata,
@@ -280,7 +289,10 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
                                result: ts.TaskSchedulerResult) -> None:
   """Publishes execution results to MLMD."""
 
-  def _update_state(status: status_lib.Status) -> None:
+  def _update_state(
+      status: status_lib.Status,
+      execution_result: Optional[execution_result_pb2.ExecutionResult] = None
+  ) -> None:
     assert status.code != status_lib.Code.OK
     _remove_output_dirs(task, result)
     _remove_task_dirs(task)
@@ -294,7 +306,8 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
           task.execution_id, status.code, task.task_id)
       execution_state = metadata_store_pb2.Execution.FAILED
     _update_execution_state_in_mlmd(mlmd_handle, task.execution_id,
-                                    execution_state, status.message)
+                                    execution_state, status.message,
+                                    execution_result)
     pipeline_state.record_state_change_time()
 
   if result.status.code != status_lib.Code.OK:
@@ -310,8 +323,11 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
       if executor_output.execution_result.code != status_lib.Code.OK:
         _update_state(
             status_lib.Status(
-                code=executor_output.execution_result.code,
-                message=executor_output.execution_result.result_message))
+                # We should not reuse "execution_result.code" because it may be
+                # CANCELLED, in which case we should still fail the execution.
+                code=status_lib.Code.ABORTED,
+                message=executor_output.execution_result.result_message),
+            executor_output.execution_result)
         return
       # TODO(b/182316162): Unify publisher handing so that post-execution
       # artifact logic is more cleanly handled.
