@@ -171,18 +171,19 @@ class OutputsResolver:
     fileio.makedirs(driver_output_dir)
     return os.path.join(driver_output_dir, _DRIVER_OUTPUT_FILE)
 
-  def get_stateful_working_directory(self,
-                                     execution_id: Optional[int] = None) -> str:
+  def get_stateful_working_directory(
+      self, execution: Optional[metadata_store_pb2.Execution] = None) -> str:
     """Generates stateful working directory given (optional) execution id.
 
     Args:
-      execution_id: An optional execution id which will be used as part of the
+      execution: An optional execution which will be used as part of the
         stateful working dir path if provided. The stateful working dir path
-        will be <node_dir>/.system/stateful_working_dir/<execution_id>. If
-        execution_id is not provided, for backward compatibility purposes,
-        <pipeline_run_id> is used instead of <execution_id> but an error is
-        raised if the execution_mode is not SYNC (since ASYNC pipelines have
-        no pipeline_run_id).
+        will be
+        <node_dir>/.system/stateful_working_dir/<pipeline_run_id>_<external_execution_index>.
+        If execution is not provided, for backward compatibility purposes,
+        <pipeline_run_id> is used but an error is raised
+        if the execution_mode is not SYNC (since ASYNC pipelines have no
+        pipeline_run_id).
 
     Returns:
       Path to stateful working directory.
@@ -191,23 +192,21 @@ class OutputsResolver:
       ValueError: If execution_id is not provided and execution_mode of the
         pipeline is not SYNC.
     """
-    if (execution_id is None and
+    if (execution is None and
         self._execution_mode != pipeline_pb2.Pipeline.SYNC):
       raise ValueError(
           'Cannot create stateful working dir if execution id is `None` and '
           'the execution mode of the pipeline is not `SYNC`.')
 
-    if execution_id is None:
+    if execution is None:
       dir_suffix = self._pipeline_run_id
     else:
-      dir_suffix = str(execution_id)
+      external_execution_idx = execution.custom_properties.get(
+          '__external_execution_index__',
+          metadata_store_pb2.Value(int_value=0)).int_value
+      dir_suffix = os.path.join(self._pipeline_run_id + '_' +
+                                str(external_execution_idx))
 
-    # TODO(b/150979622): We should introduce an id that is not changed across
-    # retries of the same component run to provide better isolation between
-    # "retry" and "new execution". When it is available, introduce it into
-    # stateful working directory.
-    # NOTE: If this directory structure is changed, please update
-    # the remove_stateful_working_dir function in this file accordingly.
     stateful_working_dir = os.path.join(self._node_dir, _SYSTEM,
                                         _STATEFUL_WORKING_DIR,
                                         dir_suffix)

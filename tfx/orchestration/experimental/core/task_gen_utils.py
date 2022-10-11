@@ -13,9 +13,10 @@
 # limitations under the License.
 """Utilities for task generation."""
 
+import collections
 import itertools
 import time
-from typing import Dict, Iterable, List, Optional, Sequence, MutableMapping
+from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence, Collection
 import uuid
 
 from absl import logging
@@ -84,7 +85,7 @@ def generate_task_from_execution(
       executor_output_uri=outputs_resolver.get_executor_output_uri(
           execution.id),
       stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-          execution.id),
+          execution),
       tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
       pipeline=pipeline,
       cancel_type=cancel_type)
@@ -292,6 +293,17 @@ def get_latest_successful_execution(
   return get_latest_execution(successful_executions)
 
 
+def get_latest_failed_execution(
+    executions: Iterable[metadata_store_pb2.Execution]
+) -> Optional[metadata_store_pb2.Execution]:
+  """Returns the latest failed execution or `None` if no failed executions exist."""
+  # TODO(zhonghaoyuan): How to define FAILED?
+  failed_executions = [
+      e for e in executions if execution_lib.is_execution_failed(e)
+  ]
+  return get_latest_execution(failed_executions)
+
+
 def get_latest_execution(
     executions: Iterable[metadata_store_pb2.Execution]
 ) -> Optional[metadata_store_pb2.Execution]:
@@ -305,8 +317,25 @@ def get_latest_execution(
 
 def get_latest_executions_set(
     executions: Iterable[metadata_store_pb2.Execution]
-) -> List[metadata_store_pb2.Execution]:
-  """Returns latest set of executions."""
+) -> Collection[metadata_store_pb2.Execution]:  # pylint: disable=g-doc-args
+  """Returns latest set of executions.
+
+  When _EXECUTION_SET_SIZE > 1 and there are retry executions, e.g.
+      Execution(id=0, __external_execution_index__=0, state=FAILED,
+      create_time=100)
+      Execution(id=1, __external_execution_index__=1, state=NEW,
+      create_time=150)
+      Execution(id=2, __external_execution_index__=0, state=FAILED,
+      create_time=200)
+      Execution(id=3, __external_execution_index__=0, state=FAILED,
+      create_time=250)
+
+  This function returns the latest execution of each
+  __external_execution_index__, which in this case will be:
+      Execution(id=1, __external_execution_index__=1, state=NEW, timestamp=150)
+      Execution(id=3, __external_execution_index__=0, state=FAILED,
+      timestamp=250)
+  """
   sorted_executions = execution_lib.sort_executions_newest_to_oldest(executions)
   if not sorted_executions:
     return []
@@ -317,10 +346,15 @@ def get_latest_executions_set(
 
   timestamp = sorted_executions[0].custom_properties.get(
       _EXECUTION_TIMESTAMP).int_value
-  latest_execution_set = [
-      e for e in sorted_executions[:size.int_value]
-      if e.custom_properties.get(_EXECUTION_TIMESTAMP).int_value == timestamp
-  ]
+  sorted_execution_by_idx_map = collections.defaultdict(list)
+  for e in sorted_executions:
+    sorted_execution_by_idx_map[e.custom_properties.get(
+        _EXTERNAL_EXECUTION_INDEX).int_value].append(e)
+  latest_execution_set = []
+  for idx in sorted(sorted_execution_by_idx_map.keys()):
+    if sorted_execution_by_idx_map[idx][0].custom_properties.get(
+        _EXECUTION_TIMESTAMP).int_value == timestamp:
+      latest_execution_set.append(sorted_execution_by_idx_map[idx][0])
   return [] if len(latest_execution_set) != size.int_value else list(
       reversed(latest_execution_set))
 
@@ -409,7 +443,7 @@ def register_executions(
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
     input_and_params: List[InputAndParam]
-) -> List[metadata_store_pb2.Execution]:
+) -> Sequence[metadata_store_pb2.Execution]:
   """Registers multiple executions in MLMD.
 
   Along with the execution:

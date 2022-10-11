@@ -108,6 +108,7 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
     self._validate_component_class()
     self.platform_config = None
     self._pip_dependencies = []
+    self.max_num_of_retry = None
 
   @classmethod
   def _validate_component_class(cls):
@@ -140,6 +141,12 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
           ('%s expects the "spec" argument to be an instance of %s; '
            'got %s instead.') %
           (self.__class__, self.__class__.SPEC_CLASS, spec))
+
+  @doc_controls.do_not_doc_in_subclasses
+  def with_retry(self, max_num_of_retry: int) -> 'BaseComponent':
+    """Set the maximuim number of times to retry a component."""
+    self.max_num_of_retry = max(0, max_num_of_retry)
+    return self
 
   # TODO(b/170682320): This function is not widely available until we migrate
   # the entire stack to IR-based.

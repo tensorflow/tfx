@@ -322,6 +322,8 @@ class Compiler:
       if tfx_component.platform_config:
         deployment_config.node_level_platform_configs[tfx_node.id].Pack(
             tfx_component.platform_config)
+      if tfx_component.max_num_of_retry:
+        node.execution_options.max_num_of_retry = tfx_component.max_num_of_retry
 
     return node
 

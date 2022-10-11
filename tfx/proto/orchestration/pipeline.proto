@@ -543,6 +543,8 @@ message NodeExecutionOptions {
   // other platforms.
   bool node_success_optional = 5;
   // LINT.ThenChange(tfx/orchestration/experimental/core/sync_pipeline_task_gen.py)
+  // Maximum number of times to retry a node if it is failed.
+  uint32 max_num_of_retry = 6;
 }
 
 // Pipeline node definition.

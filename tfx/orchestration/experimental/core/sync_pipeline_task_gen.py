@@ -16,6 +16,7 @@
 import collections
 import textwrap
 from typing import Callable, Dict, List, Mapping, Optional, Set
+import uuid
 
 from absl import logging
 from tfx.orchestration import data_types_utils
@@ -131,7 +132,67 @@ class _Generator:
           successful_node_ids.add(node_id)
           continue
         if node_state.is_failure():
-          failed_nodes_dict[node_id] = node_state.status
+          # Retry if we can.
+          executions = task_gen_utils.get_executions(self._mlmd_handle, node)
+          if (node.execution_options.max_num_of_retry >
+              self._get_node_num_of_failure(executions)):
+
+            resolved_info = task_gen_utils.generate_resolved_info(
+                self._mlmd_handle, node)
+
+            # Step 1: Replicate a new execution from latest_failed_execution.
+            # Set a new execution name and put the state to RUNNING.
+            latest_failed_execution = (
+                # TODO(zhonghaoyuan): The definition of failure is not
+                # consistent here
+                task_gen_utils.get_latest_failed_execution(executions))
+            retry_execution = execution_lib.prepare_execution(
+                metadata_handler=self._mlmd_handle,
+                execution_type=node.node_info.type,
+                state=metadata_store_pb2.Execution.RUNNING,
+                execution_name=str(uuid.uuid4()))
+            for k, v in latest_failed_execution.properties.items():
+              retry_execution.properties[k].CopyFrom(v)
+            for k, v in latest_failed_execution.custom_properties.items():
+              retry_execution.custom_properties[k].CopyFrom(v)
+            retry_execution_external_idx = retry_execution.custom_properties[
+                task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value
+            input_artifacts = resolved_info.input_and_params[
+                retry_execution_external_idx].input_artifacts
+            retry_execution = execution_lib.put_executions(
+                self._mlmd_handle, (retry_execution,), resolved_info.contexts,
+                [input_artifacts])[0]
+
+            # Step 2: Create a update node state task
+            update_node_state_tasks.append(
+                task_lib.UpdateNodeStateTask(
+                    node_uid=node_uid, state=pstate.NodeState.RUNNING))
+
+            # Step 3: Create a exec node task
+            outputs_resolver = outputs_utils.OutputsResolver(
+                node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
+                self._pipeline.execution_mode)
+            output_artifacts = outputs_resolver.generate_output_artifacts(
+                retry_execution.id)
+            # TODO(zhonghaoyuan): do we need to recreate?
+            # outputs_utils.make_output_dirs(output_artifacts)
+            exec_node_tasks.append(
+                task_lib.ExecNodeTask(
+                    node_uid=node_uid,
+                    execution_id=retry_execution.id,
+                    contexts=resolved_info.contexts,
+                    input_artifacts=input_artifacts,
+                    exec_properties=resolved_info.input_and_params[
+                        retry_execution_external_idx].exec_properties,
+                    output_artifacts=output_artifacts,
+                    executor_output_uri=outputs_resolver
+                    .get_executor_output_uri(retry_execution.id),
+                    stateful_working_dir=outputs_resolver
+                    .get_stateful_working_directory(retry_execution),
+                    tmp_dir=outputs_resolver.make_tmp_dir(retry_execution.id),
+                    pipeline=self._pipeline))
+          else:
+            failed_nodes_dict[node_id] = node_state.status
           continue
         if not self._trigger_strategy_satisfied(node, successful_node_ids,
                                                 failed_nodes_dict):
@@ -142,7 +203,6 @@ class _Generator:
             if pstate.is_node_state_success(task.state):
               successful_node_ids.add(node_id)
             elif pstate.is_node_state_failure(task.state):
-              failed_nodes_dict[node_id] = task.status
               # While the pipeline can still proceed depending on the trigger
               # strategy of descending nodes, the fail fast option should only
               # be used together with ALL_UPSTREAM_NODES_SUCCEEDED since it will
@@ -151,6 +211,11 @@ class _Generator:
                 finalize_pipeline_task = self._abort_task(
                     'Pipeline failed fast due to node failures: ' +
                     _status_dict_to_error_message(failed_nodes_dict))
+                failed_nodes_dict[node_id] = task.status
+              # If we still can retry the node, don't mark it as failed.
+              elif (self._get_node_num_of_failure(node) >=
+                    node.execution_options.max_num_of_retry):
+                failed_nodes_dict[node_id] = task.status
             update_node_state_tasks.append(task)
           elif isinstance(task, task_lib.ExecNodeTask):
             exec_node_tasks.append(task)
@@ -388,7 +453,7 @@ class _Generator:
             executor_output_uri=outputs_resolver.get_executor_output_uri(
                 execution.id),
             stateful_working_dir=outputs_resolver
-            .get_stateful_working_directory(execution.id),
+            .get_stateful_working_directory(execution),
             tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
             pipeline=self._pipeline))
     return result
