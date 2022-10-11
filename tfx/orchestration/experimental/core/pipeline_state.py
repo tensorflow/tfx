@@ -171,6 +171,10 @@ class NodeState(json_utils.Jsonable):
     """Returns True if the node can be stopped."""
     return self.state in set([self.STARTING, self.STARTED, self.RUNNING])
 
+  def is_programmatically_skippable(self) -> bool:
+    """Returns True if the node can be skipped via programmatic operation."""
+    return self.state in set([self.STARTED, self.STOPPED])
+
   def is_success(self) -> bool:
     return is_node_state_success(self.state)
 
@@ -610,6 +614,8 @@ class PipelineState:
     old_state = copy.deepcopy(node_state)
     yield node_state
     if old_state.state != node_state.state:
+      # TODO(b/252925780): Calling these here may be premature, they should be
+      # called instead when pipeline state commit is successful.
       logging.info('Changing node state: %s -> %s; node uid: %s',
                    old_state.state, node_state.state, node_uid)
       event_observer.notify(
