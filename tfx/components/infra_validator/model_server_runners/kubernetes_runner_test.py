@@ -228,7 +228,7 @@ class KubernetesRunnerTest(tf.test.TestCase):
                      'my_key')
     container_resources = pod_manifest.spec.containers[0].resources
     self.assertEqual(
-      container_resources == k8s_config_dict.get(
+      container_resources, k8s_config_dict.get(
         "serving_pod_overrides").get("resources"))
 
   def testStart_FailsIfOutsideKfp(self):
