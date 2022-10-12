@@ -208,5 +208,25 @@ class CannedResolverFunctionsTest(
     self.assertArtifactListEqual(
         actual_artifacts, expected_artifacts, check_span_and_version=True)
 
+  def testAllSpansResolverFn_E2E(self):
+    channel = canned_resolver_functions.all_spans(
+        types.Channel(test_utils.DummyArtifact, output_key='x'),
+        span_descending=False,
+        keep_all_versions=False)
+    pipeline_node = _compile_inputs({'x': channel})
+
+    spans = [0, 1, 2, 3, 3, 5, 7, 10]
+    versions = [0, 0, 0, 0, 3, 0, 0, 0]
+    mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+    self.assertIsInstance(resolved, inputs_utils.Trigger)
+
+    actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
+    expected_artifacts = [mlmd_artifacts[i] for i in [0, 1, 2, 4, 5, 6, 7]]
+    self.assertArtifactListEqual(
+        actual_artifacts, expected_artifacts, check_span_and_version=True)
+
 if __name__ == '__main__':
   tf.test.main()

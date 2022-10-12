@@ -185,3 +185,62 @@ def rolling_range(artifacts,
     resolved_artifacts = ops.ExcludeSpans(
         resolved_artifacts, denylist=exclude_span_numbers)
   return resolved_artifacts
+
+
+@resolver_function.resolver_function
+def all_spans(artifacts,
+              *,
+              span_descending: bool = False,
+              keep_all_versions: bool = False):
+  """Returns the sorted artifacts with unique spans.
+
+  If keep_all_versions = False, then all artifacts with unique spans (ties
+  broken by version) are returned. Else, all artifacts are returned.
+
+  The artifacts
+
+  Example usage:
+
+    Consider 6 artifacts with:
+      spans    = [1, 3, 3, 2, 8, 7]
+      versions = [0, 0, 1, 0, 1, 2]
+
+    all_spans(
+        span_descending=False,
+        keep_all_versions=False)
+
+    will return artifacts:
+      spans    = [1, 2, 3, 7, 8]
+      versions = [0, 0, 1, 1, 2]
+
+    Note that there are 2 artifacts with span 3, but only the one with the
+    latest version is returned. Spans are sorted in ascending order.
+
+    all_spans(
+        span_descending=True,
+        keep_all_versions=True)
+
+    will return all the artifacts:
+      spans    = [8, 7, 3, 3, 2, 1]
+      versions = [2, 1, 0, 1, 0, 0]
+
+    Note that both artifacts with span 3 are returned. Spans are sorted in
+    descending order, but versions are always sorted ascending order.
+
+  Args:
+    artifacts: The artifacts to filter.
+    span_descending: If true, then the artifacts will be sorted by span in
+      descending order. Else, they will be sorted in ascending order by span.
+      Note that sorting happens first by span and then by version, and that
+      version is always sorted in ascending order.
+    keep_all_versions: If true, all artifacts with spans in the range are kept.
+      If false then if multiple artifacts have the same span, only the span with
+      the latest version is kept. Defaults to False.
+
+  Returns:
+    Sorted Artifacts with unique spans.
+  """
+  return ops.AllSpans(
+      artifacts,
+      span_descending=span_descending,
+      keep_all_versions=keep_all_versions)
