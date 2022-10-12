@@ -19,6 +19,7 @@ import uuid
 
 from absl.testing.absltest import mock
 from tfx import types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import mlmd_state
@@ -49,12 +50,19 @@ class TfxTest(test_case_utils.TfxTest):
     pstate._PipelineIRCodec.testonly_reset()  # pylint: disable=protected-access
 
 
-def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
+def fake_example_gen_run_with_handle(mlmd_handle,
+                                     example_gen,
+                                     span,
+                                     version,
+                                     **additional_custom_properties):
   """Writes fake example_gen output and successful execution to MLMD."""
   output_example = types.Artifact(
       example_gen.outputs.outputs['examples'].artifact_spec.type)
   output_example.set_int_custom_property('span', span)
   output_example.set_int_custom_property('version', version)
+  for key, value in additional_custom_properties.items():
+    data_types_utils.set_metadata_value(
+        output_example.mlmd_artifact.custom_properties[key], value)
   output_example.uri = 'my_examples_uri'
   contexts = context_lib.prepare_contexts(mlmd_handle, example_gen.contexts)
   execution = execution_publish_utils.register_execution(
