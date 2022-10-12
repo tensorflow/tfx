@@ -15,7 +15,7 @@
 
 import os
 import time
-from typing import Iterable, Union
+from typing import Iterable, Optional, Union
 
 from absl.testing.absltest import mock
 import tensorflow as tf
@@ -52,6 +52,18 @@ class GarbageCollectionTest(test_utils.TfxTest):
   def tearDown(self):
     self._metadata.__exit__(None, None, None)
     super().tearDown()
+
+  def _produce_examples(
+      self,
+      span: Optional[int] = 0,
+      version: Optional[int] = 0,
+      **additional_custom_properties) -> metadata_store_pb2.Artifact:
+    example_gen_execution = test_utils.fake_example_gen_run_with_handle(
+        self._metadata, self._example_gen, span, version,
+        **additional_custom_properties)
+    example_gen_output = self._metadata.get_outputs_of_execution(
+        example_gen_execution.id)
+    return example_gen_output['examples'][0]
 
   def assertArtifactIdsEqual(
       self, first: Iterable[Union[metadata_store_pb2.Artifact, Artifact]],
@@ -150,6 +162,98 @@ class GarbageCollectionTest(test_utils.TfxTest):
         metadata_store_pb2.Artifact.State.DELETED,
         self._metadata.store.get_artifacts_by_id([e.id for e in examples
                                                  ])[0].state)
+
+  def test_keep_property_value_groups(self):
+    policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
+        keep_property_value_groups=garbage_collection_policy_pb2
+        .GarbageCollectionPolicy.KeepPropertyValueGroups(groupings=[
+            garbage_collection_policy_pb2.GarbageCollectionPolicy
+            .KeepPropertyValueGroups.Grouping(
+                property_name='examples_type.name'),
+            garbage_collection_policy_pb2.GarbageCollectionPolicy
+            .KeepPropertyValueGroups.Grouping(
+                property_name='span',
+                keep_num=2,
+                keep_order=garbage_collection_policy_pb2.GarbageCollectionPolicy
+                .KeepPropertyValueGroups.Grouping.KeepOrder.KEEP_ORDER_LARGEST),
+            garbage_collection_policy_pb2.GarbageCollectionPolicy
+            .KeepPropertyValueGroups.Grouping(
+                property_name='version',
+                keep_num=1,
+                keep_order=garbage_collection_policy_pb2.GarbageCollectionPolicy
+                .KeepPropertyValueGroups.Grouping.KeepOrder.KEEP_ORDER_LARGEST)
+        ]))
+    self._example_gen.outputs.outputs[
+        'examples'].garbage_collection_policy.CopyFrom(policy)
+    example_gen_node_uid = task_lib.NodeUid.from_node(self._pipeline,
+                                                      self._example_gen)
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+
+    examples_a_0_0 = self._produce_examples(0, 0)
+    examples_a_1_0 = self._produce_examples(1, 0)
+    examples_a_2_0 = self._produce_examples(2, 0)
+    self._produce_examples(2, 1)  # Should not be garbage collected
+    self._produce_examples(3, 0)  # Should not be garbage collected
+    self.assertArtifactIdsEqual(
+        [examples_a_0_0, examples_a_1_0, examples_a_2_0],
+        garbage_collection.get_artifacts_to_garbage_collect_for_node(
+            self._metadata, example_gen_node_uid))
+
+  def test_keep_property_value_groups_with_none_value(self):
+    policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
+        keep_property_value_groups=garbage_collection_policy_pb2
+        .GarbageCollectionPolicy.KeepPropertyValueGroups(groupings=[
+            garbage_collection_policy_pb2.GarbageCollectionPolicy
+            .KeepPropertyValueGroups.Grouping(
+                property_name='test_property',
+                keep_num=2,
+                keep_order=garbage_collection_policy_pb2.GarbageCollectionPolicy
+                .KeepPropertyValueGroups.Grouping.KeepOrder.KEEP_ORDER_SMALLEST)
+        ]))
+    self._example_gen.outputs.outputs[
+        'examples'].garbage_collection_policy.CopyFrom(policy)
+    example_gen_node_uid = task_lib.NodeUid.from_node(self._pipeline,
+                                                      self._example_gen)
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+
+    self._produce_examples(test_property=1)  # Should not be garbage collected
+    examples_none = self._produce_examples()  #  Should not be garbage collected
+    self.assertArtifactIdsEqual(
+        [],
+        garbage_collection.get_artifacts_to_garbage_collect_for_node(
+            self._metadata, example_gen_node_uid))
+
+    self._produce_examples(test_property=2)  # Should not be garbage collected
+    self.assertArtifactIdsEqual(
+        [examples_none],  # Now it should be garbage collected
+        garbage_collection.get_artifacts_to_garbage_collect_for_node(
+            self._metadata, example_gen_node_uid))
+
+  def test_keep_property_value_groups_non_homogenous_types_failure(self):
+    policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
+        keep_property_value_groups=garbage_collection_policy_pb2
+        .GarbageCollectionPolicy.KeepPropertyValueGroups(groupings=[
+            garbage_collection_policy_pb2.GarbageCollectionPolicy
+            .KeepPropertyValueGroups.Grouping(property_name='test_property')
+        ]))
+    self._example_gen.outputs.outputs[
+        'examples'].garbage_collection_policy.CopyFrom(policy)
+    example_gen_node_uid = task_lib.NodeUid.from_node(self._pipeline,
+                                                      self._example_gen)
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+
+    self._produce_examples(test_property=0)
+    self._produce_examples(test_property='str')
+
+    expected_error_message = (
+        'Properties from the same group should have a homogenous type except '
+        'NoneType. Expected <class \'%s\'>, but passed <class \'%s\'>')
+    # Embrace all order cases.
+    with self.assertRaisesRegex(
+        ValueError, (f'({expected_error_message % ("str", "int")}|'
+                     f'{expected_error_message % ("int", "str")})')):
+      garbage_collection.get_artifacts_to_garbage_collect_for_node(
+          self._metadata, example_gen_node_uid)
 
 
 if __name__ == '__main__':

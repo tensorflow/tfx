@@ -13,7 +13,6 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
-import hashlib
 import itertools
 from typing import Callable, Dict, List, Optional
 
@@ -21,7 +20,7 @@ from absl import logging
 from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
-from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -177,20 +176,29 @@ class _Generator:
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
+    # Gets the oldest active execution. If the oldest active execution exists,
+    # generates a task from it.
+    # TODO(b/239858201) Too many executions may have performance issue, it is
+    # better to limit the number of executions.
     executions = task_gen_utils.get_executions(metadata_handler, node)
-    exec_node_task = task_gen_utils.generate_task_from_active_execution(
-        metadata_handler, self._pipeline, node, executions)
-    if exec_node_task:
+    oldest_active_execution = task_gen_utils.get_oldest_active_execution(
+        executions)
+    if oldest_active_execution:
+      with mlmd_state.mlmd_execution_atomic_op(
+          mlmd_handle=self._mlmd_handle,
+          execution_id=oldest_active_execution.id) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.RUNNING
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid, state=pstate.NodeState.RUNNING))
-      result.append(exec_node_task)
+      result.append(
+          task_gen_utils.generate_task_from_execution(self._mlmd_handle,
+                                                      self._pipeline, node,
+                                                      oldest_active_execution))
       return result
 
     resolved_info = task_gen_utils.generate_resolved_info(
         metadata_handler, node)
-
-    # TODO(b/207038460): Update async pipeline to support ForEach.
 
     # Note that some nodes e.g. ImportSchemaGen don't have inputs, and for those
     # nodes it is okay that there are no resolved input artifacts.
@@ -204,55 +212,64 @@ class _Generator:
           'are resolved.', node.node_info.id)
       return result
 
-    input_artifacts = resolved_info.input_and_params[0].input_artifacts
-    exec_properties = resolved_info.input_and_params[0].exec_properties
-
-    executor_spec_fingerprint = hashlib.sha256()
-    executor_spec = task_gen_utils.get_executor_spec(
-        self._pipeline_state.pipeline, node.node_info.id)
-    if executor_spec is not None:
-      executor_spec_fingerprint.update(
-          executor_spec.SerializeToString(deterministic=True))
-    exec_properties[
-        constants
-        .EXECUTOR_SPEC_FINGERPRINT_KEY] = executor_spec_fingerprint.hexdigest()
-
-    # If the latest execution had the same resolved input artifacts, execution
-    # properties and executor specs, we should not trigger a new execution.
-    latest_exec = task_gen_utils.get_latest_execution(executions)
-    if latest_exec:
+    successful_executions = [
+        e for e in executions if execution_lib.is_execution_successful(e)
+    ]
+    execution_identifiers = []
+    for execution in successful_executions:
+      execution_identifier = {}
       artifact_ids_by_event_type = (
           execution_lib.get_artifact_ids_by_event_type_for_execution_id(
-              metadata_handler, latest_exec.id))
-      latest_exec_input_artifact_ids = artifact_ids_by_event_type.get(
+              metadata_handler, execution.id))
+      # TODO(b/250075208) Support notrigger, trigger_by, etc.
+      execution_identifier['artifact_ids'] = artifact_ids_by_event_type.get(
           metadata_store_pb2.Event.INPUT, set())
-      current_exec_input_artifact_ids = set(
-          a.id for a in itertools.chain(*input_artifacts.values()))
-      latest_exec_properties = task_gen_utils.extract_properties(latest_exec)
-      current_exec_properties = exec_properties
-      latest_exec_executor_spec_fp = latest_exec_properties[
-          constants.EXECUTOR_SPEC_FINGERPRINT_KEY]
-      current_exec_executor_spec_fp = current_exec_properties[
-          constants.EXECUTOR_SPEC_FINGERPRINT_KEY]
-      if (latest_exec_input_artifact_ids == current_exec_input_artifact_ids and
-          _exec_properties_match(latest_exec_properties,
-                                 current_exec_properties) and
-          latest_exec_executor_spec_fp == current_exec_executor_spec_fp):
-        result.append(
-            task_lib.UpdateNodeStateTask(
-                node_uid=node_uid, state=pstate.NodeState.STARTED))
-        return result
+      execution_identifiers.append(execution_identifier)
 
-    execution = execution_publish_utils.register_execution(
-        metadata_handler=metadata_handler,
-        execution_type=node.node_info.type,
-        contexts=resolved_info.contexts,
-        input_artifacts=input_artifacts,
-        exec_properties=exec_properties)
+    unprocessed_inputs = []
+    for input_and_param in resolved_info.input_and_params:
+      current_exec_input_artifact_ids = set(
+          a.id
+          for a in itertools.chain(*input_and_param.input_artifacts.values()))
+
+      for execution_identifier in execution_identifiers:
+        if (execution_identifier['artifact_ids'] ==
+            current_exec_input_artifact_ids):
+          break
+      else:
+        unprocessed_inputs.append(input_and_param)
+
+    if not unprocessed_inputs:
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid, state=pstate.NodeState.STARTED))
+      return result
+
+    # Don't need to register all executions in one transaction. If the
+    # orchestractor is interrupted in the middle, in the next iteration, the
+    # orchstrator is still able to register the rest of executions.
+    new_executioins = []
+    for input_and_param in unprocessed_inputs:
+      new_executioins.append(
+          execution_publish_utils.register_execution(
+              metadata_handler=metadata_handler,
+              execution_type=node.node_info.type,
+              contexts=resolved_info.contexts,
+              input_artifacts=input_and_param.input_artifacts,
+              exec_properties=input_and_param.exec_properties,
+              last_known_state=metadata_store_pb2.Execution.NEW))
+
+    # Selects the first artifacts and create a exec task.
+    input_and_param = unprocessed_inputs[0]
+    execution = new_executioins[0]
+    # Selects the first execution and marks it as RUNNING.
+    with mlmd_state.mlmd_execution_atomic_op(
+        mlmd_handle=self._mlmd_handle, execution_id=execution.id) as execution:
+      execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
         self._pipeline.execution_mode)
-
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
     outputs_utils.make_output_dirs(output_artifacts)
     result.append(
@@ -263,8 +280,8 @@ class _Generator:
             node_uid=node_uid,
             execution_id=execution.id,
             contexts=resolved_info.contexts,
-            input_artifacts=input_artifacts,
-            exec_properties=exec_properties,
+            input_artifacts=input_and_param.input_artifacts,
+            exec_properties=input_and_param.exec_properties,
             output_artifacts=output_artifacts,
             executor_output_uri=outputs_resolver.get_executor_output_uri(
                 execution.id),

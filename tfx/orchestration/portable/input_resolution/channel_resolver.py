@@ -53,14 +53,14 @@ def _get_context_from_context_query(
     context_query: pipeline_pb2.InputSpec.Channel.ContextQuery
 ) -> Optional[metadata_store_pb2.Context]:
   """Get Context from InputSpec.Channel.ContextQuery."""
-  if not context_query.type or not context_query.type.name:
+  if not context_query.HasField('type') or not context_query.type.name:
     raise ValueError('ContextQuery.type.name should be set.')
   if (not context_query.name or
       not context_query.name.field_value or
       not context_query.name.field_value.string_value):
     raise ValueError(
         'ContextQuery.name.field_value.string_value should be set.')
-  if context_query.property_predicate:
+  if context_query.HasField('property_predicate'):
     logging.warning('ContextQuery.property_predicate is not supported.')
   return store.get_context_by_type_and_name(
       context_query.type.name,

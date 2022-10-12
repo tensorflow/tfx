@@ -309,8 +309,9 @@ class _Generator:
 
     # Gets the oldest active execution. If the oldest active execution exists,
     # generates a task from it.
-    oldest_active_execution = task_gen_utils.get_oldest_active_execution_from_a_set(
-        latest_executions_set)
+    oldest_active_execution = (
+        task_gen_utils.get_oldest_active_execution_by_index_from_a_set(
+            latest_executions_set))
     if oldest_active_execution:
       with mlmd_state.mlmd_execution_atomic_op(
           mlmd_handle=self._mlmd_handle,

@@ -19,9 +19,9 @@ import uuid
 
 from absl.testing.absltest import mock
 from tfx import types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
-from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -35,7 +35,9 @@ from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils
 from tfx.utils import typing_utils
+
 from ml_metadata.proto import metadata_store_pb2
+
 
 OUTPUT_NUM = 33
 
@@ -48,26 +50,23 @@ class TfxTest(test_case_utils.TfxTest):
     pstate._PipelineIRCodec.testonly_reset()  # pylint: disable=protected-access
 
 
-def fake_example_gen_run_with_handle(mlmd_handle, example_gen, span, version):
+def fake_example_gen_run_with_handle(mlmd_handle,
+                                     example_gen,
+                                     span,
+                                     version,
+                                     **additional_custom_properties):
   """Writes fake example_gen output and successful execution to MLMD."""
   output_example = types.Artifact(
       example_gen.outputs.outputs['examples'].artifact_spec.type)
   output_example.set_int_custom_property('span', span)
   output_example.set_int_custom_property('version', version)
+  for key, value in additional_custom_properties.items():
+    data_types_utils.set_metadata_value(
+        output_example.mlmd_artifact.custom_properties[key], value)
   output_example.uri = 'my_examples_uri'
   contexts = context_lib.prepare_contexts(mlmd_handle, example_gen.contexts)
   execution = execution_publish_utils.register_execution(
-      mlmd_handle,
-      example_gen.node_info.type,
-      contexts,
-      exec_properties={
-          # We use an arbitrary SHA256 hash here for testing. Note that it's
-          # a constant hash that doesn't depend on the parameters, which happens
-          # to be fine since in the tests we never generate more than one
-          # fake example gen run.
-          constants.EXECUTOR_SPEC_FINGERPRINT_KEY:
-              '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'
-      })
+      mlmd_handle, example_gen.node_info.type, contexts)
   execution_publish_utils.publish_succeeded_execution(
       mlmd_handle, execution.id, contexts, {
           'examples': [output_example],
@@ -387,7 +386,9 @@ def _verify_exec_node_task(test_case, pipeline, node, execution_id, task,
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
     expected_context_names.append(
         pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
-  expected_input_artifacts_keys = list(iter(node.inputs.inputs.keys()))
+  expected_input_artifacts_keys = [
+      key for key, value in node.inputs.inputs.items() if not value.hidden
+  ]
   expected_output_artifacts_keys = list(iter(node.outputs.outputs.keys()))
   if expected_output_artifacts_keys:
     output_artifact_uri = os.path.join(
