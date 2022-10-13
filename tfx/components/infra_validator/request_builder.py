@@ -257,7 +257,8 @@ class _TFServingRpcRequestBuilder(_BaseRequestBuilder):
     return self._examples
 
   def BuildRequests(self) -> List[iv_types.TensorFlowServingRequest]:
-    assert self._records, 'Records are empty.'
+    if not self._records:
+      raise AssertionError('Records are empty.')
     result = []
     for signature_name, signature_def in self._signatures.items():
       if signature_def.method_name == tf.saved_model.PREDICT_METHOD_NAME:

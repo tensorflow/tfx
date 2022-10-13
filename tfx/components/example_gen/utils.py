@@ -267,7 +267,8 @@ def _make_zero_padding_spec_value(spec_full_regex: str, pattern: str,
                                   spec_value: int) -> str:
   """Returns spec value, applies zero padding if needed."""
   match_result = re.search(spec_full_regex, pattern)
-  assert match_result, 'No %s found in split %s' % (spec_full_regex, pattern)
+  if not match_result:
+    raise AssertionError('No %s found in split %s' % (spec_full_regex, pattern))
   width_str = match_result.group('width')
   if width_str:
     width_int = 0
@@ -412,7 +413,8 @@ def _get_spec_width(spec_full_regex: str, spec_name: str,
                     split: example_gen_pb2.Input.Split) -> Optional[str]:
   """Returns width modifier of a spec, if it exists."""
   result = re.search(spec_full_regex, split.pattern)
-  assert result, 'No %s found in split %s' % (spec_name, split.pattern)
+  if not result:
+    raise AssertionError('No %s found in split %s' % (spec_name, split.pattern))
   width_str = result.group('width')
   if width_str:
     try:

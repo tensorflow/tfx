@@ -68,13 +68,15 @@ def is_compatible(value: Any, tp: Any) -> bool:
   if maybe_origin is not None:
     # Union[T]
     if maybe_origin is typing.Union:
-      assert maybe_args, f'{tp} should be subscripted.'
+      if not maybe_args:
+        raise AssertionError(f'{tp} should be subscripted.')
       return any(is_compatible(value, arg) for arg in maybe_args)
     # Type[T]
     elif maybe_origin is type:
       if not maybe_args:
         return inspect.isclass(value)
-      assert len(maybe_args) == 1
+      if len(maybe_args) != 1:
+        raise AssertionError
       subtype = maybe_args[0]
       if subtype is Any:
         return inspect.isclass(value)
@@ -96,7 +98,8 @@ def is_compatible(value: Any, tp: Any) -> bool:
         return False
       if not maybe_args:
         return True
-      assert len(maybe_args) == 1
+      if len(maybe_args) != 1:
+        raise AssertionError
       return all(is_compatible(v, maybe_args[0]) for v in value)
     # Tuple[T]
     elif maybe_origin is tuple:
@@ -117,14 +120,16 @@ def is_compatible(value: Any, tp: Any) -> bool:
         return False
       if not maybe_args:  # Unsubscripted Dict.
         return True
-      assert len(maybe_args) == 2
+      if len(maybe_args) != 2:
+        raise AssertionError
       kt, vt = maybe_args
       return all(
           is_compatible(k, kt) and is_compatible(v, vt)
           for k, v in value.items())
     # Literal[T]
     elif maybe_origin is typing_extensions.Literal:
-      assert maybe_args
+      if not maybe_args:
+        raise AssertionError
       return value in maybe_args
     else:
       raise NotImplementedError(

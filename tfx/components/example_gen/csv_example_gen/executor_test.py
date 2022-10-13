@@ -47,9 +47,11 @@ class ExecutorTest(absltest.TestCase):
 
       def check_results(results):
         # We use Python assertion here to avoid Beam serialization error.
-        assert (15000 == len(results)), 'Unexpected example count {}.'.format(
-            len(results))
-        assert (18 == len(results[0].features.feature)), 'Example not match.'
+        if (15000 != len(results)):
+          raise AssertionError('Unexpected example count {}.'.format(
+              len(results)))
+        if (18 != len(results[0].features.feature)):
+          raise AssertionError('Example not match.')
 
       util.assert_that(examples, check_results)
 
@@ -65,17 +67,21 @@ class ExecutorTest(absltest.TestCase):
 
       def check_results(results):
         # We use Python assertion here to avoid Beam serialization error.
-        assert (3 == len(results)), 'Unexpected example count {}.'.format(
-            len(results))
+        if (3 != len(results)):
+          raise AssertionError('Unexpected example count {}.'.format(
+              len(results)))
         for example in results:
-          assert (example.features.feature['A'].HasField('int64_list')
-                 ), 'Column A should be int64 type.'
-          assert (not example.features.feature['B'].WhichOneof('kind')
-                 ), 'Column B should be empty.'
-          assert (example.features.feature['C'].HasField('bytes_list')
-                 ), 'Column C should be byte type.'
-          assert (example.features.feature['D'].HasField('float_list')
-                 ), 'Column D should be float type.'
+          if not (example.features.feature['A'].HasField('int64_list')
+                 ):
+            raise AssertionError('Column A should be int64 type.')
+          if example.features.feature['B'].WhichOneof('kind'):
+            raise AssertionError('Column B should be empty.')
+          if not (example.features.feature['C'].HasField('bytes_list')
+                 ):
+            raise AssertionError('Column C should be byte type.')
+          if not (example.features.feature['D'].HasField('float_list')
+                 ):
+            raise AssertionError('Column D should be float type.')
 
       util.assert_that(examples, check_results)
 
@@ -91,14 +97,16 @@ class ExecutorTest(absltest.TestCase):
 
       def check_results(results):
         # We use Python assertion here to avoid Beam serialization error.
-        assert (3 == len(results)), 'Unexpected example count: {}.'.format(
-            len(results))
+        if (3 != len(results)):
+          raise AssertionError('Unexpected example count: {}.'.format(
+              len(results)))
         instance = results[1]
-        assert (instance.features.feature['B'].HasField('bytes_list')
-               ), 'Column B should be bytes type. '
+        if not (instance.features.feature['B'].HasField('bytes_list')
+               ):
+          raise AssertionError('Column B should be bytes type. ')
         value = instance.features.feature['B'].bytes_list.value
-        assert (value ==
-                [b'"2,\n"3",\n4\n5"']), 'Unexpected value: {}.'.format(value)
+        if (value != [b'"2,\n"3",\n4\n5"']):
+          raise AssertionError('Unexpected value: {}.'.format(value))
 
       util.assert_that(examples, check_results)
 

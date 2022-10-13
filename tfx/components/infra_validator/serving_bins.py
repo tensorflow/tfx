@@ -177,7 +177,8 @@ class TensorFlowServing(ServingBinary):
       # model_path should be a local directory. In order to make TF Serving see
       # the host model path, we need to mount model path volume to the
       # container.
-      assert os.path.isdir(model_path), '{} does not exist'.format(model_path)
+      if not os.path.isdir(model_path):
+        raise AssertionError('{} does not exist'.format(model_path))
       container_model_path = tf_serving_flavor.make_model_path(
           model_base_path=self._DEFAULT_MODEL_BASE_PATH,
           model_name=self._model_name,

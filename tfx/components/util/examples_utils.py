@@ -36,8 +36,9 @@ def get_payload_format(examples: types.Artifact) -> int:
   Returns:
     payload_format: One of the enums in example_gen_pb2.PayloadFormat.
   """
-  assert examples.type_name == standard_artifacts.Examples.TYPE_NAME, (
-      'examples must be of type standard_artifacts.Examples')
+  if examples.type_name != standard_artifacts.Examples.TYPE_NAME:
+    raise AssertionError(
+        'examples must be of type standard_artifacts.Examples')
   if examples.has_custom_property(
       example_gen_utils.PAYLOAD_FORMAT_PROPERTY_NAME):
     return example_gen_pb2.PayloadFormat.Value(
@@ -63,8 +64,9 @@ def set_payload_format(examples: types.Artifact, payload_format: int):
     examples: A standard_artifacts.Examples artifact.
     payload_format: One of the enums in example_gen_pb2.PayloadFormat.
   """
-  assert examples.type_name == standard_artifacts.Examples.TYPE_NAME, (
-      'examples must be of type standard_artifacts.Examples')
+  if examples.type_name != standard_artifacts.Examples.TYPE_NAME:
+    raise AssertionError(
+        'examples must be of type standard_artifacts.Examples')
   examples.set_string_custom_property(
       example_gen_utils.PAYLOAD_FORMAT_PROPERTY_NAME,
       example_gen_pb2.PayloadFormat.Name(payload_format))
@@ -82,8 +84,9 @@ def get_file_format(examples: types.Artifact) -> str:
   Returns:
     One of the file format that tfx_bsl understands.
   """
-  assert examples.type_name == standard_artifacts.Examples.TYPE_NAME, (
-      'examples must be of type standard_artifacts.Examples')
+  if examples.type_name != standard_artifacts.Examples.TYPE_NAME:
+    raise AssertionError(
+        'examples must be of type standard_artifacts.Examples')
   if examples.has_custom_property(example_gen_utils.FILE_FORMAT_PROPERTY_NAME):
     return examples.get_string_custom_property(
         example_gen_utils.FILE_FORMAT_PROPERTY_NAME)
@@ -98,7 +101,8 @@ def set_file_format(examples: types.Artifact, file_format: str):
     examples: A standard_artifacts.Examples artifact.
     file_format: One of the file format that tfx_bsl understands.
   """
-  assert examples.type_name == standard_artifacts.Examples.TYPE_NAME, (
-      'examples must be of type standard_artifacts.Examples')
+  if examples.type_name != standard_artifacts.Examples.TYPE_NAME:
+    raise AssertionError(
+        'examples must be of type standard_artifacts.Examples')
   examples.set_string_custom_property(
       example_gen_utils.FILE_FORMAT_PROPERTY_NAME, file_format)

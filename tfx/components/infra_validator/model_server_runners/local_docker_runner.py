@@ -105,13 +105,15 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
         image=self._serving_binary.image)
 
   def GetEndpoint(self):
-    assert self._endpoint is not None, (
-        'Endpoint is not yet created. You should call Start() first.')
+    if self._endpoint is None:
+      raise AssertionError(
+          'Endpoint is not yet created. You should call Start() first.')
     return self._endpoint
 
   def Start(self):
-    assert self._container is None, (
-        'You cannot start model server multiple times.')
+    if self._container is not None:
+      raise AssertionError(
+          'You cannot start model server multiple times.')
 
     if isinstance(self._serving_binary, serving_bins.TensorFlowServing):
       is_local = os.path.isdir(self._model_path)
@@ -126,7 +128,8 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
     self._container = self._docker.containers.run(**run_params)
 
   def WaitUntilRunning(self, deadline):
-    assert self._container is not None, 'container has not been started.'
+    if self._container is None:
+      raise AssertionError('container has not been started.')
 
     while time.time() < deadline:
       try:

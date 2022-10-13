@@ -253,7 +253,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
     if materialize:
       expected_outputs.append('transformed_examples')
 
-      assert len(example_artifacts) == len(transformed_example_artifacts)
+      if len(example_artifacts) != len(transformed_example_artifacts):
+        raise AssertionError
       for example, transformed_example in zip(example_artifacts,
                                               transformed_example_artifacts):
         examples_train_files = fileio.glob(
@@ -366,7 +367,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
       transform_executor = executor.Executor()
       transform_executor.Do(self._input_dict, self._output_dict,
                             self._exec_properties)
-    assert len(pipelines) == 1
+    if len(pipelines) != 1:
+      raise AssertionError
     return pipelines[0].metrics
 
   def test_do_with_module_file(self):

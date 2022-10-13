@@ -187,9 +187,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       data_list = []
       for split, example_uri in example_uris.items():
         tfxio = tfxio_factory([io_utils.all_files_pattern(example_uri)])
-        assert isinstance(tfxio, record_based_tfxio.RecordBasedTFXIO), (
-            'Unable to use TFXIO {} as it does not support reading raw records.'
-            .format(type(tfxio)))
+        if not isinstance(tfxio, record_based_tfxio.RecordBasedTFXIO):
+          raise AssertionError(
+              'Unable to use TFXIO {} as it does not support reading raw records.'
+              .format(type(tfxio)))
         # pylint: disable=no-value-for-parameter
         data = (pipeline
                 | 'ReadData[{}]'.format(split) >> tfxio.RawRecordBeamSource()
