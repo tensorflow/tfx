@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 from absl import logging
 from tfx.types import artifact_property
+from tfx.types import implicit_properties
 from tfx.types.system_artifacts import SystemArtifact
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
@@ -63,12 +64,6 @@ CUSTOM_PROPERTIES_PREFIX = 'custom:'
 JsonValueType = Union[Dict, List, int, float, type(None), str]
 _JSON_SINGLE_VALUE_KEY = '__value__'
 
-# Implicit properties that will be added to all artifacts.
-IMPLICIT_ARTIFACT_PROPERTIES = {
-    'is_external': Property(type=PropertyType.INT
-                           ),  # This int property is used as a boolean
-}
-
 
 def _decode_struct_value(
     struct_value: Optional[struct_pb2.Struct]) -> JsonValueType:
@@ -96,21 +91,20 @@ def _encode_struct_value(value: JsonValueType) -> Optional[struct_pb2.Struct]:
 def _add_implicit_artifact_properties(
     artifact_type: metadata_store_pb2.ArtifactType) -> None:
   """Adds implicit properties to an MLMD artifact type."""
-  for property_name, property_def in IMPLICIT_ARTIFACT_PROPERTIES.items():
-    if property_name in artifact_type.properties:
-      if artifact_type.properties[property_name] == property_def.mlmd_type():
+  for name, prop in implicit_properties.IMPLICIT_ARTIFACT_PROPERTIES.items():
+    if name in artifact_type.properties:
+      if artifact_type.properties[name] == prop.mlmd_type():
         # The implicit property exactly matches an existing property.
         continue
       raise AttributeError(
           f'Artifact subclass {artifact_type.name} declares a property named '
-          f'"{property_name}" that conflicts with an implicit property with '
+          f'"{name}" that conflicts with an implicit property with '
           'the same name.')
-    if not (isinstance(property_name,
-                       (str, bytes)) and isinstance(property_def, Property)):
+    if not (isinstance(name, (str, bytes)) and isinstance(prop, Property)):
       raise ValueError(
           'IMPLICIT_ARTIFACT_PROPERTIES must only contain entries with keys'
           ' of type string and values of type artifact.Property.')
-    artifact_type.properties[property_name] = property_def.mlmd_type()
+    artifact_type.properties[name] = prop.mlmd_type()
 
 
 class Artifact(json_utils.Jsonable):

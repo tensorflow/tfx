@@ -23,6 +23,7 @@ import tensorflow as tf
 from tfx.types import artifact
 from tfx.types import artifact_property
 from tfx.types import value_artifact
+from tfx.types import implicit_properties
 from tfx.types.system_artifacts import Dataset
 from tfx.utils import json_utils
 
@@ -201,14 +202,14 @@ class ArtifactTest(tf.test.TestCase):
     super(ArtifactTest, cls).setUpClass()
     # Set an implicit artifact property for testing, which will be added as a
     # property for every artifact.
-    artifact.IMPLICIT_ARTIFACT_PROPERTIES[
+    implicit_properties.IMPLICIT_ARTIFACT_PROPERTIES[
         'implicit_property'] = artifact.Property(
             type=artifact.PropertyType.STRING)
 
   @classmethod
   def tearDownClass(cls):
     super(ArtifactTest, cls).tearDownClass()
-    del artifact.IMPLICIT_ARTIFACT_PROPERTIES['implicit_property']
+    del implicit_properties.IMPLICIT_ARTIFACT_PROPERTIES['implicit_property']
 
   def testArtifact(self):
     instance = _MyArtifact()
