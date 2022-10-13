@@ -194,10 +194,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                 add_metrics_callbacks=add_metrics_callbacks))
     else:
       eval_config = None
-      assert (standard_component_specs.FEATURE_SLICING_SPEC_KEY
+      if not (standard_component_specs.FEATURE_SLICING_SPEC_KEY
               in exec_properties and
               exec_properties[standard_component_specs.FEATURE_SLICING_SPEC_KEY]
-             ), 'both eval_config and feature_slicing_spec are unset.'
+             ):
+        raise AssertionError('both eval_config and feature_slicing_spec are unset.')
       feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
       proto_utils.json_to_proto(
           exec_properties[standard_component_specs.FEATURE_SLICING_SPEC_KEY],

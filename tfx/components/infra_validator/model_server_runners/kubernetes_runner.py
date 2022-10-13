@@ -105,8 +105,9 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
       serving_binary: A ServingBinary to run.
       serving_spec: A ServingSpec instance.
     """
-    assert serving_spec.WhichOneof('serving_platform') == 'kubernetes', (
-        'ServingSpec configuration mismatch.')
+    if serving_spec.WhichOneof('serving_platform') != 'kubernetes':
+      raise AssertionError(
+          'ServingSpec configuration mismatch.')
     self._config = serving_spec.kubernetes
 
     self._model_path = model_path
@@ -135,14 +136,16 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
         pod_name=self._pod_name)
 
   def GetEndpoint(self) -> str:
-    assert self._endpoint is not None, (
-        'self._endpoint is not ready. You should call Start() and '
-        'WaitUntilRunning() first.')
+    if self._endpoint is None:
+      raise AssertionError(
+          'self._endpoint is not ready. You should call Start() and '
+          'WaitUntilRunning() first.')
     return self._endpoint
 
   def Start(self) -> None:
-    assert not self._pod_name, (
-        'You cannot start model server multiple times.')
+    if self._pod_name:
+      raise AssertionError(
+          'You cannot start model server multiple times.')
 
     # We're creating a Pod rather than a Deployment as we're relying on
     # executor's retry mechanism for failure recovery, and the death of the Pod
@@ -154,8 +157,9 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
     logging.info('Created Pod:\n%s', pod)
 
   def WaitUntilRunning(self, deadline: float) -> None:
-    assert self._pod_name, (
-        'Pod has not been created yet. You should call Start() first.')
+    if not self._pod_name:
+      raise AssertionError(
+          'Pod has not been created yet. You should call Start() first.')
 
     while time.time() < deadline:
       try:

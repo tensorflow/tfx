@@ -169,8 +169,9 @@ def _add_columns(example: tf.train.Example,
   """Add given features to `example`."""
   feature_map = example.features.feature
   for col, value in features:
-    assert col not in feature_map, ('column name %s already exists in example: '
-                                    '%s') % (col, example)
+    if col in feature_map:
+      raise AssertionError(('column name %s already exists in example: '
+                                      '%s') % (col, example))
     # Note: we only consider two types, bytes and float for now.
     if isinstance(value[0], (str, bytes)):
       if isinstance(value[0], str):

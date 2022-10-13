@@ -179,7 +179,8 @@ class FileBasedDriver(Driver):
       range_config: Optional[range_config_pb2.RangeConfig] = None,
       input_base_uri: Optional[str] = None) -> input_processor.InputProcessor:
     """Returns FileBasedInputProcessor."""
-    assert input_base_uri
+    if not input_base_uri:
+      raise AssertionError
     return input_processor.FileBasedInputProcessor(input_base_uri, splits,
                                                    range_config)
 

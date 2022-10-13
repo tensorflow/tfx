@@ -77,8 +77,9 @@ def _PartitionFn(
     split_config: example_gen_pb2.SplitConfig,
 ) -> int:
   """Partition function for the ExampleGen's output splits."""
-  assert num_partitions == len(
-      buckets), 'Partitions do not match bucket number.'
+  if num_partitions != len(
+      buckets):
+    raise AssertionError('Partitions do not match bucket number.')
   partition_str = _GeneratePartitionKey(record, split_config)
   bucket = int(hashlib.sha256(partition_str).hexdigest(), 16) % buckets[-1]
   # For example, if buckets is [10,50,80], there will be 3 splits:
@@ -188,9 +189,10 @@ class BaseExampleGenExecutor(base_beam_executor.BaseBeamExecutor, abc.ABC):
     input_to_record = self.GetInputSourceToExamplePTransform()
     if output_config.split_config.splits:
       # Use output splits, input must have only one split.
-      assert len(
+      if len(
           input_config.splits
-      ) == 1, 'input must have only one split when output split is specified.'
+      ) != 1:
+        raise AssertionError('input must have only one split when output split is specified.')
       # Calculate split buckets.
       buckets = []
       total_buckets = 0

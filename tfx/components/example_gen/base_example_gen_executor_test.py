@@ -91,7 +91,8 @@ def _test_input_sourceto_example_ptransform(pipeline, exec_properties,
     size = 4000
   elif split_pattern == 'eval/*':
     size = 2000
-  assert size != 0
+  if size == 0:
+    raise AssertionError
 
   if exec_properties.get('format_parquet', False):
     mock_examples.extend(_create_parquet_records(size, exec_properties))

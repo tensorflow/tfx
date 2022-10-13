@@ -189,7 +189,8 @@ class FileBasedInputProcessor(InputProcessor):
   def get_input_fingerprint(self, span: int,
                             version: Optional[int]) -> Optional[str]:
     """Returns the fingerprint for a certain Version of a certain Span."""
-    assert self._fingerprint, 'Call resolve_span_and_version first.'
+    if not self._fingerprint:
+      raise AssertionError('Call resolve_span_and_version first.')
     return self._fingerprint
 
 

@@ -54,20 +54,24 @@ class PerformRewriteTest(absltest.TestCase):
       return 'my_rewriter'
 
     def _pre_rewrite_validate(self, original_model):
-      assert original_model == self._expected_original_model
+      if original_model != self._expected_original_model:
+        raise AssertionError
       self.pre_rewrite_validate_called = True
       if self._pre_rewrite_validate_raises_error:
         raise ValueError('pre-rewrite-validate-error')
 
     def _rewrite(self, original_model, rewritten_model):
-      assert original_model == self._expected_original_model
-      assert rewritten_model == self._expected_rewritten_model
+      if original_model != self._expected_original_model:
+        raise AssertionError
+      if rewritten_model != self._expected_rewritten_model:
+        raise AssertionError
       self.rewrite_called = True
       if self._rewrite_raises_error:
         raise ValueError('rewrite-error')
 
     def _post_rewrite_validate(self, rewritten_model):
-      assert rewritten_model == self._expected_rewritten_model
+      if rewritten_model != self._expected_rewritten_model:
+        raise AssertionError
       self.post_rewrite_validate_called = True
       if self._post_rewrite_validate_raises_error:
         raise ValueError('post-rewrite-validate-error')

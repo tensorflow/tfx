@@ -167,32 +167,38 @@ class _Dataset:
 
   @property
   def file_pattern(self):
-    assert self._file_pattern
+    if not self._file_pattern:
+      raise AssertionError
     return self._file_pattern
 
   @property
   def stats_output_path(self):
-    assert self._stats_output_path
+    if not self._stats_output_path:
+      raise AssertionError
     return self._stats_output_path
 
   @property
   def materialize_output_path(self):
-    assert self._materialize_output_path
+    if not self._materialize_output_path:
+      raise AssertionError
     return self._materialize_output_path
 
   @property
   def index(self):
-    assert self._index is not None
+    if self._index is None:
+      raise AssertionError
     return self._index
 
   @property
   def dataset_key(self):
-    assert self._dataset_key
+    if not self._dataset_key:
+      raise AssertionError
     return self._dataset_key
 
   @property
   def data_format(self):
-    assert self._data_format
+    if not self._data_format:
+      raise AssertionError
     return self._data_format
 
   @property
@@ -201,27 +207,32 @@ class _Dataset:
 
   @property
   def file_format(self):
-    assert self._file_format
+    if not self._file_format:
+      raise AssertionError
     return self._file_format
 
   @property
   def standardized(self):
-    assert self._standardized is not None
+    if self._standardized is None:
+      raise AssertionError
     return self._standardized
 
   @property
   def transformed(self):
-    assert self._transformed is not None
+    if self._transformed is None:
+      raise AssertionError
     return self._transformed
 
   @property
   def transformed_and_standardized(self):
-    assert self._transformed_and_standardized is not None
+    if self._transformed_and_standardized is None:
+      raise AssertionError
     return self._transformed_and_standardized
 
   @property
   def tfxio(self):
-    assert self._tfxio is not None
+    if self._tfxio is None:
+      raise AssertionError
     return self._tfxio
 
   @index.setter
@@ -469,8 +480,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     for split in splits_config.analyze:
       data_uris = artifact_utils.get_split_uris(
           input_dict[standard_component_specs.EXAMPLES_KEY], split)
-      assert len(data_uris) == len(
-          examples_file_formats), 'Length of file formats is different'
+      if len(data_uris) != len(
+          examples_file_formats):
+        raise AssertionError('Length of file formats is different')
       for data_uri, file_format in zip(data_uris, examples_file_formats):
         analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
         analyze_file_formats.append(file_format)
@@ -480,8 +492,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     for split in splits_config.transform:
       data_uris = artifact_utils.get_split_uris(
           input_dict[standard_component_specs.EXAMPLES_KEY], split)
-      assert len(data_uris) == len(
-          examples_file_formats), 'Length of file formats is different'
+      if len(data_uris) != len(
+          examples_file_formats):
+        raise AssertionError('Length of file formats is different')
       for data_uri, file_format in zip(data_uris, examples_file_formats):
         transform_data_paths.append(io_utils.all_files_pattern(data_uri))
         transform_file_formats.append(file_format)
@@ -1588,13 +1601,16 @@ class TransformProcessor:
     Returns:
       A list of `_Dataset` sorted by their dataset_key property.
     """
-    assert len(file_patterns) == len(file_formats)
+    if len(file_patterns) != len(file_formats):
+      raise AssertionError
     if stats_output_paths:
-      assert len(file_patterns) == len(stats_output_paths)
+      if len(file_patterns) != len(stats_output_paths):
+        raise AssertionError
     else:
       stats_output_paths = [None] * len(file_patterns)
     if materialize_output_paths:
-      assert len(file_patterns) == len(materialize_output_paths)
+      if len(file_patterns) != len(materialize_output_paths):
+        raise AssertionError
     else:
       materialize_output_paths = [None] * len(file_patterns)
 
@@ -1716,8 +1732,9 @@ class TransformProcessor:
     if not datasets:
       return
     for dataset in datasets[1:]:
-      assert (datasets[0].tfxio.ArrowSchema().equals(
-          dataset.tfxio.ArrowSchema()))
+      if not (datasets[0].tfxio.ArrowSchema().equals(
+          dataset.tfxio.ArrowSchema())):
+        raise AssertionError
 
   @staticmethod
   def _GetTFXIOPassthroughKeys() -> Optional[Set[str]]:

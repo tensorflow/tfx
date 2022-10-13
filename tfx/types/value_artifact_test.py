@@ -33,7 +33,8 @@ class _MyValueArtifact(value_artifact.ValueArtifact):
   TYPE_NAME = 'MyValueTypeName'
 
   def encode(self, value: str):
-    assert isinstance(value, str), value
+    if not isinstance(value, str):
+      raise AssertionError(value)
     return value.encode('utf-8')
 
   def decode(self, value: bytes):

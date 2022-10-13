@@ -70,11 +70,13 @@ class RewritingExporterTest(tf.test.TestCase):
 
     def _rewrite(self, original_model, rewritten_model):
       self.rewrite_called = True
-      assert fileio.exists(
-          os.path.join(original_model.path, ORIGINAL_SAVED_MODEL))
-      assert fileio.exists(
+      if not fileio.exists(
+          os.path.join(original_model.path, ORIGINAL_SAVED_MODEL)):
+        raise AssertionError
+      if not fileio.exists(
           os.path.join(original_model.path, tf.saved_model.ASSETS_DIRECTORY,
-                       ORIGINAL_VOCAB))
+                       ORIGINAL_VOCAB)):
+        raise AssertionError
       with fileio.open(
           os.path.join(rewritten_model.path, REWRITTEN_SAVED_MODEL), 'w') as f:
         f.write(str(REWRITTEN_SAVED_MODEL))
