@@ -81,7 +81,7 @@ class GarbageCollectionTest(test_utils.TfxTest):
     self.assertArtifactIdsEqual(
         [],
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
-            self._metadata, example_gen_node_uid))
+            self._metadata, example_gen_node_uid, self._example_gen))
 
   def test_artifacts_in_use(self):
     policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
@@ -101,7 +101,7 @@ class GarbageCollectionTest(test_utils.TfxTest):
     self.assertArtifactIdsEqual(
         examples,
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
-            self._metadata, example_gen_node_uid))
+            self._metadata, example_gen_node_uid, self._example_gen))
 
     test_utils.fake_start_node_with_handle(self._metadata, self._transform,
                                            example_gen_output)
@@ -109,7 +109,7 @@ class GarbageCollectionTest(test_utils.TfxTest):
     self.assertArtifactIdsEqual(
         [],
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
-            self._metadata, example_gen_node_uid))
+            self._metadata, example_gen_node_uid, self._example_gen))
 
   def test_keep_most_recently_published(self):
     policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
@@ -129,7 +129,7 @@ class GarbageCollectionTest(test_utils.TfxTest):
     self.assertArtifactIdsEqual(
         [],
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
-            self._metadata, example_gen_node_uid))
+            self._metadata, example_gen_node_uid, self._example_gen))
 
     # Sleep to ensure the second span has a later publish time than the first.
     # The artifact's create_time_since_epoch is set by ML Metadata, and this
@@ -143,7 +143,7 @@ class GarbageCollectionTest(test_utils.TfxTest):
     self.assertArtifactIdsEqual(
         examples,
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
-            self._metadata, example_gen_node_uid))
+            self._metadata, example_gen_node_uid, self._example_gen))
 
   @mock.patch.object(io_utils, 'delete_dir')
   def test_garbage_collect_artifacts(self, delete_dir):
@@ -197,7 +197,7 @@ class GarbageCollectionTest(test_utils.TfxTest):
     self.assertArtifactIdsEqual(
         [examples_a_0_0, examples_a_1_0, examples_a_2_0],
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
-            self._metadata, example_gen_node_uid))
+            self._metadata, example_gen_node_uid, self._example_gen))
 
   def test_keep_property_value_groups_with_none_value(self):
     policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
@@ -221,13 +221,13 @@ class GarbageCollectionTest(test_utils.TfxTest):
     self.assertArtifactIdsEqual(
         [],
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
-            self._metadata, example_gen_node_uid))
+            self._metadata, example_gen_node_uid, self._example_gen))
 
     self._produce_examples(test_property=2)  # Should not be garbage collected
     self.assertArtifactIdsEqual(
         [examples_none],  # Now it should be garbage collected
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
-            self._metadata, example_gen_node_uid))
+            self._metadata, example_gen_node_uid, self._example_gen))
 
   def test_keep_property_value_groups_non_homogenous_types_failure(self):
     policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
@@ -253,7 +253,7 @@ class GarbageCollectionTest(test_utils.TfxTest):
         ValueError, (f'({expected_error_message % ("str", "int")}|'
                      f'{expected_error_message % ("int", "str")})')):
       garbage_collection.get_artifacts_to_garbage_collect_for_node(
-          self._metadata, example_gen_node_uid)
+          self._metadata, example_gen_node_uid, self._example_gen)
 
 
 if __name__ == '__main__':

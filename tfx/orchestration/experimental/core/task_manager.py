@@ -340,7 +340,7 @@ def _publish_execution_results(mlmd_handle: metadata.Metadata,
         output_artifacts=task.output_artifacts,
         executor_output=executor_output)
     garbage_collection.run_garbage_collection_for_node(
-        mlmd_handle, task.node_uid)
+        mlmd_handle, task.node_uid, task.get_node())
   elif isinstance(result.output, ts.ImporterNodeOutput):
     output_artifacts = result.output.output_artifacts
     # TODO(b/182316162): Unify publisher handing so that post-execution artifact
