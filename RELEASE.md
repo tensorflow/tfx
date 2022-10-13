@@ -30,6 +30,7 @@ with support for proto property values and this comment is subsequently removed.
 *   Importer will now check that an existing artifact has the same type as the intended output before reusing the existing artifact.
 *   Importer will now use the most recently created artifact when reusing an existing artifact instead of the one with the highest ID.
 *   Proto placeholder now works with proto files that have non-trivial transitive dependencies.
+*   Artifact URIs that point to a directory now include a trailing forward slash.
 
 ## Dependency Updates
 

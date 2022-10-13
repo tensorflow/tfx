@@ -234,7 +234,8 @@ def generate_output_artifacts(execution_id: int,
   output_artifacts = collections.defaultdict(list)
   for key, value in outputs.items():
     artifact = artifact_utils.deserialize_artifact(value.artifact_spec.type)
-    artifact.uri = os.path.join(node_dir, key, str(execution_id))
+    # The URI is a directory so it should end in a forward slash.
+    artifact.uri = os.path.join(node_dir, key, str(execution_id), '')
     if isinstance(artifact, ValueArtifact):
       artifact.uri = os.path.join(artifact.uri, _VALUE_ARTIFACT_FILE_NAME)
 

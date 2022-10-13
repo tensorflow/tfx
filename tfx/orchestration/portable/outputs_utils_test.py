@@ -208,7 +208,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertLen(output_artifacts['output_4'], 1)
 
     artifact_1 = output_artifacts['output_1'][0]
-    self.assertRegex(artifact_1.uri, '.*/test_node/output_1/1')
+    self.assertRegex(artifact_1.uri, '.*/test_node/output_1/1/')
     self.assertProtoEquals(
         """
         id: 1
@@ -246,7 +246,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         'bbb')
 
     artifact_2 = output_artifacts['output_2'][0]
-    self.assertRegex(artifact_2.uri, '.*/test_node/output_2/1')
+    self.assertRegex(artifact_2.uri, '.*/test_node/output_2/1/')
     self.assertProtoEquals(
         """
         id: 2
