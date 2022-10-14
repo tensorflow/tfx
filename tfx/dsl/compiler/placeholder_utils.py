@@ -15,6 +15,7 @@
 
 import base64
 import enum
+import os
 import re
 from typing import Any, Callable, Dict, List, Union
 
@@ -192,6 +193,8 @@ class _ExpressionResolver:
         },
         placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
             context.exec_info.to_proto(),
+        placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE:
+            os.environ.get,
     }
 
   def resolve(self, expression: placeholder_pb2.PlaceholderExpression) -> Any:
@@ -219,6 +222,11 @@ class _ExpressionResolver:
     # a key.
     if placeholder.type == placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
       return context
+    # Handle the special case of ENVIRONMENT_VARIABLE and STRING_VALUE
+    # placeholders, which needs to be resolved as a function call.
+    elif (placeholder.type ==
+          placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE):
+      return context(placeholder.key)
 
     # Handle remaining placeholder types.
     try:
@@ -229,7 +237,7 @@ class _ExpressionResolver:
       # context. However this means we cannot distinguish between a correct
       # placeholder with an optional value vs. an incorrect placeholder.
       # TODO(b/172001324): Handle this at compile time.
-      raise NullDereferenceError(placeholder)
+      raise NullDereferenceError(placeholder) from e
 
   def _resolve_placeholder_operator(
       self, placeholder_operator: placeholder_pb2.PlaceholderExpressionOperator
@@ -508,11 +516,18 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
   if expression.HasField("placeholder"):
     placeholder_pb = expression.placeholder
     ph_names_map = {
-        placeholder_pb2.Placeholder.INPUT_ARTIFACT: "input",
-        placeholder_pb2.Placeholder.OUTPUT_ARTIFACT: "output",
-        placeholder_pb2.Placeholder.EXEC_PROPERTY: "exec_property",
-        placeholder_pb2.Placeholder.RUNTIME_INFO: "runtime_info",
-        placeholder_pb2.Placeholder.EXEC_INVOCATION: "execution_invocation"
+        placeholder_pb2.Placeholder.INPUT_ARTIFACT:
+            "input",
+        placeholder_pb2.Placeholder.OUTPUT_ARTIFACT:
+            "output",
+        placeholder_pb2.Placeholder.EXEC_PROPERTY:
+            "exec_property",
+        placeholder_pb2.Placeholder.RUNTIME_INFO:
+            "runtime_info",
+        placeholder_pb2.Placeholder.EXEC_INVOCATION:
+            "execution_invocation",
+        placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE:
+            "environment_variable",
     }
     ph_name = ph_names_map[placeholder_pb.type]
     if placeholder_pb.key:

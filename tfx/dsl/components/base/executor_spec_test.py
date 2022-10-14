@@ -62,6 +62,11 @@ class ExecutorSpecTest(tf.test.TestCase):
             extra_flags: "a"
         }
         beam_pipeline_args: "b"
+        beam_pipeline_args_placeholders {
+          value {
+            string_value: "b"
+          }
+        }
         """, spec_copy.encode())
 
   def testExecutorContainerSpecCopy(self):

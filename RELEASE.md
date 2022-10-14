@@ -12,6 +12,10 @@ with support for proto property values and this comment is subsequently removed.
 ## Major Features and Improvements
 *  Artifact/Channel properties now support the new MLMD PROTO property type.
 
+*  Supports environment variables in the placeholder expression.
+   This placeholder can be used to generate beam_pipeline_args
+   dynamically.
+
 ## Breaking Changes
 
 ### For Pipeline Authors
