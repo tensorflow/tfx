@@ -276,8 +276,9 @@ airflow webserver -p 7070
 
 #### Airflow CLI
 
-You can also use the [Airflow CLI](https://airflow.apache.org/cli.html) to
-enable and trigger your DAGs:
+You can also use the
+[Airflow CLI](https://airflow.apache.org/docs/apache-airflow/stable/cli-and-env-variables-ref.html)
+to enable and trigger your DAGs:
 
 ```bash
 # enable/disable
