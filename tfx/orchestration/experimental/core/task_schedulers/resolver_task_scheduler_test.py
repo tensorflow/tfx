@@ -20,8 +20,8 @@ import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
-from tfx.orchestration.experimental.core import task_manager as tm
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler
 from tfx.orchestration.experimental.core import test_utils
@@ -113,7 +113,8 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
       models = ts_result.output.resolved_input_artifacts['resolved_model']
       self.assertLen(models, 1)
       self.assertEqual('my_model_uri_2', models[0].mlmd_artifact.uri)
-      tm._publish_execution_results(m, resolver_task, ts_result)
+      post_execution_utils.publish_execution_results_for_task(
+          m, resolver_task, ts_result)
 
     # Verify resolver node output is input to the downstream consumer node.
     [consumer_task] = test_utils.run_generator_and_test(

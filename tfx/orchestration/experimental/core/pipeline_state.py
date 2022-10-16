@@ -17,11 +17,12 @@ import base64
 import contextlib
 import copy
 import dataclasses
+import functools
 import json
 import os
 import threading
 import time
-from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
 import uuid
 
 from absl import logging
@@ -356,6 +357,7 @@ class PipelineState:
     # Only set within the pipeline state context.
     self._mlmd_execution_atomic_op_context = None
     self._execution: Optional[metadata_store_pb2.Execution] = None
+    self._on_commit_callbacks: List[Callable[[], None]] = []
 
   @classmethod
   def new(
@@ -614,18 +616,13 @@ class PipelineState:
     old_state = copy.deepcopy(node_state)
     yield node_state
     if old_state.state != node_state.state:
-      # TODO(b/252925780): Calling these here may be premature, they should be
-      # called instead when pipeline state commit is successful.
-      logging.info('Changing node state: %s -> %s; node uid: %s',
-                   old_state.state, node_state.state, node_uid)
-      event_observer.notify(
-          event_observer.NodeStateChange(
-              execution=self._execution,
-              pipeline_id=node_uid.pipeline_uid.pipeline_id,
-              pipeline_run=self.pipeline_run_id,
-              node_id=node_uid.node_id,
-              old_state=old_state,
-              new_state=node_state))
+      self._on_commit_callbacks.extend([
+          functools.partial(_log_node_state_change, old_state.state,
+                            node_state.state, node_uid),
+          functools.partial(_notify_node_state_change,
+                            copy.deepcopy(self._execution), node_uid,
+                            self.pipeline_run_id, old_state, node_state)
+      ])
     _save_node_states_dict(self._execution, node_states_dict)
 
   def get_node_state(self,
@@ -673,12 +670,12 @@ class PipelineState:
       self, state: metadata_store_pb2.Execution.State) -> None:
     """Sets state of underlying pipeline execution."""
     self._check_context()
+
     if self._execution.last_known_state != state:
-      logging.info(
-          'Changing pipeline execution state: %s -> %s; pipeline uid: %s',
-          metadata_store_pb2.Execution.State.Name(
-              self._execution.last_known_state),
-          metadata_store_pb2.Execution.State.Name(state), self.pipeline_uid)
+      self._on_commit_callbacks.append(
+          functools.partial(_log_pipeline_execution_state_change,
+                            self._execution.last_known_state, state,
+                            self.pipeline_uid))
       self._execution.last_known_state = state
 
   def get_property(self, property_key: str) -> Optional[types.Property]:
@@ -710,8 +707,14 @@ class PipelineState:
     return env.get_env().get_orchestration_options(self.pipeline)
 
   def __enter__(self) -> 'PipelineState':
+
+    def _run_on_commit_callbacks():
+      record_state_change_time()
+      for on_commit_cb in self._on_commit_callbacks:
+        on_commit_cb()
+
     mlmd_execution_atomic_op_context = mlmd_state.mlmd_execution_atomic_op(
-        self.mlmd_handle, self.execution_id, record_state_change_time)
+        self.mlmd_handle, self.execution_id, _run_on_commit_callbacks)
     execution = mlmd_execution_atomic_op_context.__enter__()
     self._mlmd_execution_atomic_op_context = mlmd_execution_atomic_op_context
     self._execution = execution
@@ -721,7 +724,10 @@ class PipelineState:
     mlmd_execution_atomic_op_context = self._mlmd_execution_atomic_op_context
     self._mlmd_execution_atomic_op_context = None
     self._execution = None
-    mlmd_execution_atomic_op_context.__exit__(exc_type, exc_val, exc_tb)
+    try:
+      mlmd_execution_atomic_op_context.__exit__(exc_type, exc_val, exc_tb)
+    finally:
+      self._on_commit_callbacks.clear()
 
   def _check_context(self) -> None:
     if self._execution is None:
@@ -787,7 +793,6 @@ class PipelineView:
       with the given pipeline uid exists in MLMD. With code=INTERNAL if more
       than 1 active execution exists for given pipeline uid when pipeline_run_id
       is not specified.
-
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_uid, **kwargs)
     executions = mlmd_handle.store.get_executions_by_context(
@@ -1122,7 +1127,8 @@ def _save_node_states_dict(pipeline_execution: metadata_store_pb2.Execution,
 def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
                               reused_pipeline_view: PipelineView,
                               execution: metadata_store_pb2.Execution) -> None:
-  """Records (previous) node states for nodes that are skipped in partial run."""
+  """Records (previous) node states for nodes that are skipped in partial run.
+  """
   # Set the node state to SKIPPED_PARTIAL_RUN for any nodes that are marked
   # to be skipped in a partial pipeline run.
   node_states_dict = {}
@@ -1152,3 +1158,32 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
   if previous_node_states_dict:
     _save_node_states_dict(execution, previous_node_states_dict,
                            _PREVIOUS_NODE_STATES)
+
+
+def _log_pipeline_execution_state_change(
+    old_state: metadata_store_pb2.Execution.State,
+    new_state: metadata_store_pb2.Execution.State,
+    pipeline_uid: task_lib.PipelineUid) -> None:
+  logging.info('Changed pipeline execution state: %s -> %s; pipeline uid: %s',
+               metadata_store_pb2.Execution.State.Name(old_state),
+               metadata_store_pb2.Execution.State.Name(new_state), pipeline_uid)
+
+
+def _log_node_state_change(old_state: str, new_state: str,
+                           node_uid: task_lib.NodeUid) -> None:
+  logging.info('Changed node state: %s -> %s; node uid: %s', old_state,
+               new_state, node_uid)
+
+
+def _notify_node_state_change(execution: metadata_store_pb2.Execution,
+                              node_uid: task_lib.NodeUid, pipeline_run_id: str,
+                              old_state: NodeState,
+                              new_state: NodeState) -> None:
+  event_observer.notify(
+      event_observer.NodeStateChange(
+          execution=execution,
+          pipeline_id=node_uid.pipeline_uid.pipeline_id,
+          pipeline_run=pipeline_run_id,
+          node_id=node_uid.node_id,
+          old_state=old_state,
+          new_state=new_state))
