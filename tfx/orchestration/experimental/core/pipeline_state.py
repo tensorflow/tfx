@@ -161,7 +161,7 @@ class NodeState(json_utils.Jsonable):
   def is_startable(self) -> bool:
     """Returns True if the node can be started."""
     return self.state in set(
-        [self.PAUSED, self.STOPPING, self.STOPPED, self.FAILED])
+        [self.PAUSED, self.STOPPING, self.STOPPED, self.FAILED, self.SKIPPED])
 
   def is_stoppable(self) -> bool:
     """Returns True if the node can be stopped."""

@@ -1684,10 +1684,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline.nodes.add().pipeline_node.node_info.id = 'ModelValidator'
       pipeline.nodes.add().pipeline_node.node_info.id = 'Pusher'
       pipeline_ops.initiate_pipeline_start(m, pipeline)
-      pipeline_ops.skip_nodes(m, [
-          task_lib.NodeUid(pipeline_uid, 'Transform'),
-          task_lib.NodeUid(pipeline_uid, 'Evaluator')
-      ])
+      pipeline_ops.skip_nodes(
+          m, [
+              task_lib.NodeUid(pipeline_uid, 'Transform'),
+              task_lib.NodeUid(pipeline_uid, 'Evaluator')
+          ],
+          skip_running_nodes=False)
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         states_dict = pipeline_state.get_node_states_dict()
@@ -1708,10 +1710,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Calling skip_nodes for Trainer should raise an error as the node is in
       # state RUNNING.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
-        pipeline_ops.skip_nodes(m, [
-            task_lib.NodeUid(pipeline_uid, 'Trainer'),
-            task_lib.NodeUid(pipeline_uid, 'Pusher')
-        ])
+        pipeline_ops.skip_nodes(
+            m, [
+                task_lib.NodeUid(pipeline_uid, 'Trainer'),
+                task_lib.NodeUid(pipeline_uid, 'Pusher')
+            ],
+            skip_running_nodes=False)
       self.assertEqual(status_lib.Code.FAILED_PRECONDITION,
                        exception_context.exception.code)
       with pstate.PipelineState.load(
@@ -1722,6 +1726,43 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
             states_dict[task_lib.NodeUid(pipeline_uid, 'Trainer')].state)
         self.assertEqual(
             pstate.NodeState.STARTED,
+            states_dict[task_lib.NodeUid(pipeline_uid, 'Pusher')].state)
+
+      # Calling skip_nodes with skip_running_nodes=True should stop Trainer
+      # and then skip it.
+
+      def _inactivate(*args, **kwargs):
+        del args, kwargs
+        with pipeline_ops._PIPELINE_OPS_LOCK:
+          with pipeline_state:
+            with pipeline_state.node_state_update_context(
+                task_lib.NodeUid(pipeline_uid, 'Trainer')) as node_state:
+              self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
+              node_state.update(
+                  pstate.NodeState.STOPPED,
+                  status_lib.Status(code=status_lib.Code.CANCELLED))
+        return True
+
+      with mock.patch.object(
+          pipeline_ops,
+          '_wait_for_node_inactivation') as mock_wait_for_node_inactivation:
+        mock_wait_for_node_inactivation.side_effect = _inactivate
+        pipeline_ops.skip_nodes(
+            m, [
+                task_lib.NodeUid(pipeline_uid, 'Trainer'),
+                task_lib.NodeUid(pipeline_uid, 'Pusher')
+            ],
+            skip_running_nodes=True)
+        mock_wait_for_node_inactivation.assert_called_once()
+
+      with pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+        states_dict = pipeline_state.get_node_states_dict()
+        self.assertEqual(
+            pstate.NodeState.SKIPPED,
+            states_dict[task_lib.NodeUid(pipeline_uid, 'Trainer')].state)
+        self.assertEqual(
+            pstate.NodeState.SKIPPED,
             states_dict[task_lib.NodeUid(pipeline_uid, 'Pusher')].state)
 
   def test_exception_while_orchestrating_active_pipeline(self):

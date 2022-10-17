@@ -290,14 +290,32 @@ def stop_node(mlmd_handle: metadata.Metadata,
 
   # Wait until the node is stopped or time out.
   _wait_for_node_inactivation(
-      pipeline_state, node_uid, timeout_secs=timeout_secs)
+      pipeline_state, [node_uid], timeout_secs=timeout_secs)
 
 
 @_to_status_not_ok_error
-@_pipeline_ops_lock
 def skip_nodes(mlmd_handle: metadata.Metadata,
-               node_uids: Sequence[task_lib.NodeUid]) -> None:
-  """Marks node executions to be skipped."""
+               node_uids: Sequence[task_lib.NodeUid],
+               skip_running_nodes: bool,
+               timeout_secs: Optional[float] = None) -> None:
+  """Skips nodes, possibly after stopping them if they are running.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    node_uids: Uids of the nodes to be skipped.
+    skip_running_nodes: If True, stops any running nodes in the list of
+      node_uids before skipping them. If False, attempting to skip a running
+      node raises an error. When True, it is possible for an error to be raised
+      after some nodes have been stopped but before they are skipped.
+    timeout_secs: Amount of time in seconds to wait for any running nodes to
+      stop when `skip_running_nodes` is `True`. If `None`, waits indefinitely.
+
+  Raises:
+    status_lib.StatusNotOkError: Failure to stop nodes (when
+    `skip_running_nodes` is `True`), or failure to skip nodes.
+  """
+  logging.info('Received request to skip nodes; node uids: %s', node_uids)
+
   # All node_uids must have the same pipeline_uid.
   pipeline_uids_set = set(n.pipeline_uid for n in node_uids)
   if len(pipeline_uids_set) != 1:
@@ -305,23 +323,47 @@ def skip_nodes(mlmd_handle: metadata.Metadata,
         code=status_lib.Code.INVALID_ARGUMENT,
         message='Can skip nodes of a single pipeline at once.')
   pipeline_uid = pipeline_uids_set.pop()
-  with pstate.PipelineState.load(mlmd_handle, pipeline_uid) as pipeline_state:
-    _check_nodes_exist(node_uids, pipeline_state.pipeline, 'skip_nodes')
-    for node_uid in node_uids:
-      with pipeline_state.node_state_update_context(node_uid) as node_state:
-        if node_state.state == pstate.NodeState.SKIPPED:
-          continue
-        elif node_state.is_programmatically_skippable():
-          node_state.update(
-              pstate.NodeState.SKIPPED,
-              status_lib.Status(
-                  code=status_lib.Code.OK,
-                  message='Node skipped by client request.'))
-        else:
-          raise status_lib.StatusNotOkError(
-              code=status_lib.Code.FAILED_PRECONDITION,
-              message=f'Node in state {node_state.state} is not programmatically skippable.'
-          )
+  running_node_uids = []
+
+  # Stop any running nodes.
+  if skip_running_nodes:
+    with _PIPELINE_OPS_LOCK:
+      with pstate.PipelineState.load(mlmd_handle,
+                                     pipeline_uid) as pipeline_state:
+        for node_uid in node_uids:
+          with pipeline_state.node_state_update_context(node_uid) as node_state:
+            if node_state.state in (pstate.NodeState.RUNNING,
+                                    pstate.NodeState.PAUSED):
+              running_node_uids.append(node_uid)
+              node_state.update(
+                  pstate.NodeState.STOPPING,
+                  status_lib.Status(
+                      code=status_lib.Code.CANCELLED,
+                      message='Stopping as an intermediate step to skip node execution.'
+                  ))
+    if running_node_uids:
+      _wait_for_node_inactivation(pipeline_state, running_node_uids,
+                                  timeout_secs)
+
+  with _PIPELINE_OPS_LOCK:
+    with pstate.PipelineState.load(mlmd_handle, pipeline_uid) as pipeline_state:
+      _check_nodes_exist(node_uids, pipeline_state.pipeline, 'skip_nodes')
+      for node_uid in node_uids:
+        with pipeline_state.node_state_update_context(node_uid) as node_state:
+          if node_state.state in (pstate.NodeState.SKIPPED,
+                                  pstate.NodeState.COMPLETE):
+            continue
+          elif node_state.is_programmatically_skippable():
+            node_state.update(
+                pstate.NodeState.SKIPPED,
+                status_lib.Status(
+                    code=status_lib.Code.OK,
+                    message='Node skipped by client request.'))
+          else:
+            raise status_lib.StatusNotOkError(
+                code=status_lib.Code.FAILED_PRECONDITION,
+                message=f'Node in state {node_state.state} is not programmatically skippable.'
+            )
 
 
 @_to_status_not_ok_error
@@ -433,28 +475,31 @@ def update_pipeline(mlmd_handle: metadata.Metadata,
 
 
 def _wait_for_node_inactivation(pipeline_state: pstate.PipelineState,
-                                node_uid: task_lib.NodeUid,
+                                node_uids: Sequence[task_lib.NodeUid],
                                 timeout_secs: Optional[float]) -> None:
-  """Waits for the given node to become inactive.
+  """Waits for the given nodes to become inactive.
 
   Args:
     pipeline_state: Pipeline state.
-    node_uid: Uid of the node whose inactivation is awaited.
+    node_uids: Uids of the nodes whose inactivation is awaited.
     timeout_secs: Amount of time in seconds to wait. If `None`, waits
       indefinitely.
 
   Raises:
-    StatusNotOkError: With error code `DEADLINE_EXCEEDED` if node is not
+    StatusNotOkError: With error code `DEADLINE_EXCEEDED` if all nodes are not
       inactive after waiting approx. `timeout_secs`.
   """
 
   def _is_inactivated() -> bool:
     with pipeline_state:
-      node_state = pipeline_state.get_node_state(node_uid)
-      return node_state.state in (pstate.NodeState.COMPLETE,
-                                  pstate.NodeState.FAILED,
-                                  pstate.NodeState.SKIPPED,
-                                  pstate.NodeState.STOPPED)
+      for node_uid in node_uids:
+        node_state = pipeline_state.get_node_state(node_uid)
+        if node_state.state not in (pstate.NodeState.COMPLETE,
+                                    pstate.NodeState.FAILED,
+                                    pstate.NodeState.SKIPPED,
+                                    pstate.NodeState.STOPPED):
+          return False
+      return True
 
   _wait_for_predicate(_is_inactivated, 'node inactivation',
                       _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS,
