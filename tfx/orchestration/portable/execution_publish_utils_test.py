@@ -239,8 +239,8 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
 
   def testPublishSuccessExecutionExecutorEditedOutputDict(self):
     # There is one artifact in the system provided output_dict, while there are
-    # two artifacts in executor output. We expect that two artifacts are
-    # published.
+    # two artifacts in executor output. We expect that the two updated artifacts
+    # with their updated properties are what is published.
     with metadata.Metadata(connection_config=self._connection_config) as m:
       contexts = self._generate_contexts(m)
       execution_id = execution_publish_utils.register_execution(
@@ -248,6 +248,8 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
 
       output_example = standard_artifacts.Examples()
       output_example.uri = '/original_path'
+      # The executor output overrides this property value
+      output_example.set_int_custom_property('prop', 0)
 
       executor_output = execution_result_pb2.ExecutorOutput()
       output_key = 'examples'

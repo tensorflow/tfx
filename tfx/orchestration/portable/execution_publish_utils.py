@@ -20,6 +20,7 @@ from absl import logging
 
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration.portable import merge_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import typing_utils
@@ -142,8 +143,9 @@ def publish_succeeded_execution(
       updated_artifact_list = executor_output.output_artifacts[key].artifacts
 
       # We assume the original output dict must include at least one output
-      # artifact and all artifacts in the list share the same type.
+      # artifact and all artifacts in the list share the same type/properties.
       original_artifact = artifact_list[0]
+
       # Update the artifact list with what's in the executor output
       artifact_list.clear()
       # TODO(b/175426744): revisit this:
@@ -152,12 +154,12 @@ def publish_succeeded_execution(
       # 2) If multiple output are needed and is a common practice, should we
       #    use driver instead to create the list of output artifact instead
       #    of letting executor to create them.
-      for proto_artifact in updated_artifact_list:
-        _check_validity(proto_artifact, original_artifact,
+      for updated_artifact_proto in updated_artifact_list:
+        _check_validity(updated_artifact_proto, original_artifact,
                         len(updated_artifact_list) > 1)
-        python_artifact = types.Artifact(original_artifact.artifact_type)
-        python_artifact.set_mlmd_artifact(proto_artifact)
-        artifact_list.append(python_artifact)
+        merged_artifact = merge_utils.merge_output_artifact(
+            original_artifact, updated_artifact_proto)
+        artifact_list.append(merged_artifact)
 
   # Marks output artifacts as LIVE.
   for artifact_list in output_artifacts.values():
