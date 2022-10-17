@@ -82,3 +82,7 @@ class Filesystem:
       onerror: Optional[Callable[..., None]] = None
   ) -> Iterable[Tuple[PathType, List[PathType], List[PathType]]]:
     raise NotImplementedError()
+
+  @staticmethod
+  def get_inline_filename(data: str, compressed: bool = False) -> str:
+    raise NotImplementedError()

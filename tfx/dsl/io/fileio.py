@@ -119,3 +119,8 @@ def walk(
 ) -> Iterable[Tuple[PathType, List[PathType], List[PathType]]]:
   """Return an iterator walking a directory tree."""
   return _get_filesystem(top).walk(top, topdown=topdown, onerror=onerror)
+
+
+def get_inline_filename(data: str, compressed: bool = False) -> str:
+  """Return a path for an inline file with the given content."""
+  return _get_filesystem('/inline').get_inline_filename(data, compressed)

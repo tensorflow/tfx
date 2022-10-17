@@ -148,6 +148,9 @@ message ProtoOperator {
     TEXT_FORMAT = 1;
     JSON = 2;
     BINARY = 3;
+    // Emits an /inline/... file path with the proto's text-formatted content.
+    // This is useful for passing to flags that expect a textproto config file.
+    INLINE_FILE_TEXT_FORMAT = 4;
   }
 
   // The format that the proto is serialized to.

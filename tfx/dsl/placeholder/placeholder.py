@@ -222,6 +222,7 @@ class ProtoSerializationFormat(enum.Enum):
   TEXT_FORMAT = placeholder_pb2.ProtoOperator.TEXT_FORMAT
   JSON = placeholder_pb2.ProtoOperator.JSON
   BINARY = placeholder_pb2.ProtoOperator.BINARY
+  INLINE_FILE_TEXT_FORMAT = placeholder_pb2.ProtoOperator.INLINE_FILE_TEXT_FORMAT
 
 
 class ListSerializationFormat(enum.Enum):

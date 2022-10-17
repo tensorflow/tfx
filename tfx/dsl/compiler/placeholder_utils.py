@@ -21,6 +21,7 @@ from typing import Any, Callable, Dict, List, Union
 
 from absl import logging
 import attr
+from tfx.dsl.io import fileio
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import placeholder_pb2
@@ -446,6 +447,10 @@ class _ExpressionResolver:
             message=value, sort_keys=True, preserving_proto_field_name=True)
       if op.serialization_format == placeholder_pb2.ProtoOperator.TEXT_FORMAT:
         return text_format.MessageToString(value)
+      if (op.serialization_format ==
+          placeholder_pb2.ProtoOperator.INLINE_FILE_TEXT_FORMAT):
+        return fileio.get_inline_filename(
+            text_format.MessageToString(value, as_one_line=True))
       if op.serialization_format == placeholder_pb2.ProtoOperator.BINARY:
         return value.SerializeToString()
 
