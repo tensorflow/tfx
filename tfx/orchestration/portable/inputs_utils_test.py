@@ -470,9 +470,10 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     self.assertLen(dynamic_parameters_res, 1)
     self.assertEqual(dynamic_parameters_res['input_num'], 42)
 
-    with self.assertRaisesRegex(
-        exceptions.InputResolutionError,
-        'Failed to resolve dynamic exec properties: input_num'):
+    with self.assertRaises(
+        exceptions.InvalidArgument,
+        msg='Failed to resolve dynamic exec property. '
+        'Key: input_num. Value: input("_test_placeholder")[0].value'):
       dynamic_parameters_res = inputs_utils.resolve_dynamic_parameters(
           dynamic_parameters, {})
 

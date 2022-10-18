@@ -218,7 +218,7 @@ def resolve_dynamic_parameters(
     A Dict of resolved dynamic parameters.
 
   Raises:
-    RuntimeError: When cannot find input for dynamic exec prop.
+    InputResolutionError: If the resolution of dynamic exec property fails.
   """
   result = {}
   converted_input_artifacts = {}
@@ -236,12 +236,14 @@ def resolve_dynamic_parameters(
         resolved_val = placeholder_utils.resolve_placeholder_expression(
             value.placeholder, context)
         if resolved_val is None:
-          raise exceptions.InputResolutionError(
-              f'Cannot find input for dynamic exec prop: {key}')
+          raise exceptions.InvalidArgument(
+              f'Cannot find input artifact to resolve dynamic exec property. '
+              f'Key: {key}. '
+              f'Value: {placeholder_utils.debug_str(value.placeholder)}')
         result[key] = resolved_val
       except Exception as e:
-        raise exceptions.InputResolutionError(
-            f'Failed to resolve dynamic exec properties: {key}'
-        ) from e
+        raise exceptions.InvalidArgument(
+            f'Failed to resolve dynamic exec property. Key: {key}. '
+            f'Value: {placeholder_utils.debug_str(value.placeholder)}') from e
 
   return result
