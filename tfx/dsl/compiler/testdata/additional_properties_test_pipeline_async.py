@@ -23,7 +23,7 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import artifact_property
+from tfx.types import artifact as artifact_module
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.artifact import Artifact
@@ -33,7 +33,7 @@ from google.protobuf import duration_pb2
 from google.protobuf import timestamp_pb2
 
 # TODO(b/241861488): Remove safeguard once fully supported by MLMD.
-artifact_property.ENABLE_PROTO_PROPERTIES = True
+artifact_module._ENABLE_PROTO_PROPERTIES = True  # pylint: disable=protected-access
 
 
 class StatsMetadata(Artifact):

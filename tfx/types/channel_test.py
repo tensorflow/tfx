@@ -18,14 +18,13 @@ from unittest import mock
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact
-from tfx.types import artifact_property
 from tfx.types import channel
 
 from google.protobuf import struct_pb2
 from ml_metadata.proto import metadata_store_pb2
 
 # TODO(b/241861488): Remove safeguard once fully supported by MLMD.
-artifact_property.ENABLE_PROTO_PROPERTIES = True
+artifact._ENABLE_PROTO_PROPERTIES = True
 
 
 class _MyType(artifact.Artifact):

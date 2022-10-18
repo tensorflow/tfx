@@ -21,7 +21,6 @@ from unittest import mock
 import absl
 import tensorflow as tf
 from tfx.types import artifact
-from tfx.types import artifact_property
 from tfx.types import value_artifact
 from tfx.types.system_artifacts import Dataset
 from tfx.utils import json_utils
@@ -31,7 +30,7 @@ from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 
 # TODO(b/241861488): Remove safeguard once fully supported by MLMD.
-artifact_property.ENABLE_PROTO_PROPERTIES = True
+artifact._ENABLE_PROTO_PROPERTIES = True
 
 
 class _MyArtifact(artifact.Artifact):
