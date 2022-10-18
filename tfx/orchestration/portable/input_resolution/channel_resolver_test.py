@@ -29,7 +29,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
     # We have to __enter__ Metadata which activates the MetadataStore so that
     # we can use the same fake in-memory MetadataStore instance during the
     # single test.
-    self.enter_context(self.mlmd_handler)
+    self.enter_context(self.mlmd_handle)
 
   def make_channel_spec(self, channel_spec_str: str):
     return text_format.Parse(channel_spec_str, pipeline_pb2.InputSpec.Channel())
@@ -44,7 +44,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       output_key: "examples"
     """)
     resolved = channel_resolver.resolve_single_channel(
-        self.mlmd_handler, ch)
+        self.mlmd_handle, ch)
     self.assertEmpty(resolved)
 
   def testResolveSingleChannel_BadContextQuery(self):
@@ -60,7 +60,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       """)
       with self.assertRaises(ValueError):
         channel_resolver.resolve_single_channel(
-            self.mlmd_handler, ch)
+            self.mlmd_handle, ch)
 
     with self.subTest('No type.name'):
       ch = self.make_channel_spec("""
@@ -77,7 +77,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       """)
       with self.assertRaises(ValueError):
         channel_resolver.resolve_single_channel(
-            self.mlmd_handler, ch)
+            self.mlmd_handle, ch)
 
     with self.subTest('No name'):
       ch = self.make_channel_spec("""
@@ -89,7 +89,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       """)
       with self.assertRaises(ValueError):
         channel_resolver.resolve_single_channel(
-            self.mlmd_handler, ch)
+            self.mlmd_handle, ch)
 
     with self.subTest('Non-existential'):
       ch = self.make_channel_spec("""
@@ -105,7 +105,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
         }
       """)
       resolved = channel_resolver.resolve_single_channel(
-          self.mlmd_handler, ch)
+          self.mlmd_handle, ch)
       self.assertEmpty(resolved)
 
   def testResolveSingleChannel_AllContexts(self):
@@ -145,7 +145,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
         }
       """)
       resolved = channel_resolver.resolve_single_channel(
-          self.mlmd_handler, ch)
+          self.mlmd_handle, ch)
       self.assertLen(resolved, 2)
       self.assertEqual({a.id for a in resolved}, {e1.id, e2.id})
 
@@ -178,7 +178,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
         }
       """)
       resolved = channel_resolver.resolve_single_channel(
-          self.mlmd_handler, ch)
+          self.mlmd_handle, ch)
       self.assertLen(resolved, 1)
       self.assertEqual(resolved[0].id, e1.id)
 
@@ -221,7 +221,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
         }
       """)
       resolved = channel_resolver.resolve_single_channel(
-          self.mlmd_handler, ch)
+          self.mlmd_handle, ch)
       self.assertEmpty(resolved)
 
   def testResolveSingleChannel_OutputKey(self):
@@ -254,7 +254,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
         output_key: "first"
       """)
       resolved = channel_resolver.resolve_single_channel(
-          self.mlmd_handler, ch)
+          self.mlmd_handle, ch)
       self.assertLen(resolved, 1)
       self.assertEqual(resolved[0].id, e1.id)
 
@@ -278,7 +278,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
         output_key: "third"
       """)
       resolved = channel_resolver.resolve_single_channel(
-          self.mlmd_handler, ch)
+          self.mlmd_handle, ch)
       self.assertEmpty(resolved)
 
     with self.subTest('No output_key -> merged'):
@@ -300,7 +300,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
         }
       """)
       resolved = channel_resolver.resolve_single_channel(
-          self.mlmd_handler, ch)
+          self.mlmd_handle, ch)
       self.assertEqual({a.id for a in resolved}, {e1.id, e2.id})
 
   def testResolveSingleChannel_BadArtifactQuery(self):
@@ -327,7 +327,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       """)
       with self.assertRaises(ValueError):
         channel_resolver.resolve_single_channel(
-            self.mlmd_handler, ch)
+            self.mlmd_handle, ch)
 
     with self.subTest('No type.name'):
       ch = self.make_channel_spec("""
@@ -349,7 +349,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       """)
       with self.assertRaises(ValueError):
         channel_resolver.resolve_single_channel(
-            self.mlmd_handler, ch)
+            self.mlmd_handle, ch)
 
     with self.subTest('Non-existential'):
       ch = self.make_channel_spec("""
@@ -370,7 +370,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
         }
       """)
       resolved = channel_resolver.resolve_single_channel(
-          self.mlmd_handler, ch)
+          self.mlmd_handle, ch)
       self.assertEmpty(resolved)
 
   def testResolveSingleChannel_NoExecutions(self):
@@ -393,7 +393,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       }
     """)
     resolved = channel_resolver.resolve_single_channel(
-        self.mlmd_handler, ch)
+        self.mlmd_handle, ch)
     self.assertEmpty(resolved)
 
   def testResolveSingleChannel_NoArtifacts(self):
@@ -417,7 +417,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       }
     """)
     resolved = channel_resolver.resolve_single_channel(
-        self.mlmd_handler, ch)
+        self.mlmd_handle, ch)
     self.assertEmpty(resolved)
 
   def testResolveUnionChannels_Deduplication(self):
@@ -448,7 +448,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       output_key: "examples"
     """)
     resolved = channel_resolver.resolve_union_channels(
-        self.mlmd_handler, [ch, ch])
+        self.mlmd_handle, [ch, ch])
     self.assertLen(resolved, 1)
     self.assertEqual(resolved[0].id, e1.id)
 

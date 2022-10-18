@@ -232,7 +232,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
     # node_inputs_resolver functionality. Each resolution submodule
     # (channel_resolver_test and input_graph_resolver_test) already contains
     # tests with more realistic examples.
-    self._mlmd_handler = mock.MagicMock()
+    self._mlmd_handle = mock.MagicMock()
 
     # For each specific resolution process to mock, we directly store the side
     # effect mapping (argument and corresponding result). It is difficult to
@@ -301,7 +301,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
     self.mock_channel_resolution_result(x, [a1])
     node_inputs = pipeline_pb2.NodeInputs(inputs={'x': x})
 
-    result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+    result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
     self.assertEqual(result, [{'x': [a1]}])
 
@@ -343,7 +343,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
         inputs={'x1': x1, 'x2': x2},
         input_graphs={'graph_1': graph_1})
 
-    result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+    result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
     self.assertEqual(result, [{'x1': [a1], 'x2': [a1]}])
 
@@ -381,7 +381,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
         inputs={'x1': x1, 'x2': x2},
         input_graphs={'graph_1': graph_1})
 
-    result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+    result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
     self.assertEqual(result, [{'x1': [a1], 'x2': [a2]}])
 
@@ -447,7 +447,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
         inputs={'x1': x1, 'x2': x2},
         input_graphs={'graph_1': graph_1, 'graph_2': graph_2})
 
-    result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+    result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
     self.assertEqual(result, [
         {'x1': [a1], 'x2': [a1]},
@@ -488,7 +488,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
         inputs={'x1': x1, 'x2': x2},
         input_graphs={'graph_1': graph_1})
 
-    result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+    result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
     self.assertEqual(result, [
         {'x1': [a1], 'x2': [b1]},
@@ -504,7 +504,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
     node_inputs = pipeline_pb2.NodeInputs(inputs={'x': x})
 
     with self.assertRaises(exceptions.FailedPreconditionError):
-      node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+      node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
   def testMixedInputs(self):
     a1, a2 = self.create_artifacts(2)
@@ -552,7 +552,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
           inputs={'x1': x1, 'x2': x2, 'x3': x3},
           input_graphs={'graph_1': graph_1})
 
-      result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+      result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
       self.assertEqual(result, [
           {'x1': [a1], 'x2': [a1], 'x3': [a1]},
@@ -594,7 +594,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
           inputs={'x1': x1, 'x2': x2},
           input_graphs={'graph_1': graph_1, 'graph_2': graph_1})
 
-      result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+      result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
       self.assertCountEqual(result, [
           {'x1': [a1], 'x2': [a1]},
@@ -609,7 +609,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
           inputs={'x1': x1, 'x2': x2},
           input_graphs={'graph_1': graph_1, 'graph_2': graph_1})
 
-      result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+      result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
       self.assertCountEqual(result, [
           {'x1': [a1]},
@@ -622,7 +622,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
           inputs={'x1': x1, 'x2': x2},
           input_graphs={'graph_1': graph_1, 'graph_2': graph_1})
 
-      result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+      result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
       self.assertEqual(result, [{}])
 
@@ -686,7 +686,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
           input_graphs={'graph_1': graph_1},
           conditionals={'cond_1': cond_1})
 
-      result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+      result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
       self.assertEqual(result, [{'x': [a1]}, {'x': [a4]}])
 
     with self.subTest('blessed == 1 and tag == foo'):
@@ -695,7 +695,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
           input_graphs={'graph_1': graph_1},
           conditionals={'cond_1': cond_1, 'cond_2': cond_2})
 
-      result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+      result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
       self.assertEqual(result, [{'x': [a1]}])
 
   def testMinCount(self):
@@ -714,7 +714,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
 
     with self.subTest('min_count = 0'):
       node_inputs.inputs['x1'].min_count = 0
-      result = node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+      result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
       self.assertEqual(result, [{'x1': []}])
 
     with self.subTest('min_count = 1'):
@@ -722,7 +722,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
       with self.assertRaisesRegex(
           exceptions.FailedPreconditionError,
           r'inputs\[x1\] has min_count = 1 but only got 0 artifacts'):
-        node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+        node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
     x2 = self.parse_input_spec("""
       input_graph_ref {
@@ -754,7 +754,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
       with self.assertRaisesRegex(
           exceptions.FailedPreconditionError,
           r'inputs\[x2\] has min_count = 1 but only got 0 artifacts'):
-        node_inputs_resolver.resolve(self._mlmd_handler, node_inputs)
+        node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
 
 if __name__ == '__main__':

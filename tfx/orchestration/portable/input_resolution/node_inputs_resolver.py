@@ -280,7 +280,7 @@ def _join_artifacts(
 
 
 def _resolve_input_graph_ref(
-    mlmd_handler: metadata.Metadata,
+    mlmd_handle: metadata.Metadata,
     node_inputs: pipeline_pb2.NodeInputs,
     input_key: str,
     resolved: Dict[str, List[_Entry]],
@@ -291,7 +291,7 @@ def _resolve_input_graph_ref(
   (i.e. `InputGraphRef` with the same `graph_id`).
 
   Args:
-    mlmd_handler: A `Metadata` instance.
+    mlmd_handle: A `Metadata` instance.
     node_inputs: A `NodeInputs` proto.
     input_key: A target input key whose corresponding `InputSpec` has an
         `InputGraphRef`.
@@ -311,7 +311,7 @@ def _resolve_input_graph_ref(
   }
 
   graph_fn, graph_input_keys = input_graph_resolver.build_graph_fn(
-      mlmd_handler, node_inputs.input_graphs[graph_id])
+      mlmd_handle, node_inputs.input_graphs[graph_id])
   for partition, input_dict in _join_artifacts(resolved, graph_input_keys):
     result = graph_fn(input_dict)
     if graph_output_type == _DataType.ARTIFACT_LIST:
@@ -377,7 +377,7 @@ def _filter_conditionals(
 
 
 def resolve(
-    mlmd_handler: metadata.Metadata,
+    mlmd_handle: metadata.Metadata,
     node_inputs: pipeline_pb2.NodeInputs,
 ) -> List[typing_utils.ArtifactMultiMap]:
   """Resolve a NodeInputs."""
@@ -394,10 +394,10 @@ def resolve(
 
     if input_spec.channels:
       artifacts = channel_resolver.resolve_union_channels(
-          mlmd_handler, input_spec.channels)
+          mlmd_handle, input_spec.channels)
       resolved[input_key] = [(partition_utils.NO_PARTITION, artifacts)]
     elif input_spec.input_graph_ref.graph_id:
-      _resolve_input_graph_ref(mlmd_handler, node_inputs, input_key, resolved)
+      _resolve_input_graph_ref(mlmd_handle, node_inputs, input_key, resolved)
     elif input_spec.mixed_inputs.input_keys:
       _resolve_mixed_inputs(node_inputs, input_key, resolved)
     else:

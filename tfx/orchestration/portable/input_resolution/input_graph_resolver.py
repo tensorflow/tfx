@@ -52,7 +52,7 @@ _GraphFn = Callable[[Mapping[str, _Data]], _Data]
 
 @dataclasses.dataclass
 class _Context:
-  mlmd_handler: metadata.Metadata
+  mlmd_handle: metadata.Metadata
   input_graph: pipeline_pb2.InputGraph
 
 
@@ -131,14 +131,14 @@ def _evaluate_op_node(
           f'nodes[{node_id}] has unknown op_type {op_node.op_type}.') from e
   if issubclass(op_type, resolver_op.ResolverOp):
     op: resolver_op.ResolverOp = op_type.create(**kwargs)
-    op.set_context(resolver_op.Context(store=ctx.mlmd_handler.store))
+    op.set_context(resolver_op.Context(store=ctx.mlmd_handle.store))
     return op.apply(*args)
   elif issubclass(op_type, resolver.ResolverStrategy):
     if len(args) != 1 or not typing_utils.is_artifact_multimap(args[0]):
       raise exceptions.FailedPreconditionError(
           f'Invalid {op_type} argument: {args!r}')
     strategy: resolver.ResolverStrategy = op_type(**kwargs)
-    result = strategy.resolve_artifacts(ctx.mlmd_handler.store, args[0])
+    result = strategy.resolve_artifacts(ctx.mlmd_handle.store, args[0])
     if result is None:
       raise exceptions.InputResolutionError(f'{strategy} returned None.')
     return result
@@ -201,7 +201,7 @@ def _reduce_graph_fn(ctx: _Context, node_id: str, graph_fn: _GraphFn):
 
 
 def build_graph_fn(
-    mlmd_handler: metadata.Metadata,
+    mlmd_handle: metadata.Metadata,
     input_graph: pipeline_pb2.InputGraph,
 ) -> Tuple[_GraphFn, List[str]]:
   """Build a functional interface for the `input_graph`.
@@ -211,12 +211,12 @@ def build_graph_fn(
 
   Example:
     inputs = previously_resolved_inputs()
-    graph_fn, input_keys = build_graph_fn(mlmd_handler, input_graph)
+    graph_fn, input_keys = build_graph_fn(mlmd_handle, input_graph)
     # input_keys == ['x', 'y']
     z = graph_fn({'x': inputs['x'], 'y': inputs['y']})
 
   Args:
-    mlmd_handler: A `Metadata` instance.
+    mlmd_handle: A `Metadata` instance.
     input_graph: An `pipeline_pb2.InputGraph` proto.
 
   Returns:
@@ -229,7 +229,7 @@ def build_graph_fn(
         f'result_node {input_graph.result_node} does not exist in input_graph. '
         f'Valid node ids: {list(input_graph.nodes.keys())}')
 
-  context = _Context(mlmd_handler=mlmd_handler, input_graph=input_graph)
+  context = _Context(mlmd_handle=mlmd_handle, input_graph=input_graph)
 
   input_key_to_node_id = {}
   for node_id in input_graph.nodes:

@@ -133,7 +133,7 @@ def change_working_dir(working_dir: str):
 
 class MlmdMixins:
   """Populates a mock MLMD database with Contexts, Artifacts and Excutions."""
-  mlmd_handler: metadata.Metadata
+  mlmd_handle: metadata.Metadata
   _context_type_ids: Dict[str, int]
   _artifact_type_ids: Dict[str, int]
   _execution_type_ids: Dict[str, int]
@@ -141,14 +141,14 @@ class MlmdMixins:
   def init_mlmd(self):
     config = metadata_store_pb2.ConnectionConfig()
     config.fake_database.SetInParent()
-    self.mlmd_handler = metadata.Metadata(config)
+    self.mlmd_handle = metadata.Metadata(config)
     self._context_type_ids = {}
     self._artifact_type_ids = {}
     self._execution_type_ids = {}
 
   @property
   def store(self):
-    return self.mlmd_handler.store
+    return self.mlmd_handle.store
 
   def _get_context_type_id(self, type_name: str):
     if type_name not in self._context_type_ids:

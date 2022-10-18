@@ -78,7 +78,7 @@ class CannedResolverFunctionsTest(
   def setUp(self):
     super().setUp()
     self.init_mlmd()
-    self.enter_context(self.mlmd_handler)
+    self.enter_context(self.mlmd_handle)
 
   def assertArtifactEqual(self,
                           resolved_artifact: metadata_store_pb2.Artifact,
@@ -152,7 +152,7 @@ class CannedResolverFunctionsTest(
           contexts=[mlmd_context])
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handler)
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
     self.assertIsInstance(resolved, inputs_utils.Trigger)
 
     # Check that actual_artifacts = [mlmd_artifact_2, mlmd_artifact_3] because
@@ -174,7 +174,7 @@ class CannedResolverFunctionsTest(
     mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handler)
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
     self.assertIsInstance(resolved, inputs_utils.Trigger)
 
     # The resolved artifacts should have (span, version) tuples of:
@@ -198,7 +198,7 @@ class CannedResolverFunctionsTest(
     mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handler)
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
     self.assertIsInstance(resolved, inputs_utils.Trigger)
 
     # The resolved artifacts should have (span, version) tuples of:
