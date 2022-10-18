@@ -16,6 +16,7 @@
 from typing import Mapping
 
 import tensorflow as tf
+from tfx.dsl.control_flow import for_each
 from tfx.dsl.control_flow import for_each_internal
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
@@ -318,6 +319,19 @@ class ResolverFunctionTest(tf.test.TestCase):
     result = resolve()
 
     self.assertEqual(result.type, X)
+
+  def testUnwrapDictKey(self):
+
+    @resolver_function.resolver_function(
+        output_type={'x': X},
+        unwrap_dict_key='x')
+    def resolve():
+      return DummyNode(
+          output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP_LIST)
+
+    with for_each.ForEach(resolve()) as each_x:
+      self.assertIsInstance(each_x, resolved_channel.ResolvedChannel)
+      self.assertEqual(each_x.type, X)
 
 
 if __name__ == '__main__':
