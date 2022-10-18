@@ -66,6 +66,9 @@ _ORCHESTRATOR_EXECUTION_TYPE = metadata_store_pb2.ExecutionType(
     name=_ORCHESTRATOR_RESERVED_ID,
     properties={_PIPELINE_IR: metadata_store_pb2.STRING})
 _MAX_STATE_HISTORY_LEN = 10
+_PIPELINE_EXEC_MODE = 'pipeline_exec_mode'
+_PIPELINE_EXEC_MODE_SYNC = 'sync'
+_PIPELINE_EXEC_MODE_ASYNC = 'async'
 
 _last_state_change_time_secs = -1.0
 _state_change_time_lock = threading.Lock()
@@ -397,7 +400,19 @@ class PipelineState:
           code=status_lib.Code.ALREADY_EXISTS,
           message=f'Pipeline with uid {pipeline_uid} already active.')
 
-    exec_properties = {_PIPELINE_IR: _PipelineIRCodec.get().encode(pipeline)}
+    # TODO(b/254161062): Consider disallowing pipeline exec mode change for the
+    # same pipeline id.
+    if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
+      pipeline_exec_mode = _PIPELINE_EXEC_MODE_SYNC
+    elif pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
+      pipeline_exec_mode = _PIPELINE_EXEC_MODE_ASYNC
+    else:
+      raise ValueError('Expected pipeline execution mode to be SYNC or ASYNC')
+
+    exec_properties = {
+        _PIPELINE_IR: _PipelineIRCodec.get().encode(pipeline),
+        _PIPELINE_EXEC_MODE: pipeline_exec_mode
+    }
     if pipeline_run_metadata:
       exec_properties[_PIPELINE_RUN_METADATA] = json_utils.dumps(
           pipeline_run_metadata)
@@ -817,6 +832,10 @@ class PipelineView:
     return self._pipeline
 
   @property
+  def pipeline_execution_mode(self) -> pipeline_pb2.Pipeline.ExecutionMode:
+    return _retrieve_pipeline_exec_mode(self.execution)
+
+  @property
   def pipeline_run_id(self) -> str:
     if _PIPELINE_RUN_ID in self.execution.custom_properties:
       return self.execution.custom_properties[_PIPELINE_RUN_ID].string_value
@@ -1158,6 +1177,26 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
   if previous_node_states_dict:
     _save_node_states_dict(execution, previous_node_states_dict,
                            _PREVIOUS_NODE_STATES)
+
+
+def _retrieve_pipeline_exec_mode(
+    execution: metadata_store_pb2.Execution
+) -> pipeline_pb2.Pipeline.ExecutionMode:
+  """Returns pipeline execution mode given pipeline-level execution."""
+  pipeline_exec_mode = _get_metadata_value(
+      execution.custom_properties.get(_PIPELINE_EXEC_MODE))
+  if pipeline_exec_mode is None:
+    # Retrieve execution mode from pipeline IR for backward compatibility (this
+    # is more expensive and requires parsing the proto).
+    return _get_pipeline_from_orchestrator_execution(execution).execution_mode
+  elif pipeline_exec_mode == _PIPELINE_EXEC_MODE_SYNC:
+    return pipeline_pb2.Pipeline.SYNC
+  elif pipeline_exec_mode == _PIPELINE_EXEC_MODE_ASYNC:
+    return pipeline_pb2.Pipeline.ASYNC
+  else:
+    raise RuntimeError(
+        f'Unable to determine pipeline execution mode from pipeline execution {execution}'
+    )
 
 
 def _log_pipeline_execution_state_change(
