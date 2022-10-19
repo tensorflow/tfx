@@ -30,6 +30,7 @@ from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import status as status_lib
+from tfx.utils import typing_utils
 
 from ml_metadata import proto
 
@@ -45,7 +46,10 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
   ) -> None:
     assert status.code != status_lib.Code.OK
     _remove_output_dirs(task, result)
-    _remove_task_dirs(task)
+    _remove_task_dirs(
+        stateful_working_dir=task.stateful_working_dir,
+        tmp_dir=task.tmp_dir,
+        executor_output_uri=task.executor_output_uri)
     if status.code == status_lib.Code.CANCELLED:
       logging.info('Cancelling execution (id: %s); task id: %s; status: %s',
                    task.execution_id, task.task_id, status)
@@ -82,7 +86,10 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
       # TODO(b/182316162): Unify publisher handing so that post-execution
       # artifact logic is more cleanly handled.
       outputs_utils.tag_executor_output_with_version(executor_output)
-    _remove_task_dirs(task)
+    _remove_task_dirs(
+        stateful_working_dir=task.stateful_working_dir,
+        tmp_dir=task.tmp_dir,
+        executor_output_uri=task.executor_output_uri)
     execution_publish_utils.publish_succeeded_execution(
         mlmd_handle,
         execution_id=task.execution_id,
@@ -96,7 +103,10 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     # TODO(b/182316162): Unify publisher handing so that post-execution artifact
     # logic is more cleanly handled.
     outputs_utils.tag_output_artifacts_with_version(output_artifacts)
-    _remove_task_dirs(task)
+    _remove_task_dirs(
+        stateful_working_dir=task.stateful_working_dir,
+        tmp_dir=task.tmp_dir,
+        executor_output_uri=task.executor_output_uri)
     execution_publish_utils.publish_succeeded_execution(
         mlmd_handle,
         execution_id=task.execution_id,
@@ -119,11 +129,15 @@ def publish_execution_results(
     mlmd_handle: metadata.Metadata,
     executor_output: execution_result_pb2.ExecutorOutput,
     execution_info: data_types.ExecutionInfo,
-    contexts: List[proto.Context]) -> None:
+    contexts: List[proto.Context]) -> Optional[typing_utils.ArtifactMultiMap]:
   """Publishes execution result to MLMD for single component run."""
   outputs_utils.tag_output_artifacts_with_version(execution_info.output_dict)
   if executor_output.execution_result.code != status_lib.Code.OK:
     outputs_utils.remove_output_dirs(execution_info.output_dict)
+    _remove_task_dirs(
+        stateful_working_dir=execution_info.stateful_working_dir,
+        tmp_dir=execution_info.tmp_dir,
+        executor_output_uri=execution_info.execution_output_uri)
     _update_execution_state_in_mlmd(
         mlmd_handle=mlmd_handle, execution_id=execution_info.execution_id,
         new_state=proto.Execution.FAILED,
@@ -133,7 +147,11 @@ def publish_execution_results(
   # TODO(b/182316162): Unify publisher handing so that post-execution
   # artifact logic is more cleanly handled.
   outputs_utils.tag_executor_output_with_version(executor_output)
-  execution_publish_utils.publish_succeeded_execution(
+  _remove_task_dirs(
+      stateful_working_dir=execution_info.stateful_working_dir,
+      tmp_dir=execution_info.tmp_dir,
+      executor_output_uri=execution_info.execution_output_uri)
+  return execution_publish_utils.publish_succeeded_execution(
       mlmd_handle,
       execution_id=execution_info.execution_id,
       contexts=contexts,
@@ -168,20 +186,22 @@ def _remove_output_dirs(task: task_lib.ExecNodeTask,
       outputs_utils.remove_output_dirs(ts_result.output.output_artifacts)
 
 
-def _remove_task_dirs(task: task_lib.ExecNodeTask) -> None:
+def _remove_task_dirs(stateful_working_dir: str = '',
+                      tmp_dir: str = '',
+                      executor_output_uri: str = '') -> None:
   """Removes directories created for the task."""
-  if task.stateful_working_dir:
-    outputs_utils.remove_stateful_working_dir(task.stateful_working_dir)
-  if task.tmp_dir:
+  if stateful_working_dir:
+    outputs_utils.remove_stateful_working_dir(stateful_working_dir)
+  if tmp_dir:
     try:
-      fileio.rmtree(task.tmp_dir)
+      fileio.rmtree(tmp_dir)
     except fileio.NotFoundError:
       logging.warning(
           'tmp_dir %s not found while attempting to delete, ignoring.')
-  if task.executor_output_uri:
+  if executor_output_uri:
     try:
-      fileio.remove(task.executor_output_uri)
+      fileio.remove(executor_output_uri)
     except fileio.NotFoundError:
       logging.warning(
           'Skipping deletion of executor_output_uri (file not found): %s',
-          task.executor_output_uri)
+          executor_output_uri)
