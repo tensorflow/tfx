@@ -16,7 +16,7 @@
 import collections
 import itertools
 import re
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from absl import logging
 from tfx import types
@@ -80,10 +80,6 @@ def is_execution_failed(execution: metadata_store_pb2.Execution) -> bool:
 def is_internal_key(key: str) -> bool:
   """Returns `True` if the key is an internal-only execution property key."""
   return key.startswith('__')
-
-
-def remove_internal_keys(d: Dict[str, Any]) -> Dict[str, Any]:
-  return {k: v for k, v in d.items() if not is_internal_key(k)}
 
 
 def is_schema_key(key: str) -> bool:

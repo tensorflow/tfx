@@ -191,12 +191,40 @@ class OutputsResolver:
       ValueError: If execution_id is not provided and execution_mode of the
         pipeline is not SYNC.
     """
-    return get_stateful_working_directory(self._node_dir, self._execution_mode,
-                                          self._pipeline_run_id, execution_id)
+    if (execution_id is None and
+        self._execution_mode != pipeline_pb2.Pipeline.SYNC):
+      raise ValueError(
+          'Cannot create stateful working dir if execution id is `None` and '
+          'the execution mode of the pipeline is not `SYNC`.')
+
+    if execution_id is None:
+      dir_suffix = self._pipeline_run_id
+    else:
+      dir_suffix = str(execution_id)
+
+    # TODO(b/150979622): We should introduce an id that is not changed across
+    # retries of the same component run to provide better isolation between
+    # "retry" and "new execution". When it is available, introduce it into
+    # stateful working directory.
+    # NOTE: If this directory structure is changed, please update
+    # the remove_stateful_working_dir function in this file accordingly.
+    stateful_working_dir = os.path.join(self._node_dir, _SYSTEM,
+                                        _STATEFUL_WORKING_DIR,
+                                        dir_suffix)
+    try:
+      fileio.makedirs(stateful_working_dir)
+    except Exception:  # pylint: disable=broad-except
+      logging.exception('Failed to make stateful working dir: %s',
+                        stateful_working_dir)
+      raise
+    return stateful_working_dir
 
   def make_tmp_dir(self, execution_id: int) -> str:
     """Generates a temporary directory."""
-    return make_tmp_dir(self._node_dir, execution_id)
+    result = os.path.join(self._node_dir, _SYSTEM, _EXECUTOR_EXECUTION,
+                          str(execution_id), '.temp', '')
+    fileio.makedirs(result)
+    return result
 
 
 def generate_output_artifacts(execution_id: int,
@@ -216,68 +244,6 @@ def generate_output_artifacts(execution_id: int,
     output_artifacts[key].append(artifact)
 
   return output_artifacts
-
-
-def get_stateful_working_directory(node_dir: str,
-                                   execution_mode: pipeline_pb2.Pipeline
-                                   .ExecutionMode = pipeline_pb2.Pipeline.SYNC,
-                                   pipeline_run_id: str = '',
-                                   execution_id: Optional[int] = None) -> str:
-  """Generates stateful working directory.
-
-  Args:
-    node_dir: The root directory of the node.
-    execution_mode: Execution mode of the pipeline.
-    pipeline_run_id: Optional pipeline_run_id, only available if execution mode
-      is SYNC.
-    execution_id: An optional execution id which will be used as part of the
-      stateful working dir path if provided. The stateful working dir path will
-      be <node_dir>/.system/stateful_working_dir/<execution_id>. If execution_id
-      is not provided, for backward compatibility purposes, <pipeline_run_id> is
-      used instead of <execution_id> but an error is raised if the
-      execution_mode is not SYNC (since ASYNC pipelines have no
-      pipeline_run_id).
-
-  Returns:
-    Path to stateful working directory.
-
-  Raises:
-    ValueError: If execution_id is not provided and execution_mode of the
-      pipeline is not SYNC.
-  """
-  if (execution_id is None and execution_mode != pipeline_pb2.Pipeline.SYNC):
-    raise ValueError(
-        'Cannot create stateful working dir if execution id is `None` and '
-        'the execution mode of the pipeline is not `SYNC`.')
-
-  if execution_id is None:
-    dir_suffix = pipeline_run_id
-  else:
-    dir_suffix = str(execution_id)
-
-  # TODO(b/150979622): We should introduce an id that is not changed across
-  # retries of the same component run to provide better isolation between
-  # "retry" and "new execution". When it is available, introduce it into
-  # stateful working directory.
-  # NOTE: If this directory structure is changed, please update
-  # the remove_stateful_working_dir function in this file accordingly.
-  stateful_working_dir = os.path.join(node_dir, _SYSTEM, _STATEFUL_WORKING_DIR,
-                                      dir_suffix)
-  try:
-    fileio.makedirs(stateful_working_dir)
-  except Exception:  # pylint: disable=broad-except
-    logging.exception('Failed to make stateful working dir: %s',
-                      stateful_working_dir)
-    raise
-  return stateful_working_dir
-
-
-def make_tmp_dir(node_dir: str, execution_id: int) -> str:
-  """Generates a temporary directory."""
-  result = os.path.join(node_dir, _SYSTEM, _EXECUTOR_EXECUTION,
-                        str(execution_id), '.temp', '')
-  fileio.makedirs(result)
-  return result
 
 
 def tag_output_artifacts_with_version(
