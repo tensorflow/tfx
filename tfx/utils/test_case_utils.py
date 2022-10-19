@@ -18,7 +18,7 @@ import contextlib
 import copy
 import os
 
-from typing import Dict, Iterable, Optional, Union
+from typing import Dict, Iterable, Optional, Union, Mapping, Sequence
 
 import tensorflow as tf
 from tfx import types
@@ -31,6 +31,9 @@ from tfx.utils import io_utils
 from google.protobuf import message
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
+
+
+_ArtifactMultiMap = Mapping[str, Sequence[metadata_store_pb2.Artifact]]
 
 
 @contextlib.contextmanager
@@ -182,6 +185,7 @@ class MlmdMixins:
   def put_artifact(
       self,
       artifact_type: str,
+      name: str = '',
       uri: str = '/fake',
       properties: Optional[Dict[str, types.ExecPropertyTypes]] = None
   ) -> metadata_store_pb2.Artifact:
@@ -189,9 +193,9 @@ class MlmdMixins:
 
     Args:
       artifact_type: The artifact type. For example, "DummyArtifact".
-      uri: The uniform resource identifier of the physical artifact. Defaults to
-        '/fake'.
-      properties: The raw values to insert in the Artifact. For example:
+      name: `Artifact.name`. Default not set.
+      uri: `Artifact.uri`. Defaults to '/fake'.
+      properties: The raw property values to insert in the Artifact. Example:
         {"span": 3, "version": 1}
 
     Returns:
@@ -205,15 +209,17 @@ class MlmdMixins:
     else:
       property_types = None
 
-    type_id = self._get_artifact_type_id(
-        type_name=artifact_type, properties=property_types)
-    mlmd_properties = data_types_utils.build_metadata_value_dict(properties)
-
-    mlmd_artifact = metadata_store_pb2.Artifact(
-        type_id=type_id,
+    fields = dict(
+        type_id=self._get_artifact_type_id(
+            type_name=artifact_type, properties=property_types),
         uri=uri,
         state=metadata_store_pb2.Artifact.LIVE,
-        properties=mlmd_properties)
+        properties=data_types_utils.build_metadata_value_dict(properties),
+    )
+    if name:
+      fields.update(name=name)
+
+    mlmd_artifact = metadata_store_pb2.Artifact(**fields)
     mlmd_artifact.id = self.store.put_artifacts([mlmd_artifact])[0]
     return mlmd_artifact
 
@@ -224,11 +230,23 @@ class MlmdMixins:
       self._execution_type_ids[type_name] = result
     return self._execution_type_ids[type_name]
 
-  def put_execution(self, execution_type: str, inputs, outputs, contexts):
+  def put_execution(
+      self, execution_type: str,
+      inputs: Optional[_ArtifactMultiMap] = None,
+      outputs: Optional[_ArtifactMultiMap] = None,
+      contexts: Sequence[metadata_store_pb2.Context] = (),
+      name='',
+  ) -> metadata_store_pb2.Execution:
     """Put an Execution in the MLMD database."""
-    result = metadata_store_pb2.Execution(
-        type_id=self._get_execution_type_id(execution_type),
-        last_known_state=metadata_store_pb2.Execution.COMPLETE)
+    inputs = inputs if inputs is not None else {}
+    outputs = outputs if outputs is not None else {}
+    fields = dict(
+        type_id=self._get_execution_type_id(type_name=execution_type),
+        last_known_state=metadata_store_pb2.Execution.COMPLETE,
+    )
+    if name:
+      fields.update(name=name)
+    result = metadata_store_pb2.Execution(**fields)
     artifact_and_events = []
     for input_key, artifacts in inputs.items():
       for i, artifact in enumerate(artifacts):
