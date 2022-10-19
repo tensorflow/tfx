@@ -56,6 +56,10 @@ nodes {
             type {
               name: "Examples"
               properties {
+                key: "is_external"
+                value: INT
+              }
+              properties {
                 key: "span"
                 value: INT
               }
@@ -281,6 +285,10 @@ nodes {
           artifact_spec {
             type {
               name: "Model"
+              properties {
+                key: "is_external"
+                value: INT
+              }
               base_type: MODEL
             }
           }
@@ -292,6 +300,10 @@ nodes {
           artifact_spec {
             type {
               name: "ModelRun"
+              properties {
+                key: "is_external"
+                value: INT
+              }
             }
           }
         }

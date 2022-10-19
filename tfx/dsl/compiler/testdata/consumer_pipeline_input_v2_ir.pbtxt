@@ -93,6 +93,10 @@ nodes {
             type {
               name: "Examples"
               properties {
+                key: "is_external"
+                value: INT
+              }
+              properties {
                 key: "span"
                 value: INT
               }
@@ -361,6 +365,10 @@ nodes {
           artifact_spec {
             type {
               name: "ExampleStatistics"
+              properties {
+                key: "is_external"
+                value: INT
+              }
               properties {
                 key: "span"
                 value: INT

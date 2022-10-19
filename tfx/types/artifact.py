@@ -64,7 +64,10 @@ JsonValueType = Union[Dict, List, int, float, type(None), str]
 _JSON_SINGLE_VALUE_KEY = '__value__'
 
 # Implicit properties that will be added to all artifacts.
-IMPLICIT_ARTIFACT_PROPERTIES = {}
+IMPLICIT_ARTIFACT_PROPERTIES = {
+    'is_external': Property(type=PropertyType.INT
+                           ),  # This int property is used as a boolean
+}
 
 
 def _decode_struct_value(

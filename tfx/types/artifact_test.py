@@ -219,6 +219,7 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(0, instance.type_id)
     self.assertEqual('MyTypeName', instance.type_name)
     self.assertEqual('', instance.state)
+    self.assertFalse(instance.is_external)
 
     # Default property does not have span or split_names.
     with self.assertRaisesRegex(AttributeError, "has no property 'span'"):
@@ -242,6 +243,9 @@ class ArtifactTest(tf.test.TestCase):
 
     instance.state = artifact.ArtifactState.DELETED
     self.assertEqual(artifact.ArtifactState.DELETED, instance.state)
+
+    instance.is_external = 1
+    self.assertTrue(instance.is_external)
 
     # Default artifact does not have span.
     with self.assertRaisesRegex(AttributeError, "unknown property 'span'"):
@@ -269,6 +273,12 @@ class ArtifactTest(tf.test.TestCase):
         Artifact(artifact: id: 1
         type_id: 2
         uri: "/tmp/uri2"
+        properties {
+          key: "is_external"
+          value {
+            int_value: 1
+          }
+        }
         custom_properties {
           key: "float_key"
           value {
@@ -319,6 +329,10 @@ class ArtifactTest(tf.test.TestCase):
         }
         properties {
           key: "int2"
+          value: INT
+        }
+        properties {
+          key: "is_external"
           value: INT
         }
         properties {
@@ -584,6 +598,10 @@ class ArtifactTest(tf.test.TestCase):
         }
         properties {
           key: "int2"
+          value: INT
+        }
+        properties {
+          key: "is_external"
           value: INT
         }
         properties {
@@ -890,6 +908,10 @@ class ArtifactTest(tf.test.TestCase):
           value: INT
         }
         properties {
+          key: "is_external"
+          value: INT
+        }
+        properties {
           key: "jsonvalue_dict"
           value: STRUCT
         }
@@ -997,6 +1019,10 @@ class ArtifactTest(tf.test.TestCase):
           value: INT
         }
         properties {
+          key: "is_external"
+          value: INT
+        }
+        properties {
           key: "jsonvalue_dict"
           value: STRUCT
         }
@@ -1097,6 +1123,10 @@ class ArtifactTest(tf.test.TestCase):
         }
         properties {
           key: "int2"
+          value: INT
+        }
+        properties {
+          key: "is_external"
           value: INT
         }
         properties {
