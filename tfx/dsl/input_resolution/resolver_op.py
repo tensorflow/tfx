@@ -43,7 +43,7 @@ class Context:
 # or quote the enum parameter (e.g. `Sequence['DataType']`).
 # go/pytype-faq#annotating-with-a-proto-enum-type-caused-a-runtime-error
 DataType = pipeline_pb2.InputGraph.DataType
-_ValidDataType = typing_extensions.Literal[
+_ValidDataType = typing_extensions.Literal[  # pytype: disable=invalid-annotation
     DataType.ARTIFACT_LIST,
     DataType.ARTIFACT_MULTIMAP,
     DataType.ARTIFACT_MULTIMAP_LIST,
