@@ -340,7 +340,7 @@ class Placeholder(json_utils.Jsonable):
     self._key = key  # TODO(b/217597892): Refactor _key as read-only property.
 
   def __add__(self, right: Union[str, 'Placeholder']):
-    self._operators.append(_ConcatOperator(right=right))
+    self._operators.append(_ConcatOperator(right=copy.deepcopy(right)))
     return self
 
   def __radd__(self, left: str):

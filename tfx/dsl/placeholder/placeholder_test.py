@@ -529,6 +529,51 @@ class PlaceholderTest(tf.test.TestCase):
     self.assertProtoEquals(
         placeholder.encode(), expected_pb)
 
+  def testConcatSelf(self):
+    a = ph.output('model').uri
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        a + a, """
+        operator {
+          concat_op {
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }""")
+
   def testComplicatedConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         'google/' + ph.output('model').uri + '/model/' + '0/' +
