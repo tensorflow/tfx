@@ -18,6 +18,7 @@ from typing import Mapping, List, Optional
 from absl import logging
 
 from tfx import types
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
@@ -25,7 +26,6 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import garbage_collection_policy_pb2
-from tfx.utils import io_utils
 from tfx.utils import status as status_lib
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
@@ -290,8 +290,10 @@ def _try_delete_uri(
   ]):
     return
   logging.info('Deleting URI %s', uri)
-  # TODO(b/469807517): Handle deletion properly if the URI is a file.
-  io_utils.delete_dir(uri)
+  if fileio.isdir(uri):
+    fileio.rmtree(uri)
+  else:
+    fileio.remove(uri)
   _update_artifacts_state(mlmd_handle, artifacts,
                           metadata_store_pb2.Artifact.State.DELETED)
 
