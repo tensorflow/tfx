@@ -576,6 +576,17 @@ class Artifact(json_utils.Jsonable):
     """Set producer component of the artifact."""
     self._set_system_property('producer_component', producer_component)
 
+  @property
+  @doc_controls.do_not_doc_in_subclasses
+  def is_external(self) -> bool:
+    """Returns true if the artifact is external."""
+    return self.get_int_custom_property('is_external') == 1
+
+  @is_external.setter
+  def is_external(self, is_external: bool):
+    """Sets if the artifact is external."""
+    self.set_int_custom_property('is_external', is_external)
+
   # Custom property accessors.
   @doc_controls.do_not_doc_in_subclasses
   def set_string_custom_property(self, key: str, value: str):

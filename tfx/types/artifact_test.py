@@ -171,6 +171,7 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(0, instance.type_id)
     self.assertEqual('MyTypeName', instance.type_name)
     self.assertEqual('', instance.state)
+    self.assertFalse(instance.is_external)
 
     # Default property does not have span or split_names.
     with self.assertRaisesRegex(AttributeError, "has no property 'span'"):
@@ -194,6 +195,9 @@ class ArtifactTest(tf.test.TestCase):
 
     instance.state = artifact.ArtifactState.DELETED
     self.assertEqual(artifact.ArtifactState.DELETED, instance.state)
+
+    instance.is_external = True
+    self.assertTrue(instance.is_external)
 
     # Default artifact does not have span.
     with self.assertRaisesRegex(AttributeError, "unknown property 'span'"):
@@ -231,6 +235,12 @@ class ArtifactTest(tf.test.TestCase):
           key: "int_key"
           value {
             int_value: 20
+          }
+        }
+        custom_properties {
+          key: "is_external"
+          value {
+            int_value: 1
           }
         }
         custom_properties {
