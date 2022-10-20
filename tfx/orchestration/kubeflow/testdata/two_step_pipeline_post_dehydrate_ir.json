@@ -80,7 +80,6 @@
                         "type":{
                            "name":"Examples",
                            "properties":{
-                              "is_external":"INT",
                               "span":"INT",
                               "split_names":"STRING",
                               "version":"INT"

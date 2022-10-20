@@ -155,10 +155,6 @@ class MetadataTest(tf.test.TestCase):
           """
         name: "Examples"
         properties {
-          key: "is_external"
-          value: INT
-        }
-        properties {
           key: "span"
           value: INT
         }
@@ -185,10 +181,6 @@ class MetadataTest(tf.test.TestCase):
       self.assertProtoEquals(
           """
         name: "Examples"
-        properties {
-          key: "is_external"
-          value: INT
-        }
         properties {
           key: "span"
           value: INT

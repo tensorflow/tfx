@@ -55,10 +55,6 @@ nodes {
           artifact_spec {
             type {
               name: "Integer"
-              properties {
-                key: "is_external"
-                value: INT
-              }
             }
           }
         }

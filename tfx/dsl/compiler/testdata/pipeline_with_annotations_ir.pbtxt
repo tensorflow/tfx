@@ -56,10 +56,6 @@ nodes {
           artifact_spec {
             type {
               name: "Integer_Metrics"
-              properties {
-                key: "is_external"
-                value: INT
-              }
               base_type: METRICS
             }
           }
@@ -206,10 +202,6 @@ nodes {
           artifact_spec {
             type {
               name: "Model"
-              properties {
-                key: "is_external"
-                value: INT
-              }
               base_type: MODEL
             }
           }

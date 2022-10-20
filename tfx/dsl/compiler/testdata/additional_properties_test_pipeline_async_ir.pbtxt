@@ -45,10 +45,6 @@ nodes {
             type {
               name: "ExampleStatistics"
               properties {
-                key: "is_external"
-                value: INT
-              }
-              properties {
                 key: "span"
                 value: INT
               }
@@ -99,10 +95,6 @@ nodes {
           artifact_spec {
             type {
               name: "StatsMetadata"
-              properties {
-                key: "is_external"
-                value: INT
-              }
               properties {
                 key: "timestamp"
                 value: PROTO

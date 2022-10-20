@@ -141,10 +141,6 @@ input_dict {
         type {
           name: "Examples"
           properties {
-            key: "is_external"
-            value: INT
-          }
-          properties {
             key: "span"
             value: INT
           }
@@ -171,10 +167,6 @@ input_dict {
         }
         type {
           name: "Model"
-          properties {
-            key: "is_external"
-            value: INT
-          }
           base_type: MODEL
         }
       }
@@ -190,10 +182,6 @@ output_dict {
         }
         type {
           name: "ModelBlessing"
-          properties {
-            key: "is_external"
-            value: INT
-          }
         }
       }
     }
