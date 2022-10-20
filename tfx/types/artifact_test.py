@@ -76,10 +76,6 @@ _MyArtifact2 = artifact._ArtifactType(  # pylint: disable=invalid-name
             artifact.Property(type=artifact.PropertyType.JSON_VALUE),
         'string1': artifact.Property(type=artifact.PropertyType.STRING),
         'string2': artifact.Property(type=artifact.PropertyType.STRING),
-        # Redefine an implicit property with the same name and type. This
-        # shouldn't cause any errors.
-        'implicit_property':
-            artifact.Property(type=artifact.PropertyType.STRING),
     })
 
 _mlmd_artifact_type = metadata_store_pb2.ArtifactType()
@@ -95,9 +91,6 @@ json_format.Parse(
             'string2': 'STRING',
             'proto1': 'PROTO',
             'proto2': 'PROTO',
-            # Redefine an implicit property with the same name and type. This
-            # shouldn't cause any errors.
-            'implicit_property': 'STRING',
         }
     }),
     _mlmd_artifact_type)
@@ -136,33 +129,6 @@ _MyArtifact6 = artifact._ArtifactType(  # pylint: disable=invalid-name
     })
 
 
-# Artifact subclass that redefines an implicit property, but with a different
-# type than the original implicit property. This should raise an error upon
-# instantiation.
-class _MyArtifact7(artifact.Artifact):
-  TYPE_NAME = 'MyTypeName7'
-  TYPE_ANNOTATION = Dataset
-  PROPERTIES = {
-      'implicit_property': artifact.Property(type=artifact.PropertyType.INT),
-  }
-
-
-# Artifact subclass with a pre-defined ArtifactType and a property that
-# conflicts with an implicit property. This should raise an error upon
-# instantiation.
-_mlmd_artifact_type = metadata_store_pb2.ArtifactType()
-json_format.Parse(
-    json.dumps({
-        'name': 'MyTypeName8',
-        'properties': {
-            'implicit_property': 'INT',
-            'string1': 'STRING',
-            'string2': 'STRING'
-        }
-    }), _mlmd_artifact_type)
-_MyArtifact8 = artifact._ArtifactType(mlmd_artifact_type=_mlmd_artifact_type)  # pylint: disable=invalid-name
-
-
 class _ArtifactWithInvalidAnnotation(artifact.Artifact):
   TYPE_NAME = 'InvalidAnnotationArtifact'
   TYPE_ANNOTATION = artifact.Artifact
@@ -195,20 +161,6 @@ _BAD_URI = '/tmp/to/a/bad/dir'
 
 
 class ArtifactTest(tf.test.TestCase):
-
-  @classmethod
-  def setUpClass(cls):
-    super(ArtifactTest, cls).setUpClass()
-    # Set an implicit artifact property for testing, which will be added as a
-    # property for every artifact.
-    artifact.IMPLICIT_ARTIFACT_PROPERTIES[
-        'implicit_property'] = artifact.Property(
-            type=artifact.PropertyType.STRING)
-
-  @classmethod
-  def tearDownClass(cls):
-    super(ArtifactTest, cls).tearDownClass()
-    del artifact.IMPLICIT_ARTIFACT_PROPERTIES['implicit_property']
 
   def testArtifact(self):
     instance = _MyArtifact()
@@ -308,10 +260,6 @@ class ArtifactTest(tf.test.TestCase):
         properties {
           key: "float2"
           value: DOUBLE
-        }
-        properties {
-          key: "implicit_property"
-          value: STRING
         }
         properties {
           key: "int1"
@@ -573,10 +521,6 @@ class ArtifactTest(tf.test.TestCase):
         properties {
           key: "float2"
           value: DOUBLE
-        }
-        properties {
-          key: "implicit_property"
-          value: STRING
         }
         properties {
           key: "int1"
@@ -878,10 +822,6 @@ class ArtifactTest(tf.test.TestCase):
           value: DOUBLE
         }
         properties {
-          key: "implicit_property"
-          value: STRING
-        }
-        properties {
           key: "int1"
           value: INT
         }
@@ -985,10 +925,6 @@ class ArtifactTest(tf.test.TestCase):
           value: DOUBLE
         }
         properties {
-          key: "implicit_property"
-          value: STRING
-        }
-        properties {
           key: "int1"
           value: INT
         }
@@ -1086,10 +1022,6 @@ class ArtifactTest(tf.test.TestCase):
         properties {
           key: "float2"
           value: DOUBLE
-        }
-        properties {
-          key: "implicit_property"
-          value: STRING
         }
         properties {
           key: "int1"
@@ -1191,13 +1123,6 @@ class ArtifactTest(tf.test.TestCase):
     self.assertIsNone(my_artifact.get_custom_property('invalid'))
     self.assertNotIn('invalid', my_artifact._artifact.custom_properties)
 
-    self.assertNotIn('implicit_property', my_artifact._artifact.properties)
-    self.assertIn('implicit_property', my_artifact.artifact_type.properties)
-    self.assertEqual(my_artifact.implicit_property, '')
-    my_artifact.implicit_property = 'implicit_property_value'
-    self.assertEqual(my_artifact.implicit_property, 'implicit_property_value')
-    self.assertIn('implicit_property', my_artifact._artifact.properties)
-
     with self.assertRaisesRegex(
         AttributeError, "Cannot set unknown property 'invalid' on artifact"):
       my_artifact.invalid = 1
@@ -1209,16 +1134,6 @@ class ArtifactTest(tf.test.TestCase):
     with self.assertRaisesRegex(AttributeError,
                                 "Artifact has no property 'invalid'"):
       my_artifact.invalid  # pylint: disable=pointless-statement
-
-    with self.assertRaisesRegex(
-        AttributeError,
-        '"implicit_property" that conflicts with an implicit property'):
-      my_artifact = _MyArtifact7()
-
-    with self.assertRaisesRegex(
-        AttributeError,
-        '"implicit_property" that conflicts with an implicit property'):
-      my_artifact = _MyArtifact8()
 
   def testStringTypeNameNotAllowed(self):
     with self.assertRaisesRegex(

@@ -63,9 +63,6 @@ CUSTOM_PROPERTIES_PREFIX = 'custom:'
 JsonValueType = Union[Dict, List, int, float, type(None), str]
 _JSON_SINGLE_VALUE_KEY = '__value__'
 
-# Implicit properties that will be added to all artifacts.
-IMPLICIT_ARTIFACT_PROPERTIES = {}
-
 
 def _decode_struct_value(
     struct_value: Optional[struct_pb2.Struct]) -> JsonValueType:
@@ -88,26 +85,6 @@ def _encode_struct_value(value: JsonValueType) -> Optional[struct_pb2.Struct]:
   result = struct_pb2.Struct()
   json_format.ParseDict(value, result)
   return result
-
-
-def _add_implicit_artifact_properties(
-    artifact_type: metadata_store_pb2.ArtifactType) -> None:
-  """Adds implicit properties to an MLMD artifact type."""
-  for property_name, property_def in IMPLICIT_ARTIFACT_PROPERTIES.items():
-    if property_name in artifact_type.properties:
-      if artifact_type.properties[property_name] == property_def.mlmd_type():
-        # The implicit property exactly matches an existing property.
-        continue
-      raise AttributeError(
-          f'Artifact subclass {artifact_type.name} declares a property named '
-          f'"{property_name}" that conflicts with an implicit property with '
-          'the same name.')
-    if not (isinstance(property_name,
-                       (str, bytes)) and isinstance(property_def, Property)):
-      raise ValueError(
-          'IMPLICIT_ARTIFACT_PROPERTIES must only contain entries with keys'
-          ' of type string and values of type artifact.Property.')
-    artifact_type.properties[property_name] = property_def.mlmd_type()
 
 
 class Artifact(json_utils.Jsonable):
@@ -192,7 +169,6 @@ class Artifact(json_utils.Jsonable):
         raise ValueError(
             'The "mlmd_artifact_type" argument must be an instance of the '
             'proto message ml_metadata.proto.metadata_store_pb2.ArtifactType.')
-      _add_implicit_artifact_properties(mlmd_artifact_type)
     else:
       if mlmd_artifact_type:
         raise ValueError(
@@ -242,9 +218,6 @@ class Artifact(json_utils.Jsonable):
 
         for key, value in cls.PROPERTIES.items():
           artifact_type.properties[key] = value.mlmd_type()
-
-      # Add implicit properties to the MLMD artifact type.
-      _add_implicit_artifact_properties(artifact_type)
 
       # Populate ML Metadata artifact type field: `base_type`.
       type_annotation_cls = cls.TYPE_ANNOTATION
