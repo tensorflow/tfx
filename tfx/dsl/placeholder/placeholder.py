@@ -20,6 +20,7 @@ from typing import Any, Callable, Iterator, List, Optional, Type, TypeVar, Union
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
+from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
@@ -565,21 +566,20 @@ class ChannelWrappedPlaceholder(ArtifactPlaceholder):
     self.channel = channel
 
   def __eq__(self, other: _ValueLikeType) -> 'Predicate':
-    return Predicate.from_comparison(_CompareOp.EQUAL, left=self, right=other)
+    return Predicate(_Comparison(_CompareOp.EQUAL, left=self, right=other))
 
   def __ne__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self == other)
 
   def __lt__(self, other: _ValueLikeType) -> 'Predicate':
-    return Predicate.from_comparison(
-        _CompareOp.LESS_THAN, left=self, right=other)
+    return Predicate(_Comparison(_CompareOp.LESS_THAN, left=self, right=other))
 
   def __le__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self > other)
 
   def __gt__(self, other: _ValueLikeType) -> 'Predicate':
-    return Predicate.from_comparison(
-        _CompareOp.GREATER_THAN, left=self, right=other)
+    return Predicate(
+        _Comparison(_CompareOp.GREATER_THAN, left=self, right=other))
 
   def __ge__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self < other)
@@ -728,7 +728,7 @@ class Predicate(Placeholder):
   The Predicate can then be used to define conditional statements using the
   pipeline-authoring DSL.
 
-  Prefer to use syntax like `<channel>.future() > 5` to create a Predicate.
+  Predicates should be instantiated with syntax like `<channel>.future() > 5`.
   """
 
   def __init__(self, pred_dataclass: _PredicateSubtype):
@@ -738,10 +738,17 @@ class Predicate(Placeholder):
     self.pred_dataclass = pred_dataclass
 
   @classmethod
+  @deprecation_utils.deprecated(
+      None,
+      'Use the expression-based syntax to instantiate a Predicate as described '
+      'in the Predicate class documentation.')
   def from_comparison(cls, compare_op: _CompareOp,
                       left: ChannelWrappedPlaceholder,
                       right: _ValueLikeType) -> 'Predicate':
     """Creates a Predicate instance.
+
+    DEPRECATED: Use the expression-based syntax to instantiate a Predicate as
+    described in the Predicate class documentation.
 
     Note that even though the `left` argument is assumed to be a
     ChannelWrappedPlaceholder, we can still compare placeholders like
