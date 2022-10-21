@@ -55,12 +55,14 @@ class ArtifactUtilsTest(tf.test.TestCase):
     an_artifact = standard_artifacts.Examples()
     an_artifact.uri = '/tmp/evaluri'
     an_artifact.split_names = '["eval"]'
+    an_artifact.is_external = True
     replicated = artifact_utils.replicate_artifacts(an_artifact, 4)
     self.assertLen(replicated, 4)
     self.assertEqual(replicated[0].uri, '/tmp/evaluri/0')
     self.assertEqual(replicated[3].uri, '/tmp/evaluri/3')
     self.assertEqual(replicated[0].split_names, an_artifact.split_names)
     self.assertEqual(replicated[0].split_names, an_artifact.split_names)
+    self.assertEqual(replicated[0].is_external, an_artifact.is_external)
 
   def testGetFromSplits(self):
     """Test various retrieval utilities on a list of split Artifact."""

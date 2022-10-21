@@ -149,7 +149,7 @@ _PIPELINE_NODE = text_format.Parse(
         }
       }
     }
-   outputs {
+    outputs {
       key: "output_3"
       value {
         artifact_spec {
@@ -160,7 +160,7 @@ _PIPELINE_NODE = text_format.Parse(
         }
       }
     }
-   outputs {
+    outputs {
       key: "output_4"
       value {
         artifact_spec {
@@ -171,7 +171,32 @@ _PIPELINE_NODE = text_format.Parse(
         }
       }
     }
-  }
+    outputs {
+      key: "output_5"
+      value {
+        artifact_spec {
+          type {
+            id: 5
+            name: "External_Artifact"
+          }
+          external_artifact_uris: "/external_directory_1/123"
+          external_artifact_uris: "/external_directory_2/456"
+        }
+      }
+    }
+    outputs {
+      key: "output_6"
+      value {
+        artifact_spec {
+          type {
+            id: 6
+            name: "String"
+          }
+          external_artifact_uris: "/external_directory_3/789"
+        }
+      }
+    }
+ }
 """, pipeline_pb2.PipelineNode())
 
 
@@ -192,6 +217,9 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         pipeline_runtime_spec=self._pipeline_runtime_spec,
         execution_mode=execution_mode)
 
+  def _get_external_uri_for_test(self, uri):
+    return os.path.join(self.tmp_dir, os.path.relpath(uri, '/'))
+
   @parameterized.parameters(
       (pipeline_pb2.Pipeline.SYNC, 'test_pipeline:test_run_0:test_node:1'),
       (pipeline_pb2.Pipeline.ASYNC, 'test_pipeline:test_node:1'))
@@ -202,10 +230,16 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertIn('output_2', output_artifacts)
     self.assertIn('output_3', output_artifacts)
     self.assertIn('output_4', output_artifacts)
+    self.assertIn('output_5', output_artifacts)
+    self.assertIn('output_6', output_artifacts)
     self.assertLen(output_artifacts['output_1'], 1)
     self.assertLen(output_artifacts['output_2'], 1)
     self.assertLen(output_artifacts['output_3'], 1)
     self.assertLen(output_artifacts['output_4'], 1)
+    # If there are multiple external_artifact_uris,
+    # it has to make multiple artifacts of the same number.
+    self.assertLen(output_artifacts['output_5'], 2)
+    self.assertLen(output_artifacts['output_6'], 1)
 
     artifact_1 = output_artifacts['output_1'][0]
     self.assertRegex(artifact_1.uri, '.*/test_node/output_1/1')
@@ -269,6 +303,27 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         name: "Integer_Metrics"
         """, artifact_4.artifact_type)
 
+    artifact_5_0 = output_artifacts['output_5'][0]
+    self.assertEqual(artifact_5_0.uri, '/external_directory_1/123')
+    self.assertProtoEquals("""
+        id: 5
+        name: "External_Artifact"
+        """, artifact_5_0.artifact_type)
+
+    artifact_5_1 = output_artifacts['output_5'][1]
+    self.assertEqual(artifact_5_1.uri, '/external_directory_2/456')
+    self.assertProtoEquals("""
+        id: 5
+        name: "External_Artifact"
+        """, artifact_5_1.artifact_type)
+
+    artifact_6 = output_artifacts['output_6'][0]
+    self.assertEqual(artifact_6.uri, '/external_directory_3/789')
+    self.assertProtoEquals("""
+        id: 6
+        name: "String"
+        """, artifact_6.artifact_type)
+
   def testGetExecutorOutputUri(self):
     executor_output_uri = self._output_resolver().get_executor_output_uri(1)
     self.assertRegex(
@@ -312,6 +367,8 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     outputs_utils.make_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
       for artifact in artifact_list:
+        if artifact.is_external:
+          continue
         if isinstance(artifact, ValueArtifact):
           self.assertFalse(fileio.isdir(artifact.uri))
         else:
@@ -323,12 +380,16 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     outputs_utils.clear_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
       for artifact in artifact_list:
+        if artifact.is_external:
+          continue
         if not isinstance(artifact, ValueArtifact):
           self.assertEqual(fileio.listdir(artifact.uri), [])
 
     outputs_utils.remove_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
       for artifact in artifact_list:
+        if artifact.is_external:
+          continue
         self.assertFalse(fileio.exists(artifact.uri))
 
   def testMakeOutputDirsArtifactAlreadyExists(self):
@@ -336,6 +397,8 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     outputs_utils.make_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
       for artifact in artifact_list:
+        if artifact.is_external:
+          continue
         if isinstance(artifact, ValueArtifact):
           with fileio.open(artifact.uri, 'w') as f:
             f.write('test')
@@ -345,12 +408,60 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     outputs_utils.make_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
       for artifact in artifact_list:
+        if artifact.is_external:
+          continue
         if isinstance(artifact, ValueArtifact):
           with fileio.open(artifact.uri, 'r') as f:
             self.assertEqual(f.read(), 'test')
         else:
           with fileio.open(os.path.join(artifact.uri, 'output'), 'r') as f:
             self.assertEqual(f.read(), 'test')
+
+  def testOmitLifeCycleManagementForExternalArtifact(self):
+    """Test that it omits lifecycle management for external artifacts."""
+    external_artifacts = self._output_resolver().generate_output_artifacts(1)
+    for key, artifact_list in external_artifacts.items():
+      external_artifacts[key] = [
+          artifact for artifact in artifact_list if artifact.is_external
+      ]
+      for artifact in external_artifacts[key]:
+        artifact.uri = self._get_external_uri_for_test(artifact.uri)
+
+    outputs_utils.make_output_dirs(external_artifacts)
+    for _, artifact_list in external_artifacts.items():
+      for artifact in artifact_list:
+        # make_output_dirs method doesn't affect the external uris.
+        self.assertFalse(fileio.exists(artifact.uri))
+
+        # Make new directory and file for next test.
+        if isinstance(artifact, ValueArtifact):
+          artifact_dir = os.path.dirname(artifact.uri)
+          fileio.makedirs(artifact_dir)
+          with fileio.open(artifact.uri, 'w') as f:
+            f.write('test')
+        else:
+          fileio.makedirs(artifact.uri)
+          with fileio.open(os.path.join(artifact.uri, 'output'),
+                           'w') as f:
+            f.write('test')
+
+    outputs_utils.clear_output_dirs(external_artifacts)
+    for _, artifact_list in external_artifacts.items():
+      for artifact in artifact_list:
+        # clear_output_dirs method doesn't affect the external uris.
+        if isinstance(artifact, ValueArtifact):
+          with fileio.open(artifact.uri, 'r') as f:
+            self.assertEqual(f.read(), 'test')
+        else:
+          with fileio.open(os.path.join(artifact.uri, 'output'),
+                           'r') as f:
+            self.assertEqual(f.read(), 'test')
+
+    outputs_utils.remove_output_dirs(external_artifacts)
+    for _, artifact_list in external_artifacts.items():
+      for artifact in artifact_list:
+        # remove_output_dirs method doesn't affect the external uris.
+        self.assertTrue(fileio.exists(artifact.uri))
 
   def testRemoveStatefulWorkingDirSucceeded(self):
     stateful_working_dir = (

@@ -14,6 +14,7 @@
 """Portable library for output artifacts resolution including caching decision."""
 
 import collections
+import copy
 import datetime
 import os
 from typing import Any, Dict, List, Mapping, Optional, Union
@@ -45,6 +46,9 @@ def make_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
   """Make dirs for output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
+      # Omit lifecycle management for external artifacts.
+      if artifact.is_external:
+        continue
       if isinstance(artifact, ValueArtifact):
         # If this is a ValueArtifact, create the file if it does not exist.
         if not fileio.exists(artifact.uri):
@@ -63,6 +67,9 @@ def remove_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
   """Remove dirs of output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
+      # Omit lifecycle management for external artifacts.
+      if artifact.is_external:
+        continue
       if fileio.isdir(artifact.uri):
         fileio.rmtree(artifact.uri)
       else:
@@ -73,6 +80,9 @@ def clear_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
   """Clear dirs of output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
+      # Omit lifecycle management for external artifacts.
+      if artifact.is_external:
+        continue
       if fileio.isdir(artifact.uri) and fileio.listdir(artifact.uri):
         fileio.rmtree(artifact.uri)
         fileio.mkdir(artifact.uri)
@@ -199,21 +209,40 @@ class OutputsResolver:
     return make_tmp_dir(self._node_dir, execution_id)
 
 
+def _generate_output_artifact(
+    output_spec: pipeline_pb2.OutputSpec) -> types.Artifact:
+  """Generates each output artifact given output_spec."""
+  artifact = artifact_utils.deserialize_artifact(
+      output_spec.artifact_spec.type)
+  _attach_artifact_properties(output_spec.artifact_spec, artifact)
+
+  return artifact
+
+
 def generate_output_artifacts(execution_id: int,
                               outputs: Mapping[str, pipeline_pb2.OutputSpec],
                               node_dir: str) -> Dict[str, List[types.Artifact]]:
   """Generates output artifacts."""
   output_artifacts = collections.defaultdict(list)
-  for key, value in outputs.items():
-    artifact = artifact_utils.deserialize_artifact(value.artifact_spec.type)
-    artifact.uri = os.path.join(node_dir, key, str(execution_id))
-    if isinstance(artifact, ValueArtifact):
-      artifact.uri = os.path.join(artifact.uri, _VALUE_ARTIFACT_FILE_NAME)
+  for key, output_spec in outputs.items():
+    artifact = _generate_output_artifact(output_spec)
+    if output_spec.artifact_spec.external_artifact_uris:
+      for external_uri in output_spec.artifact_spec.external_artifact_uris:
+        external_artifact = copy.deepcopy(artifact)
+        external_artifact.uri = external_uri
+        external_artifact.is_external = True
 
-    _attach_artifact_properties(value.artifact_spec, artifact)
+        logging.debug('Creating external output artifact uri %s',
+                      external_artifact.uri)
+        output_artifacts[key].append(external_artifact)
 
-    logging.debug('Creating output artifact uri %s', artifact.uri)
-    output_artifacts[key].append(artifact)
+    else:
+      artifact.uri = os.path.join(node_dir, key, str(execution_id))
+      if isinstance(artifact, ValueArtifact):
+        artifact.uri = os.path.join(artifact.uri, _VALUE_ARTIFACT_FILE_NAME)
+
+      logging.debug('Creating output artifact uri %s', artifact.uri)
+      output_artifacts[key].append(artifact)
 
   return output_artifacts
 
