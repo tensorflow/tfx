@@ -57,7 +57,7 @@ class GarbageCollectionTest(test_utils.TfxTest):
       self,
       span: Optional[int] = 0,
       version: Optional[int] = 0,
-      **additional_custom_properties) -> metadata_store_pb2.Artifact:
+      **additional_custom_properties) -> Artifact:
     example_gen_execution = test_utils.fake_example_gen_run_with_handle(
         self._metadata, self._example_gen, span, version,
         **additional_custom_properties)
@@ -108,6 +108,41 @@ class GarbageCollectionTest(test_utils.TfxTest):
     # The examples should not be garbage collected because they are in use.
     self.assertArtifactIdsEqual(
         [],
+        garbage_collection.get_artifacts_to_garbage_collect_for_node(
+            self._metadata, example_gen_node_uid, self._example_gen))
+
+  def test_artifacts_external(self):
+    policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
+        keep_most_recently_published=garbage_collection_policy_pb2
+        .GarbageCollectionPolicy.KeepMostRecentlyPublished(num_artifacts=0))
+    self._example_gen.outputs.outputs[
+        'examples'].garbage_collection_policy.CopyFrom(policy)
+    example_gen_node_uid = task_lib.NodeUid.from_node(self._pipeline,
+                                                      self._example_gen)
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+    self._produce_examples(is_external=True)
+    # The example should not be garbage collected because it is external.
+    self.assertArtifactIdsEqual(
+        [],
+        garbage_collection.get_artifacts_to_garbage_collect_for_node(
+            self._metadata, example_gen_node_uid, self._example_gen))
+
+  def test_artifacts_external_not_counted_for_policy(self):
+    policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
+        keep_most_recently_published=garbage_collection_policy_pb2
+        .GarbageCollectionPolicy.KeepMostRecentlyPublished(num_artifacts=1))
+    self._example_gen.outputs.outputs[
+        'examples'].garbage_collection_policy.CopyFrom(policy)
+    example_gen_node_uid = task_lib.NodeUid.from_node(self._pipeline,
+                                                      self._example_gen)
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+
+    expected_to_be_garbage_collected = self._produce_examples()
+    self._produce_examples(
+    )  # Most recent one except the externals should not be garbage collected
+    self._produce_examples(is_external=True)  # Should not be garbage collected
+    self.assertArtifactIdsEqual(
+        [expected_to_be_garbage_collected],
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
             self._metadata, example_gen_node_uid, self._example_gen))
 

@@ -54,12 +54,15 @@ def fake_example_gen_run_with_handle(mlmd_handle,
                                      example_gen,
                                      span,
                                      version,
+                                     is_external=False,
                                      **additional_custom_properties):
   """Writes fake example_gen output and successful execution to MLMD."""
   output_example = types.Artifact(
       example_gen.outputs.outputs['examples'].artifact_spec.type)
   output_example.set_int_custom_property('span', span)
   output_example.set_int_custom_property('version', version)
+  if is_external:
+    output_example.is_external = True
   for key, value in additional_custom_properties.items():
     data_types_utils.set_metadata_value(
         output_example.mlmd_artifact.custom_properties[key], value)
@@ -74,10 +77,15 @@ def fake_example_gen_run_with_handle(mlmd_handle,
   return execution
 
 
-def fake_example_gen_run(mlmd_connection, example_gen, span, version):
+def fake_example_gen_run(mlmd_connection,
+                         example_gen,
+                         span,
+                         version,
+                         is_external=False):
   """Writes fake example_gen output and successful execution to MLMD."""
   with mlmd_connection as m:
-    return fake_example_gen_run_with_handle(m, example_gen, span, version)
+    return fake_example_gen_run_with_handle(m, example_gen, span, version,
+                                            is_external)
 
 
 def fake_upstream_node_run(mlmd_connection: metadata.Metadata,

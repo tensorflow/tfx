@@ -127,6 +127,16 @@ def _artifacts_not_in_use(
   return [a for a in artifacts if a.id not in in_use_artifact_ids]
 
 
+def _artifacts_not_external(
+    artifacts: List[metadata_store_pb2.Artifact]
+) -> List[metadata_store_pb2.Artifact]:
+  """Filters out external artifacts."""
+  return [
+      artifact for artifact in artifacts
+      if _get_property_value(artifact, 'is_external') != 1
+  ]
+
+
 def _artifacts_to_garbage_collect_for_policy(
     artifacts: List[metadata_store_pb2.Artifact],
     policy: garbage_collection_policy_pb2.GarbageCollectionPolicy
@@ -238,7 +248,7 @@ def _artifacts_to_garbage_collect(
 ) -> List[metadata_store_pb2.Artifact]:
   """Returns artifacts that should be garbage collected."""
   result = artifacts
-  # TODO(b/248439821) Should filter out external artifacts.
+  result = _artifacts_not_external(result)
   result = _artifacts_to_garbage_collect_for_policy(result, policy)
   result = _artifacts_not_in_use(mlmd_handle, result, events)
   return result
@@ -302,7 +312,6 @@ def garbage_collect_artifacts(
     mlmd_handle: metadata.Metadata,
     artifacts: List[metadata_store_pb2.Artifact]) -> None:
   """Garbage collect the artifacts."""
-  # TODO(b/469807517): Do not garbage collect external artifacts.
   _update_artifacts_state(mlmd_handle, artifacts,
                           metadata_store_pb2.Artifact.State.MARKED_FOR_DELETION)
   uris = set(a.uri for a in artifacts)
