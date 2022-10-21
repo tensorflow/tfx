@@ -199,8 +199,8 @@ def generate_resolved_info(
     resolved_input_artifacts = inputs_utils.resolve_input_artifacts(
         metadata_handler=metadata_handler, pipeline_node=node)
   except exceptions.InputResolutionError as e:
-    logging.warning('Input resolution error raised for node: %s; error: %s',
-                    node.node_info.id, e)
+    logging.warning('[%s] Input resolution error: %s',
+                    node.node_info.id, e, exc_info=True)
     return ResolvedInfo(contexts=contexts, input_and_params=[])
   else:
     if isinstance(resolved_input_artifacts, inputs_utils.Skip):
@@ -215,8 +215,8 @@ def generate_resolved_info(
             node_parameters=node.parameters, input_artifacts=input_artifacts)
       except exceptions.InputResolutionError as e:
         logging.warning(
-            'Input resolution error raised for node while '
-            'resolving dynamic parameters: %s; error: %s', node.node_info.id, e)
+            '[%s] Parameter resolution error: %s',
+            node.node_info.id, e, exc_info=True)
         return ResolvedInfo(contexts=contexts, input_and_params=[])
 
       if not dynamic_exec_properties:
