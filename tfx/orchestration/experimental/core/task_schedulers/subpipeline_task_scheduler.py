@@ -53,7 +53,7 @@ class SubPipelineTaskScheduler(
     try:
       return pstate.PipelineView.load(
           self.mlmd_handle,
-          self._pipeline_uid,
+          self._pipeline_uid.pipeline_id,
           pipeline_run_id=self._pipeline_run_id)
     except status_lib.StatusNotOkError:
       return None

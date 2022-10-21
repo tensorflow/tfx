@@ -32,7 +32,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 @attr.s(auto_attribs=True, frozen=True)
 class PipelineUid:
-  """Unique identifier for a pipeline.
+  """Uniquely identifies a pipeline among pipelines being actively orchestrated.
 
   Attributes:
     pipeline_id: Id of the pipeline containing the node. Corresponds to
@@ -48,7 +48,7 @@ class PipelineUid:
 
 @attr.s(auto_attribs=True, frozen=True)
 class NodeUid:
-  """Unique identifier for a node in the pipeline.
+  """Uniquely identifies a node across all pipelines being actively orchestrated.
 
   Attributes:
     pipeline_uid: The pipeline UID.
