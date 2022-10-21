@@ -232,19 +232,20 @@ def validate_dynamic_exec_ph_operator(placeholder: ph.ArtifactPlaceholder):
                      "component.output[\'ouput_key\'].future()[0].value")
 
 
-def output_spec_from_channel(channel_value: types.Channel,
+def output_spec_from_channel(channel: types.BaseChannel,
                              node_id: str) -> pipeline_pb2.OutputSpec:
   """Generates OutputSpec proto given OutputChannel."""
   result = pipeline_pb2.OutputSpec()
-  artifact_type = channel_value.type._get_artifact_type()  # pylint: disable=protected-access
+  artifact_type = channel.type._get_artifact_type()  # pylint: disable=protected-access
   result.artifact_spec.type.CopyFrom(artifact_type)
 
-  if isinstance(channel_value, channel_types.PipelineInputChannel):
+  if not isinstance(channel, channel_types.OutputChannel):
     return result
+  output_channel = cast(channel_types.OutputChannel, channel)
 
-  # Attach additional properties for artifacts produced by importer nodes.
+  # Compile OutputSpec.artifact_spec.additional_parameters.
   for property_name, property_value in (
-      channel_value.additional_properties.items()):
+      output_channel.additional_properties.items()):
     _check_property_value_type(property_name, property_value, artifact_type)
     value_field = result.artifact_spec.additional_properties[
         property_name].field_value
@@ -255,8 +256,9 @@ def output_spec_from_channel(channel_value: types.Channel,
           f"Node {node_id} got unsupported parameter {property_name} with type "
           f"{type(property_value)}.") from ValueError
 
+  # Compile OutputSpec.artifact_spec.additional_custom_parameters.
   for property_name, property_value in (
-      channel_value.additional_custom_properties.items()):
+      output_channel.additional_custom_properties.items()):
     value_field = result.artifact_spec.additional_custom_properties[
         property_name].field_value
     try:
@@ -266,14 +268,16 @@ def output_spec_from_channel(channel_value: types.Channel,
           f"Node {node_id} got unsupported parameter {property_name} with type "
           f"{type(property_value)}.") from ValueError
 
-  if isinstance(channel_value, channel_types.OutputChannel):
-    # pylint: disable=protected-access
-    if channel_value._garbage_collection_policy is not None:
-      result.garbage_collection_policy.CopyFrom(
-          channel_value._garbage_collection_policy)
-    if channel_value._predefined_artifact_uris is not None:
-      result.artifact_spec.external_artifact_uris.extend(
-          channel_value._predefined_artifact_uris)
+  # Compile OutputSpec.garbage_collection_policy
+  # pylint: disable=protected-access
+  if output_channel._garbage_collection_policy is not None:
+    result.garbage_collection_policy.CopyFrom(
+        output_channel._garbage_collection_policy)
+
+  # Compile OutputSpec.external_artifacts_uris
+  if output_channel._predefined_artifact_uris is not None:
+    result.artifact_spec.external_artifact_uris.extend(
+        output_channel._predefined_artifact_uris)
 
   return result
 

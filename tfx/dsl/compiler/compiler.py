@@ -963,7 +963,7 @@ def _set_node_outputs(node: pipeline_pb2.PipelineNode,
   for key, value in tfx_node_outputs.items():
     node.outputs.outputs[key].CopyFrom(
         compiler_utils.output_spec_from_channel(
-            channel_value=value, node_id=node.node_info.id))
+            channel=value, node_id=node.node_info.id))
 
 
 def _generate_input_spec_for_outputs(
