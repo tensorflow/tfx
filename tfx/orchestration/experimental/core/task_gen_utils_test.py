@@ -17,7 +17,6 @@ import os
 
 import tensorflow as tf
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
@@ -151,12 +150,11 @@ class TaskGenUtilsTest(tu.TfxTest):
 
   def test_generate_task_from_active_execution(self):
     with self._mlmd_connection as m:
-      # No tasks generated without running execution.
+      # No tasks generated without active execution.
       executions = task_gen_utils.get_executions(m, self._trainer)
       self.assertIsNone(
-          task_gen_utils.generate_cancel_task_from_running_execution(
-              m, self._pipeline, self._trainer, executions,
-              task_lib.NodeCancelType.CANCEL_EXEC))
+          task_gen_utils.generate_task_from_active_execution(
+              m, self._pipeline, self._trainer, executions))
 
     # Next, ensure an active execution for trainer.
     exec_properties = {'int_arg': 24, 'list_bool_arg': [True, False]}
@@ -169,9 +167,8 @@ class TaskGenUtilsTest(tu.TfxTest):
 
       # Check that task can be generated.
       executions = task_gen_utils.get_executions(m, self._trainer)
-      task = task_gen_utils.generate_cancel_task_from_running_execution(
-          m, self._pipeline, self._trainer, executions,
-          task_lib.NodeCancelType.CANCEL_EXEC)
+      task = task_gen_utils.generate_task_from_active_execution(
+          m, self._pipeline, self._trainer, executions)
       self.assertEqual(execution.id, task.execution_id)
       self.assertEqual(exec_properties, task.exec_properties)
 
@@ -181,9 +178,8 @@ class TaskGenUtilsTest(tu.TfxTest):
       m.store.put_executions([execution])
       executions = task_gen_utils.get_executions(m, self._trainer)
       self.assertIsNone(
-          task_gen_utils.generate_cancel_task_from_running_execution(
-              m, self._pipeline, self._trainer, executions,
-              task_lib.NodeCancelType.CANCEL_EXEC))
+          task_gen_utils.generate_task_from_active_execution(
+              m, self._pipeline, self._trainer, executions))
 
   def test_generate_resolved_info(self):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
