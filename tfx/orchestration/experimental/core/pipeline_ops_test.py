@@ -700,7 +700,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC))
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
-  @mock.patch.object(task_gen_utils, 'generate_task_from_active_execution')
+  @mock.patch.object(task_gen_utils,
+                     'generate_cancel_task_from_running_execution')
   def test_orchestrate_stop_initiated_pipelines(self, pipeline,
                                                 mock_gen_task_from_active,
                                                 mock_async_task_gen,
@@ -1008,7 +1009,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   @parameterized.parameters(
       _test_pipeline('pipeline1'),
       _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC))
-  @mock.patch.object(task_gen_utils, 'generate_task_from_active_execution')
+  @mock.patch.object(task_gen_utils,
+                     'generate_cancel_task_from_running_execution')
   def test_orchestrate_update_initiated_pipelines_preempted(
       self,
       pipeline,
@@ -1097,7 +1099,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC))
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
-  @mock.patch.object(task_gen_utils, 'generate_task_from_active_execution')
+  @mock.patch.object(task_gen_utils,
+                     'generate_cancel_task_from_running_execution')
   def test_active_pipelines_with_stopped_nodes(self, pipeline,
                                                mock_gen_task_from_active,
                                                mock_async_task_gen,

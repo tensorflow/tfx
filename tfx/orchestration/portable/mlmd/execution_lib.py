@@ -64,6 +64,18 @@ def is_execution_active(execution: metadata_store_pb2.Execution) -> bool:
           execution.last_known_state == metadata_store_pb2.Execution.RUNNING)
 
 
+def is_execution_running(execution: metadata_store_pb2.Execution) -> bool:
+  """Returns `True` if an execution is running.
+
+  Args:
+    execution: An execution message.
+
+  Returns:
+    A bool value indicating whether or not the execution is running.
+  """
+  return execution.last_known_state == metadata_store_pb2.Execution.RUNNING
+
+
 def is_execution_failed(execution: metadata_store_pb2.Execution) -> bool:
   """Whether or not an execution is failed.
 

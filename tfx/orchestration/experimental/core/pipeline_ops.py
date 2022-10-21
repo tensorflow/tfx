@@ -748,11 +748,11 @@ def _cancel_node(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
                                               node.node_info.id):
     return service_job_manager.stop_node_services(pipeline_state,
                                                   node.node_info.id)
-  elif _maybe_enqueue_cancellation_task(
+  if _maybe_enqueue_cancellation_task(
       mlmd_handle, pipeline_state, node, task_queue, pause=pause):
     return False
-  elif service_job_manager.is_mixed_service_node(pipeline_state,
-                                                 node.node_info.id):
+  if service_job_manager.is_mixed_service_node(pipeline_state,
+                                               node.node_info.id):
     return service_job_manager.stop_node_services(pipeline_state,
                                                   node.node_info.id)
   return True
@@ -1062,6 +1062,16 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
     `True` if a cancellation task was enqueued. `False` if node is already
     stopped or no cancellation was required.
   """
+  executions = task_gen_utils.get_executions(mlmd_handle, node)
+
+  # If not pause, change all NEW executions to CANCELED
+  if not pause:
+    for execution in executions:
+      if execution.last_known_state == metadata_store_pb2.Execution.NEW:
+        with mlmd_state.mlmd_execution_atomic_op(
+            mlmd_handle=mlmd_handle, execution_id=execution.id) as execution:
+          execution.last_known_state = metadata_store_pb2.Execution.CANCELED
+
   pipeline = pipeline_state.pipeline
   node_uid = task_lib.NodeUid.from_node(pipeline, node)
   exec_node_task_id = task_lib.exec_node_task_id_from_node(pipeline, node)
@@ -1073,8 +1083,7 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
         task_lib.CancelNodeTask(node_uid=node_uid, cancel_type=cancel_type))
     return not pause
 
-  executions = task_gen_utils.get_executions(mlmd_handle, node)
-  exec_node_task = task_gen_utils.generate_task_from_active_execution(
+  exec_node_task = task_gen_utils.generate_cancel_task_from_running_execution(
       mlmd_handle, pipeline, node, executions, cancel_type=cancel_type)
   if exec_node_task:
     task_queue.enqueue(exec_node_task)

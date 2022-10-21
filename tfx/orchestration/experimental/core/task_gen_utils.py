@@ -90,16 +90,16 @@ def generate_task_from_execution(
       cancel_type=cancel_type)
 
 
-def generate_task_from_active_execution(
+def generate_cancel_task_from_running_execution(
     metadata_handler: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
     node: node_proto_view.NodeProtoView,
     executions: Iterable[metadata_store_pb2.Execution],
-    cancel_type: Optional[task_lib.NodeCancelType] = None,
+    cancel_type: task_lib.NodeCancelType,
 ) -> Optional[task_lib.Task]:
-  """Generates task from active execution (if any).
+  """Generates cancellation ExecNodeTask from running execution (if any).
 
-  Returns `None` if a task cannot be generated from active execution.
+  Returns `None` if a task cannot be generated from running execution.
 
   Args:
     metadata_handler: A handler to access MLMD db.
@@ -109,28 +109,26 @@ def generate_task_from_active_execution(
     cancel_type: Sets `cancel_type` in ExecNodeTask.
 
   Returns:
-    A `Task` proto if active execution exists for the node. `None` otherwise.
+    An `ExecNodeTask` if running execution exists for the node. `None`
+    otherwise.
 
   Raises:
-    RuntimeError: If there are multiple active executions for the node.
+    RuntimeError: If there are multiple running executions for the node.
   """
-  active_executions = [
-      e for e in executions if execution_lib.is_execution_active(e)
+  running_executions = [
+      e for e in executions if execution_lib.is_execution_running(e)
   ]
-  if not active_executions:
+  if not running_executions:
     return None
-  if len(active_executions) > 1:
-    # TODO(b/223627713): a node in a ForEach is not restartable, it is better
-    # to prevent restarting for now.
+  if len(running_executions) > 1:
     raise RuntimeError(
-        'Unexpected multiple active executions for the node: {}\n executions: '
-        '{}. Updating/restarting a foreach node is not supported yet'.format(
-            node.node_info.id, active_executions))
+        'A node can have only one running execution, but get multiple running '
+        f'executions for node {node.node_info.id}')
   return generate_task_from_execution(
       metadata_handler,
       pipeline,
       node,
-      active_executions[0],
+      running_executions[0],
       cancel_type=cancel_type)
 
 
