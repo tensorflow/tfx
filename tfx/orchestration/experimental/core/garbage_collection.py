@@ -288,10 +288,9 @@ def _update_artifacts_state(mlmd_handle: metadata.Metadata,
   mlmd_handle.store.put_artifacts(artifacts)
 
 
-def _try_delete_uri(
-    mlmd_handle: metadata.Metadata,
-    uri: str,
-) -> None:
+def _try_delete_uri(mlmd_handle: metadata.Metadata,
+                    uri: str,
+                    dry_run: bool = False) -> None:
   """Delete the URI if all artifacts with the URI are marked for deletion."""
   artifacts = mlmd_handle.store.get_artifacts_by_uri(uri)
   if any([
@@ -300,6 +299,8 @@ def _try_delete_uri(
   ]):
     return
   logging.info('Deleting URI %s', uri)
+  if dry_run:
+    return
   if fileio.isdir(uri):
     fileio.rmtree(uri)
   else:
@@ -308,15 +309,15 @@ def _try_delete_uri(
                           metadata_store_pb2.Artifact.State.DELETED)
 
 
-def garbage_collect_artifacts(
-    mlmd_handle: metadata.Metadata,
-    artifacts: List[metadata_store_pb2.Artifact]) -> None:
+def garbage_collect_artifacts(mlmd_handle: metadata.Metadata,
+                              artifacts: List[metadata_store_pb2.Artifact],
+                              dry_run: bool = False) -> None:
   """Garbage collect the artifacts."""
   _update_artifacts_state(mlmd_handle, artifacts,
                           metadata_store_pb2.Artifact.State.MARKED_FOR_DELETION)
   uris = set(a.uri for a in artifacts)
   for uri in uris:
-    _try_delete_uri(mlmd_handle, uri)
+    _try_delete_uri(mlmd_handle, uri, dry_run)
 
 
 def run_garbage_collection_for_node(
@@ -325,10 +326,13 @@ def run_garbage_collection_for_node(
     node: node_proto_view.NodeProtoView) -> None:
   """Garbage collects output artifacts of the given node."""
   logging.info('Garbage collection requested for node %s', node_uid)
-  # TODO(b/192718492): Actually run garbage collection
   if node.node_info.id != node_uid.node_id:
     raise ValueError(
         f'Node uids do not match for garbage collection: {node.node_info.id} '
         f'and {node_uid.node_id}')
-  del mlmd_handle
-  logging.info('Skipping garbage collection because it is not implemented yet')
+  artifacts = get_artifacts_to_garbage_collect_for_node(mlmd_handle, node_uid,
+                                                        node)
+  # TODO(b/192718492): Currently, it just marks the target artifacts, not
+  # actually erases the file content. We should disable dry_run after some
+  # monitoring.
+  garbage_collect_artifacts(mlmd_handle, artifacts, dry_run=True)
