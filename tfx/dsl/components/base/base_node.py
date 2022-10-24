@@ -68,8 +68,8 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._id = None
-    # Internal use only. Can be mapped to KFP TriggerStrategy.
-    self._trigger_strategy = None
+    # Node execution options for experimental orchestrator.
+    self._node_execution_options = None
     dsl_context_registry.get().put_node(self)
 
   @doc_controls.do_not_doc_in_subclasses
