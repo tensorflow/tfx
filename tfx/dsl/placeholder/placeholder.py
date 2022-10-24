@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Placeholders represent not-yet-available values at the component authoring time."""
+"""Placeholders represent not-yet-available values at the component authoring time.
+"""
 
 import abc
 import copy
 import enum
-from typing import Any, Callable, Iterator, List, Optional, Type, TypeVar, Union, cast
+from typing import Any, Callable, Iterator, List, Optional, Sequence, Type, TypeVar, Union, cast
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
@@ -267,20 +268,20 @@ class _ProtoOperator(_PlaceholderOperator):
           self._serialization_format.value)
 
     # Attach proto descriptor if available through component spec.
-    if (component_spec and sub_expression_pb.placeholder.type ==
-        placeholder_pb2.Placeholder.EXEC_PROPERTY):
+    if (component_spec and sub_expression_pb.placeholder.type
+        == placeholder_pb2.Placeholder.EXEC_PROPERTY):
       exec_property_name = sub_expression_pb.placeholder.key
       if exec_property_name not in component_spec.PARAMETERS:
         raise ValueError(
             f"Can't find provided placeholder key {exec_property_name} in "
             "component spec's exec properties. "
-            f"Available exec property keys: {component_spec.PARAMETERS.keys()}."
+            f'Available exec property keys: {component_spec.PARAMETERS.keys()}.'
         )
       execution_param = component_spec.PARAMETERS[exec_property_name]
       if not issubclass(execution_param.type, message.Message):
         raise ValueError(
             "Can't apply placeholder proto operator on non-proto type "
-            f"exec property. Got {execution_param.type}.")
+            f'exec property. Got {execution_param.type}.')
       proto_schema = result.operator.proto_op.proto_schema
       proto_schema.message_type = execution_param.type.DESCRIPTOR.full_name
       proto_utils.build_file_descriptor_set(execution_param.type,
@@ -332,16 +333,22 @@ class _Base64EncodeOperator(_PlaceholderOperator):
 
 
 class Placeholder(json_utils.Jsonable):
-  """A Placeholder represents not-yet-available values at the component authoring time."""
+  """A Placeholder represents not-yet-available values at the component authoring time.
+  """
 
-  def __init__(self, placeholder_type: placeholder_pb2.Placeholder.Type,
+  def __init__(self,
+               placeholder_type: placeholder_pb2.Placeholder.Type,
                key: Optional[str] = None):
     self._operators = []
     self._type = placeholder_type
     self._key = key  # TODO(b/217597892): Refactor _key as read-only property.
 
   def __add__(self, right: Union[str, 'Placeholder']):
-    self._operators.append(_ConcatOperator(right=copy.deepcopy(right)))
+    if isinstance(right, Placeholder) and right is self:
+      raise ValueError(
+          'Placeholders cannot be concatenated with itself using the `+` '
+          'operator. Use `placeholder.concat_placeholders` instead.')
+    self._operators.append(_ConcatOperator(right=right))
     return self
 
   def __radd__(self, left: str):
@@ -394,6 +401,31 @@ class Placeholder(json_utils.Jsonable):
     for op in self._operators:
       result.extend(op.placeholders_involved())
     return result
+
+
+def concat_placeholders(
+    placeholders: Sequence[Union[str, Placeholder]]) -> Union[str, Placeholder]:
+  """Concatenates a list consisting of placeholders and strings.
+
+  Returns an empty string if placeholders is empty.
+
+  Args:
+    placeholders: List of placeholders and/or strings.
+
+  Returns:
+    A Placeholder representing the concatenation of all elements passed in, or
+    a string in the case that no element was a Placeholder instance.
+  """
+  if not placeholders:
+    return ''
+
+  result = copy.deepcopy(placeholders[0])
+  for value in placeholders[1:]:
+    if isinstance(value, Placeholder):
+      value = copy.deepcopy(value)
+    result += value
+
+  return result
 
 
 # To ensure that ArtifactPlaceholder operations on a ChannelWrappedPlaceholder
@@ -585,8 +617,7 @@ class ChannelWrappedPlaceholder(ArtifactPlaceholder):
     return logical_not(self < other)
 
   def encode_with_keys(
-      self,
-      channel_to_key_fn: Optional[Callable[['types.Channel'], str]]
+      self, channel_to_key_fn: Optional[Callable[['types.Channel'], str]]
   ) -> placeholder_pb2.PlaceholderExpression:
     original_key = self._key
     self._key = channel_to_key_fn(self.channel)

@@ -526,13 +526,18 @@ class PlaceholderTest(tf.test.TestCase):
     output_channel = Channel(type=standard_artifacts.Integer)
     placeholder = output_channel.future()[0].value
     placeholder._key = '_component.num'
-    self.assertProtoEquals(
-        placeholder.encode(), expected_pb)
+    self.assertProtoEquals(placeholder.encode(), expected_pb)
 
-  def testConcatSelf(self):
+  def testConcatSelfUsingOperator(self):
+    a = ph.output('model').uri
+    with self.assertRaises(
+        ValueError, msg='Placeholders cannot be contatenated with itself'):
+      a += a
+
+  def testConcatSelfUsingConcatPlaceholder(self):
     a = ph.output('model').uri
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        a + a, """
+        ph.concat_placeholders([a, a]), """
         operator {
           concat_op {
             expressions {
@@ -551,6 +556,79 @@ class PlaceholderTest(tf.test.TestCase):
                     }
                   }
                 }
+              }
+            }
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }""")
+
+  def testConcatPlaceholders(self):
+    a = ph.output('model').uri
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.concat_placeholders([a, '-', a, '+', a]), """
+        operator {
+          concat_op {
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "-"
+              }
+            }
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "+"
               }
             }
             expressions {
@@ -740,11 +818,6 @@ class ChannelWrappedPlaceholderTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(
       {
-          'testcase_name': 'two_sides_placeholder',
-          'left': Channel(type=_MyType).future().value,
-          'right': Channel(type=_MyType).future().value,
-      },
-      {
           'testcase_name': 'left_side_placeholder_right_side_string',
           'left': Channel(type=_MyType).future().value,
           'right': '#',
@@ -757,6 +830,12 @@ class ChannelWrappedPlaceholderTest(parameterized.TestCase, tf.test.TestCase):
   )
   def testConcat(self, left, right):
     self.assertIsInstance(left + right, ph.ChannelWrappedPlaceholder)
+
+  def testConcatWithSelf(self):
+    left = Channel(type=_MyType).future().value
+    right = Channel(type=_MyType).future().value
+    self.assertIsInstance(
+        ph.concat_placeholders([left, right]), ph.ChannelWrappedPlaceholder)
 
   def testEncodeWithKeys(self):
     channel = Channel(type=_MyType)

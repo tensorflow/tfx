@@ -101,12 +101,6 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
             }
           }
           custom_properties {
-            key: "is_external"
-            value {
-              int_value: 1
-            }
-          }
-          custom_properties {
             key: "str_custom_property"
             value {
               string_value: "abc"
