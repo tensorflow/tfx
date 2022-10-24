@@ -38,6 +38,7 @@ class ImporterTest(tf.test.TestCase):
     source_uri = 'artifact_uri'
     existing_artifact = standard_artifacts.Examples()
     existing_artifact.uri = source_uri
+    existing_artifact.is_external = True
     artifact_type = metadata_store_pb2.ArtifactType(
         name=existing_artifact.TYPE_NAME)
     with metadata.Metadata(connection_config=connection_config) as m:
@@ -63,9 +64,11 @@ class ImporterTest(tf.test.TestCase):
     source_uri = 'artifact1_uri'
     existing_artifact1 = standard_artifacts.Examples()
     existing_artifact1.uri = source_uri
+    existing_artifact1.is_external = True
     # existing_artifact2 is to load the artifact type into MLMD.
     existing_artifact2 = standard_artifacts.Model()
     existing_artifact2.uri = 'x'
+    existing_artifact2.is_external = True
     artifact2_type = metadata_store_pb2.ArtifactType(
         name=existing_artifact2.TYPE_NAME)
     with metadata.Metadata(connection_config=connection_config) as m:
@@ -93,6 +96,7 @@ class ImporterTest(tf.test.TestCase):
     source_uri = 'artifact_uri'
     existing_artifact = standard_artifacts.Examples()
     existing_artifact.uri = source_uri
+    existing_artifact.is_external = True
     artifact_type = metadata_store_pb2.ArtifactType(
         name='NewNeverBeforeSeenType')
     with metadata.Metadata(connection_config=connection_config) as m:
@@ -140,6 +144,7 @@ class ImporterTest(tf.test.TestCase):
     })
     # Tests properties in artifact.
     output_artifact = list(output_channel.get())[0]
+    self.assertTrue(output_artifact.is_external)
     self.assertEqual(output_artifact.split_names, '["train", "eval"]')
     self.assertEqual(
         output_artifact.get_string_custom_property('str_custom_property'),
@@ -187,6 +192,7 @@ class ImporterDriverTest(tf.test.TestCase, parameterized.TestCase):
     self.existing_artifacts = []
     existing_artifact = standard_artifacts.Examples()
     existing_artifact.uri = self.source_uri
+    existing_artifact.is_external = True
     existing_artifact.split_names = self.properties['split_names']
     self.existing_artifacts.append(existing_artifact)
 
@@ -222,11 +228,13 @@ class ImporterDriverTest(tf.test.TestCase, parameterized.TestCase):
       self.assertLen(result_artifacts, 1)
       result = result_artifacts[0]
       self.assertEqual(result.uri, self.source_uri)
+      self.assertTrue(result.is_external)
       self.assertEqual(
           self.properties,
           data_types_utils.build_value_dict(result.mlmd_artifact.properties))
+      expected_custom_properties = {**self.custom_properties, 'is_external': 1}
       self.assertEqual(
-          self.custom_properties,
+          expected_custom_properties,
           data_types_utils.build_value_dict(
               result.mlmd_artifact.custom_properties))
 

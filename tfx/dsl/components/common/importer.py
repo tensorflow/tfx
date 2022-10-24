@@ -108,6 +108,7 @@ def _prepare_artifact(
 
   result = output_artifact_class(mlmd_artifact_type)
   result.uri = uri
+  result.is_external = True
   _set_artifact_properties(result, properties, custom_properties)
 
   # Only consider previous artifacts as candidates to reuse if:
@@ -295,6 +296,7 @@ class Importer(base_node.BaseNode):
     self._output_key = output_key or IMPORT_RESULT_KEY
 
     artifact = artifact_type()
+    artifact.is_external = True
     _set_artifact_properties(artifact, properties, custom_properties)
 
     output_channel = types.OutputChannel(
