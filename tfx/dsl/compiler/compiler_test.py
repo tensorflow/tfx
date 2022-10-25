@@ -178,10 +178,7 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     downstream_component = next(
         c for c in test_pipeline.components
         if isinstance(c, dynamic_exec_properties_pipeline.DownstreamComponent))
-    instance_a = _MyType()
-    instance_b = _MyType()
-    test_wrong_type_channel = channel.Channel(_MyType).set_artifacts(
-        [instance_a, instance_b]).future()
+    test_wrong_type_channel = channel.Channel(_MyType).future()
     downstream_component.exec_properties["input_num"] = test_wrong_type_channel
     with self.assertRaisesRegex(
         ValueError,
@@ -210,7 +207,8 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertLen(result_holder, 1)
     p = result_holder[0]
     compiled_pb = compiler.Compiler().compile(p)
-    expected_pb = self._get_pipeline_ir("conditional_pipeline_ir.pbtxt")
+    expected_pb = self._get_pipeline_ir(
+        "conditional_pipeline_input_v2_ir.pbtxt")
     self.assertProtoEquals(expected_pb, compiled_pb)
 
   def test_DefineAtSub_CompileAtSub(self):
@@ -224,7 +222,8 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     t.start()
     t.join()
     self.assertLen(result_holder, 1)
-    expected_pb = self._get_pipeline_ir("conditional_pipeline_ir.pbtxt")
+    expected_pb = self._get_pipeline_ir(
+        "conditional_pipeline_input_v2_ir.pbtxt")
     self.assertProtoEquals(expected_pb, result_holder[0])
 
 

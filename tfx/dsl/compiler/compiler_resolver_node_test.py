@@ -139,7 +139,7 @@ class TestCase(tf.test.TestCase):
     self.pipeline_root = os.path.join(temp_dir, 'pipeline')
     self.metadata_conn_config = metadata.sqlite_metadata_connection_config(
         os.path.join(temp_dir, 'metadata', 'metadata.db'))
-    self.compiler = compiler.Compiler()
+    self.compiler = compiler.Compiler(use_input_v2=False)
 
   def compile_sync_pipeline(self, components):
     p = pipeline.Pipeline(

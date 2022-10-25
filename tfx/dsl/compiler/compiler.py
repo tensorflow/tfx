@@ -48,7 +48,7 @@ from tfx.utils import name_utils
 class Compiler:
   """Compiles a TFX pipeline or a component into a uDSL IR proto."""
 
-  def __init__(self, use_input_v2: bool = False):
+  def __init__(self, use_input_v2: bool = True):
     self._use_input_v2 = use_input_v2
 
   def _compile_pipeline_begin_node(

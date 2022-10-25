@@ -340,7 +340,7 @@ def _compile_inputs_for_dynamic_properties(
     if not typing_utils.is_compatible(
         exec_property.channel.type, Type[value_artifact.ValueArtifact]):
       raise ValueError(
-          'Dynamic execution property only support ValueArtifact typed '
+          'Dynamic execution property only supports ValueArtifact typed '
           f'channel. Got {exec_property.channel.type.TYPE_NAME}.')
     _compile_input_spec(
         pipeline_ctx=context,
