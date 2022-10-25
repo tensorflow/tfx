@@ -22,6 +22,7 @@ from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -37,7 +38,6 @@ from tfx.utils import test_case_utils
 from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
-
 
 OUTPUT_NUM = 33
 
@@ -141,7 +141,8 @@ def fake_component_output(mlmd_connection,
 
 
 def fake_cached_execution(mlmd_connection, cache_context, component):
-  """Writes cached execution; MLMD must have previous execution associated with cache_context."""
+  """Writes cached execution; MLMD must have previous execution associated with cache_context.
+  """
   with mlmd_connection as m:
     cached_outputs = cache_utils.get_cached_outputs(
         m, cache_context=cache_context)
@@ -261,10 +262,11 @@ def create_exec_node_task(
       cancel_type=cancel_type)
 
 
-def create_node_uid(pipeline_id, node_id):
+def create_node_uid(pipeline_id, node_id, pipeline_run_id=None):
   """Creates node uid."""
   return task_lib.NodeUid(
-      pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
+      pipeline_uid=task_lib.PipelineUid(
+          pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id),
       node_id=node_id)
 
 
@@ -305,7 +307,8 @@ def run_generator(mlmd_connection,
 
 
 def get_non_orchestrator_executions(mlmd_handle):
-  """Returns all the executions other than those of '__ORCHESTRATOR__' execution type."""
+  """Returns all the executions other than those of '__ORCHESTRATOR__' execution type.
+  """
   executions = mlmd_handle.store.get_executions()
   result = []
   for e in executions:
@@ -385,7 +388,8 @@ def run_generator_and_test(test_case,
 
 def _verify_exec_node_task(test_case, pipeline, node, execution_id, task,
                            expected_context_names):
-  """Verifies that generated ExecNodeTask has the expected properties for the node."""
+  """Verifies that generated ExecNodeTask has the expected properties for the node.
+  """
   if not expected_context_names:
     expected_context_names = ['my_pipeline', f'my_pipeline.{node.node_info.id}']
   test_case.assertEqual(
@@ -421,3 +425,13 @@ def _verify_exec_node_task(test_case, pipeline, node, execution_id, task,
       os.path.join(pipeline.runtime_spec.pipeline_root.field_value.string_value,
                    node.node_info.id, '.system', 'stateful_working_dir',
                    str(execution_id)), task.stateful_working_dir)
+
+
+def concurrent_pipeline_runs_enabled_env():
+
+  class _TestEnv(env._DefaultEnv):  # pylint: disable=protected-access
+
+    def concurrent_pipeline_runs_enabled(self) -> bool:
+      return True
+
+  return _TestEnv()

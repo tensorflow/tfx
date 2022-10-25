@@ -640,7 +640,7 @@ def orchestrate(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
   Raises:
     status_lib.StatusNotOkError: If error generating tasks.
   """
-  pipeline_states = pstate.get_pipeline_states(mlmd_handle)
+  pipeline_states = pstate.PipelineState.load_all_active(mlmd_handle)
   if not pipeline_states:
     logging.info('No active pipelines to run.')
     return False

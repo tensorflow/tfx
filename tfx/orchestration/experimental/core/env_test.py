@@ -29,6 +29,9 @@ class _TestEnv(env.Env):
   def max_mlmd_str_value_length(self):
     raise NotImplementedError()
 
+  def concurrent_pipeline_runs_enabled(self):
+    raise NotImplementedError()
+
 
 class EnvTest(test_utils.TfxTest):
 

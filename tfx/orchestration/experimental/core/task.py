@@ -24,6 +24,7 @@ from typing import Dict, Hashable, List, Optional, Type, TypeVar
 import attr
 from tfx import types
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import env
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
@@ -37,13 +38,37 @@ class PipelineUid:
   Attributes:
     pipeline_id: Id of the pipeline containing the node. Corresponds to
       `Pipeline.pipeline_info.id` in the pipeline IR.
+    pipeline_run_id: Run identifier for the pipeline if one is provided.
   """
   pipeline_id: str
+  pipeline_run_id: Optional[str] = None
 
   @classmethod
   def from_pipeline(cls: Type['PipelineUid'],
                     pipeline: pipeline_pb2.Pipeline) -> 'PipelineUid':
-    return cls(pipeline_id=pipeline.pipeline_info.id)
+    """Creates a PipelineUid object given a pipeline IR."""
+    if (env.get_env().concurrent_pipeline_runs_enabled() and
+        pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC):
+      pipeline_run_id = pipeline.runtime_spec.pipeline_run_id.field_value.string_value
+      if not pipeline_run_id:
+        raise ValueError(
+            'pipeline_run_id unexpectedly missing for a sync pipeline.')
+    else:
+      pipeline_run_id = None
+
+    return cls(
+        pipeline_id=pipeline.pipeline_info.id, pipeline_run_id=pipeline_run_id)
+
+  @classmethod
+  def from_pipeline_id_and_run_id(
+      cls: Type['PipelineUid'], pipeline_id: str,
+      pipeline_run_id: Optional[str]) -> 'PipelineUid':
+    # If concurrent runs are not enabled, pipeline_run_id is not part of the
+    # PipelineUid.
+    if env.get_env().concurrent_pipeline_runs_enabled():
+      return cls(
+          pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id or None)
+    return cls(pipeline_id=pipeline_id)
 
 
 @attr.s(auto_attribs=True, frozen=True)

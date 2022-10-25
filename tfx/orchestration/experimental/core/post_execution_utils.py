@@ -96,8 +96,9 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
         contexts=task.contexts,
         output_artifacts=task.output_artifacts,
         executor_output=executor_output)
-    garbage_collection.run_garbage_collection_for_node(
-        mlmd_handle, task.node_uid, task.get_node())
+    garbage_collection.run_garbage_collection_for_node(mlmd_handle,
+                                                       task.node_uid,
+                                                       task.get_node())
   elif isinstance(result.output, ts.ImporterNodeOutput):
     output_artifacts = result.output.output_artifacts
     # TODO(b/182316162): Unify publisher handing so that post-execution artifact
@@ -139,7 +140,8 @@ def publish_execution_results(
         tmp_dir=execution_info.tmp_dir,
         executor_output_uri=execution_info.execution_output_uri)
     _update_execution_state_in_mlmd(
-        mlmd_handle=mlmd_handle, execution_id=execution_info.execution_id,
+        mlmd_handle=mlmd_handle,
+        execution_id=execution_info.execution_id,
         new_state=proto.Execution.FAILED,
         error_msg=executor_output.execution_result.result_message,
         execution_result=executor_output.execution_result)
@@ -191,7 +193,11 @@ def _remove_task_dirs(stateful_working_dir: str = '',
                       executor_output_uri: str = '') -> None:
   """Removes directories created for the task."""
   if stateful_working_dir:
-    outputs_utils.remove_stateful_working_dir(stateful_working_dir)
+    try:
+      fileio.rmtree(stateful_working_dir)
+    except fileio.NotFoundError:
+      logging.warning('stateful_working_dir %s not found, ignoring.',
+                      stateful_working_dir)
   if tmp_dir:
     try:
       fileio.rmtree(tmp_dir)

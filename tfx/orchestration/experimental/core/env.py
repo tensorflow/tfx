@@ -48,6 +48,10 @@ class Env(abc.ABC):
   def max_mlmd_str_value_length(self) -> Optional[int]:
     """Returns max size of a string value in MLMD db, `None` if unlimited."""
 
+  @abc.abstractmethod
+  def concurrent_pipeline_runs_enabled(self) -> bool:
+    """Returns whether concurrent pipeline runs are enabled."""
+
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -63,6 +67,9 @@ class _DefaultEnv(Env):
 
   def max_mlmd_str_value_length(self) -> Optional[int]:
     return None
+
+  def concurrent_pipeline_runs_enabled(self) -> bool:
+    return False
 
 
 _ENV = _DefaultEnv()

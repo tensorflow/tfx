@@ -53,12 +53,13 @@ from ml_metadata.proto import metadata_store_pb2
 
 def _test_pipeline(pipeline_id: str,
                    execution_mode: pipeline_pb2.Pipeline.ExecutionMode = (
-                       pipeline_pb2.Pipeline.ASYNC)):
+                       pipeline_pb2.Pipeline.ASYNC),
+                   pipeline_run_id='run0'):
   pipeline = pipeline_pb2.Pipeline()
   pipeline.pipeline_info.id = pipeline_id
   pipeline.execution_mode = execution_mode
   if execution_mode == pipeline_pb2.Pipeline.SYNC:
-    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run0'
+    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = pipeline_run_id
   return pipeline
 
 
@@ -1801,6 +1802,102 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           # exception should be raised.
           with pipeline_state:
             self.assertFalse(pipeline_state.is_stop_initiated())
+
+  def test_start_concurrent_pipeline_runs(self):
+    with test_utils.concurrent_pipeline_runs_enabled_env():
+      with self._mlmd_connection as m:
+        pipeline1 = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC,
+                                   'run0')
+        pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline1)
+        self.assertEqual(pipeline_state.pipeline_uid,
+                         task_lib.PipelineUid('pipeline', 'run0'))
+
+        # Should be possible to start a new run with a different run id.
+        pipeline2 = copy.deepcopy(pipeline1)
+        pipeline2.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
+        pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline2)
+        self.assertEqual(pipeline_state.pipeline_uid,
+                         task_lib.PipelineUid('pipeline', 'run1'))
+
+        # Starting a concurrent run with a duplicate id is prohibited.
+        pipeline3 = copy.deepcopy(pipeline2)
+        with self.assertRaises(
+            status_lib.StatusNotOkError) as exception_context:
+          pipeline_ops.initiate_pipeline_start(m, pipeline3)
+        self.assertEqual(status_lib.Code.ALREADY_EXISTS,
+                         exception_context.exception.code)
+
+  def test_start_concurrent_pipeline_runs_when_disabled(self) -> bool:
+    with self._mlmd_connection as m:
+      pipeline1 = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC, 'run0')
+      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline1)
+      self.assertEqual(pipeline_state.pipeline_uid,
+                       task_lib.PipelineUid('pipeline'))
+
+      # Starting a concurrent run with a different run id is prohibited.
+      pipeline2 = copy.deepcopy(pipeline1)
+      pipeline2.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
+      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
+        pipeline_ops.initiate_pipeline_start(m, pipeline2)
+      self.assertEqual(status_lib.Code.ALREADY_EXISTS,
+                       exception_context.exception.code)
+
+  @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
+  def test_orchestrate_concurrent_pipeline_runs(self, mock_sync_task_gen):
+    with test_utils.concurrent_pipeline_runs_enabled_env():
+      with self._mlmd_connection as m:
+        # Sync pipelines with same pipeline_id but different run ids.
+        sync_pipelines = [
+            _test_pipeline(
+                'pipeline1', pipeline_pb2.Pipeline.SYNC,
+                pipeline_run_id='run0'),
+            _test_pipeline(
+                'pipeline1', pipeline_pb2.Pipeline.SYNC,
+                pipeline_run_id='run1'),
+        ]
+
+        for pipeline in sync_pipelines:
+          pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+        # Active executions for active sync pipelines.
+        mock_sync_task_gen.return_value.generate.side_effect = [
+            [
+                test_utils.create_exec_node_task(
+                    task_lib.NodeUid(
+                        pipeline_uid=task_lib.PipelineUid.from_pipeline(
+                            sync_pipelines[0]),
+                        node_id='Trainer'))
+            ],
+            [
+                test_utils.create_exec_node_task(
+                    task_lib.NodeUid(
+                        pipeline_uid=task_lib.PipelineUid.from_pipeline(
+                            sync_pipelines[1]),
+                        node_id='Validator'))
+            ],
+        ]
+
+        task_queue = tq.TaskQueue()
+        pipeline_ops.orchestrate(m, task_queue,
+                                 service_jobs.DummyServiceJobManager())
+
+        self.assertEqual(2, mock_sync_task_gen.return_value.generate.call_count)
+
+        # Verify that tasks are enqueued in the expected order.
+        task = task_queue.dequeue()
+        task_queue.task_done(task)
+        self.assertIsInstance(task, task_lib.ExecNodeTask)
+        self.assertEqual(
+            test_utils.create_node_uid(
+                'pipeline1', 'Trainer', pipeline_run_id='run0'), task.node_uid)
+        task = task_queue.dequeue()
+        task_queue.task_done(task)
+        self.assertIsInstance(task, task_lib.ExecNodeTask)
+        self.assertEqual(
+            test_utils.create_node_uid(
+                'pipeline1', 'Validator', pipeline_run_id='run1'),
+            task.node_uid)
+        self.assertTrue(task_queue.is_empty())
 
 
 if __name__ == '__main__':
