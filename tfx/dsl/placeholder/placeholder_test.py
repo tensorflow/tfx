@@ -529,12 +529,19 @@ class PlaceholderTest(tf.test.TestCase):
     self.assertProtoEquals(
         placeholder.encode(), expected_pb)
 
-  def testConcatSelf(self):
-    a = ph.output('model').uri
+  def testConcatWithSelfReferences(self):
+    # Tests that Placeholder operators should not mutate the placeholder.
+    a = ph.output('model')
+    b = a.property('bar')
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        a + a, """
+        '1' + a.uri + '2' + a.property('foo') + '3' + b, """
         operator {
           concat_op {
+            expressions {
+              value {
+                string_value: "1"
+              }
+            }
             expressions {
               operator {
                 artifact_uri_op {
@@ -554,8 +561,13 @@ class PlaceholderTest(tf.test.TestCase):
               }
             }
             expressions {
+              value {
+                string_value: "2"
+              }
+            }
+            expressions {
               operator {
-                artifact_uri_op {
+                artifact_property_op {
                   expression {
                     operator {
                       index_op {
@@ -568,6 +580,31 @@ class PlaceholderTest(tf.test.TestCase):
                       }
                     }
                   }
+                  key: "foo"
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "3"
+              }
+            }
+            expressions {
+              operator {
+                artifact_property_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                  key: "bar"
                 }
               }
             }
