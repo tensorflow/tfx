@@ -127,7 +127,8 @@ class _Generator:
         node_id = node.node_info.id
         node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
         node_state = self._node_states_dict[node_uid]
-        if node_state.is_success():
+        if node_state.is_success() or (node_state.is_failure(
+        ) and node.execution_options.node_success_optional):
           successful_node_ids.add(node_id)
           continue
         if node_state.is_failure():
@@ -139,7 +140,9 @@ class _Generator:
         tasks = self._generate_tasks_for_node(node)
         for task in tasks:
           if isinstance(task, task_lib.UpdateNodeStateTask):
-            if pstate.is_node_state_success(task.state):
+            if pstate.is_node_state_success(
+                task.state) or (pstate.is_node_state_failure(task.state) and
+                                node.execution_options.node_success_optional):
               successful_node_ids.add(node_id)
             elif pstate.is_node_state_failure(task.state):
               failed_nodes_dict[node_id] = task.status
