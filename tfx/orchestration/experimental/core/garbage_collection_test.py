@@ -146,6 +146,33 @@ class GarbageCollectionTest(test_utils.TfxTest):
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
             self._metadata, example_gen_node_uid, self._example_gen))
 
+  @mock.patch.object(fileio, 'remove')
+  def test_do_garbage_collection_twice_with_the_same_uri(self, remove):
+    policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
+        keep_most_recently_published=garbage_collection_policy_pb2
+        .GarbageCollectionPolicy.KeepMostRecentlyPublished(num_artifacts=0))
+    self._example_gen.outputs.outputs[
+        'examples'].garbage_collection_policy.CopyFrom(policy)
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+
+    examples1 = self._produce_examples()
+    garbage_collection.garbage_collect_artifacts(self._metadata,
+                                                 [examples1.mlmd_artifact])
+    self.assertEqual(
+        metadata_store_pb2.Artifact.State.DELETED,
+        self._metadata.store.get_artifacts_by_id([examples1.id])[0].state)
+
+    examples2 = self._produce_examples()
+    self.assertEqual(examples1.uri,
+                     examples2.uri)  # _produce_examples produces the same uris
+    garbage_collection.garbage_collect_artifacts(self._metadata,
+                                                 [examples2.mlmd_artifact])
+    self.assertCountEqual([mock.call(examples1.uri),
+                           mock.call(examples2.uri)], remove.mock_calls)
+    self.assertEqual(
+        metadata_store_pb2.Artifact.State.DELETED,
+        self._metadata.store.get_artifacts_by_id([examples2.id])[0].state)
+
   def test_keep_most_recently_published(self):
     policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
         keep_most_recently_published=garbage_collection_policy_pb2

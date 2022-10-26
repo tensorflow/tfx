@@ -33,6 +33,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 _KeepOrder = (garbage_collection_policy_pb2.GarbageCollectionPolicy.
               KeepPropertyValueGroups.Grouping.KeepOrder)
+_State = metadata_store_pb2.Artifact.State
 
 
 def _get_output_artifacts_for_node(
@@ -292,7 +293,7 @@ def _try_delete_uri(mlmd_handle: metadata.Metadata, uri: str) -> None:
   """Delete the URI if all artifacts with the URI are marked for deletion."""
   artifacts = mlmd_handle.store.get_artifacts_by_uri(uri)
   if any([
-      a.state != metadata_store_pb2.Artifact.State.MARKED_FOR_DELETION
+      a.state not in [_State.MARKED_FOR_DELETION, _State.DELETED]
       for a in artifacts
   ]):
     return
@@ -301,16 +302,14 @@ def _try_delete_uri(mlmd_handle: metadata.Metadata, uri: str) -> None:
     fileio.rmtree(uri)
   else:
     fileio.remove(uri)
-  _update_artifacts_state(mlmd_handle, artifacts,
-                          metadata_store_pb2.Artifact.State.DELETED)
+  _update_artifacts_state(mlmd_handle, artifacts, _State.DELETED)
 
 
 def garbage_collect_artifacts(
     mlmd_handle: metadata.Metadata,
     artifacts: List[metadata_store_pb2.Artifact]) -> None:
   """Garbage collect the artifacts."""
-  _update_artifacts_state(mlmd_handle, artifacts,
-                          metadata_store_pb2.Artifact.State.MARKED_FOR_DELETION)
+  _update_artifacts_state(mlmd_handle, artifacts, _State.MARKED_FOR_DELETION)
   uris = set(a.uri for a in artifacts)
   for uri in uris:
     _try_delete_uri(mlmd_handle, uri)
