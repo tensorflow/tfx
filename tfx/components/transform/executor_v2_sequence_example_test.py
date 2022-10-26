@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.transform.executor.
+"""Tests for tfx.components.transform.executor with sequnce examples.
 
 With the native TF2 code path being exercised.
 """
@@ -19,10 +19,11 @@ import os
 
 import tensorflow as tf
 
-from tfx.components.transform import executor_test
+from tfx.components.transform import executor_sequence_example_test
 
 
-class ExecutorV2Test(executor_test.ExecutorTest):
+class ExecutorWithSequenceExampleV2Test(
+    executor_sequence_example_test.ExecutorWithSequenceExampleTest):
   # Should not rely on inherited _SOURCE_DATA_DIR for integration tests to work
   # when TFX is installed as a non-editable package.
   _SOURCE_DATA_DIR = os.path.join(

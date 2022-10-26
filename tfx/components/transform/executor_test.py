@@ -17,7 +17,6 @@ import copy
 import json
 import os
 import tempfile
-import unittest
 from unittest import mock
 
 from absl.testing import parameterized
@@ -28,7 +27,6 @@ import tensorflow_transform as tft
 from tensorflow_transform.beam import tft_unit
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
-from tfx.components.testdata.module_file import transform_sequence_module
 from tfx.components.transform import executor
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
@@ -684,32 +682,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._verify_transform_outputs(store_cache=False)
     self.assertFalse(fileio.exists(self._updated_analyzer_cache_artifact.uri))
 
-
-@unittest.skipIf(tf.__version__ < '2',
-                 'Native SequenceExample support not available with TF1')
-class ExecutorWithSequenceExampleTest(ExecutorTest):
-
-  _SOURCE_EXAMPLE_DIR = 'tfrecord_sequence'
-  _PAYLOAD_FORMAT = example_gen_pb2.FORMAT_TF_SEQUENCE_EXAMPLE
-  _PREPROCESSING_FN = transform_sequence_module.preprocessing_fn
-  _STATS_OPTIONS_UPDATER_FN = transform_sequence_module.stats_options_updater_fn
-  _SCHEMA_ARTIFACT_DIR = 'schema_gen_sequence'
-  _MODULE_FILE = 'module_file/transform_sequence_module.py'
-
-  _TEST_COUNTERS = {
-      'num_instances': 25500,
-      'total_columns_count': 3,
-      'analyze_columns_count': 2,
-      'transform_columns_count': 2,
-      'metric_committed_sum': 20
-  }
-
-  _CACHE_TEST_METRICS = {
-      'num_instances_tfx.Transform_1st_run': 25500,
-      'num_instances_tfx.Transform_2nd_run': 15000,
-      'num_instances_tfx.DataValidation_1st_run': 25500,
-      'num_instances_tfx.DataValidation_2nd_run': 25500
-  }
 
 if __name__ == '__main__':
   tf.test.main()
