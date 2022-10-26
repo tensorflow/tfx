@@ -191,8 +191,7 @@ class GarbageCollectionTest(test_utils.TfxTest):
     examples_protos = self._metadata.store.get_artifacts_by_id(
         [e.id for e in examples])
     garbage_collection.garbage_collect_artifacts(self._metadata,
-                                                 examples_protos,
-                                                 dry_run=False)
+                                                 examples_protos)
     remove.assert_called_once_with(examples[0].uri)
     self.assertEqual(
         metadata_store_pb2.Artifact.State.DELETED,
