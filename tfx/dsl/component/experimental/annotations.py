@@ -196,9 +196,6 @@ class BeamComponentParameter(_PipelineTypeGeneric):
   pass
 
 
-# TODO(olgai): change this comment
-# TODO(ccy): potentially make this compatible `typing.TypedDict` in
-# Python 3.8, to allow for component return value type checking.
 class OutputDict(TypedDict):
   """Component return type annotation."""
   pass
