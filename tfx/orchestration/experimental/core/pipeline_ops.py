@@ -27,6 +27,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -119,6 +120,14 @@ def initiate_pipeline_start(
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.INVALID_ARGUMENT,
         message='Sync pipeline IR must specify pipeline_run_id.')
+
+  # TODO(b/239955028): Remove this restriction.
+  if env.get_env().concurrent_pipeline_runs_enabled(
+  ) and pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INVALID_ARGUMENT,
+        message='Concurrent pipeline runs are currently not supported for async pipelines.'
+    )
 
   reused_pipeline_view = None
   if partial_run_option:
