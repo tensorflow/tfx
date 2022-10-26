@@ -431,42 +431,40 @@ def get_executor_spec(pipeline: pipeline_pb2.Pipeline,
   return depl_config.executor_specs.get(node_id)
 
 
-def register_retry_execution(
+def register_new_execution_from_existing_execution(
     metadata_handle: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
-    failed_execution: metadata_store_pb2.Execution
+    existing_execution: metadata_store_pb2.Execution,
+    state: metadata_store_pb2.Execution.State = metadata_store_pb2.Execution
+    .RUNNING
 ) -> metadata_store_pb2.Execution:
   """Generates a retry execution from a failed execution and put it in MLMD."""
   # Set a new execution name and put the state to RUNNING.
   exec_properties = resolve_exec_properties(node)
   # TODO(b/224800273): We also need to resolve and set dynamic execution
   # properties.
-  retry_execution = execution_lib.prepare_execution(
+  new_execution = execution_lib.prepare_execution(
       metadata_handler=metadata_handle,
       execution_type=node.node_info.type,
-      state=metadata_store_pb2.Execution.RUNNING,
+      state=state,
       exec_properties=exec_properties,
       execution_name=str(uuid.uuid4()))
   # Only copy necessary custom_properties from the failed execution.
-  # LINT.IfChange(retry_execution_custom_properties)
-  retry_execution.custom_properties[_EXECUTION_SET_SIZE].CopyFrom(
-      failed_execution.custom_properties[_EXECUTION_SET_SIZE])
-  retry_execution.custom_properties[_EXECUTION_TIMESTAMP].CopyFrom(
-      failed_execution.custom_properties[_EXECUTION_TIMESTAMP])
-  retry_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].CopyFrom(
-      failed_execution.custom_properties[
-          _EXTERNAL_EXECUTION_INDEX])
+  # LINT.IfChange(new_execution_custom_properties)
+  new_execution.custom_properties[_EXECUTION_SET_SIZE].CopyFrom(
+      existing_execution.custom_properties[_EXECUTION_SET_SIZE])
+  new_execution.custom_properties[_EXECUTION_TIMESTAMP].CopyFrom(
+      existing_execution.custom_properties[_EXECUTION_TIMESTAMP])
+  new_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].CopyFrom(
+      existing_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX])
   # LINT.ThenChange(:execution_custom_properties)
 
   contexts = metadata_handle.store.get_contexts_by_execution(
-      failed_execution.id)
+      existing_execution.id)
   input_artifacts = execution_lib.get_artifacts_dict(
-      metadata_handle, failed_execution.id, [metadata_store_pb2.Event.INPUT])
+      metadata_handle, existing_execution.id, [metadata_store_pb2.Event.INPUT])
   return execution_lib.put_execution(
-      metadata_handle,
-      retry_execution,
-      contexts,
-      input_artifacts=input_artifacts)
+      metadata_handle, new_execution, contexts, input_artifacts=input_artifacts)
 
 
 def register_executions(
@@ -509,7 +507,7 @@ def register_executions(
     execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     executions.append(execution)
-  # LINT.ThenChange(:retry_execution_custom_properties)
+  # LINT.ThenChange(:new_execution_custom_properties)
 
   if len(executions) == 1:
     return [

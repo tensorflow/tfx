@@ -304,7 +304,7 @@ class _Generator:
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
     # TODO(b/223627713): We currently carry over execution failures after users
-    # stop and restart the node. Should we consider to reset the count?
+    # stopped and restart the node. Should we consider to reset the count?
     if latest_failed_executions:
       latest_failed_execution = latest_failed_executions[-1]
       if (node.execution_options.max_execution_retries >=
@@ -314,7 +314,7 @@ class _Generator:
         # latest_failed_executions is sorted descendingly by
         # __external_execution_index__.
         # There should be only one failed execution.
-        retry_execution = task_gen_utils.register_retry_execution(
+        retry_execution = task_gen_utils.register_new_execution_from_existing_execution(
             self._mlmd_handle, node, latest_failed_execution)
         # Step 2: Update node state to RUNNING.
         result.append(
@@ -326,34 +326,33 @@ class _Generator:
                                                         self._pipeline, node,
                                                         retry_execution))
         return result
-    # If one of the executions in the set for the node cancelled, the
-    # pipeline should be aborted if the node is not in state STARTING.
-    # For nodes that are in state STARTING, new executions are created.
-    # TODO(b/223627713): a node in a ForEach is not restartable, it is better
-    # to prevent restarting for now.
-    failed_or_canceled_executions = [
+      # If the number of retries reaches the maximum number, fail the node.
+      else:
+        error_msg = f'node {node_uid} failed; '
+        for e in latest_failed_executions:
+          error_msg_value = e.custom_properties.get(
+              constants.EXECUTION_ERROR_MSG_KEY)
+          error_msg_value = data_types_utils.get_metadata_value(
+              error_msg_value) if error_msg_value else ''
+          error_msg_value = textwrap.shorten(error_msg_value, width=512)
+          error_msg += f'error: {error_msg_value}; '
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.FAILED,
+                status=status_lib.Status(
+                    code=status_lib.Code.ABORTED, message=error_msg)))
+        return result
+
+    canceled_executions = [
         e for e in latest_executions_set
-        if execution_lib.is_execution_failed(e) or
-        execution_lib.is_execution_canceled(e)
+        if execution_lib.is_execution_canceled(e)
     ]
-    if failed_or_canceled_executions and (
-        len(latest_executions_set) > 1 or
-        node_state.state != pstate.NodeState.STARTING):
-      error_msg = f'node {node_uid} failed; '
-      for e in failed_or_canceled_executions:
-        error_msg_value = e.custom_properties.get(
-            constants.EXECUTION_ERROR_MSG_KEY)
-        error_msg_value = data_types_utils.get_metadata_value(
-            error_msg_value) if error_msg_value else ''
-        error_msg_value = textwrap.shorten(error_msg_value, width=512)
-        error_msg += f'error: {error_msg_value}; '
-      result.append(
-          task_lib.UpdateNodeStateTask(
-              node_uid=node_uid,
-              state=pstate.NodeState.FAILED,
-              status=status_lib.Status(
-                  code=status_lib.Code.ABORTED, message=error_msg)))
-      return result
+    logging.error('Guowei canceled_executions %s', canceled_executions)
+    if canceled_executions and node_state.state == pstate.NodeState.STARTING:
+      for e in canceled_executions:
+        task_gen_utils.register_new_execution_from_existing_execution(
+            self._mlmd_handle, node, e, metadata_store_pb2.Execution.NEW)
 
     # Gets the oldest active execution. If the oldest active execution exists,
     # generates a task from it.
