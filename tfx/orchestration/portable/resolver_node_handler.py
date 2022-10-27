@@ -77,7 +77,7 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
         logging.info('[%s] Resolved inputs: %s', pipeline_node.node_info.id,
                      resolved_inputs)
       except exceptions.InputResolutionError as e:
-        logging.exception('[%s] Input resolution error: {%s}',
+        logging.exception('[%s] Input resolution error: %s',
                           pipeline_node.node_info.id, e)
         execution = execution_publish_utils.register_execution(
             metadata_handler=m,
