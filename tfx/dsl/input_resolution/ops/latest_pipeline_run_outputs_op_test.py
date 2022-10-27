@@ -16,8 +16,10 @@
 import tensorflow as tf
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
+from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.utils import test_case_utils
+
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -34,20 +36,16 @@ class LatestPipelineRunOutputsTest(tf.test.TestCase,
     # test_utils.run_resolver_op
     with self.mlmd_handle as mlmd_handle:
       context = resolver_op.Context(store=mlmd_handle.store)
-      self._latest_pipeline_run_op = ops.LatestPipelineRunOutputs.create(
-          pipeline_name='pipeline-name')
-      self._latest_pipeline_run_op.set_context(context)
-
       # Tests LatestPipelineRunOutputsOutputs with empty input.
       with self.assertRaises(exceptions.SkipSignal):
-        self._latest_pipeline_run_op.apply()
+        test_utils.run_resolver_op(
+            ops.LatestPipelineRunOutputs,
+            context=context,
+            pipeline_name='pipeline-name')
 
   def testLatestPipelineRunOutputsOutputs_OneKey(self):
     with self.mlmd_handle as mlmd_handle:
       context = resolver_op.Context(store=mlmd_handle.store)
-      self._latest_pipeline_run_op = ops.LatestPipelineRunOutputs.create(
-          pipeline_name='pipeline-name')
-      self._latest_pipeline_run_op.set_context(context)
 
       node_context = self.put_context('node', 'example-gen')
       end_node_context = self.put_context('node',
@@ -70,7 +68,10 @@ class LatestPipelineRunOutputsTest(tf.test.TestCase,
           output_event_type=metadata_store_pb2.Event.INTERNAL_OUTPUT)
 
       # Tests LatestPipelineRunOutputs with the first artifact.
-      result = self._latest_pipeline_run_op.apply()
+      result = test_utils.run_resolver_op(
+          ops.LatestPipelineRunOutputs,
+          context=context,
+          pipeline_name='pipeline-name')
       expected_result = {'examples': [input_artifact_1]}
       self.assertAllEqual(result.keys(), expected_result.keys())
       for key in result.keys():
@@ -95,7 +96,10 @@ class LatestPipelineRunOutputsTest(tf.test.TestCase,
           output_event_type=metadata_store_pb2.Event.INTERNAL_OUTPUT)
 
       # Tests LatestPipelineRunOutputs with the first and second artifacts.
-      result = self._latest_pipeline_run_op.apply()
+      result = test_utils.run_resolver_op(
+          ops.LatestPipelineRunOutputs,
+          context=context,
+          pipeline_name='pipeline-name')
       expected_result = {'examples': [input_artifact_2]}
       self.assertAllEqual(result.keys(), expected_result.keys())
       for key in result.keys():
@@ -106,9 +110,6 @@ class LatestPipelineRunOutputsTest(tf.test.TestCase,
   def testLatestPipelineRunOutputs_TwoKeys(self):
     with self.mlmd_handle as mlmd_handle:
       context = resolver_op.Context(store=mlmd_handle.store)
-      self._latest_pipeline_run_op = ops.LatestPipelineRunOutputs.create(
-          pipeline_name='pipeline-name')
-      self._latest_pipeline_run_op.set_context(context)
 
       example_gen_node_context = self.put_context('node', 'example-gen')
       statistics_gen_node_context = self.put_context('node', 'statistics-gen')
@@ -158,7 +159,10 @@ class LatestPipelineRunOutputsTest(tf.test.TestCase,
           output_event_type=metadata_store_pb2.Event.INTERNAL_OUTPUT)
 
       # Only Examples are input
-      result = self._latest_pipeline_run_op.apply()
+      result = test_utils.run_resolver_op(
+          ops.LatestPipelineRunOutputs,
+          context=context,
+          pipeline_name='pipeline-name')
       expected_result = {'examples': [example_artifact_2]}
       self.assertAllEqual(result.keys(), expected_result.keys())
       for key in result.keys():
@@ -167,7 +171,10 @@ class LatestPipelineRunOutputsTest(tf.test.TestCase,
         self.assertAllEqual(result_ids, expected_ids)
 
       # Both Examples and Statistics are input
-      result = self._latest_pipeline_run_op.apply()
+      result = test_utils.run_resolver_op(
+          ops.LatestPipelineRunOutputs,
+          context=context,
+          pipeline_name='pipeline-name')
       expected_result = {'examples': [example_artifact_2]}
       self.assertAllEqual(result.keys(), expected_result.keys())
       for key in result.keys():

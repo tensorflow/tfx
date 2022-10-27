@@ -44,7 +44,10 @@ class DummyArtifact(types.Artifact):
 
 
 def run_resolver_op(op_type: Type[resolver_op.ResolverOp],
-                    arg: Any,
+                    *arg: Any,
+                    context: Optional[resolver_op.Context] = None,
                     **kwargs: Any):
   op = op_type.create(**kwargs)
-  return op.apply(arg)
+  if context:
+    op.set_context(context)
+  return op.apply(*arg)
