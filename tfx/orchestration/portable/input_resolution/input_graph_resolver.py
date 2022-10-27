@@ -189,7 +189,7 @@ def _reduce_graph_fn(ctx: _Context, node_id: str, graph_fn: _GraphFn):
   def new_graph_fn(data: Mapping[str, _Data]):
     try:
       output = node_fn(data)
-    except exceptions.InputResolutionError:
+    except (exceptions.InputResolutionError, exceptions.InputResolutionSignal):  # pylint: disable=try-except-raise
       raise
     except Exception as e:  # pylint: disable=broad-except
       raise exceptions.InternalError(

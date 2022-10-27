@@ -29,7 +29,7 @@ class SkipIfLessThanNSpans(
   """SkipIfLessThanNSpans operator."""
 
   # The minimum number of unique spans that must be present in the artifacts.
-  # Must be positive.
+  # If < 0, then all the artifacts are returned.
   n = resolver_op.Property(type=int, default=0)
 
   def apply(
@@ -52,14 +52,13 @@ class SkipIfLessThanNSpans(
     Raises:
       SkipSignal if the artifacts have less than n unique spans.
     """
-    if self.n < 0:
-      raise ValueError(f'n must be >= 0, but was set to {self.n}.')
-
     spans = set()
     for artifact in input_list:
       spans.add(artifact.span)
 
-    if len(spans) < self.n:
-      raise exceptions.SkipSignal()
+    if self.n >= 0 and len(spans) < self.n:
+      raise exceptions.SkipSignal(
+          f'[SkipIfLessThanNSpans] len(spans): {len(spans)} < N: {self.n}, '
+          'skipping.')
 
     return input_list

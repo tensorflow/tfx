@@ -184,6 +184,21 @@ class CannedResolverFunctionsTest(
     self.assertArtifactListEqual(
         actual_artifacts, expected_artifacts, check_span_and_version=True)
 
+  def testStaticRangeResolverFn_MinSpans_RaisesSkipSignal(self):
+    channel = canned_resolver_functions.static_range(
+        types.Channel(test_utils.DummyArtifact, output_key='x'),
+        start_span_number=0,
+        end_span_number=5)
+    pipeline_node = _compile_inputs({'x': channel})
+
+    spans = [0, 1, 2, 3, 3, 5, 7, 10]
+    versions = [0, 0, 0, 0, 3, 0, 0, 0]
+    self._insert_artifacts_into_mlmd(spans, versions)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+    self.assertIsInstance(resolved, inputs_utils.Skip)
+
   def testRollingRangeResolverFn_E2E(self):
     channel = canned_resolver_functions.rolling_range(
         types.Channel(test_utils.DummyArtifact, output_key='x'),
@@ -237,6 +252,22 @@ class CannedResolverFunctionsTest(
     self.assertIsInstance(return_value['x'], types.BaseChannel)
     self.assertEqual('producer-pipeline',
                      return_value['x'].output_node.kwargs['pipeline_name'])
+
+  def testRollingRangeResolverFn_MinSpans_RaisesSkipSignal(self):
+    channel = canned_resolver_functions.rolling_range(
+        types.Channel(test_utils.DummyArtifact, output_key='x'),
+        start_span_number=3,
+        num_spans=5,
+        skip_num_recent_spans=1)
+    pipeline_node = _compile_inputs({'x': channel})
+
+    spans = [1, 2, 3, 3, 7, 8]
+    versions = [0, 0, 1, 0, 1, 2]
+    self._insert_artifacts_into_mlmd(spans, versions)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+    self.assertIsInstance(resolved, inputs_utils.Skip)
 
 if __name__ == '__main__':
   tf.test.main()

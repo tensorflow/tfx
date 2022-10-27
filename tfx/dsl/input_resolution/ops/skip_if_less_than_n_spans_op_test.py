@@ -62,10 +62,9 @@ class SkipIfLessThanNSpansOpTest(tf.test.TestCase):
         ops.SkipIfLessThanNSpans, self.artifacts, n=0)
     self.assertEqual(result, self.artifacts)
 
-  def testSkipIfLessThanNSpans_NegativeN_RaisesValueError(self):
-    with self.assertRaises(ValueError):
-      test_utils.run_resolver_op(ops.SkipIfLessThanNSpans, self.artifacts, n=-1)
-
+    result = test_utils.run_resolver_op(
+        ops.SkipIfLessThanNSpans, self.artifacts, n=-1)
+    self.assertEqual(result, self.artifacts)
 
 if __name__ == '__main__':
   tf.test.main()
