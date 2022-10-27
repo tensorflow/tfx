@@ -45,7 +45,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
       execution_result: Optional[execution_result_pb2.ExecutionResult] = None
   ) -> None:
     assert status.code != status_lib.Code.OK
-    _remove_output_dirs(task, result)
+    _remove_output_dirs(task)
     _remove_task_dirs(
         stateful_working_dir=task.stateful_working_dir,
         tmp_dir=task.tmp_dir,
@@ -180,12 +180,8 @@ def _update_execution_state_in_mlmd(
       execution_lib.set_execution_result(execution_result, execution)
 
 
-def _remove_output_dirs(task: task_lib.ExecNodeTask,
-                        ts_result: ts.TaskSchedulerResult) -> None:
+def _remove_output_dirs(task: task_lib.ExecNodeTask) -> None:
   outputs_utils.remove_output_dirs(task.output_artifacts)
-  if isinstance(ts_result.output, ts.ImporterNodeOutput):
-    if ts_result.output.output_artifacts is not None:
-      outputs_utils.remove_output_dirs(ts_result.output.output_artifacts)
 
 
 def _remove_task_dirs(stateful_working_dir: str = '',
