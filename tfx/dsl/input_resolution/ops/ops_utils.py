@@ -13,7 +13,7 @@
 # limitations under the License.
 """Shared utility functions for ResolverOps."""
 
-from typing import Dict, List, Sequence
+from typing import Dict, List, Optional, Sequence
 
 from tfx import types
 
@@ -51,9 +51,10 @@ def filter_artifacts_by_span(
     artifacts: List[types.Artifact],
     span_descending: bool,
     n: int = 1,
-    min_span: int = 0,
     skip_last_n: int = 0,
-    keep_all_versions: bool = False) -> List[types.Artifact]:
+    keep_all_versions: bool = False,
+    min_span: Optional[int] = None,
+) -> List[types.Artifact]:
   """Filters artifacts by their "span" PROPERTY.
 
   This should only be used a shared utility for LatestSpan and ConsecutiveSpans.
@@ -65,11 +66,11 @@ def filter_artifacts_by_span(
       Set to true for LatestSpan, and set to false for ConsecutiveSpans.
     n: The number of spans to return. If n <= 0, then n is set to the total
       number of unique spans.
-    min_span: Minimum span before which no span will be considered.
     skip_last_n: Number of largest spans to skip. For example, if the spans are
       [1, 2, 3] and skip_last_n=1, then only spans [1, 2] will be considered.
     keep_all_versions: If true, all versions of the n spans are returned. Else,
       only the latest version is returned.
+    min_span: Minimum span before which no span will be considered.
 
   Returns:
     The filtered artifacts.
@@ -78,7 +79,9 @@ def filter_artifacts_by_span(
     return []
 
   # Only keep artifacts with spans >= min_span and account for skip_last_n
-  spans = sorted({a.span for a in artifacts if a.span >= min_span})
+  spans = sorted({a.span for a in artifacts})
+  if min_span is not None:
+    spans = [s for s in spans if s >= min_span]
   if skip_last_n:
     spans = spans[:-skip_last_n]
 
