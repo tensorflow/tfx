@@ -155,6 +155,87 @@ class EventLibTest(tf.test.TestCase):
             artifact_id=2,
             execution_id=3))
 
+  def testGetArtifactDict(self):
+    event_key_1_0 = metadata_store_pb2.Event()
+    text_format.Parse(
+        """
+        type: OUTPUT
+        path {
+          steps {
+            key: 'key_1'
+          }
+          steps {
+            index: 0
+          }
+        }
+        artifact_id: 100
+        """, event_key_1_0)
+    event_key_1_1 = metadata_store_pb2.Event()
+    text_format.Parse(
+        """
+        type: OUTPUT
+        path {
+          steps {
+            key: 'key_1'
+          }
+          steps {
+            index: 1          }
+        }
+        artifact_id: 200
+        """, event_key_1_1)
+    event_key_2_0 = metadata_store_pb2.Event()
+    text_format.Parse(
+        """
+        type: OUTPUT
+        path {
+          steps {
+            key: 'key_2'
+          }
+          steps {
+            index: 0
+          }
+        }
+        artifact_id: 300
+        """, event_key_2_0)
+
+    expected_result = {'key_1': [100, 200], 'key_2': [300]}
+    result = event_lib.get_artifact_dict(
+        [event_key_1_0, event_key_1_1, event_key_2_0])
+    self.assertEqual(expected_result, result)
+
+  def testGetArtifactDict_IndexError(self):
+    event_key_1_0 = metadata_store_pb2.Event()
+    text_format.Parse(
+        """
+        type: OUTPUT
+        path {
+          steps {
+            key: 'key_1'
+          }
+          steps {
+            index: 0
+          }
+        }
+        artifact_id: 100
+        """, event_key_1_0)
+    event_key_1_2 = metadata_store_pb2.Event()
+    text_format.Parse(
+        """
+        type: OUTPUT
+        path {
+          steps {
+            key: 'key_1'
+          }
+          steps {
+            index: 2
+          }
+        }
+        artifact_id: 200
+        """, event_key_1_2)
+
+    with self.assertRaises(ValueError):
+      event_lib.get_artifact_dict([event_key_1_0, event_key_1_2])
+
 
 if __name__ == '__main__':
   tf.test.main()

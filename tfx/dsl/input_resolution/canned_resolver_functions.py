@@ -185,3 +185,38 @@ def rolling_range(artifacts,
     resolved_artifacts = ops.ExcludeSpans(
         resolved_artifacts, denylist=exclude_span_numbers)
   return resolved_artifacts
+
+
+@resolver_function.resolver_function
+def latest_pipeline_run_outputs(pipeline):
+  """Returns the artifacts in the latest COMPLETE pipeline run.
+
+  Example usage:
+
+    producer_pipeline = Pipeline()
+
+    consumer_pipeline_inputs = PipelineInputs(
+      latest_pipeline_run_outputs(producer_pipeline))
+    trainer = TFTrainer(
+      examples=pipeline_inputs.inputs['examples'],
+      schema=pipeline_inputs.inputs['schema'])
+    consumer_pipeline = Pipeline(
+        inputs=consumer_pipeline_inputs,
+        components=[trainer],
+    )
+
+  Args:
+    pipeline: The pipeline producing the artifacts
+
+  Returns:
+    The artifacts in the latest COMPLETE pipeline run.
+  """
+  return ops.LatestPipelineRunOutputs(pipeline_name=pipeline.pipeline_name)
+
+
+@latest_pipeline_run_outputs.output_type_inferrer
+def _infer_latest_pipeline_run_type(pipeline):
+  return {
+      output_key: channel.type
+      for output_key, channel in pipeline.outputs.items()
+  }

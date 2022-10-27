@@ -13,7 +13,8 @@
 # limitations under the License.
 """Portable libraries for event related APIs."""
 
-from typing import Optional, Tuple
+import collections
+from typing import Dict, List, Optional, Tuple
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -138,3 +139,33 @@ def get_artifact_path(event: metadata_store_pb2.Event) -> Tuple[str, int]:
         'Expected exactly two steps corresponding to key and index in event: {}'
         .format(event))
   return (event.path.steps[0].key, event.path.steps[1].index)
+
+
+def get_artifact_dict(
+    events: List[metadata_store_pb2.Event]) -> Dict[str, List[int]]:
+  """Gets the mapping from artifact key to artifact ids.
+
+  This is for reconstructing the artifact dict (mapping from key to an ordered
+  list of artifacts) for a list of events of an execution.
+
+  Args:
+    events: A list of events from which to reconstruct the mapping. The list of
+      events should be the same type.
+
+  Returns:
+    A dict, key is artifact key, value is a list of artifact ordered by index.
+  """
+  key_to_index_and_id = collections.defaultdict(list)
+  for event in events:
+    key, index = get_artifact_path(event)
+    key_to_index_and_id[key].append((index, event.artifact_id))
+
+  # Sorts each artifact list by index.
+  result = {}
+  for key, value in key_to_index_and_id.items():
+    value.sort(key=lambda e: e[0])
+    if any(e[0] != index for index, e in enumerate(value)):
+      raise ValueError('The indexes in the input Events are not sequential.')
+    result[key] = [a[1] for a in value]
+
+  return result

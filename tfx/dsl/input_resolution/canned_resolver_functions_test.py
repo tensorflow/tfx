@@ -208,5 +208,16 @@ class CannedResolverFunctionsTest(
     self.assertArtifactListEqual(
         actual_artifacts, expected_artifacts, check_span_and_version=True)
 
+  def testLatestPipelineRunOutputsResolverFn(self):
+    producer_pipeline = pipeline.Pipeline(
+        outputs={'x': types.Channel(test_utils.DummyArtifact, output_key='x')},
+        pipeline_name='producer-pipeline')
+    return_value = canned_resolver_functions.latest_pipeline_run_outputs(
+        pipeline=producer_pipeline)
+
+    self.assertIsInstance(return_value['x'], types.BaseChannel)
+    self.assertEqual('producer-pipeline',
+                     return_value['x'].output_node.kwargs['pipeline_name'])
+
 if __name__ == '__main__':
   tf.test.main()

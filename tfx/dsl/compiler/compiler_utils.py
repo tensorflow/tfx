@@ -184,7 +184,12 @@ def pipeline_begin_node_id(p: pipeline.Pipeline) -> str:
 
 def pipeline_end_node_id(p: pipeline.Pipeline) -> str:
   """Builds the node id of a Pipeline End node."""
-  return f"{p.id}{constants.PIPELINE_END_NODE_SUFFIX}"
+  return pipeline_end_node_id_from_pipeline_id(p.id)
+
+
+def pipeline_end_node_id_from_pipeline_id(pipeline_id: str) -> str:
+  """Builds the node id of a Pipeline End node."""
+  return f"{pipeline_id}{constants.PIPELINE_END_NODE_SUFFIX}"
 
 
 def node_context_name(pipeline_context_name: str, node_id: str):

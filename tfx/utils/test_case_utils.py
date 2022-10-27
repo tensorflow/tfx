@@ -231,11 +231,14 @@ class MlmdMixins:
     return self._execution_type_ids[type_name]
 
   def put_execution(
-      self, execution_type: str,
+      self,
+      execution_type: str,
       inputs: Optional[_ArtifactMultiMap] = None,
       outputs: Optional[_ArtifactMultiMap] = None,
       contexts: Sequence[metadata_store_pb2.Context] = (),
       name='',
+      input_event_type=metadata_store_pb2.Event.INPUT,
+      output_event_type=metadata_store_pb2.Event.OUTPUT
   ) -> metadata_store_pb2.Execution:
     """Put an Execution in the MLMD database."""
     inputs = inputs if inputs is not None else {}
@@ -250,13 +253,11 @@ class MlmdMixins:
     artifact_and_events = []
     for input_key, artifacts in inputs.items():
       for i, artifact in enumerate(artifacts):
-        event = event_lib.generate_event(metadata_store_pb2.Event.INPUT,
-                                         input_key, i)
+        event = event_lib.generate_event(input_event_type, input_key, i)
         artifact_and_events.append((artifact, event))
     for output_key, artifacts in outputs.items():
       for i, artifact in enumerate(artifacts):
-        event = event_lib.generate_event(metadata_store_pb2.Event.OUTPUT,
-                                         output_key, i)
+        event = event_lib.generate_event(output_event_type, output_key, i)
         artifact_and_events.append((artifact, event))
     result.id = self.store.put_execution(result, artifact_and_events,
                                          contexts)[0]
