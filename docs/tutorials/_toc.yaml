@@ -31,6 +31,10 @@ toc:
 - heading: "TFX: Advanced tutorials"
 - title: "Custom component tutorial"
   path: /tfx/tutorials/tfx/python_function_component
+- title: "Recommenders with TFX"
+  path: /tfx/tutorials/tfx/recommenders
+- title: "Ranking with TFX"
+  path: /recommenders/examples/ranking_tfx
 - title: "Airflow tutorial"
   path: /tfx/tutorials/tfx/airflow_workshop
 - title: "Neural Structured Learning in TFX"
