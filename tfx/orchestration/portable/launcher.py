@@ -73,14 +73,12 @@ DEFAULT_DRIVER_OPERATORS = {
         python_driver_operator.PythonDriverOperator
 }
 
-# LINT.IfChange
 _SYSTEM_NODE_HANDLERS = {
     'tfx.dsl.components.common.importer.Importer':
         importer_node_handler.ImporterNodeHandler,
     'tfx.dsl.components.common.resolver.Resolver':
         resolver_node_handler.ResolverNodeHandler,
 }
-# LINT.ThenChange(Internal system node list)
 
 _ERROR_CODE_UNIMPLEMENTED: int = grpc.StatusCode.UNIMPLEMENTED.value[0]
 
