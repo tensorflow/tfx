@@ -83,20 +83,17 @@ def _get_test_cases_params(
 ) -> List[Dict[str, Any]]:
   result = []
   for module in pipeline_modules:
-    for use_input_v2 in [True, False]:
-      testcase_name_segments = [module.__name__.rpartition(".")[-1]]
-      if use_input_v2:
-        testcase_name_segments.append("input_v2")
-      testcase_name = "_".join(testcase_name_segments)
-      golden_filename = f"{testcase_name}_ir.pbtxt"
-      result.append(dict(
-          testcase_name=testcase_name,
-          pipeline_module=module,
-          compiler_kwargs={
-              "use_input_v2": use_input_v2,
-          },
-          golden_filename=golden_filename,
-      ))
+    testcase_name_segments = [module.__name__.rpartition(".")[-1]]
+    # TODO(b/256081156) Clean up the "input_v2" suffix.
+    testcase_name_segments.append("input_v2")
+    testcase_name = "_".join(testcase_name_segments)
+    golden_filename = f"{testcase_name}_ir.pbtxt"
+    result.append(
+        dict(
+            testcase_name=testcase_name,
+            pipeline_module=module,
+            golden_filename=golden_filename,
+        ))
   return result
 
 
@@ -142,11 +139,10 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
   def testCompile(
       self,
       pipeline_module: types.ModuleType,
-      compiler_kwargs: Dict[str, Any],
       golden_filename: str,
   ):
     """Tests compiling the whole pipeline."""
-    dsl_compiler = compiler.Compiler(**compiler_kwargs)
+    dsl_compiler = compiler.Compiler()
     compiled_pb = dsl_compiler.compile(pipeline_module.create_test_pipeline())
     try:
       expected_pb = self._get_pipeline_ir(golden_filename)
