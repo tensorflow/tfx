@@ -13,7 +13,7 @@
 # limitations under the License.
 """Module for public facing, canned resolver functions."""
 
-from typing import Optional, Sequence
+from typing import Sequence, Optional
 
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution.ops import ops
@@ -43,10 +43,10 @@ def static_range(artifacts,
                  min_spans: Optional[int] = None):
   """Returns artifacts with spans in [start_span, end_span] inclusive.
 
-  Artifacts are expected to have both a span and a version. If there are
-  multiple artifacts with the same span, then only the one with the latest
-  version is considered, if keep_all_versions=False. If keep_all_versions=True,
-  then all artifacts, even those with duplicate spans, are considered.
+  This resolver function is based on the span-version semantics, which only
+  considers the latest version of each span. If you want to keep all versions,
+  then set keep_all_versions=True. Input artifacts must have both "span" int
+  property and "version" int property.
 
   Please note that the spans in exclude_span_numbers are excluded AFTER getting
   the artifacts with spans in the range.
@@ -134,17 +134,25 @@ def rolling_range(artifacts,
                   min_spans: Optional[int] = None):
   """Returns artifacts with spans in a rolling range.
 
-  First, spans < start_span_number are excluded, and then the spans are sorted.
-  Then, artifacts with spans in
-  sorted_spans[:-skip_num_recent_spans][-num_spans:] are returned.
+  A rolling range covers the latest (largest) spans. It's calculated in the
+  following order:
 
-  Note that the missing spans are not counted in num_spans. The artifacts do NOT
-  have to have consecutive spans.
+  1. Sort the artifacts by span in ascending order.
+  2. Remove the last skip_num_recent_spans number of spans (removing the largest
+     spans).
+  3. Select the last num_spans number of spans (the remaining largest spans).
+  4. Exclude the spans of exclude_span_numbers. Note that this exclusion
+     happens last for backward compatibility. This can result in having less
+     than num_spans spans, meaning the consumer component would be skipped due
+     to lack of inputs. To avoid this, you would have to increase min_spans.
 
-  Artifacts are expected to have both a span and a version. If there are
-  multiple artifacts with the same span, then only the one with the latest
-  version is considered, if keep_all_versions=False. If keep_all_versions=True,
-  then all artifacts, even those with duplicate spans, are considered.
+  Pythonically, this range is equivalent to:
+  sorted_spans[:-skip_num_recent_spans][-num_spans:]
+
+  This resolver function is based on the span-version semantics, which only
+  considers the latest version of each span. If you want to keep all versions,
+  then set keep_all_versions=True. Input artifacts must have both "span" int
+  property and "version" int property.
 
   Please note that the spans in exclude_span_numbers are excluded AFTER getting
   the latest spans.
@@ -299,3 +307,99 @@ def _infer_latest_pipeline_run_type(pipeline):
       output_key: channel.type
       for output_key, channel in pipeline.outputs.items()
   }
+
+
+@resolver_function.resolver_function(unwrap_dict_key='window')
+def sequential_rolling_range(artifacts,
+                             *,
+                             start_span_number: Optional[int] = None,
+                             num_spans: int = 1,
+                             skip_num_recent_spans: int = 0,
+                             keep_all_versions: bool = False,
+                             exclude_span_numbers: Sequence[int] = ()):
+  """Returns artifacts with spans in a sequential rolling range.
+
+  Sequential rolling range is a sliding window on the oldest consecutive spans.
+
+  The consecutive spans must be in the range:
+  [start_span_number, max_span - skip_num_recent_spans], where max_span is the
+  maximum span present in the artifacts. This range is modified to account for
+  exclude_span_numbers, for details see the ConsecutiveSpans ResolverOp
+  implementation.
+
+  The window size is num_spans and has a stride of 1. If the spans are not
+  consecutive, then the sequential rolling range waits for the missing span to
+  arrive.
+
+  This resolver function is based on the span-version semantics, which only
+  considers the latest version of each span. If you want to keep all versions,
+  then set keep_all_versions=True. Input artifacts must have both "span" int
+  property and "version" int property.
+
+  Corresponds to SequentialRollingRange in TFX.
+
+  Example usage:
+
+    Consider 5 artifacts [A, B, C, D, E] with spans = [1, 2, 3, 4, 7].
+
+    sequential_rolling_range(
+        start_span_number=1,
+        num_spans=3,
+        skip_num_recent_spans=1,
+        keep_all_versions=False,
+        exclude_span_numbers=[])
+
+    The consecutive spans to consider are [1, 2, 3, 4]
+
+    The artifacts will be returned with a sliding window of size num_spans=3 and
+    stride 1 applied:
+
+    [[A, B, C], [B, C, D]]
+
+    However, if nums_spans=5, there are only 4 consecutive spans to consider, so
+    [], no artifacts, will be returned.
+
+  Since sequential_rolling_range returns multiple windows, it must be used
+  together with ForEach. For example:
+
+    with ForEach(sequential_rolling_range(
+        all_examples, num_spans=10)) as examples_window:
+      trainer = Trainer(examples=examples_window)
+
+  Args:
+    artifacts: The artifacts to filter.
+    start_span_number: The smallest span number to keep, inclusive. Optional, if
+      not set then defaults to the minimum span. If the start_span_number is
+      configured wrong (so that it is smaller than the first span number), we
+      will wait indefinitely until the missing spans between start_span_number
+      and the first span number to be appeared.
+    num_spans: The length of the range. If num_spans <= 0, then num_spans is set
+      to the total number of artifacts with consecutive spans in the range. Note
+      that this is also the size of the sliding window of the sequential rolling
+      range.
+    skip_num_recent_spans: Number of most recently available (largest) spans to
+      skip. Defaults to 0.
+    keep_all_versions: If true, all artifacts with spans in the range are kept.
+      If false then if multiple artifacts have the same span, only the span with
+      the latest version is kept. Defaults to False.
+    exclude_span_numbers: The list of missing/bad span numbers to exclude.
+
+  Returns:
+    Artifacts with spans in the sequential rolling range.
+  """
+  resolved_artifacts = ops.ConsecutiveSpans(
+      artifacts,
+      first_span=start_span_number if start_span_number is not None else -1,
+      skip_last_n=skip_num_recent_spans,
+      keep_all_versions=keep_all_versions,
+      denylist=exclude_span_numbers)
+
+  resolved_artifacts = ops.SlidingWindow(
+      resolved_artifacts, window_size=num_spans)
+
+  return resolved_artifacts
+
+
+@sequential_rolling_range.output_type_inferrer
+def _infer_seqential_rolling_range_type(channel, **kwargs):  # pylint: disable=unused-argument
+  return {'window': channel.type}

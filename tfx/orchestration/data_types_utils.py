@@ -276,7 +276,7 @@ def set_parameter_value(
         proto_utils.build_file_descriptor_set(value,
                                               proto_type.file_descriptors)
       return proto_utils.proto_to_json(value)
-    elif isinstance(value, list) and len(value):
+    elif isinstance(value, (list, tuple)):
       if set_schema:
         value_type.list_type.SetInParent()
       value = [
@@ -302,7 +302,7 @@ def set_parameter_value(
   elif isinstance(value, bool):
     parameter_value.schema.value_type.boolean_type.SetInParent()
     parameter_value.field_value.string_value = json_utils.dumps(value)
-  elif isinstance(value, (list, message.Message)):
+  elif isinstance(value, (list, tuple, message.Message)):
     parameter_value.field_value.string_value = get_value_and_set_type(
         value, parameter_value.schema.value_type)
   else:

@@ -283,9 +283,6 @@ def resolver_function(
     unwrap_dict_key: Optional[str] = None):
   """Decorator for the resolver function."""
   if f is None:
-    if not typing_utils.is_compatible(output_type, _TypeHint):
-      raise ValueError(
-          f'Invalid output_type {output_type}. Expected {_TypeHint}')
     def decorator(f):
       return ResolverFunction(
           f, output_type=output_type, unwrap_dict_key=unwrap_dict_key)

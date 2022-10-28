@@ -38,6 +38,9 @@ class ConsecutiveSpans(
   # Number of consecutive spans to skip at the tail end of the range.
   skip_last_n = resolver_op.Property(type=int, default=0)
 
+  # The span numbers to exclude.
+  denylist = resolver_op.Property(type=Sequence[int], default=[])
+
   def apply(self,
             input_list: Sequence[types.Artifact]) -> Sequence[types.Artifact]:
     """Returns the artifacts with the oldest consecutive spans.
@@ -78,6 +81,10 @@ class ConsecutiveSpans(
     if self.first_span < 0:
       self.first_span = min(a.span for a in valid_artifacts)
 
+    # Increment first_span so that it is not in the denylist.
+    while self.first_span in set(self.denylist):
+      self.first_span += 1
+
     # Perform initial filtering to get artifacts with the relevant spans.
     artifacts = ops_utils.filter_artifacts_by_span(
         artifacts=valid_artifacts,
@@ -93,7 +100,17 @@ class ConsecutiveSpans(
 
     # Only consider spans in the range [first_span, max_span - skip_last_n].
     max_span = max(a.span for a in valid_artifacts)
-    valid_spans = set(range(self.first_span, max_span - self.skip_last_n + 1))
+    last_span = max_span - self.skip_last_n
+
+    # Determine the last valid span accounting for the denylist.
+    for span in sorted(self.denylist):
+      if span <= self.first_span:
+        continue
+
+      last_span = min(span - 1, last_span)
+      break
+
+    valid_spans = set(range(self.first_span, last_span + 1))
     actual_spans = {a.span for a in artifacts}
 
     # Return the artifacts with consecutive spans.

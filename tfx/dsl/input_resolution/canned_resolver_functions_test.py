@@ -21,6 +21,7 @@ from tfx import types
 from tfx.dsl.compiler import compiler_context
 from tfx.dsl.compiler import node_inputs_compiler
 from tfx.dsl.components.base import base_node
+from tfx.dsl.control_flow import for_each
 from tfx.dsl.input_resolution import canned_resolver_functions
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration import pipeline
@@ -264,6 +265,59 @@ class CannedResolverFunctionsTest(
     spans = [1, 2, 3, 3, 7, 8]
     versions = [0, 0, 1, 0, 1, 2]
     self._insert_artifacts_into_mlmd(spans, versions)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+    self.assertIsInstance(resolved, inputs_utils.Skip)
+
+  def testSequentialRollingRangeResolverFn_E2E(self):
+    xs = canned_resolver_functions.sequential_rolling_range(
+        types.Channel(test_utils.DummyArtifact),
+        start_span_number=1,
+        num_spans=3,
+        skip_num_recent_spans=1,
+        keep_all_versions=False,
+        exclude_span_numbers=[5])
+    with for_each.ForEach(xs) as each_x:
+      inputs = {'x': each_x}
+    pipeline_node = _compile_inputs(inputs)
+
+    spans = [1, 2, 3, 3, 4, 5, 7]
+    versions = [0, 0, 1, 0, 0, 0]
+    mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+    self.assertIsInstance(resolved, inputs_utils.Trigger)
+
+    # The resolved artifacts should have (span, version) tuples of:
+    # [(1, 0), (2, 0), (3, 1)], [(2, 0), (3, 1), (4,0)].
+    expected_artifact_idxs = [[0, 1, 2], [1, 2, 4]]
+    for i, artifacts in enumerate(resolved):
+      actual_artifacts = [r.mlmd_artifact for r in artifacts['x']]
+      expected_artifacts = [
+          mlmd_artifacts[j] for j in expected_artifact_idxs[i]
+      ]
+      self.assertArtifactListEqual(
+          actual_artifacts, expected_artifacts, check_span_and_version=True)
+
+  def testSequentialRollingRangeResolverFn_E2E_SkipSignalRaised(self):
+    # The artifacts will only have consecutive spans from [1, 5] but
+    # num_spans=10 so no artifacts will be returnd by the resolver_fn and
+    # a SkipSignal will be raised during input resolution.
+    xs = canned_resolver_functions.sequential_rolling_range(
+        types.Channel(test_utils.DummyArtifact),
+        start_span_number=1,
+        num_spans=10,
+        skip_num_recent_spans=0,
+        keep_all_versions=False)
+    with for_each.ForEach(xs) as each_x:
+      inputs = {'x': each_x}
+    pipeline_node = _compile_inputs(inputs)
+
+    spans = [1, 2, 3, 3, 4, 5]
+    versions = [0, 0, 1, 0, 0, 0]
+    _ = self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
         pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)

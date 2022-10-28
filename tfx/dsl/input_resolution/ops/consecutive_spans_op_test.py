@@ -234,7 +234,71 @@ class ConsecutiveSpansOpTest(tf.test.TestCase):
         ops.ConsecutiveSpans, artifacts, first_span=4, keep_all_versions=True)
     self.assertEqual(actual, [a40, a50])
 
-  def testConsecutiveSpans_AllArguments(self):
+  def testConsecutiveSpans_Denylist(self):
+    artifacts = self._get_artifacts_for_sequential_rolling_range_tests()
+    a10, a20, a31, _, a40, a50, _, _ = artifacts
+
+    actual = test_utils.run_resolver_op(
+        ops.ConsecutiveSpans, artifacts, first_span=1, skip_last_n=0)
+    self.assertEqual(actual, [a10, a20, a31, a40, a50])
+
+    actual = test_utils.run_resolver_op(
+        ops.ConsecutiveSpans,
+        artifacts,
+        first_span=1,
+        skip_last_n=0,
+        denylist=[1])
+    self.assertEqual(actual, [a20, a31, a40, a50])
+
+    actual = test_utils.run_resolver_op(
+        ops.ConsecutiveSpans,
+        artifacts,
+        first_span=1,
+        skip_last_n=0,
+        denylist=[1, 2])
+    self.assertEqual(actual, [a31, a40, a50])
+
+    actual = test_utils.run_resolver_op(
+        ops.ConsecutiveSpans,
+        artifacts,
+        first_span=1,
+        skip_last_n=0,
+        denylist=[1, 3])
+    self.assertEqual(actual, [a20])
+
+    actual = test_utils.run_resolver_op(
+        ops.ConsecutiveSpans,
+        artifacts,
+        first_span=1,
+        skip_last_n=0,
+        denylist=[1, 2, 5])
+    self.assertEqual(actual, [a31, a40])
+
+    actual = test_utils.run_resolver_op(
+        ops.ConsecutiveSpans,
+        artifacts,
+        first_span=1,
+        skip_last_n=5,
+        denylist=[1, 2, 5])
+    self.assertEqual(actual, [a31])
+
+    actual = test_utils.run_resolver_op(
+        ops.ConsecutiveSpans,
+        artifacts,
+        first_span=3,
+        skip_last_n=5,
+        denylist=[3])
+    self.assertEqual(actual, [])
+
+    actual = test_utils.run_resolver_op(
+        ops.ConsecutiveSpans,
+        artifacts,
+        first_span=1,
+        skip_last_n=0,
+        denylist=[3])
+    self.assertEqual(actual, [a10, a20])
+
+  def testConsecutiveSpans_SmallValidSpanRange(self):
     artifacts = self._get_artifacts_for_sequential_rolling_range_tests()
     _, _, a31, a30, _, _, _, _ = artifacts
 
