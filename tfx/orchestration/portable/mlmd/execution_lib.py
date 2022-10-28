@@ -76,6 +76,18 @@ def is_execution_running(execution: metadata_store_pb2.Execution) -> bool:
   return execution.last_known_state == metadata_store_pb2.Execution.RUNNING
 
 
+def is_execution_canceled(execution: metadata_store_pb2.Execution) -> bool:
+  """Whether or not an execution is canceled.
+
+  Args:
+    execution: An execution message.
+
+  Returns:
+    A bool value indicating whether or not the execution is canceled.
+  """
+  return execution.last_known_state == metadata_store_pb2.Execution.CANCELED
+
+
 def is_execution_failed(execution: metadata_store_pb2.Execution) -> bool:
   """Whether or not an execution is failed.
 
@@ -85,8 +97,7 @@ def is_execution_failed(execution: metadata_store_pb2.Execution) -> bool:
   Returns:
     A bool value indicating whether or not the execution is failed.
   """
-  return not is_execution_successful(execution) and not is_execution_active(
-      execution)
+  return execution.last_known_state == metadata_store_pb2.Execution.FAILED
 
 
 def is_internal_key(key: str) -> bool:

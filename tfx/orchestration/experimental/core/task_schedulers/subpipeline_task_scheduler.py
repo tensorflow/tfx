@@ -72,7 +72,9 @@ class SubPipelineTaskScheduler(
         if execution_lib.is_execution_successful(view.execution):
           return task_scheduler.TaskSchedulerResult(
               status=status_lib.Status(code=status_lib.Code.OK))
-        if execution_lib.is_execution_failed(view.execution):
+        if execution_lib.is_execution_failed(
+            view.execution) or execution_lib.is_execution_canceled(
+                view.execution):
           return task_scheduler.TaskSchedulerResult(
               status=status_lib.Status(
                   code=status_lib.Code.UNKNOWN,

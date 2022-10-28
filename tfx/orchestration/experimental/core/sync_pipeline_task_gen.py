@@ -289,13 +289,16 @@ class _Generator:
     # For nodes that are in state STARTING, new executions are created.
     # TODO(b/223627713): a node in a ForEach is not restartable, it is better
     # to prevent restarting for now.
-    failed_executions = [
-        e for e in latest_executions_set if execution_lib.is_execution_failed(e)
+    failed_or_canceled_executions = [
+        e for e in latest_executions_set
+        if execution_lib.is_execution_failed(e) or
+        execution_lib.is_execution_canceled(e)
     ]
-    if failed_executions and (len(latest_executions_set) > 1 or
-                              node_state.state != pstate.NodeState.STARTING):
+    if failed_or_canceled_executions and (
+        len(latest_executions_set) > 1 or
+        node_state.state != pstate.NodeState.STARTING):
       error_msg = f'node {node_uid} failed; '
-      for e in failed_executions:
+      for e in failed_or_canceled_executions:
         error_msg_value = e.custom_properties.get(
             constants.EXECUTION_ERROR_MSG_KEY)
         error_msg_value = data_types_utils.get_metadata_value(
