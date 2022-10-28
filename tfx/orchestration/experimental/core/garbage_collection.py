@@ -33,7 +33,6 @@ from ml_metadata.proto import metadata_store_pb2
 
 _KeepOrder = (garbage_collection_policy_pb2.GarbageCollectionPolicy.
               KeepPropertyValueGroups.Grouping.KeepOrder)
-_State = metadata_store_pb2.Artifact.State
 
 
 def _get_output_artifacts_for_node(
@@ -277,42 +276,30 @@ def get_artifacts_to_garbage_collect_for_node(
   return result
 
 
-def _update_artifacts_state(mlmd_handle: metadata.Metadata,
-                            artifacts: List[metadata_store_pb2.Artifact],
-                            state: metadata_store_pb2.Artifact.State) -> None:
-  """Update the state in artifacts and upsert them to ML Metadata."""
-  logging.info('Setting state of artifacts with IDs %s to state %s',
-               [a.id for a in artifacts],
-               metadata_store_pb2.Artifact.State.Name(state))
-  for artifact in artifacts:
-    artifact.state = state
-  mlmd_handle.store.put_artifacts(artifacts)
-
-
-def _try_delete_uri(mlmd_handle: metadata.Metadata, uri: str) -> None:
-  """Delete the URI if all artifacts with the URI are marked for deletion."""
-  artifacts = mlmd_handle.store.get_artifacts_by_uri(uri)
-  if any([
-      a.state not in [_State.MARKED_FOR_DELETION, _State.DELETED]
-      for a in artifacts
-  ]):
-    return
-  logging.info('Deleting URI %s', uri)
-  if fileio.isdir(uri):
-    fileio.rmtree(uri)
-  else:
-    fileio.remove(uri)
-  _update_artifacts_state(mlmd_handle, artifacts, _State.DELETED)
-
-
 def garbage_collect_artifacts(
     mlmd_handle: metadata.Metadata,
     artifacts: List[metadata_store_pb2.Artifact]) -> None:
-  """Garbage collect the artifacts."""
-  _update_artifacts_state(mlmd_handle, artifacts, _State.MARKED_FOR_DELETION)
-  uris = set(a.uri for a in artifacts)
-  for uri in uris:
-    _try_delete_uri(mlmd_handle, uri)
+  """Garbage collect the artifacts by deleting the payloads.
+
+  GC first filters out external artifacts, and all remaining internal artifacts
+  will have distinct URIs. Therefore, it is valid to erase the file contents
+  immediately, rather than setting the intermediate state (MARKED_FOR_DELETION)
+  and waiting until all artifacts sharing the same URI are marked for deletion.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    artifacts: Artifacts that we want to erase their file contents for GC.
+  """
+  if not artifacts:
+    return
+  for artifact in artifacts:
+    logging.info('Deleting URI %s', artifact.uri)
+    if fileio.isdir(artifact.uri):
+      fileio.rmtree(artifact.uri)
+    else:
+      fileio.remove(artifact.uri)
+    artifact.state = metadata_store_pb2.Artifact.State.DELETED
+  mlmd_handle.store.put_artifacts(artifacts)
 
 
 def run_garbage_collection_for_node(
