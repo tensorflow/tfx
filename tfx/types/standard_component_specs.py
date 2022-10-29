@@ -60,6 +60,7 @@ EXAMPLE_SPLITS_KEY = 'example_splits'
 MODULE_PATH_KEY = 'module_path'
 BASELINE_MODEL_KEY = 'baseline_model'
 EVALUATION_KEY = 'evaluation'
+MODEL_SUBFOLDER_KEY = 'model_subfolder'
 # Key for infra_validator
 SERVING_SPEC_KEY = 'serving_spec'
 VALIDATION_SPEC_KEY = 'validation_spec'
