@@ -24,6 +24,7 @@ from absl import logging
 import attr
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import constants
@@ -959,16 +960,20 @@ def _orchestrate_active_pipeline(
         with pipeline_state.node_state_update_context(node_uid) as node_state:
           node_state.update(pstate.NodeState.STOPPED, node_state.status)
 
+  mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+      primary_mlmd_handle=mlmd_handle,
+      primary_mlmd_handle_config=mlmd_cm.MLMDConnectionConfig())
   # Initialize task generator for the pipeline.
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
     generator = sync_pipeline_task_gen.SyncPipelineTaskGenerator(
-        mlmd_handle,
+        mlmd_connection_manager,
         task_queue.contains_task_id,
         service_job_manager,
         fail_fast=orchestration_options.fail_fast)
   elif pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
     generator = async_pipeline_task_gen.AsyncPipelineTaskGenerator(
-        mlmd_handle, task_queue.contains_task_id, service_job_manager)
+        mlmd_connection_manager, task_queue.contains_task_id,
+        service_job_manager)
   else:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.FAILED_PRECONDITION,

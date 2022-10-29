@@ -14,6 +14,7 @@
 """Tests for tfx.orchestration.portable.input_resolution.channel_resolver."""
 
 import tensorflow as tf
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import test_case_utils
@@ -447,8 +448,11 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       }
       output_key: "examples"
     """)
-    resolved = channel_resolver.resolve_union_channels(
-        self.mlmd_handle, [ch, ch])
+    mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        primary_mlmd_handle=self.mlmd_handle,
+        primary_mlmd_handle_config=mlmd_cm.MLMDConnectionConfig())
+    resolved = channel_resolver.resolve_union_channels(mlmd_connection_manager,
+                                                       [ch, ch])
     self.assertLen(resolved, 1)
     self.assertEqual(resolved[0].id, e1.id)
 

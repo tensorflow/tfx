@@ -13,11 +13,12 @@
 # limitations under the License.
 """Module for InputSpec.Channel resolution."""
 
-from typing import Sequence, List, Optional, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 from absl import logging
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -145,13 +146,16 @@ def resolve_single_channel(
 
 
 def resolve_union_channels(
-    mlmd_handle: metadata.Metadata,
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     channels: Sequence[pipeline_pb2.InputSpec.Channel],
 ) -> List[types.Artifact]:
   """Evaluate InputSpec.channels."""
   seen = set()
   result = []
   for channel in channels:
+    # TODO(b/250069301) If the artifacts are from external db, we should update
+    # the following code to get artifacts from external db.
+    mlmd_handle = mlmd_connection_manager.primary_mlmd_handle
     for artifact in resolve_single_channel(mlmd_handle, channel):
       if artifact.id not in seen:
         seen.add(artifact.id)

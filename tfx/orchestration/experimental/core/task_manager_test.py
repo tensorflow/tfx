@@ -23,6 +23,7 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -308,6 +309,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(
         connection_config=connection_config)
+    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
+        self._mlmd_connection)
 
     # Sets up the pipeline.
     pipeline = test_async_pipeline.create_pipeline()
@@ -343,10 +346,11 @@ class TaskManagerE2ETest(test_utils.TfxTest):
 
     # Task generator should produce two tasks for transform. The first one is
     # UpdateNodeStateTask and the second one is ExecNodeTask.
-    with self._mlmd_connection as m:
+    with self._mlmd_connection_manager:
+      m = self._mlmd_connection_manager.primary_mlmd_handle
       pipeline_state = pstate.PipelineState.new(m, self._pipeline)
       tasks = asptg.AsyncPipelineTaskGenerator(
-          m, self._task_queue.contains_task_id,
+          self._mlmd_connection_manager, self._task_queue.contains_task_id,
           service_jobs.DummyServiceJobManager()).generate(pipeline_state)
     self.assertLen(tasks, 3)
     self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)

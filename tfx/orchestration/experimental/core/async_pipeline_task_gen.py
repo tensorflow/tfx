@@ -19,6 +19,7 @@ from typing import Callable, Dict, List, Optional
 from absl import logging
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -44,18 +45,19 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
   where the instances refer to the same MLMD db and the same pipeline IR.
   """
 
-  def __init__(self, mlmd_handle: metadata.Metadata,
+  def __init__(self, mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
                service_job_manager: service_jobs.ServiceJobManager):
     """Constructs `AsyncPipelineTaskGenerator`.
 
     Args:
-      mlmd_handle: A handle to MLMD db.
+      mlmd_connection_manager: A `MLMDConnectionManager` instance to manager
+        multiple mlmd connections.
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
       service_job_manager: Used for handling service nodes in the pipeline.
     """
-    self._mlmd_handle = mlmd_handle
+    self._mlmd_connection_manager = mlmd_connection_manager
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
 
@@ -73,18 +75,19 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
     Returns:
       A `list` of tasks to execute.
     """
-    return _Generator(self._mlmd_handle, pipeline_state,
+    return _Generator(self._mlmd_connection_manager, pipeline_state,
                       self._is_task_id_tracked_fn, self._service_job_manager)()
 
 
 class _Generator:
   """Generator implementation class for AsyncPipelineTaskGenerator."""
 
-  def __init__(self, mlmd_handle: metadata.Metadata,
+  def __init__(self, mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
                pipeline_state: pstate.PipelineState,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
                service_job_manager: service_jobs.ServiceJobManager):
-    self._mlmd_handle = mlmd_handle
+    self._mlmd_connection_manager = mlmd_connection_manager
+    self._mlmd_handle = mlmd_connection_manager.primary_mlmd_handle
     pipeline = pipeline_state.pipeline
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.ASYNC:
       raise ValueError(
@@ -198,7 +201,7 @@ class _Generator:
       return result
 
     resolved_info = task_gen_utils.generate_resolved_info(
-        metadata_handler, node)
+        self._mlmd_connection_manager, node)
 
     # Note that some nodes e.g. ImportSchemaGen don't have inputs, and for those
     # nodes it is okay that there are no resolved input artifacts.

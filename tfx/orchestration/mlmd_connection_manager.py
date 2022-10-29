@@ -42,11 +42,12 @@ class MLMDConnectionConfig:
 class MLMDConnectionManager:
   """MLMDConnectionManager managers the connections to MLMD."""
 
-  def __init__(self,
-               primary_mlmd_handle: metadata.Metadata,
-               primary_mlmd_handle_config: MLMDConnectionConfig,
-               create_reader_mlmd_connection_fn: Optional[Callable[
-                   [MLMDConnectionConfig], metadata.Metadata]] = None):
+  def __init__(
+      self,
+      primary_mlmd_handle: metadata.Metadata,
+      primary_mlmd_handle_config: Optional[MLMDConnectionConfig] = None,
+      create_reader_mlmd_connection_fn: Optional[Callable[
+          [MLMDConnectionConfig], metadata.Metadata]] = None):
     """Constructor of MLMDConnectionManager.
 
     Args:

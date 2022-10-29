@@ -151,11 +151,12 @@ result can easily be deduced from this intermediate data.
 """
 
 import collections
-from typing import List, TypeVar, Mapping, Tuple, Sequence, Dict, Iterable
+from typing import Dict, Iterable, List, Mapping, Sequence, Tuple, TypeVar
 
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -377,7 +378,7 @@ def _filter_conditionals(
 
 
 def resolve(
-    mlmd_handle: metadata.Metadata,
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     node_inputs: pipeline_pb2.NodeInputs,
 ) -> List[typing_utils.ArtifactMultiMap]:
   """Resolve a NodeInputs."""
@@ -394,10 +395,11 @@ def resolve(
 
     if input_spec.channels:
       artifacts = channel_resolver.resolve_union_channels(
-          mlmd_handle, input_spec.channels)
+          mlmd_connection_manager, input_spec.channels)
       resolved[input_key] = [(partition_utils.NO_PARTITION, artifacts)]
     elif input_spec.input_graph_ref.graph_id:
-      _resolve_input_graph_ref(mlmd_handle, node_inputs, input_key, resolved)
+      _resolve_input_graph_ref(mlmd_connection_manager.primary_mlmd_handle,
+                               node_inputs, input_key, resolved)
     elif input_spec.mixed_inputs.input_keys:
       _resolve_mixed_inputs(node_inputs, input_key, resolved)
     else:
