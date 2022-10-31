@@ -13,6 +13,8 @@
 # limitations under the License.
 """Module for LatestPipelineRun operator."""
 
+from typing import Sequence
+
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
 from tfx.dsl.input_resolution import resolver_op
@@ -35,6 +37,7 @@ class LatestPipelineRunOutputs(
   """
 
   pipeline_name = resolver_op.Property(type=str)
+  output_keys = resolver_op.Property(type=Sequence[str], default=())
 
   def apply(self) -> typing_utils.ArtifactMultiMap:
     """Returns artifacts from the latest pipeline run.
@@ -90,8 +93,14 @@ class LatestPipelineRunOutputs(
         if event_lib.is_valid_output_event(e)
     ]
     artifact_dict = event_lib.get_artifact_dict(end_node_output_events)
+    # If output_keys is not provided, use all the keys by default.
+    if not self.output_keys:
+      self.output_keys = list(artifact_dict.keys())
     result = {}
     for key, ids in artifact_dict.items():
+      if key not in self.output_keys:
+        continue
+
       artifact_protos = [artifacts_by_id[id] for id in ids]
       if not artifact_protos:
         result[key] = []

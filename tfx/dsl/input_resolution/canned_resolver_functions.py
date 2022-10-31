@@ -275,18 +275,22 @@ def all_spans(artifacts, *, span_descending: bool = False):
 
 
 @resolver_function.resolver_function
-def latest_pipeline_run_outputs(pipeline):
+def latest_pipeline_run_outputs(pipeline, output_keys: Sequence[str] = ()):
   """Returns the artifacts in the latest COMPLETE pipeline run.
 
   Example usage:
 
-    producer_pipeline = Pipeline()
+    producer_pipeline = Pipeline(outputs={
+        'examples': example_gen.outputs['examples'],
+        'schema': schema_gen.outputs['schema']
+    })
 
     consumer_pipeline_inputs = PipelineInputs(
-      latest_pipeline_run_outputs(producer_pipeline))
+        latest_pipeline_run_outputs(producer_pipeline),
+        output_keys=['examples', 'schema'])
     trainer = TFTrainer(
-      examples=pipeline_inputs.inputs['examples'],
-      schema=pipeline_inputs.inputs['schema'])
+        examples=pipeline_inputs.inputs['examples'],
+        schema=pipeline_inputs.inputs['schema'])
     consumer_pipeline = Pipeline(
         inputs=consumer_pipeline_inputs,
         components=[trainer],
@@ -294,18 +298,41 @@ def latest_pipeline_run_outputs(pipeline):
 
   Args:
     pipeline: The pipeline producing the artifacts
+    output_keys: (Optional) A list of output keys. If provided, only the
+      artifacts of the key in this list will return by this function, otherwise,
+      all avaliable output keys of the producer pipeline will be used.
 
   Returns:
     The artifacts in the latest COMPLETE pipeline run.
   """
-  return ops.LatestPipelineRunOutputs(pipeline_name=pipeline.pipeline_name)
+  for output_key in output_keys:
+    if output_key not in pipeline.outputs:
+      raise ValueError(
+          f'Output key {output_key} does not exist in pipeline {pipeline.id}. '
+          f'Available: {list(pipeline.outputs)}')
+  return ops.LatestPipelineRunOutputs(
+      pipeline_name=pipeline.pipeline_name, output_keys=output_keys)
 
 
 @latest_pipeline_run_outputs.output_type_inferrer
-def _infer_latest_pipeline_run_type(pipeline):
+def _infer_latest_pipeline_run_type(pipeline, output_keys: Sequence[str] = ()):
+  """Output type inferrer of resolver function latest_pipeline_run_outputs.
+
+  Args:
+    pipeline: The pipeline producing the artifacts.
+    output_keys: (Optional) A list of output keys. If provided, only the
+      artifacts of the key in this list will return by this function, otherwise,
+      all avaliable output keys of the producer pipeline will be used.
+
+  Returns:
+    A Dict: key is output key, value is output type.
+  """
+  if not output_keys:
+    output_keys = list(pipeline.outputs)
   return {
       output_key: channel.type
       for output_key, channel in pipeline.outputs.items()
+      if output_key in output_keys
   }
 
 

@@ -71,7 +71,8 @@ class LatestPipelineRunOutputsTest(tf.test.TestCase,
       result = test_utils.run_resolver_op(
           ops.LatestPipelineRunOutputs,
           context=context,
-          pipeline_name='pipeline-name')
+          pipeline_name='pipeline-name',
+          output_keys=['examples'])
       expected_result = {'examples': [input_artifact_1]}
       self.assertAllEqual(result.keys(), expected_result.keys())
       for key in result.keys():
@@ -99,7 +100,8 @@ class LatestPipelineRunOutputsTest(tf.test.TestCase,
       result = test_utils.run_resolver_op(
           ops.LatestPipelineRunOutputs,
           context=context,
-          pipeline_name='pipeline-name')
+          pipeline_name='pipeline-name',
+          output_keys=['examples'])
       expected_result = {'examples': [input_artifact_2]}
       self.assertAllEqual(result.keys(), expected_result.keys())
       for key in result.keys():
@@ -158,11 +160,12 @@ class LatestPipelineRunOutputsTest(tf.test.TestCase,
           contexts=[end_node_context, pipeline_run_ctx_2],
           output_event_type=metadata_store_pb2.Event.INTERNAL_OUTPUT)
 
-      # Only Examples are input
+      # Only Examples is output_key
       result = test_utils.run_resolver_op(
           ops.LatestPipelineRunOutputs,
           context=context,
-          pipeline_name='pipeline-name')
+          pipeline_name='pipeline-name',
+          output_keys=['examples'])
       expected_result = {'examples': [example_artifact_2]}
       self.assertAllEqual(result.keys(), expected_result.keys())
       for key in result.keys():
@@ -170,7 +173,28 @@ class LatestPipelineRunOutputsTest(tf.test.TestCase,
         expected_ids = [a.id for a in expected_result[key]]
         self.assertAllEqual(result_ids, expected_ids)
 
-      # Both Examples and Statistics are input
+      # Only Statistics is output_key
+      result = test_utils.run_resolver_op(
+          ops.LatestPipelineRunOutputs,
+          context=context,
+          pipeline_name='pipeline-name',
+          output_keys=['statistics'])
+      self.assertEmpty(result)
+
+      # Both Examples and Statistics are output_key
+      result = test_utils.run_resolver_op(
+          ops.LatestPipelineRunOutputs,
+          context=context,
+          pipeline_name='pipeline-name',
+          output_keys=['examples', 'statistics'])
+      expected_result = {'examples': [example_artifact_2]}
+      self.assertAllEqual(result.keys(), expected_result.keys())
+      for key in result.keys():
+        result_ids = [a.mlmd_artifact.id for a in result[key]]
+        expected_ids = [a.id for a in expected_result[key]]
+        self.assertAllEqual(result_ids, expected_ids)
+
+      # If output_keys is not provided, use all the keys from producer pipeline.
       result = test_utils.run_resolver_op(
           ops.LatestPipelineRunOutputs,
           context=context,
