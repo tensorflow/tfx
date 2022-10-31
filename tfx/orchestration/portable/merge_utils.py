@@ -35,4 +35,8 @@ def merge_output_artifact(
   """
   updated_artifact = types.Artifact(original_artifact.artifact_type)
   updated_artifact.set_mlmd_artifact(updated_artifact_proto)
+
+  # Enforce that the component does not update the externality of the artifact.
+  updated_artifact.is_external = original_artifact.is_external
+
   return updated_artifact

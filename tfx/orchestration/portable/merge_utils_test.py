@@ -36,6 +36,7 @@ class MergeUtilsTest(tf.test.TestCase):
     expected_artifact = standard_artifacts.Examples()
     expected_artifact.uri = '/a/b/c/d'
     expected_artifact.span = 5
+    expected_artifact.is_external = False
 
     self.assertEqual(expected_artifact.uri, merged_artifact.uri)
     self.assertEqual(expected_artifact.span, merged_artifact.span)
@@ -58,6 +59,24 @@ class MergeUtilsTest(tf.test.TestCase):
 
     self.assertEqual(4, original_artifact.span)
     self.assertEqual(5, merged_artifact.span)
+
+  def testMergeOutputArtifacts_PreservesExternalArtifact(self):
+    original_artifact = standard_artifacts.Examples()
+    original_artifact.uri = '/a/b/c'
+    original_artifact.is_external = True
+    updated_artifact_proto = metadata_store_pb2.Artifact(uri='/a/b/c')
+    merged_artifact = merge_utils.merge_output_artifact(
+        original_artifact, updated_artifact_proto)
+    self.assertTrue(merged_artifact.is_external)
+
+  def testMergeOutputArtifacts_DoesntAllowComponentToModifyExternality(self):
+    original_artifact = standard_artifacts.Examples()
+    original_artifact.uri = '/a/b/c'
+    updated_artifact_proto = metadata_store_pb2.Artifact(uri='/a/b/c')
+    updated_artifact_proto.custom_properties['is_external'].int_value = 1
+    merged_artifact = merge_utils.merge_output_artifact(
+        original_artifact, updated_artifact_proto)
+    self.assertFalse(merged_artifact.is_external)
 
 
 if __name__ == '__main__':

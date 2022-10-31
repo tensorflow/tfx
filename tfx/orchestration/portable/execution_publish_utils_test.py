@@ -189,6 +189,10 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           state: LIVE
           uri: '/examples_uri'
           custom_properties {
+            key: 'is_external'
+            value {int_value: 0}
+          }
+          custom_properties {
             key: 'prop'
             value {int_value: 1}
           }""",
@@ -292,6 +296,10 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           state: LIVE
           uri: '/original_path/subdir_1'
           custom_properties {
+            key: 'is_external'
+            value {int_value: 0}
+          }
+          custom_properties {
             key: 'prop'
             value {int_value: 1}
           }""",
@@ -305,6 +313,10 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           id: 2
           state: LIVE
           uri: '/original_path/subdir_2'
+          custom_properties {
+            key: 'is_external'
+            value {int_value: 0}
+          }
           custom_properties {
             key: 'prop'
             value {int_value: 2}
