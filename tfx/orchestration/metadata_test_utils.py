@@ -907,8 +907,8 @@ class MetadataTest(tf.test.TestCase):
           type_name=standard_artifacts.Model().type_name,
           producer_component_id=self._component_info.component_id,
           output_key='k1')
-      self.assertEqual(len(result), 1)
-      self.assertEqual(result[0].artifact.id, artifact_one.id)
+      self.assertLen(result, 1)
+      self.assertEqual(result[0].id, artifact_one.id)
 
   def testContext(self):
     with self.metadata() as m:

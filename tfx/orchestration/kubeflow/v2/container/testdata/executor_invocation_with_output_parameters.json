@@ -1,0 +1,101 @@
+{
+  "inputs": {
+    "artifacts": {
+      "input_1": {
+        "artifacts": [
+          {
+            "uri": "gs://root/input_1/",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/1",
+            "metadata": {
+              "custom_property_1": "string property",
+              "custom_property_2": 42.0
+            },
+            "type": {
+              "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+            },
+            "createTimeSinceEpoch": "1587611829506"
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "key_1": {
+        "stringValue": "value_1"
+      }
+    }
+  },
+  "outputs": {
+    "artifacts": {
+      "output": {
+        "artifacts": [
+          {
+            "uri": "gs://root/output/",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/3",
+            "type": {
+              "instanceSchema": "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+            }
+          }
+        ]
+      },
+      "test_value_artifact_float": {
+        "artifacts": [
+          {
+            "uri": "will-be-set-during-unit-test",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/4",
+            "type": {
+              "instanceSchema": "title: tfx.Float\ntype: object\n"
+            }
+          }
+        ]
+      },
+      "test_value_artifact_string": {
+        "artifacts": [
+          {
+            "uri": "will-be-set-during-unit-test",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/5",
+            "type": {
+              "instanceSchema": "title: tfx.String\ntype: object\n"
+            }
+          }
+        ]
+      },
+      "test_value_artifact_boolean": {
+        "artifacts": [
+          {
+            "uri": "will-be-set-during-unit-test",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/6",
+            "type": {
+              "instanceSchema": "title: tfx.Boolean\ntype: object\n"
+            }
+          }
+        ]
+      },
+      "test_value_artifact_integer": {
+        "artifacts": [
+          {
+            "uri": "will-be-set-during-unit-test",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/7",
+            "type": {
+              "instanceSchema": "title: tfx.Integer\ntype: object\n"
+            }
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "test_value_artifact_float": {
+        "output_file": ""
+      },
+      "test_value_artifact_string": {
+        "output_file": ""
+      },
+      "test_value_artifact_boolean": {
+        "output_file": ""
+      },
+      "test_value_artifact_integer": {
+        "output_file": ""
+      }
+    },
+    "outputFile": "will-be-set-during-unit-test"
+  }
+}

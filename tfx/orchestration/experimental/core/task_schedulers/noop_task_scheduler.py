@@ -38,5 +38,5 @@ class NoOpTaskScheduler(ts.TaskScheduler[task_lib.ExecNodeTask]):
     logging.info('Result: %s', result)
     return result
 
-  def cancel(self) -> None:
+  def cancel(self, cancel_task: task_lib.CancelTask) -> None:
     pass

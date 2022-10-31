@@ -14,7 +14,7 @@
 """TFX Resolver definition."""
 
 import abc
-from typing import Any, Dict, List, Optional, Type, Sequence, Mapping
+from typing import Any, Dict, List, Optional, Type, Mapping, cast
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
@@ -23,8 +23,8 @@ from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.types import artifact_utils
 from tfx.types import channel_utils
+from tfx.types import resolved_channel
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
 
@@ -56,20 +56,6 @@ class ResolverStrategy(abc.ABC):
   """
   # pylint: enable=line-too-long
 
-  @doc_controls.do_not_generate_docs
-  @doc_controls.do_not_doc_in_subclasses
-  @classmethod
-  def as_resolver_op(cls, input_node: resolver_op.OpNode, **kwargs):
-    """ResolverOp-like usage inside resolver_function."""
-    if input_node.output_data_type != resolver_op.DataTypes.ARTIFACT_MULTIMAP:
-      raise TypeError(f'{cls.__name__} takes ARTIFACT_MULTIMAP but got '
-                      f'{input_node.output_data_type.name} instead.')
-    return resolver_op.OpNode(
-        op_type=cls,
-        arg=input_node,
-        output_data_type=resolver_op.DataTypes.ARTIFACT_MULTIMAP,
-        kwargs=kwargs)
-
   @abc.abstractmethod
   def resolve_artifacts(
       self, store: mlmd.MetadataStore,
@@ -97,9 +83,6 @@ class ResolverStrategy(abc.ABC):
       input_dict. Otherise, return None.
     """
 
-# Lazily register valid op_type for OpNode to avoid circular import.
-resolver_op.OpNode.register_valid_op_type(ResolverStrategy)
-
 
 class _ResolverDriver(base_driver.BaseDriver):
   """Driver for Resolver.
@@ -123,15 +106,11 @@ class _ResolverDriver(base_driver.BaseDriver):
     for key, c in input_channels.items():
       artifacts_by_id = {}  # Deduplicate by ID.
       for channel in channel_utils.get_individual_channels(c):
-        artifact_and_types = self._metadata_handler.get_qualified_artifacts(
+        artifacts = self._metadata_handler.get_qualified_artifacts(
             contexts=[pipeline_context],
             type_name=channel.type_name,
             producer_component_id=channel.producer_component_id,
             output_key=channel.output_key)
-        artifacts = [
-            artifact_utils.deserialize_artifact(a.type, a.artifact)
-            for a in artifact_and_types
-        ]
         artifacts_by_id.update({a.id: a for a in artifacts})
       result[key] = list(artifacts_by_id.values())
     return result
@@ -226,22 +205,18 @@ class Resolver(base_node.BaseNode):
   def __init__(self,
                strategy_class: Optional[Type[ResolverStrategy]] = None,
                config: Optional[Dict[str, json_utils.JsonableType]] = None,
-               function: Optional[resolver_function.ResolverFunction] = None,
-               **channels: types.BaseChannel):
+               **kwargs: types.BaseChannel):
     """Init function for Resolver.
 
     Args:
       strategy_class: Optional `ResolverStrategy` which contains the artifact
-          resolution logic. One of `strategy_class` or `function`
-          argument should be set.
+          resolution logic.
       config: Optional dict of key to Jsonable type for constructing
           resolver_strategy.
-      function: Optional `ResolverFunction` which contains the artifact
-          resolution logic. User should not use this parameter directly but use
-          `@resolver_stem` decorated function instead. One of `strategy_class`
-          or `function` argument should be set.
-      **channels: Input channels to the Resolver node as keyword arguments.
+      **kwargs: Input channels to the Resolver node as keyword arguments.
     """
+    function = kwargs.pop('function', None)
+    channels = kwargs
     if (strategy_class is not None) + (function is not None) != 1:
       raise ValueError('Exactly one of strategy_class= or function= argument '
                        'should be given.')
@@ -249,24 +224,35 @@ class Resolver(base_node.BaseNode):
         not issubclass(strategy_class, ResolverStrategy)):
       raise TypeError('strategy_class should be ResolverStrategy, but got '
                       f'{strategy_class} instead.')
-    if (function is not None and
-        not isinstance(function, resolver_function.ResolverFunction)):
-      raise TypeError(f'function should be ResolverFunction, but got '
-                      f'{function} instead.')
+    if function is not None:
+      if not isinstance(function, resolver_function.ResolverFunction):
+        raise TypeError(f'function should be ResolverFunction, but got '
+                        f'{function} instead.')
+      function = cast(resolver_function.ResolverFunction, function)
     self._strategy_class = strategy_class
     self._config = config or {}
+    trace_input = resolver_op.InputNode(
+        channels, resolver_op.DataType.ARTIFACT_MULTIMAP)
     if function is not None:
-      self._resolver_function = function
+      self._trace_result = function.trace(trace_input)
     else:
-      self._resolver_function = convert_strategy_to_resolver_function(
-          [self._strategy_class], [self._config])
-    self._input_dict = channels
+      self._trace_result = resolver_op.OpNode(
+          op_type=strategy_class,
+          output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP,
+          args=[trace_input],
+          kwargs=self._config)
+    # An observed inputs from DSL as if Resolver node takes an inputs.
+    # TODO(b/246907396): Remove raw_inputs usage.
+    self._raw_inputs = channels
+    self._input_dict = {}
     self._output_dict = {}
-    for k, c in self._input_dict.items():
+    for k, c in channels.items():
       if not isinstance(c, types.BaseChannel):
         raise ValueError(
             f'Expected extra kwarg {k!r} to be of type `tfx.types.BaseChannel` '
             f'but got {c!r} instead.')
+      self._input_dict[k] = resolved_channel.ResolvedChannel(
+          c.type, self._trace_result, k)
       # TODO(b/161490287): remove static artifacts.
       self._output_dict[k] = (
           types.OutputChannel(c.type, self, k).set_artifacts([c.type()]))
@@ -274,8 +260,13 @@ class Resolver(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
-  def resolver_function(self) -> resolver_function.ResolverFunction:
-    return self._resolver_function
+  def trace_result(self) -> resolver_op.Node:
+    return self._trace_result
+
+  @property
+  @doc_controls.do_not_generate_docs
+  def raw_inputs(self) -> Dict[str, types.BaseChannel]:
+    return self._raw_inputs
 
   @property
   @doc_controls.do_not_generate_docs
@@ -296,20 +287,3 @@ class Resolver(base_node.BaseNode):
         RESOLVER_STRATEGY_CLASS: self._strategy_class,
         RESOLVER_CONFIG: self._config
     }
-
-
-@doc_controls.do_not_generate_docs
-def convert_strategy_to_resolver_function(
-    strategy_class_list: Sequence[Type[ResolverStrategy]],
-    config_list: Sequence[Mapping[str, json_utils.JsonableType]],
-) -> resolver_function.ResolverFunction:
-  """Creates ResolverFunction that runs a list of ResolverStrategy."""
-
-  @resolver_function.resolver_function
-  def impl(input_node):
-    result = input_node
-    for strategy_cls, config in zip(strategy_class_list, config_list):
-      result = strategy_cls.as_resolver_op(input_node, **config)
-    return result
-
-  return impl

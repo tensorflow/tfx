@@ -22,7 +22,6 @@ from tfx.proto import bulk_inferrer_pb2
 from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import prediction_log_pb2
 
-INPUT_KEY = 'examples'
 _FeatureListType = List[Tuple[str, List[Union[str, bytes, float]]]]
 
 # Typehint Any is for compatibility reason.
@@ -143,7 +142,7 @@ def _parse_predict_log(
     predict_output_spec: _PredictOutputType
 ) -> Tuple[tf.train.Example, _FeatureListType]:
   """Parses PredictLog."""
-  input_tensor_proto = predict_log.request.inputs[INPUT_KEY]
+  _, input_tensor_proto = next(iter(predict_log.request.inputs.items()))
   example = tf.train.Example.FromString(input_tensor_proto.string_val[0])
   outputs = predict_log.response.outputs
   output_features = []
@@ -159,7 +158,7 @@ def _parse_predict_log(
       output_values = output_values.tolist()
     else:  # output_values.ndim == 0
       # Get a scalar for output_values.
-      output_values = [np.asscalar(output_values)]
+      output_values = [output_values.item()]
     output_features.append((col.output_column, output_values))
   return example, output_features
 

@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Module for ResolverOp and its related definitions."""
+from __future__ import annotations
+
 import abc
-import enum
-from typing import Any, ClassVar, Generic, Mapping, Type, TypeVar, Union, Sequence
+from typing import Any, Generic, Mapping, Type, TypeVar, Union, Sequence, Optional
 
 import attr
-import tfx.types
+from tfx import types
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
 from tfx.utils import typing_utils
+import typing_extensions
 
 import ml_metadata as mlmd
 
@@ -35,21 +38,23 @@ class Context:
   # run, and current running node information.
 
 
-class DataTypes(enum.Enum):
-  """Supported data types for ResolverOps input/outputs."""
-  ARTIFACT_LIST = Sequence[tfx.types.Artifact]
-  ARTIFACT_MULTIMAP = typing_utils.ArtifactMultiMap
-  ARTIFACT_MULTIMAP_LIST = Sequence[typing_utils.ArtifactMultiMap]
-
-  def is_acceptable(self, value: Any) -> bool:
-    """Check the value is instance of the data type."""
-    if self == self.ARTIFACT_LIST:
-      return typing_utils.is_homogeneous_artifact_list(value)
-    elif self == self.ARTIFACT_MULTIMAP:
-      return typing_utils.is_artifact_multimap(value)
-    elif self == self.ARTIFACT_MULTIMAP_LIST:
-      return typing_utils.is_list_of_artifact_multimap(value)
-    raise NotImplementedError(f'Cannot check type for {self}.')
+# Note that to use DataType as a generic type parameter (e.g.
+# `Sequence[DataType]`) you need either `from __future__ import annotations`
+# or quote the enum parameter (e.g. `Sequence['DataType']`).
+# go/pytype-faq#annotating-with-a-proto-enum-type-caused-a-runtime-error
+DataType = pipeline_pb2.InputGraph.DataType
+_ValidDataType = typing_extensions.Literal[  # pytype: disable=invalid-annotation
+    DataType.ARTIFACT_LIST,
+    DataType.ARTIFACT_MULTIMAP,
+    DataType.ARTIFACT_MULTIMAP_LIST,
+]
+# Actual data corresponding to ARTIFACT_LIST, ARTIFACT_MULTIMAP, and
+# ARTIFACT_MULTIMAP_LIST.
+_Data = Union[
+    Sequence[types.Artifact],
+    typing_utils.ArtifactMultiMap,
+    Sequence[typing_utils.ArtifactMultiMap],
+]
 
 
 class _ResolverOpMeta(abc.ABCMeta):
@@ -59,7 +64,7 @@ class _ResolverOpMeta(abc.ABCMeta):
   1. ResolverOp cannot be instantiated directly. Calling ResolverOp() returns
      OpNode instance which is used for function tracing. Instead _ResolverOpMeta
      exposes create() classmethod to actually create a ResolverOp isntance.
-  2. _ResolverOpMeta is aware of ResolverOpProperty, and keyword argument values
+  2. _ResolverOpMeta is aware of Property, and keyword argument values
      given from the ResolverOp invocation is validated without creating a
      ResolverOp instance.
   3. It inherits ABCMeta, so @abstractmethod works.
@@ -74,20 +79,32 @@ class _ResolverOpMeta(abc.ABCMeta):
 
   def __init__(
       cls, name, bases, attrs,
-      arg_data_types: Sequence[DataTypes] = (DataTypes.ARTIFACT_MULTIMAP,),
-      return_data_type: DataTypes = DataTypes.ARTIFACT_MULTIMAP):
+      *,
+      canonical_name: Optional[str] = None,
+      arg_data_types: Sequence[DataType] = (DataType.ARTIFACT_MULTIMAP,),
+      return_data_type: DataType = DataType.ARTIFACT_MULTIMAP):
     cls._props_by_name = {
         prop.name: prop
         for prop in attrs.values()
-        if isinstance(prop, ResolverOpProperty)
+        if isinstance(prop, Property)
     }
-    if len(arg_data_types) != 1:
-      raise NotImplementedError('len(arg_data_types) should be 1.')
-    cls._arg_data_type = arg_data_types[0]
+    cls._canonical_name = canonical_name
+    if not typing_utils.is_compatible(arg_data_types, Sequence[_ValidDataType]):
+      raise ValueError(
+          f'Invalid arg_data_types = {arg_data_types}. '
+          'Expected Sequence[DataType].')
+    cls._arg_data_types = arg_data_types
+    if not typing_utils.is_compatible(return_data_type, _ValidDataType):
+      raise ValueError(
+          f'Invalid return_data_type = {return_data_type}. Expected DataType.')
     cls._return_data_type = return_data_type
     super().__init__(name, bases, attrs)
 
-  def __call__(cls, arg: 'OpNode', **kwargs: Any):
+  @property
+  def canonical_name(cls):
+    return cls._canonical_name or cls.__name__
+
+  def __call__(cls, *args: Union['Node', Mapping[str, 'Node']], **kwargs: Any):
     """Fake instantiation of the ResolverOp class.
 
     Original implementation of metaclass.__call__ method is to instantiate
@@ -99,29 +116,42 @@ class _ResolverOpMeta(abc.ABCMeta):
     classmethod instead.
 
     Args:
-      arg: Input argument for the operator.
+      *args: Input arguments for the operator.
       **kwargs: Property values for the ResolverOp.
 
     Returns:
       An OpNode instance that represents the operator call.
     """
-    cls._check_arg(arg)
+    args = cls._check_and_transform_args(args)
     cls._check_kwargs(kwargs)
     return OpNode(
         op_type=cls,
-        arg=arg,
+        args=args,
         output_data_type=cls._return_data_type,
         kwargs=kwargs)
 
-  def _check_arg(cls, arg: 'OpNode'):
-    if not isinstance(arg, OpNode):
-      raise ValueError('Cannot directly call ResolverOp with real values. Use '
-                       'output of another operator as an argument.')
-    if arg.output_data_type != cls._arg_data_type:
-      raise TypeError(f'{cls.__name__} takes {cls._arg_data_type.name} type '
-                      f'but got {arg.output_data_type.name} instead.')
+  def _check_and_transform_args(cls, args: Sequence[Any]) -> Sequence['Node']:
+    """Static check against ResolverOp positional arguments."""
+    if len(args) != len(cls._arg_data_types):
+      raise ValueError(f'{cls.__name__} expects {len(cls._arg_data_types)} '
+                       f'arguments but got {len(args)}.')
+    transformed_args = []
+    for arg, arg_data_type in zip(args, cls._arg_data_types):
+      if (arg_data_type == DataType.ARTIFACT_MULTIMAP and
+          isinstance(arg, dict)):
+        arg = DictNode(arg)
+      if not isinstance(arg, Node):
+        raise ValueError('Cannot directly call ResolverOp with real values. '
+                         'Use output of another operator as an argument.')
+      if arg.output_data_type != arg_data_type:
+        raise TypeError(
+            f'{cls.__name__} takes {DataType.Name(arg_data_type)} type '
+            f'but got {DataType.Name(arg.output_data_type)} instead.')
+      transformed_args.append(arg)
+    return transformed_args
 
   def _check_kwargs(cls, kwargs: Mapping[str, Any]):
+    """Static check against ResolverOp keyword arguments."""
     for name, prop in cls._props_by_name.items():
       if prop.required and name not in kwargs:
         raise ValueError(f'Required property {name} is missing.')
@@ -149,25 +179,21 @@ class _ResolverOpMeta(abc.ABCMeta):
       setattr(real_instance, name, value)
     return real_instance
 
-  def create_from_json(cls, config_json: str) -> 'ResolverOp':
-    """Actually create a ResolverOp instance with JSON properties."""
-    return cls.create(**json_utils.loads(config_json))
-
 
 class _Empty:
   """Sentinel class for empty value (!= None)."""
   pass
 
 _EMPTY = _Empty()
-_T = TypeVar('_T', bound=json_utils.JsonableValue)
+_T = TypeVar('_T', bound=json_utils.JsonableType)
 
 
-class ResolverOpProperty(Generic[_T]):
+class Property(Generic[_T]):
   """Property descriptor for ResolverOp.
 
   Usage:
     class FooOp(ResolverOp):
-      foo = ResolverOpProperty(type=int, default=42)
+      foo = Property(type=int, default=42)
 
       def apply(self, input_dict):
         whatever(self.foo, input_dict)  # Can be accessed from self.
@@ -184,9 +210,11 @@ class ResolverOpProperty(Generic[_T]):
       default: Union[_T, _Empty] = _EMPTY):
     self._type = type
     self._required = default is _EMPTY
-    if default is not _EMPTY and not self._isinstance(default, type):
+    if default is not _EMPTY and not typing_utils.is_compatible(default, type):
       raise TypeError(f'Default value {default!r} is not {type} type.')
     self._default = default
+    self._name = ''  # Will be filled by __set_name__.
+    self._private_name = ''  # Will be filled by __set_name__.
 
   @property
   def name(self) -> str:
@@ -201,21 +229,8 @@ class ResolverOpProperty(Generic[_T]):
     return self._required
 
   def validate(self, value: Any):
-    if not self._isinstance(value, self._type):
+    if not typing_utils.is_compatible(value, self._type):
       raise TypeError(f'{self._name} should be {self._type} but got {value!r}.')
-
-  def _isinstance(self, value: Any, typ: Any) -> bool:
-    """Custom isinstance() that supports Generic types as well."""
-    typ_args = getattr(typ, '__args__', ())
-    if hasattr(typ, '__origin__'):
-      # Drop subscripted extra type parameters from generic type.
-      # (e.g. Dict[str, str].__origin__ == dict)
-      # See https://www.python.org/dev/peps/pep-0585 for more information.
-      typ = typ.__origin__
-    if typ == Union:
-      return any(self._isinstance(value, t) for t in typ_args)
-    else:
-      return isinstance(value, typ)
 
   def __set_name__(self, owner, name):
     if name == 'context':
@@ -240,10 +255,6 @@ class ResolverOpProperty(Generic[_T]):
 class ResolverOp(metaclass=_ResolverOpMeta):
   """ResolverOp is the building block of input resolution logic.
 
-  Currently ResolverOp signature is limited to:
-      (Dict[str, List[Artifact]]) -> Dict[str, List[Artifact]]
-  but the constraints may be relaxed in the future.
-
   Usage:
     output_dict = FooOp(input_dict, foo=123)
 
@@ -256,13 +267,7 @@ class ResolverOp(metaclass=_ResolverOpMeta):
     """Dummy constructor to bypass false negative pytype alarm."""
 
   @abc.abstractmethod
-  def apply(
-      self,
-      input_dict: typing_utils.ArtifactMultiMap,
-  ) -> Union[
-      typing_utils.ArtifactMultiMap,
-      Sequence[typing_utils.ArtifactMultiMap]
-  ]:
+  def apply(self, *args: _Data) -> _Data:
     """Implementation of the operator."""
 
   def set_context(self, context: Context):
@@ -270,58 +275,87 @@ class ResolverOp(metaclass=_ResolverOpMeta):
     self.context = context
 
 
-# Output type of an OpNode.
-_TOut = TypeVar('_TOut')
+class Node:
+  output_data_type: DataType
+
+  def __eq__(self, other):
+    if not isinstance(other, Node):
+      return NotImplemented
+    return self is other
+
+  def __hash__(self):
+    return hash(id(self))
 
 
 @attr.s(kw_only=True, repr=False, eq=False)
-class OpNode(Generic[_TOut]):
-  """OpNode represents a ResolverOp invocation."""
-  _VALID_OP_TYPES = (ResolverOp,)
-  # Singleton OpNode instance representing the input node.
-  INPUT_NODE: ClassVar['OpNode']
-
+class OpNode(Node):
+  """Node that represents a ResolverOp invocation and its result."""
   # ResolverOp class that is used for the Node.
   op_type = attr.ib()
   # Output data type of ResolverOp.
-  output_data_type = attr.ib(default=DataTypes.ARTIFACT_MULTIMAP,
-                             validator=attr.validators.instance_of(DataTypes))
-  # A single argument to the ResolverOp.
-  arg = attr.ib()
-  # ResolverOpProperty for the ResolverOp, given as keyword arguments.
-  kwargs = attr.ib(factory=dict)
+  output_data_type = attr.ib(
+      type=DataType,
+      default=DataType.ARTIFACT_MULTIMAP)
+  # Arguments of the ResolverOp.
+  args = attr.ib(type=Sequence[Node], default=())
+  # Property for the ResolverOp, given as keyword arguments.
+  kwargs = attr.ib(type=Mapping[str, Any], factory=dict)
 
-  @classmethod
-  def register_valid_op_type(cls, op_type: Type[Any]):
-    if op_type not in cls._VALID_OP_TYPES:
-      cls._VALID_OP_TYPES += (op_type,)
-
-  @op_type.validator
-  def validate_op_type(self, attribute, value):
-    if not issubclass(value, self._VALID_OP_TYPES):
-      raise TypeError(f'op_type should be subclass of {self._VALID_OP_TYPES} '
-                      f'but got {value!r}.')
-
-  @arg.validator
-  def validate_arg(self, attribute, value):
-    if not isinstance(value, OpNode):
-      raise TypeError(f'Invalid arg: {value!r}.')
+  @args.validator
+  def _validate_args(self, attribute, value):
+    del attribute  # Unused.
+    if not typing_utils.is_compatible(value, Sequence[Node]):
+      raise TypeError(f'`args` should be a Sequence[Node] but got {value!r}.')
 
   def __repr__(self):
-    if self.is_input_node:
-      return 'INPUT_NODE'
-    else:
-      all_args = [repr(self.arg)]
-      all_args.extend(f'{k}={repr(v)}' for k, v in self.kwargs.items())
-      return f'{self.op_type.__qualname__}({", ".join(all_args)})'
+    all_args = [repr(arg) for arg in self.args]
+    all_args.extend(f'{k}={repr(v)}' for k, v in self.kwargs.items())
+    return f'{self.op_type.__qualname__}({", ".join(all_args)})'
 
-  @property
-  def is_input_node(self):
-    return self is OpNode.INPUT_NODE
 
-attr.set_run_validators(False)
-OpNode.INPUT_NODE = OpNode(
-    op_type=None,
-    output_data_type=DataTypes.ARTIFACT_MULTIMAP,
-    arg=None)
-attr.set_run_validators(True)
+class InputNode(Node):
+  """Node that represents the input arguments of the resolver function."""
+
+  def __init__(self, wrapped: Any, output_data_type: DataType):
+    # TODO(b/236140795): Allow only BaseChannel as a wrapped and make
+    # output_data_type always be the ARTIFACT_LIST.
+    self.wrapped = wrapped
+    self.output_data_type = output_data_type
+
+  def __repr__(self) -> str:
+    return 'Input()'
+
+  def __eq__(self, others):
+    if not isinstance(others, InputNode):
+      return NotImplemented
+    return self.wrapped == others.wrapped
+
+  def __hash__(self):
+    if isinstance(self.wrapped, dict):
+      return hash(tuple(sorted(self.wrapped.items())))
+    return hash(self.wrapped)
+
+
+class DictNode(Node):
+  """Node that represents a dict of Node values."""
+  output_data_type = DataType.ARTIFACT_MULTIMAP
+
+  def __init__(self, nodes: Mapping[str, Node]):
+    if not typing_utils.is_compatible(nodes, Mapping[str, Node]) or any(
+        v.output_data_type != DataType.ARTIFACT_LIST for v in nodes.values()):
+      raise ValueError(
+          'Expected dict[str, Node] s.t. all node.output_data_type == '
+          f'ARTIFACT_LIST, but got {nodes}.')
+    self.nodes = nodes
+
+  def __eq__(self, other):
+    if not isinstance(other, DictNode):
+      return NotImplemented
+    return self.nodes == other.nodes
+
+  def __hash__(self):
+    return hash(tuple(sorted(self.nodes.items())))
+
+  def __repr__(self) -> str:
+    args = [f'{k}={v!r}' for k, v in self.nodes.items()]
+    return f'Dict({", ".join(args)})'

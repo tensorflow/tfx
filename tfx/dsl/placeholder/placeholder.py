@@ -11,15 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Placeholders represent not-yet-available values at the component authoring time."""
+"""Placeholders represent not-yet-available values at the component authoring time.
+"""
 
 import abc
 import copy
 import enum
-from typing import Any, Callable, Iterator, List, Optional, Type, TypeVar, Union, cast
+import functools
+from typing import Any, Callable, Iterator, List, Optional, Sequence, Type, TypeVar, Union, cast
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
+from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
@@ -102,7 +105,7 @@ class _IndexOperator(_PlaceholderOperator):
   Prefer to use [index] operator overloading of Placeholder.
   """
 
-  def __init__(self, index: int):
+  def __init__(self, index: Union[int, str]):
     super().__init__()
     self._index = index
 
@@ -115,7 +118,10 @@ class _IndexOperator(_PlaceholderOperator):
 
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.index_op.expression.CopyFrom(sub_expression_pb)
-    result.operator.index_op.index = self._index
+    if isinstance(self._index, int):
+      result.operator.index_op.index = self._index
+    if isinstance(self._index, str):
+      result.operator.index_op.key = self._index
     return result
 
 
@@ -219,6 +225,7 @@ class ProtoSerializationFormat(enum.Enum):
   TEXT_FORMAT = placeholder_pb2.ProtoOperator.TEXT_FORMAT
   JSON = placeholder_pb2.ProtoOperator.JSON
   BINARY = placeholder_pb2.ProtoOperator.BINARY
+  INLINE_FILE_TEXT_FORMAT = placeholder_pb2.ProtoOperator.INLINE_FILE_TEXT_FORMAT
 
 
 class ListSerializationFormat(enum.Enum):
@@ -262,20 +269,20 @@ class _ProtoOperator(_PlaceholderOperator):
           self._serialization_format.value)
 
     # Attach proto descriptor if available through component spec.
-    if (component_spec and sub_expression_pb.placeholder.type ==
-        placeholder_pb2.Placeholder.EXEC_PROPERTY):
+    if (component_spec and sub_expression_pb.placeholder.type
+        == placeholder_pb2.Placeholder.EXEC_PROPERTY):
       exec_property_name = sub_expression_pb.placeholder.key
       if exec_property_name not in component_spec.PARAMETERS:
         raise ValueError(
             f"Can't find provided placeholder key {exec_property_name} in "
             "component spec's exec properties. "
-            f"Available exec property keys: {component_spec.PARAMETERS.keys()}."
+            f'Available exec property keys: {component_spec.PARAMETERS.keys()}.'
         )
       execution_param = component_spec.PARAMETERS[exec_property_name]
       if not issubclass(execution_param.type, message.Message):
         raise ValueError(
             "Can't apply placeholder proto operator on non-proto type "
-            f"exec property. Got {execution_param.type}.")
+            f'exec property. Got {execution_param.type}.')
       proto_schema = result.operator.proto_op.proto_schema
       proto_schema.message_type = execution_param.type.DESCRIPTOR.full_name
       proto_utils.build_file_descriptor_set(execution_param.type,
@@ -326,22 +333,34 @@ class _Base64EncodeOperator(_PlaceholderOperator):
     return result
 
 
-class Placeholder(json_utils.Jsonable):
-  """A Placeholder represents not-yet-available values at the component authoring time."""
+# To ensure that parent class operations on a child class still returns the
+# child class instance.
+_T = TypeVar('_T')
 
-  def __init__(self, placeholder_type: placeholder_pb2.Placeholder.Type,
+
+class Placeholder(json_utils.Jsonable):
+  """A Placeholder represents not-yet-available values at the component authoring time.
+  """
+
+  def __init__(self,
+               placeholder_type: placeholder_pb2.Placeholder.Type,
                key: Optional[str] = None):
     self._operators = []
     self._type = placeholder_type
     self._key = key  # TODO(b/217597892): Refactor _key as read-only property.
 
-  def __add__(self, right: Union[str, 'Placeholder']):
-    self._operators.append(_ConcatOperator(right=right))
-    return self
+  def _clone_and_use_operators(self: _T,
+                               operators: List[_PlaceholderOperator]) -> _T:
+    copied = copy.deepcopy(self)
+    for op in operators:
+      copied._operators.append(op)  # pylint: disable=protected-access
+    return copied
 
-  def __radd__(self, left: str):
-    self._operators.append(_ConcatOperator(left=left))
-    return self
+  def __add__(self: _T, right: Union[str, 'Placeholder']) -> _T:
+    return self._clone_and_use_operators([_ConcatOperator(right=right)])
+
+  def __radd__(self: _T, left: str) -> _T:
+    return self._clone_and_use_operators([_ConcatOperator(left=left)])
 
   def __deepcopy__(self, memo):
     # This method is implemented to make sure Placeholder is deep copyable
@@ -353,14 +372,13 @@ class Placeholder(json_utils.Jsonable):
       setattr(result, k, copy.deepcopy(v, memo))
     return result
 
-  def b64encode(self):
+  def b64encode(self: _T) -> _T:
     """Encodes the output of another placeholder using url safe base64 encoding.
 
     Returns:
       A placeholder, when rendering, is a url safe base64 encoded string.
     """
-    self._operators.append(_Base64EncodeOperator())
-    return self
+    return self._clone_and_use_operators([_Base64EncodeOperator()])
 
   def encode(
       self,
@@ -391,9 +409,29 @@ class Placeholder(json_utils.Jsonable):
     return result
 
 
-# To ensure that ArtifactPlaceholder operations on a ChannelWrappedPlaceholder
-# still returns a ChannelWrappedPlaceholder.
-_T = TypeVar('_T')
+def join(placeholders: Sequence[Union[str, Placeholder]],
+         separator: str = '') -> Union[str, Placeholder]:
+  """Joins a list consisting of placeholders and strings using separator.
+
+  Returns an empty string if placeholders is empty.
+
+  Args:
+    placeholders: List of placeholders and/or strings.
+    separator: The separator to use when joining the passed in values.
+
+  Returns:
+    A Placeholder representing the concatenation of all elements passed in, or
+    a string in the case that no element was a Placeholder instance.
+  """
+  if not placeholders:
+    return ''
+
+  def joiner(a, b):
+    if separator:
+      return a + separator + b
+    return a + b
+
+  return functools.reduce(joiner, placeholders)
 
 
 class ArtifactPlaceholder(Placeholder):
@@ -404,68 +442,73 @@ class ArtifactPlaceholder(Placeholder):
 
   @property
   def uri(self: _T) -> _T:
-    self._try_inject_index_operator()
-    self._operators.append(_ArtifactUriOperator())
-    return self
+    return self._clone_and_use_operators(
+        [*self._optional_index_operator(),
+         _ArtifactUriOperator()])
 
   def split_uri(self: _T, split: str) -> _T:
-    self._try_inject_index_operator()
-    self._operators.append(_ArtifactUriOperator(split))
-    return self
+    return self._clone_and_use_operators(
+        [*self._optional_index_operator(),
+         _ArtifactUriOperator(split)])
 
   @property
   def value(self: _T) -> _T:
-    self._try_inject_index_operator()
-    self._operators.append(_ArtifactValueOperator())
-    return self
+    return self._clone_and_use_operators(
+        [*self._optional_index_operator(),
+         _ArtifactValueOperator()])
 
-  def __getitem__(self: _T, key: int) -> _T:
-    self._operators.append(_IndexOperator(key))
-    return self
+  def __getitem__(self: _T, key: Union[int, str]) -> _T:
+    return self._clone_and_use_operators([_IndexOperator(key)])
 
-  def _try_inject_index_operator(self):
-    if not self._operators or not any(
-        isinstance(op, _IndexOperator) for op in self._operators):
-      self._operators.append(_IndexOperator(0))
+  def property(self: _T, key: str) -> _T:
+    return self._clone_and_use_operators(
+        [*self._optional_index_operator(),
+         _PropertyOperator(key)])
 
-  def property(self, key: str):
-    self._operators.append(_PropertyOperator(key))
-    return self
+  def custom_property(self: _T, key: str) -> _T:
+    return self._clone_and_use_operators([
+        *self._optional_index_operator(),
+        _PropertyOperator(key, is_custom_property=True)
+    ])
 
-  def custom_property(self, key: str):
-    self._operators.append(_PropertyOperator(key, is_custom_property=True))
-    return self
+  def _optional_index_operator(self) -> List[_PlaceholderOperator]:
+    if any(isinstance(op, _IndexOperator) for op in self._operators):
+      return []
+    else:
+      return [_IndexOperator(0)]
 
 
 class _ProtoAccessiblePlaceholder(Placeholder, abc.ABC):
   """A base Placeholder for accessing proto fields using Python proto syntax."""
 
-  def __getattr__(self, field_name: str):
+  def __getattr__(self: _T, field_name: str) -> _T:
     proto_access_field = f'.{field_name}'
     if self._operators and isinstance(
         self._operators[-1],
         _ProtoOperator) and self._operators[-1].can_append_field_path():
-      self._operators[-1].append_field_path(proto_access_field)
+      result = self._clone_and_use_operators([])  # makes a copy of self
+      result._operators[-1].append_field_path(proto_access_field)
+      return result
     else:
-      self._operators.append(
-          _ProtoOperator(proto_field_path=proto_access_field))
-    return self
+      return self._clone_and_use_operators(
+          [_ProtoOperator(proto_field_path=proto_access_field)])
 
-  def __getitem__(self, key: Union[int, str]):
+  def __getitem__(self: _T, key: Union[int, str]) -> _T:
     if isinstance(key, int):
-      self._operators.append(_IndexOperator(key))
+      return self._clone_and_use_operators([_IndexOperator(key)])
     else:
       proto_access_field = f'[{key!r}]'
       if self._operators and isinstance(
           self._operators[-1],
           _ProtoOperator) and self._operators[-1].can_append_field_path():
-        self._operators[-1].append_field_path(proto_access_field)
+        result = self._clone_and_use_operators([])  # makes a copy of self
+        result._operators[-1].append_field_path(proto_access_field)
+        return result
       else:
-        self._operators.append(
-            _ProtoOperator(proto_field_path=proto_access_field))
-    return self
+        return self._clone_and_use_operators(
+            [_ProtoOperator(proto_field_path=proto_access_field)])
 
-  def serialize(self, serialization_format: ProtoSerializationFormat):
+  def serialize(self: _T, serialization_format: ProtoSerializationFormat) -> _T:
     """Serialize the proto-valued placeholder using the provided scheme.
 
     Args:
@@ -474,9 +517,8 @@ class _ProtoAccessiblePlaceholder(Placeholder, abc.ABC):
     Returns:
       A placeholder that when rendered is serialized with the scheme.
     """
-    self._operators.append(
-        _ProtoOperator(serialization_format=serialization_format))
-    return self
+    return self._clone_and_use_operators(
+        [_ProtoOperator(serialization_format=serialization_format)])
 
 
 class ExecPropertyPlaceholder(_ProtoAccessiblePlaceholder):
@@ -488,7 +530,8 @@ class ExecPropertyPlaceholder(_ProtoAccessiblePlaceholder):
   def __init__(self, key: str):
     super().__init__(placeholder_pb2.Placeholder.Type.EXEC_PROPERTY, key)
 
-  def serialize_list(self, serialization_format: ListSerializationFormat):
+  def serialize_list(self: _T,
+                     serialization_format: ListSerializationFormat) -> _T:
     """Serializes list-value placeholder to JSON or comma-separated string.
 
     Here list value includes repeated proto field. This function only
@@ -501,8 +544,8 @@ class ExecPropertyPlaceholder(_ProtoAccessiblePlaceholder):
     Returns:
       A placeholder.
     """
-    self._operators.append(_ListSerializationOperator(serialization_format))
-    return self
+    return self._clone_and_use_operators(
+        [_ListSerializationOperator(serialization_format)])
 
 
 class RuntimeInfoPlaceholder(_ProtoAccessiblePlaceholder):
@@ -528,6 +571,17 @@ class ExecInvocationPlaceholder(_ProtoAccessiblePlaceholder):
     super().__init__(placeholder_pb2.Placeholder.Type.EXEC_INVOCATION)
 
 
+class EnvironmentVariablePlaceholder(Placeholder):
+  """Environment Variable Placeholder helps access EnvironmentVariable proto.
+
+  Prefer to use environment_variable(...) to create Environment Variable
+  placeholder.
+  """
+
+  def __init__(self, key: str):
+    super().__init__(placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE, key)
+
+
 class _CompareOp(enum.Enum):
   """An alias for placeholder_pb2.ComparisonOperator.Operation."""
 
@@ -547,29 +601,37 @@ class ChannelWrappedPlaceholder(ArtifactPlaceholder):
     super().__init__(placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT)
     self.channel = channel
 
+  def _clone_and_use_operators(self: _T,
+                               operators: List[_PlaceholderOperator]) -> _T:
+    # Avoid copying the wrapped channel, because
+    # 1. The channel's reference is used during compilation.
+    # 2. We only need to copy Placeholder related objects.
+    copied = copy.deepcopy(self, {id(self.channel): self.channel})
+    for op in operators:
+      copied._operators.append(op)  # pylint: disable=protected-access
+    return copied
+
   def __eq__(self, other: _ValueLikeType) -> 'Predicate':
-    return Predicate.from_comparison(_CompareOp.EQUAL, left=self, right=other)
+    return Predicate(_Comparison(_CompareOp.EQUAL, left=self, right=other))
 
   def __ne__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self == other)
 
   def __lt__(self, other: _ValueLikeType) -> 'Predicate':
-    return Predicate.from_comparison(
-        _CompareOp.LESS_THAN, left=self, right=other)
+    return Predicate(_Comparison(_CompareOp.LESS_THAN, left=self, right=other))
 
   def __le__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self > other)
 
   def __gt__(self, other: _ValueLikeType) -> 'Predicate':
-    return Predicate.from_comparison(
-        _CompareOp.GREATER_THAN, left=self, right=other)
+    return Predicate(
+        _Comparison(_CompareOp.GREATER_THAN, left=self, right=other))
 
   def __ge__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self < other)
 
   def encode_with_keys(
-      self,
-      channel_to_key_fn: Optional[Callable[['types.Channel'], str]]
+      self, channel_to_key_fn: Optional[Callable[['types.Channel'], str]]
   ) -> placeholder_pb2.PlaceholderExpression:
     original_key = self._key
     self._key = channel_to_key_fn(self.channel)
@@ -711,7 +773,7 @@ class Predicate(Placeholder):
   The Predicate can then be used to define conditional statements using the
   pipeline-authoring DSL.
 
-  Prefer to use syntax like `<channel>.future() > 5` to create a Predicate.
+  Predicates should be instantiated with syntax like `<channel>.future() > 5`.
   """
 
   def __init__(self, pred_dataclass: _PredicateSubtype):
@@ -721,10 +783,17 @@ class Predicate(Placeholder):
     self.pred_dataclass = pred_dataclass
 
   @classmethod
+  @deprecation_utils.deprecated(
+      None,
+      'Use the expression-based syntax to instantiate a Predicate as described '
+      'in the Predicate class documentation.')
   def from_comparison(cls, compare_op: _CompareOp,
                       left: ChannelWrappedPlaceholder,
                       right: _ValueLikeType) -> 'Predicate':
     """Creates a Predicate instance.
+
+    DEPRECATED: Use the expression-based syntax to instantiate a Predicate as
+    described in the Predicate class documentation.
 
     Note that even though the `left` argument is assumed to be a
     ChannelWrappedPlaceholder, we can still compare placeholders like
@@ -838,7 +907,8 @@ class ListPlaceholder(Placeholder):
         raise ValueError('Unexpected input placeholder type: %s.' %
                          type(input_placeholder))
 
-  def serialize_list(self, serialization_format: ListSerializationFormat):
+  def serialize_list(self: _T,
+                     serialization_format: ListSerializationFormat) -> _T:
     """Serializes list-value placeholder to JSON or comma-separated string.
 
     Only supports primitive type list element (a.k.a bool, int, float or str) at
@@ -851,8 +921,8 @@ class ListPlaceholder(Placeholder):
     Returns:
       A placeholder.
     """
-    self._operators.append(_ListSerializationOperator(serialization_format))
-    return self
+    return self._clone_and_use_operators(
+        [_ListSerializationOperator(serialization_format)])
 
   def encode(
       self,
@@ -1035,6 +1105,22 @@ def execution_invocation() -> ExecInvocationPlaceholder:
     proto.
   """
   return ExecInvocationPlaceholder()
+
+
+def environment_variable(key: str) -> EnvironmentVariablePlaceholder:
+  """Returns a Placeholder representing EnvironmentVariable proto.
+
+  Args:
+    key: The key of the environment variable.
+
+  Returns:
+    A Placeholder that supports
+      1. Rendering the value of an environment variable for a given key.
+         Example: environment_variable('FOO')
+      2. Concatenating with other placeholders or strings.
+         Example: 'foo=' + environment_variable('FOO')
+  """
+  return EnvironmentVariablePlaceholder(key)
 
 
 def to_list(input_placeholders: List['Placeholder']) -> ListPlaceholder:

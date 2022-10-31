@@ -18,6 +18,8 @@ from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import component
+from tfx.dsl.control_flow import for_each
+from tfx.dsl.input_resolution.canned_resolver_functions import latest_created
 from tfx.orchestration import pipeline as pipeline_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
@@ -51,9 +53,11 @@ def create_pipeline() -> pipeline_pb2.Pipeline:
   """Creates an async pipeline for testing."""
   # pylint: disable=no-value-for-parameter
   example_gen = _example_gen().with_id('my_example_gen')
-  transform = _transform(
-      examples=example_gen.outputs['examples'],
-      a_param=10).with_id('my_transform')
+
+  with for_each.ForEach(latest_created(example_gen.outputs['examples'],
+                                       n=100)) as examples:
+    transform = _transform(
+        examples=examples, a_param=10).with_id('my_transform')
   trainer = _trainer(
       examples=example_gen.outputs['examples'],
       transform_graph=transform.outputs['transform_graph']).with_id(

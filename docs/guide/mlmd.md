@@ -8,9 +8,9 @@ that it can be used independently.
 
 Every run of a production ML pipeline generates metadata containing information
 about the various pipeline components, their executions (e.g. training runs),
-and resulting artifacts(e.g. trained models). In the event of unexpected
+and resulting artifacts (e.g. trained models). In the event of unexpected
 pipeline behavior or errors, this metadata can be leveraged to analyze the
-lineage of pipeline components and debug issues.Think of this metadata as the
+lineage of pipeline components and debug issues. Think of this metadata as the
 equivalent of logging in software development.
 
 MLMD helps you understand and analyze all the interconnected parts of your ML
@@ -84,8 +84,8 @@ connection_config.mysql.password = '...'
 store = metadata_store.MetadataStore(connection_config)
 ```
 
-Similarly, when using a MySQL instance with Google
-CloudSQL([quickstart](https://cloud.google.com/sql/docs/mysql/quickstart),
+Similarly, when using a MySQL instance with Google CloudSQL
+([quickstart](https://cloud.google.com/sql/docs/mysql/quickstart),
 [connect-overview](https://cloud.google.com/sql/docs/mysql/connect-overview)),
 one could also use SSL option if applicable.
 

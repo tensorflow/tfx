@@ -17,16 +17,19 @@ import copy
 import json
 import os
 import tempfile
-from absl.testing import parameterized
+from unittest import mock
 
+from absl.testing import parameterized
 import apache_beam as beam
 import tensorflow as tf
+import tensorflow_data_validation as tfdv
 import tensorflow_transform as tft
 from tensorflow_transform.beam import tft_unit
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
 from tfx.dsl.io import fileio
+from tfx.proto import example_gen_pb2
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -36,18 +39,6 @@ from tfx.utils import name_utils
 from tfx.utils import proto_utils
 
 
-def _get_dataset_size(files):
-  if tf.executing_eagerly():
-    return sum(
-        1 for _ in tf.data.TFRecordDataset(files, compression_type='GZIP'))
-  else:
-    result = 0
-    for file in files:
-      result += sum(1 for _ in tf.compat.v1.io.tf_record_iterator(
-          file, tf.io.TFRecordOptions(compression_type='GZIP')))
-    return result
-
-
 class _TempPath(types.Artifact):
   TYPE_NAME = 'TempPath'
 
@@ -55,20 +46,60 @@ class _TempPath(types.Artifact):
 # TODO(b/122478841): Add more detailed tests.
 class ExecutorTest(tft_unit.TransformTestCase):
 
-  _TEMP_EXAMPLE_DIR = tempfile.mkdtemp()
+  _TEMP_ARTIFACTS_DIR = tempfile.mkdtemp()
   _SOURCE_DATA_DIR = os.path.join(
       os.path.dirname(os.path.dirname(__file__)), 'testdata')
-  _ARTIFACT1_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'csv_example_gen1')
-  _ARTIFACT2_URI = os.path.join(_TEMP_EXAMPLE_DIR, 'csv_example_gen2')
+  _ARTIFACT1_URI = os.path.join(_TEMP_ARTIFACTS_DIR, 'example_gen1')
+  _ARTIFACT2_URI = os.path.join(_TEMP_ARTIFACTS_DIR, 'example_gen2')
+
+  _SOURCE_EXAMPLE_DIR = 'csv_example_gen'
+
+  # File format is not specified, will default to 'tfrecords_gzip'.
+  _FILE_FORMAT = None
+  _PAYLOAD_FORMAT = example_gen_pb2.FORMAT_TF_EXAMPLE
+
+  _PREPROCESSING_FN = transform_module.preprocessing_fn
+  _STATS_OPTIONS_UPDATER_FN = transform_module.stats_options_updater_fn
+
+  _SCHEMA_ARTIFACT_DIR = 'schema_gen'
+  _MODULE_FILE = 'module_file/transform_module.py'
+
+  _TEST_COUNTERS = {
+      'num_instances': 24909,
+      'total_columns_count': 18,
+      'analyze_columns_count': 9,
+      'transform_columns_count': 17,
+      'metric_committed_sum': 90
+  }
+
+  _CACHE_TEST_METRICS = {
+      'num_instances_tfx.Transform_1st_run': 24909,
+      'num_instances_tfx.Transform_2nd_run': 15000,
+      'num_instances_tfx.DataValidation_1st_run': 24909,
+      'num_instances_tfx.DataValidation_2nd_run': 24909
+  }
 
   # executor_v2_test.py overrides this to False.
   def _use_force_tf_compat_v1(self):
     return True
 
+  def _get_dataset_size(self, files):
+    if tf.executing_eagerly():
+      return sum(
+          1 for _ in tf.data.TFRecordDataset(files, compression_type='GZIP'))
+    else:
+      result = 0
+      for file in files:
+        result += sum(1 for _ in tf.compat.v1.io.tf_record_iterator(
+            file, tf.io.TFRecordOptions(compression_type='GZIP')))
+      return result
+
   @classmethod
   def setUpClass(cls):
     super(ExecutorTest, cls).setUpClass()
-    source_example_dir = os.path.join(cls._SOURCE_DATA_DIR, 'csv_example_gen')
+
+    source_example_dir = os.path.join(cls._SOURCE_DATA_DIR,
+                                      cls._SOURCE_EXAMPLE_DIR)
 
     io_utils.copy_dir(source_example_dir, cls._ARTIFACT1_URI)
     io_utils.copy_dir(source_example_dir, cls._ARTIFACT2_URI)
@@ -81,6 +112,19 @@ class ExecutorTest(tft_unit.TransformTestCase):
       directory, filename = os.path.split(filepath)
       io_utils.copy_file(filepath, os.path.join(directory, 'dup_' + filename))
 
+  def _set_up_input_artifacts(self):
+    example1 = standard_artifacts.Examples()
+    example1.uri = self._ARTIFACT1_URI
+    example1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    if self._FILE_FORMAT is not None:
+      example1.set_string_custom_property('file_format', self._FILE_FORMAT)
+    example1.set_string_custom_property(
+        key='payload_format',
+        value=example_gen_pb2.PayloadFormat.Name(self._PAYLOAD_FORMAT))
+    example2 = copy.deepcopy(example1)
+    example2.uri = self._ARTIFACT2_URI
+    self._example_artifacts = [example1, example2]
+
   def _get_output_data_dir(self, sub_dir=None):
     test_dir = self._testMethodName
     if sub_dir is not None:
@@ -90,17 +134,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
         test_dir)
 
   def _make_base_do_params(self, source_data_dir, output_data_dir):
-    # Create input dict.
-    example1 = standard_artifacts.Examples()
-    example1.uri = self._ARTIFACT1_URI
-    example1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
-    example2 = copy.deepcopy(example1)
-    example2.uri = self._ARTIFACT2_URI
-
-    self._example_artifacts = [example1, example2]
+    self._set_up_input_artifacts()
 
     schema_artifact = standard_artifacts.Schema()
-    schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
+    schema_artifact.uri = os.path.join(source_data_dir,
+                                       self._SCHEMA_ARTIFACT_DIR)
 
     self._input_dict = {
         standard_component_specs.EXAMPLES_KEY: self._example_artifacts[:1],
@@ -179,12 +217,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._make_base_do_params(self._SOURCE_DATA_DIR, self._output_data_dir)
 
     # Create exec properties skeleton.
-    self._module_file = os.path.join(self._SOURCE_DATA_DIR,
-                                     'module_file/transform_module.py')
-    self._preprocessing_fn = name_utils.get_full_name(
-        transform_module.preprocessing_fn)
+    self._module_file = os.path.join(self._SOURCE_DATA_DIR, self._MODULE_FILE)
+    self._preprocessing_fn = name_utils.get_full_name(self._PREPROCESSING_FN)
     self._stats_options_updater_fn = name_utils.get_full_name(
-        transform_module.stats_options_updater_fn)
+        self._STATS_OPTIONS_UPDATER_FN)
     self._exec_properties[standard_component_specs.SPLITS_CONFIG_KEY] = None
     self._exec_properties[
         standard_component_specs.FORCE_TF_COMPAT_V1_KEY] = int(
@@ -197,7 +233,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                 materialize=True,
                                 store_cache=True,
                                 multiple_example_inputs=False,
-                                disable_statistics=False):
+                                disable_statistics=False,
+                                verify_sharded_statistics=False):
     expected_outputs = ['transformed_graph']
 
     if store_cache:
@@ -230,10 +267,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
         self.assertGreater(len(transformed_eval_files), 0)
 
         # Construct datasets and count number of records in each split.
-        examples_train_count = _get_dataset_size(examples_train_files)
-        transformed_train_count = _get_dataset_size(transformed_train_files)
-        examples_eval_count = _get_dataset_size(examples_eval_files)
-        transformed_eval_count = _get_dataset_size(transformed_eval_files)
+        examples_train_count = self._get_dataset_size(examples_train_files)
+        transformed_train_count = self._get_dataset_size(
+            transformed_train_files)
+        examples_eval_count = self._get_dataset_size(examples_eval_files)
+        transformed_eval_count = self._get_dataset_size(transformed_eval_files)
 
         # Check for each split that it contains the same number of records in
         # the input artifact as in the output artifact (i.e 1-to-1 mapping is
@@ -245,20 +283,23 @@ class ExecutorTest(tft_unit.TransformTestCase):
     if disable_statistics:
       self.assertFalse(
           fileio.exists(
-              os.path.join(self._pre_transform_schema.uri, 'schema.pbtxt')))
+              os.path.join(self._pre_transform_schema.uri,
+                           executor._SCHEMA_FILE)))
       self.assertFalse(
           fileio.exists(
-              os.path.join(self._post_transform_schema.uri, 'schema.pbtxt')))
+              os.path.join(self._post_transform_schema.uri,
+                           executor._SCHEMA_FILE)))
       self.assertFalse(
           fileio.exists(
-              os.path.join(self._pre_transform_stats.uri, 'FeatureStats.pb')))
+              os.path.join(self._pre_transform_stats.uri, executor.STATS_FILE)))
       self.assertFalse(
           fileio.exists(
-              os.path.join(self._post_transform_stats.uri, 'FeatureStats.pb')))
+              os.path.join(self._post_transform_stats.uri,
+                           executor.STATS_FILE)))
       self.assertFalse(
           fileio.exists(
               os.path.join(self._post_transform_anomalies.uri,
-                           'SchemaDiff.pb')))
+                           executor._ANOMALIES_FILE)))
 
     else:
       expected_outputs.extend([
@@ -268,20 +309,33 @@ class ExecutorTest(tft_unit.TransformTestCase):
       ])
       self.assertTrue(
           fileio.exists(
-              os.path.join(self._pre_transform_schema.uri, 'schema.pbtxt')))
+              os.path.join(self._pre_transform_schema.uri,
+                           executor._SCHEMA_FILE)))
       self.assertTrue(
           fileio.exists(
-              os.path.join(self._post_transform_schema.uri, 'schema.pbtxt')))
+              os.path.join(self._post_transform_schema.uri,
+                           executor._SCHEMA_FILE)))
       self.assertTrue(
           fileio.exists(
-              os.path.join(self._pre_transform_stats.uri, 'FeatureStats.pb')))
+              os.path.join(self._pre_transform_stats.uri, executor.STATS_FILE)))
       self.assertTrue(
           fileio.exists(
-              os.path.join(self._post_transform_stats.uri, 'FeatureStats.pb')))
+              os.path.join(self._post_transform_stats.uri,
+                           executor.STATS_FILE)))
       self.assertTrue(
           fileio.exists(
               os.path.join(self._post_transform_anomalies.uri,
-                           'SchemaDiff.pb')))
+                           executor._ANOMALIES_FILE)))
+    if verify_sharded_statistics:
+      pre_transform_paths = fileio.glob(
+          os.path.join(self._pre_transform_stats.uri,
+                       executor.SHARDED_STATS_PREFIX + '*'))
+      post_transform_paths = fileio.glob(
+          os.path.join(self._post_transform_stats.uri,
+                       executor.SHARDED_STATS_PREFIX + '*'))
+
+      self.assertNotEmpty(pre_transform_paths)
+      self.assertNotEmpty(post_transform_paths)
 
     # Depending on `materialize` and `store_cache`, check that
     # expected outputs are exactly correct. If either flag is False, its
@@ -382,10 +436,20 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                 self._exec_properties)
     self._verify_transform_outputs(disable_statistics=True)
 
+  def test_do_with_sharded_stats(self):
+    self._exec_properties[
+        standard_component_specs.MODULE_FILE_KEY] = self._module_file
+    with mock.patch.object(
+        executor.TransformProcessor, '_TFDVWriteShardedOutput') as mock_fn:
+      mock_fn.return_value = True
+      self._transform_executor.Do(self._input_dict, self._output_dict,
+                                  self._exec_properties)
+    self._verify_transform_outputs(
+        verify_sharded_statistics=tfdv.default_sharded_output_supported())
+
   def test_do_with_preprocessing_fn_custom_config(self):
     self._exec_properties[
-        standard_component_specs.PREPROCESSING_FN_KEY] = (
-            name_utils.get_full_name(transform_module.preprocessing_fn))
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
     self._exec_properties[
         standard_component_specs.CUSTOM_CONFIG_KEY] = json.dumps({
             'VOCAB_SIZE': 1000,
@@ -397,8 +461,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def test_do_with_preprocessing_fn_and_none_custom_config(self):
     self._exec_properties[
-        standard_component_specs.PREPROCESSING_FN_KEY] = (
-            name_utils.get_full_name(transform_module.preprocessing_fn))
+        standard_component_specs.PREPROCESSING_FN_KEY] = self._preprocessing_fn
     self._exec_properties['custom_config'] = json.dumps(None)
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
@@ -500,8 +563,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # )
     # Since the analysis dataset (train) is read twice (once for analysis and
     # once for transform), the expected value of the num_instances counter is:
-    # 9909 * 2 + 5091 = 24909.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
+    # 9909 * 2 + 5091 = 24909. (SE - 10500 * 2 + 4500 = 25500)
+    self.assertMetricsCounterEqual(metrics, 'num_instances',
+                                   self._TEST_COUNTERS['num_instances'],
                                    ['tfx.Transform'])
 
     # Since disable_statistics is True, TFDV should see 0 instances.
@@ -513,16 +577,20 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self.assertMetricsCounterEqual(metrics, 'saved_models_created', 2)
 
     # This should be the size of the preprocessing_fn's inputs dictionary which
-    # is 18 according to the schema.
-    self.assertMetricsCounterEqual(metrics, 'total_columns_count', 18)
+    # is 18 (SE - 3) according to the schema.
+    self.assertMetricsCounterEqual(metrics, 'total_columns_count',
+                                   self._TEST_COUNTERS['total_columns_count'])
 
-    # There are 9 features that are passed into tft analyzers in the
+    # There are 9 (SE - 2) features that are passed into tft analyzers in the
     # preprocessing_fn.
-    self.assertMetricsCounterEqual(metrics, 'analyze_columns_count', 9)
+    self.assertMetricsCounterEqual(metrics, 'analyze_columns_count',
+                                   self._TEST_COUNTERS['analyze_columns_count'])
 
     # In addition, 7 features go through a pure TF map, not including the label,
     # so we expect 9 + 7 + 1 = 17 transform columns.
-    self.assertMetricsCounterEqual(metrics, 'transform_columns_count', 17)
+    self.assertMetricsCounterEqual(
+        metrics, 'transform_columns_count',
+        self._TEST_COUNTERS['transform_columns_count'])
 
     # There should be 1 path used for analysis since that's what input_dict
     # specifies.
@@ -542,7 +610,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
     metric = metrics.query(beam.metrics.MetricsFilter().with_name(
         'estimated_stage_count_with_cache'))['distributions']
     self.assertLen(metric, 1)
-    self.assertEqual(metric[0].committed.sum, 90)
+    self.assertEqual(metric[0].committed.sum,
+                     self._TEST_COUNTERS['metric_committed_sum'])
 
   @parameterized.named_parameters([('no_1st_input_cache', False),
                                    ('empty_1st_input_cache', True)])
@@ -558,12 +627,18 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # in the eval dataset. Since the analysis dataset (train) is read twice when
     # no input cache is present (once for analysis and once for transform), the
     # expected value of the num_instances counter is: 9909 * 2 + 5091 = 24909.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
-                                   ['tfx.Transform'])
+    # (SE - 10500 * 2 + 4500 = 25500)
+    self.assertMetricsCounterEqual(
+        metrics, 'num_instances',
+        self._CACHE_TEST_METRICS['num_instances_tfx.Transform_1st_run'],
+        ['tfx.Transform'])
 
-    # Additionally we have 24909 instances due to generating statistics.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
-                                   ['tfx.DataValidation'])
+    # Additionally we have 24909 (SE - 25500) instances due to generating
+    # statistics.
+    self.assertMetricsCounterEqual(
+        metrics, 'num_instances',
+        self._CACHE_TEST_METRICS['num_instances_tfx.DataValidation_1st_run'],
+        ['tfx.DataValidation'])
     self._verify_transform_outputs(store_cache=True)
 
     # Second run from cache.
@@ -584,15 +659,21 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Since input cache should now cover all analysis (train) paths, the train
     # and eval sets are each read exactly once for transform. Thus, the
     # expected value of the num_instances counter is: 9909 + 5091 = 15000.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 15000,
-                                   ['tfx.Transform'])
+    # (SE - 10500 + 4500 = 15000)
+    self.assertMetricsCounterEqual(
+        metrics, 'num_instances',
+        self._CACHE_TEST_METRICS['num_instances_tfx.Transform_2nd_run'],
+        ['tfx.Transform'])
 
-    # Additionally we have 24909 instances due to generating statistics.
-    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909,
-                                   ['tfx.DataValidation'])
+    # Additionally we have 24909 (SE - 25500) instances due to generating
+    # statistics.
+    self.assertMetricsCounterEqual(
+        metrics, 'num_instances',
+        self._CACHE_TEST_METRICS['num_instances_tfx.DataValidation_2nd_run'],
+        ['tfx.DataValidation'])
     self._verify_transform_outputs(store_cache=True)
 
-  @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 21)
+  @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 10)
   def test_do_with_cache_disabled_too_many_stages(self):
     self._exec_properties[
         standard_component_specs.MODULE_FILE_KEY] = self._module_file

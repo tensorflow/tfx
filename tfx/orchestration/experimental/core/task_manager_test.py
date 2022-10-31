@@ -26,6 +26,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
+from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_manager as tm
@@ -51,7 +52,10 @@ def _test_cancel_node_task(node_id, pipeline_id, pause=False):
   node_uid = task_lib.NodeUid(
       pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
       node_id=node_id)
-  return task_lib.CancelNodeTask(node_uid=node_uid, pause=pause)
+  cancel_type = (
+      task_lib.NodeCancelType.PAUSE_EXEC
+      if pause else task_lib.NodeCancelType.CANCEL_EXEC)
+  return task_lib.CancelNodeTask(node_uid=node_uid, cancel_type=cancel_type)
 
 
 class _Collector:
@@ -91,7 +95,7 @@ class _FakeTaskScheduler(ts.TaskScheduler):
         status=status_lib.Status(
             code=code, message='_FakeTaskScheduler result'))
 
-  def cancel(self):
+  def cancel(self, cancel_task: task_lib.CancelNodeTask):
     logging.info('_FakeTaskScheduler: cancelling task: %s', self.task)
     self._collector.add_cancelled_task(self.task)
     self._cancel.set()
@@ -134,7 +138,7 @@ class TaskManagerTest(test_utils.TfxTest):
         process_all_queued_tasks_before_exit=True) as task_manager:
       yield task_manager
 
-  @mock.patch.object(tm, '_publish_execution_results')
+  @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
   def test_task_handling(self, mock_publish):
     collector = _Collector()
 
@@ -209,12 +213,12 @@ class TaskManagerTest(test_utils.TfxTest):
     # cancelled with pause=True so there must be only 3 calls.
     self.assertLen(mock_publish.mock_calls, 3)
 
-  @mock.patch.object(tm, '_publish_execution_results')
+  @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
   def test_exceptions_are_surfaced(self, mock_publish):
 
     def _publish(**kwargs):
       task = kwargs['task']
-      assert task_lib.is_exec_node_task(task)
+      assert isinstance(task, task_lib.ExecNodeTask)
       if task.node_uid.node_id == 'Transform':
         raise ValueError('test error')
       return mock.DEFAULT
@@ -270,12 +274,12 @@ class _FakeComponentScheduler(ts.TaskScheduler):
       raise self.exception
     return self.return_result
 
-  def cancel(self):
+  def cancel(self, cancel_task: task_lib.CancelNodeTask):
     pass
 
 
 def _make_executor_output(task, code=status_lib.Code.OK, msg=''):
-  assert task_lib.is_exec_node_task(task)
+  assert isinstance(task, task_lib.ExecNodeTask)
   executor_output = execution_result_pb2.ExecutorOutput()
   for key, artifacts in task.output_artifacts.items():
     for artifact in artifacts:
@@ -344,15 +348,18 @@ class TaskManagerE2ETest(test_utils.TfxTest):
       tasks = asptg.AsyncPipelineTaskGenerator(
           m, self._task_queue.contains_task_id,
           service_jobs.DummyServiceJobManager()).generate(pipeline_state)
-    self.assertLen(tasks, 2)
-    self.assertTrue(task_lib.is_update_node_state_task(tasks[0]))
-    self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
-    self.assertEqual('my_transform', tasks[0].node_uid.node_id)
-    self.assertTrue(task_lib.is_exec_node_task(tasks[1]))
+    self.assertLen(tasks, 3)
+    self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
+    self.assertEqual('my_example_gen', tasks[0].node_uid.node_id)
+    self.assertIsInstance(tasks[1], task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.RUNNING, tasks[1].state)
     self.assertEqual('my_transform', tasks[1].node_uid.node_id)
-    self.assertTrue(os.path.exists(tasks[1].stateful_working_dir))
-    self.assertTrue(os.path.exists(tasks[1].tmp_dir))
-    self._task = tasks[1]
+
+    self.assertIsInstance(tasks[2], task_lib.ExecNodeTask)
+    self.assertEqual('my_transform', tasks[2].node_uid.node_id)
+    self.assertTrue(os.path.exists(tasks[2].stateful_working_dir))
+    self.assertTrue(os.path.exists(tasks[2].tmp_dir))
+    self._task = tasks[2]
     self._output_artifact_uri = self._task.output_artifacts['transform_graph'][
         0].uri
     self.assertTrue(os.path.exists(self._output_artifact_uri))

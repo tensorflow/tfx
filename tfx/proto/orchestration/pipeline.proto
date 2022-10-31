@@ -18,6 +18,7 @@ package tfx.orchestration;
 import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "ml_metadata/proto/metadata_store.proto";
+import "tfx/proto/orchestration/garbage_collection_policy.proto";
 import "tfx/proto/orchestration/placeholder.proto";
 
 // ResolverConfig is subject to change. We plan to introduce a flexible
@@ -189,9 +190,78 @@ message PropertyPredicate {
   }
 }
 
+// InputGraph expresses a declarative input resolution logic with a graph of
+// ResolverOps and a result node. An entire InputGraph is basically a function
+// without argument that returns one of DataType value. Its result is referenced
+// from `InputSpec.InputGraphRef`.
+message InputGraph {
+  // Data type of the OpNode output. Corresponds to the
+  // tfx.dsl.resolver_op.DataType.
+  enum DataType {
+    DATA_TYPE_UNSPECIFIED = 0;
+    ARTIFACT_LIST = 1;
+    ARTIFACT_MULTIMAP = 2;
+    ARTIFACT_MULTIMAP_LIST = 3;
+  }
+
+  message Node {
+    DataType output_data_type = 1;
+
+    oneof kind {
+      OpNode op_node = 2;
+      DictNode dict_node = 3;
+      InputNode input_node = 4;
+    }
+  }
+
+  // ResolverOp instance as a input graph's node. Corresponds to the
+  // tfx.dsl.resolver_op.OpNode.
+  message OpNode {
+    // A canonical_name of ResolverOp (e.g. "tfx.internal.Unnest").
+    string op_type = 1;
+    // Generic argument type that can express either another Node's outputs
+    // or a static value.
+    message Arg {
+      oneof kind {
+        // ID of another Node instance, referring to its output.
+        string node_id = 1;
+        // Static value.
+        Value value = 2;
+      }
+    }
+    // Optional positional arguments; its kind must be `node_id`.
+    repeated Arg args = 2;
+    // Optional keyword arguments; its kind must be `value`.
+    map<string, Arg> kwargs = 3;
+  }
+
+  // Dict of other Nodes where each Node.output_data_type is ARTIFACT_LIST.
+  // Its own output_data_type in the parent Node message is ARTIFACT_MULTIMAP.
+  // Corresponds to the tfx.dsl.resolver_op.DictNode.
+  message DictNode {
+    // Map from dict key to node ID.
+    map<string, string> node_ids = 1;
+  }
+
+  // InputNode refers a NodeInputs.inputs[input_key]. Its output_data_type is
+  // always ARTIFACT_LIST.
+  // Corresponds to the tfx.dsl.resolver_op.InputNode.
+  message InputNode {
+    string input_key = 1;
+  }
+
+  // Nodes of this input graph. Key is the node ID.
+  map<string, Node> nodes = 1;
+  // The ID of the output node of the input graph. The output data type of the
+  // input graph is the output data type of the reuslt node.
+  string result_node = 2;
+}
+
 // A proto message wrapping all information needed to query one set of artifacts
 // from MLMD.
 message InputSpec {
+  // Channel consists of a multiple MLMD filters whose result is always a
+  // homogeneous list of artifacts.
   message Channel {
     // Information to query the producer node of the artifacts.
     message ProducerNodeQuery {
@@ -229,11 +299,80 @@ message InputSpec {
     // uses as one of its input.
     string output_key = 4;
   }
+
+  // Reference to the InputGraph result.
+  // When the InputGraph result is a ARTIFACT_MULTIMAP_LIST type, InputGraphRef
+  // is NOT simple referring a list of artifacts; instead we should consider the
+  // entire NodeInputs to know the final resolved inputs.
+  // For example, assume input graph `g1` is evaluated as:
+  //
+  //     [{"x": [x1], "y": [y1]}, {"x": [x2], "y": [y2]}]
+  //
+  // (x1, x2, y1, y2 are artifacts), and the NodeInputs is:
+  //
+  //     inputs["xx"] {
+  //       input_graph_ref {
+  //         graph_id: "g1"
+  //         key: "x"
+  //       }
+  //     }
+  //
+  // then the final resolved inputs is `[{"xx": [x1]}, {"xx": [x2]}]`, not
+  // `{"xx": [x1, x2]}`. If there is another NodeInputs "yy":
+  //
+  //     inputs["yy"] {
+  //       input_graph_ref {
+  //         graph_id: "g1"
+  //         key: "y"
+  //       }
+  //     }
+  //
+  // then the result is *zipped* as they're from the same input graph source:
+  //
+  //     [{"xx": [x1], "yy": [y1]}, {"xx": [x2], "yy": [y2]}]
+  //
+  // but otherwise the result is a *cartesian product* of them. For example if
+  // another input graph `g2` is evaluated as `[{"z": [z1]}, {"z": [z2]}]` and
+  // there is another NodeInputs "zz" referring to it, then the resolved inputs
+  // is a list of 4 dicts:
+  //
+  //     [{"xx": [x1], "zz": [z1]}, {"xx": [x1], "zz": [z2]},
+  //      {"xx": [x2], "zz": [z1]}, {"xx": [x2], "zz": [z2]}]
+  message InputGraphRef {
+    // ID of the InputGraph in NodeInputs.input_graphs.
+    string graph_id = 1;
+    // Optional dict key if the result node type is ARTIFACT_MULTIMAP or
+    // ARTIFACT_MULTIMAP_LIST.
+    string key = 2;
+  }
+
+  // A mixture of InputSpecs.
+  message Mixed {
+    enum Method {
+      UNION = 0;
+    }
+    Method method = 1;
+    repeated string input_keys = 2;
+  }
+
+  // Exactly one of `channels`, `input_graph_ref`, or `mixed_inputs` field
+  // should be set.
+  // Union of Channels.
   repeated Channel channels = 1;
+  // A reference to the InputGraph.
+  InputGraphRef input_graph_ref = 3;
+  // A mixture of InputSpecs.
+  Mixed mixed_inputs = 4;
+
   // The minimum number of artifacts desired. If minimum requirement is not met,
   // the execution should not be triggered. If min_count is less than or equal
   // to 0, it means this input is optional.
   int32 min_count = 2;
+
+  // Whether the input should be hidden from the final resolved result. Only
+  // the input keys whose corresponding `InputSpec.hidden = false` will be
+  // included in the input map that is passed to the `Executor.Do`.
+  bool hidden = 5;
 }
 
 // The proto message describes specs of all inputs needed for a component
@@ -241,9 +380,24 @@ message InputSpec {
 message NodeInputs {
   // A map between the input tag and specs for the inputs of that tag.
   map<string, InputSpec> inputs = 1;
-  // Optional resolver configs. This will apply on top of the results of all
-  // inputs.
-  ResolverConfig resolver_config = 2;
+  // Deprecated. Use input_graphs and inputs.input_graph_ref instead.
+  // If resolver_config is set, then InputSpec.inputs should only contains
+  // `channels` field (not `input_graph_ref`), and both `input_graphs` and
+  // `conditionals` fields are ignored.
+  ResolverConfig resolver_config = 2 [deprecated = true];
+  // Optional InputGraphs mapping where key is an ID. Graph is referenced from
+  // InputSpec.input_graph_ref.
+  map<string, InputGraph> input_graphs = 3;
+
+  // Conditional representation.
+  message Conditional {
+    PlaceholderExpression placeholder_expression = 1;
+  }
+
+  // Optional conditionals to filter the valid inputs that satisfy the
+  // predicate. Conditional evaluation and filtering would happen after
+  // resolving all inputs from NodeInputs.inputs and NodeInputs.input_graphs.
+  map<string, Conditional> conditionals = 4;
 }
 
 // A proto message wrapping all information needed to query one set of artifacts
@@ -257,8 +411,14 @@ message OutputSpec {
     map<string, Value> additional_properties = 2;
     // Additional custom properties to set when outputting artifacts.
     map<string, Value> additional_custom_properties = 3;
+    // Predefined URI(s) that will explicitly control Artifact.uri for the ㅤ
+    // external artifacts produced by this output channel. ㅤ
+    repeated string external_artifact_uris = 4;
   }
   ArtifactSpec artifact_spec = 1;
+
+  // Garbage collection policy of the component output channel.
+  GarbageCollectionPolicy garbage_collection_policy = 2;
 }
 
 // TODO(b/163596295): Remove this along with other usages.
@@ -354,7 +514,37 @@ message NodeExecutionOptions {
     // If set, this node will be skipped in the partial run.
     Skip skip = 3;
   }
+
+  // LINT.IfChange
+  // An enum defines the trigger strategy of when the node will be ready to be
+  // triggered. Only supported in the experimental orchestrator under SYNC mode
+  // and ignored when configured for other platforms.
+  // Note that for all trigger strategies outlined below, all
+  // upstream nodes with either task or data dependency needs to be in a final
+  // state.
+  enum TriggerStrategy {
+    // Unspecified.  Behave the same as ALL_UPSTREAM_NODES_SUCCEEDED.
+    TRIGGER_STRATEGY_UNSPECIFIED = 0;
+    // Specifies that all upstream nodes are in succeeded state.
+    ALL_UPSTREAM_NODES_SUCCEEDED = 1;
+    // Specifies that all upstream nodes are in any final state.
+    ALL_UPSTREAM_NODES_COMPLETED = 2;
+  }
+  // The trigger strategy of this node.
+  // Unset or set to default value of TRIGGER_STATEGY_UNDEFINED behaves the
+  // same as ALL_UPSTREAM_NODES_SUCCEEDED.
+  TriggerStrategy strategy = 4;
+
+  // If set, the node's success is optional for orchestration. In other words,
+  // the node will always be treated as a succeeded node when it completes, both
+  // when triggering downstream nodes with either task or data dependency and
+  // when determining final pipeline run outcome. Only supported in the
+  // experimental orchestrator under SYNC mode and ignored when configured for
+  // other platforms.
+  bool node_success_optional = 5;
+  // LINT.ThenChange(tfx/orchestration/experimental/core/sync_pipeline_task_gen.py)
 }
+
 // Pipeline node definition.
 message PipelineNode {
   // Basic info of a pipeline node.

@@ -17,7 +17,7 @@ import os
 import time
 
 
-import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tfx.components.trainer.rewriting import rewriter
 from tfx.dsl.io import fileio
 
@@ -47,10 +47,10 @@ def _invoke_rewriter(src: str, dst: str, rewriter_inst: rewriter.BaseRewriter,
   rewriter_inst.perform_rewrite(original_model, rewritten_model)
 
 
-class RewritingExporter(tf.estimator.Exporter):
+class RewritingExporter(tf_estimator.Exporter):
   """This class invokes the base exporter and a series of rewriters."""
 
-  def __init__(self, base_exporter: tf.estimator.Exporter,
+  def __init__(self, base_exporter: tf_estimator.Exporter,
                rewriter_inst: rewriter.BaseRewriter):
     """Initializes the rewriting exporter.
 

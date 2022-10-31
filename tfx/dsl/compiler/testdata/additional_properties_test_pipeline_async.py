@@ -22,8 +22,28 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import pipeline
+from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact_property
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
+from tfx.types.artifact import Artifact
+from tfx.types.artifact import Property
+from tfx.types.artifact import PropertyType
+from google.protobuf import duration_pb2
+from google.protobuf import timestamp_pb2
+
+# TODO(b/241861488): Remove safeguard once fully supported by MLMD.
+artifact_property.ENABLE_PROTO_PROPERTIES = True
+
+
+class StatsMetadata(Artifact):
+  TYPE_NAME = 'StatsMetadata'
+  PROPERTIES = {
+      'timestamp': Property(type=PropertyType.PROTO
+                           ),  # Expected proto type: google.protobuf.Timestamp
+      'ttl': Property(type=PropertyType.PROTO
+                     ),  # Expected proto type: google.protobuf.Duration
+  }
 
 
 class CustomProducerSpec(types.ComponentSpec):
@@ -35,6 +55,8 @@ class CustomProducerSpec(types.ComponentSpec):
       'stats':
           component_spec.ChannelParameter(
               type=standard_artifacts.ExampleStatistics),
+      'stats_metadata':
+          component_spec.ChannelParameter(type=StatsMetadata),
   }
 
 
@@ -64,13 +86,25 @@ class CustomProducer(base_component.BaseComponent):
   SPEC_CLASS = CustomProducerSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(DummyExecutor)
 
-  def __init__(self, stats: Optional[types.Channel] = None):
+  def __init__(self,
+               stats: Optional[types.Channel] = None,
+               stats_metadata: Optional[types.Channel] = None):
     stats = stats or types.Channel(type=standard_artifacts.ExampleStatistics)
     stats.additional_properties['span'] = 42
     stats.additional_properties['split_names'] = '[\'train\', \'eval\']'
     stats.additional_custom_properties['bar'] = 'foo'
     stats.additional_custom_properties['baz'] = 0.5
-    spec = CustomProducerSpec(stats=stats)
+
+    stats_metadata = stats_metadata or types.Channel(type=StatsMetadata)
+    timestamp_value = pipeline_pb2.Value()
+    timestamp_value.field_value.proto_value.Pack(
+        timestamp_pb2.Timestamp(seconds=999999))
+    stats_metadata.additional_properties['timestamp'] = timestamp_value
+    ttl_value = pipeline_pb2.Value()
+    ttl_value.field_value.proto_value.Pack(duration_pb2.Duration(seconds=600))
+
+    stats_metadata.additional_properties['ttl'] = ttl_value
+    spec = CustomProducerSpec(stats=stats, stats_metadata=stats_metadata)
     super().__init__(spec=spec)
 
 

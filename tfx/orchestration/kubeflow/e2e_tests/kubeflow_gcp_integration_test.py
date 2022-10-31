@@ -48,7 +48,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
     # Transformed Example artifacts for testing.
     self.transformed_examples_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'transform',
+        source_uri=os.path.join(self._test_data_dir, 'transform',
                                 'transformed_examples'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
@@ -58,31 +58,31 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
     # Schema artifact for testing.
     self.schema_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'schema_gen'),
+        source_uri=os.path.join(self._test_data_dir, 'schema_gen'),
         artifact_type=standard_artifacts.Schema,
         reimport=True).with_id('schema')
 
     # TransformGraph artifact for testing.
     self.transform_graph_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'transform',
+        source_uri=os.path.join(self._test_data_dir, 'transform',
                                 'transform_graph'),
         artifact_type=standard_artifacts.TransformGraph,
         reimport=True).with_id('transform_graph')
 
     # Model artifact for testing.
     self.model_1_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'trainer', 'previous'),
+        source_uri=os.path.join(self._test_data_dir, 'trainer', 'previous'),
         artifact_type=standard_artifacts.Model,
         reimport=True).with_id('model_1')
 
     self.model_2_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'trainer', 'current'),
+        source_uri=os.path.join(self._test_data_dir, 'trainer', 'current'),
         artifact_type=standard_artifacts.Model,
         reimport=True).with_id('model_2')
 
     # ModelBlessing artifact for testing.
     self.model_blessing_1_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'model_validator',
+        source_uri=os.path.join(self._test_data_dir, 'model_validator',
                                 'blessed'),
         artifact_type=standard_artifacts.ModelBlessing,
         reimport=True,
@@ -91,7 +91,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         }).with_id('model_blessing_1')
 
     self.model_blessing_2_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'model_validator',
+        source_uri=os.path.join(self._test_data_dir, 'model_validator',
                                 'blessed'),
         artifact_type=standard_artifacts.ModelBlessing,
         reimport=True,
@@ -103,14 +103,14 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     self._penguin_tuner_module = os.path.join(self._MODULE_ROOT,
                                               'tuner_module.py')
     self.penguin_examples_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'penguin', 'data'),
+        source_uri=os.path.join(self._test_data_dir, 'penguin', 'data'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
         properties={
             'split_names': '["train", "eval"]'
         }).with_id('penguin_examples')
     self.penguin_schema_importer = importer.Importer(
-        source_uri=os.path.join(self._testdata_root, 'penguin', 'schema'),
+        source_uri=os.path.join(self._test_data_dir, 'penguin', 'schema'),
         artifact_type=standard_artifacts.Schema,
         reimport=True).with_id('penguin_schema')
 

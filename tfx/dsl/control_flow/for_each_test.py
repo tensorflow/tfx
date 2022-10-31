@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.context_managers.for_each."""
+import unittest
 
 import tensorflow as tf
 from tfx import types
@@ -84,6 +85,7 @@ class ForEachTest(test_case_utils.TfxTest):
     self.assertEqual(aa.wrapped.producer_component_id, 'Apple')
     self.assertEqual(aa.wrapped.output_key, 'aa')
 
+  @unittest.skip('Not implemented.')
   def testForEach_LoopVariableNotUsed_Disallowed(self):
     with self.subTest('Not using at all'):
       with self.assertRaises(ValueError):

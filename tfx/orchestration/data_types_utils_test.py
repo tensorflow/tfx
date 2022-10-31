@@ -18,8 +18,10 @@ import tensorflow as tf
 from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
+from tfx.utils import proto_utils
 from tfx.utils import test_case_utils
 
+from google.protobuf import struct_pb2
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
@@ -195,6 +197,31 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(
         data_types_utils.get_metadata_value_type(tfx_value),
         metadata_store_pb2.INT)
+
+    tfx_value = pipeline_pb2.Value()
+    text_format.Parse(
+        """
+        field_value {
+          proto_value: {
+            type_url: "type.googleapis.com/ml_metadata.Artifact"
+            value: ":\rartifact_name"
+          }
+        }""", tfx_value)
+    self.assertEqual(
+        data_types_utils.get_metadata_value_type(tfx_value),
+        metadata_store_pb2.PROTO)
+
+  def testGetMetadataValue(self):
+    # Wrap an arbitrary proto message in an MLMD Value.
+    original_proto_value = struct_pb2.Value(string_value='message in a proto')
+    mlmd_value = metadata_store_pb2.Value()
+    mlmd_value.proto_value.Pack(original_proto_value)
+    # Get the raw metadata value, which should be a google.protobuf.Any type
+    # since the property has a proto_value.
+    raw_property_value = data_types_utils.get_metadata_value(mlmd_value)
+    # Unpack the Any protobuf and compare against the original proto message.
+    unpacked_value = proto_utils.unpack_proto_any(raw_property_value)
+    self.assertEqual(unpacked_value.string_value, 'message in a proto')
 
   def testGetMetadataValueTypePrimitiveValue(self):
     self.assertEqual(

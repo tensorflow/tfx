@@ -31,7 +31,7 @@ class ContextLibTest(test_case_utils.TfxTest):
     self._testdata_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
-  def testRegisterContexts(self):
+  def testPrepareContexts(self):
     node_contexts = pipeline_pb2.NodeContexts()
     self.load_proto_from_text(
         os.path.join(self._testdata_dir, 'node_context_spec.pbtxt'),
@@ -74,6 +74,42 @@ class ContextLibTest(test_case_utils.TfxTest):
       self.assertEqual(contexts[2].custom_properties['property_b'].string_value,
                        '4')
 
+  def testPrepareContexts_PipelineAndPipelineRunContext(self):
+    node_contexts = pipeline_pb2.NodeContexts()
+    self.load_proto_from_text(
+        os.path.join(
+            self._testdata_dir,
+            'node_context_spec_pipeline_and_pipeline_run_context.pbtxt'),
+        node_contexts)
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      context_lib.prepare_contexts(
+          metadata_handler=m, node_contexts=node_contexts)
+      # Duplicated call should succeed.
+      contexts = context_lib.prepare_contexts(
+          metadata_handler=m, node_contexts=node_contexts)
+
+      # Check the created contexts.
+      self.assertLen(contexts, 3)
+      self.assertProtoEquals(
+          contexts[0],
+          m.store.get_context_by_type_and_name('pipeline', 'pipeline-name'))
+      self.assertEqual(
+          contexts[1],
+          m.store.get_context_by_type_and_name('pipeline_run',
+                                               'run-20220912-213149-252011'))
+      self.assertEqual(
+          contexts[2],
+          m.store.get_context_by_type_and_name(
+              'node', 'pipeline-name.example-gen.import-example'))
+
+      # Check the parent and child relationship between pipeline and pipeline
+      # run contexts.
+      self.assertCountEqual([contexts[1]],
+                            m.store.get_children_contexts_by_context(
+                                contexts[0].id))
+      self.assertEqual([contexts[0]],
+                       m.store.get_parent_contexts_by_context(contexts[1].id))
+
   def testRegisterContextByTypeAndName(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       context_lib.register_context_if_not_exists(
@@ -95,6 +131,28 @@ class ContextLibTest(test_case_utils.TfxTest):
       self.assertEqual(
           context,
           m.store.get_context_by_type_and_name('my_context_type', 'my_context'))
+
+  def testRegisterContextAndSetParentChildRelationship(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      parent_context = context_lib.register_context_if_not_exists(
+          metadata_handler=m,
+          context_type_name='my_context_type',
+          context_name='parent_context')
+      context_1 = context_lib.register_context_if_not_exists(
+          metadata_handler=m,
+          context_type_name='my_context_type',
+          context_name='context_1')
+      context_2 = context_lib.register_context_if_not_exists(
+          metadata_handler=m,
+          context_type_name='my_context_type',
+          context_name='context_2',
+          parent_contexts=[parent_context])
+
+      context_1_parents = m.store.get_parent_contexts_by_context(context_1.id)
+      self.assertEqual([], context_1_parents)
+      context_2_parents = m.store.get_parent_contexts_by_context(context_2.id)
+      self.assertLen(context_2_parents, 1)
+      self.assertEqual(parent_context.id, context_2_parents[0].id)
 
   def testPutParentContextIfNotExists(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

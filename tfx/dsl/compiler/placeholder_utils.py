@@ -15,11 +15,13 @@
 
 import base64
 import enum
+import os
 import re
 from typing import Any, Callable, Dict, List, Union
 
 from absl import logging
 import attr
+from tfx.dsl.io import fileio
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import placeholder_pb2
@@ -59,12 +61,15 @@ class ResolutionContext:
   platform_config: message.Message = None
 
 
-# Includes three basic types from MLMD: int, float, str
-# and an additional primitive type from proto field access: bool
+# A Placeholder Expression can be resolved to the following types:
+#   - basic types from MLMD: int, float, str
+#   - primitive type from proto field access: bool
+#   - container type from list exec property or proto field access: list
+#
 # Note: Pytype's int includes long from Python3
-# We does not support bytes, which may result from proto field access. Must use
-# base64 encode operator to explicitly convert it into str.
-_PlaceholderResolvedTypes = (int, float, str, bool, type(None), list)
+# Placeholder does not support bytes, which may result from proto field access.
+# Please use base64 encode operator to explicitly convert it into str.
+_PlaceholderResolvedTypes = (int, float, str, bool, type(None), list, dict)
 _PlaceholderResolvedTypeHints = Union[_PlaceholderResolvedTypes]
 
 
@@ -189,6 +194,8 @@ class _ExpressionResolver:
         },
         placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
             context.exec_info.to_proto(),
+        placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE:
+            os.environ.get,
     }
 
   def resolve(self, expression: placeholder_pb2.PlaceholderExpression) -> Any:
@@ -216,6 +223,11 @@ class _ExpressionResolver:
     # a key.
     if placeholder.type == placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
       return context
+    # Handle the special case of ENVIRONMENT_VARIABLE and STRING_VALUE
+    # placeholders, which needs to be resolved as a function call.
+    elif (placeholder.type ==
+          placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE):
+      return context(placeholder.key)
 
     # Handle remaining placeholder types.
     try:
@@ -226,7 +238,7 @@ class _ExpressionResolver:
       # context. However this means we cannot distinguish between a correct
       # placeholder with an optional value vs. an incorrect placeholder.
       # TODO(b/172001324): Handle this at compile time.
-      raise NullDereferenceError(placeholder)
+      raise NullDereferenceError(placeholder) from e
 
   def _resolve_placeholder_operator(
       self, placeholder_operator: placeholder_pb2.PlaceholderExpressionOperator
@@ -288,11 +300,13 @@ class _ExpressionResolver:
     value = self.resolve(op.expression)
     if value is None or not value:
       raise NullDereferenceError(op.expression)
+    index_or_key = op.key if op.key else op.index
     try:
-      return value[op.index]
+      return value[index_or_key]
     except (TypeError, IndexError) as e:
       raise ValueError(
-          f"IndexOperator failed to access the given index {op.index}.") from e
+          f"IndexOperator failed to access the given index {index_or_key}."
+      ) from e
 
   @_register(placeholder_pb2.ArtifactPropertyOperator)
   def _resolve_property_operator(
@@ -433,6 +447,10 @@ class _ExpressionResolver:
             message=value, sort_keys=True, preserving_proto_field_name=True)
       if op.serialization_format == placeholder_pb2.ProtoOperator.TEXT_FORMAT:
         return text_format.MessageToString(value)
+      if (op.serialization_format ==
+          placeholder_pb2.ProtoOperator.INLINE_FILE_TEXT_FORMAT):
+        return fileio.get_inline_filename(
+            text_format.MessageToString(value, as_one_line=True))
       if op.serialization_format == placeholder_pb2.ProtoOperator.BINARY:
         return value.SerializeToString()
 
@@ -503,11 +521,18 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
   if expression.HasField("placeholder"):
     placeholder_pb = expression.placeholder
     ph_names_map = {
-        placeholder_pb2.Placeholder.INPUT_ARTIFACT: "input",
-        placeholder_pb2.Placeholder.OUTPUT_ARTIFACT: "output",
-        placeholder_pb2.Placeholder.EXEC_PROPERTY: "exec_property",
-        placeholder_pb2.Placeholder.RUNTIME_INFO: "runtime_info",
-        placeholder_pb2.Placeholder.EXEC_INVOCATION: "execution_invocation"
+        placeholder_pb2.Placeholder.INPUT_ARTIFACT:
+            "input",
+        placeholder_pb2.Placeholder.OUTPUT_ARTIFACT:
+            "output",
+        placeholder_pb2.Placeholder.EXEC_PROPERTY:
+            "exec_property",
+        placeholder_pb2.Placeholder.RUNTIME_INFO:
+            "runtime_info",
+        placeholder_pb2.Placeholder.EXEC_INVOCATION:
+            "execution_invocation",
+        placeholder_pb2.Placeholder.ENVIRONMENT_VARIABLE:
+            "environment_variable",
     }
     ph_name = ph_names_map[placeholder_pb.type]
     if placeholder_pb.key:

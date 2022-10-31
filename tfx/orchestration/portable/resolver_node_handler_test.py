@@ -143,7 +143,7 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
         upstream_nodes: "my_resolver"
         """, pipeline_pb2.PipelineNode())
       downstream_input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, node_inputs=down_stream_node.inputs)
+          metadata_handler=m, pipeline_node=down_stream_node)[0]
       downstream_input_model = downstream_input_artifacts['input_models']
       self.assertLen(downstream_input_model, 1)
       self.assertProtoPartiallyEquals(
@@ -169,7 +169,7 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
               'last_update_time_since_epoch', 'name'
           ])
 
-  @mock.patch.object(inputs_utils, 'resolve_input_artifacts_v2')
+  @mock.patch.object(inputs_utils, 'resolve_input_artifacts')
   def testRun_InputResolutionError_ExecutionFailed(self, mock_resolve):
     mock_resolve.side_effect = exceptions.InputResolutionError('Meh')
     handler = resolver_node_handler.ResolverNodeHandler()
@@ -194,7 +194,7 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
               'last_update_time_since_epoch', 'name'
           ])
 
-  @mock.patch.object(inputs_utils, 'resolve_input_artifacts_v2')
+  @mock.patch.object(inputs_utils, 'resolve_input_artifacts')
   def testRun_MultipleInputs_ExecutionFailed(self, mock_resolve):
     mock_resolve.return_value = inputs_utils.Trigger([
         {'model': [self._create_model_artifact(uri='/tmp/model/1')]},

@@ -18,15 +18,23 @@ from unittest import mock
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact
+from tfx.types import artifact_property
 from tfx.types import channel
 
+from google.protobuf import struct_pb2
 from ml_metadata.proto import metadata_store_pb2
+
+# TODO(b/241861488): Remove safeguard once fully supported by MLMD.
+artifact_property.ENABLE_PROTO_PROPERTIES = True
 
 
 class _MyType(artifact.Artifact):
   TYPE_NAME = 'MyTypeName'
   PROPERTIES = {
       'string_value': artifact.Property(artifact.PropertyType.STRING),
+      'proto_value': artifact.Property(
+          artifact.PropertyType.PROTO
+      ),  # Expected proto type: google.protobuf.Value
   }
 
 
@@ -54,10 +62,14 @@ class ChannelTest(tf.test.TestCase):
       channel.Channel('StringTypeName')
 
   def testJsonRoundTrip(self):
+    proto_property = metadata_store_pb2.Value()
+    proto_property.proto_value.Pack(
+        struct_pb2.Value(string_value='proto-string-val'))
     chnl = channel.Channel(
         type=_MyType,
         additional_properties={
-            'string_value': metadata_store_pb2.Value(string_value='forty-two')
+            'string_value': metadata_store_pb2.Value(string_value='forty-two'),
+            'proto_value': proto_property,
         },
         additional_custom_properties={
             'int_value': metadata_store_pb2.Value(int_value=42)

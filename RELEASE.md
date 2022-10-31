@@ -1,6 +1,20 @@
 # Current Version (Still in Development)
 
+# TODO(b/241861488): Remove comment once proto property fully supported by MLMD
+IMPORTANT: This version **must not be released** before MLMD publishes a release
+with support for proto property values and this comment is subsequently removed.
+
+*   This is the last version that supports TensorFlow 1.15.x. TF 1.15.x support
+    will be removed in the next version. Please check the
+    [TF2 migration guide](https://www.tensorflow.org/guide/migrate) to migrate
+    to TF2.
+
 ## Major Features and Improvements
+*  Artifact/Channel properties now support the new MLMD PROTO property type.
+
+*  Supports environment variables in the placeholder expression.
+   This placeholder can be used to generate beam_pipeline_args
+   dynamically.
 
 ## Breaking Changes
 
@@ -12,18 +26,195 @@
 
 ## Bug Fixes and Other Changes
 
-* `LatestBlessedModelStrategy` gracefully handles the case where there are no
-  blessed model at all (e.g. first run).
+*   Moved `tflite-support` related dependencies from `[examples]` to a separate
+    `[tflite-support]` extra.
+*   Moved `flax` related dependencies from `[examples]` to a separate `[flax]`
+    extra.
+*   Statistics gen and Schema gen now crash on empty input examples and statistics respectively.
+*   Importer will now check that an existing artifact has the same type as the intended output before reusing the existing artifact.
+*   Importer will now use the most recently created artifact when reusing an existing artifact instead of the one with the highest ID.
+*   Proto placeholder now works with proto files that have non-trivial transitive dependencies.
+*   Adding tutorials for recommenders and ranking
 
 ## Dependency Updates
 
+| Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.10.0` | `>=1.15.5,<2` or `~=2.9.0` | |
+| `tflite-support` | `~=0.4.2` | `>=0.1.0a1,<0.2.1` | Update to a TF-2.10 compatible version. |
+| `google-cloud-aiplatform` | `>=1.6.2,<1.18` | `>=1.6.2,<2` | Added to help pip dependency resolution. |
+
 ## Documentation Updates
+
+# Version 1.10.0
+
+## Major Features and Improvements
+
+*   Saved tuner results in pandas `records` formatted JSON.
+*   TFX Transform now supports `tf.SequenceExample` natively. The native path can be activated by providing `TensorRepresentation`s in the Schema.
+*   TFX Transform now supports reading raw and materializing transformed data in
+    Apache Parquet format.
+*   ExampleDiff outputs statistics on the matching process, and optional counts
+    of paired feature values.
+
+## Breaking Changes
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   Type hint on BaseComponent.inputs and BaseComponent.outputs corrected to be
+    Channel subclasses.
+*   Added `input_optional` parameter to `ChannelParameter`. This allows
+    component authors to declare that even if a channel is `optional`, if it is
+    provided during pipeline definition time, then it must have resolved inputs
+    during run time.
+*   Allow latest `apache-airflow` 2.x versions.
+*   Output artifacts from multiple invocations of the same component are given
+    unique names, avoiding duplication errors, especially in the
+    InteractiveContext.
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.9.0`) | Comments |
+| -- | -- | -- | -- |
+| `google-api-core` | `<1.33` | N/A | Added to help pip dependency resolution. google-api-core was already a transitive dependency. |
+| `apache-beam[gcp]` | `>=2.40,<3` | `>=2.38,<3` | Synced release train |
+| `attrs` | `>=19.3.0,<22` | `>=19.3.0,<21` | Allow more recent versions |
+| `pyarrow` | `>=6,<7` | `>=1,<6` | Synced release train |
+| `ml-metadata` | `~=1.10.0` | `~=1.9.0` | Synced release train |
+| `struct2tensor` | `~=0.41.0` | `~=0.40.0` | Synced release train |
+| `tensorflow-data-validation` | `~=1.10.0` | `~=1.9.0` | Synced release train |
+| `tensorflow-model-analysis` | `~=0.41.0` | `~=0.40.0` | Synced release train |
+| `tensorflow-transform` | `~=1.10.1` | `~=1.9.0` | Synced release train |
+| `tfx-bsl` | `~=1.10.1` | `~=1.9.0` | Synced release train |
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.9.0
+
+## Major Features and Improvements
+
+*   Added Json value artifact.
+*   Added example for using ExampleDiff.
+*   Allow lists and dicts to be consumed and produced by decorator components as
+    input and output JsonValue artifacts.
+
+## Breaking Changes
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   N/A
+
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.9.0` | `>=1.15.5,<2` or `~=2.8.0` | |
+| `tensorflow-ranking` | `~=0.5.0` | `~=0.3.0` | Required for TF 2.9 |
+| `typing-extensions` | `>=3.10.0.2,<5` | N/A | For typing utilities |
+| `ml-metadata` | `~=1.9.0` | `~=1.8.0` | Synced release train |
+| `struct2tensor` | `~=0.40.0` | `~=0.39.0` | Synced release train |
+| `tensorflow-data-validation` | `~=1.9.0` | `~=1.8.0` | Synced release train |
+| `tensorflow-model-analysis` | `~=0.40.0` | `~=0.39.0` | Synced release train |
+| `tensorflow-serving-api` | `>=1.15,<3` or `~=2.9.0` | `>=1.15,<3` or `~=2.8.0` | |
+| `tensorflow-transform` | `~=1.9.0` | `~=1.8.0` | Synced release train |
+| `tfx-bsl` | `~=1.9.0` | `~=1.8.0` | Synced release train |
+
+
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.8.0
+
+## Major Features and Improvements
+
+*   Added experimental exit_handler support for KubeflowDagRunner.
+*   Enabled custom labels to be submitted to CAIP training jobs.
+*   Enabled custom resource-setting (vCPU and RAM) for containers orchestrating
+    on Vertex AI.
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+* `LatestBlessedModelStrategy` gracefully handles the case where there are no
+  blessed model at all (e.g. first run).
+* Fix that the resolver with custom `ResolverStrategy` (assume correctly
+  packaged) fails.
+* Fixed `ElwcBigQueryExampleGen` data serializiation error that was causing an
+  assertion failure on Beam.
+* Added dark mode styling support for InteractiveContext notebook formatters.
+* (Python 3.9+) Supports `list` and `dict` in type definition of execution
+  properties.
+* Populate Artifact proto `name` field when name is set on the Artifact python
+  object.
+* Temporarily capped `apache-airflow` version to 2.2.x to avoid dependency
+  conflict. We will rollback this change once `kfp` releases a new version.
+* Fixed a compatibility issue with apache-airflow 2.3.0 that is failing with
+  "unexpected keyword argument 'default_args'".
+* StatisticsGen will raise an error if unsupported StatsOptions (i.e.,
+  generators or experimental_slice_functions) are passed.
+* Fixed a bug in the Artifact attribute setter that was causing the
+  corresponding getter not to return a value for properties of type JSON_VALUE.
+
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.7.0`) | Comments |
+| -- | -- | -- | -- |
+| `apache-beam[gcp]` | `>=2.38,<3` | `>=2.36,<3` | Synced release train |
+
+## Documentation Updates
+
+*   N/A
 
 # Version 1.7.0
 
 ## Major Features and Improvements
 
 * Added support for list-type Placeholder.
+* Added support for function-based custom component with beam pipeline.
 
 ## Breaking Changes
 
@@ -68,6 +259,39 @@
 | `tensorflow-serving-api` | `>=1.15,<3` or `~=2.8.0` | `>=1.15,<3` or `~=2.7.0` | |
 | `tensorflow-transform` | `~=1.7.0` | `~=1.6.0` | Synced release train |
 | `tfx-bsl` | `~=1.7.0` | `~=1.6.0` | Synced release train |
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.6.2
+
+## Major Features and Improvements
+
+*   N/A
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   N/A
+## Dependency Updates
+
+| Package Name | Version Constraints | Previously (in `v1.6.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow` | `>=1.15.5,<2` or `~=2.7.0` or `~=2.8.0` | `>=1.15.5,<2` or `~=2.7.0` | |
 
 ## Documentation Updates
 
@@ -1167,7 +1391,7 @@ the 1.1.x release for TFX library.
     following command:
 
     ```
-    pip install -i https://pypi-nightly.tensorflow.org/simple tfx
+    pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple tfx
     ```
     Note: These nightly packages are unstable and breakages are likely to happen.
     The fix could often take a week or more depending on the complexity

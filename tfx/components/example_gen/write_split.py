@@ -13,15 +13,21 @@
 # limitations under the License.
 """PTransform for write split."""
 import os
-from typing import Union
+from typing import Optional, Any, Dict, Union
 
 import apache_beam as beam
 import tensorflow as tf
 from tfx.proto import example_gen_pb2
+from tfx.types import standard_component_specs
+from tfx.utils import deprecation_utils
 from tfx_bsl.telemetry import util
 
-# Default file name for TFRecord output file prefix.
+
+DEFAULT_PARQUET_FILE_NAME = 'data_parquet'
+deprecation_utils.warn_deprecated('DEFAULT_FILE_NAME will be deprecated soon')
 DEFAULT_FILE_NAME = 'data_tfrecord'
+# Default file name for TFRecord output file prefix.
+DEFAULT_TF_RECORD_FILE_NAME = 'data_tfrecord'
 
 # Metrics namespace for ExampleGen.
 METRICS_NAMESPACE = util.MakeTfxNamespace(['ExampleGen'])
@@ -47,16 +53,30 @@ class MaybeSerialize(beam.DoFn):
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(
-    Union[tf.train.Example, tf.train.SequenceExample, bytes])
-@beam.typehints.with_output_types(beam.pvalue.PDone)
+@beam.typehints.with_input_types(Union[tf.train.Example,
+                                       tf.train.SequenceExample, bytes,
+                                       Dict[str, Any]])
 def WriteSplit(
     example_split: beam.pvalue.PCollection,
     output_split_path: str,
     output_format: str,
-) -> beam.pvalue.PDone:
-  """Shuffles and writes output split as serialized records in TFRecord."""
+    exec_properties: Optional[Dict[str, Any]] = None) -> beam.pvalue.PDone:
+  """Shuffles and writes output split as serialized records in TFRecord or Parquet."""
   del output_format
+  if exec_properties:
+    output_payload_format = exec_properties.get(
+        standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
+
+    if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
+      schema = exec_properties.get('pyarrow_schema')
+      return (example_split
+              # TODO(jyzhao): make shuffle optional.
+              | 'Shuffle' >> beam.transforms.Reshuffle()
+              | 'WriteParquet' >> beam.io.WriteToParquet(
+                  os.path.join(output_split_path, DEFAULT_PARQUET_FILE_NAME),
+                  schema,
+                  file_name_suffix='.parquet',
+                  codec='snappy'))
 
   return (example_split
           | 'MaybeSerialize' >> beam.ParDo(MaybeSerialize())

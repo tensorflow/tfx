@@ -11,10 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""In process inplementation of Resolvers."""
+"""Module for NodeInputs.resolver_config based input resolution.
 
-from typing import Iterable, Union, Sequence, cast
+Note that ResolverConfig is deprecated; newly compiled pipeline should contain
+InputGraph and InputSpec.InputGraphRef instead.
+"""
 
+from typing import Iterable, Union, Sequence, cast, Type
+
+from tfx import types
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
@@ -26,8 +31,13 @@ from tfx.utils import typing_utils
 import ml_metadata as mlmd
 
 
+_ResolverOpClass = Union[
+    Type[resolver_op.ResolverOp],
+    Type[resolver.ResolverStrategy],
+]
 # Types that can be used as an argument & return value of an resolver op.
 _ResolverIOType = Union[
+    Sequence[types.Artifact],
     typing_utils.ArtifactMultiMap,
     Sequence[typing_utils.ArtifactMultiMap],
 ]
@@ -74,23 +84,22 @@ def _run_resolver_op(
   return op.apply(arg)
 
 
-def run_resolver_steps(
-    input_dict: typing_utils.ArtifactMultiMap,
-    *,
-    resolver_steps: Iterable[pipeline_pb2.ResolverConfig.ResolverStep],
+def resolve(
     store: mlmd.MetadataStore,
+    input_dict: typing_utils.ArtifactMultiMap,
+    resolver_config: pipeline_pb2.ResolverConfig,
 ) -> _ResolverIOType:
   """Run ResolverConfig.resolver_steps with an input_dict."""
   result = input_dict
   context = resolver_op.Context(store=store)
-  for step in resolver_steps:
+  for step in resolver_config.resolver_steps:
     cls = ops.get_by_class_path(step.class_path)
     if step.config_json:
       kwargs = json_utils.loads(step.config_json)
     else:
       kwargs = {}
     if issubclass(cls, resolver.ResolverStrategy):
-      strategy = cls(**kwargs)
+      strategy = cls(**kwargs)  # pytype: disable=not-instantiable
       result = _run_resolver_strategy(
           cast(typing_utils.ArtifactMultiMap, result),
           strategy=strategy,

@@ -57,6 +57,7 @@ def mark_pipeline(
     from_nodes: Optional[Collection[str]] = None,
     to_nodes: Optional[Collection[str]] = None,
     skip_nodes: Optional[Collection[str]] = None,
+    skip_snapshot_nodes: Optional[Collection[str]] = None,
     snapshot_settings: pipeline_pb2
     .SnapshotSettings = _default_snapshot_settings,
 ) -> pipeline_pb2.Pipeline:
@@ -84,6 +85,10 @@ def mark_pipeline(
       that would otherwise have been marked to run. Note that if a node depends
       on nodes that cannot be skipped, then it is still marked to run for
       pipeline result correctness. If None, does not force-skip any node.
+    skip_snapshot_nodes: **MOST USERS DO NOT NEED THIS.** Use this to force
+      marking snapshot as OPTIONAL for a skipped node. Setting this field can
+      be dangerous -- it can cause following partial runs to behave incorrectly
+      with missing cached executions.
     snapshot_settings: Settings needed to perform the snapshot step. Defaults to
       using LATEST_PIPELINE_RUN strategy.
 
@@ -105,16 +110,17 @@ def mark_pipeline(
   _ensure_no_missing_nodes(pipeline, from_nodes, to_nodes)
   _ensure_topologically_sorted(pipeline)
 
-  node_map = _make_ordered_node_map(pipeline)
+  node_map = make_ordered_node_map(pipeline)
 
   from_node_ids = from_nodes or node_map.keys()
   to_node_ids = to_nodes or node_map.keys()
   skip_node_ids = skip_nodes or []
-  nodes_to_run = _compute_nodes_to_run(node_map, from_node_ids, to_node_ids,
-                                       skip_node_ids)
+  skip_snapshot_node_ids = set(skip_snapshot_nodes or [])
+  nodes_to_run = compute_nodes_to_run(node_map, from_node_ids, to_node_ids,
+                                      skip_node_ids)
 
   nodes_required_to_reuse, nodes_to_reuse = _compute_nodes_to_reuse(
-      node_map, nodes_to_run)
+      node_map, nodes_to_run, skip_snapshot_node_ids)
   nodes_requiring_snapshot = _compute_nodes_requiring_snapshot(
       node_map, nodes_to_run, nodes_to_reuse)
   snapshot_node = _pick_snapshot_node(node_map, nodes_to_run, nodes_to_reuse)
@@ -252,7 +258,7 @@ def _ensure_no_missing_nodes(pipeline: pipeline_pb2.Pipeline,
   if missing_nodes:
     raise ValueError(
         f'Nodes {sorted(missing_nodes)} specified in from_nodes/to_nodes '
-        'are not present in the pipeline.')
+        f'are not present in the pipeline. Valid nodes are {all_node_ids}.')
 
 
 def _ensure_topologically_sorted(pipeline: pipeline_pb2.Pipeline):
@@ -292,7 +298,7 @@ def _ensure_topologically_sorted(pipeline: pipeline_pb2.Pipeline):
     visited.add(node.node_info.id)
 
 
-def _make_ordered_node_map(
+def make_ordered_node_map(
     pipeline: pipeline_pb2.Pipeline
 ) -> 'collections.OrderedDict[str, pipeline_pb2.PipelineNode]':
   """Prepares the Pipeline proto for DAG traversal.
@@ -340,7 +346,7 @@ def _traverse(node_map: Mapping[str, pipeline_pb2.PipelineNode],
   return result
 
 
-def _compute_nodes_to_run(
+def compute_nodes_to_run(
     node_map: 'collections.OrderedDict[str, pipeline_pb2.PipelineNode]',
     from_node_ids: Collection[str], to_node_ids: Collection[str],
     skip_node_ids: Collection[str]) -> Set[str]:
@@ -356,8 +362,8 @@ def _compute_nodes_to_run(
 
 
 def _compute_nodes_to_reuse(
-    node_map: Mapping[str, pipeline_pb2.PipelineNode],
-    nodes_to_run: Set[str]) -> Tuple[Set[str], Set[str]]:
+    node_map: Mapping[str, pipeline_pb2.PipelineNode], nodes_to_run: Set[str],
+    skip_snapshot_node_ids: Set[str]) -> Tuple[Set[str], Set[str]]:
   """Returns the set of node ids whose output artifacts are to be reused.
 
     Only upstream nodes of nodes_to_run are required to be reused to reflect
@@ -366,6 +372,8 @@ def _compute_nodes_to_reuse(
   Args:
     node_map: Mapping of node_id to nodes.
     nodes_to_run: The set of nodes to run.
+    skip_snapshot_node_ids: The set of nodes that can be skipped for
+      snapshotting.
 
   Returns:
     Set of node ids required to be reused.
@@ -373,7 +381,8 @@ def _compute_nodes_to_reuse(
   exclusion_set = _traverse(
       node_map, _Direction.DOWNSTREAM, start_nodes=nodes_to_run)
   nodes_required_to_reuse = _traverse(
-      node_map, _Direction.UPSTREAM, start_nodes=nodes_to_run) - exclusion_set
+      node_map, _Direction.UPSTREAM,
+      start_nodes=nodes_to_run) - exclusion_set - skip_snapshot_node_ids
   nodes_to_reuse = set(node_map.keys()) - exclusion_set
   return nodes_required_to_reuse, nodes_to_reuse
 
@@ -531,16 +540,28 @@ class _ArtifactRecycler:
     self._new_run_id = new_run_id
     self._pipeline_run_type_id = self._mlmd.store.get_context_type(
         constants.PIPELINE_RUN_CONTEXT_TYPE_NAME).id
+
     # Query and store all pipeline run contexts. This has multiple advantages:
     # - No need to worry about other pipeline runs that may be taking place
     #   concurrently and changing MLMD state.
     # - Fewer MLMD queries.
-    # TODO(b/196981304): Ensure there are no pipeline runs from other pipelines.
-    self._pipeline_run_contexts = {
-        run_ctx.name: run_ctx
-        for run_ctx in self._mlmd.store.get_contexts_by_type(
-            constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
-    }
+    child_contexts = self._mlmd.store.get_children_contexts_by_context(
+        self._pipeline_context.id)
+    if child_contexts:
+      self._pipeline_run_contexts = {
+          ctx.name: ctx
+          for ctx in child_contexts
+          if ctx.type_id == self._pipeline_run_type_id
+      }
+    else:
+      # The parent-child relationship between pipeline and pipeline run contexts
+      # is set up after the partial run feature is available to users. For
+      # existing pipelines, we need to fall back to the previous logic.
+      self._pipeline_run_contexts = {
+          run_ctx.name: run_ctx
+          for run_ctx in self._mlmd.store.get_contexts_by_type(
+              constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
+      }
 
   def _get_pipeline_context(self) -> metadata_store_pb2.Context:
     result = self._mlmd.store.get_context_by_type_and_name(
@@ -580,7 +601,8 @@ class _ArtifactRecycler:
         pipeline_run_context = context_lib.register_context_if_not_exists(
             self._mlmd,
             context_type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
-            context_name=run_id)
+            context_name=run_id,
+            parent_contexts=[self._pipeline_context])
         self._pipeline_run_contexts[run_id] = pipeline_run_context
       else:
         raise LookupError(f'pipeline_run_id {run_id} not found in MLMD.')

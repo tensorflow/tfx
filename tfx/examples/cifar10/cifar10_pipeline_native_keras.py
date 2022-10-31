@@ -79,10 +79,15 @@ _beam_pipeline_args = [
 ]
 
 
-def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
-                     module_file: str, serving_model_dir_lite: str,
-                     metadata_path: str, labels_path: str,
-                     beam_pipeline_args: List[str]) -> pipeline.Pipeline:
+def _create_pipeline(pipeline_name: str,
+                     pipeline_root: str,
+                     data_root: str,
+                     module_file: str,
+                     serving_model_dir_lite: str,
+                     metadata_path: str,
+                     labels_path: str,
+                     beam_pipeline_args: List[str],
+                     accuracy_threshold: float = 0.55) -> pipeline.Pipeline:
   """Implements the CIFAR10 image classification pipeline using TFX."""
   # This is needed for datasets with pre-defined splits
   # Change the pattern argument to train_whole/* and test_whole/* to train
@@ -149,7 +154,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
                   class_name='SparseCategoricalAccuracy',
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.55}),
+                          lower_bound={'value': accuracy_threshold}),
                       # Change threshold will be ignored if there is no
                       # baseline model resolved from MLMD (first run).
                       change_threshold=tfma.GenericChangeThreshold(

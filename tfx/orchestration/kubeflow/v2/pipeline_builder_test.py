@@ -15,7 +15,7 @@
 
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
-from tfx.orchestration.kubeflow.v2 import decorators
+from tfx.orchestration.kubeflow import decorators
 from tfx.orchestration.kubeflow.v2 import pipeline_builder
 from tfx.orchestration.kubeflow.v2 import test_utils
 
@@ -59,7 +59,6 @@ class PipelineBuilderTest(tf.test.TestCase):
         tfx_pipeline=test_utils.pipeline_with_one_container_spec_component(),
         default_image='gcr.io/my-tfx:latest')
     actual_pipeline_spec = my_builder.build()
-
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_pipeline_with_one_container_spec_component.pbtxt',
@@ -156,6 +155,15 @@ class PipelineBuilderTest(tf.test.TestCase):
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_two_step_pipeline_with_exit_handler.pbtxt',
+            pipeline_pb2.PipelineSpec()), pipeline_spec)
+
+  def testTwoStepPipelineWithDynamicExecutionProperties(self):
+    pipeline = test_utils.two_step_pipeline_with_dynamic_exec_properties()
+    pipeline_spec = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=pipeline, default_image='gcr.io/my-tfx:latest').build()
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_two_step_pipeline_with_dynamic_execution_properties.pbtxt',
             pipeline_pb2.PipelineSpec()), pipeline_spec)
 
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.annotations."""
 
+import apache_beam as beam
 import tensorflow as tf
 from tfx.dsl.component.experimental import annotations
 from tfx.types import artifact
@@ -66,6 +67,24 @@ class AnnotationsTest(tf.test.TestCase):
     _ = annotations._PrimitiveTypeGeneric[str]
     _ = annotations._PrimitiveTypeGeneric[bytes]
     _ = annotations._PrimitiveTypeGeneric[bool]
+
+  def testPipelineTypeGenericAnnotation(self):
+    # Error: type hint whose parameter is not a primitive type
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `beam.Pipeline`'):
+      _ = annotations._PipelineTypeGeneric[artifact.Artifact]
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `beam.Pipeline`'):
+      _ = annotations._PipelineTypeGeneric[object]
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `beam.Pipeline`'):
+      _ = annotations._PipelineTypeGeneric[123]
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `beam.Pipeline`'):
+      _ = annotations._PipelineTypeGeneric['string']
+
+    # OK.
+    _ = annotations._PipelineTypeGeneric[beam.Pipeline]
 
   def testParameterUsage(self):
     _ = annotations.Parameter[int]

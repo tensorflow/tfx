@@ -63,3 +63,16 @@ tfx_py_proto_library(
     name = "tuner_proto_py_pb2",
     srcs = ["tuner.proto"],
 )
+
+tfx_py_proto_library(
+    name = "example_diff_proto_py_pb2",
+    srcs = ["example_diff.proto"],
+)
+
+tfx_py_proto_library(
+    name = "distribution_validator_proto_py_pb2",
+    srcs = ["distribution_validator.proto"],
+    deps = [
+        "@com_github_tf_metadata//tensorflow_metadata/proto/v0:py_metadata_v0_proto_py",
+    ],
+)

@@ -26,13 +26,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 import absl
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
+from tfx.orchestration.portable.mlmd import event_lib
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import ArtifactState
 
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
-from ml_metadata.proto import metadata_store_service_pb2
 
 # Number of times to retry initialization of connection.
 _MAX_INIT_RETRY = 10
@@ -158,9 +158,10 @@ class Metadata:
         'Failed to establish connection to Metadata storage with error: %s' %
         connection_error)
 
-  def __exit__(self, exc_type: Optional[Type[Exception]],
-               exc_value: Optional[Exception],
-               exc_tb: Optional[types.TracebackType]) -> None:
+  def __exit__(self,
+               exc_type: Optional[Type[Exception]] = None,
+               exc_value: Optional[Exception] = None,
+               exc_tb: Optional[types.TracebackType] = None) -> None:
     self._users -= 1
     if self._users == 0:
       self._store = None
@@ -251,17 +252,6 @@ class Metadata:
     """Fetches artifacts given artifact type name."""
     return self.store.get_artifacts_by_type(type_name)
 
-  # TODO(b/145751019): Remove this once migrated to use MLMD built-in states.
-  def _get_artifact_state(
-      self, artifact: metadata_store_pb2.Artifact) -> Optional[str]:
-    """Gets artifact state string if available."""
-    if _ARTIFACT_TYPE_KEY_STATE in artifact.properties:
-      return artifact.properties[_ARTIFACT_TYPE_KEY_STATE].string_value
-    elif _ARTIFACT_TYPE_KEY_STATE in artifact.custom_properties:
-      return artifact.custom_properties[_ARTIFACT_TYPE_KEY_STATE].string_value
-    else:
-      return None
-
   def get_published_artifacts_by_type_within_context(
       self, type_names: List[str],
       context_id: int) -> Dict[str, List[metadata_store_pb2.Artifact]]:
@@ -280,9 +270,14 @@ class Metadata:
       result[type_name] = [
           a for a in all_artifacts_in_context
           if a.type_id == artifact_type.id and
-          self._get_artifact_state(a) == ArtifactState.PUBLISHED
+          a.state == metadata_store_pb2.Artifact.LIVE
       ]
     return result
+
+  @staticmethod
+  def _get_legacy_producer_component_id(
+      execution: metadata_store_pb2.Execution) -> str:
+    return execution.properties[_EXECUTION_TYPE_KEY_COMPONENT_ID].string_value
 
   def get_qualified_artifacts(
       self,
@@ -290,7 +285,7 @@ class Metadata:
       type_name: str,
       producer_component_id: Optional[str] = None,
       output_key: Optional[str] = None,
-  ) -> List[metadata_store_service_pb2.ArtifactAndType]:
+  ) -> List[Artifact]:
     """Gets qualified artifacts that have the right producer info.
 
     Args:
@@ -300,23 +295,17 @@ class Metadata:
       output_key: output key constraint to filter artifacts
 
     Returns:
-      A list of ArtifactAndType, containing qualified artifacts.
+      A list of qualified `tfx.types.Artifact`s.
     """
 
-    def _match_producer_component_id(execution, component_id):
-      if component_id:
-        return execution.properties[
-            _EXECUTION_TYPE_KEY_COMPONENT_ID].string_value == component_id
-      else:
+    def _is_qualified_execution(execution):
+      if producer_component_id is None:
         return True
+      actual = self._get_legacy_producer_component_id(execution)
+      return actual == producer_component_id
 
-    def _match_output_key(event, key):
-      if key:
-        assert len(event.path.steps) == 2, 'Event must have two path steps.'
-        return (event.type == metadata_store_pb2.Event.OUTPUT and
-                event.path.steps[0].key == key)
-      else:
-        return event.type == metadata_store_pb2.Event.OUTPUT
+    def _is_qualified_event(event):
+      return event_lib.is_valid_output_event(event, output_key)
 
     try:
       artifact_type = self.store.get_artifact_type(type_name)
@@ -329,35 +318,40 @@ class Metadata:
     # Gets the executions that are associated with all contexts.
     assert contexts, 'Must have at least one context.'
     executions_dict = {}
+    valid_execution_ids = None
     for context in contexts:
       executions = self.store.get_executions_by_context(context.id)
-      executions_dict.update(dict((e.id, e) for e in executions))
+      if valid_execution_ids is None:
+        valid_execution_ids = {e.id for e in executions}
+      else:
+        valid_execution_ids &= {e.id for e in executions}
+      executions_dict.update({e.id: e for e in executions})
 
-    executions_within_context = executions_dict.values()
+    executions_within_context = [
+        executions_dict[v] for v in valid_execution_ids]
 
     # Filters the executions to match producer component id.
     qualified_producer_executions = [
         e.id
         for e in executions_within_context
-        if _match_producer_component_id(e, producer_component_id)
+        if _is_qualified_execution(e)
     ]
     # Gets the output events that have the matched output key.
     qualified_output_events = [
         ev for ev in self.store.get_events_by_execution_ids(
-            qualified_producer_executions) if _match_output_key(ev, output_key)
+            qualified_producer_executions) if _is_qualified_event(ev)
     ]
-
     # Gets the candidate artifacts from output events.
     candidate_artifacts = self.store.get_artifacts_by_id(
         list(set(ev.artifact_id for ev in qualified_output_events)))
     # Filters the artifacts that have the right artifact type and state.
     qualified_artifacts = [
         a for a in candidate_artifacts if a.type_id == artifact_type.id and
-        self._get_artifact_state(a) == ArtifactState.PUBLISHED
+        a.state == metadata_store_pb2.Artifact.LIVE
     ]
     return [
-        metadata_store_service_pb2.ArtifactAndType(
-            artifact=a, type=artifact_type) for a in qualified_artifacts
+        artifact_utils.deserialize_artifact(artifact_type, a)
+        for a in qualified_artifacts
     ]
 
   def _prepare_event(self,
@@ -868,7 +862,8 @@ class Metadata:
     for event in self.store.get_events_by_execution_ids(
         candidate_execution_ids):
       candidate_execution_to_events[event.execution_id].append(event)
-    for execution_id, events in candidate_execution_to_events.items():
+
+    for events in candidate_execution_to_events.values():
       # Creates the {key -> artifact id set} for the candidate execution.
       current_input_ids = collections.defaultdict(set)
       for event in events:
@@ -877,27 +872,37 @@ class Metadata:
       # If all inputs match, tries to get the outputs of the execution and uses
       # as the cached outputs of the current execution.
       if current_input_ids == input_ids:
-        cached_outputs = self._get_outputs_of_execution(
-            execution_id=execution_id, events=events)
+        cached_outputs = self._get_outputs_of_events(events)
         if cached_outputs is not None:
           return cached_outputs
 
     return None
 
-  def _get_outputs_of_execution(
-      self, execution_id: int, events: List[metadata_store_pb2.Event]
-  ) -> Optional[Dict[str, List[Artifact]]]:
+  def get_outputs_of_execution(
+      self, execution_id: int) -> Optional[Dict[str, List[Artifact]]]:
     """Fetches outputs produced by a historical execution.
 
     Args:
       execution_id: the id of the execution that produced the outputs.
-      events: events related to the execution id.
 
     Returns:
       A dict of key -> List[Artifact] as the result
     """
+    events = self.store.get_events_by_execution_ids([execution_id])
+    return self._get_outputs_of_events(events)
 
-    absl.logging.debug('Execution %s matches all inputs' % execution_id)
+  def _get_outputs_of_events(
+      self, events: List[metadata_store_pb2.Event]
+  ) -> Optional[Dict[str, List[Artifact]]]:
+    """Fetches outputs produced by a list of events.
+
+    Args:
+      events: events related to the execution id.
+
+    Returns:
+      A dictionary mapping execution ID to a list of artifacts produced in that
+      execution.
+    """
     result = collections.defaultdict(list)
 
     output_events = [

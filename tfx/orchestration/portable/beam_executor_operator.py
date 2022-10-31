@@ -15,6 +15,7 @@
 
 from typing import Any, Callable, Optional, cast
 
+from tfx.dsl.compiler import placeholder_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import data_types
@@ -26,7 +27,7 @@ from tfx.utils import import_utils
 from google.protobuf import message
 
 try:
-  from apache_beam import Pipeline as _BeamPipeline  # pylint: disable=g-import-not-at-top
+  from apache_beam import Pipeline as _BeamPipeline  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
 except ModuleNotFoundError:
   _BeamPipeline = Any
 
@@ -67,7 +68,9 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
     self.extra_flags = []
     self.extra_flags.extend(beam_executor_spec.python_executor_spec.extra_flags)
     self.beam_pipeline_args = []
-    self.beam_pipeline_args.extend(beam_executor_spec.beam_pipeline_args)
+
+    self.beam_pipeline_args.extend(
+        beam_executor_spec.beam_pipeline_args_placeholders)
 
   def run_executor(
       self,
@@ -83,6 +86,17 @@ class BeamExecutorOperator(base_executor_operator.BaseExecutorOperator):
     Returns:
       The output from executor.
     """
+    context = placeholder_utils.ResolutionContext(
+        exec_info=execution_info,
+        executor_spec=self._executor_spec,
+        platform_config=self._platform_config)
+
+    self.beam_pipeline_args = [
+        placeholder_utils.resolve_placeholder_expression(
+            beam_pipeline_arg, context)
+        for beam_pipeline_arg in self.beam_pipeline_args
+    ]
+
     context = base_beam_executor.BaseBeamExecutor.Context(
         beam_pipeline_args=self.beam_pipeline_args,
         extra_flags=self.extra_flags,

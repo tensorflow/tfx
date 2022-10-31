@@ -30,22 +30,6 @@ from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
 
-class AirflowSubprocess:
-  """Launch an Airflow command."""
-
-  def __init__(self, airflow_args):
-    self._args = ['airflow'] + airflow_args
-    self._sub_process = None
-
-  def __enter__(self):
-    self._sub_process = subprocess.Popen(self._args)
-    return self
-
-  def __exit__(self, exception_type, exception_value, traceback):  # pylint: disable=unused-argument
-    if self._sub_process:
-      self._sub_process.terminate()
-
-
 # Number of seconds between polling pending task states.
 _TASK_POLLING_INTERVAL_SEC = 10
 # Maximum duration to allow no task state change.
@@ -188,26 +172,25 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
 
     # Initialize database.
     subprocess.run(['airflow', 'db', 'init'], check=True)
-    subprocess.run(['airflow', 'dags', 'unpause', self._dag_id], check=True)
 
   def testSimplePipeline(self):
-    subprocess.run([
-        'airflow',
-        'dags',
-        'trigger',
-        self._dag_id,
-        '-r',
-        self._run_id,
-        '-e',
-        self._execution_date,
-    ],
-                   check=True)
-    absl.logging.info('Dag triggered: %s', self._dag_id)
     # We will use subprocess to start the DAG instead of webserver, so only
     # need to start a scheduler on the background.
-    # Airflow scheduler should be launched after triggering the dag to mitigate
-    # a possible race condition between trigger_dag and scheduler.
-    with AirflowSubprocess(['scheduler']):
+    with airflow_test_utils.AirflowScheduler():
+      subprocess.run(['airflow', 'dags', 'unpause', self._dag_id], check=True)
+      subprocess.run([
+          'airflow',
+          'dags',
+          'trigger',
+          self._dag_id,
+          '-r',
+          self._run_id,
+          '-e',
+          self._execution_date,
+      ],
+                     check=True)
+      absl.logging.info('Dag triggered: %s', self._dag_id)
+
       pending_tasks = set(self._all_tasks)
       attempts = int(
           _MAX_TASK_STATE_CHANGE_SEC / _TASK_POLLING_INTERVAL_SEC) + 1

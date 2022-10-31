@@ -31,9 +31,10 @@ from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 
 # Property type for artifacts, executions and contexts.
-Property = Union[int, float, str]
-ExecPropertyTypes = Union[int, float, str, bool, message.Message, List[Any]]
-_EXEC_PROPERTY_CLASSES = (int, float, str, bool, message.Message, list)
+Property = Union[int, float, str, message.Message]
+ExecPropertyTypes = Union[int, float, str, bool, message.Message, List[Any],
+                          Dict[Any, Any]]
+_EXEC_PROPERTY_CLASSES = (int, float, str, bool, message.Message, list, dict)
 
 
 def _is_artifact_type(value: Any):
@@ -48,10 +49,31 @@ def _is_property_dict(value: Any):
 
 
 class BaseChannel:
-  """An abstract type for Channels that connects pipeline nodes.
+  """An abstraction for component (BaseNode) artifact inputs.
 
-  This class should be used by components that wish to handle more than one
-  type of this BaseChannel's child classes.
+  `BaseChannel` is often interchangeably used with the term 'channel' (not
+  capital `Channel` which points to the legacy class name).
+
+  Component takes artifact inputs distinguished by each "input key". For
+  example:
+
+      trainer = Trainer(
+          examples=example_gen.outputs['examples'])
+          ^^^^^^^^
+          input key
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                   channel
+
+  Here "examples" is the input key of the `Examples` artifact type.
+  `example_gen.outputs['examples']` is a channel. Typically a single channel
+  refers to a *list of `Artifact` of a homogeneous type*. Since channel is a
+  declarative abstraction it is not strictly bound to the actual artifact, but
+  is more of an *input selector*.
+
+  The most commonly used channel type is an `OutputChannel` (in the form of
+  `component.outputs["key"]`, which selects the artifact produced by the
+  component in the same pipeline run (in synchronous execution mode; more
+  information on OutputChannel docstring), and is typically a single artifact.
 
   Attributes:
     type: The artifact type class that the Channel takes.
@@ -81,13 +103,24 @@ class BaseChannel:
     """Name of the artifact type class that Channel takes."""
     return self.type.TYPE_NAME
 
+  def future(self) -> placeholder.ChannelWrappedPlaceholder:
+    return placeholder.ChannelWrappedPlaceholder(self)
+
 
 class Channel(json_utils.Jsonable, BaseChannel):
-  """Tfx Channel.
+  """Legacy channel interface.
 
-  TFX Channel is an abstract concept that connects data producers and data
-  consumers. It contains restriction of the artifact type that should be fed
-  into or read from it.
+  `Channel` used to represent the `BaseChannel` concept in the early TFX code,
+  but due to having too much features in the same class, we refactored it to
+  multiple classes:
+
+  - BaseChannel for the general input abstraction
+  - OutputChannel for `component.outputs['key']`.
+  - MLMDQueryChannel for simple filter-based input resolution.
+
+  Please do not use this class directly, but instead use the alternatives. This
+  class won't be removed in TFX 1.x due to backward compatibility guarantee
+  though.
   """
 
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
@@ -281,9 +314,6 @@ class Channel(json_utils.Jsonable, BaseChannel):
         producer_component_id=producer_component_id,
         output_key=output_key).set_artifacts(artifacts)
 
-  def future(self) -> placeholder.ChannelWrappedPlaceholder:
-    return placeholder.ChannelWrappedPlaceholder(self)
-
   @doc_controls.do_not_generate_docs
   def as_output_channel(
       self, producer_component: Any, output_key: str) -> 'OutputChannel':
@@ -309,7 +339,33 @@ class Channel(json_utils.Jsonable, BaseChannel):
 
 
 class OutputChannel(Channel):
-  """Channel subtype that is used for node.outputs."""
+  """Channel that is used for `node.outputs['key']`.
+
+  For OutputChannel being used as another component's inputs, it has the
+  following implications (only in synchronous execution mode):
+
+  - It refers to the output artifact produced from *the same pipeline run*.
+  - Imposes data dependency between producer component and the consumer
+    component.
+
+  It's worth mentioning that in most cases (except for a small portion of
+  special ExampleGens that produces multiple Examples), output channel of
+  standard components in synchronous mode resolved to 1 artifact.
+
+  For asynchronous execution mode, each component is no longer data dependent,
+  and there is no pipeline run context to group artifacts. Therefore an
+  OutputChannel refers to all artifacts produced from the component in the
+  pipeline. This no longer resolves to 1 artifact, so in an asynchronous
+  execution mode you need to further filter output channel with resolver
+  functions (e.g. `tfx.dsl.inputs.latest_created`).
+
+  OutputChannel has additional functionalities to manipulate the component
+  output specification:
+
+  - `additional_properties` or `additional_custom_properties` to statically
+    set output artifacts' properties or custom_properties.
+  - Garbage collection policy per component outputs.
+  """
 
   def __init__(
       self,
@@ -326,6 +382,8 @@ class OutputChannel(Channel):
         additional_custom_properties=additional_custom_properties,
     )
     self._producer_component = producer_component
+    self._garbage_collection_policy = None
+    self._predefined_artifact_uris = None
 
   def __repr__(self) -> str:
     return (
@@ -357,10 +415,14 @@ class OutputChannel(Channel):
           f'output_key mismatch: {self.output_key} != {output_key}.')
     return self
 
+  @doc_controls.do_not_generate_docs
+  def set_external(self, predefined_artifact_uris: List[str]) -> None:
+    self._predefined_artifact_uris = predefined_artifact_uris
+
 
 @doc_controls.do_not_generate_docs
 class UnionChannel(BaseChannel):
-  """Union of multiple Channels with the same type.
+  """Union of multiple channels with the same type.
 
   Prefer to use union() to create UnionChannel.
 
@@ -428,3 +490,85 @@ class LoopVarChannel(BaseChannel):
   @property
   def for_each_context(self) -> dsl_context.DslContext:
     return self._for_each_context
+
+
+@doc_controls.do_not_generate_docs
+class PipelineOutputChannel(OutputChannel):
+  """PipelineOutputChannel wraps a channnel to be used in the outer pipeline.
+
+  It wraps a channel produced from within an inner composable pipeline, to be
+  used in the outer composable pipeline.
+  """
+
+  def __init__(self,
+               wrapped: BaseChannel,
+               pipeline: Optional[Any] = None,
+               output_key: str = ''):
+    self._wrapped = wrapped
+    self._pipeline = pipeline
+    if isinstance(wrapped, Channel):
+      additional_properties = wrapped.additional_properties
+      additional_custom_properties = wrapped.additional_custom_properties
+    else:
+      additional_properties = {}
+      additional_custom_properties = {}
+    super().__init__(
+        artifact_type=wrapped.type,
+        producer_component=pipeline,
+        output_key=output_key or '',
+        additional_properties=additional_properties,
+        additional_custom_properties=additional_custom_properties)
+
+  @property
+  def wrapped(self) -> BaseChannel:
+    return self._wrapped
+
+  @property
+  def pipeline(self) -> Any:
+    return self._pipeline
+
+  @pipeline.setter
+  def pipeline(self, pipeline: Any):
+    self._pipeline = pipeline
+    self._producer_component = pipeline
+
+  def __eq__(self, other):
+    if isinstance(other, PipelineOutputChannel):
+      return (self.wrapped == other.wrapped and
+              self.pipeline == other.pipeline and
+              self.output_key == other.output_key)
+    return False
+
+  def __hash__(self):
+    return id(self.wrapped) + id(self.pipeline) + id(self.output_key)
+
+
+@doc_controls.do_not_generate_docs
+class PipelineInputChannel(BaseChannel):
+  """PipelineInputChannel wraps a channnel to be used in an inner pipeline.
+
+  It wraps a channel produced from a outer/parent composable pipeline, to be
+  used in the inner composable pipeline.
+  """
+
+  def __init__(self, wrapped: BaseChannel, output_key: str):
+    super().__init__(type=wrapped.type)
+    self._wrapped = wrapped
+    self._output_key = output_key
+    self._pipeline = None
+
+  @property
+  def wrapped(self) -> BaseChannel:
+    return self._wrapped
+
+  @property
+  def output_key(self) -> str:
+    return self._output_key
+
+  @property
+  def pipeline(self) -> Any:
+    return self._pipeline
+
+  @pipeline.setter
+  def pipeline(self, pipeline: Any):
+    self._pipeline = pipeline

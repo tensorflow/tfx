@@ -57,19 +57,20 @@ class _RowToContextFeatureAndExample(beam.DoFn):
 
 
 def _ConvertContextAndExamplesToElwc(
-    context_feature_and_examples: Tuple[bytes, List[tf.train.Example]]
-) -> input_pb2.ExampleListWithContext:
+    context_feature_and_examples: Tuple[bytes,
+                                        List[tf.train.Example]]) -> bytes:
   """Convert context feature and examples to ELWC."""
   context_feature, examples = context_feature_and_examples
   context_feature_proto = tf.train.Example()
   context_feature_proto.ParseFromString(context_feature)
-  return input_pb2.ExampleListWithContext(
+  elwc_pb2 = input_pb2.ExampleListWithContext(
       context=context_feature_proto, examples=examples)
+  return elwc_pb2.SerializeToString(deterministic=True)
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(input_pb2.ExampleListWithContext)
+@beam.typehints.with_output_types(bytes)
 def _BigQueryToElwc(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
                     split_pattern: str) -> beam.pvalue.PCollection:
   """Read from BigQuery and transform to ExampleListWithContext.
@@ -89,13 +90,13 @@ def _BigQueryToElwc(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
   Raises:
     RuntimeError: Context features must be included in the queried result.
   """
-
+  project = utils.parse_gcp_project(exec_properties['_beam_pipeline_args'])
   custom_config = example_gen_pb2.CustomConfig()
   json_format.Parse(exec_properties['custom_config'], custom_config)
   elwc_config = elwc_config_pb2.ElwcConfig()
   custom_config.custom_config.Unpack(elwc_config)
 
-  client = bigquery.Client()
+  client = bigquery.Client(project=project)
   # Dummy query to get the type information for each field.
   query_job = client.query('SELECT * FROM ({}) LIMIT 0'.format(split_pattern))
   results = query_job.result()

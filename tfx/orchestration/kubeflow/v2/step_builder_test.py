@@ -27,7 +27,7 @@ from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
-from tfx.orchestration.kubeflow.v2 import decorators
+from tfx.orchestration.kubeflow import decorators
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.orchestration.kubeflow.v2 import step_builder
 from tfx.orchestration.kubeflow.v2 import test_utils
@@ -49,7 +49,9 @@ class StepBuilderTest(tf.test.TestCase):
   def testBuildTask(self):
     query = 'SELECT * FROM TABLE'
     bq_example_gen = big_query_example_gen_component.BigQueryExampleGen(
-        query=query)
+        query=query).with_platform_config(
+            pipeline_pb2.PipelineDeploymentConfig.PipelineContainerSpec
+            .ResourceSpec(cpu_limit=5.0, memory_limit=10.0))
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
     component_defs = {}
     my_builder = step_builder.StepBuilder(
@@ -258,6 +260,47 @@ class StepBuilderTest(tf.test.TestCase):
             pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
     self.assertListEqual([param], pc.parameters)
 
+  def testBuildDynamicExecutionPropertiesUpstreamComponentSpec(self):
+    dynamic_exec_properties = {
+        ('range_config_generator', 'range_config'): 'String'
+    }
+    pipeline = test_utils.two_step_pipeline_with_dynamic_exec_properties()
+    range_config_gen = pipeline.components[0]
+    component_defs = {}
+    _ = self._sole(
+        step_builder.StepBuilder(
+            node=range_config_gen,
+            image='gcr.io/tensorflow/tfx:latest',
+            component_defs=component_defs,
+            deployment_config=pipeline_pb2.PipelineDeploymentConfig(),
+            dynamic_exec_properties=dynamic_exec_properties,
+            dsl_context_reg=dsl_context_registry.get()).build())
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_dynamic_execution_properties_upstream_component_spec.pbtxt',
+            pipeline_pb2.ComponentSpec()),
+        component_defs['range_config_generator'])
+
+  def testBuildDynamicExecutionPropertiesDownstreamComponentTask(self):
+    dynamic_exec_properties = {
+        ('range_config_generator', 'range_config'): 'String'
+    }
+    pipeline = test_utils.two_step_pipeline_with_dynamic_exec_properties()
+    example_gen = pipeline.components[1]
+    component_defs = {}
+    example_gen_task_spec = self._sole(
+        step_builder.StepBuilder(
+            node=example_gen,
+            image='gcr.io/tensorflow/tfx:latest',
+            component_defs=component_defs,
+            deployment_config=pipeline_pb2.PipelineDeploymentConfig(),
+            dynamic_exec_properties=dynamic_exec_properties,
+            dsl_context_reg=dsl_context_registry.get()).build())
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_dynamic_execution_properties_downstream_component_task.pbtxt',
+            pipeline_pb2.PipelineTaskSpec()), example_gen_task_spec)
+
   def testBuildLatestBlessedModelStrategySucceed(self):
     latest_blessed_resolver = resolver.Resolver(
         strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,
@@ -399,8 +442,7 @@ class StepBuilderTest(tf.test.TestCase):
 
   def testBuildExitHandler(self):
     task = test_utils.dummy_producer_component(
-        param1=decorators.FinalStatusStr('value1'),
-    )
+        param1=decorators.FinalStatusStr('value1'))
     deployment_config = pipeline_pb2.PipelineDeploymentConfig()
     component_defs = {}
     my_builder = step_builder.StepBuilder(
@@ -425,6 +467,7 @@ class StepBuilderTest(tf.test.TestCase):
         test_utils.get_proto_from_test_data(
             'expected_dummy_exit_handler_executor.pbtxt',
             pipeline_pb2.PipelineDeploymentConfig()), deployment_config)
+
 
 if __name__ == '__main__':
   tf.test.main()

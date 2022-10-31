@@ -14,25 +14,21 @@
 """TaskManager manages the execution and cancellation of tasks."""
 
 from concurrent import futures
+import sys
 import threading
+import traceback
 import typing
 from typing import Dict, Optional
 
 from absl import logging
-from tfx.dsl.io import fileio
-from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import constants
-from tfx.orchestration.experimental.core import mlmd_state
-from tfx.orchestration.experimental.core import pipeline_state
+from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
-from tfx.orchestration.portable import execution_publish_utils
-from tfx.orchestration.portable import outputs_utils
+
 from tfx.utils import status as status_lib
 
-from ml_metadata.proto import metadata_store_pb2
 
 _MAX_DEQUEUE_WAIT_SECS = 5.0
 
@@ -60,9 +56,9 @@ class _SchedulerWrapper:
   def schedule(self) -> ts.TaskSchedulerResult:
     return self._task_scheduler.schedule()
 
-  def cancel(self, pause: bool = False) -> None:
-    self.pause = pause
-    self._task_scheduler.cancel()
+  def cancel(self, cancel_task: task_lib.CancelNodeTask) -> None:
+    self.pause = cancel_task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC
+    self._task_scheduler.cancel(cancel_task=cancel_task)
 
 
 class TaskManager:
@@ -170,10 +166,10 @@ class TaskManager:
 
   def _handle_task(self, task: task_lib.Task) -> None:
     """Dispatches task to the task specific handler."""
-    if task_lib.is_exec_node_task(task):
-      self._handle_exec_node_task(typing.cast(task_lib.ExecNodeTask, task))
-    elif task_lib.is_cancel_node_task(task):
-      self._handle_cancel_node_task(typing.cast(task_lib.CancelNodeTask, task))
+    if isinstance(task, task_lib.ExecNodeTask):
+      self._handle_exec_node_task(task)
+    elif isinstance(task, task_lib.CancelNodeTask):
+      self._handle_cancel_node_task(task)
     else:
       raise RuntimeError('Cannot dispatch bad task: {}'.format(task))
 
@@ -191,6 +187,8 @@ class TaskManager:
               ts.TaskScheduler[task_lib.ExecNodeTask],
               ts.TaskSchedulerRegistry.create_task_scheduler(
                   self._mlmd_handle, task.pipeline, task)))
+      if task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC:
+        scheduler.pause = True
       self._scheduler_by_node_uid[node_uid] = scheduler
       self._ts_futures.add(
           self._ts_executor.submit(self._process_exec_node_task, scheduler,
@@ -207,7 +205,7 @@ class TaskManager:
             'No task scheduled for node uid: %s. The task might have already '
             'completed before it could be cancelled.', task.node_uid)
       else:
-        scheduler.cancel(task.pause)
+        scheduler.cancel(cancel_task=task)
       self._task_queue.task_done(task)
 
   def _process_exec_node_task(self, scheduler: _SchedulerWrapper,
@@ -220,19 +218,20 @@ class TaskManager:
     # a failed execution and MLMD is updated accordingly.
     try:
       result = scheduler.schedule()
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
       logging.exception('Exception raised by task scheduler; node uid: %s',
                         task.node_uid)
       result = ts.TaskSchedulerResult(
           status=status_lib.Status(
-              code=status_lib.Code.ABORTED, message=str(e)))
+              code=status_lib.Code.ABORTED,
+              message=''.join(traceback.format_exception(*sys.exc_info()))))
     logging.info('For ExecNodeTask id: %s, task-scheduler result status: %s',
                  task.task_id, result.status)
     # If the node was paused, we do not complete the execution as it is expected
     # that a new ExecNodeTask would be issued for resuming the execution.
     if not (scheduler.pause and
             result.status.code == status_lib.Code.CANCELLED):
-      _publish_execution_results(
+      post_execution_utils.publish_execution_results_for_task(
           mlmd_handle=self._mlmd_handle, task=task, result=result)
     with self._tm_lock:
       del self._scheduler_by_node_uid[task.node_uid]
@@ -257,112 +256,3 @@ class TaskManager:
       raise TasksProcessingError(exceptions)
 
 
-def _update_execution_state_in_mlmd(
-    mlmd_handle: metadata.Metadata, execution_id: int,
-    new_state: metadata_store_pb2.Execution.State, error_msg: str) -> None:
-  with mlmd_state.mlmd_execution_atomic_op(mlmd_handle,
-                                           execution_id) as execution:
-    execution.last_known_state = new_state
-    if error_msg:
-      data_types_utils.set_metadata_value(
-          execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
-          error_msg)
-
-
-def _publish_execution_results(mlmd_handle: metadata.Metadata,
-                               task: task_lib.ExecNodeTask,
-                               result: ts.TaskSchedulerResult) -> None:
-  """Publishes execution results to MLMD."""
-
-  def _update_state(status: status_lib.Status) -> None:
-    assert status.code != status_lib.Code.OK
-    _remove_output_dirs(task, result)
-    _remove_task_dirs(task)
-    if status.code == status_lib.Code.CANCELLED:
-      logging.info('Cancelling execution (id: %s); task id: %s; status: %s',
-                   task.execution_id, task.task_id, status)
-      execution_state = metadata_store_pb2.Execution.CANCELED
-    else:
-      logging.info(
-          'Aborting execution (id: %s) due to error (code: %s); task id: %s',
-          task.execution_id, status.code, task.task_id)
-      execution_state = metadata_store_pb2.Execution.FAILED
-    _update_execution_state_in_mlmd(mlmd_handle, task.execution_id,
-                                    execution_state, status.message)
-    pipeline_state.record_state_change_time()
-
-  if result.status.code != status_lib.Code.OK:
-    _update_state(result.status)
-    return
-
-  # TODO(b/182316162): Unify publisher handing so that post-execution artifact
-  # logic is more cleanly handled.
-  outputs_utils.tag_output_artifacts_with_version(task.output_artifacts)
-  if isinstance(result.output, ts.ExecutorNodeOutput):
-    executor_output = result.output.executor_output
-    if executor_output is not None:
-      if executor_output.execution_result.code != status_lib.Code.OK:
-        _update_state(
-            status_lib.Status(
-                code=executor_output.execution_result.code,
-                message=executor_output.execution_result.result_message))
-        return
-      # TODO(b/182316162): Unify publisher handing so that post-execution
-      # artifact logic is more cleanly handled.
-      outputs_utils.tag_executor_output_with_version(executor_output)
-    _remove_task_dirs(task)
-    execution_publish_utils.publish_succeeded_execution(
-        mlmd_handle,
-        execution_id=task.execution_id,
-        contexts=task.contexts,
-        output_artifacts=task.output_artifacts,
-        executor_output=executor_output)
-  elif isinstance(result.output, ts.ImporterNodeOutput):
-    output_artifacts = result.output.output_artifacts
-    # TODO(b/182316162): Unify publisher handing so that post-execution artifact
-    # logic is more cleanly handled.
-    outputs_utils.tag_output_artifacts_with_version(output_artifacts)
-    _remove_task_dirs(task)
-    execution_publish_utils.publish_succeeded_execution(
-        mlmd_handle,
-        execution_id=task.execution_id,
-        contexts=task.contexts,
-        output_artifacts=output_artifacts)
-  elif isinstance(result.output, ts.ResolverNodeOutput):
-    resolved_input_artifacts = result.output.resolved_input_artifacts
-    execution_publish_utils.publish_internal_execution(
-        mlmd_handle,
-        execution_id=task.execution_id,
-        contexts=task.contexts,
-        output_artifacts=resolved_input_artifacts)
-  else:
-    raise TypeError(f'Unable to process task scheduler result: {result}')
-
-  pipeline_state.record_state_change_time()
-
-
-def _remove_output_dirs(task: task_lib.ExecNodeTask,
-                        ts_result: ts.TaskSchedulerResult) -> None:
-  outputs_utils.remove_output_dirs(task.output_artifacts)
-  if isinstance(ts_result.output, ts.ImporterNodeOutput):
-    if ts_result.output.output_artifacts is not None:
-      outputs_utils.remove_output_dirs(ts_result.output.output_artifacts)
-
-
-def _remove_task_dirs(task: task_lib.ExecNodeTask) -> None:
-  """Removes directories created for the task."""
-  if task.stateful_working_dir:
-    outputs_utils.remove_stateful_working_dir(task.stateful_working_dir)
-  if task.tmp_dir:
-    try:
-      fileio.rmtree(task.tmp_dir)
-    except fileio.NotFoundError:
-      logging.warning(
-          'tmp_dir %s not found while attempting to delete, ignoring.')
-  if task.executor_output_uri:
-    try:
-      fileio.remove(task.executor_output_uri)
-    except fileio.NotFoundError:
-      logging.warning(
-          'Skipping deletion of executor_output_uri (file not found): %s',
-          task.executor_output_uri)

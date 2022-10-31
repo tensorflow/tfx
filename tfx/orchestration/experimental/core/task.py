@@ -18,10 +18,13 @@ core task generation loop based on the state of MLMD db.
 """
 
 import abc
+import enum
 from typing import Dict, Hashable, List, Optional, Type, TypeVar
 
 import attr
 from tfx import types
+from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import env
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
@@ -30,23 +33,47 @@ from ml_metadata.proto import metadata_store_pb2
 
 @attr.s(auto_attribs=True, frozen=True)
 class PipelineUid:
-  """Unique identifier for a pipeline.
+  """Uniquely identifies a pipeline among pipelines being actively orchestrated.
 
   Attributes:
     pipeline_id: Id of the pipeline containing the node. Corresponds to
       `Pipeline.pipeline_info.id` in the pipeline IR.
+    pipeline_run_id: Run identifier for the pipeline if one is provided.
   """
   pipeline_id: str
+  pipeline_run_id: Optional[str] = None
 
   @classmethod
   def from_pipeline(cls: Type['PipelineUid'],
                     pipeline: pipeline_pb2.Pipeline) -> 'PipelineUid':
-    return cls(pipeline_id=pipeline.pipeline_info.id)
+    """Creates a PipelineUid object given a pipeline IR."""
+    if (env.get_env().concurrent_pipeline_runs_enabled() and
+        pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC):
+      pipeline_run_id = pipeline.runtime_spec.pipeline_run_id.field_value.string_value
+      if not pipeline_run_id:
+        raise ValueError(
+            'pipeline_run_id unexpectedly missing for a sync pipeline.')
+    else:
+      pipeline_run_id = None
+
+    return cls(
+        pipeline_id=pipeline.pipeline_info.id, pipeline_run_id=pipeline_run_id)
+
+  @classmethod
+  def from_pipeline_id_and_run_id(
+      cls: Type['PipelineUid'], pipeline_id: str,
+      pipeline_run_id: Optional[str]) -> 'PipelineUid':
+    # If concurrent runs are not enabled, pipeline_run_id is not part of the
+    # PipelineUid.
+    if env.get_env().concurrent_pipeline_runs_enabled():
+      return cls(
+          pipeline_id=pipeline_id, pipeline_run_id=pipeline_run_id or None)
+    return cls(pipeline_id=pipeline_id)
 
 
 @attr.s(auto_attribs=True, frozen=True)
 class NodeUid:
-  """Unique identifier for a node in the pipeline.
+  """Uniquely identifies a node across all pipelines being actively orchestrated.
 
   Attributes:
     pipeline_uid: The pipeline UID.
@@ -57,8 +84,8 @@ class NodeUid:
   node_id: str
 
   @classmethod
-  def from_pipeline_node(cls: Type['NodeUid'], pipeline: pipeline_pb2.Pipeline,
-                         node: pipeline_pb2.PipelineNode) -> 'NodeUid':
+  def from_node(cls: Type['NodeUid'], pipeline: pipeline_pb2.Pipeline,
+                node: node_proto_view.NodeProtoView) -> 'NodeUid':
     return cls(
         pipeline_uid=PipelineUid.from_pipeline(pipeline),
         node_id=node.node_info.id)
@@ -88,6 +115,21 @@ class Task(abc.ABC):
     return cls.__name__
 
 
+class CancelTask(Task):
+  """Base class for cancellation task types."""
+  pass
+
+
+@enum.unique
+class NodeCancelType(enum.Enum):
+  # The node is being cancelled with no intention to reuse the same execution.
+  CANCEL_EXEC = 1
+
+  # The node is being paused with the intention of resuming the same execution
+  # after restart.
+  PAUSE_EXEC = 2
+
+
 @attr.s(auto_attribs=True, frozen=True)
 class ExecNodeTask(Task):
   """Task to instruct execution of a node in the pipeline.
@@ -103,9 +145,9 @@ class ExecNodeTask(Task):
     stateful_working_dir: Working directory for the node execution.
     tmp_dir: Temporary directory for the node execution.
     pipeline: The pipeline IR proto containing the node to be executed.
-    is_cancelled: Indicates whether this is a cancelled execution. The task
-      scheduler is expected to gracefully exit after doing any necessary
-      cleanup.
+    cancel_type: Indicates whether this is a cancelled execution, and the type
+      of the cancellation. The task scheduler is expected to gracefully exit
+      after doing any necessary cleanup.
   """
   node_uid: NodeUid
   execution_id: int
@@ -117,31 +159,31 @@ class ExecNodeTask(Task):
   stateful_working_dir: str
   tmp_dir: str
   pipeline: pipeline_pb2.Pipeline
-  is_cancelled: bool = False
+  cancel_type: Optional[NodeCancelType] = None
 
   @property
   def task_id(self) -> TaskId:
     return _exec_node_task_id(self.task_type_id(), self.node_uid)
 
-  def get_pipeline_node(self) -> pipeline_pb2.PipelineNode:
-    for node in self.pipeline.nodes:
-      if node.pipeline_node.node_info.id == self.node_uid.node_id:
-        return node.pipeline_node
+  def get_node(self) -> node_proto_view.NodeProtoView:
+    for pipeline_or_node in self.pipeline.nodes:
+      view = node_proto_view.get_view(pipeline_or_node)
+      if view.node_info.id == self.node_uid.node_id:
+        return view
     raise ValueError(
         f'Node not found in pipeline IR; node uid: {self.node_uid}')
 
 
 @attr.s(auto_attribs=True, frozen=True)
-class CancelNodeTask(Task):
+class CancelNodeTask(CancelTask):
   """Task to instruct cancellation of an ongoing node execution.
 
   Attributes:
     node_uid: Uid of the node to be cancelled.
-    pause: The node is being paused with the intention of resuming the same
-      execution after restart.
+    cancel_type: Indicates the type of this cancellation.
   """
   node_uid: NodeUid
-  pause: bool = False
+  cancel_type: NodeCancelType = NodeCancelType.CANCEL_EXEC
 
   @property
   def task_id(self) -> TaskId:
@@ -177,27 +219,11 @@ class UpdateNodeStateTask(Task):
     return (self.task_type_id(), self.node_uid)
 
 
-def is_exec_node_task(task: Task) -> bool:
-  return task.task_type_id() == ExecNodeTask.task_type_id()
-
-
-def is_cancel_node_task(task: Task) -> bool:
-  return task.task_type_id() == CancelNodeTask.task_type_id()
-
-
-def is_finalize_pipeline_task(task: Task) -> bool:
-  return task.task_type_id() == FinalizePipelineTask.task_type_id()
-
-
-def is_update_node_state_task(task: Task) -> bool:
-  return task.task_type_id() == UpdateNodeStateTask.task_type_id()
-
-
-def exec_node_task_id_from_pipeline_node(
-    pipeline: pipeline_pb2.Pipeline, node: pipeline_pb2.PipelineNode) -> TaskId:
+def exec_node_task_id_from_node(pipeline: pipeline_pb2.Pipeline,
+                                node: node_proto_view.NodeProtoView) -> TaskId:
   """Returns task id of an `ExecNodeTask` from pipeline and node."""
   return _exec_node_task_id(ExecNodeTask.task_type_id(),
-                            NodeUid.from_pipeline_node(pipeline, node))
+                            NodeUid.from_node(pipeline, node))
 
 
 def _exec_node_task_id(task_type_id: str, node_uid: NodeUid) -> TaskId:

@@ -23,6 +23,7 @@ from grpc import insecure_channel
 import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import test_utils
+from tfx.orchestration.experimental.core.testing import test_dynamic_exec_properties_pipeline
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.orchestration.test_pipelines import download_grep_print_pipeline
 from tfx.types import standard_artifacts
@@ -261,6 +262,17 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
       # TODO(b/150515270) Remove the '/data' suffix when b/150515270 is fixed.
       artifact_value = fileio.open(artifact.uri + '/data', 'r').read()
       self.assertGreater(len(artifact_value), 100)
+
+  def testDynamicPropertiesEnd2EndPipeline(self):
+    pipeline_name = 'kubeflow-dynamic-exec-e2e-test-{}'.format(
+        test_utils.random_id())
+    components = test_dynamic_exec_properties_pipeline.create_components()
+    pipeline = self._create_pipeline(pipeline_name, components)
+    self._compile_and_run_pipeline(
+        pipeline=pipeline, workflow_name=pipeline_name)
+    artifacts = self._get_artifacts_with_type_and_pipeline(
+        type_name='Integer', pipeline_name=pipeline_name)
+    self.assertEqual(len(artifacts), 1)
 
 
 if __name__ == '__main__':

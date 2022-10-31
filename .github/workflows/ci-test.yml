@@ -55,7 +55,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip wheel
-        TFX_DEPENDENCY_SELECTOR=NIGHTLY pip install -c ./test_constraints.txt --index-url https://pypi-nightly.tensorflow.org/simple --pre --editable .[all]
+        # TODO(b/232490018): Cython need to be installed separately to build pycocotools.
+        python -m pip install Cython -c ./test_constraints.txt
+        TFX_DEPENDENCY_SELECTOR=NIGHTLY pip install -c ./test_constraints.txt --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre --editable .[all]
 
     - name: Run unit tests
       shell: bash
@@ -63,6 +65,7 @@ jobs:
         [ ! -s "py_test_files.txt" ] || cat py_test_files.txt | xargs -I {} python {}
 
     - name: Lint with protolint
+      continue-on-error: true
       env:
         PROTOLINT_VERSION: 0.25.1
       shell: bash
@@ -75,6 +78,7 @@ jobs:
         [ ! -s "proto_files.txt" ] || cat proto_files.txt | xargs -I {} ./protolint {}
 
     - name: Lint with pylint
+      continue-on-error: true
       shell: bash
       run: |
         pip install pylint

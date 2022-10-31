@@ -106,3 +106,26 @@ def delete_mysql_container(container_name: str):
   container = client.containers.get(container_name)
   container.remove(force=True)
   client.close()
+
+
+class AirflowScheduler:
+  """Launch Airflow scheduler in the context."""
+
+  def __init__(self):
+    self._args = ['airflow', 'scheduler']
+    self._sub_process = None
+
+  def __enter__(self):
+    self._sub_process = subprocess.Popen(self._args)
+    while True:
+      time.sleep(10)
+      check_result = subprocess.run(  # pylint: disable=subprocess-run-check
+          ['airflow', 'jobs', 'check', '--job-type', 'SchedulerJob'])
+      if check_result.returncode == 0:
+        time.sleep(10)  # Wait for a bit more until dag processing is completed.
+        break
+    return self
+
+  def __exit__(self, exception_type, exception_value, traceback):  # pylint: disable=unused-argument
+    if self._sub_process:
+      self._sub_process.terminate()

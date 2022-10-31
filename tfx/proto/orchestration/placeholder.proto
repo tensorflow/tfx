@@ -92,16 +92,21 @@ message ConcatOperator {
 }
 
 // IndexOperator extracts an element at the index if the PlaceholderExpression
-// evaluates to something repeated. For example, an INPUT_ARTIFACT or
-// OUTPUT_ARTIFACT placeholder may contain multiple artifacts.
-// IndexOperator: List[Any] -> Any
+// evaluates to something list-like or dict-like. For example, an INPUT_ARTIFACT
+// or OUTPUT_ARTIFACT placeholder may contain multiple artifacts.
+// IndexOperator: List[T] | Dict[str, T] -> T
 message IndexOperator {
-  // Required. The placeholder expression must evaluate to something repeated.
-  // Otherwise a runtime error will be thrown when evaluating this operator.
+  // Required. The placeholder expression must evaluate to something list-like
+  // or dict-like. Otherwise a runtime error will be thrown when evaluating
+  // this operator.
   PlaceholderExpression expression = 1;
 
-  // Required. The element index to be accessed.
+  // Optional. The element index to be accessed if the expression is list-like.
   int64 index = 2;
+
+  // Optional. The key of the key-value pair if the expression is dict-like.
+  // When evaluated, the corresponding value will be returned.
+  string key = 3;
 }
 
 // ProtoOperator helps access and serialize the information in
@@ -143,6 +148,9 @@ message ProtoOperator {
     TEXT_FORMAT = 1;
     JSON = 2;
     BINARY = 3;
+    // Emits an /inline/... file path with the proto's text-formatted content.
+    // This is useful for passing to flags that expect a textproto config file.
+    INLINE_FILE_TEXT_FORMAT = 4;
   }
 
   // The format that the proto is serialized to.
@@ -256,6 +264,7 @@ message Placeholder {
     EXEC_PROPERTY = 2;
     RUNTIME_INFO = 3;
     EXEC_INVOCATION = 4;
+    ENVIRONMENT_VARIABLE = 5;
   }
   // Required. Type of the placeholder.
   Type type = 1;

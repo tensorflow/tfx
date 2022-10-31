@@ -16,9 +16,10 @@ import os
 from typing import Any, Dict, List
 
 from absl import logging
-from tensorflow_data_validation.api import stats_api
+import tensorflow_data_validation as tfdv
 from tensorflow_data_validation.statistics import stats_options as options
 from tfx import types
+from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.types import artifact_utils
@@ -68,7 +69,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     Raises:
       ValueError when a schema is provided both as an input and as part of the
-      StatsOptions exec_property.
+      StatsOptions exec_property, or if execution properties specify
+      write_sharded_output when unsupported.
 
     Returns:
       None
@@ -102,6 +104,12 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       # TODO(b/150802589): Move jsonable interface to tfx_bsl and use
       # json_utils
       stats_options = options.StatsOptions.from_json(stats_options_json)
+
+    write_sharded_output = exec_properties.get(
+        standard_component_specs.SHARDED_STATS_OUTPUT_KEY, False)
+    if write_sharded_output and not tfdv.default_sharded_output_supported():
+      raise ValueError('Sharded output requested but not supported.')
+
     if input_dict.get(standard_component_specs.SCHEMA_KEY):
       if stats_options.schema:
         raise ValueError('A schema was provided as an input and the '
@@ -125,18 +133,30 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       uri = artifact_utils.get_split_uri([examples], split)
       split_and_tfxio.append(
           (split, tfxio_factory(io_utils.all_files_pattern(uri))))
+    if not split_and_tfxio:
+      raise ValueError('No splits for examples artifact: %s' % examples)
     with self._make_beam_pipeline() as p:
       for split, tfxio in split_and_tfxio:
         logging.info('Generating statistics for split %s.', split)
         output_uri = artifact_utils.get_split_uri(
             output_dict[standard_component_specs.STATISTICS_KEY], split)
-        output_path = os.path.join(output_uri, DEFAULT_FILE_NAME)
+        binary_stats_output_path = os.path.join(output_uri, DEFAULT_FILE_NAME)
+
         data = p | 'TFXIORead[%s]' % split >> tfxio.BeamSource()
+        if write_sharded_output:
+          sharded_stats_output_prefix = os.path.join(
+              output_uri, stats_artifact_utils.SHARDED_STATS_PREFIX +
+              tfdv.default_sharded_output_suffix())
+          write_transform = tfdv.WriteStatisticsToRecordsAndBinaryFile(
+              binary_proto_path=binary_stats_output_path,
+              records_path_prefix=sharded_stats_output_prefix)
+        else:
+          write_transform = tfdv.WriteStatisticsToBinaryFile(
+              binary_stats_output_path)
         _ = (
             data
             | 'GenerateStatistics[%s]' % split >>
-            stats_api.GenerateStatistics(stats_options)
-            | 'WriteStatsOutput[%s]' % split >>
-            stats_api.WriteStatisticsToBinaryFile(output_path))
+            tfdv.GenerateStatistics(stats_options)
+            | 'WriteStatsOutput[%s]' % split >> write_transform)
         logging.info('Statistics for split %s written to %s.', split,
                      output_uri)

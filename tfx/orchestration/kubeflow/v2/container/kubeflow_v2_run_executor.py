@@ -28,7 +28,9 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.kubeflow.v2.container import kubeflow_v2_entrypoint_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.types import artifact_utils
+from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
+from tfx.types import value_artifact
 from tfx.utils import import_utils
 
 from google.protobuf import json_format
@@ -63,6 +65,13 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   inputs_dict = executor_input.inputs.artifacts
   outputs_dict = executor_input.outputs.artifacts
   inputs_parameter = executor_input.inputs.parameters
+  outputs_parameters = executor_input.outputs.parameters
+
+  # Format {pipelineJob.runtimeConfig.gcsOutputDirectory}/{project_number}
+  #       /{pipeline_job_user_id}/{task_name}_{task_uuid}/executor_output.json
+  task_root = os.path.dirname(executor_input.outputs.output_file)
+  tmp_path = os.path.join(task_root, '.temp')
+  task_unique_id = os.path.basename(task_root)
 
   if fileio.exists(executor_input.outputs.output_file):
     # It has a driver that outputs the updated exec_properties in this file.
@@ -88,10 +97,12 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   executor_cls = import_utils.import_class_by_path(args.executor_class_path)
   if issubclass(executor_cls, base_beam_executor.BaseBeamExecutor):
     executor_context = base_beam_executor.BaseBeamExecutor.Context(
-        beam_pipeline_args=beam_args, unique_id='', tmp_dir='/tmp')
+        beam_pipeline_args=beam_args,
+        unique_id=task_unique_id,
+        tmp_dir=tmp_path)
   else:
     executor_context = base_executor.BaseExecutor.Context(
-        extra_flags=beam_args, unique_id='', tmp_dir='/tmp')
+        extra_flags=beam_args, unique_id=task_unique_id, tmp_dir=tmp_path)
   executor = executor_cls(executor_context)
   logging.info('Starting executor')
   executor.Do(inputs, outputs, exec_properties)
@@ -116,6 +127,26 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   for k, v in kubeflow_v2_entrypoint_utils.translate_executor_output(
       outputs, name_from_id).items():
     executor_output.artifacts[k].CopyFrom(v)
+
+  for key in outputs_parameters.keys():
+    if key not in outputs.keys():
+      raise ValueError(
+          'All OutputParameters must have corresponding OutputValueArtifacts.')
+    assert len(outputs[key]) == 1 and isinstance(
+        outputs[key][0], value_artifact.ValueArtifact), (
+            'Parameter should have one corresponding ValueArtifact.')
+    artifact = outputs[key][0]
+    if isinstance(artifact, standard_artifacts.String):
+      executor_output.parameter_values[key].string_value = artifact.read()
+    elif isinstance(artifact, standard_artifacts.Float) or isinstance(
+        artifact, standard_artifacts.Integer):
+      executor_output.parameter_values[key].number_value = artifact.read()
+    elif isinstance(artifact, standard_artifacts.Boolean):
+      executor_output.parameter_values[key].bool_value = artifact.read()
+    else:
+      raise ValueError(
+          'Only String, Float, Int, and Boolean ValueArtifacts are supported.'
+      )
 
   fileio.makedirs(os.path.dirname(metadata_uri))
   with fileio.open(metadata_uri, 'wb') as f:

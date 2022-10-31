@@ -31,8 +31,8 @@ message RunState {
     // Run successfully completed.
     COMPLETE = 3;
 
-    // Only applicable to nodes. Indicates that the node run was skipped
-    // (e.g. due to condition not satisfied when pipeline has conditionals).
+    // Only applicable to nodes. Indicates that the node run was skipped due to
+    // condition not satisfied when pipeline has conditionals.
     SKIPPED = 4;
 
     // Only applicable to nodes. Indicates that the node run was skipped due to
@@ -59,4 +59,7 @@ message RunState {
 
   StatusCodeValue status_code = 3;
   string status_msg = 2;
+
+  // Milliseconds since epoch when the RunState is created.
+  int64 update_time = 4;
 }

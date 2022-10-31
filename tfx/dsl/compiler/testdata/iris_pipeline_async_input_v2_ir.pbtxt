@@ -1,0 +1,1239 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+#
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/iris_pipeline_async.py
+
+pipeline_info {
+  id: "iris"
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.example_gen.csv_example_gen.component.CsvExampleGen"
+      }
+      id: "CsvExampleGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.CsvExampleGen"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+              base_type: DATASET
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "input_base"
+        value {
+          field_value {
+            string_value: "tfx_root/data_path"
+          }
+        }
+      }
+      parameters {
+        key: "input_config"
+        value {
+          field_value {
+            string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_config"
+        value {
+          field_value {
+            string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_data_format"
+        value {
+          field_value {
+            int_value: 6
+          }
+        }
+      }
+      parameters {
+        key: "output_file_format"
+        value {
+          field_value {
+            int_value: 5
+          }
+        }
+      }
+    }
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "StatisticsGen"
+    downstream_nodes: "Trainer"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.components.common.importer.Importer"
+      }
+      id: "my_importer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.my_importer"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "result"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+              base_type: DATASET
+            }
+            additional_properties {
+              key: "split_names"
+              value {
+                field_value {
+                  string_value: "[\'train\', \'eval\']"
+                }
+              }
+            }
+            additional_custom_properties {
+              key: "int_custom_property"
+              value {
+                field_value {
+                  int_value: 42
+                }
+              }
+            }
+            additional_custom_properties {
+              key: "str_custom_property"
+              value {
+                field_value {
+                  string_value: "42"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "artifact_uri"
+        value {
+          field_value {
+            string_value: "m/y/u/r/i"
+          }
+        }
+      }
+      parameters {
+        key: "output_key"
+        value {
+          field_value {
+            string_value: "result"
+          }
+        }
+      }
+      parameters {
+        key: "reimport"
+        value {
+          field_value {
+            int_value: 0
+          }
+        }
+      }
+    }
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.statistics_gen.component.StatisticsGen"
+        base_type: PROCESS
+      }
+      id: "StatisticsGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.StatisticsGen"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.CsvExampleGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+                base_type: DATASET
+              }
+            }
+            output_key: "examples"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "statistics"
+        value {
+          artifact_spec {
+            type {
+              name: "ExampleStatistics"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              base_type: STATISTICS
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+    }
+    upstream_nodes: "CsvExampleGen"
+    downstream_nodes: "ExampleValidator"
+    downstream_nodes: "SchemaGen"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.schema_gen.component.SchemaGen"
+        base_type: PROCESS
+      }
+      id: "SchemaGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.SchemaGen"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "statistics"
+        value {
+          channels {
+            producer_node_query {
+              id: "StatisticsGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.StatisticsGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ExampleStatistics"
+                base_type: STATISTICS
+              }
+            }
+            output_key: "statistics"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "schema"
+        value {
+          artifact_spec {
+            type {
+              name: "Schema"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+      parameters {
+        key: "infer_feature_shape"
+        value {
+          field_value {
+            int_value: 1
+          }
+        }
+      }
+    }
+    upstream_nodes: "StatisticsGen"
+    downstream_nodes: "ExampleValidator"
+    downstream_nodes: "Trainer"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.example_validator.component.ExampleValidator"
+      }
+      id: "ExampleValidator"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.ExampleValidator"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "schema"
+        value {
+          channels {
+            producer_node_query {
+              id: "SchemaGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.SchemaGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Schema"
+              }
+            }
+            output_key: "schema"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "statistics"
+        value {
+          channels {
+            producer_node_query {
+              id: "StatisticsGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.StatisticsGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ExampleStatistics"
+                base_type: STATISTICS
+              }
+            }
+            output_key: "statistics"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "anomalies"
+        value {
+          artifact_spec {
+            type {
+              name: "ExampleAnomalies"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+    }
+    upstream_nodes: "SchemaGen"
+    upstream_nodes: "StatisticsGen"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.trainer.component.Trainer"
+        base_type: TRAIN
+      }
+      id: "Trainer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.Trainer"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.CsvExampleGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+                base_type: DATASET
+              }
+            }
+            output_key: "examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "schema"
+        value {
+          channels {
+            producer_node_query {
+              id: "SchemaGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.SchemaGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Schema"
+              }
+            }
+            output_key: "schema"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "model"
+        value {
+          artifact_spec {
+            type {
+              name: "Model"
+              base_type: MODEL
+            }
+          }
+        }
+      }
+      outputs {
+        key: "model_run"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelRun"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "custom_config"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+      parameters {
+        key: "eval_args"
+        value {
+          field_value {
+            string_value: "{\n  \"num_steps\": 5\n}"
+          }
+        }
+      }
+      parameters {
+        key: "module_file"
+        value {
+          runtime_parameter {
+            name: "module_file"
+            type: STRING
+            default_value {
+              string_value: "iris_root/iris_utils.py"
+            }
+          }
+        }
+      }
+      parameters {
+        key: "train_args"
+        value {
+          field_value {
+            string_value: "{\n  \"num_steps\": 2000\n}"
+          }
+        }
+      }
+    }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "SchemaGen"
+    downstream_nodes: "Evaluator"
+    downstream_nodes: "Pusher"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.evaluator.component.Evaluator"
+        base_type: EVALUATE
+      }
+      id: "Evaluator"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.Evaluator"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "baseline_model"
+        value {
+          channels {
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.latest_blessed_model_resolver"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "baseline_model"
+          }
+        }
+      }
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.CsvExampleGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+                base_type: DATASET
+              }
+            }
+            output_key: "examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "model"
+        value {
+          channels {
+            producer_node_query {
+              id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.Trainer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "model"
+          }
+        }
+      }
+      resolver_config {
+        resolver_steps {
+          class_path: "tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy.LatestBlessedModelStrategy"
+          config_json: "{}"
+          input_keys: "baseline_model"
+          input_keys: "model_blessing"
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "blessing"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelBlessing"
+            }
+          }
+        }
+      }
+      outputs {
+        key: "evaluation"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelEvaluation"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "eval_config"
+        value {
+          field_value {
+            string_value: "{\n  \"metrics_specs\": [\n    {\n      \"thresholds\": {\n        \"sparse_categorical_accuracy\": {\n          \"change_threshold\": {\n            \"absolute\": -1e-10,\n            \"direction\": \"HIGHER_IS_BETTER\"\n          },\n          \"value_threshold\": {\n            \"lower_bound\": 0.6\n          }\n        }\n      }\n    }\n  ],\n  \"model_specs\": [\n    {\n      \"signature_name\": \"eval\"\n    }\n  ],\n  \"slicing_specs\": [\n    {}\n  ]\n}"
+          }
+        }
+      }
+      parameters {
+        key: "example_splits"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+      parameters {
+        key: "fairness_indicator_thresholds"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+    }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "Trainer"
+    downstream_nodes: "Pusher"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.pusher.component.Pusher"
+        base_type: DEPLOY
+      }
+      id: "Pusher"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "iris"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.Pusher"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "model"
+        value {
+          channels {
+            producer_node_query {
+              id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.Trainer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "model"
+          }
+        }
+      }
+      inputs {
+        key: "model_blessing"
+        value {
+          channels {
+            producer_node_query {
+              id: "Evaluator"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "iris"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.Evaluator"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ModelBlessing"
+              }
+            }
+            output_key: "blessing"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "pushed_model"
+        value {
+          artifact_spec {
+            type {
+              name: "PushedModel"
+              base_type: MODEL
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "custom_config"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+      parameters {
+        key: "push_destination"
+        value {
+          field_value {
+            string_value: "{\n  \"filesystem\": {\n    \"base_directory\": \"iris_root/serving_model/iris\"\n  }\n}"
+          }
+        }
+      }
+    }
+    upstream_nodes: "Evaluator"
+    upstream_nodes: "Trainer"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline-root"
+      type: STRING
+      default_value {
+        string_value: "tfx_root/pipelines/iris"
+      }
+    }
+  }
+}
+execution_mode: ASYNC
+deployment_config {
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "CsvExampleGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=bar"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=bar"
+            }
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "Evaluator"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.evaluator.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=bar"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=bar"
+            }
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "ExampleValidator"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_validator.executor.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "Pusher"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.pusher.executor.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "SchemaGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.schema_gen.executor.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "StatisticsGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=bar"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=bar"
+            }
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "Trainer"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.trainer.executor.GenericExecutor"
+        }
+      }
+    }
+    custom_driver_specs {
+      key: "CsvExampleGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_gen.driver.FileBasedDriver"
+        }
+      }
+    }
+    node_level_platform_configs {
+      key: "Trainer"
+      value {
+        [type.googleapis.com/tfx.components.trainer.TrainArgs] {
+          num_steps: 2000
+        }
+      }
+    }
+    pipeline_level_platform_config {
+      [type.googleapis.com/tfx.components.trainer.TrainArgs] {
+        num_steps: 2000
+      }
+    }
+  }
+}

@@ -16,8 +16,9 @@
 import copy
 import inspect
 import itertools
-from typing import Any, Dict, List, Optional, Type, cast, Mapping
+from typing import Any, Dict, List, Mapping, Optional, Type, cast
 
+from tfx.dsl.component.experimental.json_compat import check_strict_json_compat
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact
 from tfx.types import channel
@@ -184,6 +185,12 @@ class ComponentSpec(json_utils.Jsonable):
             ('INPUTS and OUTPUTS dicts expect values of type ChannelParameter, '
              ' got {}.').format(arg))
 
+    for arg_name, arg in cls.OUTPUTS.items():
+      if arg.allow_empty_explicitly_set:
+        raise TypeError(
+            'Output channels should not explicitly set allow_empty, but output '
+            'channel %s did.' % arg_name)
+
   def _parse_parameters(self, raw_args: Mapping[str, Any]):
     """Parse arguments to ComponentSpec."""
     unparsed_args = set(raw_args.keys())
@@ -215,9 +222,9 @@ class ComponentSpec(json_utils.Jsonable):
         continue
       value = raw_args[arg_name]
 
-      if (inspect.isclass(arg.type) and
-          issubclass(arg.type, message.Message) and value and
-          not _is_runtime_param(value)):
+      if (inspect.isclass(arg.type) and issubclass(arg.type, message.Message)
+          and value and not _is_runtime_param(value)) and not isinstance(
+              value, placeholder.Placeholder):
         if arg.use_proto:
           if isinstance(value, dict):
             value = proto_utils.dict_to_proto(value, arg.type())
@@ -246,9 +253,17 @@ class ComponentSpec(json_utils.Jsonable):
 
   @classmethod
   def is_optional_input(cls, key: str) -> bool:
-    """Whether the input channel of the key is optional."""
+    """Returns whether the input channel is optional."""
     try:
       return cast(ChannelParameter, cls.INPUTS[key]).optional
+    except KeyError as e:
+      raise KeyError(f'self.INPUTS = {cls.INPUTS}') from e
+
+  @classmethod
+  def is_allow_empty_input(cls, key: str) -> bool:
+    """Returns whether the input channel is allow_empty."""
+    try:
+      return cast(ChannelParameter, cls.INPUTS[key]).allow_empty
     except KeyError as e:
       raise KeyError(f'self.INPUTS = {cls.INPUTS}') from e
 
@@ -347,9 +362,16 @@ class ExecutionParameter:
       value = _make_default(value)
       if declared == Any:
         return
-      if declared.__class__.__name__ in ('_GenericAlias', 'GenericMeta'):
-        # Should be dict or list
-        if declared.__origin__ in [Dict, dict]:  # pylint: disable=protected-access
+      # pylint: disable=line-too-long
+      #            | Dict[X,Y]            | dict[X,Y]          | List[X]              | list[X]            |
+      # ====================================================================================================
+      # type()     | typing._GenericAlias | types.GenericAlias | typing._GenericAlias | types.GenericAlias |
+      # __origin__ | dict                 | dict               | list                 | list               |
+      # pylint: enable=line-too-long
+      # * types.GenericAlias was added in Python 3.9, and we use string
+      # comparisons as a walkaround for Python<3.9.
+      if type(declared).__name__ in ('_GenericAlias', 'GenericAlias'):  # pylint: disable=protected-access
+        if declared.__origin__ is dict:  # pylint: disable=protected-access
           key_type, val_type = declared.__args__[0], declared.__args__[1]
           if not isinstance(value, dict):
             raise TypeError('Expecting a dict for parameter %r, but got %s '
@@ -363,7 +385,7 @@ class ExecutionParameter:
               raise TypeError('Expecting value type %s for parameter %r, '
                               'but got %s instead.' %
                               (str(val_type), arg_name, type(v)))
-        elif declared.__origin__ in [List, list]:  # pylint: disable=protected-access
+        elif declared.__origin__ is list:  # pylint: disable=protected-access
           val_type = declared.__args__[0]
           if not isinstance(value, list):
             raise TypeError('Expecting a list for parameter %r, '
@@ -420,7 +442,26 @@ class ChannelParameter:
   def __init__(
       self,
       type: Optional[Type[artifact.Artifact]] = None,  # pylint: disable=redefined-builtin
-      optional: bool = False):
+      optional: bool = False,
+      allow_empty: Optional[bool] = None):
+    """ChannelParameter constructor.
+
+    Note the distinction between `optional` and `allow_empty`.
+
+    An illustrative example: a component may make it optional to provide a
+    specific channel C during pipeline definition time (i.e. set `optional` to
+    True). However, it may require that if the channel C is provided during
+    pipeline definition, during orchestration, the channel must have artifacts
+    before the component is triggered (i.e. set `allow_empty` to False).
+
+    Args:
+      type: Artifact type of artifacts in this channel.
+      optional: Whether providing this channel is optional.
+      allow_empty: Optional. Only applicable to input channels. Whether having
+        inputs to this channel is optional. Should only be explicitly set if
+        `optional` is True. For backwards compatibility, if `optional` is True
+        but this is not specified, we will treat this as True.
+    """
     if not (inspect.isclass(type) and issubclass(type, artifact.Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
           'Argument "type" of Channel constructor must be a subclass of '
@@ -428,17 +469,40 @@ class ChannelParameter:
     self.type = type
     self.optional = optional
 
+    if allow_empty is None:
+      # allow_empty not explicitly specified.
+      # * If optional is True, then default to True for backwards compatibility.
+      # * If optional is False, then set to False since the input should
+      #   be mandatory.
+      self.allow_empty_explicitly_set = False
+      allow_empty = optional
+    else:
+      # allow_empty explicitly specified
+      self.allow_empty_explicitly_set = True
+      if not optional:
+        raise ValueError('allow_empty should only be explictly set if '
+                         'optional is True')
+    self.allow_empty = allow_empty
+
   def __repr__(self):
     return 'ChannelParameter(type: %s)' % self.type
 
   def __eq__(self, other):
     return (isinstance(other.__class__, self.__class__) and
-            other.type == self.type and other.optional == self.optional)
+            other.type == self.type and other.optional == self.optional and
+            other.allow_empty == self.allow_empty)
 
-  def type_check(self, arg_name: str, value: channel.BaseChannel):
+  def type_check(self, arg_name: str, value: channel.BaseChannel):  # pylint: disable=missing-function-docstring
     if ((not isinstance(value, channel.BaseChannel)) or
         not (value.type is self.type or
              value.type.__name__ == self.type.__name__ or
              value.type in getattr(self.type, COMPATIBLE_TYPES_KEY, ()))):
       raise TypeError('Argument %s should be a Channel of type %r (got %s).' %
                       (arg_name, self.type, value))
+    expect_json_typehint = getattr(self, '_JSON_COMPAT_TYPEHINT', None)
+    if expect_json_typehint is not None:
+      in_json_typehint = getattr(value, '_JSON_COMPAT_TYPEHINT', None)
+      if not check_strict_json_compat(
+          in_type=in_json_typehint, expect_type=expect_json_typehint):
+        raise TypeError('Argument %s should be a Channel of type %r (got %s).' %
+                        (arg_name, expect_json_typehint, in_json_typehint))

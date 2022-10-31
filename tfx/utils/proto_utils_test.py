@@ -18,6 +18,7 @@ from tfx.utils import proto_utils
 from tfx.utils import test_case_utils
 from tfx.utils.testdata import foo_pb2
 
+from google.protobuf import any_pb2
 from google.protobuf import descriptor_pb2
 
 
@@ -34,9 +35,10 @@ class ProtoUtilsTest(test_case_utils.TfxTest):
     }
 
   def test_gather_file_descriptors(self):
-    fd_names = set()
-    for fd in proto_utils.gather_file_descriptors(foo_pb2.Foo.DESCRIPTOR):
-      fd_names.add(fd.name)
+    fd_names = {
+        fd.name for fd in proto_utils.gather_file_descriptors(
+            foo_pb2.Foo.DESCRIPTOR.file)
+    }
     self.assertEqual(
         fd_names, {
             'tfx/utils/testdata/bar.proto',
@@ -151,7 +153,7 @@ class ProtoUtilsTest(test_case_utils.TfxTest):
     ]
     actual_file_descriptor = descriptor_pb2.FileDescriptorSet()
     proto_utils.build_file_descriptor_set(foo_pb2.Foo, actual_file_descriptor)
-    self.assertEqual(len(actual_file_descriptor.file), 2)
+    self.assertLen(actual_file_descriptor.file, 2)
     actual_file_descriptor_sorted = sorted(
         list(actual_file_descriptor.file), key=lambda fd: fd.name)
     for expected, actual in zip(expected_file_descriptor_list,
@@ -171,6 +173,12 @@ class ProtoUtilsTest(test_case_utils.TfxTest):
         proto_utils.deserialize_proto_message(serialized_message, message_type,
                                               fd_set))
 
+  def test_unpack_proto_any(self):
+    original_proto = foo_pb2.TestProto(string_value='x')
+    any_proto = any_pb2.Any()
+    any_proto.Pack(original_proto)
+    unpacked_proto = proto_utils.unpack_proto_any(any_proto)
+    self.assertEqual(unpacked_proto.string_value, 'x')
 
 if __name__ == '__main__':
   tf.test.main()

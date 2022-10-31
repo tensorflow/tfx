@@ -21,13 +21,13 @@ from typing import Dict, List
 from absl import logging
 from kubernetes import client
 from tfx.dsl.components.base import base_node
+from tfx.dsl.context_managers import dsl_context_registry
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.experimental.kubernetes import node_wrapper
 from tfx.utils import json_utils
 from tfx.utils import kube_utils
 
 from google.protobuf import json_format
-
 from ml_metadata.proto import metadata_store_pb2
 
 _ORCHESTRATOR_COMMAND = [
@@ -227,6 +227,9 @@ def deserialize_pipeline(serialized_pipeline: str) -> tfx_pipeline.Pipeline:
   components = [
       json_utils.loads(component) for component in pipeline['components']
   ]
+  for c in components:
+    dsl_context_registry.get().put_node(c)
+
   metadata_connection_config = metadata_store_pb2.ConnectionConfig()
   json_format.Parse(pipeline['metadata_connection_config'],
                     metadata_connection_config)

@@ -255,7 +255,6 @@ def _RunInference(
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(prediction_log_pb2.PredictionLog)
-@beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteExamples(prediction_log: beam.pvalue.PCollection,
                    output_example_spec: bulk_inferrer_pb2.OutputExampleSpec,
                    output_path: str) -> beam.pvalue.PDone:

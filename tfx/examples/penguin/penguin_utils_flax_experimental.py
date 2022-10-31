@@ -32,7 +32,6 @@ from typing import Callable, Dict, List
 
 import absl
 
-import flax
 from flax import linen as nn
 from flax.metrics import tensorboard
 
@@ -40,6 +39,7 @@ import jax
 from jax import numpy as jnp
 from jax.experimental import jax2tf
 import numpy as np
+import optax
 
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -103,16 +103,17 @@ def _make_trained_model(train_data: tf.data.Dataset,
   model = _FlaxPenguinModel()
   params = model.init(init_rng, init_val)['params']
 
-  optimizer_def = flax.optim.Adam(learning_rate=learning_rate)
-  optimizer = optimizer_def.create(params)
+  tx = optax.adam(learning_rate=learning_rate)
+  opt_state = tx.init(params)
 
   for epoch in range(1, num_epochs + 1):
-    optimizer, train_metrics = _train_epoch(model, optimizer, train_data,
-                                            steps_per_epoch)
+    params, opt_state, train_metrics = _train_epoch(model, tx,
+                                                    params, opt_state,
+                                                    train_data, steps_per_epoch)
     absl.logging.info('Flax train epoch: %d, loss: %.4f, accuracy: %.2f', epoch,
                       train_metrics['loss'], train_metrics['accuracy'] * 100)
 
-    eval_metrics = _eval_epoch(model, optimizer.target, eval_data,
+    eval_metrics = _eval_epoch(model, params, eval_data,
                                eval_steps_per_epoch)
     absl.logging.info('Flax eval epoch: %d, loss: %.4f, accuracy: %.2f', epoch,
                       eval_metrics['loss'], eval_metrics['accuracy'] * 100)
@@ -129,7 +130,7 @@ def _make_trained_model(train_data: tf.data.Dataset,
   def predict(params: _Params, inputs: _InputBatch):
     return model.apply({'params': params}, inputs)
 
-  trained_params = optimizer.target
+  trained_params = params
 
   # Convert the prediction function to TF, with a variable batch dimension
   # for all inputs.
@@ -174,14 +175,16 @@ class _FlaxPenguinModel(nn.Module):
     return x
 
 
-def _train_epoch(model: _FlaxPenguinModel, optimizer: flax.optim.OptimizerDef,
+def _train_epoch(model: _FlaxPenguinModel, tx: optax.GradientTransformation,
+                 params: _Params, opt_state: optax.OptState,
                  train_data: tf.data.Dataset,
                  steps_per_epoch: int):
   """Train for a single epoch."""
   batch_metrics = []
   steps = 0
   for inputs, labels in train_data.as_numpy_iterator():
-    optimizer, metrics = _train_step(model, optimizer, inputs, labels)
+    params, opt_state, metrics = _train_step(model, tx, params, opt_state,
+                                             inputs, labels)
     batch_metrics.append(metrics)
     steps += 1
     if steps == steps_per_epoch:
@@ -189,7 +192,7 @@ def _train_epoch(model: _FlaxPenguinModel, optimizer: flax.optim.OptimizerDef,
 
   # compute mean of metrics across each batch in epoch.
   epoch_metrics_np = _mean_epoch_metrics(jax.device_get(batch_metrics))
-  return optimizer, epoch_metrics_np
+  return params, opt_state, epoch_metrics_np
 
 
 def _eval_epoch(model: _FlaxPenguinModel, params: _Params,
@@ -209,8 +212,9 @@ def _eval_epoch(model: _FlaxPenguinModel, params: _Params,
   return _mean_epoch_metrics(jax.device_get(batch_metrics))
 
 
-@functools.partial(jax.jit, static_argnums=0)
-def _train_step(model: _FlaxPenguinModel, optimizer: flax.optim.OptimizerDef,
+@functools.partial(jax.jit, static_argnums=(0, 1))
+def _train_step(model: _FlaxPenguinModel, tx: optax.GradientTransformation,
+                params: _Params, opt_state: optax.OptState,
                 inputs: _InputBatch, labels: _LabelBatch):
   """Train for a single step, given a batch of inputs and labels."""
 
@@ -220,10 +224,11 @@ def _train_step(model: _FlaxPenguinModel, optimizer: flax.optim.OptimizerDef,
     return loss, logits
 
   grad_fn = jax.value_and_grad(loss_fn, has_aux=True)
-  (_, logits), grad = grad_fn(optimizer.target)
-  optimizer = optimizer.apply_gradient(grad)
+  (_, logits), grads = grad_fn(params)
+  updates, opt_state = tx.update(grads, opt_state)
+  params = optax.apply_updates(params, updates)
   metrics = _compute_metrics(logits, labels)
-  return optimizer, metrics
+  return params, opt_state, metrics
 
 
 @functools.partial(jax.jit, static_argnums=0)

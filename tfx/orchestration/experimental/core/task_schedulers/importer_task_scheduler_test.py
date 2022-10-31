@@ -14,15 +14,14 @@
 """Tests for tfx.orchestration.experimental.core.task_schedulers.importer_task_scheduler."""
 
 import os
+from unittest import mock
 import uuid
 
-from absl.testing.absltest import mock
 import tensorflow as tf
-from tfx import version as tfx_version
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
-from tfx.orchestration.experimental.core import task_manager as tm
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler
 from tfx.orchestration.experimental.core import test_utils
@@ -37,11 +36,9 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
   def setUp(self):
     super().setUp()
 
+    self.addCleanup(mock.patch.stopall)
     # Set a constant version for artifact version tag.
-    patcher = mock.patch('tfx.version.__version__')
-    patcher.start()
-    tfx_version.__version__ = '0.123.4.dev'
-    self.addCleanup(patcher.stop)
+    mock.patch('tfx.version.__version__', '0.123.4.dev').start()
 
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -91,7 +88,8 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
           task=self._importer_task).schedule()
       self.assertEqual(status_lib.Code.OK, ts_result.status.code)
       self.assertIsInstance(ts_result.output, task_scheduler.ImporterNodeOutput)
-      tm._publish_execution_results(m, self._importer_task, ts_result)
+      post_execution_utils.publish_execution_results_for_task(
+          m, self._importer_task, ts_result)
       [artifact] = m.store.get_artifacts_by_type('Schema')
       self.assertProtoPartiallyEquals(
           """
@@ -100,6 +98,12 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
             key: "int_custom_property"
             value {
               int_value: 123
+            }
+          }
+          custom_properties {
+            key: "is_external"
+            value {
+              int_value: 1
             }
           }
           custom_properties {
@@ -134,9 +138,21 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
             }
           }
           custom_properties {
+            key: "__external_execution_index__"
+            value {
+              int_value: 0
+            }
+          }
+          custom_properties {
             key: "artifact_uri"
             value {
               string_value: "my_url"
+            }
+          }
+          custom_properties {
+            key: "output_key"
+            value {
+              string_value: "result"
             }
           }
           custom_properties {

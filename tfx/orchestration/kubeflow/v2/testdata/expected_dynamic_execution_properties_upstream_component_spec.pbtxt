@@ -1,0 +1,28 @@
+# proto-file: tfx/orchestration/kubeflow/v2/testdata/expected_dynamic_execution_properties.pbtxt
+# proto-message: ComponentSpec
+
+input_definitions {
+  parameters {
+    key: "input_date"
+    value {
+      type: STRING
+    }
+  }
+}
+output_definitions {
+  artifacts {
+    key: "range_config"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.String\ntype: object\n"
+      }
+    }
+  }
+  parameters {
+    key: "range_config"
+    value {
+      parameter_type: STRING
+    }
+  }
+}
+executor_label: "range_config_generator_executor"

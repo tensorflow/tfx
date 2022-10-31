@@ -21,6 +21,7 @@ from unittest import mock
 
 import tensorflow as tf
 from tfx import version
+from tfx.dsl.components.base import base_component
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 from tfx.orchestration.kubeflow.v2 import test_utils
@@ -80,13 +81,17 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
         pipeline=test_utils.two_step_pipeline(),
         golden_file='expected_two_step_pipeline_job.json')
 
+  @mock.patch.object(base_component.BaseComponent, '_resolve_pip_dependencies')
   @mock.patch('sys.version_info')
   @mock.patch(
       'tfx.orchestration.kubeflow.v2.kubeflow_v2_dag_runner._get_current_time')
-  def testCompileFullTaxiPipeline(self, fake_now, fake_sys_version):
+  def testCompileFullTaxiPipeline(self, fake_now, fake_sys_version,
+                                  moke_resolve_dependencies):
     fake_now.return_value = datetime.date(2020, 1, 1)
     fake_sys_version.major = 3
     fake_sys_version.minor = 7
+    moke_resolve_dependencies.return_value = None
+
     runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
         output_dir=_TEST_DIR,
         output_filename=_TEST_FILE_NAME,
@@ -98,7 +103,7 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
         runner=runner,
         pipeline=test_utils.full_taxi_pipeline(),
         golden_file='expected_full_taxi_pipeline_job.json')
-
+    moke_resolve_dependencies.assert_called()
 
 if __name__ == '__main__':
   tf.test.main()

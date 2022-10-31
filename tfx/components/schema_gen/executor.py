@@ -19,6 +19,7 @@ from typing import Any, Dict, List
 from absl import logging
 import tensorflow_data_validation as tfdv
 from tfx import types
+from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.dsl.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
@@ -38,13 +39,12 @@ class Executor(base_executor.BaseExecutor):
          exec_properties: Dict[str, Any]) -> None:
     """TensorFlow SchemaGen executor entrypoint.
 
-    This infers the schema using tensorflow_data_validation on the precomputed
-    stats of 'train' split.
+    This infers the schema using tensorflow_data_validation on precomputed
+    stats.
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - 'statistics': A list of 'ExampleStatistics' type which must contain
-          split 'train'.
+        - 'statistics': A list of 'ExampleStatistics' type.
       output_dict: Output dict from key to a list of artifacts, including:
         - schema: A list of 'Schema' artifact of size one.
       exec_properties: A dict of execution properties, includes:
@@ -74,19 +74,16 @@ class Executor(base_executor.BaseExecutor):
     for split in artifact_utils.decode_split_names(stats_artifact.split_names):
       if split in exclude_splits:
         continue
-
       logging.info('Processing schema from statistics for split %s.', split)
-      stats_uri = io_utils.get_only_uri_in_dir(
-          artifact_utils.get_split_uri([stats_artifact], split))
-      if artifact_utils.is_artifact_version_older_than(
-          stats_artifact, artifact_utils._ARTIFACT_VERSION_FOR_STATS_UPDATE):  # pylint: disable=protected-access
-        stats = tfdv.load_statistics(stats_uri)
-      else:
-        stats = tfdv.load_stats_binary(stats_uri)
+      stats = stats_artifact_utils.load_statistics(stats_artifact,
+                                                   split).proto()
       if not schema:
         schema = tfdv.infer_schema(stats, infer_feature_shape)
       else:
         schema = tfdv.update_schema(schema, stats, infer_feature_shape)
+    if schema is None:
+      raise ValueError('No input splits for stats artifact: %s' %
+                       stats_artifact)
 
     output_uri = os.path.join(
         artifact_utils.get_single_uri(

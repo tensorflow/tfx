@@ -49,7 +49,8 @@ def parse_serving_binaries(  # pylint: disable=invalid-name
 class ServingBinary(abc.ABC):
   """Base class for serving binaries."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def container_port(self) -> int:
     """Container port of the model server.
 
@@ -58,7 +59,8 @@ class ServingBinary(abc.ABC):
     raise NotImplementedError('{} is not docker compatible.'.format(
         type(self).__name__))
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def image(self) -> str:
     """Container image of the model server.
 
@@ -152,7 +154,8 @@ class TensorFlowServing(ServingBinary):
       model_base_path = tf_serving_flavor.parse_model_base_path(model_path)
     return {
         'MODEL_NAME': self._model_name,
-        'MODEL_BASE_PATH': model_base_path
+        'MODEL_BASE_PATH': model_base_path,
+        'TF_CPP_MAX_VLOG_LEVEL': '3',
     }
 
   def MakeDockerRunParams(self, model_path: str,

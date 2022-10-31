@@ -54,9 +54,9 @@ def make_pipeline_sdk_required_install_packages():
       'absl-py>=0.9,<2.0.0',
       'ml-metadata' + select_constraint(
           # LINT.IfChange
-          default='>=1.7.0,<1.8.0',
+          default='>=1.10.0,<1.11.0',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=1.8.0.dev',
+          nightly='>=1.11.0.dev',
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
@@ -66,6 +66,10 @@ def make_pipeline_sdk_required_install_packages():
       'google-api-python-client>=1.8,<2',
       # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
       'jinja2>=2.7.3,<4',
+      # typing-extensions allows consistent & future-proof interface for typing.
+      # Since kfp<2 uses typing-extensions<4, lower bound is the latest 3.x, and
+      # upper bound is <5 as the semver started from 4.0 according to their doc.
+      'typing-extensions>=3.10.0.2,<5',
   ]
 
 
@@ -73,42 +77,48 @@ def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
-      'apache-beam[gcp]>=2.36,<3',
-      'attrs>=19.3.0,<21',
+      'apache-beam[gcp]>=2.40,<3',
+      'attrs>=19.3.0,<22',
       'click>=7,<8',
-      'google-cloud-aiplatform>=1.6.2,<2',
+      # TODO(b/245393802): Remove pinned version when pip can find depenencies
+      # without this. `google-api-core` is needed for many google cloud
+      # packages. `google-api-core==1.33.0` and
+      # `google-cloud-aiplatform==1.18.0` requires
+      # `protobuf>=3.20.1` while `tensorflow` requires `protobuf<3.20`.
+      'google-api-core<1.33',
+      'google-cloud-aiplatform>=1.6.2,<1.18',
       'google-cloud-bigquery>=2.26.0,<3',
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2',
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
-      'pyarrow>=1,<6',
+      'pyarrow>=6,<7',
       'pyyaml>=3.12,<6',
       # Keep the TF version same as TFT to help Pip version resolution.
       # Pip might stuck in a TF 1.15 dependency although there is a working
       # dependency set with TF 2.x without the sync.
       # pylint: disable=line-too-long
       'tensorflow' + select_constraint(
-          '>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,<2.9'),
+          '>=1.15.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<2.11'),
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
-          default='>=1.7.0,<1.8.0',
-          nightly='>=1.8.0.dev',
+          default='>=1.10.0,<1.11.0',
+          nightly='>=1.11.0.dev',
           git_master='@git+https://github.com/tensorflow/data-validation@master'
       ),
       'tensorflow-model-analysis' + select_constraint(
-          default='>=0.38.0,<0.39',
-          nightly='>=0.39.0.dev',
+          default='>=0.41.0,<0.42.0',
+          nightly='>=0.42.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master'),
-      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,<3',
+      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3',
       'tensorflow-transform' + select_constraint(
-          default='>=1.7.0,<1.8.0',
-          nightly='>=1.8.0.dev',
+          default='>=1.10.1,<1.11.0',
+          nightly='>=1.11.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master'),
       'tfx-bsl' + select_constraint(
-          default='>=1.7.0,<1.8.0',
-          nightly='>=1.8.0.dev',
+          default='>=1.10.1,<1.11.0',
+          nightly='>=1.11.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
   ]
 
@@ -156,13 +166,21 @@ def make_extra_packages_tfjs():
   ]
 
 
+def make_extra_packages_tflite_support():
+  # Required for tfx/examples/cifar10
+  return [
+      'flatbuffers>=1.12,<3',
+      'tflite-support>=0.4.2,<0.4.3',
+  ]
+
+
 def make_extra_packages_tf_ranking():
   # Packages needed for tf-ranking which is used in tfx/examples/ranking.
   return [
-      'tensorflow-ranking>=0.3.3,<0.4',
+      'tensorflow-ranking>=0.5,<0.6',
       'struct2tensor' + select_constraint(
-          default='>=0.38,<0.39',
-          nightly='>=0.39.0.dev',
+          default='>=0.41,<0.42',
+          nightly='>=0.42.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
   ]
 
@@ -171,8 +189,20 @@ def make_extra_packages_tfdf():
   # Packages needed for tensorflow-decision-forests.
   # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
   return [
-      # NOTE: TFDF 0.2.4 is only compatible with TF 2.8.x.
-      'tensorflow-decision-forests==0.2.4',
+      # NOTE: TFDF 1.0.1 is only compatible with TF 2.10.x.
+      'tensorflow-decision-forests==1.0.1',
+  ]
+
+
+def make_extra_packages_flax():
+  # Packages needed for the flax example.
+  # Required for the experimental tfx/examples using Flax, e.g.,
+  # tfx/examples/penguin.
+  return [
+      'jax<1',
+      'jaxlib<1',
+      'flax<1',
+      'optax<1',
   ]
 
 
@@ -188,20 +218,11 @@ def make_extra_packages_examples():
       'websocket-client>=0.57,<1',
       # Required for bert examples in tfx/examples/bert
       'tensorflow-text>=1.15.1,<3',
-      # Required for tfx/examples/cifar10
-      'flatbuffers>=1.12,<3',
-      'tflite-support>=0.1.0a1,<0.2.1',
       # Required for tfx/examples/penguin/experimental
       # LINT.IfChange
       'scikit-learn>=0.23,<0.24',
       # LINT.ThenChange(
       #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
-      # Required for the experimental tfx/examples using Flax, e.g.,
-      # tfx/examples/penguin.
-      # TODO(b/193362300): Unblock the version cap after TF 2.7 becomes minimum.
-      'jax>=0.2.13,<0.2.17',
-      'jaxlib>=0.1.64,<0.2',
-      'flax>=0.3.3,<0.4',
       # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
       'tensorflow-cloud>=0.1,<0.2',
   ]
@@ -212,7 +233,9 @@ def make_extra_packages_all():
   return [
       *make_extra_packages_test(),
       *make_extra_packages_tfjs(),
+      *make_extra_packages_tflite_support(),
       *make_extra_packages_tf_ranking(),
       *make_extra_packages_tfdf(),
+      *make_extra_packages_flax(),
       *make_extra_packages_examples(),
   ]

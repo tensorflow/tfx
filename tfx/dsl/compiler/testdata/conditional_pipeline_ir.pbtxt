@@ -1,8 +1,8 @@
 # proto-file: tfx/proto/orchestration/pipeline.proto
 # proto-message: Pipeline
 #
-# This file contains the IR of an adapted Iris example pipeline
-# tfx/examples/iris/iris_pipeline_beam.py
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/conditional_pipeline.py
 
 pipeline_info {
   id: "cond"
@@ -1295,6 +1295,11 @@ deployment_config {
             class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=foo"
+            }
+          }
         }
       }
     }
@@ -1306,6 +1311,11 @@ deployment_config {
             class_path: "tfx.components.evaluator.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=foo"
+            }
+          }
         }
       }
     }
@@ -1341,6 +1351,11 @@ deployment_config {
             class_path: "tfx.components.statistics_gen.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=foo"
+            }
+          }
         }
       }
     }

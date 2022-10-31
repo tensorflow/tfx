@@ -73,14 +73,12 @@ DEFAULT_DRIVER_OPERATORS = {
         python_driver_operator.PythonDriverOperator
 }
 
-# LINT.IfChange
 _SYSTEM_NODE_HANDLERS = {
     'tfx.dsl.components.common.importer.Importer':
         importer_node_handler.ImporterNodeHandler,
     'tfx.dsl.components.common.resolver.Resolver':
         resolver_node_handler.ResolverNodeHandler,
 }
-# LINT.ThenChange(Internal system node list)
 
 _ERROR_CODE_UNIMPLEMENTED: int = grpc.StatusCode.UNIMPLEMENTED.value[0]
 
@@ -258,10 +256,14 @@ class Launcher:
               node_parameters=self._pipeline_node.parameters))
 
       try:
-        resolved_inputs = inputs_utils.resolve_input_artifacts_v2(
+        resolved_inputs = inputs_utils.resolve_input_artifacts(
             pipeline_node=self._pipeline_node,
             metadata_handler=m)
+        logging.info('[%s] Resolved inputs: %s',
+                     self._pipeline_node.node_info.id, resolved_inputs)
       except exceptions.InputResolutionError as e:
+        logging.exception('[%s] Input resolution error: %s',
+                          self._pipeline_node.node_info.id, e)
         execution = self._register_or_reuse_execution(
             metadata_handler=m,
             contexts=contexts,
@@ -311,7 +313,29 @@ class Launcher:
 
       input_artifacts = resolved_inputs[0]
 
-      # 4. Registers execution in metadata.
+      # 4. Resolve the dynamic exec properties from implicit input channels.
+      try:
+        dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
+            node_parameters=self._pipeline_node.parameters,
+            input_artifacts=input_artifacts)
+        exec_properties.update(dynamic_exec_properties)
+      except exceptions.InputResolutionError as e:
+        execution = self._register_or_reuse_execution(
+            metadata_handler=m,
+            contexts=contexts,
+            exec_properties=exec_properties)
+        if not execution_lib.is_execution_successful(execution):
+          self._publish_failed_execution(
+              execution_id=execution.id,
+              contexts=contexts,
+              executor_output=self._build_error_output(code=e.grpc_code_value))
+        return _ExecutionPreparationResult(
+            execution_info=self._build_execution_info(
+                execution_id=execution.id),
+            contexts=contexts,
+            is_execution_needed=False)
+
+      # 5. Registers execution in metadata.
       execution = self._register_or_reuse_execution(
           metadata_handler=m,
           contexts=contexts,
@@ -324,7 +348,7 @@ class Launcher:
             contexts=contexts,
             is_execution_needed=False)
 
-      # 5. Resolve output
+      # 6. Resolve output
       output_artifacts = self._output_resolver.generate_output_artifacts(
           execution.id)
 
@@ -343,7 +367,7 @@ class Launcher:
     # We reconnect to MLMD here because the custom driver closes MLMD connection
     # on returning.
     with self._mlmd_connection as m:
-      # 6. Check cached result
+      # 7. Check cached result
       cache_context = cache_utils.get_cache_context(
           metadata_handler=m,
           pipeline_node=self._pipeline_node,
@@ -354,7 +378,7 @@ class Launcher:
           parameters=exec_properties)
       contexts.append(cache_context)
 
-      # 7. Should cache be used?
+      # 8. Should cache be used?
       if self._pipeline_node.execution_options.caching_options.enable_cache:
         cached_outputs = cache_utils.get_cached_outputs(
             metadata_handler=m, cache_context=cache_context)
@@ -365,7 +389,7 @@ class Launcher:
               contexts=contexts,
               execution_id=execution.id,
               output_artifacts=cached_outputs)
-          logging.info('An cached execusion %d is used.', execution.id)
+          logging.info('A cached execution %d is used.', execution.id)
           return _ExecutionPreparationResult(
               execution_info=self._build_execution_info(
                   execution_id=execution.id,
@@ -376,7 +400,7 @@ class Launcher:
               contexts=contexts,
               is_execution_needed=False)
 
-      # 8. Going to trigger executor.
+      # 9. Going to trigger executor.
       logging.info('Going to run a new execution %d', execution.id)
       return _ExecutionPreparationResult(
           execution_info=self._build_execution_info(

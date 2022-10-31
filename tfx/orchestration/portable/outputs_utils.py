@@ -14,19 +14,22 @@
 """Portable library for output artifacts resolution including caching decision."""
 
 import collections
+import copy
 import datetime
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 from absl import logging
 from tfx import types
 from tfx import version
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
+from tfx.orchestration import node_proto_view
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.types.value_artifact import ValueArtifact
+from tfx.utils import proto_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -43,6 +46,9 @@ def make_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
   """Make dirs for output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
+      # Omit lifecycle management for external artifacts.
+      if artifact.is_external:
+        continue
       if isinstance(artifact, ValueArtifact):
         # If this is a ValueArtifact, create the file if it does not exist.
         if not fileio.exists(artifact.uri):
@@ -61,6 +67,9 @@ def remove_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
   """Remove dirs of output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
+      # Omit lifecycle management for external artifacts.
+      if artifact.is_external:
+        continue
       if fileio.isdir(artifact.uri):
         fileio.rmtree(artifact.uri)
       else:
@@ -71,6 +80,9 @@ def clear_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
   """Clear dirs of output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
+      # Omit lifecycle management for external artifacts.
+      if artifact.is_external:
+        continue
       if fileio.isdir(artifact.uri) and fileio.listdir(artifact.uri):
         fileio.rmtree(artifact.uri)
         fileio.mkdir(artifact.uri)
@@ -101,8 +113,14 @@ def _attach_artifact_properties(spec: pipeline_pb2.OutputSpec.ArtifactSpec,
   for key, value in spec.additional_properties.items():
     if not value.HasField('field_value'):
       raise RuntimeError('Property value is not a field_value for %s' % key)
-    setattr(artifact, key,
-            data_types_utils.get_metadata_value(value.field_value))
+    if value.field_value.HasField('proto_value'):
+      # Proto properties need to be unpacked from the google.protobuf.Any
+      # message to its concrete message before setting the artifact property
+      property_value = proto_utils.unpack_proto_any(
+          value.field_value.proto_value)
+    else:
+      property_value = data_types_utils.get_metadata_value(value.field_value)
+    setattr(artifact, key, property_value)
 
   for key, value in spec.additional_custom_properties.items():
     if not value.HasField('field_value'):
@@ -114,6 +132,9 @@ def _attach_artifact_properties(spec: pipeline_pb2.OutputSpec.ArtifactSpec,
       artifact.set_string_custom_property(key, value.field_value.string_value)
     elif value_type == 'double_value':
       artifact.set_float_custom_property(key, value.field_value.double_value)
+    elif value_type == 'proto_value':
+      proto_value = proto_utils.unpack_proto_any(value.field_value.proto_value)
+      artifact.set_proto_custom_property(key, proto_value)
     else:
       raise RuntimeError(f'Unexpected value_type: {value_type}')
 
@@ -122,7 +143,8 @@ class OutputsResolver:
   """This class has methods to handle launcher output related logic."""
 
   def __init__(self,
-               pipeline_node: pipeline_pb2.PipelineNode,
+               pipeline_node: Union[pipeline_pb2.PipelineNode,
+                                    node_proto_view.NodeProtoView],
                pipeline_info: pipeline_pb2.PipelineInfo,
                pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
                execution_mode: 'pipeline_pb2.Pipeline.ExecutionMode' = (
@@ -140,30 +162,10 @@ class OutputsResolver:
   def generate_output_artifacts(
       self, execution_id: int) -> Dict[str, List[types.Artifact]]:
     """Generates output artifacts given execution_id."""
-    output_artifacts = collections.defaultdict(list)
-    for key, output_spec in self._pipeline_node.outputs.outputs.items():
-      artifact = artifact_utils.deserialize_artifact(
-          output_spec.artifact_spec.type)
-      artifact.uri = os.path.join(self._node_dir, key, str(execution_id))
-      if isinstance(artifact, ValueArtifact):
-        artifact.uri = os.path.join(artifact.uri, _VALUE_ARTIFACT_FILE_NAME)
-      # artifact.name will contain the set of information to track its creation
-      # and is guaranteed to be idempotent across retires of a node.
-      artifact_name = f'{self._pipeline_info.id}'
-      if self._execution_mode == pipeline_pb2.Pipeline.SYNC:
-        artifact_name = f'{artifact_name}:{self._pipeline_run_id}'
-      # The index of this artifact, since we only has one artifact per output
-      # for now, it is always 0.
-      # TODO(b/162331170): Update the "0" to the actual index.
-      artifact_name = (
-          f'{artifact_name}:{self._pipeline_node.node_info.id}:{key}:0')
-      artifact.name = artifact_name
-      _attach_artifact_properties(output_spec.artifact_spec, artifact)
-
-      logging.debug('Creating output artifact uri %s', artifact.uri)
-      output_artifacts[key].append(artifact)
-
-    return output_artifacts
+    return generate_output_artifacts(
+        execution_id=execution_id,
+        outputs=self._pipeline_node.outputs.outputs,
+        node_dir=self._node_dir)
 
   def get_executor_output_uri(self, execution_id: int) -> str:
     """Generates executor output uri given execution_id."""
@@ -199,40 +201,112 @@ class OutputsResolver:
       ValueError: If execution_id is not provided and execution_mode of the
         pipeline is not SYNC.
     """
-    if (execution_id is None and
-        self._execution_mode != pipeline_pb2.Pipeline.SYNC):
-      raise ValueError(
-          'Cannot create stateful working dir if execution id is `None` and '
-          'the execution mode of the pipeline is not `SYNC`.')
-
-    if execution_id is None:
-      dir_suffix = self._pipeline_run_id
-    else:
-      dir_suffix = str(execution_id)
-
-    # TODO(b/150979622): We should introduce an id that is not changed across
-    # retries of the same component run to provide better isolation between
-    # "retry" and "new execution". When it is available, introduce it into
-    # stateful working directory.
-    # NOTE: If this directory structure is changed, please update
-    # the remove_stateful_working_dir function in this file accordingly.
-    stateful_working_dir = os.path.join(self._node_dir, _SYSTEM,
-                                        _STATEFUL_WORKING_DIR,
-                                        dir_suffix)
-    try:
-      fileio.makedirs(stateful_working_dir)
-    except Exception:  # pylint: disable=broad-except
-      logging.exception('Failed to make stateful working dir: %s',
-                        stateful_working_dir)
-      raise
-    return stateful_working_dir
+    return get_stateful_working_directory(self._node_dir, self._execution_mode,
+                                          self._pipeline_run_id, execution_id)
 
   def make_tmp_dir(self, execution_id: int) -> str:
     """Generates a temporary directory."""
-    result = os.path.join(self._node_dir, _SYSTEM, _EXECUTOR_EXECUTION,
-                          str(execution_id), '.temp', '')
-    fileio.makedirs(result)
-    return result
+    return make_tmp_dir(self._node_dir, execution_id)
+
+
+def _generate_output_artifact(
+    output_spec: pipeline_pb2.OutputSpec) -> types.Artifact:
+  """Generates each output artifact given output_spec."""
+  artifact = artifact_utils.deserialize_artifact(
+      output_spec.artifact_spec.type)
+  _attach_artifact_properties(output_spec.artifact_spec, artifact)
+
+  return artifact
+
+
+def generate_output_artifacts(execution_id: int,
+                              outputs: Mapping[str, pipeline_pb2.OutputSpec],
+                              node_dir: str) -> Dict[str, List[types.Artifact]]:
+  """Generates output artifacts."""
+  output_artifacts = collections.defaultdict(list)
+  for key, output_spec in outputs.items():
+    artifact = _generate_output_artifact(output_spec)
+    if output_spec.artifact_spec.external_artifact_uris:
+      for external_uri in output_spec.artifact_spec.external_artifact_uris:
+        external_artifact = copy.deepcopy(artifact)
+        external_artifact.uri = external_uri
+        external_artifact.is_external = True
+
+        logging.debug('Creating external output artifact uri %s',
+                      external_artifact.uri)
+        output_artifacts[key].append(external_artifact)
+
+    else:
+      artifact.uri = os.path.join(node_dir, key, str(execution_id))
+      if isinstance(artifact, ValueArtifact):
+        artifact.uri = os.path.join(artifact.uri, _VALUE_ARTIFACT_FILE_NAME)
+
+      logging.debug('Creating output artifact uri %s', artifact.uri)
+      output_artifacts[key].append(artifact)
+
+  return output_artifacts
+
+
+def get_stateful_working_directory(node_dir: str,
+                                   execution_mode: pipeline_pb2.Pipeline
+                                   .ExecutionMode = pipeline_pb2.Pipeline.SYNC,
+                                   pipeline_run_id: str = '',
+                                   execution_id: Optional[int] = None) -> str:
+  """Generates stateful working directory.
+
+  Args:
+    node_dir: The root directory of the node.
+    execution_mode: Execution mode of the pipeline.
+    pipeline_run_id: Optional pipeline_run_id, only available if execution mode
+      is SYNC.
+    execution_id: An optional execution id which will be used as part of the
+      stateful working dir path if provided. The stateful working dir path will
+      be <node_dir>/.system/stateful_working_dir/<execution_id>. If execution_id
+      is not provided, for backward compatibility purposes, <pipeline_run_id> is
+      used instead of <execution_id> but an error is raised if the
+      execution_mode is not SYNC (since ASYNC pipelines have no
+      pipeline_run_id).
+
+  Returns:
+    Path to stateful working directory.
+
+  Raises:
+    ValueError: If execution_id is not provided and execution_mode of the
+      pipeline is not SYNC.
+  """
+  if (execution_id is None and execution_mode != pipeline_pb2.Pipeline.SYNC):
+    raise ValueError(
+        'Cannot create stateful working dir if execution id is `None` and '
+        'the execution mode of the pipeline is not `SYNC`.')
+
+  if execution_id is None:
+    dir_suffix = pipeline_run_id
+  else:
+    dir_suffix = str(execution_id)
+
+  # TODO(b/150979622): We should introduce an id that is not changed across
+  # retries of the same component run to provide better isolation between
+  # "retry" and "new execution". When it is available, introduce it into
+  # stateful working directory.
+  # NOTE: If this directory structure is changed, please update
+  # the remove_stateful_working_dir function in this file accordingly.
+  stateful_working_dir = os.path.join(node_dir, _SYSTEM, _STATEFUL_WORKING_DIR,
+                                      dir_suffix)
+  try:
+    fileio.makedirs(stateful_working_dir)
+  except Exception:  # pylint: disable=broad-except
+    logging.exception('Failed to make stateful working dir: %s',
+                      stateful_working_dir)
+    raise
+  return stateful_working_dir
+
+
+def make_tmp_dir(node_dir: str, execution_id: int) -> str:
+  """Generates a temporary directory."""
+  result = os.path.join(node_dir, _SYSTEM, _EXECUTOR_EXECUTION,
+                        str(execution_id), '.temp', '')
+  fileio.makedirs(result)
+  return result
 
 
 def tag_output_artifacts_with_version(
@@ -291,6 +365,3 @@ def populate_exec_properties(
           'supported, going to drop it', type(value), key)
       continue
     executor_output.execution_properties[key].CopyFrom(v)
-
-
-

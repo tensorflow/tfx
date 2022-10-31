@@ -14,8 +14,10 @@
 """Tests for tfx.orchestration.kubeflow.v2.e2e_tests.bigquery_integration."""
 
 import os
+from unittest import mock
 
 import tensorflow as tf
+from tfx.dsl.components.base import base_component
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
@@ -48,8 +50,10 @@ _BIGQUERY_QUERY = """
 
 class BigqueryIntegrationTest(base_test_case.BaseKubeflowV2Test):
 
-  def testSimpleEnd2EndPipeline(self):
+  @mock.patch.object(base_component.BaseComponent, '_resolve_pip_dependencies')
+  def testSimpleEnd2EndPipeline(self, moke_resolve_dependencies):
     """End-to-End test for a simple pipeline."""
+    moke_resolve_dependencies.return_value = None
     pipeline_name = 'kubeflow-v2-bqeg-test-{}'.format(test_utils.random_id())
 
     components = kubeflow_v2_test_utils.create_pipeline_components(
@@ -72,6 +76,7 @@ class BigqueryIntegrationTest(base_test_case.BaseKubeflowV2Test):
                                      beam_pipeline_args)
 
     self._run_pipeline(pipeline)
+    moke_resolve_dependencies.assert_called()
 
 
 if __name__ == '__main__':

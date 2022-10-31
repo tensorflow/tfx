@@ -279,9 +279,11 @@ def _dump_ui_metadata(
           _render_artifact_as_mdstr(single_artifact)
           for single_artifact in name_to_artifacts.get(name, [])
       ])
-      # There must be at least a channel in a input, and all channels in a input
-      # share the same artifact type.
-      artifact_type = spec.channels[0].artifact_query.type.name
+      # TODO(b/255869994): Use InputSpec.artifact_type field instead.
+      if spec.channels:
+        artifact_type = spec.channels[0].artifact_query.type.name
+      else:
+        artifact_type = '_Unknown_'
       rendered_list.append(
           '## {name}\n\n**Type**: {channel_type}\n\n{artifacts}'.format(
               name=_sanitize_underscore(name),

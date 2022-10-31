@@ -20,6 +20,7 @@ trainer_fn function needs to be provided. This file contains both.
 from typing import List
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
@@ -177,7 +178,7 @@ def _build_estimator(config, hidden_units=None, warm_start_from=None):
               _transformed_names(_CATEGORICAL_FEATURE_KEYS),
               _MAX_CATEGORICAL_FEATURE_VALUES)
   ]
-  return tf.estimator.DNNLinearCombinedClassifier(
+  return tf_estimator.DNNLinearCombinedClassifier(
       config=config,
       linear_feature_columns=categorical_columns,
       dnn_feature_columns=real_valued_columns,
@@ -198,14 +199,14 @@ def _example_serving_receiver_fn(tf_transform_output, schema):
   raw_feature_spec = _get_raw_feature_spec(schema)
   raw_feature_spec.pop(_LABEL_KEY)
 
-  raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+  raw_input_fn = tf_estimator.export.build_parsing_serving_input_receiver_fn(
       raw_feature_spec, default_batch_size=None)
   serving_input_receiver = raw_input_fn()
 
   transformed_features = tf_transform_output.transform_raw_features(
       serving_input_receiver.features)
 
-  return tf.estimator.export.ServingInputReceiver(
+  return tf_estimator.export.ServingInputReceiver(
       transformed_features, serving_input_receiver.receiver_tensors)
 
 
@@ -313,15 +314,15 @@ def trainer_fn(trainer_fn_args, schema):
       tf_transform_output,
       batch_size=eval_batch_size)
 
-  train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
+  train_spec = tf_estimator.TrainSpec(  # pylint: disable=g-long-lambda
       train_input_fn,
       max_steps=trainer_fn_args.train_steps)
 
   serving_receiver_fn = lambda: _example_serving_receiver_fn(  # pylint: disable=g-long-lambda
       tf_transform_output, schema)
 
-  exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
-  eval_spec = tf.estimator.EvalSpec(
+  exporter = tf_estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
+  eval_spec = tf_estimator.EvalSpec(
       eval_input_fn,
       steps=trainer_fn_args.eval_steps,
       exporters=[exporter],
@@ -330,7 +331,7 @@ def trainer_fn(trainer_fn_args, schema):
   # Keep multiple checkpoint files for distributed training, note that
   # keep_max_checkpoint should be greater or equal to the number of replicas to
   # avoid race condition.
-  run_config = tf.estimator.RunConfig(
+  run_config = tf_estimator.RunConfig(
       save_checkpoints_steps=999, keep_checkpoint_max=5)
 
   run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)

@@ -20,6 +20,7 @@ from absl import logging
 
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration.portable import merge_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import typing_utils
@@ -79,21 +80,13 @@ def publish_cached_execution(
 
 def _set_execution_result_if_not_empty(
     executor_output: Optional[execution_result_pb2.ExecutorOutput],
-    execution: metadata_store_pb2.Execution) -> bool:
+    execution: metadata_store_pb2.Execution) -> None:
   """Sets execution result as a custom property of the execution."""
   if executor_output and (executor_output.execution_result.result_message or
                           executor_output.execution_result.metadata_details or
                           executor_output.execution_result.code):
-    # TODO(b/190001754): Consider either switching to base64 encoding or using
-    # a proto descriptor pool to circumvent TypeError which may be raised when
-    # converting embedded `Any` protos.
-    try:
-      execution_lib.set_execution_result(executor_output.execution_result,
-                                         execution)
-    except TypeError:
-      logging.exception(
-          'Skipped setting execution_result as custom property of the '
-          'execution due to error')
+    execution_lib.set_execution_result(executor_output.execution_result,
+                                       execution)
 
 
 def publish_succeeded_execution(
@@ -150,8 +143,9 @@ def publish_succeeded_execution(
       updated_artifact_list = executor_output.output_artifacts[key].artifacts
 
       # We assume the original output dict must include at least one output
-      # artifact and all artifacts in the list share the same type.
+      # artifact and all artifacts in the list share the same type/properties.
       original_artifact = artifact_list[0]
+
       # Update the artifact list with what's in the executor output
       artifact_list.clear()
       # TODO(b/175426744): revisit this:
@@ -160,12 +154,12 @@ def publish_succeeded_execution(
       # 2) If multiple output are needed and is a common practice, should we
       #    use driver instead to create the list of output artifact instead
       #    of letting executor to create them.
-      for proto_artifact in updated_artifact_list:
-        _check_validity(proto_artifact, original_artifact,
+      for updated_artifact_proto in updated_artifact_list:
+        _check_validity(updated_artifact_proto, original_artifact,
                         len(updated_artifact_list) > 1)
-        python_artifact = types.Artifact(original_artifact.artifact_type)
-        python_artifact.set_mlmd_artifact(proto_artifact)
-        artifact_list.append(python_artifact)
+        merged_artifact = merge_utils.merge_output_artifact(
+            original_artifact, updated_artifact_proto)
+        artifact_list.append(merged_artifact)
 
   # Marks output artifacts as LIVE.
   for artifact_list in output_artifacts.values():
@@ -238,6 +232,8 @@ def register_execution(
     contexts: Sequence[metadata_store_pb2.Context],
     input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
     exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
+    last_known_state: metadata_store_pb2.Execution.State = metadata_store_pb2
+    .Execution.RUNNING
 ) -> metadata_store_pb2.Execution:
   """Registers a new execution in MLMD.
 
@@ -252,6 +248,7 @@ def register_execution(
     input_artifacts: Input artifacts of the execution. Each artifact will be
       linked with the execution through an event.
     exec_properties: Execution properties. Will be attached to the execution.
+    last_known_state: The last known state of the execution.
 
   Returns:
     An MLMD execution that is registered in MLMD, with id populated.
@@ -264,7 +261,7 @@ def register_execution(
   execution = execution_lib.prepare_execution(
       metadata_handler,
       execution_type,
-      metadata_store_pb2.Execution.RUNNING,
+      last_known_state,
       exec_properties,
       execution_name=exec_name)
 

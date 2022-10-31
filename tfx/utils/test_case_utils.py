@@ -12,18 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for customizing tf.test.TestCase class."""
+from __future__ import annotations
 
 import contextlib
 import copy
 import os
 
-from typing import Iterable, Optional, Union
+from typing import Dict, Iterable, Optional, Union, Mapping, Sequence
 
 import tensorflow as tf
+from tfx import types
 from tfx.dsl.io import fileio
+from tfx.orchestration import data_types_utils
+from tfx.orchestration import metadata
+from tfx.orchestration.portable.mlmd import event_lib
 from tfx.utils import io_utils
+
 from google.protobuf import message
 from google.protobuf import text_format
+from ml_metadata.proto import metadata_store_pb2
+
+
+_ArtifactMultiMap = Mapping[str, Sequence[metadata_store_pb2.Artifact]]
 
 
 @contextlib.contextmanager
@@ -122,3 +132,133 @@ def change_working_dir(working_dir: str):
   yield old_dir
 
   os.chdir(old_dir)
+
+
+class MlmdMixins:
+  """Populates a mock MLMD database with Contexts, Artifacts and Excutions."""
+  mlmd_handle: metadata.Metadata
+  _context_type_ids: Dict[str, int]
+  _artifact_type_ids: Dict[str, int]
+  _execution_type_ids: Dict[str, int]
+
+  def init_mlmd(self):
+    config = metadata_store_pb2.ConnectionConfig()
+    config.fake_database.SetInParent()
+    self.mlmd_handle = metadata.Metadata(config)
+    self._context_type_ids = {}
+    self._artifact_type_ids = {}
+    self._execution_type_ids = {}
+
+  @property
+  def store(self):
+    return self.mlmd_handle.store
+
+  def _get_context_type_id(self, type_name: str):
+    if type_name not in self._context_type_ids:
+      result = self.store.put_context_type(
+          metadata_store_pb2.ContextType(name=type_name))
+      self._context_type_ids[type_name] = result
+    return self._context_type_ids[type_name]
+
+  def put_context(self, context_type: str, context_name: str):
+    """Put a Context in the MLMD database."""
+    result = metadata_store_pb2.Context(
+        type_id=self._get_context_type_id(context_type), name=context_name)
+    result.id = self.store.put_contexts([result])[0]
+    return result
+
+  def _get_artifact_type_id(
+      self,
+      type_name: str,
+      properties: Optional[Dict[str, metadata_store_pb2.PropertyType]] = None
+  ) -> metadata_store_pb2.Artifact:
+    """Gets type ID of the artifact type."""
+    artifact_type = metadata_store_pb2.ArtifactType(name=type_name)
+    if properties:
+      for key, value in properties.items():
+        artifact_type.properties[key] = value
+    if type_name not in self._artifact_type_ids:
+      result = self.store.put_artifact_type(artifact_type)
+      self._artifact_type_ids[type_name] = result
+    return self._artifact_type_ids[type_name]
+
+  def put_artifact(
+      self,
+      artifact_type: str,
+      name: str = '',
+      uri: str = '/fake',
+      properties: Optional[Dict[str, types.ExecPropertyTypes]] = None
+  ) -> metadata_store_pb2.Artifact:
+    """Put an Artifact in the MLMD database.
+
+    Args:
+      artifact_type: The artifact type. For example, "DummyArtifact".
+      name: `Artifact.name`. Default not set.
+      uri: `Artifact.uri`. Defaults to '/fake'.
+      properties: The raw property values to insert in the Artifact. Example:
+        {"span": 3, "version": 1}
+
+    Returns:
+      The MLMD artifact.
+    """
+    if properties is not None:
+      property_types = {
+          key: data_types_utils.get_metadata_value_type(value)
+          for key, value in properties.items()
+      }
+    else:
+      property_types = None
+
+    fields = dict(
+        type_id=self._get_artifact_type_id(
+            type_name=artifact_type, properties=property_types),
+        uri=uri,
+        state=metadata_store_pb2.Artifact.LIVE,
+        properties=data_types_utils.build_metadata_value_dict(properties),
+    )
+    if name:
+      fields.update(name=name)
+
+    mlmd_artifact = metadata_store_pb2.Artifact(**fields)
+    mlmd_artifact.id = self.store.put_artifacts([mlmd_artifact])[0]
+    return mlmd_artifact
+
+  def _get_execution_type_id(self, type_name: str):
+    if type_name not in self._execution_type_ids:
+      result = self.store.put_execution_type(
+          metadata_store_pb2.ExecutionType(name=type_name))
+      self._execution_type_ids[type_name] = result
+    return self._execution_type_ids[type_name]
+
+  def put_execution(
+      self,
+      execution_type: str,
+      inputs: Optional[_ArtifactMultiMap] = None,
+      outputs: Optional[_ArtifactMultiMap] = None,
+      contexts: Sequence[metadata_store_pb2.Context] = (),
+      name='',
+      input_event_type=metadata_store_pb2.Event.INPUT,
+      output_event_type=metadata_store_pb2.Event.OUTPUT
+  ) -> metadata_store_pb2.Execution:
+    """Put an Execution in the MLMD database."""
+    inputs = inputs if inputs is not None else {}
+    outputs = outputs if outputs is not None else {}
+    fields = dict(
+        type_id=self._get_execution_type_id(type_name=execution_type),
+        last_known_state=metadata_store_pb2.Execution.COMPLETE,
+    )
+    if name:
+      fields.update(name=name)
+    result = metadata_store_pb2.Execution(**fields)
+    artifact_and_events = []
+    for input_key, artifacts in inputs.items():
+      for i, artifact in enumerate(artifacts):
+        event = event_lib.generate_event(input_event_type, input_key, i)
+        artifact_and_events.append((artifact, event))
+    for output_key, artifacts in outputs.items():
+      for i, artifact in enumerate(artifacts):
+        event = event_lib.generate_event(output_event_type, output_key, i)
+        artifact_and_events.append((artifact, event))
+    result.id = self.store.put_execution(result, artifact_and_events,
+                                         contexts)[0]
+    return result

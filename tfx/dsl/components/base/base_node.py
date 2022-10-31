@@ -34,6 +34,15 @@ def _abstract_property() -> Any:
 class BaseNode(json_utils.Jsonable, abc.ABC):
   """Base class for a node in TFX pipeline."""
 
+  def __new__(cls, *args, **kwargs):
+    # Record invocation details for tracing. No backwards-compatibility
+    # guarantees; for TFX-internal use only.
+    result = super(BaseNode, cls).__new__(cls)
+    result._CONSTRUCT_CLS = cls
+    result._CONSTRUCT_ARGS = args
+    result._CONSTRUCT_KWARGS = kwargs
+    return result
+
   def __init__(
       self,
       executor_spec: Optional[executor_spec_module.ExecutorSpec] = None,
@@ -59,6 +68,8 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._id = None
+    # Node execution options for experimental orchestrator.
+    self._node_execution_options = None
     dsl_context_registry.get().put_node(self)
 
   @doc_controls.do_not_doc_in_subclasses

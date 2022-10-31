@@ -17,16 +17,42 @@
 experimental.**
 
 TensorFlow Decision Forests (https://www.tensorflow.org/decision_forests) is a
-collection collection of state-of-the-art Decision Forests learning algorithms
-available in the TensorFlow 2 Keras API. For instructions about TF-DF, check the
-Beginner colab:
-https://www.tensorflow.org/decision_forests/tutorials/beginner_colab
+collection collection of state-of-the-art algorithms for the training, serving
+and interpretation of Decision Forest models. The library is a collection of
+Keras models and supports classification, regression and ranking.
 
-TF-DF uses custom ops for training and serving. See this discussion
+To learn about TF-DF, and about the difference between Decision Forests and
+Neural Networks, check the beginner colab
+(https://www.tensorflow.org/decision_forests/tutorials/beginner_colab) for an
+introduction to TF-DF.
+
+Important remark:
+
+TF-DF relies on TensorFlow Custom Ops
+(https://www.tensorflow.org/lite/guide/ops_custom) for training and serving
+(soon, only for training). To run correctly, the various TFX component that
+handle the model (e.g., training, evaluation) need to be configured with the
+TF-DF ops.
+
+- Training & evaluation & validation: In python code, the ops are loaded when
+  importing the TF-DF library: `import tensorflow_decision_forests as tfdf`.
+
+- Serving: TF-DF requires a version of TensorFlow Serving compiled with
+  TensorFlow Decision Forests ops
+  (https://github.com/tensorflow/decision-forests/releases/tag/serving-0.2.6).
+  Alternatively, you can follow the instructions
+  (https://www.tensorflow.org/decision_forests/tensorflow_serving) or use the
+  TFServing+TF-DF compilation script
+  (https://github.com/tensorflow/decision-forests/tree/main/tools/tf_serving)
+  to compile TF Serving with TF-DF support yourself.
+
+Note: If a TFX component is not configured with TF-DF custom ops, you will see
+errors such as: "Op type not registered 'SimpleMLInferenceOpWithHandle'".
+
+In case of issues, you can ask for help on the TensorFlow Forum
+(https://discuss.tensorflow.org). This particular discussion
 (https://discuss.tensorflow.org/t/tensorflow-decision-forests-with-tfx-model-serving-and-evaluation/2137)
-for common configuration issues with TF-DF in TFX. See this guide
-(https://www.tensorflow.org/decision_forests/tensorflow_serving) on how to
-serve TF-DF models with TensorFlow Serving.
+also contains some good pointers.
 
 This module file will be used in the Transform, Tuner and generic Trainer
 components.
@@ -51,6 +77,9 @@ from tfx_bsl.public import tfxio
 preprocessing_fn = base.preprocessing_fn
 
 _KEY_MODEL_TYPE = 'model_type'
+
+# Random Forest and Gradient Boosted trees are the two most popular algorithm to
+# train decision forests.
 _KEY_RANDOM_FOREST = 'RANDOM_FOREST'
 _KEY_GRADIENT_BOOSTED_TREES = 'GRADIENT_BOOSTED_TREES'
 
@@ -267,9 +296,6 @@ def run_fn(fn_args: tfx.components.FnArgs):
 
   print('Trained model:')
   model.summary()
-
-  # Note: Callbacks are not (yet) operational. Instead, we export TensorBoard
-  # logs manually.
 
   # Export the tensorboard logs.
   model.make_inspector().export_to_tensorboard(fn_args.model_run_dir)

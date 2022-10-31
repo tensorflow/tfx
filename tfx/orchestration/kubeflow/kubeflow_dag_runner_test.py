@@ -22,12 +22,15 @@ from kfp import onprem
 import tensorflow as tf
 from tfx.components.statistics_gen import component as statistics_gen_component
 from tfx.dsl.component.experimental import executor_specs
+from tfx.dsl.component.experimental.annotations import Parameter
+from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.components.base import base_component
 from tfx.dsl.io import fileio
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.orchestration.kubeflow.decorators import FinalStatusStr
 from tfx.proto import example_gen_pb2
 from tfx.types import component_spec
 from tfx.utils import telemetry_utils
@@ -35,6 +38,11 @@ from tfx.utils import test_case_utils
 import yaml
 
 from ml_metadata.proto import metadata_store_pb2
+
+
+@component
+def _say_hi(status: Parameter[str]):
+  print(status)
 
 
 # 2-step pipeline under test.
@@ -289,6 +297,33 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
       self.assertLen(containers, 1)
       component_args = containers[0]['container']['args']
       self.assertIn('--node_id', component_args)
+
+  def testExitHandler(self):
+    dag_runner = kubeflow_dag_runner.KubeflowDagRunner()
+    dag_runner.set_exit_handler(_say_hi(status=FinalStatusStr()))
+    pipeline = _container_component_pipeline()
+    pipeline.enable_cache = True
+    dag_runner.run(pipeline)
+    file_path = os.path.join(self.tmp_dir,
+                             'container_component_pipeline.tar.gz')
+    self.assertTrue(fileio.exists(file_path))
+
+    with tarfile.TarFile.open(file_path).extractfile(
+        'pipeline.yaml') as pipeline_file:
+      self.assertIsNotNone(pipeline_file)
+      pipeline = yaml.safe_load(pipeline_file)
+      self.assertIn('onExit', pipeline['spec'])
+      containers = [
+          c for c in pipeline['spec']['templates'] if 'container' in c
+      ]
+      self.assertLen(containers, 2)
+      exit_component_args = ' '.join(containers[1]['container']['args'])
+      self.assertIn('{{workflow.status}}', exit_component_args)
+      self.assertNotIn('enableCache', exit_component_args)
+      first_component_args = ' '.join(containers[0]['container']['args'])
+      self.assertNotIn('{{workflow.status}}', first_component_args)
+      self.assertIn('enableCache', first_component_args)
+
 
 if __name__ == '__main__':
   tf.test.main()

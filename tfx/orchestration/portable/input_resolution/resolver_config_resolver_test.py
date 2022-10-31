@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.portable.input_resolution.processor."""
+"""Tests for tfx.orchestration.portable.input_resolution.resolver_config_resolver."""
 from unittest import mock
 
 import tensorflow as tf
@@ -19,7 +19,7 @@ from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.orchestration.portable.input_resolution import exceptions
-from tfx.orchestration.portable.input_resolution import processor
+from tfx.orchestration.portable.input_resolution import resolver_config_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
@@ -27,7 +27,7 @@ from tfx.utils import test_case_utils
 from google.protobuf import text_format
 
 
-@ops.register
+@ops.testonly_register
 class RepeatStrategy(resolver.ResolverStrategy):
 
   def __init__(self, num: int):
@@ -40,16 +40,22 @@ class RepeatStrategy(resolver.ResolverStrategy):
     return {key: value * self.num for key, value in input_dict.items()}
 
 
-@ops.register
+@ops.testonly_register
 class NoneStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
     return None
 
 
-@ops.register
+class UnregisteredStrategy(resolver.ResolverStrategy):
+
+  def resolve_artifacts(self, store, input_dict):
+    return input_dict
+
+
+@ops.testonly_register
 class RepeatOp(resolver_op.ResolverOp):
-  num = resolver_op.ResolverOpProperty(type=int)
+  num = resolver_op.Property(type=int)
 
   def __init__(self):
     RepeatOp.last_created = self
@@ -58,7 +64,7 @@ class RepeatOp(resolver_op.ResolverOp):
     return {key: value * self.num for key, value in input_dict.items()}
 
 
-class ProcessorTest(test_case_utils.TfxTest):
+class ResolverConfigResolverTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
@@ -68,7 +74,7 @@ class ProcessorTest(test_case_utils.TfxTest):
     }
     self._store = mock.Mock()
 
-  def testRunResolverSteps_ResolverStrategy(self):
+  def testResolve_ResolverStrategy(self):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
@@ -76,17 +82,15 @@ class ProcessorTest(test_case_utils.TfxTest):
       config_json: "{\"num\": 2}"
     }
     """, config)
-    result = processor.run_resolver_steps(
-        self._input_dict,
-        resolver_steps=config.resolver_steps,
-        store=self._store)
+    result = resolver_config_resolver.resolve(
+        self._store, self._input_dict, config)
 
     strategy = RepeatStrategy.last_created
     self.assertIs(strategy.call_history[0][0], self._store)
     self.assertLen(result['examples'], 2)
     self.assertLen(result['model'], 2)
 
-  def testRunResolverSteps_ChainedResolverStrategies(self):
+  def testResolve_ChainedResolverStrategies(self):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
@@ -98,15 +102,13 @@ class ProcessorTest(test_case_utils.TfxTest):
       config_json: "{\"num\": 2}"
     }
     """, config)
-    result = processor.run_resolver_steps(
-        self._input_dict,
-        resolver_steps=config.resolver_steps,
-        store=self._store)
+    result = resolver_config_resolver.resolve(
+        self._store, self._input_dict, config)
 
     self.assertLen(result['examples'], 4)
     self.assertLen(result['model'], 4)
 
-  def testRunResolverSteps_ResolverStrategy_HandleInputKeys(self):
+  def testResolve_ResolverStrategy_HandleInputKeys(self):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
@@ -115,15 +117,13 @@ class ProcessorTest(test_case_utils.TfxTest):
       input_keys: ["examples"]
     }
     """, config)
-    result = processor.run_resolver_steps(
-        self._input_dict,
-        resolver_steps=config.resolver_steps,
-        store=self._store)
+    result = resolver_config_resolver.resolve(
+        self._store, self._input_dict, config)
 
     self.assertLen(result['examples'], 2)
     self.assertLen(result['model'], 1)
 
-  def testRunResolverSteps_NoneRaisesSignal(self):
+  def testResolve_NoneRaisesInputResolutionError(self):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse("""
     resolver_steps {
@@ -131,12 +131,10 @@ class ProcessorTest(test_case_utils.TfxTest):
     }
     """, config)
     with self.assertRaises(exceptions.InputResolutionError):
-      processor.run_resolver_steps(
-          self._input_dict,
-          resolver_steps=config.resolver_steps,
-          store=self._store)
+      resolver_config_resolver.resolve(
+          self._store, self._input_dict, config)
 
-  def testRunResolverSteps_ResolverOp(self):
+  def testResolve_ResolverOp(self):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
@@ -144,10 +142,8 @@ class ProcessorTest(test_case_utils.TfxTest):
       config_json: "{\"num\": 2}"
     }
     """, config)
-    result = processor.run_resolver_steps(
-        self._input_dict,
-        resolver_steps=config.resolver_steps,
-        store=self._store)
+    result = resolver_config_resolver.resolve(
+        self._store, self._input_dict, config)
 
     op = RepeatOp.last_created
     self.assertIs(op.context.store, self._store)
@@ -155,7 +151,7 @@ class ProcessorTest(test_case_utils.TfxTest):
     self.assertLen(result['examples'], 2)
     self.assertLen(result['model'], 2)
 
-  def testRunResolverSteps_ChainedResolverOps(self):
+  def testResolve_ChainedResolverOps(self):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
@@ -167,15 +163,13 @@ class ProcessorTest(test_case_utils.TfxTest):
       config_json: "{\"num\": 2}"
     }
     """, config)
-    result = processor.run_resolver_steps(
-        self._input_dict,
-        resolver_steps=config.resolver_steps,
-        store=self._store)
+    result = resolver_config_resolver.resolve(
+        self._store, self._input_dict, config)
 
     self.assertLen(result['examples'], 4)
     self.assertLen(result['model'], 4)
 
-  def testRunResolverSteps_ResolverOp_IgnoresInputKeys(self):
+  def testResolve_ResolverOp_IgnoresInputKeys(self):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
@@ -184,15 +178,13 @@ class ProcessorTest(test_case_utils.TfxTest):
       input_keys: ["examples"]
     }
     """, config)
-    result = processor.run_resolver_steps(
-        self._input_dict,
-        resolver_steps=config.resolver_steps,
-        store=self._store)
+    result = resolver_config_resolver.resolve(
+        self._store, self._input_dict, config)
 
     self.assertLen(result['examples'], 2)
     self.assertLen(result['model'], 2)
 
-  def testRunResolverSteps_MixedResolverOpAndStrategy(self):
+  def testResolve_MixedResolverOpAndStrategy(self):
     config = pipeline_pb2.ResolverConfig()
     text_format.Parse(r"""
     resolver_steps {
@@ -204,13 +196,23 @@ class ProcessorTest(test_case_utils.TfxTest):
       config_json: "{\"num\": 2}"
     }
     """, config)
-    result = processor.run_resolver_steps(
-        self._input_dict,
-        resolver_steps=config.resolver_steps,
-        store=self._store)
+    result = resolver_config_resolver.resolve(
+        self._store, self._input_dict, config)
 
     self.assertLen(result['examples'], 4)
     self.assertLen(result['model'], 4)
+
+  def testResolve_UnregisteredResolverStrategy(self):
+    config = pipeline_pb2.ResolverConfig()
+    text_format.Parse(r"""
+    resolver_steps {
+      class_path: "__main__.UnregisteredStrategy"
+    }
+    """, config)
+    result = resolver_config_resolver.resolve(
+        self._store, self._input_dict, config)
+
+    self.assertEqual(result, self._input_dict)
 
 
 if __name__ == '__main__':

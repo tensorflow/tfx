@@ -1,8 +1,8 @@
 # proto-file: tfx/proto/orchestration/pipeline.proto
 # proto-message: Pipeline
 #
-# This file contains the IR of an adapted Iris example pipeline
-# tfx/examples/iris/iris_pipeline_beam.py
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/iris_pipeline_sync.py
 
 pipeline_info {
   id: "iris"
@@ -229,8 +229,6 @@ nodes {
         resolver_steps {
           class_path: "tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy.LatestBlessedModelStrategy"
           config_json: "{}"
-          input_keys: "model"
-          input_keys: "model_blessing"
         }
       }
     }
@@ -338,6 +336,14 @@ nodes {
         value {
           field_value {
             string_value: "m/y/u/r/i"
+          }
+        }
+      }
+      parameters {
+        key: "output_key"
+        value {
+          field_value {
+            string_value: "result"
           }
         }
       }
@@ -1603,6 +1609,11 @@ deployment_config {
             class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=foo"
+            }
+          }
         }
       }
     }
@@ -1614,6 +1625,11 @@ deployment_config {
             class_path: "tfx.components.evaluator.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=foo"
+            }
+          }
         }
       }
     }
@@ -1649,6 +1665,11 @@ deployment_config {
             class_path: "tfx.components.statistics_gen.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=foo"
+            }
+          }
         }
       }
     }
@@ -1668,6 +1689,11 @@ deployment_config {
             class_path: "tfx.components.statistics_gen.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=foo"
+            }
+          }
         }
       }
     }

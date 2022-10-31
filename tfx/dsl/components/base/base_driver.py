@@ -22,6 +22,7 @@ from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import artifact_utils
 from tfx.types import channel_utils
 
 
@@ -41,8 +42,7 @@ def _generate_output_uri(base_output_dir: str,
 def _prepare_output_paths(artifact: types.Artifact):
   """Create output directories for output artifact."""
   if fileio.exists(artifact.uri):
-    msg = 'Output artifact uri %s already exists' % artifact.uri
-    absl.logging.warning(msg)
+    absl.logging.warning('Output artifact uri %s already exists', artifact.uri)
     # TODO(b/158689199): We currently simply return as a short-term workaround
     # to unblock execution retires. A comprehensive solution to guarantee
     # idempotent executions is needed.
@@ -85,12 +85,7 @@ class BaseDriver:
     Raises:
       RuntimeError: if any input as an empty or non-existing uri.
     """
-    for single_artifacts_list in artifacts_dict.values():
-      for artifact in single_artifacts_list:
-        if not artifact.uri:
-          raise RuntimeError('Artifact %s does not have uri' % artifact)
-        if not fileio.exists(artifact.uri):
-          raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
+    artifact_utils.verify_artifacts(artifacts_dict)
 
   def _log_properties(self, input_dict: Dict[str, List[types.Artifact]],
                       output_dict: Dict[str, List[types.Artifact]],
@@ -144,12 +139,12 @@ class BaseDriver:
             # Note: when not initialized, artifact.uri is '' and artifact.id is
             # 0.
             if not artifact.uri or not artifact.id:
-              raise ValueError((
-                  'Unresolved input channel %r for input %r was passed in '
-                  'interactive mode. When running in interactive mode, upstream '
-                  'components must first be run with '
-                  '`interactive_context.run(component)` before their outputs can '
-                  'be used in downstream components.') % (artifact, name))
+              raise ValueError(
+                  f'Unresolved input channel {repr(artifact)} for input '
+                  f'{repr(name)} was passed in interactive mode. When running '
+                  'in interactive mode, upstream components must first be run '
+                  'with `interactive_context.run(component)` before their '
+                  'outputs can be used in downstream components.')
             artifacts_by_id.update({a.id: a for a in artifacts})
         else:
           artifacts = self._metadata_handler.search_artifacts(
@@ -216,7 +211,7 @@ class BaseDriver:
 
       is_single_artifact = len(output_list) == 1
       for i, artifact in enumerate(output_list):
-        artifact.name = name
+        artifact.name = f'{name}:{pipeline_info.run_id}'
         artifact.producer_component = component_info.component_id
         artifact.uri = _generate_output_uri(base_output_dir, name, execution_id,
                                             is_single_artifact, i)
@@ -292,7 +287,18 @@ class BaseDriver:
           exec_properties=exec_properties,
           pipeline_info=pipeline_info,
           component_info=component_info)
-    if output_artifacts is not None:
+
+      # Check that cached output artifacts will actually be considered a cache
+      # hit by downstream components
+      if output_artifacts is not None:
+        try:
+          artifact_utils.verify_artifacts(output_artifacts)
+          use_cached_results = True
+        except RuntimeError:
+          absl.logging.debug(
+              'Cached results found but could not be verified to still exist')
+
+    if use_cached_results:
       # If cache should be used, updates execution to reflect that. Note that
       # with this update, publisher should / will be skipped.
       self._metadata_handler.update_execution(
@@ -301,9 +307,9 @@ class BaseDriver:
           output_artifacts=output_artifacts,
           execution_state=metadata.EXECUTION_STATE_CACHED,
           contexts=contexts)
-      use_cached_results = True
     else:
-      absl.logging.debug('Cached results not found, move on to new execution')
+      absl.logging.debug(
+          'Cached results not available, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
           input_artifacts=input_artifacts,

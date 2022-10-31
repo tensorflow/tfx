@@ -1,0 +1,3614 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+#
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/composable_pipeline.py
+
+pipeline_info {
+  id: "composable-pipeline"
+}
+nodes {
+  sub_pipeline {
+    pipeline_info {
+      id: "data-ingestion-pipeline"
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.orchestration.pipeline.Pipeline_begin"
+          }
+          id: "data-ingestion-pipeline_begin"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "data-ingestion-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "data-ingestion-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "data-ingestion-pipeline.data-ingestion-pipeline_begin"
+              }
+            }
+          }
+        }
+      }
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.components.example_gen.csv_example_gen.component.CsvExampleGen"
+          }
+          id: "CsvExampleGen"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "data-ingestion-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "data-ingestion-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "data-ingestion-pipeline.CsvExampleGen"
+              }
+            }
+          }
+        }
+        outputs {
+          outputs {
+            key: "examples"
+            value {
+              artifact_spec {
+                type {
+                  name: "Examples"
+                  properties {
+                    key: "span"
+                    value: INT
+                  }
+                  properties {
+                    key: "split_names"
+                    value: STRING
+                  }
+                  properties {
+                    key: "version"
+                    value: INT
+                  }
+                  base_type: DATASET
+                }
+              }
+            }
+          }
+        }
+        parameters {
+          parameters {
+            key: "input_base"
+            value {
+              field_value {
+                string_value: "tfx_root/data_path"
+              }
+            }
+          }
+          parameters {
+            key: "input_config"
+            value {
+              field_value {
+                string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
+              }
+            }
+          }
+          parameters {
+            key: "output_config"
+            value {
+              field_value {
+                string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+              }
+            }
+          }
+          parameters {
+            key: "output_data_format"
+            value {
+              field_value {
+                int_value: 6
+              }
+            }
+          }
+          parameters {
+            key: "output_file_format"
+            value {
+              field_value {
+                int_value: 5
+              }
+            }
+          }
+        }
+        downstream_nodes: "StatisticsGen"
+        downstream_nodes: "data-ingestion-pipeline_end"
+        execution_options {
+          caching_options {
+          }
+        }
+      }
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.components.statistics_gen.component.StatisticsGen"
+            base_type: PROCESS
+          }
+          id: "StatisticsGen"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "data-ingestion-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "data-ingestion-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "data-ingestion-pipeline.StatisticsGen"
+              }
+            }
+          }
+        }
+        inputs {
+          inputs {
+            key: "examples"
+            value {
+              channels {
+                producer_node_query {
+                  id: "CsvExampleGen"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "data-ingestion-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline.CsvExampleGen"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Examples"
+                    base_type: DATASET
+                  }
+                }
+                output_key: "examples"
+              }
+              min_count: 1
+            }
+          }
+        }
+        outputs {
+          outputs {
+            key: "statistics"
+            value {
+              artifact_spec {
+                type {
+                  name: "ExampleStatistics"
+                  properties {
+                    key: "span"
+                    value: INT
+                  }
+                  properties {
+                    key: "split_names"
+                    value: STRING
+                  }
+                  base_type: STATISTICS
+                }
+              }
+            }
+          }
+        }
+        parameters {
+          parameters {
+            key: "exclude_splits"
+            value {
+              field_value {
+                string_value: "[]"
+              }
+            }
+          }
+        }
+        upstream_nodes: "CsvExampleGen"
+        downstream_nodes: "SchemaGen"
+        execution_options {
+          caching_options {
+          }
+        }
+      }
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.components.schema_gen.component.SchemaGen"
+            base_type: PROCESS
+          }
+          id: "SchemaGen"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "data-ingestion-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "data-ingestion-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "data-ingestion-pipeline.SchemaGen"
+              }
+            }
+          }
+        }
+        inputs {
+          inputs {
+            key: "statistics"
+            value {
+              channels {
+                producer_node_query {
+                  id: "StatisticsGen"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "data-ingestion-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline.StatisticsGen"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "ExampleStatistics"
+                    base_type: STATISTICS
+                  }
+                }
+                output_key: "statistics"
+              }
+              min_count: 1
+            }
+          }
+        }
+        outputs {
+          outputs {
+            key: "schema"
+            value {
+              artifact_spec {
+                type {
+                  name: "Schema"
+                }
+              }
+            }
+          }
+        }
+        parameters {
+          parameters {
+            key: "exclude_splits"
+            value {
+              field_value {
+                string_value: "[]"
+              }
+            }
+          }
+          parameters {
+            key: "infer_feature_shape"
+            value {
+              field_value {
+                int_value: 1
+              }
+            }
+          }
+        }
+        upstream_nodes: "StatisticsGen"
+        downstream_nodes: "data-ingestion-pipeline_end"
+        execution_options {
+          caching_options {
+          }
+        }
+      }
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.orchestration.pipeline.Pipeline_end"
+          }
+          id: "data-ingestion-pipeline_end"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "data-ingestion-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "data-ingestion-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "data-ingestion-pipeline.data-ingestion-pipeline_end"
+              }
+            }
+          }
+        }
+        inputs {
+          inputs {
+            key: "examples"
+            value {
+              channels {
+                producer_node_query {
+                  id: "CsvExampleGen"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "data-ingestion-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline.CsvExampleGen"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Examples"
+                    base_type: DATASET
+                  }
+                }
+                output_key: "examples"
+              }
+            }
+          }
+          inputs {
+            key: "schema"
+            value {
+              channels {
+                producer_node_query {
+                  id: "SchemaGen"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "data-ingestion-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline.SchemaGen"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Schema"
+                  }
+                }
+                output_key: "schema"
+              }
+            }
+          }
+        }
+        outputs {
+          outputs {
+            key: "examples"
+            value {
+              artifact_spec {
+                type {
+                  name: "Examples"
+                  properties {
+                    key: "span"
+                    value: INT
+                  }
+                  properties {
+                    key: "split_names"
+                    value: STRING
+                  }
+                  properties {
+                    key: "version"
+                    value: INT
+                  }
+                  base_type: DATASET
+                }
+              }
+            }
+          }
+          outputs {
+            key: "schema"
+            value {
+              artifact_spec {
+                type {
+                  name: "Schema"
+                }
+              }
+            }
+          }
+        }
+        upstream_nodes: "CsvExampleGen"
+        upstream_nodes: "SchemaGen"
+        downstream_nodes: "Evaluator"
+        downstream_nodes: "training-pipeline"
+        downstream_nodes: "validate-and-push-pipeline"
+      }
+    }
+    runtime_spec {
+      pipeline_root {
+        runtime_parameter {
+          name: "pipeline-root"
+          type: STRING
+          default_value {
+            string_value: "tfx_root/pipelines/composable-pipeline"
+          }
+        }
+      }
+      pipeline_run_id {
+        structural_runtime_parameter {
+          parts {
+            constant_value: "data-ingestion-pipeline_"
+          }
+          parts {
+            runtime_parameter {
+              name: "pipeline-run-id"
+              type: STRING
+            }
+          }
+        }
+      }
+    }
+    execution_mode: SYNC
+    deployment_config {
+      [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+        executor_specs {
+          key: "CsvExampleGen"
+          value {
+            [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+              python_executor_spec {
+                class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+              }
+            }
+          }
+        }
+        executor_specs {
+          key: "SchemaGen"
+          value {
+            [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+              class_path: "tfx.components.schema_gen.executor.Executor"
+            }
+          }
+        }
+        executor_specs {
+          key: "StatisticsGen"
+          value {
+            [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+              python_executor_spec {
+                class_path: "tfx.components.statistics_gen.executor.Executor"
+              }
+            }
+          }
+        }
+        custom_driver_specs {
+          key: "CsvExampleGen"
+          value {
+            [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+              class_path: "tfx.components.example_gen.driver.FileBasedDriver"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+nodes {
+  sub_pipeline {
+    pipeline_info {
+      id: "training-pipeline"
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.orchestration.pipeline.Pipeline_begin"
+          }
+          id: "training-pipeline_begin"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "training-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "training-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "training-pipeline.training-pipeline_begin"
+              }
+            }
+          }
+        }
+        inputs {
+          inputs {
+            key: "examples"
+            value {
+              channels {
+                producer_node_query {
+                  id: "data-ingestion-pipeline_end"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "data-ingestion-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline.data-ingestion-pipeline_end"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Examples"
+                    base_type: DATASET
+                  }
+                }
+                output_key: "examples"
+              }
+            }
+          }
+          inputs {
+            key: "schema"
+            value {
+              channels {
+                producer_node_query {
+                  id: "data-ingestion-pipeline_end"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "data-ingestion-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline.data-ingestion-pipeline_end"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Schema"
+                  }
+                }
+                output_key: "schema"
+              }
+            }
+          }
+        }
+        outputs {
+          outputs {
+            key: "examples"
+            value {
+              artifact_spec {
+                type {
+                  name: "Examples"
+                  properties {
+                    key: "span"
+                    value: INT
+                  }
+                  properties {
+                    key: "split_names"
+                    value: STRING
+                  }
+                  properties {
+                    key: "version"
+                    value: INT
+                  }
+                  base_type: DATASET
+                }
+              }
+            }
+          }
+          outputs {
+            key: "schema"
+            value {
+              artifact_spec {
+                type {
+                  name: "Schema"
+                }
+              }
+            }
+          }
+        }
+        upstream_nodes: "data-ingestion-pipeline"
+        downstream_nodes: "Trainer"
+      }
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.components.trainer.component.Trainer"
+            base_type: TRAIN
+          }
+          id: "Trainer"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "training-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "training-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "training-pipeline.Trainer"
+              }
+            }
+          }
+        }
+        inputs {
+          inputs {
+            key: "examples"
+            value {
+              channels {
+                producer_node_query {
+                  id: "training-pipeline_begin"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "training-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "training-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "training-pipeline.training-pipeline_begin"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Examples"
+                    base_type: DATASET
+                  }
+                }
+                output_key: "examples"
+              }
+            }
+          }
+          inputs {
+            key: "schema"
+            value {
+              channels {
+                producer_node_query {
+                  id: "training-pipeline_begin"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "training-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "training-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "training-pipeline.training-pipeline_begin"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Schema"
+                  }
+                }
+                output_key: "schema"
+              }
+            }
+          }
+        }
+        outputs {
+          outputs {
+            key: "model"
+            value {
+              artifact_spec {
+                type {
+                  name: "Model"
+                  base_type: MODEL
+                }
+              }
+            }
+          }
+          outputs {
+            key: "model_run"
+            value {
+              artifact_spec {
+                type {
+                  name: "ModelRun"
+                }
+              }
+            }
+          }
+        }
+        parameters {
+          parameters {
+            key: "custom_config"
+            value {
+              field_value {
+                string_value: "null"
+              }
+            }
+          }
+          parameters {
+            key: "eval_args"
+            value {
+              field_value {
+                string_value: "{\n  \"num_steps\": 5\n}"
+              }
+            }
+          }
+          parameters {
+            key: "module_file"
+            value {
+              field_value {
+                string_value: "module_file"
+              }
+            }
+          }
+          parameters {
+            key: "train_args"
+            value {
+              field_value {
+                string_value: "{\n  \"num_steps\": 2000\n}"
+              }
+            }
+          }
+        }
+        upstream_nodes: "training-pipeline_begin"
+        downstream_nodes: "training-pipeline_end"
+        execution_options {
+          caching_options {
+          }
+        }
+      }
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.orchestration.pipeline.Pipeline_end"
+          }
+          id: "training-pipeline_end"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "training-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "training-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "training-pipeline.training-pipeline_end"
+              }
+            }
+          }
+        }
+        inputs {
+          inputs {
+            key: "model"
+            value {
+              channels {
+                producer_node_query {
+                  id: "Trainer"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "training-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "training-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "training-pipeline.Trainer"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Model"
+                    base_type: MODEL
+                  }
+                }
+                output_key: "model"
+              }
+            }
+          }
+        }
+        outputs {
+          outputs {
+            key: "model"
+            value {
+              artifact_spec {
+                type {
+                  name: "Model"
+                  base_type: MODEL
+                }
+              }
+            }
+          }
+        }
+        upstream_nodes: "Trainer"
+        downstream_nodes: "Evaluator"
+        downstream_nodes: "validate-and-push-pipeline"
+      }
+    }
+    runtime_spec {
+      pipeline_root {
+        runtime_parameter {
+          name: "pipeline-root"
+          type: STRING
+          default_value {
+            string_value: "tfx_root/pipelines/composable-pipeline"
+          }
+        }
+      }
+      pipeline_run_id {
+        structural_runtime_parameter {
+          parts {
+            constant_value: "training-pipeline_"
+          }
+          parts {
+            runtime_parameter {
+              name: "pipeline-run-id"
+              type: STRING
+            }
+          }
+        }
+      }
+    }
+    execution_mode: SYNC
+    deployment_config {
+      [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+        executor_specs {
+          key: "Trainer"
+          value {
+            [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+              class_path: "tfx.components.trainer.executor.GenericExecutor"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.evaluator.component.Evaluator"
+        base_type: EVALUATE
+      }
+      id: "Evaluator"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "composable-pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "composable-pipeline.Evaluator"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "data-ingestion-pipeline_end"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "data-ingestion-pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                structural_runtime_parameter {
+                  parts {
+                    constant_value: "data-ingestion-pipeline_"
+                  }
+                  parts {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "composable-pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "data-ingestion-pipeline.data-ingestion-pipeline_end"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+                base_type: DATASET
+              }
+            }
+            output_key: "examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "model"
+        value {
+          channels {
+            producer_node_query {
+              id: "training-pipeline_end"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "training-pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                structural_runtime_parameter {
+                  parts {
+                    constant_value: "training-pipeline_"
+                  }
+                  parts {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "composable-pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "training-pipeline.training-pipeline_end"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "model"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "blessing"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelBlessing"
+            }
+          }
+        }
+      }
+      outputs {
+        key: "evaluation"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelEvaluation"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "eval_config"
+        value {
+          field_value {
+            string_value: "{\n  \"metrics_specs\": [\n    {\n      \"thresholds\": {\n        \"sparse_categorical_accuracy\": {\n          \"change_threshold\": {\n            \"absolute\": -1e-10,\n            \"direction\": \"HIGHER_IS_BETTER\"\n          },\n          \"value_threshold\": {\n            \"lower_bound\": 0.6\n          }\n        }\n      }\n    }\n  ],\n  \"model_specs\": [\n    {\n      \"signature_name\": \"eval\"\n    }\n  ],\n  \"slicing_specs\": [\n    {}\n  ]\n}"
+          }
+        }
+      }
+      parameters {
+        key: "example_splits"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+      parameters {
+        key: "fairness_indicator_thresholds"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+    }
+    upstream_nodes: "data-ingestion-pipeline"
+    upstream_nodes: "training-pipeline"
+    downstream_nodes: "validate-and-push-pipeline"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  sub_pipeline {
+    pipeline_info {
+      id: "validate-and-push-pipeline"
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.orchestration.pipeline.Pipeline_begin"
+          }
+          id: "validate-and-push-pipeline_begin"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "validate-and-push-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "validate-and-push-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "validate-and-push-pipeline.validate-and-push-pipeline_begin"
+              }
+            }
+          }
+        }
+        inputs {
+          inputs {
+            key: "_Evaluator.blessing"
+            value {
+              channels {
+                producer_node_query {
+                  id: "Evaluator"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.Evaluator"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "ModelBlessing"
+                  }
+                }
+                output_key: "blessing"
+              }
+            }
+          }
+          inputs {
+            key: "examples"
+            value {
+              channels {
+                producer_node_query {
+                  id: "data-ingestion-pipeline_end"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "data-ingestion-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "data-ingestion-pipeline.data-ingestion-pipeline_end"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Examples"
+                    base_type: DATASET
+                  }
+                }
+                output_key: "examples"
+              }
+            }
+          }
+          inputs {
+            key: "model"
+            value {
+              channels {
+                producer_node_query {
+                  id: "training-pipeline_end"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "training-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "training-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "training-pipeline.training-pipeline_end"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Model"
+                    base_type: MODEL
+                  }
+                }
+                output_key: "model"
+              }
+            }
+          }
+          resolver_config {
+            resolver_steps {
+              class_path: "tfx.dsl.input_resolution.strategies.conditional_strategy.ConditionalStrategy"
+              config_json: "{\"predicates\": [{\"__class__\": \"PlaceholderExpression\", \"__module__\": \"tfx.proto.orchestration.placeholder_pb2\", \"__proto_value__\": \"{\\n  \\\"operator\\\": {\\n    \\\"compare_op\\\": {\\n      \\\"lhs\\\": {\\n        \\\"operator\\\": {\\n          \\\"artifact_value_op\\\": {\\n            \\\"expression\\\": {\\n              \\\"operator\\\": {\\n                \\\"index_op\\\": {\\n                  \\\"expression\\\": {\\n                    \\\"placeholder\\\": {\\n                      \\\"key\\\": \\\"_Evaluator.blessing\\\"\\n                    }\\n                  }\\n                }\\n              }\\n            }\\n          }\\n        }\\n      },\\n      \\\"op\\\": \\\"EQUAL\\\",\\n      \\\"rhs\\\": {\\n        \\\"value\\\": {\\n          \\\"int_value\\\": \\\"1\\\"\\n        }\\n      }\\n    }\\n  }\\n}\", \"__tfx_object_type__\": \"proto\"}]}"
+            }
+          }
+        }
+        outputs {
+          outputs {
+            key: "examples"
+            value {
+              artifact_spec {
+                type {
+                  name: "Examples"
+                  properties {
+                    key: "span"
+                    value: INT
+                  }
+                  properties {
+                    key: "split_names"
+                    value: STRING
+                  }
+                  properties {
+                    key: "version"
+                    value: INT
+                  }
+                  base_type: DATASET
+                }
+              }
+            }
+          }
+          outputs {
+            key: "model"
+            value {
+              artifact_spec {
+                type {
+                  name: "Model"
+                  base_type: MODEL
+                }
+              }
+            }
+          }
+        }
+        upstream_nodes: "Evaluator"
+        upstream_nodes: "data-ingestion-pipeline"
+        upstream_nodes: "training-pipeline"
+        downstream_nodes: "Pusher"
+        downstream_nodes: "infra-validator-pipeline"
+      }
+    }
+    nodes {
+      sub_pipeline {
+        pipeline_info {
+          id: "infra-validator-pipeline"
+        }
+        nodes {
+          pipeline_node {
+            node_info {
+              type {
+                name: "tfx.orchestration.pipeline.Pipeline_begin"
+              }
+              id: "infra-validator-pipeline_begin"
+            }
+            contexts {
+              contexts {
+                type {
+                  name: "pipeline"
+                }
+                name {
+                  field_value {
+                    string_value: "infra-validator-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline_run"
+                }
+                name {
+                  structural_runtime_parameter {
+                    parts {
+                      constant_value: "infra-validator-pipeline_"
+                    }
+                    parts {
+                      runtime_parameter {
+                        name: "pipeline-run-id"
+                        type: STRING
+                      }
+                    }
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline"
+                }
+                name {
+                  field_value {
+                    string_value: "validate-and-push-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline_run"
+                }
+                name {
+                  structural_runtime_parameter {
+                    parts {
+                      constant_value: "validate-and-push-pipeline_"
+                    }
+                    parts {
+                      runtime_parameter {
+                        name: "pipeline-run-id"
+                        type: STRING
+                      }
+                    }
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline"
+                }
+                name {
+                  field_value {
+                    string_value: "composable-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline_run"
+                }
+                name {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "node"
+                }
+                name {
+                  field_value {
+                    string_value: "infra-validator-pipeline.infra-validator-pipeline_begin"
+                  }
+                }
+              }
+            }
+            inputs {
+              inputs {
+                key: "examples"
+                value {
+                  channels {
+                    producer_node_query {
+                      id: "validate-and-push-pipeline_begin"
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "validate-and-push-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        structural_runtime_parameter {
+                          parts {
+                            constant_value: "validate-and-push-pipeline_"
+                          }
+                          parts {
+                            runtime_parameter {
+                              name: "pipeline-run-id"
+                              type: STRING
+                            }
+                          }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "composable-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "node"
+                      }
+                      name {
+                        field_value {
+                          string_value: "validate-and-push-pipeline.validate-and-push-pipeline_begin"
+                        }
+                      }
+                    }
+                    artifact_query {
+                      type {
+                        name: "Examples"
+                        base_type: DATASET
+                      }
+                    }
+                    output_key: "examples"
+                  }
+                }
+              }
+              inputs {
+                key: "model"
+                value {
+                  channels {
+                    producer_node_query {
+                      id: "validate-and-push-pipeline_begin"
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "validate-and-push-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        structural_runtime_parameter {
+                          parts {
+                            constant_value: "validate-and-push-pipeline_"
+                          }
+                          parts {
+                            runtime_parameter {
+                              name: "pipeline-run-id"
+                              type: STRING
+                            }
+                          }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "composable-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "node"
+                      }
+                      name {
+                        field_value {
+                          string_value: "validate-and-push-pipeline.validate-and-push-pipeline_begin"
+                        }
+                      }
+                    }
+                    artifact_query {
+                      type {
+                        name: "Model"
+                        base_type: MODEL
+                      }
+                    }
+                    output_key: "model"
+                  }
+                }
+              }
+            }
+            outputs {
+              outputs {
+                key: "examples"
+                value {
+                  artifact_spec {
+                    type {
+                      name: "Examples"
+                      properties {
+                        key: "span"
+                        value: INT
+                      }
+                      properties {
+                        key: "split_names"
+                        value: STRING
+                      }
+                      properties {
+                        key: "version"
+                        value: INT
+                      }
+                      base_type: DATASET
+                    }
+                  }
+                }
+              }
+              outputs {
+                key: "model"
+                value {
+                  artifact_spec {
+                    type {
+                      name: "Model"
+                      base_type: MODEL
+                    }
+                  }
+                }
+              }
+            }
+            upstream_nodes: "validate-and-push-pipeline_begin"
+            downstream_nodes: "InfraValidator"
+          }
+        }
+        nodes {
+          pipeline_node {
+            node_info {
+              type {
+                name: "tfx.components.infra_validator.component.InfraValidator"
+              }
+              id: "InfraValidator"
+            }
+            contexts {
+              contexts {
+                type {
+                  name: "pipeline"
+                }
+                name {
+                  field_value {
+                    string_value: "infra-validator-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline_run"
+                }
+                name {
+                  structural_runtime_parameter {
+                    parts {
+                      constant_value: "infra-validator-pipeline_"
+                    }
+                    parts {
+                      runtime_parameter {
+                        name: "pipeline-run-id"
+                        type: STRING
+                      }
+                    }
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline"
+                }
+                name {
+                  field_value {
+                    string_value: "validate-and-push-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline_run"
+                }
+                name {
+                  structural_runtime_parameter {
+                    parts {
+                      constant_value: "validate-and-push-pipeline_"
+                    }
+                    parts {
+                      runtime_parameter {
+                        name: "pipeline-run-id"
+                        type: STRING
+                      }
+                    }
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline"
+                }
+                name {
+                  field_value {
+                    string_value: "composable-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline_run"
+                }
+                name {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "node"
+                }
+                name {
+                  field_value {
+                    string_value: "infra-validator-pipeline.InfraValidator"
+                  }
+                }
+              }
+            }
+            inputs {
+              inputs {
+                key: "examples"
+                value {
+                  channels {
+                    producer_node_query {
+                      id: "infra-validator-pipeline_begin"
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "infra-validator-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        structural_runtime_parameter {
+                          parts {
+                            constant_value: "infra-validator-pipeline_"
+                          }
+                          parts {
+                            runtime_parameter {
+                              name: "pipeline-run-id"
+                              type: STRING
+                            }
+                          }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "validate-and-push-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        structural_runtime_parameter {
+                          parts {
+                            constant_value: "validate-and-push-pipeline_"
+                          }
+                          parts {
+                            runtime_parameter {
+                              name: "pipeline-run-id"
+                              type: STRING
+                            }
+                          }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "composable-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "node"
+                      }
+                      name {
+                        field_value {
+                          string_value: "infra-validator-pipeline.infra-validator-pipeline_begin"
+                        }
+                      }
+                    }
+                    artifact_query {
+                      type {
+                        name: "Examples"
+                        base_type: DATASET
+                      }
+                    }
+                    output_key: "examples"
+                  }
+                }
+              }
+              inputs {
+                key: "model"
+                value {
+                  channels {
+                    producer_node_query {
+                      id: "infra-validator-pipeline_begin"
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "infra-validator-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        structural_runtime_parameter {
+                          parts {
+                            constant_value: "infra-validator-pipeline_"
+                          }
+                          parts {
+                            runtime_parameter {
+                              name: "pipeline-run-id"
+                              type: STRING
+                            }
+                          }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "validate-and-push-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        structural_runtime_parameter {
+                          parts {
+                            constant_value: "validate-and-push-pipeline_"
+                          }
+                          parts {
+                            runtime_parameter {
+                              name: "pipeline-run-id"
+                              type: STRING
+                            }
+                          }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "composable-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "node"
+                      }
+                      name {
+                        field_value {
+                          string_value: "infra-validator-pipeline.infra-validator-pipeline_begin"
+                        }
+                      }
+                    }
+                    artifact_query {
+                      type {
+                        name: "Model"
+                        base_type: MODEL
+                      }
+                    }
+                    output_key: "model"
+                  }
+                }
+              }
+            }
+            outputs {
+              outputs {
+                key: "blessing"
+                value {
+                  artifact_spec {
+                    type {
+                      name: "InfraBlessing"
+                    }
+                  }
+                }
+              }
+            }
+            parameters {
+              parameters {
+                key: "request_spec"
+                value {
+                  field_value {
+                    string_value: "{\n  \"tensorflow_serving\": {}\n}"
+                  }
+                }
+              }
+              parameters {
+                key: "serving_spec"
+                value {
+                  field_value {
+                    string_value: "{\n  \"local_docker\": {},\n  \"tensorflow_serving\": {\n    \"tags\": [\n      \"latest\"\n    ]\n  }\n}"
+                  }
+                }
+              }
+            }
+            upstream_nodes: "infra-validator-pipeline_begin"
+            downstream_nodes: "infra-validator-pipeline_end"
+            execution_options {
+              caching_options {
+              }
+            }
+          }
+        }
+        nodes {
+          pipeline_node {
+            node_info {
+              type {
+                name: "tfx.orchestration.pipeline.Pipeline_end"
+              }
+              id: "infra-validator-pipeline_end"
+            }
+            contexts {
+              contexts {
+                type {
+                  name: "pipeline"
+                }
+                name {
+                  field_value {
+                    string_value: "infra-validator-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline_run"
+                }
+                name {
+                  structural_runtime_parameter {
+                    parts {
+                      constant_value: "infra-validator-pipeline_"
+                    }
+                    parts {
+                      runtime_parameter {
+                        name: "pipeline-run-id"
+                        type: STRING
+                      }
+                    }
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline"
+                }
+                name {
+                  field_value {
+                    string_value: "validate-and-push-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline_run"
+                }
+                name {
+                  structural_runtime_parameter {
+                    parts {
+                      constant_value: "validate-and-push-pipeline_"
+                    }
+                    parts {
+                      runtime_parameter {
+                        name: "pipeline-run-id"
+                        type: STRING
+                      }
+                    }
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline"
+                }
+                name {
+                  field_value {
+                    string_value: "composable-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "pipeline_run"
+                }
+                name {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+              contexts {
+                type {
+                  name: "node"
+                }
+                name {
+                  field_value {
+                    string_value: "infra-validator-pipeline.infra-validator-pipeline_end"
+                  }
+                }
+              }
+            }
+            inputs {
+              inputs {
+                key: "blessing"
+                value {
+                  channels {
+                    producer_node_query {
+                      id: "InfraValidator"
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "infra-validator-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        structural_runtime_parameter {
+                          parts {
+                            constant_value: "infra-validator-pipeline_"
+                          }
+                          parts {
+                            runtime_parameter {
+                              name: "pipeline-run-id"
+                              type: STRING
+                            }
+                          }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "validate-and-push-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        structural_runtime_parameter {
+                          parts {
+                            constant_value: "validate-and-push-pipeline_"
+                          }
+                          parts {
+                            runtime_parameter {
+                              name: "pipeline-run-id"
+                              type: STRING
+                            }
+                          }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline"
+                      }
+                      name {
+                        field_value {
+                          string_value: "composable-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "pipeline_run"
+                      }
+                      name {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "node"
+                      }
+                      name {
+                        field_value {
+                          string_value: "infra-validator-pipeline.InfraValidator"
+                        }
+                      }
+                    }
+                    artifact_query {
+                      type {
+                        name: "InfraBlessing"
+                      }
+                    }
+                    output_key: "blessing"
+                  }
+                }
+              }
+            }
+            outputs {
+              outputs {
+                key: "blessing"
+                value {
+                  artifact_spec {
+                    type {
+                      name: "InfraBlessing"
+                    }
+                  }
+                }
+              }
+            }
+            upstream_nodes: "InfraValidator"
+            downstream_nodes: "Pusher"
+          }
+        }
+        runtime_spec {
+          pipeline_root {
+            runtime_parameter {
+              name: "pipeline-root"
+              type: STRING
+              default_value {
+                string_value: "tfx_root/pipelines/composable-pipeline"
+              }
+            }
+          }
+          pipeline_run_id {
+            structural_runtime_parameter {
+              parts {
+                constant_value: "infra-validator-pipeline_"
+              }
+              parts {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+          }
+        }
+        execution_mode: SYNC
+        deployment_config {
+          [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+            executor_specs {
+              key: "InfraValidator"
+              value {
+                [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+                  class_path: "tfx.components.infra_validator.executor.Executor"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.components.pusher.component.Pusher"
+            base_type: DEPLOY
+          }
+          id: "Pusher"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "validate-and-push-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "validate-and-push-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "validate-and-push-pipeline.Pusher"
+              }
+            }
+          }
+        }
+        inputs {
+          inputs {
+            key: "_infra-validator-pipeline.blessing"
+            value {
+              channels {
+                producer_node_query {
+                  id: "infra-validator-pipeline_end"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "infra-validator-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "infra-validator-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "validate-and-push-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "validate-and-push-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "infra-validator-pipeline.infra-validator-pipeline_end"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "InfraBlessing"
+                  }
+                }
+                output_key: "blessing"
+              }
+            }
+          }
+          inputs {
+            key: "model"
+            value {
+              channels {
+                producer_node_query {
+                  id: "validate-and-push-pipeline_begin"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "validate-and-push-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "validate-and-push-pipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "validate-and-push-pipeline.validate-and-push-pipeline_begin"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Model"
+                    base_type: MODEL
+                  }
+                }
+                output_key: "model"
+              }
+            }
+          }
+          resolver_config {
+            resolver_steps {
+              class_path: "tfx.dsl.input_resolution.strategies.conditional_strategy.ConditionalStrategy"
+              config_json: "{\"predicates\": [{\"__class__\": \"PlaceholderExpression\", \"__module__\": \"tfx.proto.orchestration.placeholder_pb2\", \"__proto_value__\": \"{\\n  \\\"operator\\\": {\\n    \\\"binary_logical_op\\\": {\\n      \\\"lhs\\\": {\\n        \\\"operator\\\": {\\n          \\\"compare_op\\\": {\\n            \\\"lhs\\\": {\\n              \\\"operator\\\": {\\n                \\\"artifact_value_op\\\": {\\n                  \\\"expression\\\": {\\n                    \\\"operator\\\": {\\n                      \\\"index_op\\\": {\\n                        \\\"expression\\\": {\\n                          \\\"placeholder\\\": {\\n                            \\\"key\\\": \\\"_infra-validator-pipeline.blessing\\\"\\n                          }\\n                        }\\n                      }\\n                    }\\n                  }\\n                }\\n              }\\n            },\\n            \\\"op\\\": \\\"EQUAL\\\",\\n            \\\"rhs\\\": {\\n              \\\"value\\\": {\\n                \\\"int_value\\\": \\\"1\\\"\\n              }\\n            }\\n          }\\n        }\\n      },\\n      \\\"op\\\": \\\"AND\\\",\\n      \\\"rhs\\\": {\\n        \\\"operator\\\": {\\n          \\\"unary_logical_op\\\": {\\n            \\\"expression\\\": {\\n              \\\"operator\\\": {\\n                \\\"compare_op\\\": {\\n                  \\\"lhs\\\": {\\n                    \\\"operator\\\": {\\n                      \\\"artifact_uri_op\\\": {\\n                        \\\"expression\\\": {\\n                          \\\"operator\\\": {\\n                            \\\"index_op\\\": {\\n                              \\\"expression\\\": {\\n                                \\\"placeholder\\\": {\\n                                  \\\"key\\\": \\\"model\\\"\\n                                }\\n                              }\\n                            }\\n                          }\\n                        }\\n                      }\\n                    }\\n                  },\\n                  \\\"op\\\": \\\"EQUAL\\\",\\n                  \\\"rhs\\\": {\\n                    \\\"value\\\": {\\n                      \\\"string_value\\\": \\\"\\\"\\n                    }\\n                  }\\n                }\\n              }\\n            },\\n            \\\"op\\\": \\\"NOT\\\"\\n          }\\n        }\\n      }\\n    }\\n  }\\n}\", \"__tfx_object_type__\": \"proto\"}]}"
+            }
+          }
+        }
+        outputs {
+          outputs {
+            key: "pushed_model"
+            value {
+              artifact_spec {
+                type {
+                  name: "PushedModel"
+                  base_type: MODEL
+                }
+              }
+            }
+          }
+        }
+        parameters {
+          parameters {
+            key: "custom_config"
+            value {
+              field_value {
+                string_value: "null"
+              }
+            }
+          }
+          parameters {
+            key: "push_destination"
+            value {
+              field_value {
+                string_value: "{\n  \"filesystem\": {\n    \"base_directory\": \"pipeline_root/serving_model/composable-pipeline\"\n  }\n}"
+              }
+            }
+          }
+        }
+        upstream_nodes: "infra-validator-pipeline"
+        upstream_nodes: "validate-and-push-pipeline_begin"
+        execution_options {
+          caching_options {
+          }
+        }
+      }
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.orchestration.pipeline.Pipeline_end"
+          }
+          id: "validate-and-push-pipeline_end"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "validate-and-push-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "validate-and-push-pipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "validate-and-push-pipeline.validate-and-push-pipeline_end"
+              }
+            }
+          }
+        }
+      }
+    }
+    runtime_spec {
+      pipeline_root {
+        runtime_parameter {
+          name: "pipeline-root"
+          type: STRING
+          default_value {
+            string_value: "tfx_root/pipelines/composable-pipeline"
+          }
+        }
+      }
+      pipeline_run_id {
+        structural_runtime_parameter {
+          parts {
+            constant_value: "validate-and-push-pipeline_"
+          }
+          parts {
+            runtime_parameter {
+              name: "pipeline-run-id"
+              type: STRING
+            }
+          }
+        }
+      }
+    }
+    execution_mode: SYNC
+    deployment_config {
+      [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+        executor_specs {
+          key: "Pusher"
+          value {
+            [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+              class_path: "tfx.components.pusher.executor.Executor"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline-root"
+      type: STRING
+      default_value {
+        string_value: "tfx_root/pipelines/composable-pipeline"
+      }
+    }
+  }
+  pipeline_run_id {
+    runtime_parameter {
+      name: "pipeline-run-id"
+      type: STRING
+    }
+  }
+}
+execution_mode: SYNC
+deployment_config {
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "Evaluator"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.evaluator.executor.Executor"
+          }
+          beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=foo"
+            }
+          }
+        }
+      }
+    }
+  }
+}

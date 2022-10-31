@@ -353,6 +353,12 @@ def _MockReadFromBigQuery(pipeline, query):
   return pipeline | beam.Create(mock_query_results)
 
 
+def _DeserializeElwc(some_bytes):
+  elwc_pb2 = input_pb2.ExampleListWithContext()
+  elwc_pb2.ParseFromString(some_bytes)
+  return elwc_pb2
+
+
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
@@ -380,7 +386,7 @@ class ExecutorTest(tf.test.TestCase):
     packed_custom_config.custom_config.Pack(elwc_config)
     with beam.Pipeline() as pipeline:
       elwc_examples = (
-          pipeline | 'ToElwc' >> executor._BigQueryToElwc(
+          pipeline | 'ToElwcBytes' >> executor._BigQueryToElwc(
               exec_properties={
                   '_beam_pipeline_args': [],
                   'custom_config':
@@ -389,7 +395,8 @@ class ExecutorTest(tf.test.TestCase):
                           preserving_proto_field_name=True)
               },
               split_pattern='SELECT context_feature_1, context_feature_2, '
-              'feature_id_1, feature_id_2, feature_id_3 FROM `fake`'))
+              'feature_id_1, feature_id_2, feature_id_3 FROM `fake`')
+          | 'LoadElwc' >> beam.Map(_DeserializeElwc))
 
       expected_elwc_examples = [_ELWC_1, _ELWC_2, _ELWC_3, _ELWC_4, _ELWC_5]
       util.assert_that(elwc_examples, util.equal_to(expected_elwc_examples))

@@ -13,9 +13,11 @@
 # limitations under the License.
 """Component specifications for the standard set of TFX Components."""
 
-import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis import sdk as tfma
 from tfx.proto import bulk_inferrer_pb2
+from tfx.proto import distribution_validator_pb2
 from tfx.proto import evaluator_pb2
+from tfx.proto import example_diff_pb2
 from tfx.proto import example_gen_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
@@ -58,6 +60,7 @@ EXAMPLE_SPLITS_KEY = 'example_splits'
 MODULE_PATH_KEY = 'module_path'
 BASELINE_MODEL_KEY = 'baseline_model'
 EVALUATION_KEY = 'evaluation'
+MODEL_SUBFOLDER_KEY = 'model_subfolder'
 # Key for infra_validator
 SERVING_SPEC_KEY = 'serving_spec'
 VALIDATION_SPEC_KEY = 'validation_spec'
@@ -66,6 +69,7 @@ REQUEST_SPEC_KEY = 'request_spec'
 TUNER_FN_KEY = 'tuner_fn'
 TUNE_ARGS_KEY = 'tune_args'
 BEST_HYPERPARAMETERS_KEY = 'best_hyperparameters'
+TUNER_RESULTS_KEY = 'tuner_results'
 # Key for bulk_inferer
 MODEL_SPEC_KEY = 'model_spec'
 DATA_SPEC_KEY = 'data_spec'
@@ -77,6 +81,7 @@ INFER_FEATURE_SHAPE_KEY = 'infer_feature_shape'
 SCHEMA_FILE_KEY = 'schema_file'
 # Key for statistics_gen
 STATS_OPTIONS_JSON_KEY = 'stats_options_json'
+SHARDED_STATS_OUTPUT_KEY = 'sharded_stats_output'
 # Key for example_gen
 INPUT_BASE_KEY = 'input_base'
 INPUT_CONFIG_KEY = 'input_config'
@@ -108,6 +113,14 @@ PRE_TRANSFORM_STATS_KEY = 'pre_transform_stats'
 POST_TRANSFORM_SCHEMA_KEY = 'post_transform_schema'
 POST_TRANSFORM_STATS_KEY = 'post_transform_stats'
 POST_TRANSFORM_ANOMALIES_KEY = 'post_transform_anomalies'
+# Key for example_diff
+BASELINE_EXAMPLES_KEY = 'baseline_examples'
+EXAMPLE_DIFF_CONFIG_KEY = 'example_diff_config'
+EXAMPLE_DIFF_RESULT_KEY = 'example_diff_result'
+INCLUDE_SPLIT_PAIRS_KEY = 'include_split_pairs'
+# Key for distribution_validator
+BASELINE_STATISTICS_KEY = 'baseline_statistics'
+DISTRIBUTION_VALIDATOR_CONFIG_KEY = 'distribution_validator_config'
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -343,6 +356,7 @@ class StatisticsGenSpec(ComponentSpec):
   PARAMETERS = {
       STATS_OPTIONS_JSON_KEY: ExecutionParameter(type=str, optional=True),
       EXCLUDE_SPLITS_KEY: ExecutionParameter(type=str, optional=True),
+      SHARDED_STATS_OUTPUT_KEY: ExecutionParameter(type=bool, optional=True)
   }
   INPUTS = {
       EXAMPLES_KEY:
@@ -415,6 +429,8 @@ class TunerSpec(ComponentSpec):
   OUTPUTS = {
       BEST_HYPERPARAMETERS_KEY:
           ChannelParameter(type=standard_artifacts.HyperParameters),
+      TUNER_RESULTS_KEY:
+          ChannelParameter(type=standard_artifacts.TunerResults),
   }
 
 
@@ -471,3 +487,45 @@ class TransformSpec(ComponentSpec):
               type=standard_artifacts.ExampleAnomalies, optional=True)
   }
   TYPE_ANNOTATION = Transform
+
+
+class ExampleDiffSpec(ComponentSpec):
+  """ExampleDiff component spec."""
+  PARAMETERS = {
+      EXAMPLE_DIFF_CONFIG_KEY:
+          ExecutionParameter(
+              type=example_diff_pb2.ExampleDiffConfig, use_proto=True),
+      INCLUDE_SPLIT_PAIRS_KEY:
+          ExecutionParameter(type=str, optional=True),
+  }
+  INPUTS = {
+      EXAMPLES_KEY: ChannelParameter(type=standard_artifacts.Examples),
+      BASELINE_EXAMPLES_KEY: ChannelParameter(type=standard_artifacts.Examples),
+  }
+  OUTPUTS = {
+      EXAMPLE_DIFF_RESULT_KEY:
+          ChannelParameter(type=standard_artifacts.ExamplesDiff),
+  }
+  TYPE_ANNOTATION = Process
+
+
+class DistributionValidatorSpec(ComponentSpec):
+  """DistributionValidator component spec."""
+  PARAMETERS = {
+      INCLUDE_SPLIT_PAIRS_KEY:
+          ExecutionParameter(type=str, optional=True),
+      DISTRIBUTION_VALIDATOR_CONFIG_KEY:
+          ExecutionParameter(
+              type=distribution_validator_pb2.DistributionValidatorConfig,
+              use_proto=True),
+  }
+  INPUTS = {
+      STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
+      BASELINE_STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
+  }
+  OUTPUTS = {
+      ANOMALIES_KEY: ChannelParameter(type=standard_artifacts.ExampleAnomalies),
+  }
+  TYPE_ANNOTATION = Process

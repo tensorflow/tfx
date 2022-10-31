@@ -128,7 +128,8 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
                       value_threshold=tfma.GenericValueThreshold(
                           # Adjust the threshold when training on the
                           # full dataset.
-                          lower_bound={'value': 0.5}),
+                          # TODO(b/236089934): Change back to 0.5.
+                          lower_bound={'value': 0.1}),
                       # Change threshold will be ignored if there is no
                       # baseline model resolved from MLMD (first run).
                       change_threshold=tfma.GenericChangeThreshold(

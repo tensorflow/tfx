@@ -14,11 +14,13 @@
 """Executor specifications for defining what to to execute."""
 
 import copy
-from typing import cast, Iterable, List, Optional, Type
+from typing import cast, Iterable, List, Optional, Type, Union
 
 from tfx import types
 from tfx.dsl.components.base import base_executor
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.proto.orchestration import executable_spec_pb2
+from tfx.proto.orchestration import placeholder_pb2
 from tfx.utils import import_utils
 from tfx.utils import json_utils
 from tfx.utils import name_utils
@@ -79,6 +81,7 @@ class ExecutorClassSpec(ExecutorSpec):
     if not executor_class:
       raise ValueError('executor_class is required')
     self.executor_class = executor_class
+    self._class_path = None
     self.extra_flags = []
     super().__init__()
 
@@ -93,6 +96,10 @@ class ExecutorClassSpec(ExecutorSpec):
     return (ExecutorClassSpec._reconstruct_from_executor_class_path,
             (self.class_path,))
 
+  def _set_class_path(self):
+    if self._class_path is None:
+      self._class_path = name_utils.get_full_name(self.executor_class)
+
   @property
   def class_path(self):
     """Fully qualified class name for the executor class.
@@ -102,7 +109,8 @@ class ExecutorClassSpec(ExecutorSpec):
     Returns:
       Fully qualified class name for the executor class.
     """
-    return name_utils.get_full_name(self.executor_class)
+    self._set_class_path()
+    return self._class_path
 
   @staticmethod
   def _reconstruct_from_executor_class_path(executor_class_path):
@@ -155,10 +163,27 @@ class BeamExecutorSpec(ExecutorClassSpec):
     result = executable_spec_pb2.BeamExecutableSpec()
     result.python_executor_spec.CopyFrom(
         super().encode(component_spec=component_spec))
-    result.beam_pipeline_args.extend(self.beam_pipeline_args)
+    placeholder_beam_pipeline_args = []
+    # TODO(b/251703242): Remove str_beam_pipeline_args and deprecate
+    # `beam_pipeline_args`.
+    str_beam_pipeline_args = []
+    for beam_pipeline_arg in self.beam_pipeline_args:
+      if isinstance(beam_pipeline_arg, str):
+        str_ph = placeholder_pb2.PlaceholderExpression()
+        str_ph.value.string_value = beam_pipeline_arg
+        placeholder_beam_pipeline_args.append(str_ph)
+        str_beam_pipeline_args.append(beam_pipeline_arg)
+      elif isinstance(beam_pipeline_arg, ph.Placeholder):
+        placeholder_beam_pipeline_args.append(beam_pipeline_arg.encode())
+      else:
+        raise ValueError(f'Unsupported arg type:{type(beam_pipeline_arg)}')
+    result.beam_pipeline_args_placeholders.extend(
+        placeholder_beam_pipeline_args)
+    result.beam_pipeline_args.extend(str_beam_pipeline_args)
     return result
 
-  def add_beam_pipeline_args(self, beam_pipeline_args: Iterable[str]) -> None:
+  def add_beam_pipeline_args(
+      self, beam_pipeline_args: Iterable[Union[str, ph.Placeholder]]) -> None:
     self.beam_pipeline_args.extend(beam_pipeline_args)
 
   def copy(self) -> 'BeamExecutorSpec':

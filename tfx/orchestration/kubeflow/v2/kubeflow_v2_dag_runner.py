@@ -21,6 +21,7 @@ from absl import logging
 
 from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx import version
+from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.dsl.io import fileio
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -38,7 +39,6 @@ _KUBEFLOW_TFX_CMD = (
 
 # Current schema version for the API proto.
 _SCHEMA_VERSION = '2.0.0'
-
 
 # Default TFX container image/commands to use in KubeflowV2DagRunner.
 _KUBEFLOW_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(
@@ -68,11 +68,11 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
       default_commands: Optionally specifies the commands of the provided
         container image. When not provided, the default `ENTRYPOINT` specified
         in the docker image is used. Note: the commands here refers to the K8S
-          container command, which maps to Docker entrypoint field. If one
-          supplies command but no args are provided for the container, the
-          container will be invoked with the provided command, ignoring the
-          `ENTRYPOINT` and `CMD` defined in the Dockerfile. One can find more
-          details regarding the difference between K8S and Docker conventions at
+        container command, which maps to Docker entrypoint field. If one
+        supplies command but no args are provided for the container, the
+        container will be invoked with the provided command, ignoring the
+        `ENTRYPOINT` and `CMD` defined in the Dockerfile. One can find more
+        details regarding the difference between K8S and Docker conventions at
         https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
       **kwargs: Additional args passed to base PipelineConfig.
     """
@@ -114,9 +114,8 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
     self._output_filename = output_filename or 'pipeline.json'
     self._exit_handler = None
 
-  def set_exit_handler(self,
-                       exit_handler: base_node.BaseNode):
-    """Set exit handler components for the Kuveflow V2(Vertex AI) dag runner.
+  def set_exit_handler(self, exit_handler: base_node.BaseNode):
+    """Set exit handler components for the Kubeflow V2(Vertex AI) dag runner.
 
     This feature is currently experimental without backward compatibility
     gaurantee.
@@ -149,6 +148,13 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
       RuntimeError: if trying to write out to a place occupied by an existing
       file.
     """
+    for component in pipeline.components:
+      # TODO(b/187122662): Pass through pip dependencies as a first-class
+      # component flag.
+      if isinstance(component, base_component.BaseComponent):
+        component._resolve_pip_dependencies(  # pylint: disable=protected-access
+            pipeline.pipeline_info.pipeline_root)
+
     # TODO(b/166343606): Support user-provided labels.
     # TODO(b/169095387): Deprecate .run() method in favor of the unified API
     # client.

@@ -55,12 +55,14 @@ class ArtifactUtilsTest(tf.test.TestCase):
     an_artifact = standard_artifacts.Examples()
     an_artifact.uri = '/tmp/evaluri'
     an_artifact.split_names = '["eval"]'
+    an_artifact.is_external = True
     replicated = artifact_utils.replicate_artifacts(an_artifact, 4)
     self.assertLen(replicated, 4)
     self.assertEqual(replicated[0].uri, '/tmp/evaluri/0')
     self.assertEqual(replicated[3].uri, '/tmp/evaluri/3')
     self.assertEqual(replicated[0].split_names, an_artifact.split_names)
     self.assertEqual(replicated[0].split_names, an_artifact.split_names)
+    self.assertEqual(replicated[0].is_external, an_artifact.is_external)
 
   def testGetFromSplits(self):
     """Test various retrieval utilities on a list of split Artifact."""
@@ -111,20 +113,20 @@ class ArtifactUtilsTest(tf.test.TestCase):
     # When reading artifacts with new version.
     artifacts[0].set_string_custom_property(
         artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY,
-        artifact_utils._ARTIFACT_VERSION_FOR_SPLIT_UPDATE)
+        artifact_utils._ARTIFACT_VERSION_FOR_SPLIT_UPDATE)  # pylint: disable=protected-access
     artifacts[1].set_string_custom_property(
         artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY,
-        artifact_utils._ARTIFACT_VERSION_FOR_SPLIT_UPDATE)
+        artifact_utils._ARTIFACT_VERSION_FOR_SPLIT_UPDATE)  # pylint: disable=protected-access
     self.assertEqual(['/tmp1/Split-train', '/tmp2/Split-train'],
                      artifact_utils.get_split_uris(artifacts, 'train'))
     self.assertEqual(['/tmp1/Split-eval', '/tmp2/Split-eval'],
                      artifact_utils.get_split_uris(artifacts, 'eval'))
 
   def testArtifactTypeRoundTrip(self):
-    mlmd_artifact_type = standard_artifacts.Examples._get_artifact_type()
+    mlmd_artifact_type = standard_artifacts.Examples._get_artifact_type()  # pylint: disable=protected-access
     self.assertIs(standard_artifacts.Examples,
                   artifact_utils.get_artifact_type_class(mlmd_artifact_type))
-    mlmd_artifact_type = _MyArtifact._get_artifact_type()
+    mlmd_artifact_type = _MyArtifact._get_artifact_type()  # pylint: disable=protected-access
     # Test that the ID is ignored for type comparison purposes during
     # deserialization.
     mlmd_artifact_type.id = 123
@@ -132,7 +134,7 @@ class ArtifactUtilsTest(tf.test.TestCase):
                   artifact_utils.get_artifact_type_class(mlmd_artifact_type))
 
   def testValueArtifactTypeRoundTrip(self):
-    mlmd_artifact_type = standard_artifacts.String.annotate_as(
+    mlmd_artifact_type = standard_artifacts.String.annotate_as(  # pylint: disable=protected-access
         system_artifacts.Dataset)._get_artifact_type()
     artifact_class = artifact_utils.get_artifact_type_class(mlmd_artifact_type)
     self.assertEqual(
@@ -146,7 +148,7 @@ class ArtifactUtilsTest(tf.test.TestCase):
   @mock.patch.object(logging, 'warning', autospec=True)
   def testArtifactTypeRoundTripUnknownArtifactClass(self, mock_warning):
     mlmd_artifact_type = copy.deepcopy(
-        standard_artifacts.Examples._get_artifact_type())
+        standard_artifacts.Examples._get_artifact_type())  # pylint: disable=protected-access
     self.assertIs(standard_artifacts.Examples,
                   artifact_utils.get_artifact_type_class(mlmd_artifact_type))
     mlmd_artifact_type.name = 'UnknownTypeName'
@@ -159,7 +161,7 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertTrue(issubclass(reconstructed_class, artifact.Artifact))
     self.assertEqual('UnknownTypeName', reconstructed_class.TYPE_NAME)
     self.assertEqual(mlmd_artifact_type,
-                     reconstructed_class._get_artifact_type())
+                     reconstructed_class._get_artifact_type())  # pylint: disable=protected-access
 
   def testIsArtifactVersionOlderThan(self):
     examples = standard_artifacts.Examples()
@@ -179,6 +181,40 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertFalse(
         artifact_utils.is_artifact_version_older_than(examples, '0.1'))
 
+  @mock.patch('tfx.types.artifact_utils.fileio', autospec=True)
+  def testVerifyArtifacts(self, mock_fileio):
+    """Test that artifacts (in various input formats) are verified to exist."""
+    artifact_instance = standard_artifacts.Examples()
+    uri = '/tmp/artifact'
+    artifact_instance.uri = uri
+    mock_fileio.exists.side_effect = lambda path: path == uri
+    inputs = [
+        (artifact_instance, 'artifact instance'),
+        ([artifact_instance, artifact_instance], 'artifacts list'),
+        ({
+            'key1': [artifact_instance, artifact_instance],
+            'key2': [artifact_instance, artifact_instance, artifact_instance]
+        }, 'artifacts dict'),
+    ]
+    for artifacts, artifacts_format in inputs:
+      with self.subTest(artifacts_format):
+        artifact_utils.verify_artifacts(artifacts)
+
+  @mock.patch('tfx.types.artifact_utils.fileio', autospec=True)
+  def testVerifyArtifactsFailsNoUri(self, _):
+    """When an artifact has no uri, verify_artifacts fails."""
+    artifact_instance = standard_artifacts.Examples()
+    with self.assertRaises(RuntimeError):
+      artifact_utils.verify_artifacts(artifact_instance)
+
+  @mock.patch('tfx.types.artifact_utils.fileio', autospec=True)
+  def testVerifyArtifactsFailsMissingFile(self, mock_fileio):
+    """When an artifact's uri points to a non-existent file, verify_artifacts fails."""
+    artifact_instance = standard_artifacts.Examples()
+    artifact_instance.uri = '/tmp/artifact'
+    mock_fileio.exists.side_effect = lambda path: False
+    with self.assertRaises(RuntimeError):
+      artifact_utils.verify_artifacts(artifact_instance)
 
 if __name__ == '__main__':
   tf.test.main()

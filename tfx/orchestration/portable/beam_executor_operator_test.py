@@ -50,7 +50,11 @@ class BeamExecutorOperatorTest(test_case_utils.TfxTest):
       python_executor_spec: {
           class_path: "tfx.orchestration.portable.beam_executor_operator_test.ValidateBeamPipelineArgsExecutor"
       }
-      beam_pipeline_args: "--runner=DirectRunner"
+      beam_pipeline_args_placeholders {
+        value {
+          string_value: "--runner=DirectRunner"
+        }
+      }
     """, executable_spec_pb2.BeamExecutableSpec())
     operator = beam_executor_operator.BeamExecutorOperator(executor_spec)
     pipeline_node = pipeline_pb2.PipelineNode(node_info={'id': 'MyBeamNode'})
@@ -65,7 +69,7 @@ class BeamExecutorOperatorTest(test_case_utils.TfxTest):
             execution_output_uri=executor_output_uri,
             pipeline_node=pipeline_node,
             pipeline_info=pipeline_info,
-            pipeline_run_id=99))
+            pipeline_run_id='99'))
     self.assertProtoPartiallyEquals(
         """
           output_artifacts {
@@ -78,6 +82,7 @@ class BeamExecutorOperatorTest(test_case_utils.TfxTest):
                     string_value: "MyPipeline.MyBeamNode.my_model"
                   }
                 }
+                name: "MyPipeline.MyBeamNode.my_model"
               }
             }
           }""", executor_output)

@@ -209,7 +209,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
         tfx_image=self.container_image)
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(pipeline)
 
-    file_path = os.path.join(self._test_dir, '{}.tar.gz'.format(pipeline_name))
+    file_path = os.path.join(self.tmp_dir, '{}.tar.gz'.format(pipeline_name))
     self.assertTrue(fileio.exists(file_path))
 
     run_result = client.create_run_from_pipeline_package(

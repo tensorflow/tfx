@@ -176,7 +176,8 @@ class Executor(base_executor.BaseExecutor):
     # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_cloud_training(input_dict, output_dict, exec_properties,
                                        executor_class_path, training_inputs,
-                                       job_id, enable_vertex, vertex_region)
+                                       job_id, None, enable_vertex,
+                                       vertex_region)
 
 
 def _need_chief_oracle(exec_properties: Dict[str, Any]) -> bool:

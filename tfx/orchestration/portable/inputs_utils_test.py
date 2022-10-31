@@ -41,49 +41,49 @@ from ml_metadata.proto import metadata_store_pb2
 _TESTDATA_DIR = os.path.join(os.path.dirname(__file__), 'testdata')
 
 
-@ops.register
+@ops.testonly_register
 class IdentityOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return input_dict
 
 
-@ops.register
+@ops.testonly_register
 class SkippingOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     raise exceptions.SkipSignal()
 
 
-@ops.register
+@ops.testonly_register
 class BadOutputOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return 'This is not a dict'
 
 
-@ops.register
+@ops.testonly_register
 class DuplicateOp(resolver_op.ResolverOp):
 
   def apply(self, input_dict):
     return [input_dict, input_dict]
 
 
-@ops.register
+@ops.testonly_register
 class IdentityStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
     return input_dict
 
 
-@ops.register
+@ops.testonly_register
 class SkippingStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
     return None
 
 
-@ops.register
+@ops.testonly_register
 class BadOutputStrategy(resolver.ResolverStrategy):
 
   def resolve_artifacts(self, store, input_dict):
@@ -198,7 +198,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     with self.assertRaisesRegex(RuntimeError, 'Parameter value not ready'):
       inputs_utils.resolve_parameters(parameters)
 
-  def testResolveInputsArtifacts(self):
+  def testResolveInputArtifacts(self):
     pipeline = self.load_pipeline_proto(
         'pipeline_for_input_resolver_test.pbtxt')
     my_example_gen = pipeline.nodes[0].pipeline_node
@@ -235,7 +235,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # Gets inputs for transform. Should get back what the first ExampleGen
       # published in the `output_examples` channel.
       transform_inputs = inputs_utils.resolve_input_artifacts(
-          m, my_transform.inputs)
+          metadata_handler=m, pipeline_node=my_transform)[0]
       self.assertArtifactMapEqual({'examples_1': [output_example],
                                    'examples_2': [output_example]},
                                   transform_inputs)
@@ -243,8 +243,10 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # Tries to resolve inputs for trainer. As trainer also requires min_count
       # for both input channels (from example_gen and from transform) but we did
       # not publish anything from transform, it should return nothing.
-      self.assertIsNone(
-          inputs_utils.resolve_input_artifacts(m, my_trainer.inputs))
+      with self.assertRaisesRegex(
+          exceptions.InputResolutionError, 'InputSpec.min_count violation'):
+        inputs_utils.resolve_input_artifacts(
+            metadata_handler=m, pipeline_node=my_trainer)
 
       # Tries to resolve inputs for transform after adding a new context query
       # to the input spec that refers to a non-existent context. Inputs cannot
@@ -253,11 +255,12 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
           0].context_queries.add()
       context_query.type.name = 'non_existent_context'
       context_query.name.field_value.string_value = 'non_existent_context'
-      transform_inputs = inputs_utils.resolve_input_artifacts(
-          m, my_transform.inputs)
-      self.assertIsNone(transform_inputs)
+      with self.assertRaisesRegex(
+          exceptions.InputResolutionError, 'InputSpec.min_count violation'):
+        inputs_utils.resolve_input_artifacts(
+            metadata_handler=m, pipeline_node=my_transform)
 
-  def testResolverWithLatestArtifactStrategy(self):
+  def testResolveInputArtifacts_LatestArtifactStrategy(self):
     pipeline = self.load_pipeline_proto(
         'pipeline_for_input_resolver_test.pbtxt')
     my_example_gen = pipeline.nodes[0].pipeline_node
@@ -285,12 +288,12 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # Gets inputs for transform. Should get back what the first ExampleGen
       # published in the `output_examples` channel.
       transform_inputs = inputs_utils.resolve_input_artifacts(
-          m, my_transform.inputs)
+          metadata_handler=m, pipeline_node=my_transform)[0]
       self.assertArtifactMapEqual({'examples_1': [output_example_2],
                                    'examples_2': [output_example_2]},
                                   transform_inputs)
 
-  def testResolveInputArtifactsOutputKeyUnset(self):
+  def testResolveInputArtifacts_OutputKeyUnset(self):
     pipeline = self.load_pipeline_proto(
         'pipeline_for_input_resolver_test_output_key_unset.pbtxt')
     my_trainer = pipeline.nodes[0].pipeline_node
@@ -307,7 +310,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # Gets inputs for pusher. Should get back what the first Model
       # published in the `output_model` channel.
       pusher_inputs = inputs_utils.resolve_input_artifacts(
-          m, my_pusher.inputs)
+          metadata_handler=m, pipeline_node=my_pusher)[0]
       self.assertArtifactMapEqual({'model': [output_model]},
                                   pusher_inputs)
 
@@ -332,56 +335,21 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     step_pb.class_path = name_utils.get_full_name(cls)
     step_pb.config_json = json_utils.dumps(config or {})
 
-  def testResolveInputArtifacts_SkippingStrategy(self):
+  def testResolveInputArtifacts_Normal(self):
     self._setup_pipeline_for_input_resolver_test()
-    self._append_resolver_step(self._my_transform, SkippingStrategy)
 
     result = inputs_utils.resolve_input_artifacts(
-        self._metadata_handler, self._my_transform.inputs)
-    self.assertIsNone(result)
-
-  def testResolveInputArtifacts_NonDictOutput(self):
-    self._setup_pipeline_for_input_resolver_test()
-    self._append_resolver_step(self._my_transform, BadOutputStrategy)
-
-    with self.assertRaisesRegex(TypeError, 'Invalid input resolution result'):
-      inputs_utils.resolve_input_artifacts(
-          self._metadata_handler, self._my_transform.inputs)
-
-  def testResolveInputArtifacts_NonDictArg(self):
-    self._setup_pipeline_for_input_resolver_test()
-    self._append_resolver_step(self._my_transform, DuplicateOp)
-    self._append_resolver_step(self._my_transform, IdentityStrategy)
-
-    with self.assertRaisesRegex(TypeError, 'Invalid argument type'):
-      inputs_utils.resolve_input_artifacts(
-          self._metadata_handler, self._my_transform.inputs)
-
-  def testResolveInputArtifacts_MixedStrategyAndOp(self):
-    self._setup_pipeline_for_input_resolver_test()
-    self._append_resolver_step(self._my_transform, IdentityStrategy)
-    self._append_resolver_step(self._my_transform, IdentityOp)
-
-    result = inputs_utils.resolve_input_artifacts(
-        self._metadata_handler, self._my_transform.inputs)
-    self.assertArtifactMapEqual({'examples_1': self._examples,
-                                 'examples_2': self._examples}, result)
-
-  def testResolveInputArtifactsV2_Normal(self):
-    self._setup_pipeline_for_input_resolver_test()
-
-    result = inputs_utils.resolve_input_artifacts_v2(
         pipeline_node=self._my_transform,
         metadata_handler=self._metadata_handler)
     self.assertIsInstance(result, inputs_utils.Trigger)
     self.assertArtifactMapListEqual([{'examples_1': self._examples,
                                       'examples_2': self._examples}], result)
 
-  def testResolveInputArtifactsV2_MultipleDicts(self):
+  def testResolveInputArtifacts_MultipleDicts(self):
     self._setup_pipeline_for_input_resolver_test()
     self._append_resolver_step(self._my_transform, DuplicateOp)
 
-    result = inputs_utils.resolve_input_artifacts_v2(
+    result = inputs_utils.resolve_input_artifacts(
         pipeline_node=self._my_transform,
         metadata_handler=self._metadata_handler)
     self.assertIsInstance(result, inputs_utils.Trigger)
@@ -390,42 +358,43 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
         {'examples_1': self._examples, 'examples_2': self._examples},
     ], result)
 
-  def testResolveInputArtifactsV2_SkipSignal(self):
+  def testResolveInputArtifacts_SkipSignal(self):
     self._setup_pipeline_for_input_resolver_test()
     self._append_resolver_step(self._my_transform, SkippingOp)
 
-    result = inputs_utils.resolve_input_artifacts_v2(
+    result = inputs_utils.resolve_input_artifacts(
         pipeline_node=self._my_transform,
         metadata_handler=self._metadata_handler)
     self.assertIsInstance(result, inputs_utils.Skip)
     self.assertArtifactMapListEqual(result, [])
 
-  def testResolveInputArtifactsV2_FilterOutInsufficient(self):
+  def testResolveInputArtifacts_FilterOutInsufficient(self):
     self._setup_pipeline_for_input_resolver_test()
-    self._my_transform.inputs.inputs['examples'].min_count = 2
+    self._my_transform.inputs.inputs['examples_1'].min_count = 2
 
-    with self.assertRaisesRegex(exceptions.InputResolutionError,
-                                'No valid inputs'):
-      inputs_utils.resolve_input_artifacts_v2(
+    with self.assertRaisesRegex(
+        exceptions.InputResolutionError,
+        r'inputs\[examples_1\] has min_count = 2 but only got 1'):
+      inputs_utils.resolve_input_artifacts(
           pipeline_node=self._my_transform,
           metadata_handler=self._metadata_handler)
 
-  def testResolveInputArtifactsV2_TypeCheckResult(self):
+  def testResolveInputArtifacts_TypeCheckResult(self):
     self._setup_pipeline_for_input_resolver_test()
     self._append_resolver_step(self._my_transform, BadOutputOp)
 
     with self.assertRaisesRegex(exceptions.InputResolutionError,
                                 'Invalid input resolution result'):
-      inputs_utils.resolve_input_artifacts_v2(
+      inputs_utils.resolve_input_artifacts(
           pipeline_node=self._my_transform,
           metadata_handler=self._metadata_handler)
 
-  def testResolveInputArtifactsV2_MixedStrategyAndOp(self):
+  def testResolveInputArtifacts_MixedStrategyAndOp(self):
     self._setup_pipeline_for_input_resolver_test()
     self._append_resolver_step(self._my_transform, IdentityStrategy)
     self._append_resolver_step(self._my_transform, IdentityOp)
 
-    result = inputs_utils.resolve_input_artifacts_v2(
+    result = inputs_utils.resolve_input_artifacts(
         pipeline_node=self._my_transform,
         metadata_handler=self._metadata_handler)
     self.assertIsInstance(result, inputs_utils.Trigger)
@@ -465,6 +434,48 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     self.assertEqual(len(parameter_schemas), 2)
     self.assertProtoPartiallyEquals(expected_schema,
                                     parameter_schemas['key_one'])
+
+  def test_resolve_dynamic_parameters(self):
+    dynamic_parameters = pipeline_pb2.NodeParameters()
+    text_format.Parse(
+        """
+        parameters {
+          key: "input_num"
+          value {
+            placeholder {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            key: "_test_placeholder"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }""", dynamic_parameters)
+    test_artifact = types.standard_artifacts.Integer()
+    test_artifact.uri = self.create_tempfile().full_path
+    test_artifact.value = 42
+    input_dict = {'_test_placeholder': [test_artifact]}
+    dynamic_parameters_res = inputs_utils.resolve_dynamic_parameters(
+        dynamic_parameters, input_dict)
+    self.assertLen(dynamic_parameters_res, 1)
+    self.assertEqual(dynamic_parameters_res['input_num'], 42)
+
+    with self.assertRaises(
+        exceptions.InvalidArgument,
+        msg='Failed to resolve dynamic exec property. '
+        'Key: input_num. Value: input("_test_placeholder")[0].value'):
+      dynamic_parameters_res = inputs_utils.resolve_dynamic_parameters(
+          dynamic_parameters, {})
 
 
 def unprocessed_artifacts_resolvers_available():
@@ -524,8 +535,7 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
       ex2 = output_artifacts['output_examples'][0]
 
       result = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m,
-          node_inputs=my_transform.inputs)
+          metadata_handler=m, pipeline_node=my_transform)[0]
 
     self.assertArtifactMapEqual({'examples_1': [ex2],
                                  'examples_2': [ex2]}, result)
@@ -569,8 +579,7 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
                                       'examples_2': [ex2]}, output_map=None)
 
       result = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m,
-          node_inputs=my_transform.inputs)
+          metadata_handler=m, pipeline_node=my_transform)[0]
 
     self.assertArtifactMapEqual({'examples_1': [ex1],
                                  'examples_2': [ex1]}, result)
@@ -616,11 +625,9 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
                         input_map={'examples_1': [ex2], 'examples_2': [ex2]},
                         output_map=None)
 
-      result = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m,
-          node_inputs=my_transform.inputs)
-
-    self.assertIsNone(result)
+      with self.assertRaises(exceptions.InputResolutionError):
+        inputs_utils.resolve_input_artifacts(
+            metadata_handler=m, pipeline_node=my_transform)
 
   def testLatestArtifacts_withInputKeys(self):
     pipeline = self.load_pipeline_proto(
@@ -667,8 +674,7 @@ class InputsUtilsResolverTests(test_case_utils.TfxTest, _TestMixin):
           output_map={'transform_graph': [tf2]})
       tf2 = output_artifacts['transform_graph'][0]
       result = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m,
-          node_inputs=my_trainer.inputs)
+          metadata_handler=m, pipeline_node=my_trainer)[0]
 
     # "examples" input channel doesn't go through the resolver and its order is
     # undeterministic. Sort artifacts by ID for testing convenience.

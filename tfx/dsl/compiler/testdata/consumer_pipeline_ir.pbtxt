@@ -1,0 +1,378 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+#
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/consumer_pipeline.py
+
+pipeline_info {
+  id: "consumer-pipeline"
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.orchestration.pipeline.Pipeline_begin"
+      }
+      id: "consumer-pipeline_begin"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "consumer-pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "consumer-pipeline.consumer-pipeline_begin"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "producer-pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "producer-pipeline.CsvExampleGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+                base_type: DATASET
+              }
+            }
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+              base_type: DATASET
+            }
+          }
+        }
+      }
+    }
+    downstream_nodes: "Resolver.example_gen_resolver"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.components.common.resolver.Resolver"
+      }
+      id: "Resolver.example_gen_resolver"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "consumer-pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "consumer-pipeline.Resolver.example_gen_resolver"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "consumer-pipeline_begin"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "consumer-pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "consumer-pipeline.consumer-pipeline_begin"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+                base_type: DATASET
+              }
+            }
+            output_key: "examples"
+          }
+        }
+      }
+      resolver_config {
+        resolver_steps {
+          class_path: "tfx.dsl.input_resolution.strategies.latest_artifact_strategy.LatestArtifactStrategy"
+          config_json: "{}"
+        }
+      }
+    }
+    upstream_nodes: "consumer-pipeline_begin"
+    downstream_nodes: "StatisticsGen"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.statistics_gen.component.StatisticsGen"
+        base_type: PROCESS
+      }
+      id: "StatisticsGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "consumer-pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "consumer-pipeline.StatisticsGen"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "Resolver.example_gen_resolver"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "consumer-pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "consumer-pipeline.Resolver.example_gen_resolver"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+                base_type: DATASET
+              }
+            }
+            output_key: "examples"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "statistics"
+        value {
+          artifact_spec {
+            type {
+              name: "ExampleStatistics"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              base_type: STATISTICS
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+    }
+    upstream_nodes: "Resolver.example_gen_resolver"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline-root"
+      type: STRING
+    }
+  }
+  pipeline_run_id {
+    runtime_parameter {
+      name: "pipeline-run-id"
+      type: STRING
+    }
+  }
+}
+execution_mode: SYNC
+deployment_config {
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "StatisticsGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+        }
+      }
+    }
+  }
+}

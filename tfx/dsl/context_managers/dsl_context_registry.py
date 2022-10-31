@@ -22,6 +22,11 @@ from tfx.dsl.context_managers import dsl_context
 
 # Use Any to avoid cyclic import.
 _BaseNode = Any
+_Pipeline = Any
+
+
+def _format_node(node: _BaseNode) -> str:
+  return f'{type(node).__name__}({node.id})#{id(node)}'
 
 
 class DslContextRegistry:
@@ -77,6 +82,16 @@ class DslContextRegistry:
   def _check_mutable(self):
     if self._finalized:
       raise RuntimeError('Cannot mutate DslContextRegistry after finalized.')
+
+  @contextlib.contextmanager
+  def temporary_mutable(self):
+    """Temporarily make the registry mutable."""
+    is_finalized = self._finalized
+    self._finalized = False
+    try:
+      yield
+    finally:
+      self._finalized = is_finalized
 
   def push_context(self, context: dsl_context.DslContext):
     """Pushes the context to the top of active context frames."""
@@ -141,13 +156,55 @@ class DslContextRegistry:
     """
     # This is O(N^2), but not performance critical.
     if node not in self._all_nodes:
-      raise ValueError(f'Node {node} does not exist in the registry.')
+      raise ValueError(
+          f'Node {_format_node(node)} does not exist in the registry. '
+          f'Valid: {", ".join([_format_node(n) for n in self._all_nodes])})')
     result = []
     for context in self._all_contexts:
       if node in self._nodes_by_context[context]:
         result.append(context)
     return result
 
+  def extract_for_pipeline(self, pipeline: _Pipeline) -> 'DslContextRegistry':
+    """Creates new registry with pipeline level contexts filtered out.
+
+    This function should be called in the pipeline constructor, i.e., where
+    pipeine scope ends, to persist contexts defined within the pipeline scope
+    in the pipeline object.
+
+    Args:
+      pipeline: A pipeline that may exist in the registry.
+    Returns:
+      A new DSL context registry with only contexts within the pipeline scope.
+    """
+    # pylint:disable=protected-access
+    result = DslContextRegistry()
+    latest_pipeline_level_context = None
+    for context in reversed(self._all_contexts):
+      if pipeline in self._nodes_by_context[context]:
+        latest_pipeline_level_context = context
+        break
+      else:
+        context.parent = None
+        result._all_contexts.append(context)
+    result._all_contexts.reverse()
+
+    result._active_contexts = []
+
+    if latest_pipeline_level_context:
+      result._all_nodes = self._nodes_by_context[latest_pipeline_level_context]
+    else:
+      result._all_nodes = self._all_nodes
+
+    for context, nodes in self._nodes_by_context.items():
+      if context in result._all_contexts:
+        result._nodes_by_context[context] = [
+            n for n in nodes if n in result._all_nodes
+        ]
+
+    result._finalized = False
+    # pylint:enable=protected-access
+    return result
 
 _registry_holder = threading.local()
 
@@ -160,12 +217,19 @@ def get() -> DslContextRegistry:
 
 
 @contextlib.contextmanager
+def use_registry(registry: DslContextRegistry) -> Iterator[DslContextRegistry]:
+  """Use the given registry as a global scope."""
+  old_registry = get()
+  _registry_holder.current = registry
+  try:
+    with registry.temporary_mutable():
+      yield registry
+  finally:
+    _registry_holder.current = old_registry
+
+
+@contextlib.contextmanager
 def new_registry() -> Iterator[DslContextRegistry]:
   """Push the new registry to the global scope."""
-  old_reg = get()
-  new_reg = DslContextRegistry()
-  _registry_holder.current = new_reg
-  try:
-    yield new_reg
-  finally:
-    _registry_holder.current = old_reg
+  with use_registry(DslContextRegistry()) as result:
+    yield result

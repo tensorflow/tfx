@@ -26,7 +26,7 @@ from tfx.types import standard_artifacts
 from ml_metadata.proto import metadata_store_pb2
 
 # Mock value for string artifact.
-_STRING_VALUE = u'This is a string'
+_STRING_VALUE = 'This is a string'
 
 # Mock byte value for string artifact.
 _BYTE_VALUE = b'This is a string'
@@ -34,10 +34,10 @@ _BYTE_VALUE = b'This is a string'
 
 def fake_read(self):
   """Mock read method for ValueArtifact."""
-  if not self._has_value:
-    self._has_value = True
-    self._value = self.decode(_BYTE_VALUE)
-  return self._value
+  if not self._has_value:  # pylint: disable=protected-access
+    self._has_value = True  # pylint: disable=protected-access
+    self._value = self.decode(_BYTE_VALUE)  # pylint: disable=protected-access
+  return self._value  # pylint: disable=protected-access
 
 
 class _InputArtifact(types.Artifact):
@@ -104,7 +104,7 @@ class BaseDriverTest(tf.test.TestCase):
   @mock.patch(
       'tfx.dsl.components.base.base_driver.BaseDriver.verify_input_artifacts')
   @mock.patch.object(types.ValueArtifact, 'read', fake_read)
-  def testPreExecutionNewExecution(self, mock_verify_input_artifacts_fn):
+  def testPreExecutionNewExecution(self, _):
     self._mock_metadata.search_artifacts.return_value = list(
         self._input_dict['input_string'].get())
     self._mock_metadata.register_execution.side_effect = [self._execution]
@@ -170,15 +170,16 @@ class BaseDriverTest(tf.test.TestCase):
         exec_properties=self._exec_properties,
         driver_args=self._driver_args,
         pipeline_info=self._pipeline_info)
-    self.assertEqual(len(resolved_artifacts['input_union']), 2)
+    self.assertLen(resolved_artifacts['input_union'], 2)
     self.assertEqual(resolved_artifacts['input_union'][0].value, _STRING_VALUE)
-    self.assertEqual(len(resolved_artifacts['input_string']), 1)
+    self.assertLen(resolved_artifacts['input_string'], 1)
     self.assertEqual(resolved_artifacts['input_string'][0].value, _STRING_VALUE)
 
   @mock.patch(
       'tfx.dsl.components.base.base_driver.BaseDriver.verify_input_artifacts')
   @mock.patch.object(types.ValueArtifact, 'read', fake_read)
-  def testPreExecutionCached(self, mock_verify_input_artifacts_fn):
+  def testPreExecutionCached(self, _):
+    """With cache enabled, if cached output artifacts are found, execution decision is to use cache."""
     self._mock_metadata.search_artifacts.return_value = list(
         self._input_dict['input_string'].get())
     self._mock_metadata.register_run_context_if_not_exists.side_effect = [
@@ -198,6 +199,44 @@ class BaseDriverTest(tf.test.TestCase):
         pipeline_info=self._pipeline_info,
         component_info=self._component_info)
     self.assertTrue(execution_decision.use_cached_results)
+    self.assertEqual(execution_decision.execution_id, self._execution_id)
+    self.assertCountEqual(execution_decision.exec_properties,
+                          self._exec_properties)
+    self.assertCountEqual(execution_decision.output_dict,
+                          self._output_artifacts)
+
+  @mock.patch(
+      'tfx.dsl.components.base.base_driver.artifact_utils.verify_artifacts')
+  @mock.patch(
+      'tfx.dsl.components.base.base_driver.BaseDriver.verify_input_artifacts')
+  @mock.patch.object(types.ValueArtifact, 'read', fake_read)
+  def testPreExecutionCachedMissing(self, _,
+                                    mock_artifact_utils_verify_artifacts_fn):
+    """With cache enabled, if cached output artifacts are found but are missing, execution decision is to not use cache."""
+
+    # mock such that the output artifacts as pulled from cache are not present
+    mock_artifact_utils_verify_artifacts_fn.side_effect = RuntimeError()
+
+    self._mock_metadata.search_artifacts.return_value = list(
+        self._input_dict['input_string'].get())
+    self._mock_metadata.register_run_context_if_not_exists.side_effect = [
+        metadata_store_pb2.Context()
+    ]
+    self._mock_metadata.register_execution.side_effect = [self._execution]
+    self._mock_metadata.get_cached_outputs.side_effect = [
+        self._output_artifacts
+    ]
+
+    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
+    execution_decision = driver.pre_execution(
+        input_dict=self._input_dict,
+        output_dict=self._output_dict,
+        exec_properties=self._exec_properties,
+        driver_args=self._driver_args,
+        pipeline_info=self._pipeline_info,
+        component_info=self._component_info)
+
+    self.assertFalse(execution_decision.use_cached_results)
     self.assertEqual(execution_decision.execution_id, self._execution_id)
     self.assertCountEqual(execution_decision.exec_properties,
                           self._exec_properties)

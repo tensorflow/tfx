@@ -20,13 +20,14 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from absl import logging
 import numpy as np
-import tensorflow as tf
 
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.utils import io_utils
 from google.protobuf import json_format
+from tensorflow.core.example import example_pb2
+from tensorflow.core.example import feature_pb2
 
 
 # Key for the `payload_format` custom property of output examples artifact.
@@ -82,7 +83,7 @@ UNIX_EPOCH_DATE_UTC = datetime.datetime(  # pylint: disable=g-tzinfo-datetime
 _DEFAULT_ENCODING = 'utf-8'
 
 
-def dict_to_example(instance: Dict[str, Any]) -> tf.train.Example:
+def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
   """Converts dict to tf example."""
   feature = {}
   for key, value in instance.items():
@@ -101,36 +102,36 @@ def dict_to_example(instance: Dict[str, Any]) -> tf.train.Example:
       pyval = pyval.decode(_DEFAULT_ENCODING)
 
     if pyval is None:
-      feature[key] = tf.train.Feature()
+      feature[key] = feature_pb2.Feature()
     elif isinstance(pyval, int):
-      feature[key] = tf.train.Feature(
-          int64_list=tf.train.Int64List(value=[pyval]))
+      feature[key] = feature_pb2.Feature(
+          int64_list=feature_pb2.Int64List(value=[pyval]))
     elif isinstance(pyval, float):
-      feature[key] = tf.train.Feature(
-          float_list=tf.train.FloatList(value=[pyval]))
+      feature[key] = feature_pb2.Feature(
+          float_list=feature_pb2.FloatList(value=[pyval]))
     elif isinstance(pyval, str):
-      feature[key] = tf.train.Feature(
-          bytes_list=tf.train.BytesList(
+      feature[key] = feature_pb2.Feature(
+          bytes_list=feature_pb2.BytesList(
               value=[pyval.encode(_DEFAULT_ENCODING)]))
     elif isinstance(pyval, list):
       if not pyval:
-        feature[key] = tf.train.Feature()
+        feature[key] = feature_pb2.Feature()
       elif isinstance(pyval[0], int):
-        feature[key] = tf.train.Feature(
-            int64_list=tf.train.Int64List(value=pyval))
+        feature[key] = feature_pb2.Feature(
+            int64_list=feature_pb2.Int64List(value=pyval))
       elif isinstance(pyval[0], float):
-        feature[key] = tf.train.Feature(
-            float_list=tf.train.FloatList(value=pyval))
+        feature[key] = feature_pb2.Feature(
+            float_list=feature_pb2.FloatList(value=pyval))
       elif isinstance(pyval[0], str):
-        feature[key] = tf.train.Feature(
-            bytes_list=tf.train.BytesList(
+        feature[key] = feature_pb2.Feature(
+            bytes_list=feature_pb2.BytesList(
                 value=[v.encode(_DEFAULT_ENCODING) for v in pyval]))
       else:
         raise RuntimeError('Column type `list of {}` is not supported.'.format(
             type(value[0])))
     else:
       raise RuntimeError('Column type {} is not supported.'.format(type(value)))
-  return tf.train.Example(features=tf.train.Features(feature=feature))
+  return example_pb2.Example(features=feature_pb2.Features(feature=feature))
 
 
 def generate_output_split_names(
@@ -241,12 +242,13 @@ def make_default_output_config(
 def _glob_to_regex(glob_pattern: str) -> str:
   """Changes glob pattern to regex pattern."""
   regex_pattern = glob_pattern
-  regex_pattern = regex_pattern.replace('.', '\\.')
-  regex_pattern = regex_pattern.replace('+', '\\+')
-  regex_pattern = regex_pattern.replace('*', '[^/]*')
-  regex_pattern = regex_pattern.replace('?', '[^/]')
-  regex_pattern = regex_pattern.replace('(', '\\(')
-  regex_pattern = regex_pattern.replace(')', '\\)')
+  regex_pattern = regex_pattern.replace('\\', '\\\\')
+  regex_pattern = regex_pattern.replace('.', r'\.')
+  regex_pattern = regex_pattern.replace('+', r'\+')
+  regex_pattern = regex_pattern.replace('*', r'[^\\/]*')
+  regex_pattern = regex_pattern.replace('?', r'[^\\/]')
+  regex_pattern = regex_pattern.replace('(', r'\(')
+  regex_pattern = regex_pattern.replace(')', r'\)')
   return regex_pattern
 
 

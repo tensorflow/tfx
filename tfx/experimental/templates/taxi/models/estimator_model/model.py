@@ -19,6 +19,7 @@ defined in features.py and network parameters defined in constants.py.
 
 from absl import logging
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
@@ -84,7 +85,7 @@ def _build_estimator(config, hidden_units=None, warm_start_from=None):
         tf.feature_column.categorical_column_with_identity(
             key, num_buckets=num_buckets, default_value=0))
 
-  return tf.estimator.DNNLinearCombinedClassifier(
+  return tf_estimator.DNNLinearCombinedClassifier(
       config=config,
       linear_feature_columns=categorical_columns,
       dnn_feature_columns=real_valued_columns,
@@ -105,14 +106,14 @@ def _example_serving_receiver_fn(tf_transform_output, schema):
   raw_feature_spec = _get_raw_feature_spec(schema)
   raw_feature_spec.pop(features.LABEL_KEY)
 
-  raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+  raw_input_fn = tf_estimator.export.build_parsing_serving_input_receiver_fn(
       raw_feature_spec, default_batch_size=None)
   serving_input_receiver = raw_input_fn()
 
   transformed_features = tf_transform_output.transform_raw_features(
       serving_input_receiver.features)
 
-  return tf.estimator.export.ServingInputReceiver(
+  return tf_estimator.export.ServingInputReceiver(
       transformed_features, serving_input_receiver.receiver_tensors)
 
 
@@ -211,21 +212,21 @@ def _create_train_and_eval_spec(trainer_fn_args, schema):
       tf_transform_output,
       batch_size=constants.EVAL_BATCH_SIZE)
 
-  train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
+  train_spec = tf_estimator.TrainSpec(  # pylint: disable=g-long-lambda
       train_input_fn,
       max_steps=trainer_fn_args.train_steps)
 
   serving_receiver_fn = lambda: _example_serving_receiver_fn(  # pylint: disable=g-long-lambda
       tf_transform_output, schema)
 
-  exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
-  eval_spec = tf.estimator.EvalSpec(
+  exporter = tf_estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
+  eval_spec = tf_estimator.EvalSpec(
       eval_input_fn,
       steps=trainer_fn_args.eval_steps,
       exporters=[exporter],
       name='chicago-taxi-eval')
 
-  run_config = tf.estimator.RunConfig(
+  run_config = tf_estimator.RunConfig(
       save_checkpoints_steps=999, keep_checkpoint_max=1)
 
   run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
@@ -258,7 +259,7 @@ def run_fn(fn_args):
 
   # Train the model
   logging.info('Training model.')
-  tf.estimator.train_and_evaluate(train_and_eval_spec['estimator'],
+  tf_estimator.train_and_evaluate(train_and_eval_spec['estimator'],
                                   train_and_eval_spec['train_spec'],
                                   train_and_eval_spec['eval_spec'])
   logging.info('Training complete.  Model written to %s',

@@ -13,9 +13,9 @@
 # limitations under the License.
 """Utilities for proto related manipulations."""
 
-import itertools
 from typing import Any, Dict, Iterator, TypeVar, Optional
 
+from google.protobuf import any_pb2
 from google.protobuf import descriptor_pb2
 from google.protobuf import descriptor as descriptor_lib
 from google.protobuf import descriptor_pool
@@ -25,51 +25,34 @@ from google.protobuf import message_factory
 
 
 def gather_file_descriptors(
-    descriptor: descriptor_lib.Descriptor,
-    enable_extensions: bool = False) -> Iterator[descriptor_lib.FileDescriptor]:
-  """Yield all depdendent file descriptors of a given proto descriptor.
+    file_descriptor: descriptor_lib.FileDescriptor
+) -> Iterator[descriptor_lib.FileDescriptor]:
+  """Yields the file descriptor and all of its dependencies.
 
   Args:
-    descriptor: The proto descriptor to start the dependency search from.
-    enable_extensions: Optional. True if proto extensions are enabled. Default
-      to False.
+    file_descriptor: The proto descriptor to start the dependency search from.
 
   Yields:
-    All file descriptors in the transitive dependencies of descriptor.
+    All file descriptors in the transitive dependencies of the input descriptor,
+    in topological order (i.e. dependencies before dependents).
     Each file descriptor is returned only once.
   """
-  visited_files = set()
-  visited_messages = set()
-  messages = [descriptor]
+  visited_files = set()  # To avoid duplicate outputs.
 
-  # Walk in depth through all the fields and extensions of the given descriptor
-  # and all the referenced messages.
-  while messages:
-    descriptor = messages.pop()
-    visited_files.add(descriptor.file)
+  def process_file(
+      file: descriptor_lib.FileDescriptor
+  ) -> Iterator[descriptor_lib.FileDescriptor]:
+    """Yields the file's dependencies and then the file itself."""
+    if file in visited_files:
+      return
+    visited_files.add(file)
 
-    if enable_extensions:
-      extensions = descriptor.file.pool.FindAllExtensions(descriptor)
-    else:
-      extensions = []
-    for field in itertools.chain(descriptor.fields, extensions):
-      if field.message_type and field.message_type not in visited_messages:
-        visited_messages.add(field.message_type)
-        messages.append(field.message_type)
+    for dependency_file in file.dependencies:
+      yield from process_file(dependency_file)
+    yield file  # It's important that this is last.
 
-    for extension in extensions:
-      # Note: extension.file may differ from descriptor.file.
-      visited_files.add(extension.file)
-
-  # Go through the collected files and add their explicit dependencies.
-  files = list(visited_files)
-  while files:
-    file_descriptor = files.pop()
-    yield file_descriptor
-    for dependency in file_descriptor.dependencies:
-      if dependency not in visited_files:
-        visited_files.add(dependency)
-        files.append(dependency)
+  # Kick off the recursion.
+  yield from process_file(file_descriptor)
 
 
 def proto_to_json(proto: message.Message) -> str:
@@ -103,9 +86,18 @@ def build_file_descriptor_set(
     pb_message: message.Message, fd_set: descriptor_pb2.FileDescriptorSet
 ) -> descriptor_pb2.FileDescriptorSet:
   """Builds file descriptor set for input pb message."""
-  for fd in gather_file_descriptors(pb_message.DESCRIPTOR):
+  for fd in gather_file_descriptors(pb_message.DESCRIPTOR.file):
     fd.CopyToProto(fd_set.file.add())
   return fd_set
+
+
+def _create_proto_instance_from_name(
+    message_name: str, pool: descriptor_pool.DescriptorPool) -> ProtoMessage:
+  """Creates a protobuf message instance from a given message name."""
+  message_descriptor = pool.FindMessageTypeByName(message_name)
+  factory = message_factory.MessageFactory(pool)
+  message_type = factory.GetPrototype(message_descriptor)
+  return message_type()
 
 
 def deserialize_proto_message(
@@ -119,8 +111,15 @@ def deserialize_proto_message(
     for file_descriptor in file_descriptors.file:
       pool.Add(file_descriptor)
 
-  message_descriptor = pool.FindMessageTypeByName(message_name)
-  factory = message_factory.MessageFactory(pool)
-  message_type = factory.GetPrototype(message_descriptor)
+  proto_instance = _create_proto_instance_from_name(message_name, pool)
   return json_format.Parse(
-      serialized_message, message_type(), descriptor_pool=pool)
+      serialized_message, proto_instance, descriptor_pool=pool)
+
+
+def unpack_proto_any(any_proto: any_pb2.Any) -> ProtoMessage:
+  """Unpacks a google.protobuf.Any message into its concrete type."""
+  pool = descriptor_pool.Default()
+  message_name = any_proto.type_url.split('/')[-1]
+  proto_instance = _create_proto_instance_from_name(message_name, pool)
+  any_proto.Unpack(proto_instance)
+  return proto_instance

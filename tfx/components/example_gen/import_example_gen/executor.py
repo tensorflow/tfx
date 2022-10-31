@@ -18,9 +18,10 @@ from typing import Any, Dict, Union
 
 from absl import logging
 import apache_beam as beam
+import pyarrow.parquet as pq
 import tensorflow as tf
-
 from tfx.components.example_gen import base_example_gen_executor
+from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_component_specs
 
@@ -43,7 +44,8 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
       that maps to input files with root directory given by input_base.
 
   Returns:
-    PCollection of records (tf.Example, tf.SequenceExample, or bytes).
+    PCollection of records (tf.Example, tf.SequenceExample, bytes or
+    dictionaries).
   """
   input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
@@ -56,6 +58,41 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
           beam.io.ReadFromTFRecord(file_pattern=input_split_pattern))
 
 
+@beam.ptransform_fn
+@beam.typehints.with_input_types(beam.Pipeline)
+@beam.typehints.with_output_types(Dict[str, Any])
+def _ImportParquetRecord(  # pylint: disable=invalid-name
+    pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
+    split_pattern: str) -> beam.pvalue.PCollection:
+  """Read parquet files to PCollection of records represented by dicts.
+
+  Note that each input split will be transformed by this function separately.
+
+  Args:
+    pipeline: Beam pipeline.
+    exec_properties: A dict of execution properties. - input_base: input dir
+      that contains input data.
+    split_pattern: Split.pattern in Input config, glob relative file pattern
+      that maps to input files with root directory given by input_base.
+
+  Returns:
+    PCollection of parquet records represented by dictionaries.
+  """
+  input_base_uri = exec_properties[standard_component_specs.INPUT_BASE_KEY]
+  input_split_pattern = os.path.join(input_base_uri, split_pattern)
+  logging.info('Reading input Parquet data %s.', input_split_pattern)
+
+  def _InferArrowSchema(file_pattern):
+    any_file = fileio.glob(file_pattern)[0]
+    return pq.read_schema(any_file)
+
+  schema = _InferArrowSchema(input_split_pattern)
+  exec_properties['pyarrow_schema'] = schema
+  return (pipeline
+          | 'ReadParquet' >>
+          beam.io.ReadFromParquet(file_pattern=input_split_pattern))
+
+
 class Executor(base_example_gen_executor.BaseExampleGenExecutor):
   """Generic TFX import example gen executor."""
 
@@ -65,7 +102,8 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
     @beam.ptransform_fn
     @beam.typehints.with_input_types(beam.Pipeline)
     @beam.typehints.with_output_types(Union[tf.train.Example,
-                                            tf.train.SequenceExample, bytes])
+                                            tf.train.SequenceExample, bytes,
+                                            Dict[str, Any]])
     def ImportRecord(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
                      split_pattern: str) -> beam.pvalue.PCollection:
       """PTransform to import records.
@@ -86,6 +124,9 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
       output_payload_format = exec_properties.get(
           standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
 
+      if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
+        return pipeline | _ImportParquetRecord(exec_properties, split_pattern)  # pylint: disable=no-value-for-parameter
+
       serialized_records = (
           pipeline
           # pylint: disable=no-value-for-parameter
@@ -102,7 +143,8 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
                 | 'ToTFSequenceExample' >> beam.Map(
                     tf.train.SequenceExample.FromString))
 
-      raise ValueError('output_payload_format must be one of FORMAT_TF_EXAMPLE,'
-                       ' FORMAT_TF_SEQUENCE_EXAMPLE or FORMAT_PROTO')
+      raise ValueError(
+          'output_payload_format must be one of FORMAT_TF_EXAMPLE,'
+          ' FORMAT_TF_SEQUENCE_EXAMPLE, FORMAT_PROTO or FORMAT_PARQUET')
 
     return ImportRecord

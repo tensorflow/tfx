@@ -49,11 +49,14 @@ def poll_job_status(job_id: str, timeout: datetime.timedelta,
     time.sleep(polling_interval_secs)
 
     job = pipeline_jobs.PipelineJob.get(resource_name=job_id)
-    if (job.state ==
+    # '.state' is synced everytime we access the property. So it can change
+    # between comparisons. We have to make a copy to compare it multiple times.
+    job_state = job.state
+    if (job_state ==
         pipeline_state.PipelineState.PIPELINE_STATE_SUCCEEDED):
       logging.info('Job succeeded: %s', job)
       return
-    elif job.state in _PIPELINE_COMPLETE_STATES:
-      raise RuntimeError('Job is in an unexpected state: %s' % job.state)
+    elif job_state in _PIPELINE_COMPLETE_STATES:
+      raise RuntimeError('Job is in an unexpected state: %s' % job_state)
 
   raise RuntimeError('Timed out waiting for job to finish.')

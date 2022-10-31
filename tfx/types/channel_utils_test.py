@@ -13,10 +13,14 @@
 # limitations under the License.
 """Tests for tfx.utils.channel."""
 
+from unittest import mock
+
 import tensorflow as tf
+from tfx.dsl.input_resolution import resolver_op
 from tfx.types import artifact
 from tfx.types import channel
 from tfx.types import channel_utils
+from tfx.types import resolved_channel
 
 
 class _MyArtifact(artifact.Artifact):
@@ -52,10 +56,8 @@ class ChannelUtilsTest(tf.test.TestCase):
     self.assertDictEqual(result, {'id': [instance_a, instance_b]})
 
   def testGetInidividualChannels(self):
-    instance_a = _MyArtifact()
-    instance_b = _MyArtifact()
-    one_channel = channel.Channel(_MyArtifact).set_artifacts([instance_a])
-    another_channel = channel.Channel(_MyArtifact).set_artifacts([instance_b])
+    one_channel = channel.Channel(_MyArtifact)
+    another_channel = channel.Channel(_MyArtifact)
 
     result = channel_utils.get_individual_channels(one_channel)
     self.assertEqual(result, [one_channel])
@@ -63,6 +65,55 @@ class ChannelUtilsTest(tf.test.TestCase):
     result = channel_utils.get_individual_channels(
         channel.union([one_channel, another_channel]))
     self.assertEqual(result, [one_channel, another_channel])
+
+  def testGetDependentNodeIds(self):
+    x1 = mock.MagicMock()
+    x1.id = 'x1'
+    x2 = mock.MagicMock()
+    x2.id = 'x2'
+    p = mock.MagicMock()
+    p.id = 'p'
+
+    just_channel = channel.Channel(type=_MyArtifact)
+    output_channel_x1 = channel.OutputChannel(
+        artifact_type=_MyArtifact, producer_component=x1,
+        output_key='out1')
+    output_channel_x2 = channel.OutputChannel(
+        artifact_type=_MyArtifact, producer_component=x2,
+        output_key='out1')
+    pipeline_input_channel = channel.PipelineInputChannel(
+        output_channel_x1, output_key='out2')
+    pipeline_output_channel = channel.PipelineOutputChannel(
+        output_channel_x2, p, output_key='out3')
+    pipeline_input_channel.pipeline = p
+    union_channel = channel.union([output_channel_x1, output_channel_x2])
+    resolved_channel_ = resolved_channel.ResolvedChannel(
+        _MyArtifact, resolver_op.InputNode(
+            union_channel, output_data_type=resolver_op.DataType.ARTIFACT_LIST))
+
+    class DummyChannel(channel.BaseChannel):
+      pass
+
+    unknown_channel = DummyChannel(_MyArtifact)
+
+    def check(ch, expected):
+      with self.subTest(channel_type=type(ch).__name__):
+        if isinstance(expected, list):
+          actual = list(channel_utils.get_dependent_node_ids(ch))
+          self.assertCountEqual(
+              actual, expected, f'Expected {expected} but got {actual}.')
+        else:
+          with self.assertRaises(expected):
+            list(channel_utils.get_dependent_node_ids(ch))
+
+    check(just_channel, [])
+    check(output_channel_x1, ['x1'])
+    check(output_channel_x2, ['x2'])
+    check(pipeline_input_channel, ['p'])
+    check(pipeline_output_channel, ['p'])
+    check(union_channel, ['x1', 'x2'])
+    check(resolved_channel_, ['x1', 'x2'])
+    check(unknown_channel, TypeError)
 
 
 if __name__ == '__main__':

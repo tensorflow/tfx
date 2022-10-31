@@ -117,7 +117,7 @@ class DummyResolverStrategy(resolver.ResolverStrategy):
 
 class Foo(resolver_op.ResolverOp):
   """Dummy ResolverOperator Foo."""
-  foo = resolver_op.ResolverOpProperty(type=int)
+  foo = resolver_op.Property(type=int)
 
   def apply(self, input_dict):
     return input_dict
@@ -125,7 +125,7 @@ class Foo(resolver_op.ResolverOp):
 
 class Bar(resolver_op.ResolverOp):
   """Dummy ResolverOperator Bar."""
-  bar = resolver_op.ResolverOpProperty(type=str)
+  bar = resolver_op.Property(type=str)
 
   def apply(self, input_dict):
     return input_dict
@@ -139,7 +139,7 @@ class TestCase(tf.test.TestCase):
     self.pipeline_root = os.path.join(temp_dir, 'pipeline')
     self.metadata_conn_config = metadata.sqlite_metadata_connection_config(
         os.path.join(temp_dir, 'metadata', 'metadata.db'))
-    self.compiler = compiler.Compiler()
+    self.compiler = compiler.Compiler(use_input_v2=False)
 
   def compile_sync_pipeline(self, components):
     p = pipeline.Pipeline(
@@ -399,11 +399,9 @@ class CompilerResolverTest(TestCase):
     # Check steps[0]
     self.assertEndsWith(resolver_steps[0].class_path, '.Foo')
     self.assertEqual(json.loads(resolver_steps[0].config_json), {'foo': 1})
-    self.assertEqual(resolver_steps[0].input_keys, ['x'])
     # Check steps[1]
     self.assertEndsWith(resolver_steps[1].class_path, '.Bar')
     self.assertEqual(json.loads(resolver_steps[1].config_json), {'bar': 'z'})
-    self.assertEqual(resolver_steps[1].input_keys, ['x'])
 
 if __name__ == '__main__':
   tf.test.main()

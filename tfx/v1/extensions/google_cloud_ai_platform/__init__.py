@@ -23,6 +23,7 @@ from tfx.extensions.google_cloud_ai_platform.trainer.component import Trainer
 # ENABLE_UCAIP_KEY is deprecated, please use ENABLE_VERTEX_KEY instead
 from tfx.extensions.google_cloud_ai_platform.trainer.executor import ENABLE_UCAIP_KEY
 from tfx.extensions.google_cloud_ai_platform.trainer.executor import JOB_ID_KEY
+from tfx.extensions.google_cloud_ai_platform.trainer.executor import LABELS_KEY
 from tfx.extensions.google_cloud_ai_platform.trainer.executor import TRAINING_ARGS_KEY
 # UCAIP_REGION_KEY is deprecated, please use VERTEX_REGION_KEY instead
 from tfx.extensions.google_cloud_ai_platform.trainer.executor import UCAIP_REGION_KEY

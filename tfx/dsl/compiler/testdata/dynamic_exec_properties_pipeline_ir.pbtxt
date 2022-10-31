@@ -1,5 +1,8 @@
 # proto-file: tfx/proto/orchestration/pipeline.proto
 # proto-message: Pipeline
+#
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/dynamic_exec_properties_pipeline.py
 
 pipeline_info {
   id: "dynamic_exec_properties_pipeline"
@@ -214,6 +217,22 @@ runtime_spec {
 }
 execution_mode: SYNC
 deployment_config {
-  type_url: "type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig"
-  value: "\n\260\001\n\023DownstreamComponent\022\230\001\nOtype.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec\022E\nCtfx.dsl.compiler.testdata.dynamic_exec_properties_pipeline.Executor\n\300\001\n\021UpstreamComponent\022\252\001\nOtype.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec\022W\nUtfx.dsl.compiler.testdata.dynamic_exec_properties_pipeline.UpstreamComponent_Executor"
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "DownstreamComponent"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.dsl.compiler.testdata.dynamic_exec_properties_pipeline.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "UpstreamComponent"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.dsl.compiler.testdata.dynamic_exec_properties_pipeline.UpstreamComponent_Executor"
+        }
+      }
+    }
+  }
 }

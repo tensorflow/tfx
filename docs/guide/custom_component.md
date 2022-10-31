@@ -13,7 +13,7 @@ If you are new to TFX pipelines,
 If only custom processing logic is needed while the inputs, outputs, and
 execution properties of the component are the same as an existing component, a
 custom executor is sufficient. A fully custom component is needed when any of
-the inputs, outputs, or execution properties are different than any existing TFX
+the inputs, outputs, or execution properties are different from any existing TFX
 components.
 
 ## How to create a custom component?
@@ -31,11 +31,11 @@ Developing a fully custom component requires:
 
 The `ComponentSpec` class defines the component contract by defining the input
 and output artifacts to a component as well as the parameters that are used for
-the component execution. There are three parts in it:
+the component execution. It has three parts:
 
 *   *INPUTS*: A dictionary of typed parameters for the input artifacts that are
-    into the component executor. Normally input artifacts are the outputs from
-    upstream components and thus share the same type.
+    passed into the component executor. Normally input artifacts are the outputs
+    from upstream components and thus share the same type.
 *   *OUTPUTS*: A dictionary of typed parameters for the output artifacts which
     the component produces.
 *   *PARAMETERS*: A dictionary of additional

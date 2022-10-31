@@ -14,8 +14,10 @@
 """Constants shared across modules."""
 
 EXECUTION_ERROR_MSG_KEY = '__execution_error_msg__'
-EXECUTOR_SPEC_FINGERPRINT_KEY = '__executor_spec_fingerprint__'
 
 IMPORTER_NODE_TYPE = 'tfx.dsl.components.common.importer.Importer'
 RESOLVER_NODE_TYPE = 'tfx.dsl.components.common.resolver.Resolver'
 MANUAL_NODE_TYPE = 'tfx.dsl.components.common.manual_node.ManualNode'
+SUBPIPELINE_NODE_TYPE = 'tfx.orchestration.pipeline.Pipeline'
+SUBPIPELINE_BEGIN_NODE_TYPE = 'tfx.orchestration.pipeline.Pipeline_begin'
+SUBPIPELINE_END_NODE_TYPE = 'tfx.orchestration.pipeline.Pipeline_end'

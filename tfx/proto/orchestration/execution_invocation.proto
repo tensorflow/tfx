@@ -21,8 +21,7 @@ import "ml_metadata/proto/metadata_store_service.proto";
 import "tfx/proto/orchestration/pipeline.proto";
 
 // All the information needed for a TFX component execution.
-// TODO(b/172391062): Make this `ExecutionInvocation` for broader usages.
-// Next ID: 14
+// Next ID: 15
 message ExecutionInvocation {
   reserved 1, 2;
 
@@ -62,4 +61,7 @@ message ExecutionInvocation {
 
   // The id of the pipeline run that this execution is in.
   string pipeline_run_id = 12;
+
+  // Flags passed to a component.
+  map<string, string> extra_flags = 14;
 }

@@ -23,6 +23,7 @@ from tfx.proto import example_gen_pb2
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 from tfx_bsl.tfxio import dataset_options
+from tfx_bsl.tfxio import parquet_tfxio
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import record_to_tensor_tfxio
 from tfx_bsl.tfxio import tf_example_record
@@ -30,6 +31,8 @@ from tfx_bsl.tfxio import tf_sequence_example_record
 from tfx_bsl.tfxio import tfxio
 from tensorflow_metadata.proto.v0 import schema_pb2
 
+_SUPPORTED_FILE_FORMATS = (example_gen_pb2.FileFormat.FILE_FORMAT_PARQUET,
+                           example_gen_pb2.FileFormat.FORMAT_TFRECORDS_GZIP)
 # TODO(b/162532479): switch to support List[str] exclusively, once tfx-bsl
 # post-0.22 is released.
 OneOrMorePatterns = Union[str, List[str]]
@@ -239,15 +242,24 @@ def get_data_view_decode_fn_from_artifact(
       raw_record_column_name=None).DecodeFunction()
 
 
+# TODO(b/216604827): Deprecate str file format.
+def _file_format_from_string(file_format: str) -> example_gen_pb2.FileFormat:
+  if file_format == 'tfrecords_gzip':
+    return example_gen_pb2.FileFormat.FORMAT_TFRECORDS_GZIP
+  else:
+    return example_gen_pb2.FileFormat.Value(file_format)
+
+
 def make_tfxio(
     file_pattern: OneOrMorePatterns,
     telemetry_descriptors: List[str],
-    payload_format: Union[str, int],
+    payload_format: int,
     data_view_uri: Optional[str] = None,
     schema: Optional[schema_pb2.Schema] = None,
     read_as_raw_records: bool = False,
     raw_record_column_name: Optional[str] = None,
-    file_format: Optional[Union[str, List[str]]] = None) -> tfxio.TFXIO:
+    file_format: Optional[Union[int, List[int], str, List[str]]] = None
+) -> tfxio.TFXIO:
   """Creates a TFXIO instance that reads `file_pattern`.
 
   Args:
@@ -271,8 +283,8 @@ def make_tfxio(
       that column will be the raw records. Note that not all TFXIO supports this
       option, and an error will be raised in that case. Required if
       read_as_raw_records == True.
-    file_format: file format string for each file_pattern. Only 'tfrecords_gzip'
-      is supported for now.
+    file_format: file format for each file_pattern. Only 'tfrecords_gzip' and
+      'parquet' are supported for now.
 
   Returns:
     a TFXIO instance.
@@ -291,10 +303,12 @@ def make_tfxio(
             f'The length of file_pattern and file_formats should be the same.'
             f'Given: file_pattern={file_pattern}, file_format={file_format}')
       else:
-        if any(item != 'tfrecords_gzip' for item in file_format):
+        file_format = [_file_format_from_string(item) for item in file_format]
+        if any(item not in _SUPPORTED_FILE_FORMATS for item in file_format):
           raise NotImplementedError(f'{file_format} is not supported yet.')
     else:  # file_format is str type.
-      if file_format != 'tfrecords_gzip':
+      file_format = _file_format_from_string(file_format)
+      if file_format not in _SUPPORTED_FILE_FORMATS:
         raise NotImplementedError(f'{file_format} is not supported yet.')
 
   if read_as_raw_records:
@@ -329,6 +343,12 @@ def make_tfxio(
         saved_decoder_path=data_view_uri,
         telemetry_descriptors=telemetry_descriptors,
         raw_record_column_name=raw_record_column_name)
+
+  if payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
+    return parquet_tfxio.ParquetTFXIO(
+        file_pattern=file_pattern,
+        schema=schema,
+        telemetry_descriptors=telemetry_descriptors)
 
   raise NotImplementedError(
       'Unsupport payload format: {}'.format(payload_format))

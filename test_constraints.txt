@@ -8,5 +8,5 @@
 # constraint if it is installed either directly or transitively by the
 # dependencies.
 
-# TODO(b/220800338): Workaround for markupsafe.
-markupsafe<2.1.0
+# TODO(b/232490018) Remove pinned Cython after pycocotools issue resolved.
+Cython<1

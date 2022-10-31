@@ -13,6 +13,7 @@
 # limitations under the License.
 """Penguin example using TFX."""
 
+import datetime
 import multiprocessing
 import os
 import socket
@@ -24,6 +25,8 @@ from absl import flags
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
 from tfx.dsl.experimental.conditionals import conditional
+from tfx.utils import proto_utils
+
 
 flags.DEFINE_enum(
     'runner', 'DirectRunner', ['DirectRunner', 'FlinkRunner', 'SparkRunner'],
@@ -34,7 +37,6 @@ flags.DEFINE_enum(
 flags.DEFINE_enum('model_framework', 'keras',
                   ['keras', 'flax_experimental', 'tfdf_experimental'],
                   'The modeling framework.')
-
 
 # This example assumes that penguin data is stored in ~/penguin/data and the
 # utility function is in ~/penguin. Feel free to customize as needed.
@@ -111,11 +113,33 @@ _beam_pipeline_args_by_runner = {
 #   resolver_range_config = tfx.proto.RangeConfig(
 #       rolling_range=tfx.proto.RollingRange(num_spans=2))
 _examplegen_input_config = None
-_examplegen_range_config = None
+_examplegen_range_config_date = None
 _resolver_range_config = None
 
 
-def _create_pipeline(
+@tfx.dsl.components.component
+def RangeConfigGenerator(input_date: tfx.dsl.components.Parameter[str],
+                         range_config: tfx.dsl.components.OutputArtifact[
+                             tfx.types.standard_artifacts.String]):
+  """Implements the custom component to convert date into span number.
+
+  Args:
+    input_date: input date to generate range_config.
+    range_config: range_config to ExampleGen.
+  """
+  start_time = datetime.datetime(2022, 1,
+                                 1)  # start time calculate span number from.
+  datem = datetime.datetime.strptime(input_date, '%Y%m%d')
+  span_number = (datetime.datetime(datem.year, datem.month, datem.day) -
+                 start_time).days
+  range_config_str = proto_utils.proto_to_json(
+      tfx.proto.RangeConfig(
+          static_range=tfx.proto.StaticRange(
+              start_span_number=span_number, end_span_number=span_number)))
+  range_config.value = range_config_str
+
+
+def create_pipeline(  # pylint: disable=invalid-name
     pipeline_name: str,
     pipeline_root: str,
     data_root: str,
@@ -126,13 +150,13 @@ def _create_pipeline(
     user_provided_schema_path: Optional[str],
     enable_tuning: bool,
     enable_bulk_inferrer: bool,
+    enable_example_diff: bool,
     examplegen_input_config: Optional[tfx.proto.Input],
-    examplegen_range_config: Optional[tfx.proto.RangeConfig],
+    examplegen_range_config_date: Optional[str],
     resolver_range_config: Optional[tfx.proto.RangeConfig],
     beam_pipeline_args: List[str],
     # TODO(b/191634100): Always enable transform cache.
-    enable_transform_input_cache: bool
-) -> tfx.dsl.Pipeline:
+    enable_transform_input_cache: bool) -> tfx.dsl.Pipeline:
   """Implements the penguin pipeline with TFX.
 
   Args:
@@ -148,8 +172,10 @@ def _create_pipeline(
       enabled.
     enable_bulk_inferrer: If True, the generated model will be used for a
       batch inference.
+    enable_example_diff: If True, perform the feature skew detection.
     examplegen_input_config: ExampleGen's input_config.
-    examplegen_range_config: ExampleGen's range_config.
+    examplegen_range_config_date: date to generate the range_config to
+      ExampleGen.
     resolver_range_config: SpansResolver's range_config. Specify this will
       enable SpansResolver to get a window of ExampleGen's output Spans for
       transform and training.
@@ -161,12 +187,17 @@ def _create_pipeline(
   Returns:
     A TFX pipeline object.
   """
+  range_config = None
+  if examplegen_range_config_date:
+    input_config_generator = RangeConfigGenerator(  # pylint: disable=no-value-for-parameter
+        input_date=examplegen_range_config_date)
+    range_config = input_config_generator.outputs['range_config'].future(
+    )[0].value
 
-  # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = tfx.components.CsvExampleGen(
       input_base=os.path.join(data_root, 'labelled'),
       input_config=examplegen_input_config,
-      range_config=examplegen_range_config)
+      range_config=range_config)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = tfx.components.StatisticsGen(
@@ -196,6 +227,7 @@ def _create_pipeline(
         examples=tfx.dsl.Channel(
             type=tfx.types.standard_artifacts.Examples,
             producer_component_id=example_gen.id)).with_id('span_resolver')
+    examples_resolver.add_upstream_node(example_gen)
 
   # Performs transformations and feature engineering in training and serving.
   if enable_transform_input_cache:
@@ -334,6 +366,21 @@ def _create_pipeline(
         data_spec=tfx.proto.DataSpec(),
         model_spec=tfx.proto.ModelSpec())
 
+  if enable_example_diff:
+    skewed_data_example_gen = tfx.components.CsvExampleGen(
+        input_base=os.path.join(data_root, 'skewed')).with_id(
+            'CsvExampleGen_Skewed')
+    example_diff_config = tfx.proto.ExampleDiffConfig(
+        paired_example_skew=tfx.proto.PairedExampleSkew(
+            skew_sample_size=2, identifier_features=['culmen_length_mm']))
+    include_split_pairs = [('train', 'train'), ('train', 'eval')]
+    example_diff = tfx.components.ExampleDiff(
+        examples_test=example_gen.outputs['examples'],
+        examples_base=skewed_data_example_gen.outputs['examples'],
+        config=example_diff_config,
+        include_split_pairs=include_split_pairs
+    )
+
   components_list = [
       example_gen,
       statistics_gen,
@@ -344,6 +391,8 @@ def _create_pipeline(
       evaluator,
       pusher,
   ]
+  if examplegen_range_config_date:
+    components_list.append(input_config_generator)
   if resolver_range_config:
     components_list.append(examples_resolver)
   if enable_transform_input_cache:
@@ -351,10 +400,12 @@ def _create_pipeline(
   if enable_tuning:
     components_list.append(tuner)
   if enable_bulk_inferrer:
-    components_list.append(example_gen_unlabelled)
-    components_list.append(bulk_inferrer)
+    components_list.extend((example_gen_unlabelled, bulk_inferrer))
   if user_provided_schema_path:
     components_list.append(example_validator)
+  if enable_example_diff:
+    components_list.extend(
+        (skewed_data_example_gen, example_diff))
 
   return tfx.dsl.Pipeline(
       pipeline_name=pipeline_name,
@@ -389,7 +440,7 @@ if __name__ == '__main__':
   _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                                 'metadata.db')
   tfx.orchestration.LocalDagRunner().run(
-      _create_pipeline(
+      create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,
           data_root=_data_root,
@@ -402,7 +453,8 @@ if __name__ == '__main__':
           enable_tuning=(flags.FLAGS.model_framework == 'keras'),
           enable_bulk_inferrer=True,
           examplegen_input_config=_examplegen_input_config,
-          examplegen_range_config=_examplegen_range_config,
+          examplegen_range_config_date=_examplegen_range_config_date,
           resolver_range_config=_resolver_range_config,
           beam_pipeline_args=_beam_pipeline_args_by_runner[flags.FLAGS.runner],
-          enable_transform_input_cache=True))
+          enable_transform_input_cache=True,
+          enable_example_diff=False))

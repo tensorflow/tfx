@@ -15,16 +15,18 @@
 
 import copy
 import enum
-from typing import Collection, List, Optional, Union, cast
+from typing import Any, Collection, Dict, List, Optional, Union, cast
 import warnings
 
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.context_managers import dsl_context_registry
+from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import channel
 from tfx.types import channel_utils
 from tfx.utils import doc_controls
 from tfx.utils import topsort
@@ -72,6 +74,39 @@ def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
         component.executor_spec).beam_pipeline_args = beam_pipeline_args + cast(
             executor_spec.BeamExecutorSpec,
             component.executor_spec).beam_pipeline_args
+
+
+class PipelineInputs:
+  """A utility class to help declare input signatures of composable pipelines."""
+
+  def __init__(self, inputs: Optional[Dict[str, channel.BaseChannel]] = None):
+    self._inputs = inputs or {}
+    self._wrapped_inputs = {
+        k: channel.PipelineInputChannel(v, output_key=k)
+        for k, v in self._inputs.items()
+    }
+    self._pipeline = None
+
+  @property
+  def raw_inputs(self) -> Dict[str, channel.BaseChannel]:
+    return self._inputs
+
+  @property
+  def inputs(self) -> Dict[str, channel.PipelineInputChannel]:
+    return self._wrapped_inputs
+
+  def __getitem__(self, key) -> channel.PipelineInputChannel:
+    return self._wrapped_inputs[key]
+
+  @property
+  def pipeline(self) -> 'Pipeline':
+    return self._pipeline
+
+  @pipeline.setter
+  def pipeline(self, pipeline: 'Pipeline'):
+    self._pipeline = pipeline
+    for c in self._wrapped_inputs.values():
+      c.pipeline = pipeline
 
 
 class RunOptions:
@@ -192,7 +227,7 @@ class RunOptions:
     self.base_pipeline_run_id = base_pipeline_run_id
 
 
-class Pipeline:
+class Pipeline(base_node.BaseNode):
   """Logical TFX pipeline object.
 
   Pipeline object represents the DAG of TFX components, which can be run using
@@ -214,14 +249,17 @@ class Pipeline:
 
   def __init__(self,
                pipeline_name: str,
-               pipeline_root: Union[str, ph.Placeholder],
+               pipeline_root: Optional[Union[str, ph.Placeholder]] = '',
                metadata_connection_config: Optional[
                    metadata.ConnectionConfigType] = None,
                components: Optional[List[base_node.BaseNode]] = None,
                enable_cache: Optional[bool] = False,
-               beam_pipeline_args: Optional[List[str]] = None,
+               beam_pipeline_args: Optional[List[Union[str,
+                                                       ph.Placeholder]]] = None,
                platform_config: Optional[message.Message] = None,
                execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
+               inputs: Optional[PipelineInputs] = None,
+               outputs: Optional[Dict[str, channel.OutputChannel]] = None,
                **kwargs):
     """Initialize pipeline.
 
@@ -230,19 +268,39 @@ class Pipeline:
       pipeline_root: Path to root directory of the pipeline. This will most
         often be just a string. Some orchestrators may have limited support for
         constructing this from a Placeholder, e.g. a RuntimeInfoPlaceholder that
-        refers to fields from the platform config.
+        refers to fields from the platform config. pipeline_root is optional
+        only if the pipeline is composed within another parent pipeline, in
+        which case it will inherit its parent pipeline's root.
       metadata_connection_config: The config to connect to ML metadata.
       components: Optional list of components to construct the pipeline.
       enable_cache: Whether or not cache is enabled for this run.
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
       platform_config: Pipeline level platform config, in proto form.
       execution_mode: The execution mode of the pipeline, can be SYNC or ASYNC.
+      inputs: Optional inputs of a pipeline.
+      outputs: Optional outputs of a pipeline.
       **kwargs: Additional kwargs forwarded as pipeline args.
     """
     if len(pipeline_name) > _MAX_PIPELINE_NAME_LENGTH:
       raise ValueError(
           f'pipeline {pipeline_name} exceeds maximum allowed length: {_MAX_PIPELINE_NAME_LENGTH}.'
       )
+    self.pipeline_name = pipeline_name
+
+    # Initialize pipeline as a node.
+    super().__init__()
+
+    if inputs:
+      inputs.pipeline = self
+    self._inputs = inputs
+    if outputs:
+      self._outputs = {
+          k: channel.PipelineOutputChannel(v, pipeline=self, output_key=k)
+          for k, v in outputs.items()
+      }
+    else:
+      self._outputs = {}
+    self._id = pipeline_name
 
     # Once pipeline is finalized, this instance is regarded as immutable and
     # any detectable mutation will raise an error.
@@ -271,6 +329,9 @@ class Pipeline:
       self._dsl_context_registry = reg
     else:
       self._dsl_context_registry = dsl_context_registry.get()
+      if self._dsl_context_registry.get_contexts(self):
+        self._dsl_context_registry = (
+            self._dsl_context_registry.extract_for_pipeline(self))
 
     # TODO(b/216581002): Use self._dsl_context_registry to obtain components.
     self._components = []
@@ -318,14 +379,6 @@ class Pipeline:
             f'Duplicated node_id {component.id} for component type'
             f'{component.type}.')
       node_by_id[component.id] = component
-      for key, output_channel in component.outputs.items():
-        if (output_channel.producer_component_id is not None and
-            output_channel.producer_component_id != component.id and
-            output_channel.output_key != key):
-          raise AssertionError(
-              f'{output_channel} is produced more than once: '
-              f'{output_channel.producer_id}[{output_channel.output_key}], '
-              f'{component.id}[{key}]')
 
     # Connects nodes based on producer map.
     for component in deduped_components:
@@ -333,13 +386,28 @@ class Pipeline:
       for exec_property in component.exec_properties.values():
         if isinstance(exec_property, ph.ChannelWrappedPlaceholder):
           channels.append(exec_property.channel)
+      for predicate in conditional.get_predicates(component,
+                                                  self.dsl_context_registry):
+        for chnl in predicate.dependent_channels():
+          channels.append(chnl)
 
       for input_channel in channels:
         for node_id in channel_utils.get_dependent_node_ids(input_channel):
+          if node_id == self.id:
+            # If a component's input channel depends on the (self) pipeline,
+            # it means that component consumes pipeline-level inputs. No need to
+            # add upstream node here. Pipeline-level inputs will be handled
+            # during compilation.
+            continue
           upstream_node = node_by_id.get(node_id)
           if upstream_node:
             component.add_upstream_node(upstream_node)
             upstream_node.add_downstream_node(component)
+          else:
+            warnings.warn(
+                f'Node {component.id} depends on the output of node {node_id}'
+                f', but {node_id} is not included in the components of '
+                'pipeline. Did you forget to add it?')
 
     layers = topsort.topsorted_layers(
         list(deduped_components),
@@ -374,3 +442,23 @@ class Pipeline:
           'or interleaved pipeline definitions. Make sure each component '
           'belong to exactly one pipeline, and pipeline definitions are '
           'separated.')
+
+  @property
+  def inputs(self) -> Dict[str, Any]:
+    # If we view a Pipeline as a Node, its inputs should be unwrapped (raw)
+    # channels that are provided through PipelineInputs, and consumed by nodes
+    # in the inner pipeline.
+    if self._inputs:
+      return self._inputs.raw_inputs
+    else:
+      return {}
+
+  @property
+  def outputs(self) -> Dict[str, Any]:
+    # If we view a Pipeline as a Node, its outputs should be wrapped channels
+    # that will be consumed by nodes in the outer pipeline.
+    return self._outputs
+
+  @property
+  def exec_properties(self) -> Dict[str, Any]:
+    return {}

@@ -14,6 +14,7 @@
 """Module for shared interface of every model server runners."""
 
 import abc
+from typing import Optional
 
 
 class BaseModelServerRunner(abc.ABC):
@@ -134,3 +135,7 @@ class BaseModelServerRunner(abc.ABC):
     graceful shutdown period, and it is perfectly fine to add a retry logic
     inside `Stop()` until the deadline is met.
     """
+
+  @abc.abstractmethod
+  def GetLogs(self) -> Optional[str]:
+    """Get a model server log for debugging."""

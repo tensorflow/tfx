@@ -316,8 +316,9 @@ def create_e2e_components(
       model=trainer.outputs['model'],
       examples=example_gen.outputs['examples'],
       serving_spec=infra_validator_pb2.ServingSpec(
+          # TODO(b/244254788): Roll back to the 'latest' tag.
           tensorflow_serving=infra_validator_pb2.TensorFlowServing(
-              tags=['latest']),
+              tags=['2.8.2']),
           kubernetes=infra_validator_pb2.KubernetesConfig()),
       request_spec=infra_validator_pb2.RequestSpec(
           tensorflow_serving=infra_validator_pb2.TensorFlowServingRequestSpec())
@@ -437,31 +438,27 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
-    self._test_dir = self.tmp_dir
+    self._test_id = test_utils.random_id()
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
-
     self._test_output_dir = 'gs://{}/test_output'.format(self._BUCKET_NAME)
+    self._test_data_dir = 'gs://{}/test_data/{}'.format(self._BUCKET_NAME,
+                                                        self._test_id)
+    io_utils.copy_dir(self._TEST_DATA_ROOT, self._test_data_dir)
 
-    test_id = test_utils.random_id()
-
-    self._testdata_root = 'gs://{}/test_data/{}'.format(self._BUCKET_NAME,
-                                                        test_id)
-    io_utils.copy_dir(self._TEST_DATA_ROOT, self._testdata_root)
-
-    self._data_root = os.path.join(self._testdata_root, 'external', 'csv')
+    self._data_root = os.path.join(self._test_data_dir, 'external', 'csv')
 
     self._transform_module = os.path.join(self._MODULE_ROOT,
                                           'transform_module.py')
     self._trainer_module = os.path.join(self._MODULE_ROOT, 'trainer_module.py')
-    self._serving_model_dir = os.path.join(self._testdata_root, 'output')
+    self._serving_model_dir = os.path.join(self._test_output_dir, 'output')
 
-    self.addCleanup(self._delete_test_dir, test_id)
+    self.addCleanup(self._delete_test_dir, self._test_id)
 
   @retry.retry(ignore_eventual_failure=True)
   def _delete_test_dir(self, test_id: str):
     """Deletes files for this test including the module file and data files."""
-    logging.info('Deleting test data: %s', self._testdata_root)
-    io_utils.delete_dir(self._testdata_root)
+    logging.info('Deleting test data: %s', self._test_data_dir)
+    io_utils.delete_dir(self._test_data_dir)
 
   @retry.retry(ignore_eventual_failure=True)
   def _delete_workflow(self, workflow_name: str):
@@ -598,10 +595,10 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
         tfx_image=self.container_image)
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(pipeline)
 
-    file_path = os.path.join(self._test_dir, '{}.tar.gz'.format(pipeline_name))
+    file_path = os.path.join(self.tmp_dir, '{}.tar.gz'.format(pipeline_name))
     self.assertTrue(fileio.exists(file_path))
     tarfile.TarFile.open(file_path).extract('pipeline.yaml')
-    pipeline_file = os.path.join(self._test_dir, 'pipeline.yaml')
+    pipeline_file = os.path.join(self.tmp_dir, 'pipeline.yaml')
     self.assertIsNotNone(pipeline_file)
 
     workflow_name = workflow_name or pipeline_name

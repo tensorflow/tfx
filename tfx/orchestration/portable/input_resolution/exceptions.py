@@ -48,6 +48,11 @@ class InternalError(InputResolutionError):
   grpc_code = grpc.StatusCode.INTERNAL
 
 
+class UnimplementedError(InputResolutionError):
+  """Equivalent to NotImplementedError but for input resolution."""
+  grpc_code = grpc.StatusCode.UNIMPLEMENTED
+
+
 class InputResolutionSignal(Exception):
   """Base exception class for non-error input resolution signals."""
 

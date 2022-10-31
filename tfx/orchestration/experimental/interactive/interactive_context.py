@@ -20,9 +20,7 @@ Note: these APIs are **experimental** and major changes to interface and
 functionality are expected.
 """
 
-import builtins
 import datetime
-import functools
 import html
 import os
 import tempfile
@@ -38,6 +36,7 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.interactive import execution_result
 from tfx.orchestration.experimental.interactive import notebook_formatters
+from tfx.orchestration.experimental.interactive import notebook_utils
 from tfx.orchestration.experimental.interactive import standard_visualizations
 from tfx.orchestration.experimental.interactive import visualizations
 from tfx.orchestration.launcher import in_process_component_launcher
@@ -49,24 +48,6 @@ _SKIP_FOR_EXPORT_MAGIC = '%%skip_for_export'
 _MAGIC_PREFIX = '%'
 _CMD_LINE_PREFIX = '!'
 _EXPORT_TEMPLATES_DIR = 'export_templates'
-
-
-def requires_ipython(fn):
-  """Decorator for methods that can only be run in IPython."""
-
-  @functools.wraps(fn)
-  def run_if_ipython(*args, **kwargs):
-    """Invokes `fn` if called from IPython, otherwise just emits a warning."""
-    if getattr(builtins, '__IPYTHON__', None):
-      # __IPYTHON__ variable is set by IPython, see
-      # https://ipython.org/ipython-doc/rel-0.10.2/html/interactive/reference.html#embedding-ipython.
-      return fn(*args, **kwargs)
-    else:
-      absl.logging.warning(
-          'Method "%s" is a no-op when invoked outside of IPython.',
-          fn.__name__)
-
-  return run_if_ipython
 
 
 class InteractiveContext:
@@ -128,7 +109,7 @@ class InteractiveContext:
     # Register artifact visualizations.
     standard_visualizations.register_standard_visualizations()
 
-  @requires_ipython
+  @notebook_utils.requires_ipython
   def run(
       self,
       component: base_node.BaseNode,
@@ -155,7 +136,7 @@ class InteractiveContext:
     driver_args = data_types.DriverArgs(
         enable_cache=enable_cache, interactive_resolution=True)
     metadata_connection = metadata.Metadata(self.metadata_connection_config)
-    beam_pipeline_args = beam_pipeline_args or self.beam_pipeline_args
+    beam_pipeline_args = list(beam_pipeline_args or self.beam_pipeline_args)
     additional_pipeline_args = {}
     for name, output in component.outputs.items():
       for artifact in output.get():
@@ -185,7 +166,7 @@ class InteractiveContext:
     return execution_result.ExecutionResult(
         component=component, execution_id=execution_id)
 
-  @requires_ipython
+  @notebook_utils.requires_ipython
   def export_to_pipeline(self, notebook_filepath: str, export_filepath: str,
                          runner_type: str):
     """Exports a notebook to a .py file as a runnable pipeline.
@@ -238,7 +219,7 @@ class InteractiveContext:
       absl.logging.info('%d cell(s) marked with "%s", skipped.',
                         num_skipped_cells, _SKIP_FOR_EXPORT_MAGIC)
 
-  @requires_ipython
+  @notebook_utils.requires_ipython
   def show(self, item: object) -> None:
     """Show the given object in an IPython notebook display."""
     from IPython.core.display import display  # pylint: disable=g-import-not-at-top

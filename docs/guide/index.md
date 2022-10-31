@@ -43,7 +43,7 @@ TFX also hosts nightly packages at https://pypi-nightly.tensorflow.org on Google
 Cloud. To install the latest nightly package, please use the following command:
 
 ```
-pip install -i https://pypi-nightly.tensorflow.org/simple --pre tfx
+pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre tfx
 ```
 
 This will install the nightly packages for the major dependencies of TFX such as
@@ -279,9 +279,9 @@ SavedModel is the recommended serialization format for serving a TensorFlow
 model in production, or exporting a trained model for a native mobile or
 JavaScript application. For example, to turn a model into a REST service for
 making predictions, you can serialize the model as a SavedModel and serve it
-using TensorFlow Serving. See [Serving a TensorFlow
-Model](https://www.tensorflow.org/serving/tutorials/Serving_REST_simple) for
-more information.
+using TensorFlow Serving. See
+[Serving a TensorFlow Model](https://www.tensorflow.org/tfx/serving/serving_basic)
+for more information.
 
 ### Schema
 
@@ -345,14 +345,14 @@ needed.
 TFX provides a powerful platform for every phase of a machine learning project,
 from research, experimentation, and development on your local machine, through
 deployment. In order to avoid code duplication and eliminate the potential for
-[training/serving skew](#training-serving-skew-detection) it is strongly
-recommended to implement your TFX pipeline for both model training and
-deployment of trained models, and use [Transform](transform.md) components which
-leverage the [TensorFlow Transform](tft.md) library for both training and
-inference. By doing so you will use the same preprocessing and analysis code
-consistently, and avoid differences between data used for training and data fed
-to your trained models in production, as well as benefitting from writing that
-code once.
+[training/serving skew](https://www.tensorflow.org/tfx/guide/tfdv#training-serving_skew_detection)
+it is strongly recommended to implement your TFX pipeline for both model
+training and deployment of trained models, and use [Transform](transform.md)
+components which leverage the [TensorFlow Transform](tft.md) library for both
+training and inference. By doing so you will use the same preprocessing and
+analysis code consistently, and avoid differences between data used for training
+and data fed to your trained models in production, as well as benefitting from
+writing that code once.
 
 ### Data Exploration, Visualization, and Cleaning
 
@@ -399,9 +399,10 @@ You will first query [**ML Metadata (MLMD)**](mlmd.md) to locate the results of
 these executions of these components, and then use the visualization support API
 in TFDV to create the visualizations in your notebook. This includes
 [tfdv.load_statistics()](https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv/load_statistics)
-and [tfdv.visualize_statistics()](`tfdv.visualize_statistics`) Using this
-visualization you can better understand the characteristics of your dataset, and
-if necessary modify as required.
+and
+[tfdv.visualize_statistics()](https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv/visualize_statistics)
+Using this visualization you can better understand the characteristics of your
+dataset, and if necessary modify as required.
 
 ### Developing and Training Models
 

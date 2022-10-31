@@ -12,49 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Module for `ForEach` context manager."""
-from typing import Sequence
 
-import attr
+from typing import Union
 
-from tfx import types
-from tfx.dsl.components.base import base_node
-from tfx.dsl.context_managers import dsl_context
 from tfx.dsl.context_managers import dsl_context_manager
+from tfx.dsl.control_flow import for_each_internal
+from tfx.types import channel as channel_types
+
+_Loopable = Union[channel_types.BaseChannel, for_each_internal.Loopable]
 
 
-@attr.s(auto_attribs=True, kw_only=True, hash=False, eq=False)
-class ForEachContext(dsl_context.DslContext):
-  """DslContext for ForEach."""
-  wrapped_channel: types.BaseChannel
-
-  def validate(self, containing_nodes: Sequence[base_node.BaseNode]):
-    for parent in self.ancestors:
-      if isinstance(parent, ForEachContext):
-        raise NotImplementedError('Nested ForEach block is not supported yet.')
-
-    if len(containing_nodes) > 1:
-      raise NotImplementedError(
-          'Cannot define more than one component within ForEach yet.')
-
-    for node in containing_nodes:
-      for input_channel in node.inputs.values():
-        if (isinstance(input_channel, types.LoopVarChannel) and
-            input_channel.wrapped is self.wrapped_channel):
-          break
-      else:
-        raise ValueError(
-            f'Node {node.id} does not use ForEach sliced value and will always '
-            'see the same input. Please define the node outside the ForEach '
-            'block.')
+# Re-export name for backward compatibility.
+ForEachContext = for_each_internal.ForEachContext
 
 
-class ForEach(dsl_context_manager.DslContextManager[types.LoopVarChannel]):
+def _channel_as_loopable(
+    channel: channel_types.BaseChannel) -> for_each_internal.Loopable:
+
+  # TODO(b/239761275): Change to ResolvedChannel for simplicity.
+  def factory(context: for_each_internal.ForEachContext):
+    context.wrapped_channel = channel
+    return channel_types.LoopVarChannel(channel, context)
+
+  return for_each_internal.Loopable(factory)
+
+
+class ForEach(dsl_context_manager.DslContextManager[for_each_internal.LoopVar]):
   """ForEach context manager.
 
   ForEach context manager is a declarative version of For loop in a pipeline
-  defintion (in DSL). When some TFX component can generate more than one
-  artifacts and want to consume each output artifact separately, ForEach block
-  can be used to aid handling multiple artifacts individually.
+  defintion (in DSL). When some TFX components generate more than one artifacts,
+  or resolver function returns a multiple inputs, ForEach is used to handle
+  each artifact or input dictionary individually.
 
   ```python
   example_gen = BufferedExampleGen()
@@ -70,14 +59,34 @@ class ForEach(dsl_context_manager.DslContextManager[types.LoopVarChannel]):
   pipeline, but it can be executed multiple times (or even zero time) in a
   single pipeline run depending on the number of output artifacts that
   example_gen has generated.
+
+  ResolverFunction can also output a loopable which can be accessed from the
+  handle as a dict of channels:
+
+  ```python
+  evaluator_inputs = sliding_window(examples=examples)
+
+  with ForEach(evaluator_inputs) as each_input:
+    evaluator = Evaluator(
+        examples=each_input['examples'],
+        model=trainer.outputs['model'],
+        ...
+    )
+  ```
   """
 
-  def __init__(self, channel: types.BaseChannel):
+  def __init__(self, loopable: _Loopable):
     super().__init__()
-    self._channel = channel
+    if isinstance(loopable, channel_types.BaseChannel):
+      self._loopable = _channel_as_loopable(loopable)
+    elif isinstance(loopable, for_each_internal.Loopable):
+      self._loopable = loopable
+    else:
+      raise ValueError(f'{loopable} cannot be used as a ForEach argument.')
 
   def create_context(self) -> ForEachContext:
-    return ForEachContext(wrapped_channel=self._channel)
+    return for_each_internal.ForEachContext()
 
-  def enter(self, context: ForEachContext) -> types.LoopVarChannel:
-    return types.LoopVarChannel(self._channel, context)
+  def enter(  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
+      self, context: ForEachContext) -> for_each_internal.LoopVar:
+    return self._loopable.get_loop_var(context)

@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from absl import logging
 from keras_tuner.engine import base_tuner
+from keras_tuner.engine import trial
 from tfx import types
 from tfx.components.trainer import fn_args_utils
 from tfx.components.util import udf_utils
@@ -29,9 +30,9 @@ from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import proto_utils
 
-
 # Default file name for generated best hyperparameters file.
-_DEFAULT_FILE_NAME = 'best_hyperparameters.txt'
+_DEFAULT_BEST_HP_FILE_NAME = 'best_hyperparameters.txt'
+_DEFAULT_TUNER_RESULTS_FILE_NAME = 'tuner_results.json'
 
 
 # TODO(b/160253334): Establish a separation of practice between this 'default'
@@ -57,15 +58,34 @@ def get_tune_args(
 def write_best_hyperparameters(
     tuner: base_tuner.BaseTuner,
     output_dict: Dict[str, List[types.Artifact]]) -> None:
-  """Write out best hyperpeameters known to the given Tuner instance."""
+  """Writes out best hyperpeameters and tuner results."""
+
+  # Saves the best hyperParameters known to the given tuner instance.
   best_hparams_config = tuner.get_best_hyperparameters()[0].get_config()
   logging.info('Best HyperParameters: %s', best_hparams_config)
   best_hparams_path = os.path.join(
       artifact_utils.get_single_uri(
           output_dict[standard_component_specs.BEST_HYPERPARAMETERS_KEY]),
-      _DEFAULT_FILE_NAME)
+      _DEFAULT_BEST_HP_FILE_NAME)
   io_utils.write_string_file(best_hparams_path, json.dumps(best_hparams_config))
   logging.info('Best Hyperparameters are written to %s.', best_hparams_path)
+
+  # Saves tuner results in pandas `records` format (list of rows).
+  results = []
+  for trial_obj in tuner.oracle.get_best_trials(tuner.oracle.max_trials):
+    if trial_obj.status == trial.TrialStatus.COMPLETED and trial_obj.hyperparameters.values:
+      results.append({
+          'trial_id': trial_obj.trial_id,
+          'score': trial_obj.score,
+          **trial_obj.hyperparameters.values
+      })
+
+  tuner_results_path = os.path.join(
+      artifact_utils.get_single_uri(
+          output_dict[standard_component_specs.TUNER_RESULTS_KEY]),
+      _DEFAULT_TUNER_RESULTS_FILE_NAME)
+  io_utils.write_string_file(tuner_results_path, json.dumps(results))
+  logging.info('Tuner results are written to %s.', tuner_results_path)
 
 
 def search(input_dict: Dict[str, List[types.Artifact]],

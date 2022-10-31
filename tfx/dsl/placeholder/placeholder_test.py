@@ -74,9 +74,32 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
-  def testArtifactProperty(self):
+  def testArtifactPropertyWithIndex(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.input('model')[0].property('blessed'), """
+        ph.input('model')[11].property('blessed'), """
+        operator {
+          artifact_property_op {
+            expression {
+              operator {
+                index_op {
+                  expression {
+                    placeholder {
+                      type: INPUT_ARTIFACT
+                      key: "model"
+                    }
+                  }
+                  index: 11
+                }
+              }
+            }
+            key: "blessed"
+          }
+        }
+    """)
+
+  def testArtifactPropertyDefault0Index(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.input('model').property('blessed'), """
         operator {
           artifact_property_op {
             expression {
@@ -97,9 +120,33 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
-  def testArtifactCustomProperty(self):
+  def testArtifactCustomPropertyWithIndex(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.input('model')[0].custom_property('blessed'), """
+        ph.input('model')[11].custom_property('blessed'), """
+        operator {
+          artifact_property_op {
+            expression {
+              operator {
+                index_op {
+                  expression {
+                    placeholder {
+                      type: INPUT_ARTIFACT
+                      key: "model"
+                    }
+                  }
+                  index: 11
+                }
+              }
+            }
+            key: "blessed"
+            is_custom_property: True
+          }
+        }
+    """)
+
+  def testArtifactCustomPropertyDefault0Index(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.input('model').custom_property('blessed'), """
         operator {
           artifact_property_op {
             expression {
@@ -184,6 +231,47 @@ class PlaceholderTest(tf.test.TestCase):
                 }
               }
             }
+          }
+        }
+    """)
+
+  def testPrimitiveArtifactValueWithIndexAccess(self):
+    # If the value represented by a primitive artifact is intended to be a
+    # JSON value, users can use index operator [] to access fields in the
+    # deserialized JSON value.
+    # In this example, the placeholder expression represents accessing the
+    # following JSON value: { 'key': [...] }
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.input('primitive').value['key'][0], """
+        operator {
+          index_op {
+            expression {
+              operator {
+                index_op {
+                  expression {
+                    operator {
+                      artifact_value_op {
+                        expression {
+                          operator {
+                            index_op {
+                              expression {
+                                placeholder {
+                                  type: INPUT_ARTIFACT
+                                  key: "primitive"
+                                }
+                              }
+                              index: 0
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  key: 'key'
+                }
+              }
+            }
+            index: 0
           }
         }
     """)
@@ -438,8 +526,246 @@ class PlaceholderTest(tf.test.TestCase):
     output_channel = Channel(type=standard_artifacts.Integer)
     placeholder = output_channel.future()[0].value
     placeholder._key = '_component.num'
-    self.assertProtoEquals(
-        placeholder.encode(), expected_pb)
+    self.assertProtoEquals(placeholder.encode(), expected_pb)
+
+  def testConcatWithSelfReferences(self):
+    # Tests that Placeholder operators should not mutate the placeholder.
+    a = ph.output('model')
+    b = a.property('bar')
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        '1' + a.uri + '2' + a.property('foo') + '3' + b, """
+        operator {
+          concat_op {
+            expressions {
+              value {
+                string_value: "1"
+              }
+            }
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "2"
+              }
+            }
+            expressions {
+              operator {
+                artifact_property_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                  key: "foo"
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "3"
+              }
+            }
+            expressions {
+              operator {
+                artifact_property_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                  key: "bar"
+                }
+              }
+            }
+          }
+        }""")
+
+  def testJoinPlaceholders(self):
+    a = ph.output('model').uri
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.join([a, '-', a, '+', a]), """
+        operator {
+          concat_op {
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "-"
+              }
+            }
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "+"
+              }
+            }
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }""")
+
+  def testJoinPlaceholdersWithSeparator(self):
+    a = ph.output('model').uri
+    print(ph.join([a, '-', a, a], separator=',').encode())
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.join([a, '-', a, a], separator=','), """
+          operator {
+            concat_op {
+              expressions {
+                operator {
+                  artifact_uri_op {
+                    expression {
+                      operator {
+                        index_op {
+                          expression {
+                            placeholder {
+                              type: OUTPUT_ARTIFACT
+                              key: "model"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              expressions {
+                value {
+                  string_value: ","
+                }
+              }
+              expressions {
+                value {
+                  string_value: "-"
+                }
+              }
+              expressions {
+                value {
+                  string_value: ","
+                }
+              }
+              expressions {
+                operator {
+                  artifact_uri_op {
+                    expression {
+                      operator {
+                        index_op {
+                          expression {
+                            placeholder {
+                              type: OUTPUT_ARTIFACT
+                              key: "model"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              expressions {
+                value {
+                  string_value: ","
+                }
+              }
+              expressions {
+                operator {
+                  artifact_uri_op {
+                    expression {
+                      operator {
+                        index_op {
+                          expression {
+                            placeholder {
+                              type: OUTPUT_ARTIFACT
+                              key: "model"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }""")
 
   def testComplicatedConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -573,6 +899,15 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testEnvironmentVariable(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.environment_variable('FOO'), """
+          placeholder {
+            type: ENVIRONMENT_VARIABLE
+            key: "FOO"
+          }
+    """)
+
   def testBase64EncodeOperator(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         ph.exec_property('str_value').b64encode(), """
@@ -615,6 +950,11 @@ class ChannelWrappedPlaceholderTest(parameterized.TestCase, tf.test.TestCase):
   )
   def testConcat(self, left, right):
     self.assertIsInstance(left + right, ph.ChannelWrappedPlaceholder)
+
+  def testJoinWithSelf(self):
+    left = Channel(type=_MyType).future().value
+    right = Channel(type=_MyType).future().value
+    self.assertIsInstance(ph.join([left, right]), ph.ChannelWrappedPlaceholder)
 
   def testEncodeWithKeys(self):
     channel = Channel(type=_MyType)

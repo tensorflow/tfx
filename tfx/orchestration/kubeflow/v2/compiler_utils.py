@@ -38,9 +38,6 @@ from google.protobuf import json_format
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 
-# Key of dag for all TFX components when compiling pipeline with exit handler.
-TFX_DAG_NAME = '_tfx_dag'
-
 # Key of TFX type path and name in artifact custom properties.
 TFX_TYPE_KEY = 'tfx_type'
 TYPE_NAME_KEY = 'type_name'
@@ -53,8 +50,9 @@ _SUPPORTED_STANDARD_ARTIFACT_TYPES = frozenset(
      standard_artifacts.ModelEvaluation, standard_artifacts.ModelRun,
      standard_artifacts.PushedModel, standard_artifacts.Schema,
      standard_artifacts.TransformGraph, standard_artifacts.TransformCache,
-     standard_artifacts.Float, standard_artifacts.Integer,
-     standard_artifacts.String, standard_artifacts.Boolean,
+     standard_artifacts.TunerResults, standard_artifacts.Float,
+     standard_artifacts.Integer, standard_artifacts.String,
+     standard_artifacts.Boolean, standard_artifacts.JsonValue,
      simple_artifacts.Metrics, simple_artifacts.Statistics,
      simple_artifacts.Dataset, simple_artifacts.File))
 
@@ -164,6 +162,24 @@ def build_input_artifact_spec(
   _validate_properties_schema(
       instance_schema=result.artifact_type.instance_schema,
       properties=channel_spec.type.PROPERTIES)
+  return result
+
+
+def build_output_parameter_spec(
+    output_type: Any) -> pipeline_pb2.ComponentOutputsSpec.ParameterSpec:
+  """Builds parameter type spec for an output channel."""
+  parameter_types = {
+      'Integer': pipeline_pb2.ParameterType.NUMBER_INTEGER,
+      'Double': pipeline_pb2.ParameterType.NUMBER_DOUBLE,
+      'String': pipeline_pb2.ParameterType.STRING,
+      'Boolean': pipeline_pb2.ParameterType.BOOLEAN,
+  }
+  result = pipeline_pb2.ComponentOutputsSpec.ParameterSpec()
+  if output_type not in parameter_types:
+    raise ValueError(
+        '{} is an unsupported component output type. Currently, we support Integer, Double, String, and Boolean types only.'
+        .format(output_type))
+  result.parameter_type = parameter_types[output_type]
   return result
 
 

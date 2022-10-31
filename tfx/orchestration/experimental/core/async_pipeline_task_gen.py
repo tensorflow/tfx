@@ -13,14 +13,14 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
-import hashlib
 import itertools
 from typing import Callable, Dict, List, Optional
 
 from absl import logging
 from tfx import types
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import constants
+from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -104,14 +104,16 @@ class _Generator:
 
   def __call__(self) -> List[task_lib.Task]:
     result = []
-    for node in [n.pipeline_node for n in self._pipeline.nodes]:
-      node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
+    for node in [node_proto_view.get_view(n) for n in self._pipeline.nodes]:
+      node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
       node_id = node.node_info.id
 
       with self._pipeline_state:
         node_state = self._pipeline_state.get_node_state(node_uid)
         if node_state.state in (pstate.NodeState.STOPPING,
-                                pstate.NodeState.STOPPED):
+                                pstate.NodeState.STOPPED,
+                                pstate.NodeState.PAUSING,
+                                pstate.NodeState.PAUSED):
           logging.info('Ignoring node in state \'%s\' for task generation: %s',
                        node_state.state, node_uid)
           continue
@@ -128,27 +130,30 @@ class _Generator:
                   state=pstate.NodeState.FAILED,
                   status=status_lib.Status(
                       code=status_lib.Code.ABORTED, message=error_msg)))
-        else:
+        elif node_state.state != pstate.NodeState.RUNNING:
           result.append(
               task_lib.UpdateNodeStateTask(
                   node_uid=node_uid, state=pstate.NodeState.RUNNING))
         continue
 
+      # For mixed service nodes, we ensure node services and check service
+      # status; the node is aborted if its service jobs have failed.
+      service_status = self._ensure_node_services_if_mixed(node.node_info.id)
+      if service_status is not None:
+        if service_status != service_jobs.ServiceStatus.RUNNING:
+          error_msg = f'associated service job failed; node uid: {node_uid}'
+          result.append(
+              task_lib.UpdateNodeStateTask(
+                  node_uid=node_uid,
+                  state=pstate.NodeState.FAILED,
+                  status=status_lib.Status(
+                      code=status_lib.Code.ABORTED, message=error_msg)))
+          continue
+
       # If a task for the node is already tracked by the task queue, it need
-      # not be considered for generation again but we ensure node services
-      # in case of a mixed service node.
+      # not be considered for generation again.
       if self._is_task_id_tracked_fn(
-          task_lib.exec_node_task_id_from_pipeline_node(self._pipeline, node)):
-        service_status = self._ensure_node_services_if_mixed(node_id)
-        if service_status is not None:
-          if service_status != service_jobs.ServiceStatus.RUNNING:
-            error_msg = f'associated service job failed; node uid: {node_uid}'
-            result.append(
-                task_lib.UpdateNodeStateTask(
-                    node_uid=node_uid,
-                    state=pstate.NodeState.FAILED,
-                    status=status_lib.Status(
-                        code=status_lib.Code.ABORTED, message=error_msg)))
+          task_lib.exec_node_task_id_from_node(self._pipeline, node)):
         continue
 
       result.extend(self._generate_tasks_for_node(self._mlmd_handle, node))
@@ -156,7 +161,7 @@ class _Generator:
 
   def _generate_tasks_for_node(
       self, metadata_handler: metadata.Metadata,
-      node: pipeline_pb2.PipelineNode) -> List[task_lib.Task]:
+      node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates a node execution task.
 
     If a node execution is not feasible, `None` is returned.
@@ -169,90 +174,102 @@ class _Generator:
       Returns a `Task` or `None` if task generation is deemed infeasible.
     """
     result = []
-    node_uid = task_lib.NodeUid.from_pipeline_node(self._pipeline, node)
+    node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
+    # Gets the oldest active execution. If the oldest active execution exists,
+    # generates a task from it.
+    # TODO(b/239858201) Too many executions may have performance issue, it is
+    # better to limit the number of executions.
     executions = task_gen_utils.get_executions(metadata_handler, node)
-    exec_node_task = task_gen_utils.generate_task_from_active_execution(
-        metadata_handler, self._pipeline, node, executions)
-    if exec_node_task:
+    oldest_active_execution = task_gen_utils.get_oldest_active_execution(
+        executions)
+    if oldest_active_execution:
+      with mlmd_state.mlmd_execution_atomic_op(
+          mlmd_handle=self._mlmd_handle,
+          execution_id=oldest_active_execution.id) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.RUNNING
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid, state=pstate.NodeState.RUNNING))
-      result.append(exec_node_task)
+      result.append(
+          task_gen_utils.generate_task_from_execution(self._mlmd_handle,
+                                                      self._pipeline, node,
+                                                      oldest_active_execution))
       return result
 
     resolved_info = task_gen_utils.generate_resolved_info(
         metadata_handler, node)
-    # TODO(b/207038460): Update async pipeline to support ForEach.
-    if (resolved_info is None or not resolved_info.input_artifacts or
-        resolved_info.input_artifacts[0] is None or
-        not any(resolved_info.input_artifacts[0].values())):
+
+    # Note that some nodes e.g. ImportSchemaGen don't have inputs, and for those
+    # nodes it is okay that there are no resolved input artifacts.
+    if ((resolved_info is None or not resolved_info.input_and_params or
+         resolved_info.input_and_params[0] is None or
+         resolved_info.input_and_params[0].input_artifacts is None) or
+        (node.inputs.inputs and
+         not any(resolved_info.input_and_params[0].input_artifacts.values()))):
       logging.info(
           'Task cannot be generated for node %s since no input artifacts '
           'are resolved.', node.node_info.id)
       return result
-    input_artifact = resolved_info.input_artifacts[0]
 
-    executor_spec_fingerprint = hashlib.sha256()
-    executor_spec = task_gen_utils.get_executor_spec(
-        self._pipeline_state.pipeline, node.node_info.id)
-    if executor_spec is not None:
-      executor_spec_fingerprint.update(
-          executor_spec.SerializeToString(deterministic=True))
-    resolved_info.exec_properties[
-        constants
-        .EXECUTOR_SPEC_FINGERPRINT_KEY] = executor_spec_fingerprint.hexdigest()
-
-    # If the latest execution had the same resolved input artifacts, execution
-    # properties and executor specs, we should not trigger a new execution.
-    latest_exec = task_gen_utils.get_latest_execution(executions)
-    if latest_exec:
+    successful_executions = [
+        e for e in executions if execution_lib.is_execution_successful(e)
+    ]
+    execution_identifiers = []
+    for execution in successful_executions:
+      execution_identifier = {}
       artifact_ids_by_event_type = (
           execution_lib.get_artifact_ids_by_event_type_for_execution_id(
-              metadata_handler, latest_exec.id))
-      latest_exec_input_artifact_ids = artifact_ids_by_event_type.get(
+              metadata_handler, execution.id))
+      # TODO(b/250075208) Support notrigger, trigger_by, etc.
+      execution_identifier['artifact_ids'] = artifact_ids_by_event_type.get(
           metadata_store_pb2.Event.INPUT, set())
-      current_exec_input_artifact_ids = set(
-          a.id for a in itertools.chain(*input_artifact.values()))
-      latest_exec_properties = task_gen_utils.extract_properties(latest_exec)
-      current_exec_properties = resolved_info.exec_properties
-      latest_exec_executor_spec_fp = latest_exec_properties[
-          constants.EXECUTOR_SPEC_FINGERPRINT_KEY]
-      current_exec_executor_spec_fp = resolved_info.exec_properties[
-          constants.EXECUTOR_SPEC_FINGERPRINT_KEY]
-      if (latest_exec_input_artifact_ids == current_exec_input_artifact_ids and
-          _exec_properties_match(latest_exec_properties,
-                                 current_exec_properties) and
-          latest_exec_executor_spec_fp == current_exec_executor_spec_fp):
-        result.append(
-            task_lib.UpdateNodeStateTask(
-                node_uid=node_uid, state=pstate.NodeState.STARTED))
-        return result
+      execution_identifiers.append(execution_identifier)
 
-    execution = execution_publish_utils.register_execution(
-        metadata_handler=metadata_handler,
-        execution_type=node.node_info.type,
-        contexts=resolved_info.contexts,
-        input_artifacts=input_artifact,
-        exec_properties=resolved_info.exec_properties)
+    unprocessed_inputs = []
+    for input_and_param in resolved_info.input_and_params:
+      current_exec_input_artifact_ids = set(
+          a.id
+          for a in itertools.chain(*input_and_param.input_artifacts.values()))
+
+      for execution_identifier in execution_identifiers:
+        if (execution_identifier['artifact_ids'] ==
+            current_exec_input_artifact_ids):
+          break
+      else:
+        unprocessed_inputs.append(input_and_param)
+
+    if not unprocessed_inputs:
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid, state=pstate.NodeState.STARTED))
+      return result
+
+    # Don't need to register all executions in one transaction. If the
+    # orchestractor is interrupted in the middle, in the next iteration, the
+    # orchstrator is still able to register the rest of executions.
+    new_executioins = []
+    for input_and_param in unprocessed_inputs:
+      new_executioins.append(
+          execution_publish_utils.register_execution(
+              metadata_handler=metadata_handler,
+              execution_type=node.node_info.type,
+              contexts=resolved_info.contexts,
+              input_artifacts=input_and_param.input_artifacts,
+              exec_properties=input_and_param.exec_properties,
+              last_known_state=metadata_store_pb2.Execution.NEW))
+
+    # Selects the first artifacts and create a exec task.
+    input_and_param = unprocessed_inputs[0]
+    execution = new_executioins[0]
+    # Selects the first execution and marks it as RUNNING.
+    with mlmd_state.mlmd_execution_atomic_op(
+        mlmd_handle=self._mlmd_handle, execution_id=execution.id) as execution:
+      execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
         self._pipeline.execution_mode)
-
-    # For mixed service nodes, we ensure node services and check service
-    # status; the node is aborted if its service jobs have failed.
-    service_status = self._ensure_node_services_if_mixed(node.node_info.id)
-    if service_status is not None:
-      if service_status != service_jobs.ServiceStatus.RUNNING:
-        error_msg = f'associated service job failed; node uid: {node_uid}'
-        result.append(
-            task_lib.UpdateNodeStateTask(
-                node_uid=node_uid,
-                state=pstate.NodeState.FAILED,
-                status=status_lib.Status(
-                    code=status_lib.Code.ABORTED, message=error_msg)))
-        return result
-
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
     outputs_utils.make_output_dirs(output_artifacts)
     result.append(
@@ -263,8 +280,8 @@ class _Generator:
             node_uid=node_uid,
             execution_id=execution.id,
             contexts=resolved_info.contexts,
-            input_artifacts=input_artifact,
-            exec_properties=resolved_info.exec_properties,
+            input_artifacts=input_and_param.input_artifacts,
+            exec_properties=input_and_param.exec_properties,
             output_artifacts=output_artifacts,
             executor_output_uri=outputs_resolver.get_executor_output_uri(
                 execution.id),

@@ -151,14 +151,16 @@ def _wait_for_operation(api: discovery.Resource, operation: Dict[str, Any],
 
 
 # TODO(b/168926785): Consider to change executor_class_path to job_labels.
-def start_cloud_training(input_dict: Dict[str, List[types.Artifact]],
-                         output_dict: Dict[str, List[types.Artifact]],
-                         exec_properties: Dict[str, Any],
-                         executor_class_path: str,
-                         job_args: Dict[str, Any],
-                         job_id: Optional[str],
-                         enable_vertex: Optional[bool] = False,
-                         vertex_region: Optional[str] = None):
+def start_cloud_training(
+    input_dict: Dict[str, List[types.Artifact]],
+    output_dict: Dict[str, List[types.Artifact]],
+    exec_properties: Dict[str, Any],
+    executor_class_path: str,
+    job_args: Dict[str, Any],
+    job_id: Optional[str],
+    job_labels: Optional[Dict[str, Any]] = None,  # AI Platform only.
+    enable_vertex: Optional[bool] = False,
+    vertex_region: Optional[str] = None):
   """Start a trainer job on AI Platform (AIP).
 
   This is done by forwarding the inputs/outputs/exec_properties to the
@@ -181,6 +183,7 @@ def start_cloud_training(input_dict: Dict[str, List[types.Artifact]],
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job.
         In Vertex AI, the job_id corresponds to the display name, a unique ID is
         always given to the created job.
+    job_labels: Labels for AI Platform training job.
     enable_vertex: Whether to enable Vertex or not.
     vertex_region: Region for endpoint in Vertex training.
 
@@ -194,7 +197,7 @@ def start_cloud_training(input_dict: Dict[str, List[types.Artifact]],
   training_job = client.create_training_job(input_dict, output_dict,
                                             exec_properties,
                                             executor_class_path, job_args,
-                                            job_id)
+                                            job_id, job_labels)
 
   _launch_cloud_training(
       project=project,

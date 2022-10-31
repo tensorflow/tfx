@@ -27,7 +27,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 
 try:
-  import apache_beam as beam  # pylint: disable=g-import-not-at-top
+  import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
   _BeamPipeline = beam.Pipeline
 except ModuleNotFoundError:
   beam = None

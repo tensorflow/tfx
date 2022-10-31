@@ -26,6 +26,7 @@ from tfx.components.util import tfxio_utils
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
 from tfx_bsl.coders import tf_graph_record_decoder
+from tfx_bsl.tfxio import parquet_tfxio
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import record_based_tfxio
 from tfx_bsl.tfxio import record_to_tensor_tfxio
@@ -70,6 +71,10 @@ _MAKE_TFXIO_TEST_CASES = [
         read_as_raw_records=True,
         raw_record_column_name=_RAW_RECORD_COLUMN_NAME,
         expected_tfxio_type=raw_tf_record.RawTfRecordTFXIO),
+    dict(
+        testcase_name='parquet_payload_format',
+        payload_format=example_gen_pb2.PayloadFormat.FORMAT_PARQUET,
+        expected_tfxio_type=parquet_tfxio.ParquetTFXIO),
 ]
 
 _RESOLVE_TEST_CASES = [
@@ -181,11 +186,9 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
         _FAKE_FILE_PATTERN, _TELEMETRY_DESCRIPTORS, payload_format,
         data_view_uri, _SCHEMA, read_as_raw_records, raw_record_column_name)
     self.assertIsInstance(tfxio, expected_tfxio_type)
-    # We currently only create RecordBasedTFXIO and the check below relies on
-    # that.
-    self.assertIsInstance(tfxio, record_based_tfxio.RecordBasedTFXIO)
     self.assertEqual(tfxio.telemetry_descriptors, _TELEMETRY_DESCRIPTORS)
-    self.assertEqual(tfxio.raw_record_column_name, raw_record_column_name)
+    if isinstance(tfxio, record_based_tfxio.RecordBasedTFXIO):
+      self.assertEqual(tfxio.raw_record_column_name, raw_record_column_name)
     # Since we provide a schema, ArrowSchema() should not raise.
     _ = tfxio.ArrowSchema()
 
@@ -219,11 +222,9 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
         raw_record_column_name)
     tfxio = tfxio_factory(_FAKE_FILE_PATTERN)
     self.assertIsInstance(tfxio, expected_tfxio_type)
-    # We currently only create RecordBasedTFXIO and the check below relies on
-    # that.
-    self.assertIsInstance(tfxio, record_based_tfxio.RecordBasedTFXIO)
     self.assertEqual(tfxio.telemetry_descriptors, _TELEMETRY_DESCRIPTORS)
-    self.assertEqual(tfxio.raw_record_column_name, raw_record_column_name)
+    if isinstance(tfxio, record_based_tfxio.RecordBasedTFXIO):
+      self.assertEqual(tfxio.raw_record_column_name, raw_record_column_name)
     # Since we provide a schema, ArrowSchema() should not raise.
     _ = tfxio.ArrowSchema()
 

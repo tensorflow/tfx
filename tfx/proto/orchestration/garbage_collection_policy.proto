@@ -1,0 +1,60 @@
+// Copyright 2020 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.orchestration;
+
+// A garbage collection policy for an output channel of a pipeline node.
+message GarbageCollectionPolicy {
+  // Keep the num_artifacts most recently published artifacts. Delete the
+  // remaining artifacts.
+  message KeepMostRecentlyPublished {
+    // Number of most recently published artifacts to keep.
+    int32 num_artifacts = 1;
+  }
+
+  // Group the artifacts by property values and keep groups as specified.
+  // Delete the remaining artifacts.
+  message KeepPropertyValueGroups {
+    // Group artifacts by property value and keep all or some of the groups.
+    message Grouping {
+      // The property or custom property name used for grouping.
+      string property_name = 1;
+
+      // The number of groups that should be kept. If <= 0 or unset, all groups
+      // will be kept.
+      int32 keep_num = 2;
+
+      enum KeepOrder {
+        // Unspecified option will be treated as the same as KEEP_ORDER_LARGEST.
+        KEEP_ORDER_UNSPECIFIED = 0;
+        KEEP_ORDER_LARGEST = 1;
+        KEEP_ORDER_SMALLEST = 2;
+      }
+
+      // Whether to keep the groups with the largest or smallest property
+      // values.
+      KeepOrder keep_order = 3;
+    }
+
+    // The groupings to be applied in hierarchical order.
+    repeated Grouping groupings = 1;
+  }
+
+  // The garbage collection policy to apply to this channel.
+  oneof policy {
+    KeepMostRecentlyPublished keep_most_recently_published = 1;
+    KeepPropertyValueGroups keep_property_value_groups = 2;
+  }
+}
