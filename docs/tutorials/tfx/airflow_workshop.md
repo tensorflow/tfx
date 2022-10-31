@@ -2,6 +2,8 @@
 
 ## Overview
 
+## Overview
+
 This tutorial is designed to help you learn to create your own machine learning pipelines using TensorFlow Extended (TFX) and Apache Airflow as the orchestrator. It runs on on Vertex AI Workbench, and shows integration with TFX and TensorBoard as well as interaction with TFX in a Jupyter Lab environment.
 
 ### What you'll be doing?
@@ -24,6 +26,18 @@ You'll follow a typical ML development process:
 * Analyzing model performance
 * Lather, rinse, repeat
 * Ready for production 
+
+## **Apache Airflow for Pipeline Orchestration**
+TFX orchestrators are responsible for scheduling components of the TFX pipeline based on the dependencies defined by the pipeline. TFX is designed to be portable to multiple environments and orchestration frameworks. One of the default orchestrators supported by TFX is [Apache Airflow](https://www.tensorflow.org/tfx/guide/airflow). 
+This lab illustrates the use of Apache Airflow for TFX pipeline orchestration. Apache Airflow is a platform to programmatically author, schedule and monitor workflows. TFX uses Airflow to author workflows as directed acyclic graphs (DAGs) of tasks. The rich user interface makes it easy to visualize pipelines running in production, monitor progress, and troubleshoot issues when needed. Apache Airflow workflows are defined as code. This makes them more maintainable, versionable, testable, and collaborative. Apache Airflow is suited for batch processing pipelines. It is lightweight and easy to learn.
+
+In this example, we are going to run a TFX pipeline on an instance by manually setting up Airflow.
+
+The other default orchestrators supported by TFX are Apache Beam and Kubeflow. [Apache Beam](https://www.tensorflow.org/tfx/guide/beam_orchestrator) can run on multiple data processing backends (Beam Ruunners). Cloud Dataflow is one such beam runner which can be used for running TFX pipelines. Apache Beam can be used for both streaming and batch processing pipelines.    
+[Kubeflow](https://www.tensorflow.org/tfx/guide/kubeflow) is an open source ML platform dedicated to making deployments of machine learning (ML) workflows on Kubernetes simple, portable and scalable. Kubeflow can be used as an orchestrator for TFFX pipelines when they need to be deployed on Kubernetes clusters. 
+In addition, you can also use your own [custom orchestrator](https://www.tensorflow.org/tfx/guide/custom_orchestrator) to run a TFX pipeline.
+
+Read more about Airflow [here](https://airflow.apache.org/).
 
 ## **Chicago Taxi Dataset**
 
@@ -131,18 +145,7 @@ For full documentation of gcloud see the [gcloud command-line tool overview](htt
 ## Enable Google Cloud services
 1. In Cloud Shell, use gcloud to enable the services used in the lab.
 ```
-gcloud services enable \
-  compute.googleapis.com \
-  iam.googleapis.com \
-  iamcredentials.googleapis.com \
-  monitoring.googleapis.com \
-  logging.googleapis.com \
-  notebooks.googleapis.com \
-  aiplatform.googleapis.com \
-  bigquery.googleapis.com \
-  artifactregistry.googleapis.com \
-  cloudbuild.googleapis.com \
-  container.googleapis.com
+gcloud services enable notebooks.googleapis.com
   ```
 
 
@@ -172,16 +175,10 @@ Next you'll clone the `tfx` repository in your JupyterLab instance.
 2. To clone the `tfx` Github repository, type in the following command, and press __Enter__.
 
 ```bash
-git clone https://github.com/priankakariatyml/tfx.git
+git clone https://github.com/tensorflow/tfx.git
 ```
 
-3. Checkout to the recent branch
-```bash
-cd tfx/
-git checkout upgrading-pipeline-codes-and-utils
-```
-
-4. To confirm that you have cloned the repository, double-click the `tfx` directory and confirm that you can see its contents.
+3. To confirm that you have cloned the repository, double-click the `tfx` directory and confirm that you can see its contents.
 
 ![repo-directory.png](images/airflow_workshop/repo-directory.png)
   
@@ -210,7 +207,14 @@ The above code will
 
 ![firewall-rule.png](images/airflow_workshop/firewall-rule.png)
 
-3. In the **Create a firewall dialog**, for **Priority**, select `1`, for **Targets**, select `All instances in the network`,for **Source IPv4 ranges**, select `0.0.0.0/0`, for **Protocols and ports**, click on `tcp` and enter `7000` in the box next to `tcp` and click `Create`.
+In the **Create a firewall dialog**, follow the steps listed below. 
+
+1. For **Name**, put `airflow-tfx`.
+2. For **Priority**, select `1`.
+3. For **Targets**, select `All instances in the network`.
+4. For **Source IPv4 ranges**, select `0.0.0.0/0`
+5. For **Protocols and ports**, click on `tcp` and enter `7000` in the box next to `tcp`
+6. Click `Create`.
 
 ![create-firewall-dialog.png](images/airflow_workshop/create-firewall-dialog.png)
 
@@ -232,25 +236,20 @@ nohup airflow scheduler &> scheduler.out &
 
 ### Get your external ip
 
-1. Go to the `https://console.cloud.google.com/vertex-ai/workbench` page. Make sure you are on the right project. Click on the instance name to open the `Notebook details` page.
+1. In Cloud Shell, use `gcloud` to get the External IP.
 
-![airflow-instance-1.png](images/airflow_workshop/airflow-instance-1.png)
+```
+gcloud compute instances list
+```
 
-2. Click on `VIEW VM DETAILS` to open the `instancesDetail` page.
-
-![airflow-instance-2.png](images/airflow_workshop/airflow-instance-2.png)
-
-3. Scroll down on the `instancesDetail` page and go to `Network interfaces` section. You can get your external ip from the `External IP address` section. 
-
-![airflow-instance-3.png](images/airflow_workshop/airflow-instance-3.png)
-
+![gcloud-instance-ip.png](images/airflow_workshop/gcloud-instance-ip.png)
 
 ## Running a DAG/Pipeline
 
 ### In a browser
 Open a browser and go to http://<external_ip>:7000
 
-* In the login page, enter the username and password you chose when running the `airflow users create` command.
+* In the login page, enter the username(`admin`) and password(`admin`) you chose when running the `airflow users create` command.
 
 ![airflow-login.png](images/airflow_workshop/airflow-login.png)
 
@@ -300,5 +299,11 @@ After you've triggered your pipeline, in the DAGs view, you can watch the progre
 ## Understanding the components
 Now we will look at the components of this pipeline in detail, and individually look at the outputs produced by each step in the pipeline.
 
-* In JupyterLab go to `~/tfx/tfx/examples/airflow_workshop/taxi/notebooks/` and open `notebook.ipynb`
-* Follow the notebook for the remaining instructions.
+1. In JupyterLab go to `~/tfx/tfx/examples/airflow_workshop/taxi/notebooks/`
+
+2. Open **notebook.ipynb.**
+![notebook-ipynb.png](images/airflow_workshop/notebook-ipynb.png)
+
+3. Continue the lab in the notebook, and run each cell by clicking the **Run** ( <img src="images/airflow_workshop/f1abc657d9d2845c.png" alt="run-button.png"  width="28.00" />) icon at the top of the screen. Alternatively, you can execute the code in a cell with **SHIFT + ENTER**.
+
+Read the narrative and make sure you understand what's happening in each cell.
