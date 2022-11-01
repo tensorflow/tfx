@@ -27,6 +27,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 
 from google.protobuf import message
 from google.protobuf import text_format
@@ -106,6 +107,18 @@ class TfxTest(tf.test.TestCase):
       actual.ClearField(ignored_field)
 
     return self.assertProtoEquals(expected, actual)
+
+  def assertArtifactMapsEqual(
+      self,
+      expected_artifact_map: Mapping[str, Sequence[types.Artifact]],
+      actual_artifact_map: Mapping[str, Sequence[types.Artifact]],
+  ) -> None:
+    """Asserts that two Artifact maps are equal."""
+    # The Artifact class doesn't implement __eq__ but the class is Jsonable, so
+    # assert equivalence with JSON-ified versions of the maps.
+    self.assertEqual(
+        json_utils.dumps(expected_artifact_map),
+        json_utils.dumps(actual_artifact_map))
 
 
 @contextlib.contextmanager
