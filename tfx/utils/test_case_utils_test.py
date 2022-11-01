@@ -114,13 +114,8 @@ class TestCaseUtilsTest(test_case_utils.TfxTest):
     }
     actual_artifacts = copy.deepcopy(expected_artifacts)
     actual_artifacts['artifact1'][1].set_int_custom_property('key', 5)
-    try:
+    with self.assertRaises(AssertionError):
       self.assertArtifactMapsEqual(expected_artifacts, actual_artifacts)
-    except AssertionError:
-      return  # Assertion expected to fail since artifact maps aren't equal.
-
-    self.fail('Artifact maps unexpectedly passed an equals assertion.')
-
 
 if __name__ == '__main__':
   tf.test.main()
