@@ -73,7 +73,7 @@ def create_pipeline() -> pipeline_pb2.Pipeline:
           trainer,
       ],
       execution_mode=pipeline_lib.ExecutionMode.ASYNC)
-  dsl_compiler = compiler.Compiler()
+  dsl_compiler = compiler.Compiler(use_input_v2=True)
   compiled_pipeline: pipeline_pb2.Pipeline = dsl_compiler.compile(pipeline)
 
   # Compiler does not support setting min_count yet, so we mutate the proto

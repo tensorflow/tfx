@@ -27,7 +27,6 @@ from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import channel
-from tfx.types import channel_utils
 from tfx.utils import doc_controls
 from tfx.utils import topsort
 
@@ -392,7 +391,7 @@ class Pipeline(base_node.BaseNode):
           channels.append(chnl)
 
       for input_channel in channels:
-        for node_id in channel_utils.get_dependent_node_ids(input_channel):
+        for node_id in input_channel.get_data_dependent_node_ids():
           if node_id == self.id:
             # If a component's input channel depends on the (self) pipeline,
             # it means that component consumes pipeline-level inputs. No need to

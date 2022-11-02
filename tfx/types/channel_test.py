@@ -16,10 +16,12 @@
 from unittest import mock
 
 import tensorflow as tf
+from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact
 from tfx.types import artifact_property
 from tfx.types import channel
+from tfx.types import resolved_channel
 
 from google.protobuf import struct_pb2
 from ml_metadata.proto import metadata_store_pb2
@@ -146,6 +148,45 @@ class ChannelTest(tf.test.TestCase):
       self.assertEqual(ch2.additional_properties, {'string_value': 'foo2'})
       self.assertEqual(ch2.additional_custom_properties,
                        {'another_string_value': 'bar2'})
+
+  def testGetDataDependentNodeIds(self):
+    x1 = mock.MagicMock()
+    x1.id = 'x1'
+    x2 = mock.MagicMock()
+    x2.id = 'x2'
+    p = mock.MagicMock()
+    p.id = 'p'
+
+    just_channel = channel.Channel(type=_MyType)
+    output_channel_x1 = channel.OutputChannel(
+        artifact_type=_MyType, producer_component=x1,
+        output_key='out1')
+    output_channel_x2 = channel.OutputChannel(
+        artifact_type=_MyType, producer_component=x2,
+        output_key='out1')
+    pipeline_input_channel = channel.PipelineInputChannel(
+        output_channel_x1, output_key='out2')
+    pipeline_output_channel = channel.PipelineOutputChannel(
+        output_channel_x2, p, output_key='out3')
+    pipeline_input_channel.pipeline = p
+    union_channel = channel.union([output_channel_x1, output_channel_x2])
+    resolved_channel_ = resolved_channel.ResolvedChannel(
+        _MyType, resolver_op.InputNode(
+            union_channel, output_data_type=resolver_op.DataType.ARTIFACT_LIST))
+
+    def check(ch, expected):
+      with self.subTest(channel_type=type(ch).__name__):
+        actual = list(ch.get_data_dependent_node_ids())
+        self.assertCountEqual(
+            actual, expected, f'Expected {expected} but got {actual}.')
+
+    check(just_channel, [])
+    check(output_channel_x1, ['x1'])
+    check(output_channel_x2, ['x2'])
+    check(pipeline_input_channel, ['p'])
+    check(pipeline_output_channel, ['p'])
+    check(union_channel, ['x1', 'x2'])
+    check(resolved_channel_, ['x1', 'x2'])
 
 
 if __name__ == '__main__':

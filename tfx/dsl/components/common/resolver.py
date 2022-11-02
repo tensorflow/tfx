@@ -105,6 +105,9 @@ class _ResolverDriver(base_driver.BaseDriver):
     result = {}
     for key, c in input_channels.items():
       artifacts_by_id = {}  # Deduplicate by ID.
+      # TODO(b/248145891): Stop using get_individual_channels which does not
+      # support all BaseChannel types. Use a common input resolution stack
+      # instead.
       for channel in channel_utils.get_individual_channels(c):
         artifacts = self._metadata_handler.get_qualified_artifacts(
             contexts=[pipeline_context],

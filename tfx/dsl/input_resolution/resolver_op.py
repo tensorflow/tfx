@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, Generic, Mapping, Type, TypeVar, Union, Sequence, Optional
+from typing import Any, Generic, Mapping, Type, TypeVar, Union, Sequence, Optional, Set
 
 import attr
 from tfx import types
@@ -359,3 +359,23 @@ class DictNode(Node):
   def __repr__(self) -> str:
     args = [f'{k}={v!r}' for k, v in self.nodes.items()]
     return f'Dict({", ".join(args)})'
+
+
+def get_input_nodes(node: Node) -> Set[InputNode]:
+  """Get `InputNode`s that are used to produce the given `output_node`."""
+  if isinstance(node, InputNode):
+    return {node}
+  elif isinstance(node, OpNode):
+    result = set()
+    for arg_node in node.args:
+      result.update(get_input_nodes(arg_node))
+    return result
+  elif isinstance(node, DictNode):
+    result = set()
+    for wrapped in node.nodes.values():
+      result.update(get_input_nodes(wrapped))
+    return result
+  else:
+    raise AssertionError(
+        'Should not reach here; '
+        f'type={type(node).__name__}, value={node}')

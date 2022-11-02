@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.resolver_op."""
 import copy
-from typing import Optional, Mapping
+from typing import Optional, Mapping, Set
 
 import tensorflow as tf
 from tfx.dsl.input_resolution import resolver_op
@@ -69,6 +69,26 @@ class ManyArtifacts(
 
   def apply(self):
     return []
+
+
+class DummyChannel(tfx.types.BaseChannel):
+
+  def __eq__(self, other):
+    return isinstance(other, DummyChannel) and self.type == other.type
+
+  def __hash__(self):
+    return hash(self.type)
+
+  def get_data_dependent_node_ids(self) -> Set[str]:
+    return set()
+
+
+class X(tfx.types.Artifact):
+  TYPE_NAME = 'X'
+
+
+class Y(tfx.types.Artifact):
+  TYPE_NAME = 'Y'
 
 
 DUMMY_INPUT_NODE = resolver_op.InputNode(
@@ -225,14 +245,6 @@ class NodeTest(tf.test.TestCase):
       self.assertNotEqual(n5, n7)
       self.assertLen({n5, n6, n7}, 2)
 
-    class DummyChannel(tfx.types.BaseChannel):
-
-      def __hash__(self):
-        return hash(self.type)
-
-      def __eq__(self, other):
-        return isinstance(other, DummyChannel) and self.type == other.type
-
     with self.subTest('InputNode'):
       n8 = resolver_op.InputNode(
           wrapped=DummyChannel(standard_artifacts.Model),
@@ -246,6 +258,30 @@ class NodeTest(tf.test.TestCase):
       self.assertEqual(n8, n9)
       self.assertNotEqual(n8, n10)
       self.assertLen({n8, n9, n10}, 2)
+
+  def testFindInputNodes(self):
+    x = DummyChannel(X)
+    y1 = DummyChannel(Y)
+    y2 = DummyChannel(Y)
+    input_x = resolver_op.InputNode(x, resolver_op.DataType.ARTIFACT_LIST)
+    input_y = resolver_op.InputNode(y1, resolver_op.DataType.ARTIFACT_LIST)
+    input_xy = resolver_op.InputNode(
+        {'x': x, 'y': y2}, resolver_op.DataType.ARTIFACT_MULTIMAP)
+
+    x_plus_y = resolver_op.OpNode(
+        op_type='add',
+        output_data_type=resolver_op.DataType.ARTIFACT_LIST,
+        args=(input_x, input_y))
+    z = resolver_op.DictNode({'z': x_plus_y})
+    result = resolver_op.OpNode(
+        op_type='merge',
+        output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP,
+        args=(input_xy, z))
+
+    self.assertCountEqual(
+        resolver_op.get_input_nodes(result),
+        [input_x, input_y, input_xy])
+
 
 if __name__ == '__main__':
   tf.test.main()

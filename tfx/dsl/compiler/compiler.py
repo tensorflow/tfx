@@ -950,7 +950,7 @@ def _set_resolved_channel_inputs(
         f"Node {tfx_node.id} should consume from single input function but "
         f"detected {len(output_nodes)}.")
   output_node = output_nodes.pop()
-  input_nodes = set(resolver_function.get_input_nodes(output_node))
+  input_nodes = resolver_op.get_input_nodes(output_node)
   if len(input_nodes) != 1:
     # This is the weird limitation we have using the ResolverConfig based IR.
     # New InputGraph based IR can solve the problem.
@@ -1074,10 +1074,7 @@ def _begin_node_is_upstream(node: base_node.BaseNode,
   """Checks if a node needs to declare the begin node as its upstream node."""
   # Check if the PipelineInputChannel (whose dependent node ID is the pipeline
   # ID) is either directly or indirectly used for the node inputs.
-  for input_chan in node.inputs.values():
-    if tfx_pipeline.id in channel_utils.get_dependent_node_ids(input_chan):
-      return True
-  return False
+  return tfx_pipeline.id in compiler_utils.get_data_dependent_node_ids(node)
 
 
 def _end_node_is_downstream(node: base_node.BaseNode,

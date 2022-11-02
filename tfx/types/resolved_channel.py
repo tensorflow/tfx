@@ -16,13 +16,14 @@
 The main purpose of this module is to break the cyclic import dependency.
 """
 
-from typing import Optional, Type
+from typing import Optional, Type, Set, Mapping
 
 from tfx.dsl.control_flow import for_each_internal
 from tfx.dsl.input_resolution import resolver_op
 from tfx.types import artifact
 from tfx.types import channel
 from tfx.utils import doc_controls
+from tfx.utils import typing_utils
 
 
 @doc_controls.do_not_generate_docs
@@ -49,6 +50,17 @@ class ResolvedChannel(channel.BaseChannel):
     self._output_node = output_node
     self._output_key = output_key
     self._for_each_context = for_each_context
+
+  def get_data_dependent_node_ids(self) -> Set[str]:
+    result = set()
+    for input_node in resolver_op.get_input_nodes(self._output_node):
+      if isinstance(input_node.wrapped, channel.BaseChannel):
+        result.update(input_node.wrapped.get_data_dependent_node_ids())
+      elif typing_utils.is_compatible(
+          input_node.wrapped, Mapping[str, channel.BaseChannel]):
+        for chan in input_node.wrapped.values():
+          result.update(chan.get_data_dependent_node_ids())
+    return result
 
   @property
   def output_node(self) -> resolver_op.Node:

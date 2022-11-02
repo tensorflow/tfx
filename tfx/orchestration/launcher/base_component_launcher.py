@@ -15,13 +15,14 @@
 
 import abc
 import copy
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import absl
 
 from tfx import types
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.common import resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
@@ -71,7 +72,10 @@ class BaseComponentLauncher(abc.ABC):
     self._driver_class = component.driver_class
     self._component_executor_spec = component.executor_spec
 
-    self._input_dict = component.inputs
+    if isinstance(component, resolver.Resolver):
+      self._input_dict = cast(resolver.Resolver, component).raw_inputs
+    else:
+      self._input_dict = component.inputs
     self._output_dict = component.outputs
     self._exec_properties = component.exec_properties
 

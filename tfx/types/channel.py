@@ -13,10 +13,11 @@
 # limitations under the License.
 """TFX Channel definition."""
 
+import abc
 import inspect
 import json
 import textwrap
-from typing import Any, cast, Dict, Iterable, List, Optional, Type, Union
+from typing import Any, cast, Dict, Iterable, List, Optional, Type, Union, Set
 from absl import logging
 
 from tfx.dsl.context_managers import dsl_context
@@ -48,7 +49,7 @@ def _is_property_dict(value: Any):
       all(isinstance(v, _EXEC_PROPERTY_CLASSES) for v in value.values()))
 
 
-class BaseChannel:
+class BaseChannel(abc.ABC):
   """An abstraction for component (BaseNode) artifact inputs.
 
   `BaseChannel` is often interchangeably used with the term 'channel' (not
@@ -98,6 +99,19 @@ class BaseChannel:
   def _set_type(self, value: Type[Artifact]):
     raise NotImplementedError('Cannot change artifact type.')
 
+  @abc.abstractmethod
+  def get_data_dependent_node_ids(self) -> Set[str]:
+    """Get data dependent nodes of this channel.
+
+    Currently only the `OutputChannel` directly imposes the data dependency,
+    but other channels can also indirectly have a data dependency if they depend
+    on the OutputChannel. Use this abstract method to define transitive data
+    dependency.
+
+    Returns:
+      A set of data-dependent node IDs.
+    """
+
   @property
   def type_name(self):
     """Name of the artifact type class that Channel takes."""
@@ -105,6 +119,14 @@ class BaseChannel:
 
   def future(self) -> placeholder.ChannelWrappedPlaceholder:
     return placeholder.ChannelWrappedPlaceholder(self)
+
+  def __eq__(self, other):
+    if not isinstance(other, BaseChannel):
+      return NotImplemented
+    return self is other
+
+  def __hash__(self):
+    return hash(id(self))
 
 
 class Channel(json_utils.Jsonable, BaseChannel):
@@ -195,6 +217,9 @@ class Channel(json_utils.Jsonable, BaseChannel):
   def producer_component_id(self, value: str) -> None:
     self._validate_producer_component_id(value)
     self._producer_component_id = value
+
+  def get_data_dependent_node_ids(self) -> Set[str]:
+    return set()
 
   def __repr__(self):
     artifacts_str = '\n    '.join(repr(a) for a in self._artifacts)
@@ -394,6 +419,9 @@ class OutputChannel(Channel):
         f'additional_properties={self.additional_properties}, '
         f'additional_custom_properties={self.additional_custom_properties})')
 
+  def get_data_dependent_node_ids(self) -> Set[str]:
+    return {self.producer_component_id}
+
   @doc_controls.do_not_generate_docs
   def set_producer_component(self, value: Any):
     self._producer_component = value
@@ -454,6 +482,12 @@ class UnionChannel(BaseChannel):
             'Unioned channels must have the same type. Expected %s (got %s).' %
             (self.type, channel.type))
 
+  def get_data_dependent_node_ids(self) -> Set[str]:
+    if self.channels:
+      return set.union(
+          *[chan.get_data_dependent_node_ids() for chan in self.channels])
+    return set()
+
 
 def union(input_channels: Iterable[BaseChannel]) -> UnionChannel:
   """Convenient method to combine multiple input channels into union channel."""
@@ -482,6 +516,9 @@ class LoopVarChannel(BaseChannel):
     super().__init__(wrapped.type)
     self._wrapped = wrapped
     self._for_each_context = for_each_context
+
+  def get_data_dependent_node_ids(self) -> Set[str]:
+    return self._wrapped.get_data_dependent_node_ids()
 
   @property
   def wrapped(self) -> BaseChannel:
@@ -540,7 +577,7 @@ class PipelineOutputChannel(OutputChannel):
     return False
 
   def __hash__(self):
-    return id(self.wrapped) + id(self.pipeline) + id(self.output_key)
+    return hash((id(self.wrapped), id(self.pipeline), self.output_key))
 
 
 @doc_controls.do_not_generate_docs
@@ -572,6 +609,9 @@ class PipelineInputChannel(BaseChannel):
   @pipeline.setter
   def pipeline(self, pipeline: Any):
     self._pipeline = pipeline
+
+  def get_data_dependent_node_ids(self) -> Set[str]:
+    return {self._pipeline.id}
 
 
 class ExternalProjectChannel(BaseChannel):
@@ -609,6 +649,9 @@ class ExternalProjectChannel(BaseChannel):
     self.pipeline_name = pipeline_name if pipeline_name else project_name
     self.mlmd_service_target = mlmd_service_target
     self.pipeline_run_id = pipeline_run_id
+
+  def get_data_dependent_node_ids(self) -> Set[str]:
+    return set()
 
   def __repr__(self) -> str:
     return (f'{self.__class__.__name__}('

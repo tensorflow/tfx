@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.input_resolution.node_inputs_resolver."""
 
+from typing import Set
 from unittest import mock
 
 import tensorflow as tf
@@ -47,6 +48,9 @@ class DummyChannel(tfx.types.BaseChannel):
   def __init__(self, name):
     super().__init__(type=DummyArtifact)
     self.name = name
+
+  def get_data_dependent_node_ids(self) -> Set[str]:
+    return set()
 
 
 class ProtectedFunctionTest(tf.test.TestCase):

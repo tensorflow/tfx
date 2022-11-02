@@ -132,6 +132,9 @@ class BaseDriver:
     result = {}
     for name, value in input_dict.items():
       artifacts_by_id = {}  # Deduplicate by ID.
+      # TODO(b/248145891): Stop using get_individual_channels which does not
+      # support all BaseChannel types. Use a common input resolution stack
+      # instead.
       for input_channel in channel_utils.get_individual_channels(value):
         if driver_args.interactive_resolution:
           artifacts = list(input_channel.get())
