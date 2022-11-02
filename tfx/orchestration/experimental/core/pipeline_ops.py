@@ -760,8 +760,12 @@ def _cancel_node(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
   """Returns `True` if node cancelled successfully or no cancellation needed."""
   if service_job_manager.is_pure_service_node(pipeline_state,
                                               node.node_info.id):
-    return service_job_manager.stop_node_services(pipeline_state,
-                                                  node.node_info.id)
+    result = service_job_manager.stop_node_services(pipeline_state,
+                                                    node.node_info.id)
+    if result:
+      _cancel_pending_executions(mlmd_handle, pipeline_state, node.node_info.id)
+    return result
+
   if _maybe_enqueue_cancellation_task(
       mlmd_handle, pipeline_state, node, task_queue, pause=pause):
     return False
@@ -998,7 +1002,12 @@ def _orchestrate_active_pipeline(
             pstate.is_node_state_failure(task.state)):
       continue
     logging.info('Stopping services for node: %s', task.node_uid)
-    if not service_job_manager.stop_node_services(pipeline_state, node_id):
+    stop_ok = service_job_manager.stop_node_services(pipeline_state, node_id)
+    if stop_ok and service_job_manager.is_pure_service_node(
+        pipeline_state, node_id):
+      _cancel_pending_executions(mlmd_connection_manager.primary_mlmd_handle,
+                                 pipeline_state, node_id)
+    else:
       logging.warning(
           'Ignoring failure to stop services for node %s which is in state %s',
           task.node_uid, task.state)
@@ -1115,3 +1124,34 @@ def _mlmd_execution_code(
   elif status.code == status_lib.Code.CANCELLED:
     return metadata_store_pb2.Execution.CANCELED
   return metadata_store_pb2.Execution.FAILED
+
+
+def _cancel_pending_executions(mlmd_handle: metadata.Metadata,
+                               pipeline_state: pstate.PipelineState,
+                               node_id: str) -> None:
+  """Cancel pending executions for the given node.
+
+  We need to do this for pure service nodes, e.g. ExampleGen. See b/254127096
+  for more details.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    pipeline_state: PipelineState for the containing pipeline.
+    node_id: Node ID of the node to cancel executions for.
+  """
+
+  node_views = pstate.get_all_nodes(pipeline_state.pipeline)
+  node_view = None
+  for v in node_views:
+    if v.node_info.id == node_id:
+      node_view = v
+      break
+  if not node_view:
+    raise ValueError('could not find node with id %s in pipeline' % node_id)
+
+  executions = task_gen_utils.get_executions(mlmd_handle, node_view)
+  for execution in executions:
+    if execution.last_known_state == metadata_store_pb2.Execution.NEW:
+      with mlmd_state.mlmd_execution_atomic_op(
+          mlmd_handle=mlmd_handle, execution_id=execution.id) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.CANCELED
