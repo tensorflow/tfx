@@ -99,8 +99,8 @@ class Compiler:
     # Step 4: Node outputs
     # PipeineBegin node's outputs are the same as its inputs,
     # i.e., the composable pipeline's inputs.
-    _set_node_outputs(node, p.inputs)
     internal_inputs = p._inputs.inputs if p._inputs else {}  # pylint: disable=protected-access
+    _set_node_outputs(node, internal_inputs)
     pipeline_ctx.channels.update(
         _generate_input_spec_for_outputs(node, internal_inputs))
 

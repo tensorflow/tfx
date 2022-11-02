@@ -94,12 +94,6 @@ class _Generator:
           'AsyncPipelineTaskGenerator should be instantiated with a pipeline '
           'proto having execution mode `ASYNC`, not `{}`'.format(
               pipeline.execution_mode))
-    for node in pipeline.nodes:
-      which_node = node.WhichOneof('node')
-      if which_node != 'pipeline_node':
-        raise ValueError(
-            'Sub-pipelines are not yet supported. Async pipeline should have '
-            'nodes of type `PipelineNode`; found: `{}`'.format(which_node))
     self._pipeline_state = pipeline_state
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
