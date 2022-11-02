@@ -180,27 +180,30 @@ class MlmdMixins:
     result.id = self.store.put_contexts([result])[0]
     return result
 
-  def _get_artifact_type_id(
-      self,
-      type_name: str,
-      properties: Optional[Dict[str, metadata_store_pb2.PropertyType]] = None
-  ) -> metadata_store_pb2.Artifact:
-    """Gets type ID of the artifact type."""
+  def put_artifact_type(
+      self, type_name: str,
+      base_type: Optional[metadata_store_pb2.ArtifactType.SystemDefinedBaseType]
+      = None,
+      properties: Optional[Dict[str, metadata_store_pb2.PropertyType]] = None,
+  ) -> int:
+    """Puts an ArtifactType to the MLMD database."""
+    properties = properties if properties is not None else {}
     artifact_type = metadata_store_pb2.ArtifactType(name=type_name)
-    if properties:
-      for key, value in properties.items():
-        artifact_type.properties[key] = value
-    if type_name not in self._artifact_type_ids:
-      result = self.store.put_artifact_type(artifact_type)
-      self._artifact_type_ids[type_name] = result
-    return self._artifact_type_ids[type_name]
+    if base_type is not None:
+      artifact_type.base_type = base_type
+    if properties is not None:
+      artifact_type.properties.update(properties)
+    result = self.store.put_artifact_type(artifact_type)
+    self._artifact_type_ids[type_name] = result
+    return result
 
   def put_artifact(
       self,
       artifact_type: str,
       name: str = '',
       uri: str = '/fake',
-      properties: Optional[Dict[str, types.ExecPropertyTypes]] = None
+      properties: Optional[Dict[str, types.ExecPropertyTypes]] = None,
+      custom_properties: Optional[Dict[str, types.ExecPropertyTypes]] = None,
   ) -> metadata_store_pb2.Artifact:
     """Put an Artifact in the MLMD database.
 
@@ -210,31 +213,37 @@ class MlmdMixins:
       uri: `Artifact.uri`. Defaults to '/fake'.
       properties: The raw property values to insert in the Artifact. Example:
         {"span": 3, "version": 1}
+      custom_properties: The raw custom property values to insert in the
+        Artifact.
 
     Returns:
       The MLMD artifact.
     """
-    if properties is not None:
-      property_types = {
-          key: data_types_utils.get_metadata_value_type(value)
-          for key, value in properties.items()
-      }
+    if artifact_type not in self._artifact_type_ids:
+      if properties is not None:
+        property_types = {
+            key: data_types_utils.get_metadata_value_type(value)
+            for key, value in properties.items()
+        }
+      else:
+        property_types = None
+      type_id = self.put_artifact_type(
+          artifact_type, properties=property_types)
     else:
-      property_types = None
+      type_id = self._artifact_type_ids[artifact_type]
 
-    fields = dict(
-        type_id=self._get_artifact_type_id(
-            type_name=artifact_type, properties=property_types),
+    mlmd_artifact = metadata_store_pb2.Artifact(
+        type_id=type_id,
         uri=uri,
         state=metadata_store_pb2.Artifact.LIVE,
         properties=data_types_utils.build_metadata_value_dict(properties),
+        custom_properties=data_types_utils.build_metadata_value_dict(
+            custom_properties),
     )
     if name:
-      fields.update(name=name)
-
-    mlmd_artifact = metadata_store_pb2.Artifact(**fields)
-    mlmd_artifact.id = self.store.put_artifacts([mlmd_artifact])[0]
-    return mlmd_artifact
+      mlmd_artifact.name = name
+    artifact_id = self.store.put_artifacts([mlmd_artifact])[0]
+    return self.store.get_artifacts_by_id([artifact_id])[0]
 
   def _get_execution_type_id(self, type_name: str):
     if type_name not in self._execution_type_ids:
