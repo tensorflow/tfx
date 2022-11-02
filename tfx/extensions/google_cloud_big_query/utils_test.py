@@ -101,9 +101,8 @@ class UtilsTest(tf.test.TestCase):
       utils.row_to_example(
           field_to_type=field_to_type, field_name_to_data=field_to_data)
 
-    self.assertIn('BigQuery column type TIMESTAMP is not supported.',
+    self.assertIn('BigQuery column "time" has non-supported type TIMESTAMP',
                   str(context.exception))
-
 
 if __name__ == '__main__':
   tf.test.main()
