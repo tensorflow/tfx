@@ -37,6 +37,7 @@ from tfx.utils import typing_utils
 
 from google.protobuf import any_pb2
 import ml_metadata as mlmd
+from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
 
 _EXECUTION_SET_SIZE = '__execution_set_size__'
@@ -464,3 +465,32 @@ def register_executions(
   return execution_lib.put_executions(
       metadata_handler, executions, contexts,
       [input_and_param.input_artifacts for input_and_param in input_and_params])
+
+
+def copy_external_artifact_type(metadata_handle: metadata.Metadata,
+                                artifacts: Sequence[types.artifact.Artifact]):
+  """Copys artifact types of external artifacts to local db.
+
+  Args:
+    metadata_handle: A handler to access MLMD.
+    artifacts: A list of artifacts.
+  """
+  local_artifact_type_name_to_id = {}
+  for artifact in artifacts:
+    if artifact.is_external:
+      type_name = artifact.type_name
+      if type_name not in local_artifact_type_name_to_id:
+        try:
+          local_artifact_type = metadata_handle.store.get_artifact_type(
+              type_name=type_name)
+          local_artifact_type_name_to_id[type_name] = local_artifact_type.id
+        except errors.NotFoundError:
+          external_artifact_type = artifact.artifact_type
+          external_artifact_type.ClearField('id')
+          new_id = metadata_handle.store.put_artifact_type(
+              external_artifact_type)
+          local_artifact_type_name_to_id[type_name] = new_id
+
+      local_artifact_type_id = local_artifact_type_name_to_id[type_name]
+      artifact.mlmd_artifact.type_id = local_artifact_type_id
+      artifact.artifact_type.id = local_artifact_type_id

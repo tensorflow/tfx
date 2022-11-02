@@ -346,8 +346,6 @@ class _Generator:
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
-    # TODO(b/250069301) If the artifacts in resolved_info come from external db,
-    # we should copy the artifacts and their type into the local db.
     resolved_info = task_gen_utils.generate_resolved_info(
         self._mlmd_connection_manager, node)
     if resolved_info is None:
@@ -365,6 +363,13 @@ class _Generator:
               status=status_lib.Status(
                   code=status_lib.Code.ABORTED, message=error_msg)))
       return result
+
+    logging.error('Guowei: resolved_info before %s', resolved_info)
+    # Copys artifact types of the external artifacts to local db.
+    for input_and_params in resolved_info.input_and_params:
+      for artifacts in input_and_params.input_artifacts.values():
+        task_gen_utils.copy_external_artifact_type(self._mlmd_handle, artifacts)
+    logging.error('Guowei: resolved_info after %s', resolved_info)
 
     executions = task_gen_utils.register_executions(
         metadata_handler=self._mlmd_handle,
