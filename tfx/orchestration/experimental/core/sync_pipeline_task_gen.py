@@ -19,7 +19,7 @@ from typing import Callable, Dict, List, Mapping, Optional, Set
 
 from absl import logging
 from tfx.orchestration import data_types_utils
-from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
@@ -47,14 +47,15 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
   """
 
   def __init__(self,
-               mlmd_handle: metadata.Metadata,
+               mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
                service_job_manager: service_jobs.ServiceJobManager,
                fail_fast: bool = False):
     """Constructs `SyncPipelineTaskGenerator`.
 
     Args:
-      mlmd_handle: A handle to the MLMD db.
+      mlmd_connection_manager: A `MLMDConnectionManager` instance to manager
+        multiple mlmd connections.
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
       service_job_manager: Used for handling service nodes in the pipeline.
@@ -62,7 +63,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
         fails. If `False`, pipeline run is only aborted when no further progress
         can be made due to node failures.
     """
-    self._mlmd_handle = mlmd_handle
+    self._mlmd_connection_manager = mlmd_connection_manager
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
     self._fail_fast = fail_fast
@@ -81,7 +82,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     Returns:
       A `list` of tasks to execute.
     """
-    return _Generator(self._mlmd_handle, pipeline_state,
+    return _Generator(self._mlmd_connection_manager, pipeline_state,
                       self._is_task_id_tracked_fn, self._service_job_manager,
                       self._fail_fast)()
 
@@ -90,12 +91,13 @@ class _Generator:
   """Generator implementation class for SyncPipelineTaskGenerator."""
 
   def __init__(self,
-               mlmd_handle: metadata.Metadata,
+               mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
                pipeline_state: pstate.PipelineState,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
                service_job_manager: service_jobs.ServiceJobManager,
                fail_fast: bool = False):
-    self._mlmd_handle = mlmd_handle
+    self._mlmd_connection_manager = mlmd_connection_manager
+    self._mlmd_handle = mlmd_connection_manager.primary_mlmd_handle
     pipeline = pipeline_state.pipeline
     if pipeline.execution_mode != pipeline_pb2.Pipeline.ExecutionMode.SYNC:
       raise ValueError(
@@ -343,8 +345,11 @@ class _Generator:
     """Generates tasks for a node by freshly resolving inputs."""
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+
+    # TODO(b/250069301) If the artifacts in resolved_info come from external db,
+    # we should copy the artifacts and their type into the local db.
     resolved_info = task_gen_utils.generate_resolved_info(
-        self._mlmd_handle, node)
+        self._mlmd_connection_manager, node)
     if resolved_info is None:
       result.append(
           task_lib.UpdateNodeStateTask(

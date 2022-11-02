@@ -15,7 +15,7 @@
 
 import dataclasses
 import types
-from typing import Optional, Type, Callable
+from typing import Optional, Type, Callable, Union
 
 from tfx.orchestration import metadata
 
@@ -42,11 +42,12 @@ class MLMDConnectionConfig:
 class MLMDConnectionManager:
   """MLMDConnectionManager managers the connections to MLMD."""
 
-  def __init__(self,
-               primary_mlmd_handle: metadata.Metadata,
-               primary_mlmd_handle_config: MLMDConnectionConfig,
-               create_reader_mlmd_connection_fn: Optional[Callable[
-                   [MLMDConnectionConfig], metadata.Metadata]] = None):
+  def __init__(
+      self,
+      primary_mlmd_handle: metadata.Metadata,
+      primary_mlmd_handle_config: Optional[MLMDConnectionConfig] = None,
+      create_reader_mlmd_connection_fn: Optional[Callable[
+          [MLMDConnectionConfig], metadata.Metadata]] = None):
     """Constructor of MLMDConnectionManager.
 
     Args:
@@ -55,6 +56,8 @@ class MLMDConnectionManager:
       create_reader_mlmd_connection_fn: Callable function for create a mlmd
         connection.
     """
+    if not primary_mlmd_handle:
+      raise ValueError('Primary mlmd handle can not be None.')
     self._primary_mlmd_handle = primary_mlmd_handle
     self._primary_mlmd_handle_config = primary_mlmd_handle_config
     self._reader_mlmd_handles = {}
@@ -84,6 +87,11 @@ class MLMDConnectionManager:
       self, owner_name: str, project_name: str,
       mlmd_service_target_name: str) -> Optional[metadata.Metadata]:
     """Gets a MLMD db handle."""
+    if not self._primary_mlmd_handle_config:
+      raise ValueError(
+          'primary_mlmd_handle_config is None, it is not allowed to call '
+          'get_mlmd_handle to get other mlmd handles.')
+
     connection_config = MLMDConnectionConfig(
         owner_name, project_name, mlmd_service_target_name, base_dir='')
     if connection_config == self._primary_mlmd_handle_config:
@@ -98,3 +106,13 @@ class MLMDConnectionManager:
       return self._reader_mlmd_handles.get(connection_config)
 
     return None
+
+
+MLMDHandleType = Union[metadata.Metadata, MLMDConnectionManager]
+
+
+def get_primary_handle(mlmd_handle: MLMDHandleType) -> metadata.Metadata:
+  if isinstance(mlmd_handle, MLMDConnectionManager):
+    return mlmd_handle.primary_mlmd_handle
+  else:
+    return mlmd_handle
