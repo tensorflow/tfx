@@ -13,7 +13,7 @@
 # limitations under the License.
 """Compiler submodule specialized for NodeInputs."""
 
-from typing import Type, cast, Mapping
+from typing import Mapping, Type, cast
 
 from tfx import types
 from tfx.dsl.compiler import compiler_context
@@ -26,6 +26,7 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types_utils
+from tfx.proto.orchestration import metadata_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
 from tfx.types import resolved_channel
@@ -217,6 +218,28 @@ def _compile_input_spec(
         node_id=channel.wrapped.producer_component_id,
         output_key=channel.output_key,
         result=result.inputs[input_key].channels.add())
+
+  elif isinstance(channel, channel_types.ExternalProjectChannel):
+    channel = cast(channel_types.ExternalProjectChannel, channel)
+    result_input_channel = result.inputs[input_key].channels.add()
+    _compile_channel_pb(
+        artifact_type=channel.type,
+        pipeline_name=channel.pipeline_name,
+        node_id=channel.producer_component_id,
+        output_key=channel.output_key,
+        result=result_input_channel)
+
+    if channel.pipeline_run_id:
+      ctx = result_input_channel.context_queries.add()
+      ctx.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
+      ctx.name.field_value.string_value = channel.pipeline_run_id
+
+    if channel.project_owner and channel.project_name and channel.mlmd_service_target:
+      config = metadata_pb2.MLMDServiceConfig(
+          owner=channel.project_owner,
+          name=channel.project_name,
+          mlmd_service_target=channel.mlmd_service_target)
+      result_input_channel.metadata_connection_config.Pack(config)
 
   elif isinstance(channel, channel_types.Channel):
     channel = cast(channel_types.Channel, channel)

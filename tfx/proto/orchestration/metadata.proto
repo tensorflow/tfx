@@ -25,3 +25,11 @@ message MLMDConnectionConfig {
     ml_metadata.MetadataStoreClientConfig mlmd_store_client_config = 2;
   }
 }
+
+// TODO(b/256921318) Revisit if this message is the best way to save MLMD db
+// info in pipeline IR for cross project producer/consumer pipelines.
+message MLMDServiceConfig {
+  string owner = 1;
+  string name = 2;
+  string mlmd_service_target = 3;
+}

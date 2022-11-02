@@ -572,3 +572,50 @@ class PipelineInputChannel(BaseChannel):
   @pipeline.setter
   def pipeline(self, pipeline: Any):
     self._pipeline = pipeline
+
+
+class ExternalProjectChannel(BaseChannel):
+  """Channel subtype that is used to get artifacts from external MLMD db."""
+
+  def __init__(self,
+               artifact_type: Type[Artifact],
+               *,
+               project_owner: str,
+               project_name: str,
+               producer_component_id: str,
+               output_key: str,
+               pipeline_name: str = '',
+               pipeline_run_id: str = '',
+               mlmd_service_target: str = ''):
+    """Initialization of ExternalProjectChannel.
+
+    Args:
+      artifact_type: Subclass of Artifact for this channel.
+      project_owner: Onwer of the MLMD db.
+      project_name: Name of the MLMD db.
+      producer_component_id: Id of the component produces the artifacts.
+      output_key: The output key when producer component produces the artifacts
+        in this Channel.
+      pipeline_name: (Optional) Name of the pipeline the artifacts belong to. If
+        not provided, default to project name.
+      pipeline_run_id: (Optional) Pipeline run id the artifacts belong to.
+      mlmd_service_target: (Optional) Service target of the MLMD db.
+    """
+    super().__init__(type=artifact_type)
+    self.project_owner = project_owner
+    self.project_name = project_name
+    self.producer_component_id = producer_component_id
+    self.output_key = output_key
+    self.pipeline_name = pipeline_name if pipeline_name else project_name
+    self.mlmd_service_target = mlmd_service_target
+    self.pipeline_run_id = pipeline_run_id
+
+  def __repr__(self) -> str:
+    return (f'{self.__class__.__name__}('
+            f'project_owner={self.project_owner}, '
+            f'project_name={self.project_name}, '
+            f'mlmd_service_target={self.mlmd_service_target}, '
+            f'pipeline_name={self.pipeline_name}, '
+            f'producer_component_id={self.producer_component_id}, '
+            f'output_key={self.output_key}), '
+            f'pipeline_run_id={self.pipeline_run_id}.')
