@@ -1079,17 +1079,20 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
     stopped or no cancellation was required.
   """
   executions = task_gen_utils.get_executions(mlmd_handle, node)
+  pipeline = pipeline_state.pipeline
+  node_uid = task_lib.NodeUid.from_node(pipeline, node)
 
   # If not pause, change all NEW executions to CANCELED
   if not pause:
     for execution in executions:
       if execution.last_known_state == metadata_store_pb2.Execution.NEW:
         with mlmd_state.mlmd_execution_atomic_op(
-            mlmd_handle=mlmd_handle, execution_id=execution.id) as execution:
+            mlmd_handle=mlmd_handle,
+            execution_id=execution.id,
+            on_commit=event_observer.make_notify_execution_state_change_fn(
+                node_uid)) as execution:
           execution.last_known_state = metadata_store_pb2.Execution.CANCELED
 
-  pipeline = pipeline_state.pipeline
-  node_uid = task_lib.NodeUid.from_node(pipeline, node)
   exec_node_task_id = task_lib.exec_node_task_id_from_node(pipeline, node)
   cancel_type = (
       task_lib.NodeCancelType.PAUSE_EXEC

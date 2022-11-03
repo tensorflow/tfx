@@ -108,7 +108,9 @@ _execution_id_locks = _LocksManager()
 def mlmd_execution_atomic_op(
     mlmd_handle: metadata.Metadata,
     execution_id: int,
-    on_commit: Optional[Callable[[], None]] = None
+    on_commit: Optional[
+        Callable[[metadata_store_pb2.Execution, metadata_store_pb2.Execution],
+                 None]] = None,
 ) -> Iterator[metadata_store_pb2.Execution]:
   """Context manager for accessing or mutating an execution atomically.
 
@@ -126,7 +128,8 @@ def mlmd_execution_atomic_op(
     execution_id: Id of the execution to yield.
     on_commit: An optional callback function which is invoked post successful
       MLMD execution commit operation. This won't be invoked if execution is not
-      mutated within the context and hence MLMD commit is not needed.
+      mutated within the context and hence MLMD commit is not needed. The
+      callback is passed copies of the pre-commit and post-commit executions.
 
   Yields:
     If execution with given id exists in MLMD, the execution is yielded under
@@ -149,7 +152,10 @@ def mlmd_execution_atomic_op(
       # object may be modified even after exiting the contextmanager.
       _execution_cache.put_execution(mlmd_handle, copy.deepcopy(execution_copy))
       if on_commit is not None:
-        on_commit()
+        pre_commit_execution = copy.deepcopy(execution)
+        post_commit_execution = copy.deepcopy(
+            _execution_cache.get_execution(mlmd_handle, execution_copy.id))
+        on_commit(pre_commit_execution, post_commit_execution)
 
 
 def clear_in_memory_state():

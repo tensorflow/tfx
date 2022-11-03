@@ -19,6 +19,7 @@ from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import garbage_collection
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state
@@ -59,9 +60,13 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
           'Aborting execution (id: %s) due to error (code: %s); task id: %s',
           task.execution_id, status.code, task.task_id)
       execution_state = proto.Execution.FAILED
-    _update_execution_state_in_mlmd(mlmd_handle, task.execution_id,
-                                    execution_state, status.message,
-                                    execution_result)
+    _update_execution_state_in_mlmd(
+        mlmd_handle=mlmd_handle,
+        node_uid=task.node_uid,
+        execution_id=task.execution_id,
+        new_state=execution_state,
+        error_msg=status.message,
+        execution_result=execution_result)
     pipeline_state.record_state_change_time()
 
   if result.status.code != status_lib.Code.OK:
@@ -139,8 +144,14 @@ def publish_execution_results(
         stateful_working_dir=execution_info.stateful_working_dir,
         tmp_dir=execution_info.tmp_dir,
         executor_output_uri=execution_info.execution_output_uri)
+    node_uid = task_lib.NodeUid(
+        pipeline_uid=task_lib.PipelineUid.from_pipeline_id_and_run_id(
+            pipeline_id=execution_info.pipeline_info.id,
+            pipeline_run_id=execution_info.pipeline_run_id),
+        node_id=execution_info.pipeline_node.node_info.id)
     _update_execution_state_in_mlmd(
         mlmd_handle=mlmd_handle,
+        node_uid=node_uid,
         execution_id=execution_info.execution_id,
         new_state=proto.Execution.FAILED,
         error_msg=executor_output.execution_result.result_message,
@@ -163,14 +174,18 @@ def publish_execution_results(
 
 def _update_execution_state_in_mlmd(
     mlmd_handle: metadata.Metadata,
+    node_uid: task_lib.NodeUid,
     execution_id: int,
     new_state: proto.Execution.State,
     error_msg: str,
     execution_result: Optional[execution_result_pb2.ExecutionResult] = None
 ) -> None:
   """Updates the execution state and sets execution_result if provided."""
-  with mlmd_state.mlmd_execution_atomic_op(mlmd_handle,
-                                           execution_id) as execution:
+  with mlmd_state.mlmd_execution_atomic_op(
+      mlmd_handle,
+      execution_id,
+      on_commit=event_observer.make_notify_execution_state_change_fn(
+          node_uid)) as execution:
     execution.last_known_state = new_state
     if error_msg:
       data_types_utils.set_metadata_value(

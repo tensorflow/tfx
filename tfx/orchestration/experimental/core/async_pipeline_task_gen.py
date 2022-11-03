@@ -21,6 +21,7 @@ from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -183,7 +184,9 @@ class _Generator:
     if oldest_active_execution:
       with mlmd_state.mlmd_execution_atomic_op(
           mlmd_handle=self._mlmd_handle,
-          execution_id=oldest_active_execution.id) as execution:
+          execution_id=oldest_active_execution.id,
+          on_commit=event_observer.make_notify_execution_state_change_fn(
+              node_uid)) as execution:
         execution.last_known_state = metadata_store_pb2.Execution.RUNNING
       result.append(
           task_lib.UpdateNodeStateTask(
@@ -245,25 +248,30 @@ class _Generator:
       return result
 
     # Don't need to register all executions in one transaction. If the
-    # orchestractor is interrupted in the middle, in the next iteration, the
-    # orchstrator is still able to register the rest of executions.
-    new_executioins = []
+    # orchestrator is interrupted in the middle, in the next iteration, the
+    # orchestrator is still able to register the rest of executions.
+    new_executions = []
     for input_and_param in unprocessed_inputs:
-      new_executioins.append(
-          execution_publish_utils.register_execution(
-              metadata_handler=metadata_handler,
-              execution_type=node.node_info.type,
-              contexts=resolved_info.contexts,
-              input_artifacts=input_and_param.input_artifacts,
-              exec_properties=input_and_param.exec_properties,
-              last_known_state=metadata_store_pb2.Execution.NEW))
+      execution = execution_publish_utils.register_execution(
+          metadata_handler=metadata_handler,
+          execution_type=node.node_info.type,
+          contexts=resolved_info.contexts,
+          input_artifacts=input_and_param.input_artifacts,
+          exec_properties=input_and_param.exec_properties,
+          last_known_state=metadata_store_pb2.Execution.NEW)
+      new_executions.append(execution)
+      event_observer.make_notify_execution_state_change_fn(node_uid)(None,
+                                                                     execution)
 
     # Selects the first artifacts and create a exec task.
     input_and_param = unprocessed_inputs[0]
-    execution = new_executioins[0]
+    execution = new_executions[0]
     # Selects the first execution and marks it as RUNNING.
     with mlmd_state.mlmd_execution_atomic_op(
-        mlmd_handle=self._mlmd_handle, execution_id=execution.id) as execution:
+        mlmd_handle=self._mlmd_handle,
+        execution_id=execution.id,
+        on_commit=event_observer.make_notify_execution_state_change_fn(
+            node_uid)) as execution:
       execution.last_known_state = metadata_store_pb2.Execution.RUNNING
 
     outputs_resolver = outputs_utils.OutputsResolver(

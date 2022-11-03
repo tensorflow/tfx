@@ -33,9 +33,19 @@ import threading
 from typing import Any, Callable, List, Optional, Union
 
 from absl import logging
+from tfx.orchestration.experimental.core import task as task_lib
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
+
+
+@dataclasses.dataclass(frozen=True)
+class ExecutionStateChange:
+  """ExecutionStateChange event."""
+  execution: metadata_store_pb2.Execution
+  node_uid: task_lib.NodeUid
+  old_state: Optional["metadata_store_pb2.Execution.State"]
+  new_state: "metadata_store_pb2.Execution.State"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -74,7 +84,8 @@ class NodeStateChange:
   new_state: Any
 
 
-Event = Union[PipelineStarted, PipelineFinished, NodeStateChange]
+Event = Union[PipelineStarted, PipelineFinished, NodeStateChange,
+              ExecutionStateChange]
 
 ObserverFn = Callable[[Event], None]
 
@@ -295,3 +306,35 @@ class _EventObserver:
       if event is not None:
         observe_event(event)
         self._event_queue.task_done()
+
+
+def make_notify_execution_state_change_fn(
+    node_uid: task_lib.NodeUid
+) -> Callable[
+    [Optional[metadata_store_pb2.Execution], metadata_store_pb2.Execution],
+    None]:
+  """Returns a on_commit callback for use with mlmd_execution_atomic_op.
+
+  Args:
+    node_uid: The NodeUid for the node whose execution is being updated.
+
+  Returns:
+    An on_commit callback for use with mlmd_execution_atomic_op. The callback
+    sends an ExecutionStateChange notification if the execution state changed.
+  """
+
+  def on_commit(pre_commit_execution: Optional[metadata_store_pb2.Execution],
+                post_commit_execution: metadata_store_pb2.Execution) -> None:
+    pre_commit_execution_state = None
+    if pre_commit_execution:
+      pre_commit_execution_state = pre_commit_execution.last_known_state
+    if pre_commit_execution_state == post_commit_execution.last_known_state:
+      return
+    notify(
+        ExecutionStateChange(
+            execution=post_commit_execution,
+            node_uid=node_uid,
+            old_state=pre_commit_execution_state,
+            new_state=post_commit_execution.last_known_state))
+
+  return on_commit

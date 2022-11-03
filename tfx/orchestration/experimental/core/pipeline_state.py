@@ -787,7 +787,9 @@ class PipelineState:
 
   def __enter__(self) -> 'PipelineState':
 
-    def _run_on_commit_callbacks():
+    def _run_on_commit_callbacks(pre_commit_execution, post_commit_execution):
+      del pre_commit_execution
+      del post_commit_execution
       record_state_change_time()
       for on_commit_cb in self._on_commit_callbacks:
         on_commit_cb()
