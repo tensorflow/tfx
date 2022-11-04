@@ -83,7 +83,7 @@ components needed to define, launch, and monitor your machine learning system.
 ## TFX Standard Components
 
 A TFX pipeline is a sequence of components that implement an [ML
-pipeline](https://en.wikipedia.org/wiki/Pipeline_(computing)) which is
+pipeline](https://www.tensorflow.org/tfx) which is
 specifically designed for scalable, high-performance machine learning tasks.
 That includes modeling, training, serving inference, and managing deployments to
 online, native mobile, and JavaScript targets.
