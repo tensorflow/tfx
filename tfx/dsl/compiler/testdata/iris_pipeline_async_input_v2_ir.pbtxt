@@ -801,40 +801,6 @@ nodes {
     }
     inputs {
       inputs {
-        key: "baseline_model"
-        value {
-          channels {
-            context_queries {
-              type {
-                name: "pipeline"
-              }
-              name {
-                field_value {
-                  string_value: "iris"
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.latest_blessed_model_resolver"
-                }
-              }
-            }
-            artifact_query {
-              type {
-                name: "Model"
-                base_type: MODEL
-              }
-            }
-            output_key: "baseline_model"
-          }
-        }
-      }
-      inputs {
         key: "examples"
         value {
           channels {
@@ -907,14 +873,6 @@ nodes {
             }
             output_key: "model"
           }
-        }
-      }
-      resolver_config {
-        resolver_steps {
-          class_path: "tfx.dsl.input_resolution.strategies.latest_blessed_model_strategy.LatestBlessedModelStrategy"
-          config_json: "{}"
-          input_keys: "baseline_model"
-          input_keys: "model_blessing"
         }
       }
     }

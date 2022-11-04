@@ -14,7 +14,7 @@
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
 import inspect
 import itertools
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, cast, Mapping
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, cast
 
 from tfx import types
 from tfx.dsl.compiler import compiler_context
@@ -24,24 +24,14 @@ from tfx.dsl.compiler import node_inputs_compiler
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
-from tfx.dsl.components.common import resolver
-from tfx.dsl.control_flow import for_each
-from tfx.dsl.experimental.conditionals import conditional
-from tfx.dsl.input_resolution import resolver_function
-from tfx.dsl.input_resolution import resolver_op
-from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import channel as tfx_channel
-from tfx.types import channel_utils
-from tfx.types import resolved_channel
 from tfx.types import value_artifact
 from tfx.utils import deprecation_utils
-from tfx.utils import json_utils
 from tfx.utils import name_utils
 
 
@@ -49,7 +39,7 @@ class Compiler:
   """Compiles a TFX pipeline or a component into a uDSL IR proto."""
 
   def __init__(self, use_input_v2: bool = True):
-    self._use_input_v2 = use_input_v2
+    assert use_input_v2, "use_input_v2=False is no longer supported."
 
   def _compile_pipeline_begin_node(
       self, p: pipeline.Pipeline,
@@ -66,35 +56,10 @@ class Compiler:
     # Inner pipeline's contexts.
     _set_node_context(node, pipeline_ctx)
 
-    if self._use_input_v2:
-      # Pipeline node inputs are stored as the inputs of the PipelineBegin node.
-      node_inputs_compiler.compile_node_inputs(
-          pipeline_ctx.parent, p, node.inputs)
-    else:
-      # Step 3: Node inputs
-      # Composable pipeline's pipeline-level inputs are stored as the inputs of
-      # PipelineBegin node.
-      implicit_input_channels = {}
-
-      # Step 3.1.1: Conditionals
-      # Composable pipeline's conditional config is stored in PipelineBegin
-      # node.
-      implicit_input_channels.update(
-          _set_conditionals(node, p, pipeline_ctx.parent, p.inputs))
-      # Step 3.1.2: Add placeholder exec props to implicit_input_channels
-      implicit_input_channels.update(
-          _gather_implicit_inputs_from_exec_properties(p))
-
-      # Step 3.2: Handle ForEach.
-      # Similarly, pipeline level's foreach config is stored in PipelineBegin
-      # node
-      _set_for_each(node, p, pipeline_ctx.parent, p.inputs)
-
-      # Step 3.3: Fill node inputs
-      # Note here we use parent pipeline context, because a PipelineBegin node
-      # uses output channels from its parent pipeline.
-      _set_node_inputs(node, p, pipeline_ctx.parent, p.inputs,
-                       implicit_input_channels)
+    # Step 3: Node inputs
+    # Pipeline node inputs are stored as the inputs of the PipelineBegin node.
+    node_inputs_compiler.compile_node_inputs(
+        pipeline_ctx.parent, p, node.inputs)
 
     # Step 4: Node outputs
     # PipeineBegin node's outputs are the same as its inputs,
@@ -146,18 +111,11 @@ class Compiler:
     # Inner pipeline's contexts.
     _set_node_context(node, pipeline_ctx)
 
-    if self._use_input_v2:
-      node_inputs_compiler.compile_node_inputs(
-          pipeline_ctx,
-          compiler_utils.create_pipeline_end_node(p),
-          node.inputs)
-    else:
-      # Step 3: Node inputs
-      # Conditionals and Foreach do not apply to PipelineEnd node.
-      # The inputs of a PipelineEnd node is the same as inner pipeline's
-      # outputs.
-      _set_node_inputs(node, p, pipeline_ctx,
-                       {k: c.wrapped for k, c in p.outputs.items()}, {})
+    # Step 3: Node inputs
+    node_inputs_compiler.compile_node_inputs(
+        pipeline_ctx,
+        compiler_utils.create_pipeline_end_node(p),
+        node.inputs)
 
     # Step 4: Node outputs
     # PipeineEnd node's outputs are the same as inner pipeline's outputs.
@@ -226,41 +184,9 @@ class Compiler:
     # Step 2: Node Context
     _set_node_context(node, pipeline_ctx)
 
-    # Pre Step 3: Alter graph topology if needed.
-    if pipeline_ctx.is_async_mode:
-      tfx_node_inputs = _embed_upstream_resolver_nodes(pipeline_ctx,
-                                                       tfx_node, node)
-    else:
-      tfx_node_inputs = tfx_node.inputs
-
     # Step 3: Node inputs
-
-    if self._use_input_v2:
-      node_inputs_compiler.compile_node_inputs(
-          pipeline_ctx, tfx_node, node.inputs)
-    else:
-      # Step 3.1: Generate implicit input channels
-      implicit_input_channels = {}
-
-      # Step 3.1.1: Conditionals
-      implicit_input_channels.update(
-          _set_conditionals(node, tfx_node, pipeline_ctx, tfx_node_inputs))
-
-      # Step 3.1.2: Add placeholder exec props to implicit_input_channels
-      implicit_input_channels.update(
-          _gather_implicit_inputs_from_exec_properties(tfx_node))
-
-      # Step 3.2: Handle ForEach.
-      _set_for_each(node, tfx_node, pipeline_ctx, tfx_node_inputs)
-
-      # Step 3.3: Fill node inputs
-      _set_node_inputs(node, tfx_node, pipeline_ctx, tfx_node_inputs,
-                       implicit_input_channels)
-
-      # TODO(b/170694459): Refactor special nodes as plugins.
-      # Step 3.4: Special treatment for Resolver node.
-      if compiler_utils.is_resolver(tfx_node):
-        assert pipeline_ctx.is_sync_mode
+    node_inputs_compiler.compile_node_inputs(
+        pipeline_ctx, tfx_node, node.inputs)
 
     # Step 4: Node outputs
     if (isinstance(tfx_node, base_component.BaseComponent) or
@@ -414,11 +340,6 @@ class Compiler:
       pipeline_pb.nodes.append(pipeline_or_node)
 
     for node in tfx_pipeline.components:
-      # In ASYNC mode Resolver nodes are merged into the downstream node as a
-      # ResolverConfig
-      if compiler_utils.is_resolver(node) and pipeline_ctx.is_async_mode:
-        continue
-
       if isinstance(node, pipeline.Pipeline):
         pipeline_node_pb = self.compile(node, pipeline_ctx)
         pipeline_or_node = pipeline_pb.PipelineOrNode()
@@ -450,188 +371,6 @@ class Compiler:
 def _fully_qualified_name(cls: Type[Any]):
   cls = deprecation_utils.get_first_nondeprecated_class(cls)
   return name_utils.get_full_name(cls)
-
-
-def _compile_op_node(
-    op_node: resolver_op.OpNode,) -> pipeline_pb2.ResolverConfig.ResolverStep:
-  result = pipeline_pb2.ResolverConfig.ResolverStep()
-  result.class_path = _fully_qualified_name(op_node.op_type)
-  result.config_json = json_utils.dumps(op_node.kwargs)
-  return result
-
-
-def _compile_trace_result(
-    trace_result: resolver_op.Node,
-) -> List[pipeline_pb2.ResolverConfig.ResolverStep]:
-  """Converts traced ResolverFunction output to corresponding ResolverSteps."""
-  result = []
-  op_node = trace_result
-  while not isinstance(op_node, resolver_op.InputNode):
-    assert isinstance(op_node, resolver_op.OpNode)
-    result.append(_compile_op_node(op_node))
-    if len(op_node.args) != 1:
-      raise NotImplementedError(
-          f"ResolverOp {op_node!r} has {len(op_node.args)} args, expected 1.")
-    op_node = op_node.args[0]
-  return list(reversed(result))
-
-
-def _get_upstream_resolver_nodes(
-    tfx_node: base_node.BaseNode) -> List[resolver.Resolver]:
-  """Gets all transitive upstream resolver nodes in topological order."""
-  result = []
-  visit_queue = list(tfx_node.upstream_nodes)
-  seen = set(node.id for node in visit_queue)
-  while visit_queue:
-    node = visit_queue.pop()
-    if not compiler_utils.is_resolver(node):
-      continue
-    result.append(cast(resolver.Resolver, node))
-    for upstream_node in node.upstream_nodes:
-      if upstream_node.id not in seen:
-        seen.add(node.id)
-        visit_queue.append(upstream_node)
-  return result
-
-
-def _embed_upstream_resolver_nodes(
-    pipeline_ctx: compiler_context.PipelineContext,
-    tfx_node: base_node.BaseNode,
-    node: pipeline_pb2.PipelineNode):
-  """Embeds upstream Resolver nodes as a ResolverConfig.
-
-  Iteratively reduces upstream resolver nodes into a resolver config of the
-  current node until no upstream resolver node remains.
-  Each iteration will consume one upstream resolver node, and convert it to
-  the equivalent resolver steps and corresponding input channels.
-  For example consider the following diagram:
-
-  +--------------+  +------------+
-  |  Upstream A  |  | Upstream B |
-  +--------------+  +------------+
-      a|    |b            |i  <-- output key
-       |    |             |
-      c|    |d            |
-       v    v             |
-  +----+----+----+        |
-  | Resolver     |        |
-  | cls=Foo      |   +----+
-  +--------------+   |
-      c|    |d <---- | ----- output key of the Resolver should be the same
-       |    |        |       as the input key of the Current Node.
-      c|    |d       |j  <-- input key
-       v    v        v
-      ++----+--------+-+
-      | Current Node   |
-      | ResolverSteps: |
-      |   - ...        |
-      +----------------+
-
-  After one iteration, the Resolver node would be replaced by the resolver
-  step of the downstream (current node).
-
-  +--------------+  +------------+
-  |  Upstream A  |  | Upstream B |
-  +--------------+  +------------+
-      a|    |b            |i
-       |    |             |
-      c|    |d            |j
-       v    v             v
-  +----+----+-------------+------+
-  | Current Node                 |
-  | ResolverSteps:               |
-  |   - Foo()                    |
-  |   - ...                      |
-  +------------------------------+
-
-  Following things are done for each reduction iteration:
-   * Pick a upstream resolver node (in a reversed topological order).
-   * Remove channels between resolver node and the current node.
-   * Rewire resolver node input channels as those of the current node.
-   * Convert the resolver node into corresponding resolver steps.
-
-  This only applies to the ASYNC mode pipeline compilation.
-
-  Args:
-    pipeline_ctx: A pipeline context.
-    tfx_node: A BaseNode instance.
-    node: A PipelineNode IR to compile ResolverConfig into.
-
-  Returns:
-    a modified input channels of the given node.
-  """
-  # This input_channels dict will be updated in the middle as the resolver
-  # nodes are reduced, and this updated input_channels should be used
-  # afterwise instead of tfx_node.inputs.
-  input_channels = dict(tfx_node.inputs)  # Shallow copy.
-  resolver_steps = []
-  resolver_nodes = _get_upstream_resolver_nodes(tfx_node)
-  # Reduce each resolver node into resolver steps in reversed topological
-  # order.
-  for resolver_node in reversed(
-      pipeline_ctx.topologically_sorted(resolver_nodes)):
-    resolver_node = cast(resolver.Resolver, resolver_node)
-    # TODO(b/169573945, lidanm): Properly handle channel.union() for resolver
-    # node in async mode.
-    resolver_channels = {
-        input_key: chnl
-        for input_key, chnl in input_channels.items()
-        if chnl.producer_component_id == resolver_node.id
-    }
-    for input_key, chnl in resolver_channels.items():
-      # CAVEAT: Currently resolver does not alter the input key, and we
-      # require the output key of the resolver (which is the same as the
-      # input key) to be consumed AS IS in the downstream node, whether it is
-      # a resolver node or a TFX component node.
-      # TODO(b/178452031): New Resolver should properly handle key mismatch.
-      if input_key != chnl.output_key:
-        raise ValueError(f"Downstream node input key ({input_key}) should be "
-                         f"the same as the output key ({chnl.output_key}) "
-                         "of the resolver node.")
-      # Step 1.
-      # Remove channel between parent resolver node and the tfx_node.
-      del input_channels[input_key]
-    # Step 2.
-    # Rewire resolver node inputs to the tfx_node inputs.
-    for parent_input_key, chnl in resolver_node.raw_inputs.items():
-      if parent_input_key in input_channels:
-        if chnl != input_channels[parent_input_key]:
-          raise ValueError(
-              f"Duplicated input key {parent_input_key} found while "
-              f"compiling {tfx_node.type}#{tfx_node.id}.")
-      else:
-        input_channels[parent_input_key] = chnl
-    # Step 3.
-    # Convert resolver node into corresponding resolver steps.
-    resolver_steps.extend(reversed(_compile_resolver_node(resolver_node)))
-
-  if resolver_steps:
-    node.inputs.resolver_config.resolver_steps.extend(reversed(resolver_steps))
-  return input_channels
-
-
-def _compile_resolver_node(
-    resolver_node: resolver.Resolver,
-) -> List[pipeline_pb2.ResolverConfig.ResolverStep]:
-  """Converts Resolver node to a corresponding ResolverSteps."""
-  result = _compile_trace_result(resolver_node.trace_result)
-  for step in result:
-    step.input_keys.extend(resolver_node.raw_inputs.keys())
-  return result
-
-
-def _compile_for_each_context(
-    input_key: str) -> List[pipeline_pb2.ResolverConfig.ResolverStep]:
-  """Generates ResolverSteps corresponding to ForEach context."""
-
-  @resolver_function.resolver_function
-  def impl(input_node):
-    items = ops.Unnest(input_node, key=input_key)
-    return ops.SkipIfEmpty(items)
-
-  dummy_input_node = resolver_op.InputNode(
-      None, resolver_op.DataType.ARTIFACT_MULTIMAP)
-  return _compile_trace_result(impl.trace(dummy_input_node))
 
 
 def _validate_pipeline(tfx_pipeline: pipeline.Pipeline,
@@ -713,39 +452,6 @@ def _set_node_context(node: pipeline_pb2.PipelineNode,
           node.node_info.id))
 
 
-def _set_conditionals(
-    node: pipeline_pb2.PipelineNode, tfx_node: base_node.BaseNode,
-    pipeline_ctx: compiler_context.PipelineContext,
-    tfx_node_inputs: Dict[str, types.Channel],
-) -> Iterator[Tuple[str, types.Channel]]:
-  """Compiles the conditionals for a pipeline node."""
-  predicates = conditional.get_predicates(
-      tfx_node, pipeline_ctx.dsl_context_registry)
-
-  if predicates:
-    implicit_keys_map = {}
-    for key, chnl in tfx_node_inputs.items():
-      if not isinstance(chnl, types.BaseChannel):
-        raise ValueError(
-            "Conditional only support using channel as a predicate.")
-      implicit_keys_map[compiler_utils.implicit_channel_key(chnl)] = key
-    encoded_predicates = []
-    for predicate in predicates:
-      for chnl in predicate.dependent_channels():
-        implicit_key = compiler_utils.implicit_channel_key(chnl)
-        if implicit_key not in implicit_keys_map:
-          yield implicit_key, chnl
-      encoded_predicates.append(
-          predicate.encode_with_keys(
-              compiler_utils.build_channel_to_key_fn(implicit_keys_map)))
-    # In async pipeline, conditional resolver step should be the last step
-    # in all resolver steps of a node.
-    resolver_step = node.inputs.resolver_config.resolver_steps.add()
-    resolver_step.class_path = constants.CONDITIONAL_RESOLVER_CLASS_PATH
-    resolver_step.config_json = json_utils.dumps(
-        {"predicates": encoded_predicates})
-
-
 def _gather_implicit_inputs_from_exec_properties(
     tfx_node: base_node.BaseNode) -> Iterator[Tuple[str, types.Channel]]:
   for value in tfx_node.exec_properties.values():
@@ -756,217 +462,6 @@ def _gather_implicit_inputs_from_exec_properties(
             "Dynamic execution property only supports ValueArtifact typed "
             f"channel. Got {value.channel.type.TYPE_NAME}.")
       yield compiler_utils.implicit_channel_key(value.channel), value.channel
-
-
-def _set_for_each(node: pipeline_pb2.PipelineNode, tfx_node: base_node.BaseNode,
-                  pipeline_ctx: compiler_context.PipelineContext,
-                  tfx_node_inputs: Dict[str, Any]):
-  """Compiles the ForEach configs for a pipeline node."""
-  dsl_contexts = pipeline_ctx.dsl_context_registry.get_contexts(tfx_node)
-  for dsl_context in dsl_contexts:
-    if isinstance(dsl_context, for_each.ForEachContext):
-      for input_key, channel in tfx_node_inputs.items():
-        if (isinstance(channel, types.LoopVarChannel) and
-            channel.wrapped is dsl_context.wrapped_channel):
-          node.inputs.resolver_config.resolver_steps.extend(
-              _compile_for_each_context(input_key))
-          break
-      else:
-        # Ideally should not reach here as the same check is performed at
-        # ForEachContext.will_add_node().
-        raise ValueError(
-            f"Unable to locate ForEach loop variable {dsl_context.channel} "
-            f"from inputs of node {tfx_node.id}.")
-
-  # Check loop variable is used outside the ForEach.
-  for input_key, channel in tfx_node_inputs.items():
-    if isinstance(channel, types.LoopVarChannel):
-      if channel.for_each_context not in dsl_contexts:
-        raise ValueError("Loop variable cannot be used outside the ForEach "
-                         f"(node_id = {tfx_node.id}, input_key = {input_key}).")
-
-
-def _set_node_inputs(node: pipeline_pb2.PipelineNode,
-                     tfx_node: base_node.BaseNode,
-                     pipeline_ctx: compiler_context.PipelineContext,
-                     tfx_node_inputs: Dict[str, types.Channel],
-                     implicit_input_channels: Dict[str, types.Channel]):
-  """Compiles the inputs for a pipeline node."""
-  all_inputs = {**tfx_node_inputs, **implicit_input_channels}
-  resolved_channel_inputs = {}
-
-  for key, input_channel in all_inputs.items():
-    if isinstance(input_channel, resolved_channel.ResolvedChannel):
-      resolved_channel_inputs[key] = input_channel
-
-  if (len(resolved_channel_inputs) != len(all_inputs)
-      and resolved_channel_inputs):
-    bad_input_keys = list(set(all_inputs) - set(resolved_channel_inputs))
-    # TODO(b/236140795): Migrate to InputGraph based IR.
-    # This is the weird limitation we have using the ResolverConfig based IR.
-    # New InputGraph based IR can solve the problem.
-    raise ValueError(
-        f"Node {tfx_node.id} inputs should all be coming from the same input "
-        f"function output, while {bad_input_keys} are not.")
-
-  if resolved_channel_inputs:
-    _set_resolved_channel_inputs(
-        node, tfx_node, pipeline_ctx, resolved_channel_inputs)
-    return
-
-  for key, value in all_inputs.items():
-    input_spec = node.inputs.inputs[key]
-
-    if isinstance(value, tfx_channel.PipelineInputChannel):
-      channel_pb = input_spec.channels.add()
-
-      if value in pipeline_ctx.channels:
-        channel_pb.CopyFrom(pipeline_ctx.channels[value])
-      else:
-        raise ValueError(
-            f"Failed to find producer info for the input channel '{key}' "
-            f"of node {tfx_node.id}.")
-      continue
-
-    for input_channel in channel_utils.get_individual_channels(value):
-      channel_pb = input_spec.channels.add()
-
-      if isinstance(input_channel, types.OutputChannel):
-        if pipeline_ctx and input_channel in pipeline_ctx.channels:
-          channel_pb.CopyFrom(pipeline_ctx.channels[input_channel])
-        elif isinstance(input_channel, tfx_channel.PipelineOutputChannel):
-          # Add pipeline context query
-          context_query = channel_pb.context_queries.add()
-          context_query.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
-          context_query.name.field_value.string_value = (
-              input_channel.pipeline.pipeline_name)
-
-          # Add node context query
-          node_context_query = channel_pb.context_queries.add()
-          node_context_query.type.name = constants.NODE_CONTEXT_TYPE_NAME
-          node_context_query.name.field_value.string_value = (
-              compiler_utils.node_context_name(
-                  input_channel.pipeline.pipeline_name,
-                  input_channel.wrapped.producer_component_id))
-
-          artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
-          channel_pb.artifact_query.type.CopyFrom(artifact_type)
-          channel_pb.artifact_query.type.ClearField("properties")
-        else:
-          raise ValueError(
-              f"Failed to find producer info for the input channel '{key}' "
-              f"of node {tfx_node.id}.")
-      else:
-        # If the node input is not an OutputChannel, fill the context queries
-        # based on Channel info. We requires every channel to have pipeline
-        # context and will fill it automatically.
-        for context in node.contexts.contexts:
-          if context.type.name == constants.PIPELINE_CONTEXT_TYPE_NAME:
-            context_query = channel_pb.context_queries.add()
-            context_query.type.CopyFrom(context.type)
-            context_query.name.CopyFrom(context.name)
-
-        if input_channel.producer_component_id:
-          # Add node context query if `producer_component_id` is present.
-          channel_pb.producer_node_query.id = input_channel.producer_component_id
-          node_context_query = channel_pb.context_queries.add()
-          node_context_query.type.name = constants.NODE_CONTEXT_TYPE_NAME
-          node_context_query.name.field_value.string_value = "{}.{}".format(
-              pipeline_ctx.pipeline_info.pipeline_context_name,
-              input_channel.producer_component_id)
-
-        artifact_type = input_channel.type._get_artifact_type()  # pylint: disable=protected-access
-        channel_pb.artifact_query.type.CopyFrom(artifact_type)
-        channel_pb.artifact_query.type.ClearField("properties")
-
-        if input_channel.output_key:
-          channel_pb.output_key = input_channel.output_key
-
-    # Set NodeInputs.min_count.
-    if isinstance(tfx_node, base_component.BaseComponent):
-      if key in implicit_input_channels:
-        # Mark all input channel as optional for implicit inputs
-        # (e.g. conditionals). This is suboptimal, but still a safe guess to
-        # avoid breaking the pipeline run.
-        input_spec.min_count = 0
-      else:
-        try:
-          # Calculating min_count from ComponentSpec.INPUTS.
-          # Channel optional in spec, but provided to component.
-          if tfx_node.spec.is_allow_empty_input(key):
-            # Channel is defined as allow_empty in spec. It's okay to
-            # trigger even if it has no resolved input artifacts.
-            input_spec.min_count = 0
-          else:
-            # Channel is defined as NOT allow_empty in spec.
-            # It must have resolved input artifacts before it triggers.
-            input_spec.min_count = 1
-        except KeyError:
-          # Currently we can fall here if the upstream resolver node inputs
-          # are embedded into the current node (in async mode). We always
-          # regard resolver's inputs as optional.
-          if pipeline_ctx.is_async_mode:
-            input_spec.min_count = 0
-          else:
-            raise
-    else:
-      input_spec.min_count = 0
-
-
-# TODO(b/236140795): Migrate to InputGraph based IR.
-def _set_resolved_channel_inputs(
-    node: pipeline_pb2.PipelineNode,
-    tfx_node: base_node.BaseNode,
-    pipeline_ctx: compiler_context.PipelineContext,
-    inputs: Mapping[str, resolved_channel.ResolvedChannel]) -> None:
-  """Set `node.inputs` where all `inputs` are ResolvedChannel.
-
-  ResolvedChannel is a special BaseChannel that marks the output of the
-  ResolverFunction. If a node has ResolvedChannel input, all resolver function
-  definition should also be compiled as part of the node inputs.
-
-  Args:
-    node: A PipelineNode IR output.
-    tfx_node: A compiling node.
-    pipeline_ctx: A PipelineContext for the current pipeline.
-    inputs: An input ResolvedChannels with keys.
-  """
-  for input_key, channel in inputs.items():
-    if channel.output_key != input_key:
-      # Resolved dict key should match the consumer input key. For example
-      #    inputs = resolve_inputs(...)
-      #    consumer_a = A(x=inputs['x'])  # valid
-      #    consumer_b = B(y=inputs['x'])  # INVALID
-      # This is the weird limitation we have using the ResolverConfig based IR.
-      # New InputGraph based IR can solve the problem.
-      raise ValueError(
-          f"Node {tfx_node.id}.inputs[{input_key!r}] should have the same key "
-          f"as the output key value but got {channel.output_key!r}.")
-  output_nodes = {channel.output_node for channel in inputs.values()}
-  if len(output_nodes) != 1:
-    # This is the weird limitation we have using the ResolverConfig based IR.
-    # New InputGraph based IR can solve the problem.
-    raise ValueError(
-        f"Node {tfx_node.id} should consume from single input function but "
-        f"detected {len(output_nodes)}.")
-  output_node = output_nodes.pop()
-  input_nodes = resolver_op.get_input_nodes(output_node)
-  if len(input_nodes) != 1:
-    # This is the weird limitation we have using the ResolverConfig based IR.
-    # New InputGraph based IR can solve the problem.
-    raise ValueError(
-        "Resolver function with multiple input nodes are not yet supported.")
-  input_node: resolver_op.InputNode = input_nodes.pop()
-  if any(isinstance(channel, resolved_channel.ResolvedChannel)
-         for channel in input_node.wrapped.values()):
-    # This is the weird limitation we have using the ResolverConfig based IR.
-    # New InputGraph based IR can solve the problem.
-    raise ValueError(
-        "Cannot use input function output as an input to another input "
-        "function.")
-  _set_node_inputs(node, tfx_node, pipeline_ctx, input_node.wrapped, {})
-  node.inputs.resolver_config.resolver_steps.extend(
-      _compile_trace_result(output_node))
 
 
 def _set_node_outputs(node: pipeline_pb2.PipelineNode,

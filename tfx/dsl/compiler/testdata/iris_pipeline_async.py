@@ -25,13 +25,10 @@ from tfx.components import Trainer
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import importer
-from tfx.dsl.components.common import resolver
-from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
-from tfx.types import Channel
 from tfx.types import standard_artifacts
 
 
@@ -82,14 +79,15 @@ def create_test_pipeline():
       eval_args=trainer_pb2.EvalArgs(num_steps=5)).with_platform_config(
           config=trainer_pb2.TrainArgs(num_steps=2000))
 
-  model_resolver = resolver.Resolver(
-      strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,
-      baseline_model=Channel(
-          type=standard_artifacts.Model, producer_component_id="Trainer"),
-      # Cannot add producer_component_id="Evaluator" for model_blessing as it
-      # raises "producer component should have already been compiled" error.
-      model_blessing=Channel(type=standard_artifacts.ModelBlessing)).with_id(
-          "latest_blessed_model_resolver")
+  # TODO(b/257197093): Use corresponding resolver function instead.
+  # model_resolver = resolver.Resolver(
+  #     strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,
+  #     baseline_model=Channel(
+  #         type=standard_artifacts.Model, producer_component_id="Trainer"),
+  #     # Cannot add producer_component_id="Evaluator" for model_blessing as it
+  #     # raises "producer component should have already been compiled" error.
+  #     model_blessing=Channel(type=standard_artifacts.ModelBlessing)).with_id(
+  #         "latest_blessed_model_resolver")
 
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(signature_name="eval")],
@@ -109,7 +107,8 @@ def create_test_pipeline():
   evaluator = Evaluator(
       examples=example_gen.outputs["examples"],
       model=trainer.outputs["model"],
-      baseline_model=model_resolver.outputs["baseline_model"],
+      # TODO(b/257197093): Use corresponding resolver function instead.
+      # baseline_model=model_resolver.outputs["baseline_model"],
       eval_config=eval_config)
 
   pusher = Pusher(
@@ -129,7 +128,6 @@ def create_test_pipeline():
           schema_gen,
           example_validator,
           trainer,
-          model_resolver,
           evaluator,
           pusher,
       ],
