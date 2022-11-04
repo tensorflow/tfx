@@ -35,6 +35,10 @@ from ml_metadata.proto import metadata_store_pb2
 class PipelineUid:
   """Uniquely identifies a pipeline among pipelines being actively orchestrated.
 
+  Recommended to use `from_pipeline` or `from_pipeline_id_and_run_id` class
+  methods to create `PipelineUid` objects as they correctly account for
+  concurrent pipeline runs mode.
+
   Attributes:
     pipeline_id: Id of the pipeline containing the node. Corresponds to
       `Pipeline.pipeline_info.id` in the pipeline IR.

@@ -143,7 +143,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       # Error if attempt to resume the pipeline when there is no previous run.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
-        pipeline_ops.resume_pipeline(m, pipeline)
+        pipeline_ops.resume_pipeline(
+            m, pipeline, reuse_pipeline_uid=pipeline_uid)
       self.assertEqual(status_lib.Code.NOT_FOUND,
                        exception_context.exception.code)
 
@@ -153,7 +154,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Error if attempt to resume the pipeline when the previous one is active.
       pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
-        pipeline_ops.resume_pipeline(m, pipeline)
+        pipeline_ops.resume_pipeline(
+            m, pipeline, reuse_pipeline_uid=pipeline_uid)
       self.assertEqual(status_lib.Code.ALREADY_EXISTS,
                        exception_context.exception.code)
 
@@ -182,10 +184,63 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           1].pipeline_node.execution_options.run.perform_snapshot = True
       expected_pipeline.nodes[
           1].pipeline_node.execution_options.run.depends_on_snapshot = True
-      with pipeline_ops.resume_pipeline(m, pipeline) as pipeline_state_run2:
+      with pipeline_ops.resume_pipeline(
+          m, pipeline, reuse_pipeline_uid=pipeline_uid) as pipeline_state_run2:
         self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
         pipeline_state_run2.is_active()
         mock_snapshot.assert_called_once()
+
+  @mock.patch.object(partial_run_utils, 'snapshot')
+  def test_resume_pipeline_when_concurrent_pipeline_runs_enabled(
+      self, mock_snapshot):
+    with test_utils.concurrent_pipeline_runs_enabled_env():
+      with self._mlmd_connection as m:
+        pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+        pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+        node_example_gen = pipeline.nodes.add().pipeline_node
+        node_example_gen.node_info.id = 'ExampleGen'
+        node_example_gen.downstream_nodes.extend(['Trainer'])
+        node_trainer = pipeline.nodes.add().pipeline_node
+        node_trainer.node_info.id = 'Trainer'
+        node_trainer.upstream_nodes.extend(['ExampleGen'])
+
+        # Initiate a pipeline start.
+        pipeline_state_run1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+        with pipeline_state_run1:
+          example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+          trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+          with pipeline_state_run1.node_state_update_context(
+              example_gen_node_uid) as node_state:
+            node_state.update(pstate.NodeState.COMPLETE)
+          with pipeline_state_run1.node_state_update_context(
+              trainer_node_uid) as node_state:
+            node_state.update(pstate.NodeState.FAILED)
+          pipeline_state_run1.set_pipeline_execution_state(
+              metadata_store_pb2.Execution.COMPLETE)
+          pipeline_state_run1.initiate_stop(
+              status_lib.Status(code=status_lib.Code.ABORTED))
+
+        pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
+
+        # Error if attempt to resume the pipeline without providing run id.
+        with self.assertRaises(
+            status_lib.StatusNotOkError) as exception_context:
+          pipeline_ops.resume_pipeline(
+              m,
+              pipeline,
+              reuse_pipeline_uid=task_lib.PipelineUid(
+                  pipeline_id=pipeline_uid.pipeline_id))
+        self.assertEqual(status_lib.Code.INVALID_ARGUMENT,
+                         exception_context.exception.code)
+
+        # Success if pipeline resumed with run id.
+        self.assertEqual('run0', pipeline_uid.pipeline_run_id)
+        with pipeline_ops.resume_pipeline(
+            m, pipeline,
+            reuse_pipeline_uid=pipeline_uid) as pipeline_state_run2:
+          pipeline_state_run2.is_active()
+          mock_snapshot.assert_called_once()
 
   @mock.patch.object(partial_run_utils, 'snapshot')
   def test_initiate_pipeline_start_with_invalid_partial_run(

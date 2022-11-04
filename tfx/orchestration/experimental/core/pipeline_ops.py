@@ -134,6 +134,12 @@ def initiate_pipeline_start(
   if partial_run_option:
     snapshot_settings = partial_run_option.snapshot_settings
     which_strategy = snapshot_settings.WhichOneof('artifact_reuse_strategy')
+    if env.get_env().concurrent_pipeline_runs_enabled(
+    ) and which_strategy != 'base_pipeline_run_strategy':
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message='Partial pipeline run must use base_pipeline_run_strategy '
+          'when concurrent pipeilne runs are enabled.')
     if which_strategy is None:
       logging.info(
           'No artifact_reuse_strategy specified for the partial pipeline run, '
@@ -529,8 +535,9 @@ def _load_reused_pipeline_view(
 
 @_to_status_not_ok_error
 @_pipeline_ops_lock
-def resume_pipeline(mlmd_handle: metadata.Metadata,
-                    pipeline: pipeline_pb2.Pipeline) -> pstate.PipelineState:
+def resume_pipeline(
+    mlmd_handle: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
+    reuse_pipeline_uid: task_lib.PipelineUid) -> pstate.PipelineState:
   """Resumes a pipeline run from previously failed nodes.
 
   Upon success, MLMD is updated to signal that the pipeline must be started.
@@ -538,6 +545,7 @@ def resume_pipeline(mlmd_handle: metadata.Metadata,
   Args:
     mlmd_handle: A handle to the MLMD db.
     pipeline: IR of the pipeline to resume.
+    reuse_pipeline_uid: UID of the old pipeline to reused when resuming.
 
   Returns:
     The `PipelineState` object upon success.
@@ -546,7 +554,8 @@ def resume_pipeline(mlmd_handle: metadata.Metadata,
     status_lib.StatusNotOkError: Failure to resume pipeline. With code
       `ALREADY_EXISTS` if a pipeline is already running. With code
       `status_lib.Code.FAILED_PRECONDITION` if a previous pipeline run
-      is not found for resuming.
+      is not found for resuming. With code 'INVALID_ARGUMENT' if concurrent
+      pipeline runs are enabled but pipeline run id is missing.
   """
 
   logging.info('Received request to resume pipeline; pipeline uid: %s',
@@ -558,9 +567,22 @@ def resume_pipeline(mlmd_handle: metadata.Metadata,
             f'Only SYNC pipeline execution modes supported; '
             f'found pipeline with execution mode: {pipeline.execution_mode}'))
 
-  latest_pipeline_view = _load_reused_pipeline_view(
-      mlmd_handle, pipeline,
-      partial_run_utils.latest_pipeline_snapshot_settings())
+  if env.get_env().concurrent_pipeline_runs_enabled(
+  ) and not reuse_pipeline_uid.pipeline_run_id:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INVALID_ARGUMENT,
+        message=('Pipeline Run ID of the old pipeline to resume must be '
+                 'provided when concurrent pipeline runs are enabled.'))
+
+  if reuse_pipeline_uid.pipeline_run_id:
+    snapshot_settings = pipeline_pb2.SnapshotSettings()
+    partial_run_utils.set_base_pipeline_run_strategy(
+        snapshot_settings, reuse_pipeline_uid.pipeline_run_id)
+  else:
+    snapshot_settings = partial_run_utils.latest_pipeline_snapshot_settings()
+
+  latest_pipeline_view = _load_reused_pipeline_view(mlmd_handle, pipeline,
+                                                    snapshot_settings)
   if not latest_pipeline_view:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND,
