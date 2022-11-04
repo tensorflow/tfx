@@ -123,7 +123,7 @@ class ChannelTest(tf.test.TestCase):
       channel.union([chnl, another_channel])
 
   def testEmptyUnionChannel(self):
-    with self.assertRaises(AssertionError):
+    with self.assertRaises(ValueError):
       channel.union([])
 
   def testAsOutputChannel(self):

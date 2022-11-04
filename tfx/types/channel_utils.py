@@ -61,13 +61,32 @@ def get_individual_channels(
   if isinstance(input_channel, channel.Channel):
     return [input_channel]
   elif isinstance(input_channel, channel.UnionChannel):
-    return list(cast(channel.UnionChannel, input_channel).channels)
+    return [
+        chan for chan in cast(channel.UnionChannel, input_channel).channels
+        if isinstance(chan, channel.Channel)]
   elif isinstance(input_channel, channel.LoopVarChannel):
     return get_individual_channels(
         cast(channel.LoopVarChannel, input_channel).wrapped)
   else:
     raise NotImplementedError(
         f'Unsupported Channel type: {type(input_channel)}')
+
+
+def union(channels: Iterable[channel.BaseChannel]) -> channel.UnionChannel:
+  """Returns the union of channels.
+
+  All channels should have the same artifact type, otherwise an error would be
+  raised. Returned channel deduplicates the inputs so each artifact is
+  guaranteed to be present at most once. `union()` does NOT guarantee any
+  ordering of artifacts for the consumer component.
+
+  Args:
+    channels: An iterable of BaseChannels.
+
+  Returns:
+    A BaseChannel that represents the union of channels.
+  """
+  return channel.UnionChannel(channels)
 
 
 def external_project_artifact_query(
