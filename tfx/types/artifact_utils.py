@@ -26,6 +26,8 @@ from tfx.types.artifact import _ArtifactType
 from tfx.types.artifact import Artifact
 from tfx.types.value_artifact import _ValueArtifactType
 from tfx.types.value_artifact import ValueArtifact
+from ml_metadata.google.services.client.cross_db import reference_utils
+from ml_metadata.google.services.mlmd_service.proto import mlmd_service_pb2
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -315,6 +317,14 @@ def deserialize_artifact(
   result.artifact_type.CopyFrom(artifact_type)
   result.set_mlmd_artifact(artifact or metadata_store_pb2.Artifact())
   return result
+
+
+def test_internal_code():
+  artifact = metadata_store_pb2.Artifact()
+  reference_utils.add_reference_to_artifact(
+      artifact=artifact,
+      pipeline_asset=mlmd_service_pb2.PipelineAsset(owner='test', name='test'),
+      artifact_id=123)
 
 
 def verify_artifacts(
