@@ -26,11 +26,7 @@ printf "${GREEN}Installing pendulum to avoid problem with tzlocal${NORMAL}\n"
 pip install pendulum
 
 printf "${GREEN}Installing TFX${NORMAL}\n"
-pip install pyarrow==5.0.0
-pip install apache_beam==2.38.0
-pip install tfx==1.9.1
-
-
+pip install pyarrow==5.0.0 apache_beam==2.38.0 tfx==1.9.1
 
 printf "${GREEN}Installing required packages for tft${NORMAL}\n"
 pip install tensorflow-text==2.9.0 tensorflow-decision-forests==0.2.7 struct2tensor==0.40.0
