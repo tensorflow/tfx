@@ -122,16 +122,12 @@ def initiate_pipeline_start(
         code=status_lib.Code.INVALID_ARGUMENT,
         message='Sync pipeline IR must specify pipeline_run_id.')
 
-  # TODO(b/239955028): Remove this restriction.
-  if env.get_env().concurrent_pipeline_runs_enabled(
-  ) and pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
-    raise status_lib.StatusNotOkError(
-        code=status_lib.Code.INVALID_ARGUMENT,
-        message='Concurrent pipeline runs are currently not supported for async pipelines.'
-    )
-
   reused_pipeline_view = None
   if partial_run_option:
+    if pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message='Partial pipeline run is not supported for async pipelines.')
     snapshot_settings = partial_run_option.snapshot_settings
     which_strategy = snapshot_settings.WhichOneof('artifact_reuse_strategy')
     if env.get_env().concurrent_pipeline_runs_enabled(

@@ -395,23 +395,47 @@ class PipelineState:
         context_name=pipeline_uid.pipeline_id)
 
     executions = mlmd_handle.store.get_executions_by_context(context.id)
+    active_pipeline_executions = [
+        e for e in executions if execution_lib.is_execution_active(e)
+    ]
+    active_async_pipeline_executions = [
+        e for e in active_pipeline_executions
+        if _retrieve_pipeline_exec_mode(e) == pipeline_pb2.Pipeline.ASYNC
+    ]
 
-    def _any_active_pipeline_with_uid(
-        executions: List[metadata_store_pb2.Execution],
-        pipeline_uid: task_lib.PipelineUid) -> bool:
-      if pipeline_uid.pipeline_run_id is None:
-        return any(
-            e for e in executions if execution_lib.is_execution_active(e))
-      else:
-        return any(
-            e for e in executions if execution_lib.is_execution_active(e) and
-            _get_metadata_value(e.custom_properties.get(
-                _PIPELINE_RUN_ID)) == pipeline_uid.pipeline_run_id)
-
-    if _any_active_pipeline_with_uid(executions, pipeline_uid):
+    # Disallow running concurrent async pipelines regardless of whether
+    # concurrent pipeline runs are enabled.
+    if pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC and active_pipeline_executions:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.ALREADY_EXISTS,
-          message=f'Pipeline with uid {pipeline_uid} already active.')
+          message=f'Cannot run an async pipeline concurrently when another pipeline with id {pipeline_uid.pipeline_id} is active.'
+      )
+
+    if env.get_env().concurrent_pipeline_runs_enabled():
+      # If concurrent runs are enabled, we should still prohibit interference
+      # with any active async pipelines so disallow starting a sync pipeline.
+      if active_async_pipeline_executions:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.ALREADY_EXISTS,
+            message=f'Cannot run a sync pipeline concurrently when an async pipeline with id {pipeline_uid.pipeline_id} is active.'
+        )
+      # If concurrent runs are enabled, before starting a sync pipeline run,
+      # ensure there isn't another active sync pipeline that shares the run id.
+      if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
+        assert pipeline_uid.pipeline_run_id is not None
+        for e in active_pipeline_executions:
+          if _get_metadata_value(e.custom_properties.get(
+              _PIPELINE_RUN_ID)) == pipeline_uid.pipeline_run_id:
+            raise status_lib.StatusNotOkError(
+                code=status_lib.Code.ALREADY_EXISTS,
+                message=f'Another pipeline run having pipeline id {pipeline_uid.pipeline_id} and run id {pipeline_uid.pipeline_run_id} is already active.'
+            )
+    else:
+      if active_pipeline_executions:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.ALREADY_EXISTS,
+            message=f'Another pipeline run having pipeline id {pipeline_uid.pipeline_id} is already active.'
+        )
 
     # TODO(b/254161062): Consider disallowing pipeline exec mode change for the
     # same pipeline id.
