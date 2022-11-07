@@ -150,21 +150,29 @@ gcloud services enable notebooks.googleapis.com
 
 
 ## Deploy Vertex Notebook instance
-1. Click on the __Navigation Menu__.
-2. Navigate to __Vertex AI__, then to __Workbench__
+1. Click on the __Navigation Menu__ and navigate to __Vertex AI__, then to __Workbench__.
 
 ![vertex-ai-workbench.png](images/airflow_workshop/vertex-ai-workbench.png)
 
-3. On the Notebook instances page, navigate to the __User-Managed Notebooks__ tab and click **New Notebook**.
-4. In the Customize instance menu, select **TensorFlow Enterprise** and choose the version of **TensorFlow Enterprise 2.8 (with LTS)** > **Without GPUs**.
+2. On the Notebook instances page, click __New Notebook__.
+
+3. In the Customize instance menu, select **TensorFlow Enterprise** and choose the version of **TensorFlow Enterprise 2.x (with LTS)** > **Without GPUs**.
 
 ![vertex-notebook-create-2.png](images/airflow_workshop/vertex-notebook-create-2.png)
 
-5. In the __New notebook instance__ dialog, for __Region__, select `us-central1`, for __Zone__, select a zone within the selected region, leave all other fields with their default options, and click __Create__.
+4. In the __New notebook instance__ dialog, click the pencil icon to __Edit__ instance properties.
 
-After a few minutes, the Vertex AI console will display your instance name, followed by `Open Jupyterlab`.
+5. For __Instance name__, enter a name for your instance.
 
-6. Click **Open JupyterLab**. Your notebook is now set up.
+6. For __Region__, select `us-east1` and for __Zone__, select a zone within the selected region.
+
+7. Scroll down to Machine configuration and select __n1-standard-2__ for Machine type.
+
+8. Leave the remaining fields with their default and click __Create__.
+
+After a few minutes, the Vertex AI console will display your instance name, followed by __Open Jupyterlab__.
+
+9. Click __Open JupyterLab__. A JupyterLab window will open in a new tab.
 
 ## Setup the environment
 
@@ -262,7 +270,7 @@ If you open `~/airflow/dags/taxi_pipeline.py` and scroll to the bottom, you can 
 
 ![dag-home-full.png](images/airflow_workshop/dag-home-full.png)
 
-If you click on taxi, it will go to the graph view of the DAG.
+If you click on taxi, you will be redirected to the grid view of the DAG. You can click the `Graph` option on top to get the graph view of the DAG.
 
 ![airflow-dag-graph.png](images/airflow_workshop/airflow-dag-graph.png)
 
