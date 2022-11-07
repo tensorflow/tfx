@@ -410,14 +410,15 @@ dataset, and if necessary modify as required.
 
 A typical TFX pipeline will include a [Transform](transform.md) component, which
 will perform feature engineering by leveraging the capabilities of the
-[TensorFlow Transform (TFT)](tft.md) library.  A Transform component consumes
-the schema created by a SchemaGen component, and applies [data transformations](
-//tfx/transform/api_docs/python/tft) to
-create, combine, and transform the features that will be used to train your
+[TensorFlow Transform (TFT)](tft.md) library. A Transform component consumes the
+schema created by a SchemaGen component, and applies
+[data transformations](https://www.tensorflow.org/tfx/tutorials/transform/simple)
+to create, combine, and transform the features that will be used to train your
 model. Cleanup of missing values and conversion of types should also be done in
 the Transform component if there is ever a possibility that these will also be
-present in data sent for inference requests.  [There are some important
-considerations](train.md) when designing TensorFlow code for training in TFX.
+present in data sent for inference requests.
+[There are some important considerations](train.md) when designing TensorFlow
+code for training in TFX.
 
 ![Modeling and Training](images/prog_trainer.png)
 
