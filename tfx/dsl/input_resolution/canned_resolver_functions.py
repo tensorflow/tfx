@@ -343,7 +343,8 @@ def sequential_rolling_range(artifacts,
                              num_spans: int = 1,
                              skip_num_recent_spans: int = 0,
                              keep_all_versions: bool = False,
-                             exclude_span_numbers: Sequence[int] = ()):
+                             exclude_span_numbers: Sequence[int] = (),
+                             min_spans: Optional[int] = None):
   """Returns artifacts with spans in a sequential rolling range.
 
   Sequential rolling range is a sliding window on the oldest consecutive spans.
@@ -363,6 +364,9 @@ def sequential_rolling_range(artifacts,
   then set keep_all_versions=True. Input artifacts must have both "span" int
   property and "version" int property.
 
+  If there are less than min_spans unique spans present in the resolved
+  artifacts, then the component execution will be skipped.
+
   Corresponds to SequentialRollingRange in TFX.
 
   Example usage:
@@ -377,6 +381,10 @@ def sequential_rolling_range(artifacts,
         exclude_span_numbers=[])
 
     The consecutive spans to consider are [1, 2, 3, 4]
+
+    Note min_spans=None so it is set to num_spans=3. There are 4 consecutive
+    artifacts to consider, so a SkipSignal will not be present in the compiled
+    IR.
 
     The artifacts will be returned with a sliding window of size num_spans=3 and
     stride 1 applied:
@@ -410,6 +418,8 @@ def sequential_rolling_range(artifacts,
       If false then if multiple artifacts have the same span, only the span with
       the latest version is kept. Defaults to False.
     exclude_span_numbers: The list of missing/bad span numbers to exclude.
+    min_spans: Minimum number of desired example spans in the range. If
+      min_spans is None, it is set to num_spans.
 
   Returns:
     Artifacts with spans in the sequential rolling range.
@@ -421,10 +431,12 @@ def sequential_rolling_range(artifacts,
       keep_all_versions=keep_all_versions,
       denylist=exclude_span_numbers)
 
-  resolved_artifacts = ops.SlidingWindow(
-      resolved_artifacts, window_size=num_spans)
+  if min_spans is None:
+    min_spans = num_spans
 
-  return resolved_artifacts
+  resolved_artifacts = ops.SkipIfLessThanNSpans(resolved_artifacts, n=min_spans)
+
+  return ops.SlidingWindow(resolved_artifacts, window_size=num_spans)
 
 
 @sequential_rolling_range.output_type_inferrer

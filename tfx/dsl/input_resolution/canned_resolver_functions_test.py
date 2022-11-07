@@ -323,5 +323,28 @@ class CannedResolverFunctionsTest(
         pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
     self.assertIsInstance(resolved, inputs_utils.Skip)
 
+  def testSequentialRollingRangeResolverFn_MinSpans_SkipSignalRaise(self):
+    # The artifacts will only have 4 consecutive spans from [1, 4] but
+    # min_spans=5 so a SkipSignal will be raised during input resolution.
+    xs = canned_resolver_functions.sequential_rolling_range(
+        types.Channel(test_utils.DummyArtifact),
+        start_span_number=1,
+        num_spans=3,
+        skip_num_recent_spans=1,
+        keep_all_versions=False,
+        exclude_span_numbers=[5],
+        min_spans=5)
+    with for_each.ForEach(xs) as each_x:
+      inputs = {'x': each_x}
+    pipeline_node = _compile_inputs(inputs)
+
+    spans = [1, 2, 3, 3, 4, 5, 7]
+    versions = [0, 0, 1, 0, 0, 0]
+    _ = self._insert_artifacts_into_mlmd(spans, versions)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+    self.assertIsInstance(resolved, inputs_utils.Skip)
+
 if __name__ == '__main__':
   tf.test.main()
