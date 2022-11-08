@@ -16,7 +16,7 @@
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.common import resolver
-from tfx.dsl.input_resolution import resolver_function
+from tfx.dsl.input_resolution import canned_resolver_functions
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -67,7 +67,7 @@ class ResolverTest(tf.test.TestCase):
   def testResolverDefinition_BadChannel(self):
     with self.assertRaisesRegex(
         ValueError,
-        'Expected extra kwarg .* to be of type .*tfx.types.BaseChannel'):
+        'Resolver got non-BaseChannel argument not_a_channel'):
       resolver.Resolver(
           strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
           config={'desired_num_of_artifacts': 5},
@@ -81,23 +81,12 @@ class ResolverTest(tf.test.TestCase):
         TypeError, 'strategy_class should be ResolverStrategy'):
       resolver.Resolver(strategy_class=NotAStrategy)
 
-  def testResolverDefinition_BadFunction(self):
-    with self.assertRaisesRegex(
-        TypeError, 'function should be ResolverFunction'):
-      resolver.Resolver(function=42)
-
-  def testResolverDefinition_ExactlyOneOfStrategyClassOrFunction(self):
-    with self.assertRaisesRegex(
-        ValueError, 'Exactly one of strategy_class= or function= argument '
-        'should be given.'):
-      resolver.Resolver()
-
-    with self.assertRaisesRegex(
-        ValueError, 'Exactly one of strategy_class= or function= argument '
-        'should be given.'):
-      resolver.Resolver(
-          strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
-          function=resolver_function.ResolverFunction(lambda x: x))
+  def testResolverDefinition_StrategyCanBeOmitted(self):
+    latest_examples = canned_resolver_functions.latest_created(
+        types.Channel(standard_artifacts.Examples))
+    r = resolver.Resolver(examples=latest_examples).with_id('my_resolver')
+    self.assertIsInstance(r.outputs['examples'], types.OutputChannel)
+    self.assertEqual(r.outputs['examples'].producer_component_id, 'my_resolver')
 
 
 class ResolverDriverTest(tf.test.TestCase):
@@ -118,51 +107,73 @@ class ResolverDriverTest(tf.test.TestCase):
         self.source_channel_key: types.Channel(type=standard_artifacts.Examples)
     }
 
+  def as_uri_map(self, artifact_map):
+    return {key: {a.uri for a in artifacts}
+            for key, artifacts in artifact_map.items()}
+
   def testResolveArtifactSuccess(self):
-    existing_artifact = standard_artifacts.Examples()
-    existing_artifact.uri = 'my/uri'
+    examples_1 = standard_artifacts.Examples()
+    examples_1.uri = 'my/uri'
+    examples_2 = standard_artifacts.Examples()
+    examples_2.uri = 'another/uri'
+
     with metadata.Metadata(connection_config=self.connection_config) as m:
       contexts = m.register_pipeline_contexts_if_not_exists(self.pipeline_info)
-      m.publish_artifacts([existing_artifact])
-      m.register_execution(
-          exec_properties={},
-          pipeline_info=self.pipeline_info,
-          component_info=self.component_info,
-          contexts=contexts)
-      m.publish_execution(
-          component_info=self.component_info,
-          output_artifacts={'key': [existing_artifact]})
+      for examples in [examples_1, examples_2]:
+        m.publish_artifacts([examples])
+        m.register_execution(
+            exec_properties={},
+            pipeline_info=self.pipeline_info,
+            component_info=self.component_info,
+            contexts=contexts)
+        m.publish_execution(
+            component_info=self.component_info,
+            output_artifacts={'key': [examples]})
+
       driver = resolver._ResolverDriver(metadata_handler=m)
       output_dict = self.source_channels.copy()
-      execution_result = driver.pre_execution(
-          component_info=self.component_info,
-          pipeline_info=self.pipeline_info,
-          driver_args=self.driver_args,
-          input_dict=self.source_channels,
-          output_dict=output_dict,
-          exec_properties={
-              resolver.RESOLVER_STRATEGY_CLASS:
-                  latest_artifact_strategy.LatestArtifactStrategy,
-              resolver.RESOLVER_CONFIG: {
-                  'desired_num_of_artifacts': 1
-              }
-          })
-      self.assertTrue(execution_result.use_cached_results)
-      self.assertEmpty(execution_result.input_dict)
-      self.assertDictEqual(
-          execution_result.exec_properties, {
-              resolver.RESOLVER_STRATEGY_CLASS:
-                  latest_artifact_strategy.LatestArtifactStrategy,
-              resolver.RESOLVER_CONFIG: {
-                  'desired_num_of_artifacts': 1
-              }
-          })
-      self.assertEqual(
-          execution_result.output_dict[self.source_channel_key][0].uri,
-          existing_artifact.uri)
-      # TODO(b/148828122): Remove this after b/148828122 resolved.
-      self.assertEqual(output_dict[self.source_channel_key].get()[0].uri,
-                       existing_artifact.uri)
+      with self.subTest('With LatestArtifactStrategy'):
+        execution_result = driver.pre_execution(
+            component_info=self.component_info,
+            pipeline_info=self.pipeline_info,
+            driver_args=self.driver_args,
+            input_dict=self.source_channels,
+            output_dict=output_dict,
+            exec_properties={
+                resolver.RESOLVER_STRATEGY_CLASS:
+                    latest_artifact_strategy.LatestArtifactStrategy,
+                resolver.RESOLVER_CONFIG: {
+                    'desired_num_of_artifacts': 1
+                }
+            })
+        self.assertTrue(execution_result.use_cached_results)
+        self.assertEmpty(execution_result.input_dict)
+        self.assertDictEqual(
+            execution_result.exec_properties, {
+                resolver.RESOLVER_STRATEGY_CLASS:
+                    latest_artifact_strategy.LatestArtifactStrategy,
+                resolver.RESOLVER_CONFIG: {
+                    'desired_num_of_artifacts': 1
+                }
+            })
+        self.assertEqual(
+            self.as_uri_map(execution_result.output_dict),
+            {self.source_channel_key: {examples_2.uri}})
+
+      with self.subTest('No strategy'):
+        execution_result = driver.pre_execution(
+            component_info=self.component_info,
+            pipeline_info=self.pipeline_info,
+            driver_args=self.driver_args,
+            input_dict=self.source_channels,
+            output_dict=output_dict,
+            exec_properties={})
+        self.assertTrue(execution_result.use_cached_results)
+        self.assertEmpty(execution_result.input_dict)
+        self.assertEmpty(execution_result.exec_properties)
+        self.assertEqual(
+            self.as_uri_map(execution_result.output_dict),
+            {self.source_channel_key: {examples_1.uri, examples_2.uri}})
 
   def testResolveArtifactFailIncompleteResult(self):
     with metadata.Metadata(connection_config=self.connection_config) as m:

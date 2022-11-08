@@ -14,19 +14,20 @@
 """TFX Resolver definition."""
 
 import abc
-from typing import Any, Dict, List, Optional, Type, Mapping, cast
+from typing import Any, Dict, List, Optional, Type, Mapping
 
 from tfx import types
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_node
-from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import channel as channel_types
 from tfx.types import channel_utils
 from tfx.types import resolved_channel
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
+from tfx.utils import typing_utils
 
 import ml_metadata as mlmd
 
@@ -92,6 +93,17 @@ class _ResolverDriver(base_driver.BaseDriver):
   Resolver.
   """
 
+  def _maybe_get_strategy(
+      self, exec_properties: Dict[str, Any]) -> Optional[ResolverStrategy]:
+    strategy_cls = exec_properties.get(RESOLVER_STRATEGY_CLASS)
+    if (not strategy_cls or
+        not typing_utils.is_compatible(strategy_cls, Type[ResolverStrategy])):
+      return None
+    kwargs = exec_properties.get(RESOLVER_CONFIG, {})
+    if not typing_utils.is_compatible(kwargs, Mapping[str, Any]):
+      return None
+    return strategy_cls(**kwargs)
+
   def _build_input_dict(
       self,
       pipeline_info: data_types.PipelineInfo,
@@ -138,36 +150,31 @@ class _ResolverDriver(base_driver.BaseDriver):
         component_info=component_info,
         contexts=contexts)
     # Gets resolved artifacts.
-    resolver_class = exec_properties[RESOLVER_STRATEGY_CLASS]
-    if exec_properties[RESOLVER_CONFIG]:
-      resolver = resolver_class(**exec_properties[RESOLVER_CONFIG])
-    else:
-      resolver = resolver_class()
-    input_artifacts = self._build_input_dict(pipeline_info, input_dict)
-    output_artifacts = resolver.resolve_artifacts(
-        store=self._metadata_handler.store,
-        input_dict=input_artifacts,
-    )
-    if output_artifacts is None:
+    resolved = self._build_input_dict(pipeline_info, input_dict)
+    maybe_strategy = self._maybe_get_strategy(exec_properties)
+    if maybe_strategy:
+      resolved = maybe_strategy.resolve_artifacts(
+          self._metadata_handler.store, resolved)
+    if resolved is None:
       # No inputs available. Still driver needs an ExecutionDecision, so use a
       # dummy dict with no artifacts.
-      output_artifacts = {key: [] for key in input_artifacts}
+      resolved = {key: [] for key in input_dict}
 
     # TODO(b/148828122): This is a temporary workaround for interactive mode.
     for k, c in output_dict.items():
-      c.set_artifacts(output_artifacts[k])
+      c.set_artifacts(resolved[k])
     # Updates execution to reflect artifact resolution results and mark
     # as cached.
     self._metadata_handler.update_execution(
         execution=execution,
         component_info=component_info,
-        output_artifacts=output_artifacts,
+        output_artifacts=resolved,
         execution_state=metadata.EXECUTION_STATE_CACHED,
         contexts=contexts)
 
     return data_types.ExecutionDecision(
         input_dict={},
-        output_dict=output_artifacts,
+        output_dict=resolved,
         exec_properties=exec_properties,
         execution_id=execution.id,
         use_cached_results=True)
@@ -208,7 +215,7 @@ class Resolver(base_node.BaseNode):
   def __init__(self,
                strategy_class: Optional[Type[ResolverStrategy]] = None,
                config: Optional[Dict[str, json_utils.JsonableType]] = None,
-               **kwargs: types.BaseChannel):
+               **channels: types.BaseChannel):
     """Init function for Resolver.
 
     Args:
@@ -216,68 +223,58 @@ class Resolver(base_node.BaseNode):
           resolution logic.
       config: Optional dict of key to Jsonable type for constructing
           resolver_strategy.
-      **kwargs: Input channels to the Resolver node as keyword arguments.
+      **channels: Input channels to the Resolver node as keyword arguments.
     """
-    function = kwargs.pop('function', None)
-    channels = kwargs
-    if (strategy_class is not None) + (function is not None) != 1:
-      raise ValueError('Exactly one of strategy_class= or function= argument '
-                       'should be given.')
     if (strategy_class is not None and
         not issubclass(strategy_class, ResolverStrategy)):
       raise TypeError('strategy_class should be ResolverStrategy, but got '
                       f'{strategy_class} instead.')
-    if function is not None:
-      if not isinstance(function, resolver_function.ResolverFunction):
-        raise TypeError(f'function should be ResolverFunction, but got '
-                        f'{function} instead.')
-      function = cast(resolver_function.ResolverFunction, function)
+    if strategy_class is None and config is not None:
+      raise ValueError('Cannot use config parameter without strategy_class.')
+    for input_key, channel in channels.items():
+      if not isinstance(channel, channel_types.BaseChannel):
+        raise ValueError(f'Resolver got non-BaseChannel argument {input_key}.')
     self._strategy_class = strategy_class
     self._config = config or {}
-    trace_input = resolver_op.InputNode(
-        channels, resolver_op.DataType.ARTIFACT_MULTIMAP)
-    if function is not None:
-      self._trace_result = function.trace(trace_input)
-    else:
-      self._trace_result = resolver_op.OpNode(
-          op_type=strategy_class,
-          output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP,
-          args=[trace_input],
-          kwargs=self._config)
     # An observed inputs from DSL as if Resolver node takes an inputs.
     # TODO(b/246907396): Remove raw_inputs usage.
-    self._raw_inputs = channels
-    self._input_dict = {}
-    self._output_dict = {}
-    for k, c in channels.items():
-      if not isinstance(c, types.BaseChannel):
-        raise ValueError(
-            f'Expected extra kwarg {k!r} to be of type `tfx.types.BaseChannel` '
-            f'but got {c!r} instead.')
-      self._input_dict[k] = resolved_channel.ResolvedChannel(
-          c.type, self._trace_result, k)
-      # TODO(b/161490287): remove static artifacts.
-      self._output_dict[k] = (
-          types.OutputChannel(c.type, self, k).set_artifacts([c.type()]))
+    self._raw_inputs = dict(channels)
+    if strategy_class is not None:
+      output_node = resolver_op.OpNode(
+          op_type=strategy_class,
+          output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP,
+          args=[
+              resolver_op.DictNode({
+                  input_key: resolver_op.InputNode(
+                      channel, resolver_op.DataType.ARTIFACT_LIST)
+                  for input_key, channel in channels.items()
+              })
+          ],
+          kwargs=self._config)
+      self._input_dict = {
+          k: resolved_channel.ResolvedChannel(c.type, output_node, k)
+          for k, c in channels.items()
+      }
+    else:
+      self._input_dict = channels
+    self._output_dict = {
+        input_key: types.OutputChannel(channel.type, self, input_key)
+        for input_key, channel in channels.items()
+    }
     super().__init__(driver_class=_ResolverDriver)
 
   @property
   @doc_controls.do_not_generate_docs
-  def trace_result(self) -> resolver_op.Node:
-    return self._trace_result
-
-  @property
-  @doc_controls.do_not_generate_docs
-  def raw_inputs(self) -> Dict[str, types.BaseChannel]:
+  def raw_inputs(self) -> Dict[str, channel_types.BaseChannel]:
     return self._raw_inputs
 
   @property
   @doc_controls.do_not_generate_docs
-  def inputs(self) -> Dict[str, Any]:
+  def inputs(self) -> Dict[str, channel_types.BaseChannel]:
     return self._input_dict
 
   @property
-  def outputs(self) -> Dict[str, Any]:
+  def outputs(self) -> Dict[str, channel_types.OutputChannel]:
     """Output Channel dict that contains resolved artifacts."""
     return self._output_dict
 

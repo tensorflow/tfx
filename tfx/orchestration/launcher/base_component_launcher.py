@@ -73,6 +73,8 @@ class BaseComponentLauncher(abc.ABC):
     self._component_executor_spec = component.executor_spec
 
     if isinstance(component, resolver.Resolver):
+      # BaseComponentLauncher uses ResolverDriver for resolving inputs (i.e.
+      # not IR-based.) Set input_dict to the raw inputs.
       self._input_dict = cast(resolver.Resolver, component).raw_inputs
     else:
       self._input_dict = component.inputs
