@@ -196,8 +196,6 @@ class _Generator:
                                                       oldest_active_execution))
       return result
 
-    # TODO(b/250069301) If the artifacts in resolved_info come from external db,
-    # we should copy the artifacts and their type into the local db.
     resolved_info = task_gen_utils.generate_resolved_info(
         self._mlmd_connection_manager, node)
 
@@ -212,6 +210,14 @@ class _Generator:
           'Task cannot be generated for node %s since no input artifacts '
           'are resolved.', node.node_info.id)
       return result
+
+    # Copys artifact types of the external artifacts to local db, in idempotent
+    # manner. Idempotency is guaranteed by the artifact type name.
+    # The external artifacts will be copies to local db when we register
+    # executions. Idempotency is guaranteed by external_id.
+    for input_and_params in resolved_info.input_and_params:
+      for artifacts in input_and_params.input_artifacts.values():
+        task_gen_utils.publish_cold_artifact_type(self._mlmd_handle, artifacts)
 
     successful_executions = [
         e for e in executions if execution_lib.is_execution_successful(e)

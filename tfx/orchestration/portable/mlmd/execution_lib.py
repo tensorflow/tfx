@@ -288,7 +288,8 @@ def put_execution(
           execution=execution,
           artifact_and_events=artifact_and_events,
           contexts=contexts,
-          reuse_context_if_already_exist=True))
+          reuse_context_if_already_exist=True,
+          reuse_artifact_if_already_exist_by_external_id=True))
   execution.id = execution_id
   for artifact_and_event, a_id in zip(artifact_and_events, artifact_ids):
     artifact, _ = artifact_and_event
@@ -368,7 +369,8 @@ def put_executions(
       artifacts,
       contexts,
       artifact_event_edges,
-      reuse_context_if_already_exist=True)
+      reuse_context_if_already_exist=True,
+      reuse_artifact_if_already_exist_by_external_id=True)
 
   for execution_id, execution in zip(execution_ids, executions):
     execution.id = execution_id

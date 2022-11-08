@@ -13,16 +13,16 @@
 # limitations under the License.
 """Module for InputSpec.Channel resolution."""
 
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple, cast
 
 from absl import logging
 from tfx import types
-from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.proto.orchestration import metadata_pb2
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import artifact_utils
+from tfx.types import cold_import_artifacts_utils
 
 import ml_metadata as mlmd
 from ml_metadata import errors
@@ -118,11 +118,24 @@ def _filter_by_artifact_query(
 
 # TODO(b/234806996): Migrate to MLMD filter query.
 def resolve_single_channel(
-    mlmd_handle: metadata.Metadata,
+    mlmd_handle: mlmd_cm.MLMDHandleType,
     channel: pipeline_pb2.InputSpec.Channel,
 ) -> List[types.Artifact]:
   """Evaluate a single InputSpec.Channel."""
-  store = mlmd_handle.store
+  handle = mlmd_cm.get_primary_handle(mlmd_handle)
+  config = metadata_pb2.MLMDServiceConfig()
+  if channel.HasField('metadata_connection_config') and isinstance(
+      mlmd_handle, mlmd_cm.MLMDConnectionManager):
+    mlmd_connection_manager = cast(mlmd_cm.MLMDConnectionManager, mlmd_handle)
+    channel.metadata_connection_config.Unpack(config)
+    handle = mlmd_connection_manager.get_mlmd_handle(
+        owner_name=config.owner,
+        project_name=config.name,
+        mlmd_service_target_name=config.mlmd_service_target)
+    if not handle:
+      raise ConnectionError('Not able to connect to external MLMD db.')
+
+  store = handle.store
   contexts = []
   for context_query in channel.context_queries:
     maybe_context = _get_context_from_context_query(store, context_query)
@@ -140,9 +153,14 @@ def resolve_single_channel(
     return []
   artifacts, artifact_type = _filter_by_artifact_query(
       store, artifacts, channel.artifact_query)
-  return [
-      artifact_utils.deserialize_artifact(artifact_type, a) for a in artifacts
-  ]
+
+  result = []
+  for a in artifacts:
+    result.append(
+        cold_import_artifacts_utils.cold_import_artifacts(
+            a, artifact_type, config.owner, config.name))
+
+  return result
 
 
 def resolve_union_channels(
@@ -153,11 +171,9 @@ def resolve_union_channels(
   seen = set()
   result = []
   for channel in channels:
-    # TODO(b/250069301) If the artifacts are from external db, we should update
-    # the following code to get artifacts from external db.
-    primary_mlmd_handle = mlmd_cm.get_primary_handle(mlmd_handle)
-    for artifact in resolve_single_channel(primary_mlmd_handle, channel):
-      if artifact.id not in seen:
-        seen.add(artifact.id)
+    for artifact in resolve_single_channel(mlmd_handle, channel):
+      identifier = cold_import_artifacts_utils.artifact_identifier(artifact)
+      if identifier not in seen:
+        seen.add(identifier)
         result.append(artifact)
   return result
