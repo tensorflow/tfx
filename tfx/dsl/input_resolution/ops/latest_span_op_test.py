@@ -93,38 +93,38 @@ class LatestSpanOpTest(tf.test.TestCase):
     self.assertEqual(actual, [a4])
 
     actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts, n=2)
-    self.assertEqual(actual, [a4, a3])
+    self.assertEqual(actual, [a3, a4])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, n=2, keep_all_versions=True)
-    self.assertEqual(actual, [a4, a2, a3])
+    self.assertEqual(actual, [a2, a3, a4])
 
     actual = test_utils.run_resolver_op(ops.LatestSpan, artifacts, n=3)
-    self.assertEqual(actual, [a4, a3, a1])
+    self.assertEqual(actual, [a1, a3, a4])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, [a1, a2, a3, a4, a5], n=3, keep_all_versions=True)
-    self.assertEqual(actual, [a4, a2, a3, a1])
+    self.assertEqual(actual, [a1, a2, a3, a4])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, [a1, a2, a3, a4, a5], n=4)
-    self.assertEqual(actual, [a4, a3, a1])
+    self.assertEqual(actual, [a1, a3, a4])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, [a1, a2, a3, a4, a5], n=4, keep_all_versions=True)
-    self.assertEqual(actual, [a4, a2, a3, a1])
+    self.assertEqual(actual, [a1, a2, a3, a4])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, [a1, a2, a3, a4, a5], n=-1)
-    self.assertEqual(actual, [a4, a3, a1])
+    self.assertEqual(actual, [a1, a3, a4])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, [a1, a2, a3, a4, a5], n=-1)
-    self.assertEqual(actual, [a4, a3, a1])
+    self.assertEqual(actual, [a1, a3, a4])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, [a1, a2, a3, a4, a5], n=-1, keep_all_versions=True)
-    self.assertEqual(actual, [a4, a2, a3, a1])
+    self.assertEqual(actual, [a1, a2, a3, a4])
 
   def testLatestSpan_AllSameSpanSameVersion(self):
     a1 = test_utils.DummyArtifact()
@@ -170,22 +170,22 @@ class LatestSpanOpTest(tf.test.TestCase):
     # Tests version conflicts when keep_all_versions=False
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, skip_last_n=2, n=2)
-    self.assertEqual(actual, [a31, a20])
+    self.assertEqual(actual, [a20, a31])
 
     # Tests version conflicts when keep_all_versions=True. Note that 3 artifacts
     # are returned even when n=2, because n is the number of spans, NOT the
     # number of artifacts to return.
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, skip_last_n=2, n=2, keep_all_versions=True)
-    self.assertEqual(actual, [a30, a31, a20])
+    self.assertEqual(actual, [a20, a30, a31])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, skip_last_n=2, n=3, keep_all_versions=True)
-    self.assertEqual(actual, [a30, a31, a20, a10])
+    self.assertEqual(actual, [a10, a20, a30, a31])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, skip_last_n=3, n=2)
-    self.assertEqual(actual, [a20, a10])
+    self.assertEqual(actual, [a10, a20])
 
     # skip_last_n=6 is larger than the number of artifacts with unique spans
     # available.
@@ -200,11 +200,11 @@ class LatestSpanOpTest(tf.test.TestCase):
     # Test skip_last_n when n < 0.
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, n=-1, skip_last_n=2)
-    self.assertEqual(actual, [a31, a20, a10])
+    self.assertEqual(actual, [a10, a20, a31])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, n=-1, skip_last_n=2, keep_all_versions=True)
-    self.assertEqual(actual, [a30, a31, a20, a10])
+    self.assertEqual(actual, [a10, a20, a30, a31])
 
   def testLatestSpan_MinSpan(self):
     artifacts = self._get_artifacts_for_rolling_range_tests()
@@ -217,23 +217,23 @@ class LatestSpanOpTest(tf.test.TestCase):
     # Although n=3, there are only 2 artifacts with a span >= 7.
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, min_span=7, n=3)
-    self.assertEqual(actual, [a82, a71])
+    self.assertEqual(actual, [a71, a82])
 
     # Tests version conflicts when keep_all_versions=False
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, min_span=2, n=3)
-    self.assertEqual(actual, [a82, a71, a31])
+    self.assertEqual(actual, [a31, a71, a82])
 
     # Tests version conflicts when keep_all_versions=True. Note that 5 artifacts
     # are returned even when n=4, because n is the number of spans, NOT the
     # number of artifacts to return.
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, min_span=2, n=4, keep_all_versions=True)
-    self.assertEqual(actual, [a82, a71, a30, a31, a20])
+    self.assertEqual(actual, [a20, a30, a31, a71, a82])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan, artifacts, min_span=2, n=5, keep_all_versions=True)
-    self.assertEqual(actual, [a82, a71, a30, a31, a20])
+    self.assertEqual(actual, [a20, a30, a31, a71, a82])
 
   def testLatestSpan_AllArguments(self):
     artifacts = self._get_artifacts_for_rolling_range_tests()
@@ -246,7 +246,7 @@ class LatestSpanOpTest(tf.test.TestCase):
         skip_last_n=1,
         min_span=3,
         keep_all_versions=True)
-    self.assertEqual(actual, [a71, a30, a31])
+    self.assertEqual(actual, [a30, a31, a71])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan,
@@ -255,7 +255,7 @@ class LatestSpanOpTest(tf.test.TestCase):
         skip_last_n=1,
         min_span=3,
         keep_all_versions=True)
-    self.assertEqual(actual, [a71, a30, a31])
+    self.assertEqual(actual, [a30, a31, a71])
 
     actual = test_utils.run_resolver_op(
         ops.LatestSpan,

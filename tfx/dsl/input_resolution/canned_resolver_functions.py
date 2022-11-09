@@ -230,7 +230,7 @@ def rolling_range(artifacts,
 
 
 @resolver_function.resolver_function
-def all_spans(artifacts, *, span_descending: bool = False):
+def all_spans(artifacts):
   """Returns the sorted artifacts with unique spans.
 
   By default, all artifacts with unique spans (ties broken by latest version)
@@ -242,8 +242,7 @@ def all_spans(artifacts, *, span_descending: bool = False):
       spans    = [1, 3, 3, 2, 8, 7]
       versions = [0, 0, 1, 0, 1, 2]
 
-    all_spans(
-        span_descending=False)
+    all_spans()
 
     will return artifacts:
       spans    = [1, 2, 3, 7, 8]
@@ -252,26 +251,13 @@ def all_spans(artifacts, *, span_descending: bool = False):
     Note that there are 2 artifacts with span 3, but only the one with the
     latest version is returned. Spans are sorted in ascending order.
 
-    all_spans(
-        span_descending=True)
-
-    will return all the artifacts:
-      spans    = [8, 7, 3, 2, 1]
-      versions = [2, 1, 1, 0, 0]
-
-    Spans are sorted in descending order.
-
   Args:
     artifacts: The artifacts to filter.
-    span_descending: If true, then the artifacts will be sorted by span in
-      descending order. Else, they will be sorted in ascending order by span.
-      Note that sorting happens first by span and then by version, and that
-      version is always sorted in ascending order.
 
   Returns:
     Sorted Artifacts with unique spans.
   """
-  return ops.AllSpans(artifacts, span_descending=span_descending)
+  return ops.AllSpans(artifacts)
 
 
 @resolver_function.resolver_function

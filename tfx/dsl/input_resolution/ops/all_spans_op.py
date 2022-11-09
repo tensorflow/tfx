@@ -31,10 +31,6 @@ class AllSpans(
   # version is returned.
   keep_all_versions = resolver_op.Property(type=bool, default=False)
 
-  # If true, then the artifacts will be sorted by span in descending order.
-  # Else, they will be sorted in ascending order by span.
-  span_descending = resolver_op.Property(type=bool, default=False)
-
   def apply(self,
             input_list: Sequence[types.Artifact]) -> Sequence[types.Artifact]:
     """Returns the sorted artifacts with unique spans."""
@@ -48,7 +44,7 @@ class AllSpans(
     # Return the sorted artifacts.
     return ops_utils.filter_artifacts_by_span(
         artifacts=valid_artifacts,
-        span_descending=self.span_descending,
+        span_descending=False,
         n=0,  # n = 0 so that all the spans are considered.
         keep_all_versions=self.keep_all_versions,
     )
