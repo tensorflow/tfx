@@ -64,9 +64,6 @@ def get_individual_channels(
     return [
         chan for chan in cast(channel.UnionChannel, input_channel).channels
         if isinstance(chan, channel.Channel)]
-  elif isinstance(input_channel, channel.LoopVarChannel):
-    return get_individual_channels(
-        cast(channel.LoopVarChannel, input_channel).wrapped)
   else:
     raise NotImplementedError(
         f'Unsupported Channel type: {type(input_channel)}')

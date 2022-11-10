@@ -235,7 +235,7 @@ class NodeInputsCompilerTest(tf.test.TestCase):
     dep_input_keys = list(result.inputs['x'].mixed_inputs.input_keys)
     self.assertLen(dep_input_keys, 3)
 
-  def testCompileLoopVarChannel(self):
+  def testCompileForEach(self):
     producer = DummyNode('MyProducer')
     with for_each.ForEach(producer.output('xs')) as x:
       consumer = DummyNode('MyConsumer', inputs={'x': x})

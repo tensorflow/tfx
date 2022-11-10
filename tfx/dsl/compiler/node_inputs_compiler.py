@@ -23,7 +23,6 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution import resolver_op
-from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import metadata_pb2
@@ -154,25 +153,6 @@ def _compile_channel_pb(
     result.output_key = output_key
 
 
-def _convert_loop_var_to_resolved_channel(
-    loop_var_channel: channel_types.LoopVarChannel,
-) -> resolved_channel.ResolvedChannel:
-  """Convert `LoopVarChannel` to equivalent `ResolvedChannel`."""
-  input_node = resolver_op.InputNode(
-      loop_var_channel.wrapped,
-      output_data_type=resolver_op.DataType.ARTIFACT_LIST)
-  dict_node = resolver_op.DictNode({'out': input_node})
-  output_node = resolver_op.OpNode(
-      op_type=ops.Unnest,
-      output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP_LIST,
-      args=[dict_node],
-      kwargs={'key': 'out'})
-  return resolved_channel.ResolvedChannel(
-      artifact_type=loop_var_channel.type,
-      output_node=output_node,
-      output_key='out')
-
-
 def _compile_input_spec(
     *,
     pipeline_ctx: compiler_context.PipelineContext,
@@ -274,19 +254,6 @@ def _compile_input_spec(
         pipeline_ctx, tfx_node, channel, result)
     if channel.output_key:
       input_graph_ref.key = channel.output_key
-
-  # TODO(b/239761275): Remove LoopVarChannel type.
-  elif isinstance(channel, channel_types.LoopVarChannel):
-    channel = _convert_loop_var_to_resolved_channel(
-        cast(channel_types.LoopVarChannel, channel))
-    _compile_input_spec(
-        pipeline_ctx=pipeline_ctx,
-        tfx_node=tfx_node,
-        input_key=input_key,
-        channel=channel,
-        hidden=hidden,
-        min_count=0,
-        result=result)
 
   else:
     raise NotImplementedError(
