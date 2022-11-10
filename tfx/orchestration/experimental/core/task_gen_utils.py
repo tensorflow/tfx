@@ -41,6 +41,7 @@ import ml_metadata as mlmd
 from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
 
+# TODO(b/259710580) remove __execution_set_size__ and __execution_timestamp__
 _EXECUTION_SET_SIZE = '__execution_set_size__'
 _EXECUTION_TIMESTAMP = '__execution_timestamp__'
 _EXTERNAL_EXECUTION_INDEX = '__external_execution_index__'
@@ -383,42 +384,48 @@ def get_executor_spec(pipeline: pipeline_pb2.Pipeline,
   return depl_config.executor_specs.get(node_id)
 
 
-def register_retry_execution(
-    metadata_handle: metadata.Metadata,
-    node: node_proto_view.NodeProtoView,
-    failed_execution: metadata_store_pb2.Execution
-) -> metadata_store_pb2.Execution:
-  """Generates a retry execution from a failed execution and put it in MLMD."""
-  # Set a new execution name and put the state to RUNNING.
+def register_executions_from_existing_executions(
+    metadata_handle: metadata.Metadata, node: node_proto_view.NodeProtoView,
+    existing_executions: List[metadata_store_pb2.Execution]
+) -> Sequence[metadata_store_pb2.Execution]:
+  """Generates a list of new executions from a failed/canceled execution and put them in MLMD.
+  """
+  if not existing_executions:
+    return []
+
   exec_properties = resolve_exec_properties(node)
-  # TODO(b/224800273): We also need to resolve and set dynamic execution
-  # properties.
-  retry_execution = execution_lib.prepare_execution(
-      metadata_handler=metadata_handle,
-      execution_type=node.node_info.type,
-      state=metadata_store_pb2.Execution.RUNNING,
-      exec_properties=exec_properties,
-      execution_name=str(uuid.uuid4()))
-  # Only copy necessary custom_properties from the failed execution.
-  # LINT.IfChange(retry_execution_custom_properties)
-  retry_execution.custom_properties[_EXECUTION_SET_SIZE].CopyFrom(
-      failed_execution.custom_properties[_EXECUTION_SET_SIZE])
-  retry_execution.custom_properties[_EXECUTION_TIMESTAMP].CopyFrom(
-      failed_execution.custom_properties[_EXECUTION_TIMESTAMP])
-  retry_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].CopyFrom(
-      failed_execution.custom_properties[
-          _EXTERNAL_EXECUTION_INDEX])
-  # LINT.ThenChange(:execution_custom_properties)
+  new_executions = []
+  input_artifacts = []
+  for existing_execution in existing_executions:
+    # TODO(b/224800273): We also need to resolve and set dynamic execution
+    # properties.
+    new_execution = execution_lib.prepare_execution(
+        metadata_handler=metadata_handle,
+        execution_type=node.node_info.type,
+        state=metadata_store_pb2.Execution.NEW,
+        exec_properties=exec_properties,
+        execution_name=str(uuid.uuid4()))
+    # Only copy necessary custom_properties from the failed/canceled execution.
+    # LINT.IfChange(new_execution_custom_properties)
+    new_execution.custom_properties[_EXECUTION_SET_SIZE].CopyFrom(
+        existing_execution.custom_properties[_EXECUTION_SET_SIZE])
+    new_execution.custom_properties[_EXECUTION_TIMESTAMP].CopyFrom(
+        existing_execution.custom_properties[_EXECUTION_TIMESTAMP])
+    new_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].CopyFrom(
+        existing_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX])
+    # LINT.ThenChange(:execution_custom_properties)
+    new_executions.append(new_execution)
+    input_artifacts.append(
+        execution_lib.get_artifacts_dict(metadata_handle, existing_execution.id,
+                                         [metadata_store_pb2.Event.INPUT]))
 
   contexts = metadata_handle.store.get_contexts_by_execution(
-      failed_execution.id)
-  input_artifacts = execution_lib.get_artifacts_dict(
-      metadata_handle, failed_execution.id, [metadata_store_pb2.Event.INPUT])
-  return execution_lib.put_execution(
+      existing_executions[0].id)
+  return execution_lib.put_executions(
       metadata_handle,
-      retry_execution,
+      new_executions,
       contexts,
-      input_artifacts=input_artifacts)
+      input_artifacts_maps=input_artifacts)
 
 
 def register_executions(
@@ -455,13 +462,13 @@ def register_executions(
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
         execution_name=str(uuid.uuid4()))
-  # LINT.IfChange(execution_custom_properties)
+    # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXECUTION_SET_SIZE].int_value = len(
         input_and_params)
     execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     executions.append(execution)
-  # LINT.ThenChange(:retry_execution_custom_properties)
+  # LINT.ThenChange(:new_execution_custom_properties)
 
   if len(executions) == 1:
     return [
