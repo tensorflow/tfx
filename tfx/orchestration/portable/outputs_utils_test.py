@@ -21,15 +21,11 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.portable import outputs_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import artifact_property
 from tfx.types import standard_artifacts
 from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
-
-# TODO(b/241861488): Remove safeguard once fully supported by MLMD.
-artifact_property.ENABLE_PROTO_PROPERTIES = True
 
 _PIPELINE_INFO = text_format.Parse("""
   id: "test_pipeline"
