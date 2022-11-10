@@ -42,8 +42,15 @@ class SubPipelineTaskScheduler(
                pipeline: pipeline_pb2.Pipeline, task: task_lib.ExecNodeTask):
     super().__init__(mlmd_handle, pipeline, task)
     pipeline_node = self.task.get_node()
-    self._sub_pipeline = subpipeline_ir_rewrite(pipeline_node.raw_proto(),
-                                                task.execution_id)
+    if pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
+      # If the parent pipeline runs in Async mode, the inner subpipeline may be
+      # created multiple times, hence need multiple distinct pipeline run IDs.
+      self._sub_pipeline = subpipeline_ir_rewrite(pipeline_node.raw_proto(),
+                                                  task.execution_id)
+    else:
+      # If the parent pipeline runs in Sync mode, do not change pipeline run ID,
+      # because that run ID may be used by ExampleGen to register executions.
+      self._sub_pipeline = subpipeline_ir_rewrite(pipeline_node.raw_proto())
     self._pipeline_uid = task_lib.PipelineUid.from_pipeline(self._sub_pipeline)
     self._pipeline_run_id = (
         self._sub_pipeline.runtime_spec.pipeline_run_id.field_value.string_value
@@ -130,14 +137,16 @@ def _update_pipeline_run_id(pipeline: pipeline_pb2.Pipeline, execution_id: int):
   pipeline.runtime_spec.pipeline_run_id.field_value.string_value = new_pipeline_run_id
 
 
-def subpipeline_ir_rewrite(original_ir: pipeline_pb2.Pipeline,
-                           execution_id: int) -> pipeline_pb2.Pipeline:
+def subpipeline_ir_rewrite(
+    original_ir: pipeline_pb2.Pipeline,
+    execution_id: Optional[int] = None) -> pipeline_pb2.Pipeline:
   """Rewrites the subpipeline IR so that it can be run independently.
 
   Args:
     original_ir: Original subpipeline IR that is produced by compiler.
-    execution_id: The ID of Subpipeline task scheduler Execution. It is used to
-      generated a new pipeline run id.
+    execution_id: Optional. The ID of the subpipeline-as-a-node Execution. It is
+      needed to generated a new pipeline run id, if the parent pipeline runs
+      in Async mode. If not specified, pipeline run id won't be updated.
 
   Returns:
     An updated subpipeline IR that can be run independently.
@@ -145,5 +154,6 @@ def subpipeline_ir_rewrite(original_ir: pipeline_pb2.Pipeline,
   pipeline = copy.deepcopy(original_ir)
   pipeline.nodes[0].pipeline_node.ClearField('upstream_nodes')
   pipeline.nodes[-1].pipeline_node.ClearField('downstream_nodes')
-  _update_pipeline_run_id(pipeline, execution_id)
+  if execution_id:
+    _update_pipeline_run_id(pipeline, execution_id)
   return pipeline
