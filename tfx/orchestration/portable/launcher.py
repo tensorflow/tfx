@@ -351,6 +351,13 @@ class Launcher:
       # 6. Resolve output
       output_artifacts = self._output_resolver.generate_output_artifacts(
           execution.id)
+      # Create the output artifacts in MLMD and associate them with the
+      # execution.
+      execution_lib.put_execution(
+          metadata_handler=m,
+          execution=execution,
+          contexts=contexts,
+          output_artifacts=output_artifacts)
 
     # If there is a custom driver, runs it.
     if self._driver_operator:
@@ -444,20 +451,15 @@ class Launcher:
     logging.info('Going to run a new execution: %s', execution_info)
 
     outputs_utils.make_output_dirs(execution_info.output_dict)
-    try:
-      executor_output = self._executor_operator.run_executor(execution_info)
-      code = executor_output.execution_result.code
-      if code != 0:
-        result_message = executor_output.execution_result.result_message
-        err = (f'Execution {execution_info.execution_id} '
-               f'failed with error code {code} and '
-               f'error message {result_message}')
-        logging.error(err)
-        raise _ExecutionFailedError(err, executor_output)
-      return executor_output
-    except Exception:  # pylint: disable=broad-except
-      outputs_utils.remove_output_dirs(execution_info.output_dict)
-      raise
+    executor_output = self._executor_operator.run_executor(execution_info)
+    code = executor_output.execution_result.code
+    if code != 0:
+      result_message = executor_output.execution_result.result_message
+      err = (f'Execution {execution_info.execution_id} failed with error code '
+             f'{code} and error message {result_message}.')
+      logging.error(err)
+      raise _ExecutionFailedError(err, executor_output)
+    return executor_output
 
   def _publish_successful_execution(
       self, execution_id: int, contexts: List[metadata_store_pb2.Context],

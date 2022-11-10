@@ -13,6 +13,7 @@
 # limitations under the License.
 """Portable library for registering and publishing executions."""
 import copy
+import itertools
 import os
 from typing import Mapping, Optional, Sequence
 import uuid
@@ -21,6 +22,7 @@ from absl import logging
 from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import merge_utils
+from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import typing_utils
@@ -131,6 +133,7 @@ def publish_succeeded_execution(
   else:
     output_artifacts = {}
 
+  unused_artifacts_by_id = {}
   if executor_output:
     if not set(executor_output.output_artifacts.keys()).issubset(
         output_artifacts.keys()):
@@ -138,13 +141,17 @@ def publish_succeeded_execution(
           'Executor output %s contains more keys than output skeleton %s.' %
           (executor_output, output_artifacts))
     for key, artifact_list in output_artifacts.items():
+      original_artifacts_by_id = {x.id: x for x in artifact_list}
+
       if key not in executor_output.output_artifacts:
+        unused_artifacts_by_id.update(original_artifacts_by_id)
         continue
       updated_artifact_list = executor_output.output_artifacts[key].artifacts
 
       # We assume the original output dict must include at least one output
       # artifact and all artifacts in the list share the same type/properties.
-      original_artifact = artifact_list[0]
+      default_original_artifact = copy.deepcopy(artifact_list[0])
+      default_original_artifact.mlmd_artifact.id.Clear()
 
       # Update the artifact list with what's in the executor output
       artifact_list.clear()
@@ -155,16 +162,40 @@ def publish_succeeded_execution(
       #    use driver instead to create the list of output artifact instead
       #    of letting executor to create them.
       for updated_artifact_proto in updated_artifact_list:
+        if (updated_artifact_proto.id in original_artifacts_by_id and
+            updated_artifact_proto.uri
+            == original_artifacts_by_id[updated_artifact_proto.id].uri):
+          # The updated artifact matches one of the original artifacts.
+          original_artifact = original_artifacts_by_id[
+              updated_artifact_proto.id]
+          del original_artifacts_by_id[updated_artifact_proto.id]
+        else:
+          # The updated artifact proto doesn't exactly match one of the original
+          # artifacts, so it will be newly created in MLMD.
+          updated_artifact_proto.ClearField('id')
+          original_artifact = default_original_artifact
+
         _check_validity(updated_artifact_proto, original_artifact,
                         len(updated_artifact_list) > 1)
+
         merged_artifact = merge_utils.merge_output_artifact(
             original_artifact, updated_artifact_proto)
         artifact_list.append(merged_artifact)
 
-  # Marks output artifacts as LIVE.
+      # Any unaccounted for artifacts from the executor output are considered
+      # unused.
+      unused_artifacts_by_id.update(original_artifacts_by_id)
+
+    # Update the state of unused artifacts in MLMD
+    artifact_lib.update_artifacts(metadata_handler,
+                                  unused_artifacts_by_id.values(),
+                                  types.artifact.ArtifactState.ABANDONED)
+
+  # Marks output artifacts used in the execution as LIVE.
   for artifact_list in output_artifacts.values():
     for artifact in artifact_list:
-      artifact.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
+      if artifact.id not in unused_artifacts_by_id:
+        artifact.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
 
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
@@ -196,6 +227,14 @@ def publish_failed_execution(
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.FAILED
   _set_execution_result_if_not_empty(executor_output, execution)
+
+  output_artifacts = execution_lib.get_artifacts_dict(
+      metadata_handler, execution.id, [metadata_store_pb2.Event.OUTPUT])
+  # Marks output artifacts associated with this execution as FAILED.
+  artifact_lib.update_artifacts(
+      metadata_handler,
+      itertools.chain.from_iterable(output_artifacts.values()),
+      types.artifact.ArtifactState.ABANDONED)
 
   execution_lib.put_execution(metadata_handler, execution, contexts)
 

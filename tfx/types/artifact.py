@@ -49,6 +49,9 @@ class ArtifactState:
   MARKED_FOR_DELETION = 'MARKED_FOR_DELETION'
   # Indicates that the artifact has been garbage collected.
   DELETED = 'deleted'
+  # Indicates the artifact is abandoned, which is usually due to a failed or
+  # cancelled execution.
+  ABANDONED = 'abandoned'
 
 
 # Default split of examples data.

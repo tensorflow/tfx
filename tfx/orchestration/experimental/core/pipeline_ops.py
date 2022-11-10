@@ -39,6 +39,7 @@ from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
 from tfx.orchestration.portable import partial_run_utils
+from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
@@ -1110,6 +1111,13 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
             on_commit=event_observer.make_notify_execution_state_change_fn(
                 node_uid)) as execution:
           execution.last_known_state = metadata_store_pb2.Execution.CANCELED
+        # Mark the output artifacts as cancelled.
+        output_artifacts = execution_lib.get_artifacts_dict(
+            mlmd_handle, execution.id, [metadata_store_pb2.Event.OUTPUT])
+        artifact_lib.update_artifacts(
+            mlmd_handle,
+            itertools.chain.from_iterable(output_artifacts.values()),
+            types.artifact.ArtifactState.ABANDONED)
 
   exec_node_task_id = task_lib.exec_node_task_id_from_node(pipeline, node)
   cancel_type = (

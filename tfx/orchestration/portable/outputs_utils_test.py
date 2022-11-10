@@ -358,7 +358,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertRegex(tmp_dir,
                      '.*/test_node/.system/executor_execution/1/.temp/')
 
-  def testMakeClearAndRemoveOutputDirs(self):
+  def testMakeAndClearOutputDirs(self):
     output_artifacts = self._output_resolver().generate_output_artifacts(1)
     outputs_utils.make_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
@@ -380,13 +380,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           continue
         if not isinstance(artifact, ValueArtifact):
           self.assertEqual(fileio.listdir(artifact.uri), [])
-
-    outputs_utils.remove_output_dirs(output_artifacts)
-    for _, artifact_list in output_artifacts.items():
-      for artifact in artifact_list:
-        if artifact.is_external:
-          continue
-        self.assertFalse(fileio.exists(artifact.uri))
 
   def testMakeOutputDirsArtifactAlreadyExists(self):
     output_artifacts = self._output_resolver().generate_output_artifacts(1)
@@ -452,12 +445,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           with fileio.open(os.path.join(artifact.uri, 'output'),
                            'r') as f:
             self.assertEqual(f.read(), 'test')
-
-    outputs_utils.remove_output_dirs(external_artifacts)
-    for _, artifact_list in external_artifacts.items():
-      for artifact in artifact_list:
-        # remove_output_dirs method doesn't affect the external uris.
-        self.assertTrue(fileio.exists(artifact.uri))
 
   def testRemoveStatefulWorkingDirSucceeded(self):
     stateful_working_dir = (

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utils for publishing execution results."""
+import itertools
 from typing import List, Optional
 
 from absl import logging
@@ -28,12 +29,15 @@ from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
+from tfx.orchestration.portable.mlmd import artifact_lib as mlmd_artifact_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.types import artifact as artifact_lib
 from tfx.utils import status as status_lib
 from tfx.utils import typing_utils
 
 from ml_metadata import proto
+from ml_metadata.proto import metadata_store_pb2
 
 
 def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
@@ -41,12 +45,11 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
                                        result: ts.TaskSchedulerResult) -> None:
   """Publishes execution results to MLMD for task."""
 
-  def _update_state(
+  def _update_failed_state(
       status: status_lib.Status,
       execution_result: Optional[execution_result_pb2.ExecutionResult] = None
   ) -> None:
     assert status.code != status_lib.Code.OK
-    _remove_output_dirs(task)
     _remove_task_dirs(
         stateful_working_dir=task.stateful_working_dir,
         tmp_dir=task.tmp_dir,
@@ -60,7 +63,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
           'Aborting execution (id: %s) due to error (code: %s); task id: %s',
           task.execution_id, status.code, task.task_id)
       execution_state = proto.Execution.FAILED
-    _update_execution_state_in_mlmd(
+    _update_failed_execution_state_in_mlmd(
         mlmd_handle=mlmd_handle,
         node_uid=task.node_uid,
         execution_id=task.execution_id,
@@ -70,7 +73,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     pipeline_state.record_state_change_time()
 
   if result.status.code != status_lib.Code.OK:
-    _update_state(result.status)
+    _update_failed_state(result.status)
     return
 
   # TODO(b/182316162): Unify publisher handing so that post-execution artifact
@@ -80,7 +83,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     executor_output = result.output.executor_output
     if executor_output is not None:
       if executor_output.execution_result.code != status_lib.Code.OK:
-        _update_state(
+        _update_failed_state(
             status_lib.Status(
                 # We should not reuse "execution_result.code" because it may be
                 # CANCELLED, in which case we should still fail the execution.
@@ -139,7 +142,6 @@ def publish_execution_results(
   """Publishes execution result to MLMD for single component run."""
   outputs_utils.tag_output_artifacts_with_version(execution_info.output_dict)
   if executor_output.execution_result.code != status_lib.Code.OK:
-    outputs_utils.remove_output_dirs(execution_info.output_dict)
     _remove_task_dirs(
         stateful_working_dir=execution_info.stateful_working_dir,
         tmp_dir=execution_info.tmp_dir,
@@ -149,7 +151,7 @@ def publish_execution_results(
             pipeline_id=execution_info.pipeline_info.id,
             pipeline_run_id=execution_info.pipeline_run_id),
         node_id=execution_info.pipeline_node.node_info.id)
-    _update_execution_state_in_mlmd(
+    _update_failed_execution_state_in_mlmd(
         mlmd_handle=mlmd_handle,
         node_uid=node_uid,
         execution_id=execution_info.execution_id,
@@ -172,7 +174,7 @@ def publish_execution_results(
       executor_output=executor_output)
 
 
-def _update_execution_state_in_mlmd(
+def _update_failed_execution_state_in_mlmd(
     mlmd_handle: metadata.Metadata,
     node_uid: task_lib.NodeUid,
     execution_id: int,
@@ -194,9 +196,13 @@ def _update_execution_state_in_mlmd(
     if execution_result:
       execution_lib.set_execution_result(execution_result, execution)
 
-
-def _remove_output_dirs(task: task_lib.ExecNodeTask) -> None:
-  outputs_utils.remove_output_dirs(task.output_artifacts)
+  # Update the state of any artifacts associated with this execution.
+  output_artifacts = execution_lib.get_artifacts_dict(
+      mlmd_handle, execution_id, [metadata_store_pb2.Event.OUTPUT])
+  mlmd_artifact_lib.update_artifacts(
+      mlmd_handle,
+      itertools.chain.from_iterable(output_artifacts.values()),
+      new_artifact_state=artifact_lib.ArtifactState.ABANDONED)
 
 
 def _remove_task_dirs(stateful_working_dir: str = '',

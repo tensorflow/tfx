@@ -278,6 +278,14 @@ class _Generator:
         self._pipeline.execution_mode)
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
     outputs_utils.make_output_dirs(output_artifacts)
+
+    # Create the output artifacts in MLMD and associate them with the execution.
+    execution_lib.put_execution(
+        metadata_handler=self._mlmd_handle,
+        execution=execution,
+        contexts=resolved_info.contexts,
+        output_artifacts=output_artifacts)
+
     result.append(
         task_lib.UpdateNodeStateTask(
             node_uid=node_uid, state=pstate.NodeState.RUNNING))

@@ -420,11 +420,19 @@ class _Generator:
         mlmd_handle=self._mlmd_handle,
         execution_id=executions[0].id) as execution:
       execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
         self._pipeline.execution_mode)
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
     outputs_utils.make_output_dirs(output_artifacts)
+
+    # Create the output artifacts in MLMD and associate them with the execution.
+    execution_lib.put_execution(
+        metadata_handler=self._mlmd_handle,
+        execution=executions[0],
+        contexts=resolved_info.contexts,
+        output_artifacts=output_artifacts)
 
     result.append(
         task_lib.UpdateNodeStateTask(

@@ -22,13 +22,19 @@ from absl import logging
 from packaging import version
 
 from tfx.dsl.io import fileio
-from tfx.types.artifact import _ArtifactType
-from tfx.types.artifact import Artifact
-from tfx.types.value_artifact import _ValueArtifactType
-from tfx.types.value_artifact import ValueArtifact
+from tfx.types import artifact as artifact_lib
+from tfx.types import value_artifact
 
 from ml_metadata.proto import metadata_store_pb2
 
+_ArtifactType = artifact_lib._ArtifactType  # pylint: disable=protected-access
+Artifact = artifact_lib.Artifact
+ArtifactState = artifact_lib.ArtifactState
+del artifact_lib
+
+_ValueArtifactType = value_artifact._ValueArtifactType  # pylint: disable=protected-access
+ValueArtifact = value_artifact.ValueArtifact
+del value_artifact
 
 ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY = 'tfx_version'
 
@@ -314,6 +320,10 @@ def deserialize_artifact(
   result = artifact_cls()
   result.artifact_type.CopyFrom(artifact_type)
   result.set_mlmd_artifact(artifact or metadata_store_pb2.Artifact())
+  if not result.state:
+    # Initialize the artifact to PENDING state if its state was not set by the
+    # MLMD Artifact (i.e. it already has a state value in MLMD).
+    result.state = ArtifactState.PENDING
   return result
 
 

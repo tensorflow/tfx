@@ -63,19 +63,6 @@ def make_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
         fileio.makedirs(artifact.uri)
 
 
-def remove_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
-  """Remove dirs of output artifacts' URI."""
-  for _, artifact_list in output_dict.items():
-    for artifact in artifact_list:
-      # Omit lifecycle management for external artifacts.
-      if artifact.is_external:
-        continue
-      if fileio.isdir(artifact.uri):
-        fileio.rmtree(artifact.uri)
-      else:
-        fileio.remove(artifact.uri)
-
-
 def clear_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
   """Clear dirs of output artifacts' URI."""
   for _, artifact_list in output_dict.items():

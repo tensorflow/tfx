@@ -19,7 +19,6 @@ from tfx import types
 from tfx.dsl.components.base import base_node
 from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.control_flow import for_each
-from tfx.types import resolved_channel
 from tfx.utils import test_case_utils
 
 
@@ -78,10 +77,13 @@ class ForEachTest(test_case_utils.TfxTest):
 
     a = A().with_id('Apple')
     with for_each.ForEach(a.outputs['aa']) as aa:
-      reg.peek_context()
+      f = reg.peek_context()
 
-    self.assertIsInstance(aa, resolved_channel.ResolvedChannel)
+    self.assertIsInstance(aa, types.LoopVarChannel)
+    self.assertEqual(aa.for_each_context, f)
     self.assertEqual(aa.type, AA)
+    self.assertEqual(aa.wrapped.producer_component_id, 'Apple')
+    self.assertEqual(aa.wrapped.output_key, 'aa')
 
   @unittest.skip('Not implemented.')
   def testForEach_LoopVariableNotUsed_Disallowed(self):
