@@ -253,7 +253,8 @@ class Compiler:
                                     "data dependency is not yet supported.")
         node.execution_options.node_success_optional = node_execution_options.get(
             "success_optional")
-
+      node.execution_options.max_execution_retries = (
+          node_execution_options.get("max_execution_retries", 0))
     # Step 9: Per-node platform config
     if isinstance(tfx_node, base_component.BaseComponent):
       tfx_component = cast(base_component.BaseComponent, tfx_node)

@@ -13,6 +13,7 @@
 # limitations under the License.
 """Utilities for task generation."""
 
+import collections
 import itertools
 import time
 from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence
@@ -313,8 +314,34 @@ def get_latest_execution(
 
 def get_latest_executions_set(
     executions: Iterable[metadata_store_pb2.Execution]
-) -> List[metadata_store_pb2.Execution]:
-  """Returns latest set of executions."""
+) -> List[metadata_store_pb2.Execution]:  # pylint: disable=g-doc-args
+  """Returns latest set of executions, ascendingly ordered by __external_execution_index__.
+
+  When _EXECUTION_SET_SIZE > 1 and there are retry executions, e.g., consider
+  the following executions with `__execution_set_size__ == 2`, which have the
+  same `__execution_timestamp__` but different `create_time_since_epoch`,
+
+      Execution(id=0, __external_execution_index__=0, state=FAILED,
+      __execution_timestamp__=1234, create_time_since_epoch=100)
+      Execution(id=1, __external_execution_index__=1, state=NEW,
+      __execution_timestamp__=1234, create_time_since_epoch=150)
+      Execution(id=2, __external_execution_index__=0, state=FAILED,
+      __execution_timestamp__=1234, create_time_since_epoch=200)
+      Execution(id=3, __external_execution_index__=0, state=FAILED,
+      __execution_timestamp__=1234, create_time_since_epoch=250)
+
+  This function returns the latest execution of each
+  __external_execution_index__, which in this case will be:
+      Execution(id=3, __external_execution_index__=0, state=FAILED,
+      __execution_timestamp__=1234, create_time_since_epoch=250)
+      Execution(id=1, __external_execution_index__=1, state=NEW,
+      __execution_timestamp__=1234, create_time_since_epoch=150)
+
+  Raises:
+    RuntimeError: if the size of latest execution set is not
+    __execution_set_size__.
+  """
+  # Sorted by create_time_since_epoch.
   sorted_executions = execution_lib.sort_executions_newest_to_oldest(executions)
   if not sorted_executions:
     return []
@@ -325,12 +352,48 @@ def get_latest_executions_set(
 
   timestamp = sorted_executions[0].custom_properties.get(
       _EXECUTION_TIMESTAMP).int_value
-  latest_execution_set = [
-      e for e in sorted_executions[:size.int_value]
-      if e.custom_properties.get(_EXECUTION_TIMESTAMP).int_value == timestamp
-  ]
-  return [] if len(latest_execution_set) != size.int_value else list(
-      reversed(latest_execution_set))
+  sorted_execution_by_idx_map = collections.defaultdict(list)
+  for e in sorted_executions:
+    sorted_execution_by_idx_map[e.custom_properties[
+        _EXTERNAL_EXECUTION_INDEX].int_value].append(e)
+  latest_execution_set = []
+  for idx in sorted(sorted_execution_by_idx_map.keys()):
+    # Only add executions with the same latest timestamp.
+    if sorted_execution_by_idx_map[idx][0].custom_properties[
+        _EXECUTION_TIMESTAMP].int_value == timestamp:
+      latest_execution_set.append(sorted_execution_by_idx_map[idx][0])
+  if len(latest_execution_set) != size.int_value:
+    raise RuntimeError('Expected the `latest_execution_set` to have exactly '
+                       f'{size.int_value} executions, got '
+                       f'{len(latest_execution_set)} instead')
+  return latest_execution_set
+
+
+def get_num_of_failures_from_failed_execution(
+    executions: Iterable[metadata_store_pb2.Execution],
+    failed_execution: metadata_store_pb2.Execution) -> int:
+  """Returns the num of failed executions.
+
+  Only the executions that have the same timestamp and external execution
+  index as the failed execution will be counted.
+
+  Args:
+    executions: An iterable of executions.
+    failed_execution: A failed execution whose timestamp and external execution
+    index will be tested against to count the total number of failed execution.
+  """
+  target_timestamp = failed_execution.custom_properties[
+      _EXECUTION_TIMESTAMP].int_value
+  target_external_execution_index = failed_execution.custom_properties[
+      _EXTERNAL_EXECUTION_INDEX].int_value
+  # pylint: disable=g-complex-comprehension
+  return len([
+      e for e in executions
+      if (e.last_known_state == metadata_store_pb2.Execution.FAILED and
+          e.custom_properties[_EXECUTION_TIMESTAMP].int_value ==
+          target_timestamp and e.custom_properties[_EXTERNAL_EXECUTION_INDEX]
+          .int_value == target_external_execution_index)
+  ])
 
 
 def get_oldest_active_execution(
@@ -355,50 +418,6 @@ def get_oldest_active_execution(
   return sorted_executions[-1] if sorted_executions else None
 
 
-def get_oldest_active_execution_by_index_from_a_set(
-    execution_set: Iterable[metadata_store_pb2.Execution]
-) -> Optional[metadata_store_pb2.Execution]:
-  """Returns the oldest active execution or `None` if no active executions exist.
-
-  Args:
-    execution_set: A set of executions created by one transation in API
-      put_lineage_subgraph
-
-  Returns:
-    Execution if the oldest active execution exist or `None` if not exist.
-  """
-  active_executions = [
-      e for e in execution_set if execution_lib.is_execution_active(e)
-  ]
-  if not active_executions:
-    return None
-
-  # Some existing executions in MLMD may not have _EXTERNAL_EXECUTION_INDEX.
-  # In such cases, we sort the execution by creation time for backward
-  # compatible.
-  # TODO(b/207038460) Once we are sure that all active executions in MLMD have
-  # _EXTERNAL_EXECUTION_INDEX, we can delete the following codes of sorting
-  # executions by creation time.
-  external_execution_index = [
-      e.custom_properties.get(_EXTERNAL_EXECUTION_INDEX)
-      for e in active_executions
-  ]
-  if not all(external_execution_index):
-    logging.warning(
-        'Sorting executions by timestamp, because one or more executions do '
-        'not have _EXTERNAL_EXECUTION_INDEX.')
-    sorted_executions = execution_lib.sort_executions_newest_to_oldest(
-        active_executions)
-    return sorted_executions[-1] if sorted_executions else None
-
-  index_to_execution = {
-      e.custom_properties.get(_EXTERNAL_EXECUTION_INDEX).int_value: e
-      for e in active_executions
-  }
-  sorted_indexes = sorted(index_to_execution.keys())
-  return index_to_execution[sorted_indexes[0]]
-
-
 # TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
 # missing for a non-system node.
 def get_executor_spec(pipeline: pipeline_pb2.Pipeline,
@@ -412,12 +431,50 @@ def get_executor_spec(pipeline: pipeline_pb2.Pipeline,
   return depl_config.executor_specs.get(node_id)
 
 
+def register_retry_execution(
+    metadata_handle: metadata.Metadata,
+    node: node_proto_view.NodeProtoView,
+    failed_execution: metadata_store_pb2.Execution
+) -> metadata_store_pb2.Execution:
+  """Generates a retry execution from a failed execution and put it in MLMD."""
+  # Set a new execution name and put the state to RUNNING.
+  exec_properties = resolve_exec_properties(node)
+  # TODO(b/224800273): We also need to resolve and set dynamic execution
+  # properties.
+  retry_execution = execution_lib.prepare_execution(
+      metadata_handler=metadata_handle,
+      execution_type=node.node_info.type,
+      state=metadata_store_pb2.Execution.RUNNING,
+      exec_properties=exec_properties,
+      execution_name=str(uuid.uuid4()))
+  # Only copy necessary custom_properties from the failed execution.
+  # LINT.IfChange(retry_execution_custom_properties)
+  retry_execution.custom_properties[_EXECUTION_SET_SIZE].CopyFrom(
+      failed_execution.custom_properties[_EXECUTION_SET_SIZE])
+  retry_execution.custom_properties[_EXECUTION_TIMESTAMP].CopyFrom(
+      failed_execution.custom_properties[_EXECUTION_TIMESTAMP])
+  retry_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].CopyFrom(
+      failed_execution.custom_properties[
+          _EXTERNAL_EXECUTION_INDEX])
+  # LINT.ThenChange(:execution_custom_properties)
+
+  contexts = metadata_handle.store.get_contexts_by_execution(
+      failed_execution.id)
+  input_artifacts = execution_lib.get_artifacts_dict(
+      metadata_handle, failed_execution.id, [metadata_store_pb2.Event.INPUT])
+  return execution_lib.put_execution(
+      metadata_handle,
+      retry_execution,
+      contexts,
+      input_artifacts=input_artifacts)
+
+
 def register_executions(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
     input_and_params: List[InputAndParam]
-) -> List[metadata_store_pb2.Execution]:
+) -> Sequence[metadata_store_pb2.Execution]:
   """Registers multiple executions in MLMD.
 
   Along with the execution:
@@ -446,11 +503,13 @@ def register_executions(
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
         execution_name=str(uuid.uuid4()))
+  # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXECUTION_SET_SIZE].int_value = len(
         input_and_params)
     execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     executions.append(execution)
+  # LINT.ThenChange(:retry_execution_custom_properties)
 
   if len(executions) == 1:
     return [

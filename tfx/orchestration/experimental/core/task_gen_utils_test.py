@@ -14,7 +14,9 @@
 """Tests for tfx.orchestration.experimental.core.task_gen_utils."""
 
 import os
+import uuid
 
+from absl.testing import parameterized
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
@@ -23,13 +25,13 @@ from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.experimental.core.testing import test_dynamic_exec_properties_pipeline
+from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils as tu
-
 from ml_metadata.proto import metadata_store_pb2
 
 
-class TaskGenUtilsTest(tu.TfxTest):
+class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
   def setUp(self):
     super().setUp()
@@ -274,80 +276,97 @@ class TaskGenUtilsTest(tu.TfxTest):
       self.assertEqual(execs[1],
                        task_gen_utils.get_latest_successful_execution(execs))
 
-  def test_get_latest_activate_execution_set(self):
-    with self._mlmd_connection as m:
-      # Registers two sets of executions.
-      task_gen_utils.register_executions(
-          m,
-          metadata_store_pb2.ExecutionType(name='my_ex_type'), {},
-          input_and_params=[
-              task_gen_utils.InputAndParam(input_artifacts={
-                  'input_example': [standard_artifacts.Examples()]
-              }),
-              task_gen_utils.InputAndParam(input_artifacts={
-                  'input_example': [standard_artifacts.Examples()]
-              })
-          ])
-      newer_execution_set = task_gen_utils.register_executions(
-          m,
-          metadata_store_pb2.ExecutionType(name='my_ex_type'), {},
-          input_and_params=[
-              task_gen_utils.InputAndParam(input_artifacts={
-                  'input_example': [standard_artifacts.Examples()]
-              }),
-              task_gen_utils.InputAndParam(input_artifacts={
-                  'input_example': [standard_artifacts.Examples()]
-              })
-          ])
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='per_execution_idx_latest',
+          execution_info_groups=[[
+              dict(external_execution_index=0, execution_timestamp=1000),
+              dict(external_execution_index=1, execution_timestamp=1000)
+          ], [dict(external_execution_index=0, execution_timestamp=1000)
+             ], [dict(external_execution_index=0, execution_timestamp=1000)]],
+          expected_returned_execution_indices=[3, 1],
+          execution_set_size=2),
+      dict(
+          testcase_name='newer_timestamp',
+          execution_info_groups=[[
+              dict(external_execution_index=0, execution_timestamp=1000),
+              dict(external_execution_index=1, execution_timestamp=1000)
+          ], [dict(external_execution_index=0, execution_timestamp=2000),
+              dict(external_execution_index=1, execution_timestamp=2000)]],
+          expected_returned_execution_indices=[2, 3],
+          execution_set_size=2),
+      dict(
+          testcase_name='no_custom_properties',
+          execution_info_groups=[[
+              dict(external_execution_index=None, execution_timestamp=None),
+          ], [dict(external_execution_index=None, execution_timestamp=None)]],
+          expected_returned_execution_indices=[1],
+          execution_set_size=None),
+  )
+  def test_get_latest_execution_set(self, execution_info_groups,
+                                    expected_returned_execution_indices,
+                                    execution_set_size):
+    execution_type = metadata_store_pb2.ExecutionType(name='my_ex_type')
 
+    with self._mlmd_connection as m:
+      # Construct execution sets.
+      executions = []
+      for execution_info_group in execution_info_groups:
+        input_and_params = [
+            task_gen_utils.InputAndParam(input_artifacts={
+                'input_example': [standard_artifacts.Examples()]
+            })
+        ] * len(execution_info_group)
+        execution_group = []
+        for idx, execution_info in enumerate(execution_info_group):
+          input_and_param = input_and_params[idx]
+          external_execution_index = execution_info['external_execution_index']
+          execution_timestamp = execution_info['execution_timestamp']
+          execution = execution_lib.prepare_execution(
+              m,
+              execution_type,
+              metadata_store_pb2.Execution.NEW,
+              input_and_param.exec_properties,
+              execution_name=str(uuid.uuid4()))
+          if execution_set_size is not None:
+            execution.custom_properties[
+                task_gen_utils
+                ._EXECUTION_SET_SIZE].int_value = execution_set_size
+          if execution_timestamp is not None:
+            execution.custom_properties[
+                task_gen_utils
+                ._EXECUTION_TIMESTAMP].int_value = execution_timestamp
+          if external_execution_index is not None:
+            execution.custom_properties[
+                task_gen_utils
+                ._EXTERNAL_EXECUTION_INDEX].int_value = external_execution_index
+          execution_group.append(execution)
+        executions.extend(
+            execution_lib.put_executions(m, execution_group, {}, [
+                input_and_param.input_artifacts
+                for input_and_param in input_and_params
+            ]))
+
+      # Get expected results.
+      expected_execution_set = [
+          executions[i] for i in expected_returned_execution_indices
+      ]
+
+      # Call the target function and test against the expected results.
       executions = m.store.get_executions()
-      self.assertLen(executions, 4)
+      self.assertLen(executions, sum([len(g) for g in execution_info_groups]))
 
       latest_execution_set = task_gen_utils.get_latest_executions_set(
           executions)
-      self.assertLen(latest_execution_set, 2)
 
-      newer_execution_set.sort(key=lambda e: e.id)
-      latest_execution_set.sort(key=lambda e: e.id)
-      self.assertProtoPartiallyEquals(
-          newer_execution_set[0],
-          latest_execution_set[0],
-          ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
-      self.assertProtoPartiallyEquals(
-          newer_execution_set[1],
-          latest_execution_set[1],
-          ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
-
-  def test_get_oldest_active_execution_by_index_from_a_set(self):
-    with self._mlmd_connection as m:
-      # Registers a set of executions.
-      task_gen_utils.register_executions(
-          m,
-          metadata_store_pb2.ExecutionType(name='my_ex_type'), {},
-          input_and_params=[
-              task_gen_utils.InputAndParam(input_artifacts={
-                  'input_example': [standard_artifacts.Examples()]
-              }),
-              task_gen_utils.InputAndParam(input_artifacts={
-                  'input_example': [standard_artifacts.Examples()]
-              })
-          ])
-
-      # Tests the function.
-      executions = m.store.get_executions()
-      self.assertLen(executions, 2)
-      oldest_execution = task_gen_utils.get_oldest_active_execution_by_index_from_a_set(
-          executions)
-      self.assertEqual(
-          0,
-          oldest_execution.custom_properties.get(
-              task_gen_utils._EXTERNAL_EXECUTION_INDEX).int_value)
+      for expected_execution, actual_execution in zip(expected_execution_set,
+                                                      latest_execution_set):
+        self.assertProtoPartiallyEquals(
+            expected_execution,
+            actual_execution,
+            ignored_fields=[
+                'create_time_since_epoch', 'last_update_time_since_epoch'
+            ])
 
   def test_register_executions(self):
     with self._mlmd_connection as m:
@@ -378,6 +397,120 @@ class TaskGenUtilsTest(tu.TfxTest):
       self.assertLen(m.store.get_executions_by_context(context_1.id), 2)
       self.assertLen(m.store.get_executions_by_context(context_2.id), 2)
 
+  def test_get_executions_num_of_failure(self):
+    failed_execution = metadata_store_pb2.Execution(
+        last_known_state=metadata_store_pb2.Execution.FAILED)
+    failed_execution.custom_properties[
+        task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
+    failed_execution.custom_properties[
+        task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+
+    e1 = metadata_store_pb2.Execution(
+        last_known_state=metadata_store_pb2.Execution.FAILED)
+    e1.custom_properties[task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
+    e1.custom_properties[task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 0
+    e2 = metadata_store_pb2.Execution(
+        last_known_state=metadata_store_pb2.Execution.FAILED)
+    e2.custom_properties[task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
+    e2.custom_properties[
+        task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+    e3 = metadata_store_pb2.Execution(
+        last_known_state=metadata_store_pb2.Execution.RUNNING)
+    e3.custom_properties[task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
+    e3.custom_properties[
+        task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+    e4 = metadata_store_pb2.Execution(
+        last_known_state=metadata_store_pb2.Execution.FAILED)
+    e4.custom_properties[task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
+    e4.custom_properties[
+        task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+    e5 = metadata_store_pb2.Execution(
+        last_known_state=metadata_store_pb2.Execution.FAILED)
+    e5.custom_properties[task_gen_utils._EXECUTION_TIMESTAMP].int_value = 2000
+    e5.custom_properties[
+        task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+    executions = [e1, e2, e3, e4, e5]
+    self.assertEqual(
+        2,
+        task_gen_utils.get_num_of_failures_from_failed_execution(
+            executions, failed_execution))
+
+  def test_register_retry_executions(self):
+    with self._mlmd_connection as m:
+      # Put contexts.
+      context_type = metadata_store_pb2.ContextType(name='my_ctx_type')
+      context_type_id = m.store.put_context_type(context_type)
+      contexts = [
+          metadata_store_pb2.Context(name='context-1', type_id=context_type_id),
+          metadata_store_pb2.Context(name='context-2', type_id=context_type_id)
+      ]
+      m.store.put_contexts(contexts)
+
+      # Put a failed execution.
+      input_and_param = task_gen_utils.InputAndParam(
+          input_artifacts={'input_example': [standard_artifacts.Examples()]})
+      execution_type = metadata_store_pb2.ExecutionType(name='my_ex_type')
+      failed_execution = execution_lib.prepare_execution(
+          m,
+          execution_type,
+          metadata_store_pb2.Execution.FAILED,
+          input_and_param.exec_properties,
+          execution_name=str(uuid.uuid4()))
+      failed_execution.custom_properties[
+          task_gen_utils
+          ._EXECUTION_SET_SIZE].int_value = 2
+      failed_execution.custom_properties[
+          task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
+      failed_execution.custom_properties[
+          task_gen_utils
+          ._EXTERNAL_EXECUTION_INDEX].int_value = 1
+      failed_execution.custom_properties['should_not_be_copied'].int_value = 1
+      failed_execution = execution_lib.put_execution(
+          m,
+          failed_execution,
+          contexts,
+          input_artifacts=input_and_param.input_artifacts)
+
+      # Register a retry execution from a failed execution.
+      retry_execution = task_gen_utils.register_retry_execution(
+          m, self._example_gen, failed_execution)
+
+      self.assertEqual(retry_execution.last_known_state,
+                       metadata_store_pb2.Execution.RUNNING)
+      self.assertEqual(
+          retry_execution.custom_properties[task_gen_utils._EXECUTION_SET_SIZE],
+          failed_execution.custom_properties[
+              task_gen_utils._EXECUTION_SET_SIZE])
+      self.assertEqual(
+          retry_execution.custom_properties[
+              task_gen_utils._EXECUTION_TIMESTAMP],
+          failed_execution.custom_properties[
+              task_gen_utils._EXECUTION_TIMESTAMP])
+      self.assertEqual(
+          retry_execution.custom_properties[
+              task_gen_utils._EXTERNAL_EXECUTION_INDEX],
+          failed_execution.custom_properties[
+              task_gen_utils._EXTERNAL_EXECUTION_INDEX])
+      self.assertIsNone(
+          retry_execution.custom_properties.get('should_not_be_copied'))
+      # Check all input artifacts are the same.
+      retry_execution_input_artifacts = execution_lib.get_artifacts_dict(
+          m, retry_execution.id, [metadata_store_pb2.Event.INPUT])
+      failed_execution_input_artifacts = execution_lib.get_artifacts_dict(
+          m, failed_execution.id, [metadata_store_pb2.Event.INPUT])
+      self.assertEqual(retry_execution_input_artifacts.keys(),
+                       failed_execution_input_artifacts.keys())
+      for key in retry_execution_input_artifacts:
+        retry_execution_artifacts_ids = sorted(
+            [a.id for a in retry_execution_input_artifacts[key]])
+        failed_execution_artifacts_ids = sorted(
+            [a.id for a in failed_execution_input_artifacts[key]])
+        self.assertEqual(retry_execution_artifacts_ids,
+                         failed_execution_artifacts_ids)
+
+      [context_1, context_2] = m.store.get_contexts()
+      self.assertLen(m.store.get_executions_by_context(context_1.id), 2)
+      self.assertLen(m.store.get_executions_by_context(context_2.id), 2)
 
 if __name__ == '__main__':
   tf.test.main()
