@@ -49,21 +49,12 @@ class AllSpansOpTest(tf.test.TestCase):
     self.assertEqual(actual, [a10, a20, a31, a71, a82])
 
     actual = test_utils.run_resolver_op(
-        ops.AllSpans, artifacts, span_descending=False, keep_all_versions=False)
+        ops.AllSpans, artifacts, keep_all_versions=False)
     self.assertEqual(actual, [a10, a20, a31, a71, a82])
 
     actual = test_utils.run_resolver_op(
-        ops.AllSpans, artifacts, span_descending=False, keep_all_versions=True)
+        ops.AllSpans, artifacts, keep_all_versions=True)
     self.assertEqual(actual, [a10, a20, a30, a31, a71, a82])
-
-    actual = test_utils.run_resolver_op(
-        ops.AllSpans, artifacts, span_descending=True, keep_all_versions=False)
-    self.assertEqual(actual, [a82, a71, a31, a20, a10])
-
-    actual = test_utils.run_resolver_op(
-        ops.AllSpans, artifacts, span_descending=True, keep_all_versions=True)
-    self.assertEqual(actual, [a82, a71, a30, a31, a20, a10])
-
 
 if __name__ == '__main__':
   tf.test.main()

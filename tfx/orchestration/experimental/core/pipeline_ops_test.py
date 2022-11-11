@@ -1998,6 +1998,67 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
             task.node_uid)
         self.assertTrue(task_queue.is_empty())
 
+  def test_mixing_concurrent_runs_and_async_pipeline(self):
+    with test_utils.concurrent_pipeline_runs_enabled_env():
+      with self._mlmd_connection_manager as mlmd_connection_manager:
+        m = mlmd_connection_manager.primary_mlmd_handle
+
+        # Sync pipelines with same pipeline_id but different run ids.
+        sync_pipelines = [
+            _test_pipeline(
+                'pipeline1', pipeline_pb2.Pipeline.SYNC,
+                pipeline_run_id='run0'),
+            _test_pipeline(
+                'pipeline1', pipeline_pb2.Pipeline.SYNC,
+                pipeline_run_id='run1'),
+        ]
+
+        # Should be possible to start the sync pipelines.
+        sync_pipeline_states = []
+        for pipeline in sync_pipelines:
+          sync_pipeline_states.append(
+              pipeline_ops.initiate_pipeline_start(m, pipeline))
+
+        async_pipeline = _test_pipeline('pipeline1',
+                                        pipeline_pb2.Pipeline.ASYNC)
+
+        # Starting an async pipeline with the same pipeline_id should be
+        # disallowed.
+        with self.assertRaises(
+            status_lib.StatusNotOkError) as exception_context:
+          pipeline_ops.initiate_pipeline_start(m, async_pipeline)
+        self.assertEqual(status_lib.Code.ALREADY_EXISTS,
+                         exception_context.exception.code)
+
+        # Deactivate the sync pipelines.
+        for pipeline_state in sync_pipeline_states:
+          with pipeline_state:
+            self.assertTrue(pipeline_state.is_active())
+            pipeline_state.set_pipeline_execution_state(
+                metadata_store_pb2.Execution.COMPLETE)
+
+        # Starting async pipeline should be possible now.
+        with pipeline_ops.initiate_pipeline_start(
+            m, async_pipeline) as pipeline_state:
+          self.assertTrue(pipeline_state.is_active())
+
+        # But only once.
+        with self.assertRaises(
+            status_lib.StatusNotOkError) as exception_context:
+          pipeline_ops.initiate_pipeline_start(m, async_pipeline)
+        self.assertEqual(status_lib.Code.ALREADY_EXISTS,
+                         exception_context.exception.code)
+
+        # Starting new concurrent runs should be disallowed when an active async
+        # pipeline exists.
+        new_sync_pipeline = _test_pipeline(
+            'pipeline1', pipeline_pb2.Pipeline.SYNC, pipeline_run_id='run2')
+        with self.assertRaises(
+            status_lib.StatusNotOkError) as exception_context:
+          pipeline_ops.initiate_pipeline_start(m, new_sync_pipeline)
+        self.assertEqual(status_lib.Code.ALREADY_EXISTS,
+                         exception_context.exception.code)
+
 
 if __name__ == '__main__':
   tf.test.main()

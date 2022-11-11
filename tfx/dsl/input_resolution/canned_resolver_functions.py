@@ -40,7 +40,8 @@ def static_range(artifacts,
                  end_span_number: int = -1,
                  keep_all_versions: bool = False,
                  exclude_span_numbers: Sequence[int] = (),
-                 min_spans: Optional[int] = None):
+                 min_spans: Optional[int] = None,
+                 shuffle: bool = False):
   """Returns artifacts with spans in [start_span, end_span] inclusive.
 
   This resolver function is based on the span-version semantics, which only
@@ -98,6 +99,7 @@ def static_range(artifacts,
       min_spans is None, and if both end_span_number and start_span_number are
       positive, it is set to end_span_number - start_span_number + 1. Else if
       min_spans is None, it is set to -1.
+    shuffle: If true, then the artifacts will be randomly shuffled.
 
   Returns:
     Artifacts with spans in [start_span, end_span] inclusive.
@@ -120,6 +122,9 @@ def static_range(artifacts,
     else:
       min_spans = -1
 
+  if shuffle:
+    resolved_artifacts = ops.Shuffle(resolved_artifacts)
+
   return ops.SkipIfLessThanNSpans(resolved_artifacts, n=min_spans)
 
 
@@ -131,7 +136,8 @@ def rolling_range(artifacts,
                   skip_num_recent_spans: int = 0,
                   keep_all_versions: bool = False,
                   exclude_span_numbers: Sequence[int] = (),
-                  min_spans: Optional[int] = None):
+                  min_spans: Optional[int] = None,
+                  shuffle: bool = False):
   """Returns artifacts with spans in a rolling range.
 
   A rolling range covers the latest (largest) spans. It's calculated in the
@@ -209,6 +215,7 @@ def rolling_range(artifacts,
     exclude_span_numbers: The span numbers to exclude.
     min_spans: Minimum number of desired example spans in the range. If
       min_spans is None, it is set to num_spans.
+    shuffle: If true, then the artifacts will be randomly shuffled.
 
   Returns:
     Artifacts with spans in the rolling range.
@@ -226,11 +233,14 @@ def rolling_range(artifacts,
   if min_spans is None:
     min_spans = num_spans
 
+  if shuffle:
+    resolved_artifacts = ops.Shuffle(resolved_artifacts)
+
   return ops.SkipIfLessThanNSpans(resolved_artifacts, n=min_spans)
 
 
 @resolver_function.resolver_function
-def all_spans(artifacts, *, span_descending: bool = False):
+def all_spans(artifacts):
   """Returns the sorted artifacts with unique spans.
 
   By default, all artifacts with unique spans (ties broken by latest version)
@@ -242,8 +252,7 @@ def all_spans(artifacts, *, span_descending: bool = False):
       spans    = [1, 3, 3, 2, 8, 7]
       versions = [0, 0, 1, 0, 1, 2]
 
-    all_spans(
-        span_descending=False)
+    all_spans()
 
     will return artifacts:
       spans    = [1, 2, 3, 7, 8]
@@ -252,26 +261,13 @@ def all_spans(artifacts, *, span_descending: bool = False):
     Note that there are 2 artifacts with span 3, but only the one with the
     latest version is returned. Spans are sorted in ascending order.
 
-    all_spans(
-        span_descending=True)
-
-    will return all the artifacts:
-      spans    = [8, 7, 3, 2, 1]
-      versions = [2, 1, 1, 0, 0]
-
-    Spans are sorted in descending order.
-
   Args:
     artifacts: The artifacts to filter.
-    span_descending: If true, then the artifacts will be sorted by span in
-      descending order. Else, they will be sorted in ascending order by span.
-      Note that sorting happens first by span and then by version, and that
-      version is always sorted in ascending order.
 
   Returns:
     Sorted Artifacts with unique spans.
   """
-  return ops.AllSpans(artifacts, span_descending=span_descending)
+  return ops.AllSpans(artifacts)
 
 
 @resolver_function.resolver_function
@@ -343,7 +339,8 @@ def sequential_rolling_range(artifacts,
                              num_spans: int = 1,
                              skip_num_recent_spans: int = 0,
                              keep_all_versions: bool = False,
-                             exclude_span_numbers: Sequence[int] = ()):
+                             exclude_span_numbers: Sequence[int] = (),
+                             shuffle: bool = False):
   """Returns artifacts with spans in a sequential rolling range.
 
   Sequential rolling range is a sliding window on the oldest consecutive spans.
@@ -410,6 +407,7 @@ def sequential_rolling_range(artifacts,
       If false then if multiple artifacts have the same span, only the span with
       the latest version is kept. Defaults to False.
     exclude_span_numbers: The list of missing/bad span numbers to exclude.
+    shuffle: If true, then the artifacts will be randomly shuffled.
 
   Returns:
     Artifacts with spans in the sequential rolling range.
@@ -423,6 +421,9 @@ def sequential_rolling_range(artifacts,
 
   resolved_artifacts = ops.SlidingWindow(
       resolved_artifacts, window_size=num_spans)
+
+  if shuffle:
+    resolved_artifacts = ops.Shuffle(resolved_artifacts)
 
   return resolved_artifacts
 

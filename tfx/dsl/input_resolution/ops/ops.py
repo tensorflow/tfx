@@ -24,6 +24,7 @@ from tfx.dsl.input_resolution.ops import latest_create_time_op
 from tfx.dsl.input_resolution.ops import latest_pipeline_run_outputs_op
 from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import latest_version_op
+from tfx.dsl.input_resolution.ops import shuffle_op
 from tfx.dsl.input_resolution.ops import skip_if_empty_op
 from tfx.dsl.input_resolution.ops import skip_if_less_than_n_spans_op
 from tfx.dsl.input_resolution.ops import sliding_window_op
@@ -63,6 +64,7 @@ LatestCreateTime = latest_create_time_op.LatestCreateTime
 LatestPipelineRunOutputs = latest_pipeline_run_outputs_op.LatestPipelineRunOutputs
 LatestSpan = latest_span_op.LatestSpan
 LatestVersion = latest_version_op.LatestVersion
+Shuffle = shuffle_op.Shuffle
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
 SkipIfLessThanNSpans = skip_if_less_than_n_spans_op.SkipIfLessThanNSpans
 SlidingWindow = sliding_window_op.SlidingWindow
@@ -79,6 +81,7 @@ _register_op(LatestCreateTime)
 _register_op(LatestPipelineRunOutputs)
 _register_op(LatestSpan)
 _register_op(LatestVersion)
+_register_op(Shuffle)
 _register_op(SkipIfEmpty)
 _register_op(SkipIfLessThanNSpans)
 _register_op(SlidingWindow)

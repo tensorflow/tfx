@@ -17,9 +17,6 @@ import enum
 
 from ml_metadata.proto import metadata_store_pb2
 
-# TODO(b/241861488): Remove safeguard once fully supported by MLMD
-ENABLE_PROTO_PROPERTIES = False
-
 
 class PropertyType(enum.Enum):
   """Type of an artifact property."""
@@ -35,8 +32,7 @@ class PropertyType(enum.Enum):
   # Note: when a dictionary value is used, the top-level "__value__" key is
   # reserved.
   JSON_VALUE = 4
-  # TODO(b/241861488): Update comment once proto property is fully supported
-  # Protocol buffer. (NOT YET SUPPORTED)
+  # Protocol buffer.
   PROTO = 5
 
 
@@ -54,9 +50,6 @@ class Property:
     if type not in Property._ALLOWED_MLMD_TYPES:
       raise ValueError('Property type must be one of %s.' %
                        list(Property._ALLOWED_MLMD_TYPES.keys()))
-    # TODO(b/241861488): Remove safeguard once fully supported by MLMD.
-    if (type == PropertyType.PROTO and not ENABLE_PROTO_PROPERTIES):
-      raise ValueError('Proto properties are not yet supported')
     self.type = type
 
   def mlmd_type(self):

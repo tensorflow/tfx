@@ -13,28 +13,27 @@
 # limitations under the License.
 """Module for `ForEach` context manager."""
 
-from typing import Union
+from typing import Union, cast
 
 from tfx.dsl.context_managers import dsl_context_manager
 from tfx.dsl.control_flow import for_each_internal
+from tfx.dsl.input_resolution import resolver_function
+from tfx.dsl.input_resolution.ops import ops
 from tfx.types import channel as channel_types
-
-_Loopable = Union[channel_types.BaseChannel, for_each_internal.Loopable]
-
 
 # Re-export name for backward compatibility.
 ForEachContext = for_each_internal.ForEachContext
 
 
-def _channel_as_loopable(
-    channel: channel_types.BaseChannel) -> for_each_internal.Loopable:
+# ForEach for single channel uses resolver function (which has Unnest).
+@resolver_function.resolver_function(unwrap_dict_key='out')
+def _for_each_impl(channel: channel_types.BaseChannel):
+  return ops.Unnest({'out': channel}, key='out')
 
-  # TODO(b/239761275): Change to ResolvedChannel for simplicity.
-  def factory(context: for_each_internal.ForEachContext):
-    context.wrapped_channel = channel
-    return channel_types.LoopVarChannel(channel, context)
 
-  return for_each_internal.Loopable(factory)
+@_for_each_impl.output_type_inferrer
+def _for_each_output_type(channel: channel_types.BaseChannel):
+  return {'out': channel.type}
 
 
 class ForEach(dsl_context_manager.DslContextManager[for_each_internal.LoopVar]):
@@ -75,10 +74,13 @@ class ForEach(dsl_context_manager.DslContextManager[for_each_internal.LoopVar]):
   ```
   """
 
-  def __init__(self, loopable: _Loopable):
+  def __init__(self, loopable: Union[channel_types.BaseChannel,
+                                     for_each_internal.Loopable]):
     super().__init__()
     if isinstance(loopable, channel_types.BaseChannel):
-      self._loopable = _channel_as_loopable(loopable)
+      self._loopable = cast(
+          for_each_internal.Loopable,
+          _for_each_impl(cast(channel_types.BaseChannel, loopable)))
     elif isinstance(loopable, for_each_internal.Loopable):
       self._loopable = loopable
     else:

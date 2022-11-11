@@ -102,7 +102,7 @@ def filter_artifacts_by_span(
 
   result = []
   version_and_id = lambda a: (a.version, a.id)
-  for span in spans:
+  for span in sorted(spans):
     if keep_all_versions:
       # span_descending only applies to sorting by span, but version should
       # always be sorted in ascending order.

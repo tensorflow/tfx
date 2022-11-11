@@ -311,7 +311,7 @@ def put_executions(
     .INPUT,
     output_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
     .OUTPUT
-) -> metadata_store_pb2.Execution:
+) -> Sequence[metadata_store_pb2.Execution]:
   """Writes an execution-centric subgraph to MLMD.
 
   This function mainly leverages metadata.put_lineage_subgraph() method to write

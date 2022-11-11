@@ -1,9 +1,5 @@
 # Current Version (Still in Development)
 
-# TODO(b/241861488): Remove comment once proto property fully supported by MLMD
-IMPORTANT: This version **must not be released** before MLMD publishes a release
-with support for proto property values and this comment is subsequently removed.
-
 *   This is the last version that supports TensorFlow 1.15.x. TF 1.15.x support
     will be removed in the next version. Please check the
     [TF2 migration guide](https://www.tensorflow.org/guide/migrate) to migrate

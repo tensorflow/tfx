@@ -20,7 +20,6 @@ import textwrap
 from typing import Any, cast, Dict, Iterable, List, Optional, Type, Union, Set
 from absl import logging
 
-from tfx.dsl.context_managers import dsl_context
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
@@ -492,39 +491,6 @@ class UnionChannel(BaseChannel):
 def union(input_channels: Iterable[BaseChannel]) -> UnionChannel:
   """Convenient method to combine multiple input channels into union channel."""
   return UnionChannel(input_channels)
-
-
-@doc_controls.do_not_generate_docs
-class LoopVarChannel(BaseChannel):
-  """LoopVarChannel is a channel that is marked as a ForEach loop variable.
-
-  There is no special functionality for this channel itself; it just marks the
-  channel as a loop variable, and holds the context ID for the corresponding
-  ForEachContext.
-  """
-
-  def __init__(self, wrapped: BaseChannel,
-               for_each_context: dsl_context.DslContext):
-    """LoopVarChannel constructor.
-
-    Arguments:
-      wrapped: A wrapped BaseChannel.
-      for_each_context: An ID for the corresponding ForEachContext.
-    """
-    super().__init__(wrapped.type)
-    self._wrapped = wrapped
-    self._for_each_context = for_each_context
-
-  def get_data_dependent_node_ids(self) -> Set[str]:
-    return self._wrapped.get_data_dependent_node_ids()
-
-  @property
-  def wrapped(self) -> BaseChannel:
-    return self._wrapped
-
-  @property
-  def for_each_context(self) -> dsl_context.DslContext:
-    return self._for_each_context
 
 
 @doc_controls.do_not_generate_docs

@@ -611,9 +611,6 @@ class Artifact(json_utils.Jsonable):
   @doc_controls.do_not_doc_inheritable
   def set_proto_custom_property(self, key: str, value: message.Message):
     """Sets a custom property of proto type."""
-    # TODO(b/241861488): Remove safeguard once fully supported by MLMD.
-    if not artifact_property.ENABLE_PROTO_PROPERTIES:
-      raise ValueError('Proto properties are not yet supported')
     self._cached_modifiable_custom_properties[key] = value
 
   @doc_controls.do_not_doc_in_subclasses
@@ -691,8 +688,6 @@ class Artifact(json_utils.Jsonable):
   @doc_controls.do_not_doc_inheritable
   def get_proto_custom_property(self, key: str) -> Optional[message.Message]:
     """Get a custom property of proto type."""
-    if not artifact_property.ENABLE_PROTO_PROPERTIES:
-      raise ValueError('Proto properties are not yet supported')
     if key in self._cached_modifiable_custom_properties:
       return self._cached_modifiable_custom_properties[key]
     if (key not in self._artifact.custom_properties or

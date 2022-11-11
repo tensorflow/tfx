@@ -218,16 +218,15 @@ class CannedResolverFunctionsTest(
     self.assertIsInstance(resolved, inputs_utils.Trigger)
 
     # The resolved artifacts should have (span, version) tuples of:
-    # [(7, 1), (3, 0), (3, 1)].
+    # [(3, 0), (3, 1), (7, 1)].
     actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
-    expected_artifacts = [mlmd_artifacts[i] for i in [4, 3, 2]]
+    expected_artifacts = [mlmd_artifacts[i] for i in [3, 2, 4]]
     self.assertArtifactListEqual(
         actual_artifacts, expected_artifacts, check_span_and_version=True)
 
   def testAllSpansResolverFn_E2E(self):
     channel = canned_resolver_functions.all_spans(
-        types.Channel(test_utils.DummyArtifact, output_key='x'),
-        span_descending=False)
+        types.Channel(test_utils.DummyArtifact, output_key='x'))
     pipeline_node = _compile_inputs({'x': channel})
 
     spans = [0, 1, 2, 3, 3, 5, 7, 10]

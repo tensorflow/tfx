@@ -148,6 +148,7 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
         'StatisticsGen',
         'Trainer',
         'Transform',
+        'latest_blessed_model_resolver',
     ]
     # Copy dag file and data.
     chicago_taxi_pipeline_dir = os.path.dirname(__file__)

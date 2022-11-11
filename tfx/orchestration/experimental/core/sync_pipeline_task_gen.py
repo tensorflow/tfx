@@ -286,7 +286,47 @@ class _Generator:
               node_uid=node_uid, state=pstate.NodeState.COMPLETE))
       return result
 
-    # If one of the executions in the set for the node failed or cancelled, the
+    # If an execution failed, try to retry it.
+    latest_failed_executions = [
+        e for e in latest_executions_set
+        if execution_lib.is_execution_failed(e)
+    ]
+    # There should be only one failed execution in the latest_execution_set.
+    # Fail the node if there are more as it's an unexpected behavior.
+    if len(latest_failed_executions) > 1:
+      error_msg = (f'node {node_uid} failed; error: More than one failed '
+                   'executions found in the latest execution set.')
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid,
+              state=pstate.NodeState.FAILED,
+              status=status_lib.Status(
+                  code=status_lib.Code.ABORTED, message=error_msg)))
+      return result
+    # TODO(b/223627713): We currently carry over execution failures after users
+    # stop and restart the node. Should we consider to reset the count?
+    if latest_failed_executions:
+      latest_failed_execution = latest_failed_executions[-1]
+      if (node.execution_options.max_execution_retries >=
+          task_gen_utils.get_num_of_failures_from_failed_execution(
+              node_executions, latest_failed_execution)):
+        # Step 1: Replicate a new execution from latest_failed_execution.
+        # latest_failed_executions is sorted descendingly by
+        # __external_execution_index__.
+        # There should be only one failed execution.
+        retry_execution = task_gen_utils.register_retry_execution(
+            self._mlmd_handle, node, latest_failed_execution)
+        # Step 2: Update node state to RUNNING.
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid, state=pstate.NodeState.RUNNING))
+        # Step 3: Create an ExecNodeTask.
+        result.append(
+            task_gen_utils.generate_task_from_execution(self._mlmd_handle,
+                                                        self._pipeline, node,
+                                                        retry_execution))
+        return result
+    # If one of the executions in the set for the node cancelled, the
     # pipeline should be aborted if the node is not in state STARTING.
     # For nodes that are in state STARTING, new executions are created.
     # TODO(b/223627713): a node in a ForEach is not restartable, it is better
@@ -317,9 +357,10 @@ class _Generator:
 
     # Gets the oldest active execution. If the oldest active execution exists,
     # generates a task from it.
-    oldest_active_execution = (
-        task_gen_utils.get_oldest_active_execution_by_index_from_a_set(
-            latest_executions_set))
+    oldest_active_execution = next((e for e in latest_executions_set
+                                    if execution_lib.is_execution_active(e)),
+                                   None)
+
     if oldest_active_execution:
       with mlmd_state.mlmd_execution_atomic_op(
           mlmd_handle=self._mlmd_handle,

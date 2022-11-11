@@ -14,10 +14,9 @@
 """TaskGenerator implementation for async pipelines."""
 
 import itertools
-from typing import Callable, Dict, List, Optional
+from typing import Callable, List, Optional
 
 from absl import logging
-from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
@@ -315,20 +314,3 @@ class _Generator:
       return self._service_job_manager.ensure_node_services(
           self._pipeline_state, node_id)
     return None
-
-
-def _exec_properties_match(
-    exec_props1: Dict[str, types.ExecPropertyTypes],
-    exec_props2: Dict[str, types.ExecPropertyTypes]) -> bool:
-  """Returns True if exec properties match."""
-
-  def _filter_out_internal_keys(
-      props: Dict[str, types.ExecPropertyTypes]
-  ) -> Dict[str, types.ExecPropertyTypes]:
-    return {
-        k: v for k, v in props.items() if not execution_lib.is_internal_key(k)
-    }
-
-  exec_props1 = _filter_out_internal_keys(exec_props1)
-  exec_props2 = _filter_out_internal_keys(exec_props2)
-  return exec_props1 == exec_props2
