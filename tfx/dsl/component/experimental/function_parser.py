@@ -21,13 +21,18 @@ Internal use only. No backwards compatibility guarantees.
 
 import enum
 import inspect
+import sys
 import types
 from typing import Any, Dict, Optional, Tuple, Type, Union
-
 from tfx.dsl.component.experimental import annotations
 from tfx.dsl.component.experimental import json_compat
 from tfx.types import artifact
 from tfx.types import standard_artifacts
+
+if sys.version_info >= (3, 8):
+  from typing import _TypedDictMeta
+else:
+  from typing_extensions import _TypedDictMeta
 
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
@@ -85,6 +90,18 @@ def _validate_signature(
   # Validate return type hints.
   if isinstance(typehints.get('return', None), Dict):
     for arg, arg_typehint in typehints['return'].items():
+      if (isinstance(arg_typehint, annotations.OutputArtifact) or
+          (inspect.isclass(arg_typehint) and
+           issubclass(arg_typehint, artifact.Artifact))):
+        raise ValueError(
+            ('Output artifacts for the component executor function %r should '
+             'be declared as function parameters annotated with type hint '
+             '`tfx.types.annotations.OutputArtifact[T]` where T is a '
+             'subclass of `tfx.types.Artifact`. They should not be declared '
+             'as part of the return value `OutputDict` type hint.') % func)
+
+  elif isinstance(typehints.get('return', None), _TypedDictMeta):
+    for arg, arg_typehint in typehints['return'].__annotations__.items():
       if (isinstance(arg_typehint, annotations.OutputArtifact) or
           (inspect.isclass(arg_typehint) and
            issubclass(arg_typehint, artifact.Artifact))):
@@ -225,7 +242,13 @@ def _parse_signature(
           (arg, func))
 
   if 'return' in typehints and typehints['return'] not in (None, type(None)):
-    for arg, arg_typehint in typehints['return'].items():
+    return_type_annotations = typehints['return']
+    try:
+      typehints['return'].items()
+    except TypeError:
+      return_type_annotations = typehints['return'].__annotations__
+
+    for arg, arg_typehint in return_type_annotations.items():
       if arg_typehint in _OPTIONAL_PRIMITIVE_MAP:
         unwrapped_typehint = _OPTIONAL_PRIMITIVE_MAP[arg_typehint]
         outputs[arg] = _PRIMITIVE_TO_ARTIFACT[unwrapped_typehint]
