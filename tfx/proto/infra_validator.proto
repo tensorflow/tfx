@@ -135,8 +135,8 @@ message PodOverrides {
   // Environment variables to apply to the pod's Container.
   repeated EnvVar env = 2;
 
-  // Optional
-  // Pod resources (cpu, memory)
+  // Optional.
+  // Pod resources (cpu, memory).
   Resources resources = 3;
 }
 

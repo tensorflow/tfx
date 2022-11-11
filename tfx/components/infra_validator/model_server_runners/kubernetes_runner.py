@@ -89,7 +89,7 @@ def _convert_to_kube_env(
     # Note that env.value can be empty.
     return k8s_client.V1EnvVar(name=env.name, value=env.value)
 
-def _convert_resources(
+def _convert_to_resource_requirements(
     resources: infra_validator_pb2.Resources
   ) -> k8s_client.V1ResourceRequirements:
   return k8s_client.V1ResourceRequirements(
@@ -256,7 +256,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
       if overrides.env:
         env_vars.extend(_convert_to_kube_env(env) for env in overrides.env)
       if overrides.resources:
-        resources = _convert_resources(overrides.resources)
+        resources = _convert_to_resource_requirements(overrides.resources)
 
     service_account_name = (self._config.service_account_name or
                             self._executor_pod.spec.service_account_name)
