@@ -68,10 +68,17 @@ def generate_task_from_execution(
   if not execution_lib.is_execution_active(execution):
     raise RuntimeError(f'Execution is not active: {execution}.')
 
-  contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
+  try:
+    contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
+    input_artifacts = execution_lib.get_artifacts_dict(
+        metadata_handler, execution.id, [metadata_store_pb2.Event.INPUT])
+  except Exception:  # pylint: disable=broad-except
+    logging.warning(
+        'Failed to read contexts or input_artifacts from execution.')
+    contexts = []
+    input_artifacts = {}
+
   exec_properties = extract_properties(execution)
-  input_artifacts = execution_lib.get_artifacts_dict(
-      metadata_handler, execution.id, [metadata_store_pb2.Event.INPUT])
   outputs_resolver = outputs_utils.OutputsResolver(node, pipeline.pipeline_info,
                                                    pipeline.runtime_spec,
                                                    pipeline.execution_mode)
@@ -504,7 +511,7 @@ def register_executions(
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
         execution_name=str(uuid.uuid4()))
-  # LINT.IfChange(execution_custom_properties)
+    # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXECUTION_SET_SIZE].int_value = len(
         input_and_params)
     execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
