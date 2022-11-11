@@ -28,6 +28,7 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.types.value_artifact import ValueArtifact
+from tfx.utils import proto_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -102,8 +103,14 @@ def _attach_artifact_properties(spec: pipeline_pb2.OutputSpec.ArtifactSpec,
   for key, value in spec.additional_properties.items():
     if not value.HasField('field_value'):
       raise RuntimeError('Property value is not a field_value for %s' % key)
-    setattr(artifact, key,
-            data_types_utils.get_metadata_value(value.field_value))
+    if value.field_value.HasField('proto_value'):
+      # Proto properties need to be unpacked from the google.protobuf.Any
+      # message to its concrete message before setting the artifact property
+      property_value = proto_utils.unpack_proto_any(
+          value.field_value.proto_value)
+    else:
+      property_value = data_types_utils.get_metadata_value(value.field_value)
+    setattr(artifact, key, property_value)
 
   for key, value in spec.additional_custom_properties.items():
     if not value.HasField('field_value'):
@@ -115,6 +122,9 @@ def _attach_artifact_properties(spec: pipeline_pb2.OutputSpec.ArtifactSpec,
       artifact.set_string_custom_property(key, value.field_value.string_value)
     elif value_type == 'double_value':
       artifact.set_float_custom_property(key, value.field_value.double_value)
+    elif value_type == 'proto_value':
+      proto_value = proto_utils.unpack_proto_any(value.field_value.proto_value)
+      artifact.set_proto_custom_property(key, proto_value)
     else:
       raise RuntimeError(f'Unexpected value_type: {value_type}')
 

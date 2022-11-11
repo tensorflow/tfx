@@ -26,6 +26,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
+from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_manager as tm
@@ -137,7 +138,7 @@ class TaskManagerTest(test_utils.TfxTest):
         process_all_queued_tasks_before_exit=True) as task_manager:
       yield task_manager
 
-  @mock.patch.object(tm, '_publish_execution_results')
+  @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
   def test_task_handling(self, mock_publish):
     collector = _Collector()
 
@@ -212,7 +213,7 @@ class TaskManagerTest(test_utils.TfxTest):
     # cancelled with pause=True so there must be only 3 calls.
     self.assertLen(mock_publish.mock_calls, 3)
 
-  @mock.patch.object(tm, '_publish_execution_results')
+  @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
   def test_exceptions_are_surfaced(self, mock_publish):
 
     def _publish(**kwargs):

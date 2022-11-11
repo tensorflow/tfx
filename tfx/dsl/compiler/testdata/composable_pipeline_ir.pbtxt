@@ -3602,6 +3602,11 @@ deployment_config {
             class_path: "tfx.components.evaluator.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=foo"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=foo"
+            }
+          }
         }
       }
     }

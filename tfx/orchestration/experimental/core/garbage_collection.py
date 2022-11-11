@@ -20,7 +20,7 @@ from absl import logging
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import pipeline_state as pstate
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -91,23 +91,13 @@ def _group_artifacts_by_output_key(
 
 
 def _get_garbage_collection_policies_for_node(
-    mlmd_handle: metadata.Metadata, node_uid: task_lib.NodeUid
+    node: node_proto_view.NodeProtoView
 ) -> Mapping[str, garbage_collection_policy_pb2.GarbageCollectionPolicy]:
-  """Gets the pipeline and node for the node_uid."""
-  with pstate.PipelineState.load(mlmd_handle,
-                                 node_uid.pipeline_uid) as pipeline_state:
-    nodes = pstate.get_all_nodes(pipeline_state.pipeline)
-    filtered_nodes = [n for n in nodes if n.node_info.id == node_uid.node_id]
-    if len(filtered_nodes) != 1:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.NOT_FOUND,
-          message=(f'unable to find node: {node_uid}'))
-    node = filtered_nodes[0]
-    result = {}
-    for output_key, output_spec in node.outputs.outputs.items():
-      if output_spec.HasField('garbage_collection_policy'):
-        result[output_key] = output_spec.garbage_collection_policy
-  return result
+  return {
+      output_key: output_spec.garbage_collection_policy
+      for output_key, output_spec in node.outputs.outputs.items()
+      if output_spec.HasField('garbage_collection_policy')
+  }
 
 
 def _artifacts_not_in_use(
@@ -256,14 +246,17 @@ def _artifacts_to_garbage_collect(
 
 def get_artifacts_to_garbage_collect_for_node(
     mlmd_handle: metadata.Metadata,
-    node_uid: task_lib.NodeUid) -> List[metadata_store_pb2.Artifact]:
+    node_uid: task_lib.NodeUid,
+    node: node_proto_view.NodeProtoView
+) -> List[metadata_store_pb2.Artifact]:
   """Returns output artifacts of the given node to garbage collect."""
+  policies_by_output_key = _get_garbage_collection_policies_for_node(node)
+  if not policies_by_output_key:
+    return []
   result = []
   artifacts = _get_output_artifacts_for_node(mlmd_handle, node_uid)
   events = _get_events_for_artifacts(mlmd_handle, artifacts)
   artifacts_by_output_key = _group_artifacts_by_output_key(artifacts, events)
-  policies_by_output_key = _get_garbage_collection_policies_for_node(
-      mlmd_handle, node_uid)
   for output_key, policy in policies_by_output_key.items():
     if output_key not in artifacts_by_output_key:
       continue
@@ -317,9 +310,14 @@ def garbage_collect_artifacts(
 
 def run_garbage_collection_for_node(
     mlmd_handle: metadata.Metadata,
-    node_uid: task_lib.NodeUid) -> None:
+    node_uid: task_lib.NodeUid,
+    node: node_proto_view.NodeProtoView) -> None:
   """Garbage collects output artifacts of the given node."""
   logging.info('Garbage collection requested for node %s', node_uid)
   # TODO(b/192718492): Actually run garbage collection
+  if node.node_info.id != node_uid.node_id:
+    raise ValueError(
+        f'Node uids do not match for garbage collection: {node.node_info.id} '
+        f'and {node_uid.node_id}')
   del mlmd_handle
   logging.info('Skipping garbage collection because it is not implemented yet')

@@ -1142,6 +1142,11 @@ deployment_config {
             class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=bar"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=bar"
+            }
+          }
         }
       }
     }
@@ -1153,6 +1158,11 @@ deployment_config {
             class_path: "tfx.components.evaluator.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=bar"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=bar"
+            }
+          }
         }
       }
     }
@@ -1188,6 +1198,11 @@ deployment_config {
             class_path: "tfx.components.statistics_gen.executor.Executor"
           }
           beam_pipeline_args: "--my_testing_beam_pipeline_args=bar"
+          beam_pipeline_args_placeholders {
+            value {
+              string_value: "--my_testing_beam_pipeline_args=bar"
+            }
+          }
         }
       }
     }
