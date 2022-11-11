@@ -100,8 +100,16 @@ class InjectorOutput(TypedDict):
 
 @component
 def _injector_1_with_custom_typed_dict(
-    foo: Parameter[int], bar: Parameter[str]) -> InjectorOutput(
-        a=int, b=int, c=str, d=bytes):
+        foo: Parameter[int], bar: Parameter[str]) -> InjectorOutput:
+  assert foo == 9
+  assert bar == 'secret'
+  return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
+
+
+@component
+def _injector_1_with_custom_typed_dict_alter_syntax(
+        foo: Parameter[int], bar: Parameter[str]) -> InjectorOutput(
+            a=int, b=int, c=str, d=bytes):
   assert foo == 9
   assert bar == 'secret'
   return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
