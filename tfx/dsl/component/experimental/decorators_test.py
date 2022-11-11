@@ -101,6 +101,14 @@ def _injector_1(
   assert bar == 'secret'
   return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
 
+@component
+def _injector_1_with_typed_dict(
+        foo: Parameter[int], bar: Parameter[str]) -> TypedDict(
+            "InjectorOutput", a=int, b=int, c=str, d=bytes):
+  assert foo == 9
+  assert bar == 'secret'
+  return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
+
 class InjectorOutput(TypedDict):
   a: int
   b: int
@@ -461,17 +469,18 @@ class ComponentDecoratorTest(tf.test.TestCase):
   def testBeamExecutionSuccess(self):
     """Test execution with return values; success case."""
     instance_1 = _injector_1(foo=9, bar='secret')
-    instance_2 = _injector_1_with_custom_typed_dict(foo=9, bar='secret')
-    instance_3 = _simple_component(
+    instance_2 = _injector_1_with_typed_dict(foo=9, bar='secret')
+    instance_3 = _injector_1_with_custom_typed_dict(foo=9, bar='secret')
+    instance_4 = _simple_component(
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
         c=instance_2.outputs['c'],
-        d=instance_2.outputs['d'])
-    instance_4 = _verify(
-        e=instance_3.outputs['e'],
-        f=instance_3.outputs['f'],
-        g=instance_3.outputs['g'],
-        h=instance_3.outputs['h'])  # pylint: disable=assignment-from-no-return
+        d=instance_3.outputs['d'])
+    instance_5 = _verify(
+        e=instance_4.outputs['e'],
+        f=instance_4.outputs['f'],
+        g=instance_4.outputs['g'],
+        h=instance_4.outputs['h'])  # pylint: disable=assignment-from-no-return
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -479,7 +488,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         pipeline_name='test_pipeline_1',
         pipeline_root=self._test_dir,
         metadata_connection_config=metadata_config,
-        components=[instance_1, instance_2, instance_3, instance_4])
+        components=[instance_1, instance_2, instance_3, instance_4, instance_5])
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
