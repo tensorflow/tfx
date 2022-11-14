@@ -123,6 +123,10 @@ def publish_execution_results(
     contexts: List[proto.Context]) -> Optional[typing_utils.ArtifactMultiMap]:
   """Publishes execution result to MLMD for single component run."""
   if executor_output.execution_result.code != status_lib.Code.OK:
+    if executor_output.execution_result.code == status_lib.Code.CANCELLED:
+      execution_state = proto.Execution.CANCELED
+    else:
+      execution_state = proto.Execution.FAILED
     outputs_utils.remove_output_dirs(execution_info.output_dict)
     _remove_temporary_task_dirs(
         stateful_working_dir=execution_info.stateful_working_dir,
@@ -136,7 +140,7 @@ def publish_execution_results(
         mlmd_handle=mlmd_handle,
         node_uid=node_uid,
         execution_id=execution_info.execution_id,
-        new_state=proto.Execution.FAILED,
+        new_state=execution_state,
         error_msg=executor_output.execution_result.result_message,
         execution_result=executor_output.execution_result)
     return
