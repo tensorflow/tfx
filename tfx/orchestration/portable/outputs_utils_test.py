@@ -192,6 +192,18 @@ _PIPELINE_NODE = text_format.Parse(
         }
       }
     }
+    outputs {
+      key: "output_7"
+      value {
+        artifact_spec {
+          type {
+            id: 7
+            name: "String"
+          }
+          external_artifact_uris: "{resolved_at_runtime}"
+        }
+      }
+    }
  }
 """, pipeline_pb2.PipelineNode())
 
@@ -205,6 +217,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
         'test_run_0')
     self._pipeline_runtime_spec = pipeline_runtime_spec
+    self._pipeline_root = self.tmp_dir
 
   def _output_resolver(self, execution_mode=pipeline_pb2.Pipeline.SYNC):
     return outputs_utils.OutputsResolver(
@@ -214,7 +227,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         execution_mode=execution_mode)
 
   def _get_external_uri_for_test(self, uri):
-    return os.path.join(self.tmp_dir, os.path.relpath(uri, '/'))
+    return os.path.join(self._pipeline_root, os.path.relpath(uri, '/'))
 
   @parameterized.parameters(
       (pipeline_pb2.Pipeline.SYNC, 'test_pipeline:test_run_0:test_node:1'),
@@ -228,6 +241,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertIn('output_4', output_artifacts)
     self.assertIn('output_5', output_artifacts)
     self.assertIn('output_6', output_artifacts)
+    self.assertIn('output_7', output_artifacts)
     self.assertLen(output_artifacts['output_1'], 1)
     self.assertLen(output_artifacts['output_2'], 1)
     self.assertLen(output_artifacts['output_3'], 1)
@@ -236,6 +250,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     # it has to make multiple artifacts of the same number.
     self.assertLen(output_artifacts['output_5'], 2)
     self.assertLen(output_artifacts['output_6'], 1)
+    self.assertLen(output_artifacts['output_7'], 1)
 
     artifact_1 = output_artifacts['output_1'][0]
     self.assertRegex(artifact_1.uri, '.*/test_node/output_1/1')
@@ -301,24 +316,19 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     artifact_5_0 = output_artifacts['output_5'][0]
     self.assertEqual(artifact_5_0.uri, '/external_directory_1/123')
-    self.assertProtoEquals("""
-        id: 5
-        name: "External_Artifact"
-        """, artifact_5_0.artifact_type)
+    self.assertTrue(artifact_5_0.is_external)
 
     artifact_5_1 = output_artifacts['output_5'][1]
     self.assertEqual(artifact_5_1.uri, '/external_directory_2/456')
-    self.assertProtoEquals("""
-        id: 5
-        name: "External_Artifact"
-        """, artifact_5_1.artifact_type)
+    self.assertTrue(artifact_5_1.is_external)
 
     artifact_6 = output_artifacts['output_6'][0]
     self.assertEqual(artifact_6.uri, '/external_directory_3/789')
-    self.assertProtoEquals("""
-        id: 6
-        name: "String"
-        """, artifact_6.artifact_type)
+    self.assertTrue(artifact_6.is_external)
+
+    artifact_7 = output_artifacts['output_7'][0]
+    self.assertEqual(artifact_7.uri, outputs_utils.RESOLVED_AT_RUNTIME)
+    self.assertTrue(artifact_7.is_external)
 
   def testGetExecutorOutputUri(self):
     executor_output_uri = self._output_resolver().get_executor_output_uri(1)
@@ -511,6 +521,38 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           }
         }
         """, executor_output)
+
+  def testInvalidExternalUris(self):
+    external_artifact_uri = os.path.join(self._pipeline_root,
+                                         'node/execution/1')
+    invalid_pipeline_node = text_format.Parse(
+        f"""
+  node_info {{
+    id: "test_node"
+  }}
+  outputs {{
+    outputs {{
+      key: "invalid_output"
+      value {{
+        artifact_spec {{
+          type {{
+            id: 1
+            name: "String"
+          }}
+          external_artifact_uris: "{external_artifact_uri}"
+        }}
+      }}
+    }}
+ }}
+""", pipeline_pb2.PipelineNode())
+    with self.assertRaisesRegex(
+        ValueError, 'is not allowed within the pipeline base directory.'):
+      outputs_utils.OutputsResolver(
+          pipeline_node=invalid_pipeline_node,
+          pipeline_info=_PIPELINE_INFO,
+          pipeline_runtime_spec=self._pipeline_runtime_spec
+      ).generate_output_artifacts(1)
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -40,6 +40,9 @@ _STATEFUL_WORKING_DIR = 'stateful_working_dir'
 _DRIVER_OUTPUT_FILE = 'driver_output.pb'
 _EXECUTOR_OUTPUT_FILE = 'executor_output.pb'
 _VALUE_ARTIFACT_FILE_NAME = 'value'
+# The fixed special value to indicate that the binary will set the output URI
+# value during its execution.
+RESOLVED_AT_RUNTIME = '{resolved_at_runtime}'
 
 
 def make_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
@@ -165,7 +168,8 @@ class OutputsResolver:
     return generate_output_artifacts(
         execution_id=execution_id,
         outputs=self._pipeline_node.outputs.outputs,
-        node_dir=self._node_dir)
+        node_dir=self._node_dir,
+        pipeline_root=self._pipeline_root)
 
   def get_executor_output_uri(self, execution_id: int) -> str:
     """Generates executor output uri given execution_id."""
@@ -219,15 +223,43 @@ def _generate_output_artifact(
   return artifact
 
 
-def generate_output_artifacts(execution_id: int,
-                              outputs: Mapping[str, pipeline_pb2.OutputSpec],
-                              node_dir: str) -> Dict[str, List[types.Artifact]]:
-  """Generates output artifacts."""
+def _validate_external_uri(external_uri: str,
+                           pipeline_root: Optional[str]) -> None:
+  """Validates a user-defined external artifact URI."""
+  if external_uri == RESOLVED_AT_RUNTIME:
+    return
+
+  if pipeline_root and pipeline_root in external_uri:
+    raise ValueError('External artifact URI %s is not allowed within the '
+                     'pipeline base directory.' % external_uri)
+
+
+def generate_output_artifacts(
+    execution_id: int,
+    outputs: Mapping[str, pipeline_pb2.OutputSpec],
+    node_dir: str,
+    pipeline_root: Optional[str] = None) -> Dict[str, List[types.Artifact]]:
+  """Generates output artifacts.
+
+  Args:
+    execution_id: The id of the execution.
+    outputs: Mapping from artifact key to its OutputSpec value in pipeline IR.
+    node_dir: The root directory of the node.
+    pipeline_root: Path to root directory of the pipeline.
+
+  Returns:
+    Mapping from artifact key to the list of TFX artifacts.
+
+  Raises:
+    ValueError: If any external artifact uri is inside the pipeline_root.
+  """
+
   output_artifacts = collections.defaultdict(list)
   for key, output_spec in outputs.items():
     artifact = _generate_output_artifact(output_spec)
     if output_spec.artifact_spec.external_artifact_uris:
       for external_uri in output_spec.artifact_spec.external_artifact_uris:
+        _validate_external_uri(external_uri, pipeline_root)
         external_artifact = copy.deepcopy(artifact)
         external_artifact.uri = external_uri
         external_artifact.is_external = True
