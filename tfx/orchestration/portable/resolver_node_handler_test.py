@@ -18,6 +18,7 @@ from unittest import mock
 
 import tensorflow as tf
 from tfx import types
+from tfx import version
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
@@ -27,6 +28,7 @@ from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact_utils
 from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
@@ -147,10 +149,14 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
       downstream_input_model = downstream_input_artifacts['input_models']
       self.assertLen(downstream_input_model, 1)
       self.assertProtoPartiallyEquals(
-          """
+          f"""
           id: 2
           uri: "my_model_uri_2"
-          state: LIVE""",
+          state: LIVE
+          custom_properties {{
+            key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
+            value {{string_value: "{version.__version__}"}}
+          }}""",
           downstream_input_model[0].mlmd_artifact,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',

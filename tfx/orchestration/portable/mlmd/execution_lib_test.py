@@ -18,12 +18,14 @@ import itertools
 import random
 
 import tensorflow as tf
+from tfx import version
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
 
@@ -209,6 +211,10 @@ class ExecutionLibTest(test_case_utils.TfxTest):
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
+      self.assertEqual(
+          output_model.get_string_custom_property(
+              artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY),
+          version.__version__)
       # Verifies edges between artifacts and execution.
       [input_event] = m.store.get_events_by_artifact_ids([input_example.id])
       self.assertEqual(input_event.execution_id, execution.id)
@@ -366,6 +372,13 @@ class ExecutionLibTest(test_case_utils.TfxTest):
           artifact for artifact in all_artifacts if artifact.id not in
           [input_example_1.id, input_example_2.id, input_example_3.id]
       ]
+      for actual_output_artifact in [output_model_1, output_model_2]:
+        self.assertIn(artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY,
+                      actual_output_artifact.custom_properties)
+        self.assertEqual(
+            actual_output_artifact.custom_properties[
+                artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY]
+            .string_value, version.__version__)
 
       # Verifies edges between input artifacts and execution.
       [input_event] = m.store.get_events_by_artifact_ids([input_example_1.id])

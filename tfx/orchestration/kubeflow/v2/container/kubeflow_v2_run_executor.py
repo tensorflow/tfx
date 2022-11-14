@@ -107,9 +107,7 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   logging.info('Starting executor')
   executor.Do(inputs, outputs, exec_properties)
 
-  # TODO(b/182316162): Unify publisher handling so that post-execution artifact
-  # logic is more cleanly handled.
-  outputs_utils.tag_output_artifacts_with_version(outputs)  # pylint: disable=protected-access
+  outputs_utils.tag_output_artifacts_with_version(outputs)
 
   # TODO(b/169583143): Remove this workaround when TFX migrates to use str-typed
   # id/name to identify artifacts.

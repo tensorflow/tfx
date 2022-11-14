@@ -73,9 +73,6 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     _update_state(result.status)
     return
 
-  # TODO(b/182316162): Unify publisher handing so that post-execution artifact
-  # logic is more cleanly handled.
-  outputs_utils.tag_output_artifacts_with_version(task.output_artifacts)
   if isinstance(result.output, ts.ExecutorNodeOutput):
     executor_output = result.output.executor_output
     if executor_output is not None:
@@ -88,9 +85,6 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
                 message=executor_output.execution_result.result_message),
             executor_output.execution_result)
         return
-      # TODO(b/182316162): Unify publisher handing so that post-execution
-      # artifact logic is more cleanly handled.
-      outputs_utils.tag_executor_output_with_version(executor_output)
     _remove_task_dirs(
         stateful_working_dir=task.stateful_working_dir,
         tmp_dir=task.tmp_dir,
@@ -106,9 +100,6 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
                                                        task.get_node())
   elif isinstance(result.output, ts.ImporterNodeOutput):
     output_artifacts = result.output.output_artifacts
-    # TODO(b/182316162): Unify publisher handing so that post-execution artifact
-    # logic is more cleanly handled.
-    outputs_utils.tag_output_artifacts_with_version(output_artifacts)
     _remove_task_dirs(
         stateful_working_dir=task.stateful_working_dir,
         tmp_dir=task.tmp_dir,
@@ -137,7 +128,6 @@ def publish_execution_results(
     execution_info: data_types.ExecutionInfo,
     contexts: List[proto.Context]) -> Optional[typing_utils.ArtifactMultiMap]:
   """Publishes execution result to MLMD for single component run."""
-  outputs_utils.tag_output_artifacts_with_version(execution_info.output_dict)
   if executor_output.execution_result.code != status_lib.Code.OK:
     outputs_utils.remove_output_dirs(execution_info.output_dict)
     _remove_task_dirs(
@@ -157,9 +147,6 @@ def publish_execution_results(
         error_msg=executor_output.execution_result.result_message,
         execution_result=executor_output.execution_result)
     return
-  # TODO(b/182316162): Unify publisher handing so that post-execution
-  # artifact logic is more cleanly handled.
-  outputs_utils.tag_executor_output_with_version(executor_output)
   _remove_task_dirs(
       stateful_working_dir=execution_info.stateful_working_dir,
       tmp_dir=execution_info.tmp_dir,

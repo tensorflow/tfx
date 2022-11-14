@@ -22,6 +22,7 @@ from absl import logging
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.proto.orchestration import execution_result_pb2
@@ -278,6 +279,7 @@ def put_execution(
             artifact_dict=input_artifacts,
             event_type=input_event_type))
   if output_artifacts:
+    outputs_utils.tag_output_artifacts_with_version(output_artifacts)
     artifact_and_events.extend(
         _create_artifact_and_event_pairs(
             metadata_handler=metadata_handler,
@@ -354,11 +356,10 @@ def put_executions(
         artifacts.append(artifact)
         artifact_event_edges.append((idx, len(artifacts) - 1, event))
   if output_artifacts_maps:
-    for idx in range(len(executions)):
+    for idx, output_artifacts in enumerate(output_artifacts_maps):
+      outputs_utils.tag_output_artifacts_with_version(output_artifacts)
       artifact_and_event_pairs = _create_artifact_and_event_pairs(
-          metadata_handler,
-          output_artifacts_maps[idx],
-          event_type=output_event_type)
+          metadata_handler, output_artifacts, event_type=output_event_type)
       for artifact, event in artifact_and_event_pairs:
         artifacts.append(artifact)
         artifact_event_edges.append((idx, len(artifacts) - 1, event))

@@ -23,7 +23,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
-from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import system_node_handler
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -111,11 +110,6 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
           exec_properties=exec_properties,
           pipeline_node=pipeline_node,
           pipeline_info=pipeline_info)
-
-      # TODO(b/182316162): consider let the launcher level do the publish
-      # for system nodes. So that the version taging logic doesn't need to be
-      # handled per system node.
-      outputs_utils.tag_output_artifacts_with_version(result.output_dict)
 
       # 5. Publish the output artifacts. If artifacts are reimported, the
       # execution is published as CACHED. Otherwise it is published as COMPLETE.
