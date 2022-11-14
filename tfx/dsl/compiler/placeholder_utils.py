@@ -401,7 +401,8 @@ class _ExpressionResolver:
             value = getattr(value, field[1:])
           except AttributeError:
             raise ValueError("While evaluting placeholder proto operator, "
-                             f"got unknown proto field {field}.")
+                             f"got unknown proto field {field} on proto of "
+                             f"type {type(value)}.")
           continue
         map_key = re.findall(r"\[['\"](.+)['\"]\]", field)
         if len(map_key) == 1:
