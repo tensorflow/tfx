@@ -494,7 +494,7 @@ def register_executions(
       All registered executions have a state of NEW.
   """
   timestamp = int(time.time() * 1e6)
-  executions = []
+  registered_executions = []
   for index, input_and_param in enumerate(input_and_params):
     # Prepare executions.
     execution = execution_lib.prepare_execution(
@@ -503,23 +503,19 @@ def register_executions(
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
         execution_name=str(uuid.uuid4()))
-  # LINT.IfChange(execution_custom_properties)
+    # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXECUTION_SET_SIZE].int_value = len(
         input_and_params)
     execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
-    executions.append(execution)
-  # LINT.ThenChange(:retry_execution_custom_properties)
+    # LINT.ThenChange(:retry_execution_custom_properties)
 
-  if len(executions) == 1:
-    return [
+    # Register the executions one at a time, since registering all in a single
+    # batch can violate uniqueness constraints in the MLMD schema.
+    registered_executions.append(
         execution_lib.put_execution(
             metadata_handler,
-            executions[0],
+            execution,
             contexts,
-            input_artifacts=input_and_params[0].input_artifacts)
-    ]
-
-  return execution_lib.put_executions(
-      metadata_handler, executions, contexts,
-      [input_and_param.input_artifacts for input_and_param in input_and_params])
+            input_artifacts=input_and_param.input_artifacts))
+  return registered_executions
