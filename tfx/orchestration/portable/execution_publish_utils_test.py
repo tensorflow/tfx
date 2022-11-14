@@ -14,11 +14,13 @@
 """Tests for tfx.orchestration.portable.execution_publish_utils."""
 from absl.testing import parameterized
 import tensorflow as tf
+from tfx import version
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
 
@@ -115,6 +117,10 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           contexts,
           execution_id,
           output_artifacts={'examples': [output_example]})
+      self.assertEqual(
+          output_example.get_string_custom_property(
+              artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY),
+          version.__version__)
       [execution] = m.store.get_executions()
       self.assertProtoPartiallyEquals(
           """
@@ -184,18 +190,22 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           ])
       [artifact] = m.store.get_artifacts()
       self.assertProtoPartiallyEquals(
-          """
+          f"""
           id: 1
           state: LIVE
           uri: '/examples_uri'
-          custom_properties {
+          custom_properties {{
             key: 'is_external'
-            value {int_value: 0}
-          }
-          custom_properties {
+            value {{int_value: 0}}
+          }}
+          custom_properties {{
             key: 'prop'
-            value {int_value: 1}
-          }""",
+            value {{int_value: 1}}
+          }}
+          custom_properties {{
+            key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
+            value {{string_value: "{version.__version__}"}}
+          }}""",
           artifact,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
@@ -291,36 +301,44 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       artifacts = m.store.get_artifacts()
       self.assertLen(artifacts, 2)
       self.assertProtoPartiallyEquals(
-          """
+          f"""
           id: 1
           state: LIVE
           uri: '/original_path/subdir_1'
-          custom_properties {
+          custom_properties {{
             key: 'is_external'
-            value {int_value: 0}
-          }
-          custom_properties {
+            value {{int_value: 0}}
+          }}
+          custom_properties {{
             key: 'prop'
-            value {int_value: 1}
-          }""",
+            value {{int_value: 1}}
+          }}
+          custom_properties {{
+            key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
+            value {{string_value: "{version.__version__}"}}
+          }}""",
           artifacts[0],
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
               'last_update_time_since_epoch'
           ])
       self.assertProtoPartiallyEquals(
-          """
+          f"""
           id: 2
           state: LIVE
           uri: '/original_path/subdir_2'
-          custom_properties {
+          custom_properties {{
             key: 'is_external'
-            value {int_value: 0}
-          }
-          custom_properties {
+            value {{int_value: 0}}
+          }}
+          custom_properties {{
             key: 'prop'
-            value {int_value: 2}
-          }""",
+            value {{int_value: 2}}
+          }}
+          custom_properties {{
+            key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
+            value {{string_value: "{version.__version__}"}}
+          }}""",
           artifacts[1],
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
@@ -369,6 +387,10 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           self.assertCountEqual([c.id for c in contexts], [
               c.id for c in m.store.get_contexts_by_artifact(output_example.id)
           ])
+          self.assertEqual(
+              output_example.get_string_custom_property(
+                  artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY),
+              version.__version__)
 
   def testPublishSuccessExecutionFailChangedType(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

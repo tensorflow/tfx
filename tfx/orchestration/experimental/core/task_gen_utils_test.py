@@ -18,6 +18,7 @@ import uuid
 
 from absl.testing import parameterized
 import tensorflow as tf
+from tfx import version
 from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import task as task_lib
@@ -26,6 +27,7 @@ from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.experimental.core.testing import test_dynamic_exec_properties_pipeline
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils as tu
 from ml_metadata.proto import metadata_store_pb2
@@ -200,21 +202,25 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertLen(
           resolved_info.input_and_params[0].input_artifacts['examples'], 1)
       self.assertProtoPartiallyEquals(
-          """
+          f"""
           id: 1
           uri: "my_examples_uri"
-          custom_properties {
+          custom_properties {{
             key: "span"
-            value {
+            value {{
               int_value: 2
-            }
-          }
-          custom_properties {
+            }}
+          }}
+          custom_properties {{
+            key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
+            value {{string_value: "{version.__version__}"}}
+          }}
+          custom_properties {{
             key: "version"
-            value {
+            value {{
               int_value: 1
-            }
-          }
+            }}
+          }}
           state: LIVE""",
           resolved_info.input_and_params[0].input_artifacts['examples']
           [0].mlmd_artifact,

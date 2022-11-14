@@ -17,7 +17,7 @@ import collections
 import copy
 import datetime
 import os
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
 
 from absl import logging
 from tfx import types
@@ -45,7 +45,8 @@ _VALUE_ARTIFACT_FILE_NAME = 'value'
 RESOLVED_AT_RUNTIME = '{resolved_at_runtime}'
 
 
-def make_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
+def make_output_dirs(
+    output_dict: Mapping[str, Sequence[types.Artifact]]) -> None:
   """Make dirs for output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
@@ -66,7 +67,8 @@ def make_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
         fileio.makedirs(artifact.uri)
 
 
-def remove_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
+def remove_output_dirs(
+    output_dict: Mapping[str, Sequence[types.Artifact]]) -> None:
   """Remove dirs of output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
@@ -79,7 +81,8 @@ def remove_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
         fileio.remove(artifact.uri)
 
 
-def clear_output_dirs(output_dict: Dict[str, List[types.Artifact]]) -> None:
+def clear_output_dirs(
+    output_dict: Mapping[str, Sequence[types.Artifact]]) -> None:
   """Clear dirs of output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
@@ -342,7 +345,7 @@ def make_tmp_dir(node_dir: str, execution_id: int) -> str:
 
 
 def tag_output_artifacts_with_version(
-    output_artifacts: Optional[Dict[str, List[types.Artifact]]] = None):
+    output_artifacts: Optional[Mapping[str, Sequence[types.Artifact]]] = None):
   """Tag output artifacts with the current TFX version."""
   if not output_artifacts:
     return
@@ -355,22 +358,9 @@ def tag_output_artifacts_with_version(
             version.__version__)
 
 
-def tag_executor_output_with_version(
-    executor_output: execution_result_pb2.ExecutorOutput):
-  """Tag output artifacts in ExecutorOutput with the current TFX version."""
-  for unused_key, artifacts in executor_output.output_artifacts.items():
-    for artifact in artifacts.artifacts:
-      if (artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY
-          not in artifact.custom_properties):
-        artifact.custom_properties[
-            artifact_utils
-            .ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY].string_value = (
-                version.__version__)
-
-
 def populate_output_artifact(
     executor_output: execution_result_pb2.ExecutorOutput,
-    output_dict: Dict[str, List[types.Artifact]]):
+    output_dict: Mapping[str, Sequence[types.Artifact]]):
   """Populate output_dict to executor_output."""
   for key, artifact_list in output_dict.items():
     artifacts = execution_result_pb2.ExecutorOutput.ArtifactList()
@@ -381,7 +371,7 @@ def populate_output_artifact(
 
 def populate_exec_properties(
     executor_output: execution_result_pb2.ExecutorOutput,
-    exec_properties: Dict[str, Any]):
+    exec_properties: Mapping[str, Any]):
   """Populate exec_properties to executor_output."""
   for key, value in exec_properties.items():
     v = metadata_store_pb2.Value()
