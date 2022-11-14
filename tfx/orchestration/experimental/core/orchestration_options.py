@@ -27,6 +27,9 @@ class OrchestrationOptions:
       failures.
     deadline_secs: Only applicable to sync pipelines. If non-zero, a pipeline
       run is aborted if the execution duration exceeds deadline_secs seconds.
+    uri_prefix: Only applicable when user specifying a pipeline run to a cell
+      different than base directory.
   """
   fail_fast: bool = False
   deadline_secs: int = 0
+  uri_prefix: str = None

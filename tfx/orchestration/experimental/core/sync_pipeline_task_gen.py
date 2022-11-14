@@ -50,7 +50,8 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
                mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
                service_job_manager: service_jobs.ServiceJobManager,
-               fail_fast: bool = False):
+               fail_fast: bool = False,
+               uri_prefix: Optional[str] = None):
     """Constructs `SyncPipelineTaskGenerator`.
 
     Args:
@@ -62,11 +63,14 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
       fail_fast: If `True`, pipeline run is aborted immediately if any node
         fails. If `False`, pipeline run is only aborted when no further progress
         can be made due to node failures.
+      uri_prefix: if specifies, will overwrite the cell to run the task and
+        output artifacts.
     """
     self._mlmd_connection_manager = mlmd_connection_manager
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
     self._fail_fast = fail_fast
+    self._uri_prefix = uri_prefix
 
   def generate(self,
                pipeline_state: pstate.PipelineState) -> List[task_lib.Task]:
@@ -84,7 +88,7 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
     """
     return _Generator(self._mlmd_connection_manager, pipeline_state,
                       self._is_task_id_tracked_fn, self._service_job_manager,
-                      self._fail_fast)()
+                      self._fail_fast, self._uri_prefix)()
 
 
 class _Generator:
@@ -95,7 +99,8 @@ class _Generator:
                pipeline_state: pstate.PipelineState,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
                service_job_manager: service_jobs.ServiceJobManager,
-               fail_fast: bool = False):
+               fail_fast: bool = False,
+               uri_prefix: Optional[str] = None):
     self._mlmd_connection_manager = mlmd_connection_manager
     self._mlmd_handle = mlmd_connection_manager.primary_mlmd_handle
     pipeline = pipeline_state.pipeline
@@ -114,6 +119,7 @@ class _Generator:
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
     self._fail_fast = fail_fast
+    self._uri_prefix = uri_prefix
 
   def __call__(self) -> List[task_lib.Task]:
     layers = _topsorted_layers(self._pipeline)
@@ -321,7 +327,8 @@ class _Generator:
         result.append(
             task_gen_utils.generate_task_from_execution(self._mlmd_handle,
                                                         self._pipeline, node,
-                                                        retry_execution))
+                                                        retry_execution,
+                                                        self._uri_prefix))
         return result
     # If one of the executions in the set for the node cancelled, the
     # pipeline should be aborted if the node is not in state STARTING.
@@ -369,7 +376,8 @@ class _Generator:
       result.append(
           task_gen_utils.generate_task_from_execution(self._mlmd_handle,
                                                       self._pipeline, node,
-                                                      execution))
+                                                      execution,
+                                                      self._uri_prefix))
       return result
 
     # Finally, we are ready to generate tasks for the node by resolving inputs.
@@ -427,7 +435,7 @@ class _Generator:
       execution.last_known_state = metadata_store_pb2.Execution.RUNNING
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
-        self._pipeline.execution_mode)
+        self._pipeline.execution_mode, self._uri_prefix)
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
     outputs_utils.make_output_dirs(output_artifacts)
 

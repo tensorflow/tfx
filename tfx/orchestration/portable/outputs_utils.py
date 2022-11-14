@@ -154,7 +154,8 @@ class OutputsResolver:
                pipeline_info: pipeline_pb2.PipelineInfo,
                pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
                execution_mode: 'pipeline_pb2.Pipeline.ExecutionMode' = (
-                   pipeline_pb2.Pipeline.SYNC)):
+                   pipeline_pb2.Pipeline.SYNC),
+               uri_prefix: Optional[str] = None):
     self._pipeline_node = pipeline_node
     self._pipeline_info = pipeline_info
     self._pipeline_root = (
@@ -162,8 +163,12 @@ class OutputsResolver:
     self._pipeline_run_id = (
         pipeline_runtime_spec.pipeline_run_id.field_value.string_value)
     self._execution_mode = execution_mode
-    self._node_dir = os.path.join(self._pipeline_root,
-                                  pipeline_node.node_info.id)
+    if uri_prefix:
+      # replace the base directory with the uri_prefix
+      self._node_dir = os.path.join(uri_prefix, pipeline_node.node_info.id)
+    else:
+      self._node_dir = os.path.join(self._pipeline_root,
+                                    pipeline_node.node_info.id)
 
   def generate_output_artifacts(
       self, execution_id: int) -> Dict[str, List[types.Artifact]]:

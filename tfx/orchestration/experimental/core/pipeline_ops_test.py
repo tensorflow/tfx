@@ -847,13 +847,15 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
               pipeline_state.pipeline,
               node_proto_view.get_view(pipeline.nodes[2].pipeline_node),
               mock.ANY,
-              cancel_type=task_lib.NodeCancelType.CANCEL_EXEC),
+              cancel_type=task_lib.NodeCancelType.CANCEL_EXEC,
+              uri_prefix=None),
           mock.call(
               m,
               pipeline_state.pipeline,
               node_proto_view.get_view(pipeline.nodes[3].pipeline_node),
               mock.ANY,
-              cancel_type=task_lib.NodeCancelType.CANCEL_EXEC)
+              cancel_type=task_lib.NodeCancelType.CANCEL_EXEC,
+              uri_prefix=None)
       ])
       self.assertEqual(2, mock_gen_task_from_active.call_count)
 

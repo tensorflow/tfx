@@ -63,7 +63,8 @@ def generate_task_from_execution(
     pipeline: pipeline_pb2.Pipeline,
     node: node_proto_view.NodeProtoView,
     execution: metadata_store_pb2.Execution,
-    cancel_type: Optional[task_lib.NodeCancelType] = None) -> task_lib.Task:
+    cancel_type: Optional[task_lib.NodeCancelType] = None,
+    uri_prefix: Optional[str] = None) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   if not execution_lib.is_execution_active(execution):
     raise RuntimeError(f'Execution is not active: {execution}.')
@@ -74,7 +75,8 @@ def generate_task_from_execution(
       metadata_handler, execution.id, [metadata_store_pb2.Event.INPUT])
   outputs_resolver = outputs_utils.OutputsResolver(node, pipeline.pipeline_info,
                                                    pipeline.runtime_spec,
-                                                   pipeline.execution_mode)
+                                                   pipeline.execution_mode,
+                                                   uri_prefix)
   output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
   outputs_utils.make_output_dirs(output_artifacts)
   return task_lib.ExecNodeTask(
@@ -99,6 +101,7 @@ def generate_cancel_task_from_running_execution(
     node: node_proto_view.NodeProtoView,
     executions: Iterable[metadata_store_pb2.Execution],
     cancel_type: task_lib.NodeCancelType,
+    uri_prefix: Optional[str] = None,
 ) -> Optional[task_lib.Task]:
   """Generates cancellation ExecNodeTask from running execution (if any).
 
@@ -110,6 +113,8 @@ def generate_cancel_task_from_running_execution(
     node: The pipeline node for which to generate a task.
     executions: A sequence of all executions for the given node.
     cancel_type: Sets `cancel_type` in ExecNodeTask.
+    uri_prefix: if specifies, will overwrite the cell to run the task and output
+      artifacts.
 
   Returns:
     An `ExecNodeTask` if running execution exists for the node. `None`
@@ -132,7 +137,7 @@ def generate_cancel_task_from_running_execution(
       pipeline,
       node,
       running_executions[0],
-      cancel_type=cancel_type)
+      cancel_type=cancel_type, uri_prefix=uri_prefix)
 
 
 def extract_properties(

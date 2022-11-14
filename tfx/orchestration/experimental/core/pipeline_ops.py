@@ -989,11 +989,12 @@ def _orchestrate_active_pipeline(
         mlmd_connection_manager,
         task_queue.contains_task_id,
         service_job_manager,
-        fail_fast=orchestration_options.fail_fast)
+        fail_fast=orchestration_options.fail_fast,
+        uri_prefix=orchestration_options.uri_prefix)
   elif pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC:
     generator = async_pipeline_task_gen.AsyncPipelineTaskGenerator(
         mlmd_connection_manager, task_queue.contains_task_id,
-        service_job_manager)
+        service_job_manager, uri_prefix=orchestration_options.uri_prefix)
   else:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.FAILED_PRECONDITION,
@@ -1120,8 +1121,15 @@ def _maybe_enqueue_cancellation_task(mlmd_handle: metadata.Metadata,
         task_lib.CancelNodeTask(node_uid=node_uid, cancel_type=cancel_type))
     return not pause
 
+  with pipeline_state:
+    orchestration_options = pipeline_state.get_orchestration_options()
   exec_node_task = task_gen_utils.generate_cancel_task_from_running_execution(
-      mlmd_handle, pipeline, node, executions, cancel_type=cancel_type)
+      mlmd_handle,
+      pipeline,
+      node,
+      executions,
+      cancel_type=cancel_type,
+      uri_prefix=orchestration_options.uri_prefix)
   if exec_node_task:
     task_queue.enqueue(exec_node_task)
     return not pause

@@ -47,7 +47,8 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
   def __init__(self, mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
-               service_job_manager: service_jobs.ServiceJobManager):
+               service_job_manager: service_jobs.ServiceJobManager,
+               uri_prefix: Optional[str] = None):
     """Constructs `AsyncPipelineTaskGenerator`.
 
     Args:
@@ -56,10 +57,13 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
       is_task_id_tracked_fn: A callable that returns `True` if a task_id is
         tracked by the task queue.
       service_job_manager: Used for handling service nodes in the pipeline.
+      uri_prefix: if specifies, will overwrite the base directory to schedule
+        the task on.
     """
     self._mlmd_connection_manager = mlmd_connection_manager
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
+    self._uri_prefix = uri_prefix
 
   def generate(self,
                pipeline_state: pstate.PipelineState) -> List[task_lib.Task]:
@@ -76,7 +80,8 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
       A `list` of tasks to execute.
     """
     return _Generator(self._mlmd_connection_manager, pipeline_state,
-                      self._is_task_id_tracked_fn, self._service_job_manager)()
+                      self._is_task_id_tracked_fn, self._service_job_manager,
+                      self._uri_prefix)()
 
 
 class _Generator:
@@ -85,7 +90,8 @@ class _Generator:
   def __init__(self, mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
                pipeline_state: pstate.PipelineState,
                is_task_id_tracked_fn: Callable[[task_lib.TaskId], bool],
-               service_job_manager: service_jobs.ServiceJobManager):
+               service_job_manager: service_jobs.ServiceJobManager,
+               uri_prefix: Optional[str] = None):
     self._mlmd_connection_manager = mlmd_connection_manager
     self._mlmd_handle = mlmd_connection_manager.primary_mlmd_handle
     pipeline = pipeline_state.pipeline
@@ -98,6 +104,7 @@ class _Generator:
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
+    self._uri_prefix = uri_prefix
 
   def __call__(self) -> List[task_lib.Task]:
     result = []
@@ -193,7 +200,8 @@ class _Generator:
       result.append(
           task_gen_utils.generate_task_from_execution(self._mlmd_handle,
                                                       self._pipeline, node,
-                                                      oldest_active_execution))
+                                                      oldest_active_execution,
+                                                      self._uri_prefix))
       return result
 
     resolved_info = task_gen_utils.generate_resolved_info(
@@ -283,7 +291,7 @@ class _Generator:
 
     outputs_resolver = outputs_utils.OutputsResolver(
         node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
-        self._pipeline.execution_mode)
+        self._pipeline.execution_mode, self._uri_prefix)
     output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
     outputs_utils.make_output_dirs(output_artifacts)
     result.append(

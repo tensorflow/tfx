@@ -278,7 +278,8 @@ def run_generator(mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
                   use_task_queue,
                   service_job_manager,
                   ignore_update_node_state_tasks=False,
-                  fail_fast=None):
+                  fail_fast=None,
+                  uri_prefix=None):
   """Generates tasks for testing."""
   with mlmd_connection_manager:
     pipeline_state = get_or_create_pipeline_state(
@@ -286,7 +287,8 @@ def run_generator(mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     generator_params = dict(
         mlmd_connection_manager=mlmd_connection_manager,
         is_task_id_tracked_fn=task_queue.contains_task_id,
-        service_job_manager=service_job_manager)
+        service_job_manager=service_job_manager,
+        uri_prefix=uri_prefix)
     if fail_fast is not None:
       generator_params['fail_fast'] = fail_fast
     task_gen = generator_class(**generator_params)
@@ -346,7 +348,8 @@ def run_generator_and_test(test_case,
                            expected_exec_nodes=None,
                            ignore_update_node_state_tasks=False,
                            fail_fast=None,
-                           expected_context_names=None):
+                           expected_context_names=None,
+                           uri_prefix=None):
   """Runs generator.generate() and tests the effects."""
   if service_job_manager is None:
     service_job_manager = service_jobs.DummyServiceJobManager()
@@ -364,7 +367,8 @@ def run_generator_and_test(test_case,
       use_task_queue,
       service_job_manager,
       ignore_update_node_state_tasks=ignore_update_node_state_tasks,
-      fail_fast=fail_fast)
+      fail_fast=fail_fast,
+      uri_prefix=uri_prefix)
   with mlmd_connection_manager:
     test_case.assertLen(
         tasks, num_tasks_generated,
