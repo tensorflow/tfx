@@ -58,6 +58,9 @@ class ExampleStatisticsVisualization(visualizations.ArtifactVisualization):
   def display(self, artifact: types.Artifact):
     from IPython.core.display import display  # pylint: disable=g-import-not-at-top
     from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
+    # Workaround needed to improve TFDV notebook visualization legibility in
+    # dark mode.
+    display(HTML('<style>html[theme=dark] iframe {background: white;}</style>'))
     for split in artifact_utils.decode_split_names(artifact.split_names):
       display(HTML('<div><b>%r split:</b></div><br/>' % split))
       stats = stats_artifact_utils.load_statistics(artifact, split).proto()
@@ -70,6 +73,11 @@ class ModelEvaluationVisualization(visualizations.ArtifactVisualization):
   ARTIFACT_TYPE = standard_artifacts.ModelEvaluation
 
   def display(self, artifact: types.Artifact):
+    from IPython.core.display import display  # pylint: disable=g-import-not-at-top
+    from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
+    # Workaround needed to improve TFMA notebook visualization legibility in
+    # dark mode.
+    display(HTML('<style>html[theme=dark] iframe {background: white;}</style>'))
     tfma_result = tfma.load_eval_result(artifact.uri)
     # TODO(ccy): add comment instructing user to use the TFMA library directly
     # in order to render non-default slicing metric views.
