@@ -424,7 +424,7 @@ def _set_node_context(node: pipeline_pb2.PipelineNode,
     parent_pipeline_context_pb.name.field_value.string_value = (
         parent_pipeline.pipeline_info.pipeline_context_name)
 
-    if pipeline_ctx.is_sync_mode:
+    if parent_pipeline.execution_mode == pipeline.ExecutionMode.SYNC:
       pipeline_run_context_pb = node.contexts.contexts.add()
       pipeline_run_context_pb.type.name = (
           constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
