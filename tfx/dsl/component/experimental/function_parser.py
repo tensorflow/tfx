@@ -65,6 +65,13 @@ _PRIMITIVE_TO_ARTIFACT = {
 _OPTIONAL_PRIMITIVE_MAP = dict((Optional[t], t) for t in _PRIMITIVE_TO_ARTIFACT)
 
 
+def _get_return_type_annotations(typehints):
+  try:
+    return typehints['return'].items()
+  except TypeError:
+    return typehints['return'].__annotations__.items()
+
+
 def _validate_signature(
     func: types.FunctionType,
     argspec: inspect.FullArgSpec,  # pytype: disable=module-attr
@@ -88,8 +95,9 @@ def _validate_signature(
                        subject_message)
 
   # Validate return type hints.
-  if isinstance(typehints.get('return', None), Dict):
-    for arg, arg_typehint in typehints['return'].items():
+  if (isinstance(typehints.get('return'), Dict) or
+      isinstance(typehints.get('return'), _TypedDictMeta)):
+    for arg, arg_typehint in _get_return_type_annotations(typehints):
       if (isinstance(arg_typehint, annotations.OutputArtifact) or
           (inspect.isclass(arg_typehint) and
            issubclass(arg_typehint, artifact.Artifact))):
@@ -98,19 +106,8 @@ def _validate_signature(
              'be declared as function parameters annotated with type hint '
              '`tfx.types.annotations.OutputArtifact[T]` where T is a '
              'subclass of `tfx.types.Artifact`. They should not be declared '
-             'as part of the return value `OutputDict` type hint.') % func)
-
-  elif isinstance(typehints.get('return', None), _TypedDictMeta):
-    for arg, arg_typehint in typehints['return'].__annotations__.items():
-      if (isinstance(arg_typehint, annotations.OutputArtifact) or
-          (inspect.isclass(arg_typehint) and
-           issubclass(arg_typehint, artifact.Artifact))):
-        raise ValueError(
-            ('Output artifacts for the component executor function %r should '
-             'be declared as function parameters annotated with type hint '
-             '`tfx.types.annotations.OutputArtifact[T]` where T is a '
-             'subclass of `tfx.types.Artifact`. They should not be declared '
-             'as part of the return value `OutputDict` type hint.') % func)
+             'as part of the return value `OutputDict` or '
+             '`TypedDict` type hint.') % func)
   elif 'return' not in typehints or typehints['return'] in (None, type(None)):
     pass
   else:
@@ -242,13 +239,7 @@ def _parse_signature(
           (arg, func))
 
   if 'return' in typehints and typehints['return'] not in (None, type(None)):
-    return_type_annotations = typehints['return']
-    try:
-      typehints['return'].items()
-    except TypeError:
-      return_type_annotations = typehints['return'].__annotations__
-
-    for arg, arg_typehint in return_type_annotations.items():
+    for arg, arg_typehint in _get_return_type_annotations(typehints):
       if arg_typehint in _OPTIONAL_PRIMITIVE_MAP:
         unwrapped_typehint = _OPTIONAL_PRIMITIVE_MAP[arg_typehint]
         outputs[arg] = _PRIMITIVE_TO_ARTIFACT[unwrapped_typehint]
