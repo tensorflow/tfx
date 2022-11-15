@@ -167,8 +167,7 @@ class ChannelTest(tf.test.TestCase):
     pipeline_input_channel.pipeline = p
     union_channel = channel.union([output_channel_x1, output_channel_x2])
     resolved_channel_ = resolved_channel.ResolvedChannel(
-        _MyType, resolver_op.InputNode(
-            union_channel, output_data_type=resolver_op.DataType.ARTIFACT_LIST))
+        _MyType, resolver_op.InputNode(union_channel))
 
     def check(ch, expected):
       with self.subTest(channel_type=type(ch).__name__):

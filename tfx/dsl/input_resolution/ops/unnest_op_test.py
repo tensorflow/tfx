@@ -35,8 +35,7 @@ class UnnestOpTest(tf.test.TestCase):
     def f(root):
       return ops.Unnest(root)
 
-    input_node = resolver_op.InputNode(
-        None, resolver_op.DataType.ARTIFACT_MULTIMAP)
+    input_node = resolver_op.DictNode({})
 
     with self.assertRaisesRegex(ValueError, 'Required property key is missing'):
       f.trace(input_node)

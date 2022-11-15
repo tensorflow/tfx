@@ -13,7 +13,7 @@
 # limitations under the License.
 """Compiler submodule specialized for NodeInputs."""
 
-from typing import Mapping, Type, cast
+from typing import Type, cast
 
 from tfx import types
 from tfx.dsl.compiler import compiler_context
@@ -69,15 +69,6 @@ def _compile_input_graph(
           f'but got `{type(node).__name__}` type.')
 
   def compile_input_node(input_node: resolver_op.InputNode):
-    # TODO(b/236140795): Remove once InputNode.wrapped is always BaseChannel.
-    if typing_utils.is_compatible(
-        input_node.wrapped, Mapping[str, channel_types.BaseChannel]):
-      return get_node_id(resolver_op.DictNode({
-          k: resolver_op.InputNode(
-              v, output_data_type=resolver_op.DataType.ARTIFACT_LIST)
-          for k, v in input_node.wrapped.items()
-      }))
-
     node_id = issue_node_id(prefix='input_')
     node_to_ids[input_node] = node_id
     input_key = (

@@ -91,8 +91,13 @@ class Y(tfx.types.Artifact):
   TYPE_NAME = 'Y'
 
 
-DUMMY_INPUT_NODE = resolver_op.InputNode(
-    None, resolver_op.DataType.ARTIFACT_MULTIMAP)
+class Z(tfx.types.Artifact):
+  TYPE_NAME = 'Z'
+
+
+DUMMY_INPUT_NODE = resolver_op.DictNode({
+    'x': resolver_op.InputNode(DummyChannel(X))
+})
 
 
 class ResolverOpTest(tf.test.TestCase):
@@ -105,7 +110,7 @@ class ResolverOpTest(tf.test.TestCase):
   def testOpCall_ReturnsOpNode(self):
     result = Foo(DUMMY_INPUT_NODE, foo=42)
     self.assertIsInstance(result, resolver_op.OpNode)
-    self.assertEqual(repr(result), 'Foo(Input(), foo=42)')
+    self.assertEqual(repr(result), 'Foo(Dict(x=Input()), foo=42)')
 
   def testOpCall_MissingRequiredProperty(self):
     with self.assertRaisesRegex(
@@ -207,7 +212,7 @@ class NodeTest(tf.test.TestCase):
     bar = resolver_op.OpNode(
         op_type=Bar, args=[foo], kwargs={'bar': 'z'})
 
-    self.assertEqual(repr(bar), "Bar(Foo(Input(), foo=42), bar='z')")
+    self.assertEqual(repr(bar), "Bar(Foo(Dict(x=Input()), foo=42), bar='z')")
 
   def testOpNode_ArgsMustBeOpNodeSequence(self):
     node = DUMMY_INPUT_NODE
@@ -246,41 +251,32 @@ class NodeTest(tf.test.TestCase):
       self.assertLen({n5, n6, n7}, 2)
 
     with self.subTest('InputNode'):
-      n8 = resolver_op.InputNode(
-          wrapped=DummyChannel(standard_artifacts.Model),
-          output_data_type=resolver_op.DataType.ARTIFACT_LIST)
-      n9 = resolver_op.InputNode(
-          wrapped=DummyChannel(standard_artifacts.Model),
-          output_data_type=resolver_op.DataType.ARTIFACT_LIST)
-      n10 = resolver_op.InputNode(
-          wrapped=DummyChannel(standard_artifacts.Examples),
-          output_data_type=resolver_op.DataType.ARTIFACT_LIST)
+      n8 = resolver_op.InputNode(DummyChannel(standard_artifacts.Model))
+      n9 = resolver_op.InputNode(DummyChannel(standard_artifacts.Model))
+      n10 = resolver_op.InputNode(DummyChannel(standard_artifacts.Examples))
       self.assertEqual(n8, n9)
       self.assertNotEqual(n8, n10)
       self.assertLen({n8, n9, n10}, 2)
 
   def testFindInputNodes(self):
-    x = DummyChannel(X)
-    y1 = DummyChannel(Y)
-    y2 = DummyChannel(Y)
-    input_x = resolver_op.InputNode(x, resolver_op.DataType.ARTIFACT_LIST)
-    input_y = resolver_op.InputNode(y1, resolver_op.DataType.ARTIFACT_LIST)
-    input_xy = resolver_op.InputNode(
-        {'x': x, 'y': y2}, resolver_op.DataType.ARTIFACT_MULTIMAP)
+    input_x = resolver_op.InputNode(DummyChannel(X))
+    input_y = resolver_op.InputNode(DummyChannel(Y))
+    input_z = resolver_op.InputNode(DummyChannel(Z))
+    input_xz = resolver_op.DictNode({'x': input_x, 'z': input_z})
 
-    x_plus_y = resolver_op.OpNode(
+    op_x_plus_y = resolver_op.OpNode(
         op_type='add',
         output_data_type=resolver_op.DataType.ARTIFACT_LIST,
         args=(input_x, input_y))
-    z = resolver_op.DictNode({'z': x_plus_y})
+    dict_x_plus_y = resolver_op.DictNode({'x+y': op_x_plus_y})
     result = resolver_op.OpNode(
         op_type='merge',
         output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP,
-        args=(input_xy, z))
+        args=(input_xz, dict_x_plus_y))
 
     self.assertCountEqual(
         resolver_op.get_input_nodes(result),
-        [input_x, input_y, input_xy])
+        [input_x, input_y, input_z])
 
 
 if __name__ == '__main__':

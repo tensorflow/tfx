@@ -245,8 +245,7 @@ class Resolver(base_node.BaseNode):
           output_data_type=resolver_op.DataType.ARTIFACT_MULTIMAP,
           args=[
               resolver_op.DictNode({
-                  input_key: resolver_op.InputNode(
-                      channel, resolver_op.DataType.ARTIFACT_LIST)
+                  input_key: resolver_op.InputNode(channel)
                   for input_key, channel in channels.items()
               })
           ],

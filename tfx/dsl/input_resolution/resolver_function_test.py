@@ -39,10 +39,6 @@ class Bar(resolver_op.ResolverOp):
     return input_dict
 
 
-DUMMY_INPUT_NODE = resolver_op.InputNode(
-    None, resolver_op.DataType.ARTIFACT_MULTIMAP)
-
-
 class DummyChannel(tfx.types.BaseChannel):
 
   def __eq__(self, other):
@@ -66,6 +62,11 @@ class Y(tfx.types.Artifact):
   TYPE_NAME = 'Y'
 
 
+DUMMY_INPUT_NODE = resolver_op.DictNode({
+    'x': resolver_op.InputNode(DummyChannel(X)),
+})
+
+
 class ResolverFunctionTest(tf.test.TestCase):
 
   def testTrace(self):
@@ -78,7 +79,7 @@ class ResolverFunctionTest(tf.test.TestCase):
     rf = resolver_function.ResolverFunction(resolve)
     output_node = rf.trace(DUMMY_INPUT_NODE)
     self.assertEqual(repr(output_node),
-                     "Bar(Foo(Input(), foo=1), bar='x')")
+                     "Bar(Foo(Dict(x=Input()), foo=1), bar='x')")
 
   def testTrace_BadReturnValue(self):
 
@@ -206,8 +207,9 @@ class ResolverFunctionTest(tf.test.TestCase):
     args, kwargs = holder[0]
 
     with self.subTest('args[0]', value=args[0]):
-      self.assertIsInstance(args[0], resolver_op.InputNode)
-      self.assertEqual(args[0].wrapped, {'x': DummyChannel(X)})
+      self.assertIsInstance(args[0], resolver_op.DictNode)
+      self.assertEqual(
+          args[0].nodes, {'x': resolver_op.InputNode(DummyChannel(X))})
       self.assertEqual(
           args[0].output_data_type, resolver_op.DataType.ARTIFACT_MULTIMAP)
 

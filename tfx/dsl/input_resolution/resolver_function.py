@@ -135,11 +135,12 @@ class ResolverFunction:
   def _try_convert_to_node(value: Any) -> Any:
     """Try converting python value to resolver_op.Node."""
     if isinstance(value, channel.BaseChannel):
-      return resolver_op.InputNode(value, resolver_op.DataType.ARTIFACT_LIST)
+      return resolver_op.InputNode(value)
     if typing_utils.is_compatible(value, Mapping[str, channel.BaseChannel]):
-      # TODO(b/236140795): Change it to DictNode of InputNodes.
-      return resolver_op.InputNode(
-          value, resolver_op.DataType.ARTIFACT_MULTIMAP)
+      return resolver_op.DictNode({
+          input_key: resolver_op.InputNode(input_channel)
+          for input_key, input_channel in value.items()
+      })
     return value
 
   def output_type_inferrer(self, f: _TypeInferrer) -> _TypeInferrer:

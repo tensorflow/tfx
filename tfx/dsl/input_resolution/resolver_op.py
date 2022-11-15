@@ -315,12 +315,10 @@ class OpNode(Node):
 
 class InputNode(Node):
   """Node that represents the input arguments of the resolver function."""
+  output_data_type = DataType.ARTIFACT_LIST
 
-  def __init__(self, wrapped: Any, output_data_type: DataType):
-    # TODO(b/236140795): Allow only BaseChannel as a wrapped and make
-    # output_data_type always be the ARTIFACT_LIST.
+  def __init__(self, wrapped: types.BaseChannel):
     self.wrapped = wrapped
-    self.output_data_type = output_data_type
 
   def __repr__(self) -> str:
     return 'Input()'
@@ -331,8 +329,6 @@ class InputNode(Node):
     return self.wrapped == others.wrapped
 
   def __hash__(self):
-    if isinstance(self.wrapped, dict):
-      return hash(tuple(sorted(self.wrapped.items())))
     return hash(self.wrapped)
 
 
