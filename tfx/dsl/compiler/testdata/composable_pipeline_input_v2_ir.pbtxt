@@ -1029,24 +1029,6 @@ nodes {
                 }
                 context_queries {
                   type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    structural_runtime_parameter {
-                      parts {
-                        constant_value: "data-ingestion-pipeline_"
-                      }
-                      parts {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
-                        }
-                      }
-                    }
-                  }
-                }
-                context_queries {
-                  type {
                     name: "pipeline"
                   }
                   name {
@@ -1101,24 +1083,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "data-ingestion-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    structural_runtime_parameter {
-                      parts {
-                        constant_value: "data-ingestion-pipeline_"
-                      }
-                      parts {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
-                        }
-                      }
                     }
                   }
                 }
@@ -1759,24 +1723,6 @@ nodes {
             }
             context_queries {
               type {
-                name: "pipeline_run"
-              }
-              name {
-                structural_runtime_parameter {
-                  parts {
-                    constant_value: "data-ingestion-pipeline_"
-                  }
-                  parts {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
-                    }
-                  }
-                }
-              }
-            }
-            context_queries {
-              type {
                 name: "pipeline"
               }
               name {
@@ -1831,24 +1777,6 @@ nodes {
               name {
                 field_value {
                   string_value: "training-pipeline"
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "pipeline_run"
-              }
-              name {
-                structural_runtime_parameter {
-                  parts {
-                    constant_value: "training-pipeline_"
-                  }
-                  parts {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
-                    }
-                  }
                 }
               }
             }
@@ -2094,24 +2022,6 @@ nodes {
                 }
                 context_queries {
                   type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    structural_runtime_parameter {
-                      parts {
-                        constant_value: "data-ingestion-pipeline_"
-                      }
-                      parts {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
-                        }
-                      }
-                    }
-                  }
-                }
-                context_queries {
-                  type {
                     name: "pipeline"
                   }
                   name {
@@ -2166,24 +2076,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "training-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    structural_runtime_parameter {
-                      parts {
-                        constant_value: "training-pipeline_"
-                      }
-                      parts {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
-                        }
-                      }
                     }
                   }
                 }
@@ -3299,47 +3191,11 @@ nodes {
                 }
                 context_queries {
                   type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    structural_runtime_parameter {
-                      parts {
-                        constant_value: "infra-validator-pipeline_"
-                      }
-                      parts {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
-                        }
-                      }
-                    }
-                  }
-                }
-                context_queries {
-                  type {
                     name: "pipeline"
                   }
                   name {
                     field_value {
                       string_value: "validate-and-push-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    structural_runtime_parameter {
-                      parts {
-                        constant_value: "validate-and-push-pipeline_"
-                      }
-                      parts {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
-                        }
-                      }
                     }
                   }
                 }

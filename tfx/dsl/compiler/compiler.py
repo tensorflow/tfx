@@ -14,7 +14,7 @@
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
 import inspect
 import itertools
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, cast
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Type, cast
 
 from tfx import types
 from tfx.dsl.compiler import compiler_context
@@ -122,7 +122,7 @@ class Compiler:
     _set_node_outputs(node, p.outputs)
     if pipeline_ctx.is_subpipeline:
       pipeline_ctx.parent.channels.update(
-          _generate_input_spec_for_outputs(node, p.outputs))
+          _generate_input_spec_for_pipeline_outputs(node, p))
 
     # PipelineEnd node does not have parameters.
 
@@ -475,13 +475,18 @@ def _set_node_outputs(node: pipeline_pb2.PipelineNode,
 
 
 def _generate_input_spec_for_outputs(
-    node: pipeline_pb2.PipelineNode, tfx_node_outputs: Dict[str, types.Channel]
+    node: pipeline_pb2.PipelineNode,
+    tfx_node_outputs: Dict[str, types.Channel],
+    negative_context_filter: Callable[[pipeline_pb2.ContextSpec],
+                                      bool] = lambda _: False
 ) -> Iterator[Tuple[types.Channel, pipeline_pb2.InputSpec.Channel]]:
   """Generates InputSpec in producer node, to be used by consumer node later."""
   for key, value in tfx_node_outputs.items():
     channel_pb = pipeline_pb2.InputSpec.Channel()
     channel_pb.producer_node_query.id = node.node_info.id
     for context in node.contexts.contexts:
+      if negative_context_filter(context):
+        continue
       context_query = channel_pb.context_queries.add()
       context_query.type.CopyFrom(context.type)
       context_query.name.CopyFrom(context.name)
@@ -491,6 +496,18 @@ def _generate_input_spec_for_outputs(
     channel_pb.artifact_query.type.ClearField("properties")
     channel_pb.output_key = key
     yield value, channel_pb
+
+
+def _generate_input_spec_for_pipeline_outputs(
+    end_node: pipeline_pb2.PipelineNode, p: pipeline.Pipeline
+) -> Iterator[Tuple[types.Channel, pipeline_pb2.InputSpec.Channel]]:
+  """Generates InputSpec for pipeline outputs to be consumed later."""
+  def remove_inner_pipeline_run_context(c: pipeline_pb2.ContextSpec) -> bool:
+    return (c.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME and
+            c.name.HasField("structural_runtime_parameter"))
+
+  yield from _generate_input_spec_for_outputs(
+      end_node, p.outputs, remove_inner_pipeline_run_context)
 
 
 def _set_node_parameters(node: pipeline_pb2.PipelineNode,
