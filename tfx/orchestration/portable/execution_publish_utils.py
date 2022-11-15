@@ -20,6 +20,7 @@ from absl import logging
 
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import merge_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
@@ -34,6 +35,11 @@ def _check_validity(new_artifact: metadata_store_pb2.Artifact,
   """Check the validity of new artifact against the original artifact."""
   if new_artifact.type_id != original_artifact.type_id:
     raise RuntimeError('Executor output should not change artifact type.')
+
+  # If the artifact is external and the uri is resolved during runtime, it
+  # doesn't check the validity of uri.
+  if original_artifact.is_external and original_artifact.uri == outputs_utils.RESOLVED_AT_RUNTIME:
+    return
 
   if has_multiple_artifacts:
     # If there are multiple artifacts in the executor output, their URIs should
@@ -155,6 +161,10 @@ def publish_succeeded_execution(
       #    use driver instead to create the list of output artifact instead
       #    of letting executor to create them.
       for updated_artifact_proto in updated_artifact_list:
+        if updated_artifact_proto.uri == outputs_utils.RESOLVED_AT_RUNTIME:
+          # Don't register the output artifact if the component didn't set the
+          # actual resolved artifact URI in the executor output.
+          continue
         _check_validity(updated_artifact_proto, original_artifact,
                         len(updated_artifact_list) > 1)
         merged_artifact = merge_utils.merge_output_artifact(

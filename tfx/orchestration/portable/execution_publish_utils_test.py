@@ -17,6 +17,7 @@ import tensorflow as tf
 from tfx import version
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -237,6 +238,54 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           self.assertCountEqual([c.id for c in contexts], [
               c.id for c in m.store.get_contexts_by_artifact(output_example.id)
           ])
+
+  def testPublishSuccessfulExecutionWithRuntimeResolvedUri(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      output_key = 'examples'
+      output_example = standard_artifacts.Examples()
+      output_example.uri = outputs_utils.RESOLVED_AT_RUNTIME
+      output_example.is_external = True
+      executor_output = execution_result_pb2.ExecutorOutput()
+      text_format.Parse(
+          """
+          uri: '/examples_uri'
+          custom_properties {
+            key: 'is_external'
+            value {int_value: 1}
+          }
+          """, executor_output.output_artifacts[output_key].artifacts.add())
+      output_dict = execution_publish_utils.publish_succeeded_execution(
+          m, execution_id, contexts, {output_key: [output_example]},
+          executor_output)
+      self.assertLen(output_dict[output_key], 1)
+      self.assertEqual(output_dict[output_key][0].uri, '/examples_uri')
+
+  def testPublishSuccessfulExecutionOmitsArtifactIfNotResolvedDuringRuntime(
+      self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
+      output_key = 'examples'
+      output_example = standard_artifacts.Examples()
+      output_example.uri = outputs_utils.RESOLVED_AT_RUNTIME
+      output_example.is_external = True
+      executor_output = execution_result_pb2.ExecutorOutput()
+      text_format.Parse(
+          f"""
+          uri: '{outputs_utils.RESOLVED_AT_RUNTIME}'
+          custom_properties {{
+            key: 'is_external'
+            value {{int_value: 1}}
+          }}
+          """, executor_output.output_artifacts[output_key].artifacts.add())
+      output_dict = execution_publish_utils.publish_succeeded_execution(
+          m, execution_id, contexts, {output_key: [output_example]},
+          executor_output)
+      self.assertEmpty(output_dict[output_key])
 
   def testPublishSuccessExecutionFailNewKey(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
