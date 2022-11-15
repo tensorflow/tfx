@@ -189,7 +189,9 @@ def _create_artifact_and_event_pairs(
     metadata_handler: metadata.Metadata,
     artifact_dict: typing_utils.ArtifactMultiMap,
     event_type: metadata_store_pb2.Event.Type,
-) -> List[Tuple[metadata_store_pb2.Artifact, metadata_store_pb2.Event]]:
+    registered_artifact_ids: Set[int],
+) -> List[Tuple[metadata_store_pb2.Artifact,
+                Optional[metadata_store_pb2.Event]]]:
   """Creates a list of [Artifact, Event] tuples.
 
   The result of this function will be used in a MLMD put_execution() call.
@@ -202,6 +204,8 @@ def _create_artifact_and_event_pairs(
       the same artifact is used for multiple keys, several event paths will be
       generated for the same event.
     event_type: The event type of the event to be attached to the artifact
+    registered_artifact_ids: artifact IDs that have already been registered with
+      the execution and can therefore bypass event creation.
 
   Returns:
     A list of [Artifact, Event] tuples
@@ -211,13 +215,16 @@ def _create_artifact_and_event_pairs(
   for key, artifact_list in artifact_dict.items():
     artifact_type = None
     for index, artifact in enumerate(artifact_list):
-      if (artifact.mlmd_artifact.HasField('id') and
-          artifact.id in artifact_event_map):
+      artifact_has_id = artifact.mlmd_artifact.HasField('id')
+      if artifact_has_id and artifact.id in registered_artifact_ids:
+        # Artifact has already been registered with this execution, so simply
+        # add the artifact without an event so it will be updated in MLMD.
+        result.append((artifact.mlmd_artifact, None))
+        continue
+      elif artifact_has_id and artifact.id in artifact_event_map:
         event_lib.add_event_path(
             artifact_event_map[artifact.id][1], key=key, index=index)
       else:
-        # TODO(b/153904840): If artifact id is present, skip putting the
-        # artifact into the pair when MLMD API is ready.
         event = event_lib.generate_event(
             event_type=event_type, key=key, index=index)
         # Reuses already registered type in the same list whenever possible as
@@ -229,7 +236,7 @@ def _create_artifact_and_event_pairs(
         artifact_type = common_utils.register_type_if_not_exist(
             metadata_handler, artifact.artifact_type)
         artifact.set_mlmd_artifact_type(artifact_type)
-        if artifact.mlmd_artifact.HasField('id'):
+        if artifact_has_id:
           artifact_event_map[artifact.id] = (artifact.mlmd_artifact, event)
         else:
           result.append((artifact.mlmd_artifact, event))
@@ -258,33 +265,47 @@ def put_execution(
     execution: The execution to be written to MLMD.
     contexts: MLMD contexts to associated with the execution.
     input_artifacts: Input artifacts of the execution. Each artifact will be
-      linked with the execution through an event with type input_event_type.
-      Each artifact will also be linked with every context in the `contexts`
-      argument.
+      updated in MLMD, and linked with the execution through an event with type
+      input_event_type if the artifact ID hasn't been associated with this
+      execution yet. Each artifact will also be linked with every context in the
+      `contexts` argument.
     output_artifacts: Output artifacts of the execution. Each artifact will be
-      linked with the execution through an event with type output_event_type.
-      Each artifact will also be linked with every context in the `contexts`
-      argument.
+      updated in MLMD, and linked with the execution through an event with type
+      output_event_type if the artifact ID hasn't been associated with this
+      execution yet. Each artifact will also be linked with every context in the
+      `contexts` argument.
     input_event_type: The type of the input event, default to be INPUT.
     output_event_type: The type of the output event, default to be OUTPUT.
 
   Returns:
     An MLMD execution that is written to MLMD, with id pupulated.
   """
+  artifact_ids_by_event_type = (
+      get_artifact_ids_by_event_type_for_execution_id(
+          metadata_handler, execution.id) if execution.HasField('id') else {})
+  registered_input_artifact_ids = (
+      artifact_ids_by_event_type[input_event_type]
+      if input_event_type in artifact_ids_by_event_type else {})
+  registered_output_artifact_ids = (
+      artifact_ids_by_event_type[output_event_type]
+      if output_event_type in artifact_ids_by_event_type else {})
+
   artifact_and_events = []
   if input_artifacts:
     artifact_and_events.extend(
         _create_artifact_and_event_pairs(
             metadata_handler=metadata_handler,
             artifact_dict=input_artifacts,
-            event_type=input_event_type))
+            event_type=input_event_type,
+            registered_artifact_ids=registered_input_artifact_ids))
   if output_artifacts:
     outputs_utils.tag_output_artifacts_with_version(output_artifacts)
     artifact_and_events.extend(
         _create_artifact_and_event_pairs(
             metadata_handler=metadata_handler,
             artifact_dict=output_artifacts,
-            event_type=output_event_type))
+            event_type=output_event_type,
+            registered_artifact_ids=registered_output_artifact_ids))
   execution_id, artifact_ids, contexts_ids = (
       metadata_handler.store.put_execution(
           execution=execution,
@@ -347,22 +368,35 @@ def put_executions(
 
   artifacts = []
   artifact_event_edges = []
-  if input_artifacts_maps:
-    for idx in range(len(executions)):
-      artifact_and_event_pairs = _create_artifact_and_event_pairs(
+  for idx, execution in enumerate(executions):
+    artifact_ids_by_event_type = (
+        get_artifact_ids_by_event_type_for_execution_id(
+            metadata_handler, execution.id) if execution.HasField('id') else {})
+    registered_input_artifact_ids = (
+        artifact_ids_by_event_type[input_event_type]
+        if input_event_type in artifact_ids_by_event_type else {})
+    registered_output_artifact_ids = (
+        artifact_ids_by_event_type[output_event_type]
+        if output_event_type in artifact_ids_by_event_type else {})
+
+    artifact_and_event_pairs = []
+    if input_artifacts_maps:
+      artifact_and_event_pairs += _create_artifact_and_event_pairs(
           metadata_handler,
           input_artifacts_maps[idx],
-          event_type=input_event_type)
-      for artifact, event in artifact_and_event_pairs:
-        artifacts.append(artifact)
-        artifact_event_edges.append((idx, len(artifacts) - 1, event))
-  if output_artifacts_maps:
-    for idx, output_artifacts in enumerate(output_artifacts_maps):
+          event_type=input_event_type,
+          registered_artifact_ids=registered_input_artifact_ids)
+    if output_artifacts_maps:
+      output_artifacts = output_artifacts_maps[idx]
       outputs_utils.tag_output_artifacts_with_version(output_artifacts)
-      artifact_and_event_pairs = _create_artifact_and_event_pairs(
-          metadata_handler, output_artifacts, event_type=output_event_type)
-      for artifact, event in artifact_and_event_pairs:
-        artifacts.append(artifact)
+      artifact_and_event_pairs += _create_artifact_and_event_pairs(
+          metadata_handler,
+          output_artifacts,
+          event_type=output_event_type,
+          registered_artifact_ids=registered_output_artifact_ids)
+    for artifact, event in artifact_and_event_pairs:
+      artifacts.append(artifact)
+      if event is not None:
         artifact_event_edges.append((idx, len(artifacts) - 1, event))
 
   execution_ids, _, _ = metadata_handler.store.put_lineage_subgraph(
