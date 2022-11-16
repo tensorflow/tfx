@@ -18,6 +18,7 @@ import uuid
 
 from absl.testing import parameterized
 import tensorflow as tf
+from tfx import types
 from tfx import version
 from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
@@ -517,6 +518,22 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       [context_1, context_2] = m.store.get_contexts()
       self.assertLen(m.store.get_executions_by_context(context_1.id), 2)
       self.assertLen(m.store.get_executions_by_context(context_2.id), 2)
+
+  def test_update_external_artifact_type(self):
+    artifact_type = metadata_store_pb2.ArtifactType(name='my_type')
+    artifact_pb = metadata_store_pb2.Artifact(type_id=artifact_type.id)
+    artifact = types.artifact.Artifact(artifact_type)
+    artifact.set_mlmd_artifact(artifact_pb)
+    artifact.is_external = True
+
+    with self._mlmd_connection as m:
+      task_gen_utils.update_external_artifact_type(m, [artifact])
+
+      artifact_types_in_local = m.store.get_artifact_types()
+      self.assertLen(artifact_types_in_local, 1)
+      self.assertEqual('my_type', artifact_types_in_local[0].name)
+      # artifact should have the new type id.
+      self.assertEqual(artifact_types_in_local[0].id, artifact_pb.type_id)
 
 if __name__ == '__main__':
   tf.test.main()

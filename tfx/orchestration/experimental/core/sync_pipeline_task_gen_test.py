@@ -29,6 +29,7 @@ from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task as task_lib
+from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_sync_pipeline
@@ -197,7 +198,9 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         fail_fast=fail_fast)
 
   @parameterized.parameters(False, True)
-  def test_tasks_generated_when_upstream_done(self, use_task_queue):
+  @mock.patch.object(task_gen_utils, 'update_external_artifact_type')
+  def test_tasks_generated_when_upstream_done(
+      self, use_task_queue, mock_update_external_artifact_type):
     """Tests that tasks are generated when upstream is done.
 
     Args:
@@ -205,6 +208,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         a task with the same task_id does not already exist in the queue.
         `use_task_queue=False` is useful to test the case of task generation
         when task queue is empty (for eg: due to orchestrator restart).
+      mock_update_external_artifact_type: mock object to the function
+        task_gen_utils.update_external_artifact_type
     """
     # Simulate that ExampleGen has already completed successfully.
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
@@ -319,6 +324,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(status_lib.Code.OK, finalize_task.status.code)
     if use_task_queue:
       self.assertTrue(self._task_queue.is_empty())
+
+    mock_update_external_artifact_type.assert_called()
 
   @parameterized.parameters(itertools.product((False, True), repeat=2))
   def test_pipeline_succeeds_when_terminal_nodes_succeed(
