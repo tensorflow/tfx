@@ -36,6 +36,10 @@ def merge_output_artifact(
   updated_artifact = types.Artifact(original_artifact.artifact_type)
   updated_artifact.set_mlmd_artifact(updated_artifact_proto)
 
+  # Ensure the updated artifact has a consistent type ID with the original type.
+  if original_artifact.artifact_type.HasField('id'):
+    updated_artifact.type_id = original_artifact.artifact_type.id
+
   # Enforce that the component does not update the externality of the artifact.
   updated_artifact.is_external = original_artifact.is_external
 

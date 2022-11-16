@@ -78,6 +78,13 @@ class MergeUtilsTest(tf.test.TestCase):
         original_artifact, updated_artifact_proto)
     self.assertFalse(merged_artifact.is_external)
 
+  def testMergeOutputArtifactsPreservesOriginalArtifactTypeId(self):
+    original_artifact = standard_artifacts.Examples()
+    original_artifact.artifact_type.id = 1
+    updated_artifact_proto = metadata_store_pb2.Artifact(type_id=2)
+    merged_artifact = merge_utils.merge_output_artifact(original_artifact,
+                                                        updated_artifact_proto)
+    self.assertEqual(1, merged_artifact.type_id)
 
 if __name__ == '__main__':
   tf.test.main()
