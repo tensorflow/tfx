@@ -13,6 +13,7 @@
 # limitations under the License.
 """Portable library for registering and publishing executions."""
 import copy
+import itertools
 import os
 from typing import Mapping, Optional, Sequence
 import uuid
@@ -171,10 +172,9 @@ def publish_succeeded_execution(
             original_artifact, updated_artifact_proto)
         artifact_list.append(merged_artifact)
 
-  # Marks output artifacts as LIVE.
-  for artifact_list in output_artifacts.values():
-    for artifact in artifact_list:
-      artifact.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
+  # Marks output artifacts as PUBLISHED (i.e. LIVE in MLMD).
+  for artifact in itertools.chain.from_iterable(output_artifacts.values()):
+    artifact.state = types.artifact.ArtifactState.PUBLISHED
 
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.COMPLETE

@@ -154,6 +154,10 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           uri: "my_model_uri_2"
           state: LIVE
           custom_properties {{
+            key: 'state'
+            value {{string_value: 'published'}}
+          }}
+          custom_properties {{
             key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
             value {{string_value: "{version.__version__}"}}
           }}""",

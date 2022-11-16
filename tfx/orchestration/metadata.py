@@ -225,8 +225,6 @@ class Metadata:
         artifact_type = self._prepare_artifact_type(raw_artifact.artifact_type)
         raw_artifact.set_mlmd_artifact_type(artifact_type)
       raw_artifact.state = state
-      if state == ArtifactState.PUBLISHED:
-        raw_artifact.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
     artifact_ids = self.store.put_artifacts(
         [x.mlmd_artifact for x in tfx_artifact_list])
     for a, aid in zip(tfx_artifact_list, artifact_ids):
@@ -560,10 +558,6 @@ class Metadata:
       for index, a in enumerate(a_list):
         if new_state:
           a.state = new_state
-          # Forward-compatible change to leverage native artifact schema to
-          # log state info.
-          if new_state == ArtifactState.PUBLISHED:
-            a.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
         if a.id and a.id in registered_artifacts_ids:
           result.append(tuple([a.mlmd_artifact]))
         else:

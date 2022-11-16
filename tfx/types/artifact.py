@@ -51,6 +51,15 @@ class ArtifactState:
   DELETED = 'deleted'
 
 
+MlmdArtifactState = metadata_store_pb2.Artifact.State
+_TFX_TO_MLMD_ARTIFACT_STATE = {
+    ArtifactState.PENDING: MlmdArtifactState.PENDING,
+    ArtifactState.PUBLISHED: MlmdArtifactState.LIVE,
+    ArtifactState.MISSING: MlmdArtifactState.UNKNOWN,
+    ArtifactState.MARKED_FOR_DELETION: MlmdArtifactState.MARKED_FOR_DELETION,
+    ArtifactState.DELETED: MlmdArtifactState.DELETED,
+}
+
 # Default split of examples data.
 DEFAULT_EXAMPLE_SPLITS = ['train', 'eval']
 
@@ -553,6 +562,9 @@ class Artifact(json_utils.Jsonable):
   def state(self, state: str):
     """Set state of the underlying artifact."""
     self._set_system_property('state', state)
+    self._artifact.state = (
+        _TFX_TO_MLMD_ARTIFACT_STATE[state]
+        if state in _TFX_TO_MLMD_ARTIFACT_STATE else MlmdArtifactState.UNKNOWN)
 
   @property
   @doc_controls.do_not_doc_in_subclasses

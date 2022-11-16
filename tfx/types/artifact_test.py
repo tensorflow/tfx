@@ -257,6 +257,7 @@ class ArtifactTest(tf.test.TestCase):
             string_value: "string_value"
           }
         }
+        state: DELETED
         name: "test_artifact"
         , artifact_type: name: "MyTypeName"
         properties {
@@ -1279,6 +1280,20 @@ class ArtifactTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         ValueError, 'is not a subclass of SystemArtifact'):
       _ArtifactWithInvalidAnnotation()
+
+  def testSetArtifactStateAsPublishedSetsMlmdStateToLive(self):
+    tfx_artifact = _MyArtifact()
+    self.assertFalse(tfx_artifact.mlmd_artifact.HasField('state'))
+    tfx_artifact.state = artifact.ArtifactState.PUBLISHED
+    self.assertEqual(tfx_artifact.mlmd_artifact.state,
+                     metadata_store_pb2.Artifact.State.LIVE)
+
+  def testSetArtifactUnknownStateSetsMlmdStateToUnknown(self):
+    tfx_artifact = _MyArtifact()
+    self.assertFalse(tfx_artifact.mlmd_artifact.HasField('state'))
+    tfx_artifact.state = 'foobar'
+    self.assertEqual(tfx_artifact.mlmd_artifact.state,
+                     metadata_store_pb2.Artifact.State.UNKNOWN)
 
 
 if __name__ == '__main__':

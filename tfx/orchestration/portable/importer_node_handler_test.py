@@ -87,6 +87,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
             }
           }
           custom_properties {
+            key: "state"
+            value {
+              string_value: "published"
+            }
+          }
+          custom_properties {
             key: "str_custom_property"
             value {
               string_value: "abc"
@@ -155,6 +161,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
             key: "is_external"
             value {
               int_value: 1
+            }
+          }
+          custom_properties {
+            key: "state"
+            value {
+              string_value: "published"
             }
           }
           custom_properties {
@@ -230,6 +242,12 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
             key: "is_external"
             value {
               int_value: 1
+            }
+          }
+          custom_properties {
+            key: "state"
+            value {
+              string_value: "published"
             }
           }
           custom_properties {
