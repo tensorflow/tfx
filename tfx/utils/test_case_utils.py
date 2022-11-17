@@ -166,19 +166,35 @@ class MlmdMixins:
   def store(self):
     return self.mlmd_handle.store
 
+  def put_context_type(
+      self, type_name: str,
+      properties: Optional[Dict[str, metadata_store_pb2.PropertyType]] = None,
+  ) -> int:
+    """Puts a ContextType in the MLMD database."""
+    properties = properties if properties is not None else {}
+    context_type = metadata_store_pb2.ContextType(name=type_name)
+    if properties is not None:
+      context_type.properties.update(properties)
+    result = self.store.put_context_type(context_type)
+    self._context_type_ids[type_name] = result
+    return result
+
   def _get_context_type_id(self, type_name: str):
     if type_name not in self._context_type_ids:
-      result = self.store.put_context_type(
-          metadata_store_pb2.ContextType(name=type_name))
-      self._context_type_ids[type_name] = result
+      self.put_context_type(type_name)
     return self._context_type_ids[type_name]
 
-  def put_context(self, context_type: str, context_name: str):
+  def put_context(
+      self, context_type: str, context_name: str,
+      properties: Optional[Dict[str, metadata_store_pb2.PropertyType]] = None,
+  ) -> metadata_store_pb2.Context:
     """Put a Context in the MLMD database."""
-    result = metadata_store_pb2.Context(
-        type_id=self._get_context_type_id(context_type), name=context_name)
-    result.id = self.store.put_contexts([result])[0]
-    return result
+    context = metadata_store_pb2.Context(
+        type_id=self._get_context_type_id(context_type),
+        name=context_name,
+        properties=data_types_utils.build_metadata_value_dict(properties))
+    context_id = self.store.put_contexts([context])[0]
+    return self.store.get_contexts_by_id([context_id])[0]
 
   def put_artifact_type(
       self, type_name: str,
@@ -200,7 +216,7 @@ class MlmdMixins:
   def put_artifact(
       self,
       artifact_type: str,
-      name: str = '',
+      name: Optional[str] = None,
       uri: str = '/fake',
       properties: Optional[Dict[str, types.ExecPropertyTypes]] = None,
       custom_properties: Optional[Dict[str, types.ExecPropertyTypes]] = None,
@@ -232,46 +248,56 @@ class MlmdMixins:
     else:
       type_id = self._artifact_type_ids[artifact_type]
 
-    mlmd_artifact = metadata_store_pb2.Artifact(
+    artifact = metadata_store_pb2.Artifact(
         type_id=type_id,
+        name=name,
         uri=uri,
         state=metadata_store_pb2.Artifact.LIVE,
         properties=data_types_utils.build_metadata_value_dict(properties),
         custom_properties=data_types_utils.build_metadata_value_dict(
             custom_properties),
     )
-    if name:
-      mlmd_artifact.name = name
-    artifact_id = self.store.put_artifacts([mlmd_artifact])[0]
+    artifact_id = self.store.put_artifacts([artifact])[0]
     return self.store.get_artifacts_by_id([artifact_id])[0]
+
+  def put_execution_type(
+      self, type_name: str,
+      properties: Optional[Dict[str, metadata_store_pb2.PropertyType]] = None,
+  ) -> int:
+    """Puts a ExecutionType in the MLMD database."""
+    properties = properties if properties is not None else {}
+    execution_type = metadata_store_pb2.ExecutionType(name=type_name)
+    if properties is not None:
+      execution_type.properties.update(properties)
+    result = self.store.put_execution_type(execution_type)
+    self._execution_type_ids[type_name] = result
+    return result
 
   def _get_execution_type_id(self, type_name: str):
     if type_name not in self._execution_type_ids:
-      result = self.store.put_execution_type(
-          metadata_store_pb2.ExecutionType(name=type_name))
-      self._execution_type_ids[type_name] = result
+      self.put_execution_type(type_name)
     return self._execution_type_ids[type_name]
 
   def put_execution(
       self,
       execution_type: str,
+      properties: Optional[Dict[str, metadata_store_pb2.PropertyType]] = None,
       inputs: Optional[_ArtifactMultiMap] = None,
       outputs: Optional[_ArtifactMultiMap] = None,
       contexts: Sequence[metadata_store_pb2.Context] = (),
-      name='',
+      name: Optional[str] = None,
       input_event_type=metadata_store_pb2.Event.INPUT,
-      output_event_type=metadata_store_pb2.Event.OUTPUT
+      output_event_type=metadata_store_pb2.Event.OUTPUT,
   ) -> metadata_store_pb2.Execution:
     """Put an Execution in the MLMD database."""
     inputs = inputs if inputs is not None else {}
     outputs = outputs if outputs is not None else {}
-    fields = dict(
+    execution = metadata_store_pb2.Execution(
         type_id=self._get_execution_type_id(type_name=execution_type),
+        name=name,
         last_known_state=metadata_store_pb2.Execution.COMPLETE,
+        properties=data_types_utils.build_metadata_value_dict(properties),
     )
-    if name:
-      fields.update(name=name)
-    result = metadata_store_pb2.Execution(**fields)
     artifact_and_events = []
     for input_key, artifacts in inputs.items():
       for i, artifact in enumerate(artifacts):
@@ -281,6 +307,6 @@ class MlmdMixins:
       for i, artifact in enumerate(artifacts):
         event = event_lib.generate_event(output_event_type, output_key, i)
         artifact_and_events.append((artifact, event))
-    result.id = self.store.put_execution(result, artifact_and_events,
-                                         contexts)[0]
-    return result
+    execution_id = self.store.put_execution(
+        execution, artifact_and_events, contexts)[0]
+    return self.store.get_executions_by_id([execution_id])[0]
