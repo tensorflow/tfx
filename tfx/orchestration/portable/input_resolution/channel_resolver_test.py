@@ -455,7 +455,7 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
     resolved = channel_resolver.resolve_single_channel(
         mock_mlmd_connection_manager, ch)
 
-    mock_mlmd_connection_manager.get_mlmd_handle.assert_not_called()
+    mock_mlmd_connection_manager.get_mlmd_service_handle.assert_not_called()
     self.assertLen(resolved, 1)
 
   def testResolveUnionChannels_Deduplication(self):

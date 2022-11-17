@@ -167,6 +167,10 @@ class Metadata:
       self._store = None
 
   @property
+  def connection_config(self) -> ConnectionConfigType:
+    return copy.deepcopy(self._connection_config)
+
+  @property
   def store(self) -> mlmd.MetadataStore:
     """Returns underlying MetadataStore.
 

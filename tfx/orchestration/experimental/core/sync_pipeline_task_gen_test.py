@@ -22,7 +22,7 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.dsl.compiler import constants as compiler_constants
 from tfx.orchestration import data_types_utils
-from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -53,11 +53,9 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     # MLMD instance.
     metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
     self._metadata_path = metadata_path
-    connection_config = metadata.sqlite_metadata_connection_config(
-        metadata_path)
-    connection_config.sqlite.SetInParent()
-    self._mlmd_connection = metadata.Metadata(
-        connection_config=connection_config)
+    self._mlmd_cm = mlmd_cm.MLMDConnectionManager.sqlite(metadata_path)
+    self.enter_context(self._mlmd_cm)
+    self._mlmd_connection = self._mlmd_cm.primary_mlmd_handle
 
     # Sets up the pipeline.
     pipeline = self._make_pipeline(self._pipeline_root, str(uuid.uuid4()))
@@ -129,7 +127,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
                 ignore_update_node_state_tasks=False,
                 fail_fast=False):
     return test_utils.run_generator(
-        self._mlmd_connection,
+        self._mlmd_cm,
         sptg.SyncPipelineTaskGenerator,
         self._pipeline,
         self._task_queue,
@@ -183,7 +181,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     """Generates tasks and tests the effects."""
     return test_utils.run_generator_and_test(
         self,
-        self._mlmd_connection,
+        self._mlmd_cm,
         sptg.SyncPipelineTaskGenerator,
         pipeline or self._pipeline,
         self._task_queue,

@@ -132,10 +132,10 @@ def resolve_single_channel(
           'mlmd_handle is not MLMDConnectionManager.')
     mlmd_connection_manager = cast(mlmd_cm.MLMDConnectionManager, mlmd_handle)
     channel.metadata_connection_config.Unpack(config)
-    handle = mlmd_connection_manager.get_mlmd_handle(
-        owner_name=config.owner,
-        project_name=config.name,
-        mlmd_service_target_name=config.mlmd_service_target)
+    handle = mlmd_connection_manager.get_mlmd_service_handle(
+        owner=config.owner,
+        name=config.name,
+        server_address=config.mlmd_service_target)
     if not handle:
       raise ConnectionError('Not able to connect to external MLMD db.')
 

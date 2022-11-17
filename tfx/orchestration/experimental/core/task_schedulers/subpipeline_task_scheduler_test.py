@@ -22,7 +22,7 @@ import uuid
 from absl.testing import flagsaver
 import tensorflow as tf
 from tfx.dsl.compiler import constants
-from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
@@ -47,11 +47,9 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest):
         self.id())
 
     metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
-    connection_config = metadata.sqlite_metadata_connection_config(
-        metadata_path)
-    connection_config.sqlite.SetInParent()
-    self._mlmd_connection = metadata.Metadata(
-        connection_config=connection_config)
+    self._mlmd_cm = mlmd_cm.MLMDConnectionManager.sqlite(metadata_path)
+    self.enter_context(self._mlmd_cm)
+    self._mlmd_connection = self._mlmd_cm.primary_mlmd_handle
 
     self._pipeline_run_id = str(uuid.uuid4())
     self._pipeline = self._make_pipeline(pipeline_root, self._pipeline_run_id)
@@ -128,7 +126,7 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest):
 
       [sub_pipeline_task] = test_utils.run_generator_and_test(
           test_case=self,
-          mlmd_connection=self._mlmd_connection,
+          mlmd_connection_manager=self._mlmd_cm,
           generator_class=sptg.SyncPipelineTaskGenerator,
           pipeline=self._pipeline,
           task_queue=self._task_queue,

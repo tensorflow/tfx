@@ -20,7 +20,6 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx import version
-from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
@@ -46,14 +45,10 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     # Makes sure multiple connections within a test always connect to the same
     # MLMD instance.
     metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
-    self._metadata_path = metadata_path
-    connection_config = metadata.sqlite_metadata_connection_config(
+    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager.sqlite(
         metadata_path)
-    connection_config.sqlite.SetInParent()
-    self._mlmd_connection = metadata.Metadata(
-        connection_config=connection_config)
-    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
-        primary_mlmd_handle=self._mlmd_connection)
+    self.enter_context(self._mlmd_connection_manager)
+    self._mlmd_connection = self._mlmd_connection_manager.primary_mlmd_handle
 
     # Sets up the pipeline.
     pipeline = test_async_pipeline.create_pipeline()

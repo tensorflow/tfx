@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC. All Rights Reserved.
+# Copyright 2022 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,99 +13,114 @@
 # limitations under the License.
 """Utils to handle multiple connections to MLMD dbs."""
 
-import dataclasses
+import contextlib
 import types
-from typing import Optional, Type, Callable, Union
+from typing import Optional, Type, Union, cast
 
 from tfx.orchestration import metadata
 
-
-@dataclasses.dataclass
-class MLMDConnectionConfig:
-  """Configuration of a connection to a MLMD db."""
-  owner_name: str = ''
-  project_name: str = ''
-  service_target: str = ''
-  base_dir: str = ''
-
-  def __repr__(self) -> str:
-    return (f'{self.__class__.__name__}('
-            f'owner_name={self.owner_name}, '
-            f'project_name={self.project_name}, '
-            f'service_target={self.service_target}, '
-            f'base_dir={self.base_dir})')
-
-  def __hash__(self):
-    return hash(self.__repr__())
+from ml_metadata.proto import metadata_store_pb2
 
 
 class MLMDConnectionManager:
-  """MLMDConnectionManager managers the connections to MLMD."""
+  """MLMDConnectionManager manages the connections to MLMD.
+
+  It shares the same connection (or Metadata handle) for the same MLMD database,
+  which can be distinguished by the "identifier" of the connection config.
+
+  The connection sharing begins from the time the manager instance __enter__ and
+  ends on the __exit__. Manager can __enter__ multiple times; in such case the
+  outermost __enter__ and __exit__ pair matters.
+  """
+
+  @classmethod
+  def fake(cls):
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.fake_database.SetInParent()
+    return cls(primary_connection_config=connection_config)
+
+  @classmethod
+  def sqlite(cls, path: str):
+    return cls(
+        primary_connection_config=(
+            metadata.sqlite_metadata_connection_config(path)))
+
+  def _get_identifier(self, connection_config: metadata.ConnectionConfigType):
+    """Get identifier for the connection config."""
+    if isinstance(connection_config, metadata_store_pb2.ConnectionConfig):
+      db_config = cast(metadata_store_pb2.ConnectionConfig,
+                       connection_config)
+      kind = db_config.WhichOneof('config')
+      if kind == 'fake_database':
+        return (kind,)
+      elif kind == 'mysql':
+        return (kind,
+                db_config.mysql.host,
+                db_config.mysql.port,
+                db_config.mysql.database)
+      elif kind == 'sqlite':
+        return (kind,
+                db_config.sqlite.filename_uri,
+                db_config.sqlite.connection_mode)
+    if isinstance(connection_config,
+                  metadata_store_pb2.MetadataStoreClientConfig):
+      client_config = cast(metadata_store_pb2.MetadataStoreClientConfig,
+                           connection_config)
+      return ('grpc_client',
+              client_config.host,
+              client_config.port)
+    raise NotImplementedError(
+        f'Unknown connection config {connection_config}.')
 
   def __init__(
-      self,
-      primary_mlmd_handle: metadata.Metadata,
-      primary_mlmd_handle_config: Optional[MLMDConnectionConfig] = None,
-      create_reader_mlmd_connection_fn: Optional[Callable[
-          [MLMDConnectionConfig], metadata.Metadata]] = None):
+      self, primary_connection_config: metadata.ConnectionConfigType):
     """Constructor of MLMDConnectionManager.
 
     Args:
-      primary_mlmd_handle: mlmd handle to the primary mlmd db.
-      primary_mlmd_handle_config: Config of the primary mlmd handle.
-      create_reader_mlmd_connection_fn: Callable function for create a mlmd
-        connection.
+      primary_connection_config: Config of the primary mlmd handle.
     """
-    if not primary_mlmd_handle:
-      raise ValueError('Primary mlmd handle can not be None.')
-    self._primary_mlmd_handle = primary_mlmd_handle
-    self._primary_mlmd_handle_config = primary_mlmd_handle_config
-    self._reader_mlmd_handles = {}
-    self._create_reader_mlmd_connection_fn = create_reader_mlmd_connection_fn
+    self._primary_connection_config = primary_connection_config
+    self._exit_stack = contextlib.ExitStack()
+    self._mlmd_handle_by_config_id = {}
+    self._enter_count = 0
 
   def __enter__(self):
-    self._primary_mlmd_handle.__enter__()
+    self._enter_count += 1
     return self
 
   def __exit__(self,
                exc_type: Optional[Type[Exception]] = None,
                exc_value: Optional[Exception] = None,
                exc_tb: Optional[types.TracebackType] = None) -> None:
-    if self._primary_mlmd_handle:
-      self._primary_mlmd_handle.__exit__(exc_type, exc_value, exc_tb)
-
-    # Exit reader handles and make sure they are recreated upon reentry.
-    for _, mlmd_handle in self._reader_mlmd_handles.items():
-      mlmd_handle.__exit__(exc_type, exc_value, exc_tb)
-    self._reader_mlmd_handles = {}
+    self._enter_count -= 1
+    if not self._enter_count:
+      self._exit_stack.close()
+      self._mlmd_handle_by_config_id.clear()
 
   @property
   def primary_mlmd_handle(self) -> metadata.Metadata:
-    return self._primary_mlmd_handle
+    return self._get_mlmd_handle(self._primary_connection_config)
 
-  def get_mlmd_handle(
-      self, owner_name: str, project_name: str,
-      mlmd_service_target_name: str) -> Optional[metadata.Metadata]:
-    """Gets a MLMD db handle."""
-    if not self._primary_mlmd_handle_config:
-      raise ValueError(
-          'primary_mlmd_handle_config is None, it is not allowed to call '
-          'get_mlmd_handle to get other mlmd handles.')
+  def _get_mlmd_handle(
+      self, connection_config: metadata.ConnectionConfigType,
+  ) -> metadata.Metadata:
+    """Gets or creates a memoized MLMD handle for the connection config."""
+    if not self._enter_count:
+      raise RuntimeError(
+          'MLMDConnectionManager is not entered yet. Please use with statement '
+          'first before calling get_mlmd_handle().')
+    config_id = self._get_identifier(connection_config)
+    if config_id in self._mlmd_handle_by_config_id:
+      return self._mlmd_handle_by_config_id[config_id]
+    result = metadata.Metadata(connection_config)
+    self._mlmd_handle_by_config_id[config_id] = result
+    self._exit_stack.enter_context(result)
+    return result
 
-    connection_config = MLMDConnectionConfig(
-        owner_name, project_name, mlmd_service_target_name, base_dir='')
-    if connection_config == self._primary_mlmd_handle_config:
-      return self._primary_mlmd_handle
-    elif connection_config in self._reader_mlmd_handles:
-      return self._reader_mlmd_handles[connection_config]
-    elif self._create_reader_mlmd_connection_fn:
-      reader_mlmd_handle = self._create_reader_mlmd_connection_fn(
-          connection_config)
-      reader_mlmd_handle.__enter__()
-      self._reader_mlmd_handles[connection_config] = reader_mlmd_handle
-      return self._reader_mlmd_handles.get(connection_config)
-
-    return None
+  def get_mlmd_service_handle(
+      self, owner: str, name: str, server_address: str) -> metadata.Metadata:
+    """Gets metadata handle for MLMD Service."""
+    raise NotImplementedError('MLMD Service not supported.')
 
 
 MLMDHandleType = Union[metadata.Metadata, MLMDConnectionManager]

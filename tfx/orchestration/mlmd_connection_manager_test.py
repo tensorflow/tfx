@@ -13,67 +13,58 @@
 # limitations under the License.
 """Tests for mlmd_connection_manager."""
 
-import contextlib
+from unittest import mock
 
-from absl.testing.absltest import mock
 import tensorflow as tf
-from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 
-
-def _fake_create_reader_mlmd_connection_fn(unused_args):
-  return contextlib.nullcontext()
+import ml_metadata as mlmd
 
 
 class MlmdConnectionManagerTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
+    self.mock_store_factory = mock.patch.object(
+        mlmd, 'MetadataStore', autospec=True).start()
+    self.addCleanup(mock.patch.stopall)
 
-    self._mock_primary_metadata_handle = mock.create_autospec(
-        metadata.Metadata, instance=True)
-    self._mock_reader_metadata_handle = mock.create_autospec(
-        metadata.Metadata, instance=True)
-    primary_metadata_handle_config = mlmd_cm.MLMDConnectionConfig(
-        'owner', 'primary', 'prod')
-    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
-        self._mock_primary_metadata_handle, primary_metadata_handle_config,
-        _fake_create_reader_mlmd_connection_fn)
-    self._mlmd_connection_manager._primary_mlmd_handle = (
-        self._mock_primary_metadata_handle)
-    self._mlmd_connection_manager._reader_mlmd_handles[
-        mlmd_cm.MLMDConnectionConfig(
-            'owner', 'reader', 'prod')] = self._mock_reader_metadata_handle
+  def test_primary_handle(self):
+    with mlmd_cm.MLMDConnectionManager.fake() as cm:
+      connection_config = cm.primary_mlmd_handle.connection_config
+      self.assertEqual(connection_config.WhichOneof('config'), 'fake_database')
+      self.mock_store_factory.assert_called_with(connection_config)
 
-  def test_exit_context(self):
-    original_reader_handles = self._mlmd_connection_manager._reader_mlmd_handles
-    self._mlmd_connection_manager.__exit__()
-    self.assertNotEmpty(original_reader_handles)
+    self.mock_store_factory.reset_mock()
 
-    self._mock_primary_metadata_handle.__exit__.assert_called_once()
-    for _, handle in original_reader_handles.items():
-      handle.__exit__.assert_called_once()
-    self.assertEmpty(self._mlmd_connection_manager._reader_mlmd_handles)
+    with mlmd_cm.MLMDConnectionManager.sqlite('foo') as cm:
+      connection_config = cm.primary_mlmd_handle.connection_config
+      self.assertEqual(connection_config.WhichOneof('config'), 'sqlite')
+      self.mock_store_factory.assert_called_with(connection_config)
 
-  def test_primary_mlmd_handle(self):
-    self.assertEqual(self._mock_primary_metadata_handle,
-                     self._mlmd_connection_manager.primary_mlmd_handle)
+  def test_unusable_without_enter(self):
+    cm = mlmd_cm.MLMDConnectionManager.fake()
+    with self.assertRaisesRegex(RuntimeError, 'not entered yet'):
+      cm.primary_mlmd_handle  # pylint: disable=pointless-statement
 
-  def test_get_mlmd_handle(self):
-    self.assertEqual(
-        self._mock_primary_metadata_handle,
-        self._mlmd_connection_manager.get_mlmd_handle('owner', 'primary',
-                                                      'prod'))
+  def test_enter_synced_with_handle(self):
+    cm = mlmd_cm.MLMDConnectionManager.fake()
+    with cm:
+      handle = cm.primary_mlmd_handle
+      self.assertIsNotNone(handle.store)
+    with self.assertRaisesRegex(
+        RuntimeError, 'Metadata object is not in enter state'):
+      handle.store  # pylint: disable=pointless-statement
 
-    self.assertEqual(
-        self._mock_reader_metadata_handle,
-        self._mlmd_connection_manager.get_mlmd_handle('owner', 'reader',
-                                                      'prod'))
-
-    self._mlmd_connection_manager.get_mlmd_handle('new', 'new', 'prod')
-    self.assertIn(
-        mlmd_cm.MLMDConnectionConfig('new', 'new', 'prod'),
-        self._mlmd_connection_manager._reader_mlmd_handles)
+  def test_multiple_enterable(self):
+    cm = mlmd_cm.MLMDConnectionManager.fake()
+    with cm:
+      with cm:
+        m1 = cm.primary_mlmd_handle
+      m2 = cm.primary_mlmd_handle
+      self.assertIs(m1, m2)
+    with self.assertRaises(RuntimeError):
+      cm.primary_mlmd_handle  # pylint: disable=pointless-statement
 
 
 if __name__ == '__main__':

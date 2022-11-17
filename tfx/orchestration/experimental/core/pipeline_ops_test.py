@@ -22,7 +22,6 @@ from absl.testing import parameterized
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.dsl.compiler import constants
-from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
@@ -75,14 +74,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
     # Makes sure multiple connections within a test always connect to the same
     # MLMD instance.
     metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
-    self._metadata_path = metadata_path
-    connection_config = metadata.sqlite_metadata_connection_config(
+    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager.sqlite(
         metadata_path)
-    connection_config.sqlite.SetInParent()
-    self._mlmd_connection = metadata.Metadata(
-        connection_config=connection_config)
-    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
-        primary_mlmd_handle=self._mlmd_connection)
+    self.enter_context(self._mlmd_connection_manager)
+    self._mlmd_connection = self._mlmd_connection_manager.primary_mlmd_handle
 
     mock_service_job_manager = mock.create_autospec(
         service_jobs.ServiceJobManager, instance=True)

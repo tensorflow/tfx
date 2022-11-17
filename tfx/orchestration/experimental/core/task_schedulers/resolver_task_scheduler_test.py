@@ -19,7 +19,7 @@ import uuid
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import constants
-from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task_queue as tq
@@ -43,11 +43,9 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
         self.id())
 
     metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
-    connection_config = metadata.sqlite_metadata_connection_config(
-        metadata_path)
-    connection_config.sqlite.SetInParent()
-    self._mlmd_connection = metadata.Metadata(
-        connection_config=connection_config)
+    self._mlmd_cm = mlmd_cm.MLMDConnectionManager.sqlite(metadata_path)
+    self.enter_context(self._mlmd_cm)
+    self._mlmd_connection = self._mlmd_cm.primary_mlmd_handle
 
     pipeline = self._make_pipeline(pipeline_root, str(uuid.uuid4()))
     self._pipeline = pipeline
@@ -88,7 +86,7 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
     # Verify that resolver task is generated.
     [resolver_task] = test_utils.run_generator_and_test(
         test_case=self,
-        mlmd_connection=self._mlmd_connection,
+        mlmd_connection_manager=self._mlmd_cm,
         generator_class=sptg.SyncPipelineTaskGenerator,
         pipeline=self._pipeline,
         task_queue=task_queue,
@@ -119,7 +117,7 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
     # Verify resolver node output is input to the downstream consumer node.
     [consumer_task] = test_utils.run_generator_and_test(
         test_case=self,
-        mlmd_connection=self._mlmd_connection,
+        mlmd_connection_manager=self._mlmd_cm,
         generator_class=sptg.SyncPipelineTaskGenerator,
         pipeline=self._pipeline,
         task_queue=task_queue,

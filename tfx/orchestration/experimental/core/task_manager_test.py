@@ -22,7 +22,6 @@ from absl import logging
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import data_types_utils
-from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
@@ -303,14 +302,10 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     # Makes sure multiple connections within a test always connect to the same
     # MLMD instance.
     metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
-    self._metadata_path = metadata_path
-    connection_config = metadata.sqlite_metadata_connection_config(
+    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager.sqlite(
         metadata_path)
-    connection_config.sqlite.SetInParent()
-    self._mlmd_connection = metadata.Metadata(
-        connection_config=connection_config)
-    self._mlmd_connection_manager = mlmd_cm.MLMDConnectionManager(
-        self._mlmd_connection)
+    self.enter_context(self._mlmd_connection_manager)
+    self._mlmd_connection = self._mlmd_connection_manager.primary_mlmd_handle
 
     # Sets up the pipeline.
     pipeline = test_async_pipeline.create_pipeline()
