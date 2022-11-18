@@ -291,29 +291,26 @@ class _Generator:
         e for e in latest_executions_set
         if execution_lib.is_execution_failed(e)
     ]
-    # There should be only one failed execution in the latest_execution_set.
-    # Fail the node if there are more as it's an unexpected behavior.
-    if len(latest_failed_executions) > 1:
-      error_msg = (f'node {node_uid} failed; error: More than one failed '
-                   'executions found in the latest execution set.')
-      result.append(
-          task_lib.UpdateNodeStateTask(
-              node_uid=node_uid,
-              state=pstate.NodeState.FAILED,
-              status=status_lib.Status(
-                  code=status_lib.Code.ABORTED, message=error_msg)))
-      return result
     # TODO(b/223627713): We currently carry over execution failures after users
     # stop and restart the node. Should we consider to reset the count?
     if latest_failed_executions:
-      latest_failed_execution = latest_failed_executions[-1]
+      # There must be at most one failed execution in the latest_execution_set.
+      # Fail the node if there are more as it's an unexpected behavior.
+      if len(latest_failed_executions) > 1:
+        error_msg = (f'node {node_uid} failed; error: More than one failed '
+                     'executions found in the latest execution set.')
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.FAILED,
+                status=status_lib.Status(
+                    code=status_lib.Code.ABORTED, message=error_msg)))
+        return result
+      latest_failed_execution = latest_failed_executions[0]
       if (node.execution_options.max_execution_retries >=
           task_gen_utils.get_num_of_failures_from_failed_execution(
               node_executions, latest_failed_execution)):
         # Step 1: Replicate a new execution from latest_failed_execution.
-        # latest_failed_executions is sorted descendingly by
-        # __external_execution_index__.
-        # There should be only one failed execution.
         retry_execution = task_gen_utils.register_retry_execution(
             self._mlmd_handle, node, latest_failed_execution)
         # Step 2: Update node state to RUNNING.
