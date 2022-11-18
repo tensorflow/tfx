@@ -112,46 +112,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
                             task_gen_utils.get_executions(m, self._transform))
       self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
 
-  def test_is_latest_execution_successful(self):
-    executions = []
-    self.assertFalse(task_gen_utils.is_latest_execution_successful(executions))
-
-    # A successful execution.
-    executions.append(
-        metadata_store_pb2.Execution(
-            id=1,
-            type_id=2,
-            create_time_since_epoch=10,
-            last_known_state=metadata_store_pb2.Execution.COMPLETE))
-    self.assertTrue(task_gen_utils.is_latest_execution_successful(executions))
-
-    # An older failed execution should not matter.
-    executions.append(
-        metadata_store_pb2.Execution(
-            id=2,
-            type_id=2,
-            create_time_since_epoch=5,
-            last_known_state=metadata_store_pb2.Execution.FAILED))
-    self.assertTrue(task_gen_utils.is_latest_execution_successful(executions))
-
-    # A newer failed execution returns False.
-    executions.append(
-        metadata_store_pb2.Execution(
-            id=3,
-            type_id=2,
-            create_time_since_epoch=15,
-            last_known_state=metadata_store_pb2.Execution.FAILED))
-    self.assertFalse(task_gen_utils.is_latest_execution_successful(executions))
-
-    # Finally, a newer successful execution returns True.
-    executions.append(
-        metadata_store_pb2.Execution(
-            id=4,
-            type_id=2,
-            create_time_since_epoch=20,
-            last_known_state=metadata_store_pb2.Execution.COMPLETE))
-    self.assertTrue(task_gen_utils.is_latest_execution_successful(executions))
-
   def test_generate_task_from_active_execution(self):
     with self._mlmd_connection as m:
       # No tasks generated without running execution.
@@ -270,19 +230,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertEqual(
           otu.OUTPUT_NUM,
           resolved_info.input_and_params[0].exec_properties['input_num'])
-
-  def test_get_latest_successful_execution(self):
-    otu.fake_component_output(self._mlmd_connection, self._transform)
-    otu.fake_component_output(self._mlmd_connection, self._transform)
-    otu.fake_component_output(self._mlmd_connection, self._transform)
-    with self._mlmd_connection as m:
-      execs = sorted(m.store.get_executions(), key=lambda e: e.id)
-      execs[2].last_known_state = metadata_store_pb2.Execution.FAILED
-      m.store.put_executions([execs[2]])
-      execs = sorted(
-          task_gen_utils.get_executions(m, self._transform), key=lambda e: e.id)
-      self.assertEqual(execs[1],
-                       task_gen_utils.get_latest_successful_execution(execs))
 
   @parameterized.named_parameters(
       dict(

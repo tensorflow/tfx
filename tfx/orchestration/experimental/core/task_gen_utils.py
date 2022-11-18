@@ -264,55 +264,6 @@ def get_executions(
       list_options=mlmd.ListOptions(filter_query=filter_query))
 
 
-def is_latest_execution_successful(
-    executions: Sequence[metadata_store_pb2.Execution]) -> bool:
-  """Returns `True` if the latest execution was successful.
-
-  Latest execution will have the most recent `create_time_since_epoch`.
-
-  Args:
-    executions: A sequence of executions.
-
-  Returns:
-    `True` if latest execution (per `create_time_since_epoch` was successful.
-    `False` if `executions` is empty or if latest execution was not successful.
-  """
-  execution = get_latest_execution(executions)
-  return execution_lib.is_execution_successful(
-      execution) if execution else False
-
-
-def get_latest_active_execution(
-    executions: Iterable[metadata_store_pb2.Execution]
-) -> Optional[metadata_store_pb2.Execution]:
-  """Returns the latest active execution or `None` if no active executions exist."""
-  active_executions = [
-      e for e in executions if execution_lib.is_execution_active(e)
-  ]
-  return get_latest_execution(active_executions)
-
-
-def get_latest_successful_execution(
-    executions: Iterable[metadata_store_pb2.Execution]
-) -> Optional[metadata_store_pb2.Execution]:
-  """Returns the latest successful execution or `None` if no successful executions exist."""
-  successful_executions = [
-      e for e in executions if execution_lib.is_execution_successful(e)
-  ]
-  return get_latest_execution(successful_executions)
-
-
-def get_latest_execution(
-    executions: Iterable[metadata_store_pb2.Execution]
-) -> Optional[metadata_store_pb2.Execution]:
-  """Returns latest execution or `None` if iterable is empty."""
-  # TODO(guoweihe): After b/207038460, multiple executions can have the same
-  # creation time. The '__external_execution_index__' custom_property should be
-  # used to order the executions, instead of creation time.
-  sorted_executions = execution_lib.sort_executions_newest_to_oldest(executions)
-  return sorted_executions[0] if sorted_executions else None
-
-
 def get_latest_executions_set(
     executions: Iterable[metadata_store_pb2.Execution]
 ) -> List[metadata_store_pb2.Execution]:  # pylint: disable=g-doc-args
