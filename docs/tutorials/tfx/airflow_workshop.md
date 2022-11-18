@@ -225,7 +225,7 @@ For full documentation of gcloud see the
 3.  For **Region**, select `us-east1` and for **Zone**, select a zone within the
     selected region.
 
-4.  Scroll down to Machine configuration and select **n1-standard-2** for
+4.  Scroll down to Machine configuration and select **e2-standard-2** for
     Machine type.
 
 5.  Leave the remaining fields with their default and click **Create**.
@@ -241,11 +241,14 @@ followed by **Open Jupyterlab**.
 
 Next you'll clone the `tfx` repository in your JupyterLab instance. 1. In
 JupyterLab, click the **Terminal** icon to open a new terminal.
-<ql-infobox><strong>Note:</strong> If prompted, click <code>Cancel</code> for
-Build Recommended.</ql-infobox> 2. To clone the `tfx` Github repository, type in
-the following command, and press **Enter**.
 
-```bash
+<ql-infobox><strong>Note:</strong> If prompted, click <code>Cancel</code> for
+Build Recommended.</ql-infobox>
+
+1.  To clone the `tfx` Github repository, type in the following command, and
+    press **Enter**.
+
+```
 git clone https://github.com/tensorflow/tfx.git
 ```
 
