@@ -241,6 +241,8 @@ class ResolverFunctionTest(tf.test.TestCase):
     output = resolve()
     self.assertIsInstance(output, dict)
     self.assertIsInstance(output['x'], resolved_channel.ResolvedChannel)
+    self.assertEqual(
+        output['x']._invocation.resolver_function._function.__name__, 'resolve')
     self.assertIsInstance(output['x'].output_node, resolver_op.DictNode)
     self.assertEqual(output['x'].output_key, 'x')
 
@@ -265,12 +267,17 @@ class ResolverFunctionTest(tf.test.TestCase):
     with self.subTest('ARTIFACT_LIST with a single output type'):
       result = resolve_artifact_list.with_output_type(X)()
       self.assertIsInstance(result, resolved_channel.ResolvedChannel)
+      self.assertEqual(result._invocation.resolver_function._function.__name__,
+                       'resolve_artifact_list')
       self.assertEqual(result.type, X)
 
     with self.subTest('ARTIFACT_MULTIMAP with dict output type'):
       result = resolve_artifact_multimap.with_output_type({'x': X})()
       self.assertIsInstance(result, dict)
       self.assertIsInstance(result['x'], resolved_channel.ResolvedChannel)
+      self.assertEqual(
+          result['x']._invocation.resolver_function._function.__name__,
+          'resolve_artifact_multimap')
       self.assertEqual(result['x'].type, X)
 
     with self.subTest('ARTIFACT_MULTIMAP with a single output type'):
@@ -310,8 +317,9 @@ class ResolverFunctionTest(tf.test.TestCase):
 
     with for_each.ForEach(resolve()) as each_x:
       self.assertIsInstance(each_x, resolved_channel.ResolvedChannel)
+      self.assertEqual(each_x._invocation.resolver_function._function.__name__,
+                       'resolve')
       self.assertEqual(each_x.type, X)
-
 
 if __name__ == '__main__':
   tf.test.main()

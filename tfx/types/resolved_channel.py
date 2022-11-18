@@ -16,7 +16,9 @@
 The main purpose of this module is to break the cyclic import dependency.
 """
 
-from typing import Optional, Type, Set, Mapping
+import dataclasses
+
+from typing import Any, Optional, Type, Set, Sequence, Mapping
 
 from tfx.dsl.control_flow import for_each_internal
 from tfx.dsl.input_resolution import resolver_op
@@ -24,6 +26,24 @@ from tfx.types import artifact
 from tfx.types import channel
 from tfx.utils import doc_controls
 from tfx.utils import typing_utils
+
+
+# TODO(b/259604560): Make ResolverFunctionInvocation, e.g. to handle tracing
+# other function calls.
+@dataclasses.dataclass
+class ResolverFunctionInvocation:
+  """Stores resolver function invocation details for later reconstruction.
+
+  Attributes:
+    resolver_function: The ResolverFunction function object.
+    args: The non-keyword arguments to the resolver function.
+    kwargs: The keyword argument dictionary to the resolver function.
+  """
+  # We use Any type instead of ResolverFunction for the resolver_function
+  # attribute to avoid a BUILD dependency cycle.
+  resolver_function: Any
+  args: Sequence[Any]
+  kwargs: Mapping[str, Any]
 
 
 @doc_controls.do_not_generate_docs
@@ -45,10 +65,12 @@ class ResolvedChannel(channel.BaseChannel):
       artifact_type: Type[artifact.Artifact],
       output_node: resolver_op.Node,
       output_key: Optional[str] = None,
+      invocation: Optional[ResolverFunctionInvocation] = None,
       for_each_context: Optional[for_each_internal.ForEachContext] = None):
     super().__init__(artifact_type)
     self._output_node = output_node
     self._output_key = output_key
+    self._invocation = invocation
     self._for_each_context = for_each_context
 
   def get_data_dependent_node_ids(self) -> Set[str]:

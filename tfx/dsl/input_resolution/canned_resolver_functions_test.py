@@ -23,12 +23,15 @@ from tfx.dsl.compiler import node_inputs_compiler
 from tfx.dsl.components.base import base_node
 from tfx.dsl.control_flow import for_each
 from tfx.dsl.input_resolution import canned_resolver_functions
+from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration import pipeline
 from tfx.orchestration.portable import inputs_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
+from tfx.types import resolved_channel
 from tfx.utils import test_case_utils
+
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -321,6 +324,19 @@ class CannedResolverFunctionsTest(
     resolved = inputs_utils.resolve_input_artifacts(
         pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
     self.assertIsInstance(resolved, inputs_utils.Skip)
+
+  def testResolverFnContext(self):
+    channel = canned_resolver_functions.latest_created(
+        types.Channel(test_utils.DummyArtifact, output_key='x'), n=2)
+
+    self.assertIsInstance(channel, resolved_channel.ResolvedChannel)
+    self.assertEqual(channel._invocation.resolver_function._function.__name__,
+                     'latest_created')
+
+    self.assertLen(channel._invocation.args, 1)
+    self.assertIsInstance(channel._invocation.args[0], resolver_op.InputNode)
+
+    self.assertEqual(channel._invocation.kwargs, {'n': 2})
 
 if __name__ == '__main__':
   tf.test.main()

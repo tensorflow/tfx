@@ -200,19 +200,24 @@ class ResolverFunction:
     kwargs = {k: self._try_convert_to_node(v) for k, v in kwargs.items()}
     out = self.trace(*args, **kwargs)
 
+    invocation = resolved_channel.ResolverFunctionInvocation(
+        resolver_function=self, args=args, kwargs=kwargs)
+
     if out.output_data_type == resolver_op.DataType.ARTIFACT_LIST:
       if not typing_utils.is_compatible(output_type, _ArtifactType):
         raise RuntimeError(
             f'Invalid output_type {output_type}. Expected {_ArtifactType}')
       output_type = cast(_ArtifactType, output_type)
-      return resolved_channel.ResolvedChannel(output_type, out)
+      return resolved_channel.ResolvedChannel(
+          output_type, out, invocation=invocation)
     if out.output_data_type == resolver_op.DataType.ARTIFACT_MULTIMAP:
       if not typing_utils.is_compatible(output_type, _ArtifactTypeMap):
         raise RuntimeError(
             f'Invalid output_type {output_type}. Expected {_ArtifactTypeMap}')
       output_type = cast(_ArtifactTypeMap, output_type)
       return {
-          key: resolved_channel.ResolvedChannel(artifact_type, out, key)
+          key: resolved_channel.ResolvedChannel(
+              artifact_type, out, key, invocation=invocation)
           for key, artifact_type in output_type.items()
       }
     if out.output_data_type == resolver_op.DataType.ARTIFACT_MULTIMAP_LIST:
@@ -224,12 +229,15 @@ class ResolverFunction:
             f'unwrap_dict_key {self._unwrap_dict_key} does not exist in the '
             f'output type keys: {list(output_type)}.')
 
-      def loop_var_factory(context: for_each_internal.ForEachContext):
-        result = {
-            key: resolved_channel.ResolvedChannel(
-                artifact_type, out, key, context)
-            for key, artifact_type in output_type.items()
-        }
+      def loop_var_factory(for_each_context: for_each_internal.ForEachContext):
+        result = {}
+        for key, artifact_type in output_type.items():
+          result[key] = resolved_channel.ResolvedChannel(
+              artifact_type,
+              out,
+              key,
+              invocation=invocation,
+              for_each_context=for_each_context)
         if self._unwrap_dict_key:
           result = result[self._unwrap_dict_key]
         return result
