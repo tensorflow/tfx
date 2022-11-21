@@ -22,7 +22,6 @@ from absl.testing import parameterized
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.dsl.compiler import constants
-from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import env
@@ -40,6 +39,7 @@ from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.experimental.core.testing import test_manual_node
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable import runtime_parameter_utils

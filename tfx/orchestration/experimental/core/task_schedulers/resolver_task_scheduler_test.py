@@ -19,7 +19,6 @@ import uuid
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import constants
-from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task_queue as tq
@@ -27,6 +26,7 @@ from tfx.orchestration.experimental.core import task_scheduler
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.task_schedulers import resolver_task_scheduler
 from tfx.orchestration.experimental.core.testing import test_pipeline_with_resolver
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable.mlmd import context_lib

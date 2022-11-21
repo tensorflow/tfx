@@ -22,7 +22,6 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.dsl.compiler import constants as compiler_constants
 from tfx.orchestration import data_types_utils
-from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -33,6 +32,7 @@ from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_sync_pipeline
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib

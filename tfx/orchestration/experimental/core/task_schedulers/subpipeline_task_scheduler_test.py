@@ -22,7 +22,6 @@ import uuid
 from absl.testing import flagsaver
 import tensorflow as tf
 from tfx.dsl.compiler import constants
-from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
@@ -31,6 +30,7 @@ from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.task_schedulers import subpipeline_task_scheduler
 from tfx.orchestration.experimental.core.testing import test_subpipeline
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.utils import status as status_lib
 

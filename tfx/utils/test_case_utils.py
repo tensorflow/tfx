@@ -17,14 +17,15 @@ from __future__ import annotations
 import contextlib
 import copy
 import os
-
-from typing import Dict, Iterable, Optional, Union, Mapping, Sequence
+from typing import Dict, Iterable, Optional, Union, Mapping, Sequence, cast
+import unittest
 
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.utils import io_utils
 from tfx.utils import json_utils
@@ -155,12 +156,20 @@ class MlmdMixins:
   _execution_type_ids: Dict[str, int]
 
   def init_mlmd(self):
-    config = metadata_store_pb2.ConnectionConfig()
-    config.fake_database.SetInParent()
-    self.mlmd_handle = metadata.Metadata(config)
+    """Initialize fake MLMD connection for testing."""
+    self.mlmd_cm = mlmd_cm.MLMDConnectionManager.fake()
+    self.__exit_stack = contextlib.ExitStack()
+    self.__exit_stack.enter_context(self.mlmd_cm)
+    assert isinstance(self, unittest.TestCase), (
+        'MlmdMixins should be used along with TestCase.')
+    cast(unittest.TestCase, self).addCleanup(self.__exit_stack.close)
     self._context_type_ids = {}
     self._artifact_type_ids = {}
     self._execution_type_ids = {}
+
+  @property
+  def mlmd_handle(self) -> metadata.Metadata:  # pytype: disable=annotation-type-mismatch
+    return self.mlmd_cm.primary_mlmd_handle
 
   @property
   def store(self):

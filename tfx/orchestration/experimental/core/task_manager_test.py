@@ -22,7 +22,6 @@ from absl import logging
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import data_types_utils
-from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -34,6 +33,7 @@ from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib

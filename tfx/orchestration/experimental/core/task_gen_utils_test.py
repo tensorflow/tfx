@@ -20,12 +20,12 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx import version
-from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.experimental.core.testing import test_dynamic_exec_properties_pipeline
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
