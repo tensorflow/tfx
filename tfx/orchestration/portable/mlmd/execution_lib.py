@@ -23,11 +23,11 @@ from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import outputs_utils
+from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import artifact_utils
 from tfx.utils import proto_utils
 from tfx.utils import typing_utils
 
@@ -466,28 +466,12 @@ def get_artifacts_dict(
           f'indices: {indexed_artifact_ids_dict}')
     artifact_ids_dict[key] = [aid for _, aid in ordered_artifact_ids]
 
-  # Fetch all the relevant artifacts.
-  all_artifact_ids = list(itertools.chain(*artifact_ids_dict.values()))
-  mlmd_artifacts = metadata_handler.store.get_artifacts_by_id(all_artifact_ids)
-  if len(all_artifact_ids) != len(mlmd_artifacts):
-    raise ValueError('Could not find all mlmd artifacts for ids: {}'.format(
-        ', '.join(all_artifact_ids)))
-
-  # Fetch artifact types and create a map keyed by artifact type id.
-  artifact_type_ids = set(a.type_id for a in mlmd_artifacts)
-  artifact_types = metadata_handler.store.get_artifact_types_by_id(
-      artifact_type_ids)
-  artifact_types_by_id = {a.id: a for a in artifact_types}
-
-  # Set `type` field in the artifact proto which is not filled by MLMD.
-  for artifact in mlmd_artifacts:
-    artifact.type = artifact_types_by_id[artifact.type_id].name
+  # Fetch all the relevant TFX artifacts.
+  artifacts = artifact_lib.get_artifacts_by_ids(
+      metadata_handler, list(itertools.chain(*artifact_ids_dict.values())))
 
   # Create a map from artifact id to `types.Artifact` instances.
-  artifacts_by_id = {
-      a.id: artifact_utils.deserialize_artifact(artifact_types_by_id[a.type_id],
-                                                a) for a in mlmd_artifacts
-  }
+  artifacts_by_id = {artifact.id: artifact for artifact in artifacts}
 
   # Create a map from "key" to ordered list of `types.Artifact` to be returned.
   # The ordering of artifacts is in accordance with their "index" derived from
