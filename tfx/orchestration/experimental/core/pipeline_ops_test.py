@@ -888,7 +888,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       event_observer.testonly_wait()
       self.assertLen(events, 1)
       event = events[0]
-      self.assertEqual('pipeline1', event.pipeline_id)
+      self.assertEqual('pipeline1', event.pipeline_uid.pipeline_id)
       self.assertEqual(
           status_lib.Status(code=status_lib.Code.CANCELLED), event.status)
 

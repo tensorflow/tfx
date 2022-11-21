@@ -410,9 +410,8 @@ class PipelineStateTest(test_utils.TfxTest):
       event_observer.register_observer(recorder)
 
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
-      node_uid = task_lib.NodeUid(
-          node_id='Trainer',
-          pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline))
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      node_uid = task_lib.NodeUid(node_id='Trainer', pipeline_uid=pipeline_uid)
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(node_uid) as node_state:
           node_state.update(pstate.NodeState.STARTING)
@@ -457,10 +456,10 @@ class PipelineStateTest(test_utils.TfxTest):
 
       want = [
           event_observer.PipelineStarted(
-              pipeline_state=None, pipeline_id='pipeline1'),
+              pipeline_state=None, pipeline_uid=pipeline_uid),
           event_observer.NodeStateChange(
               execution=None,
-              pipeline_id='pipeline1',
+              pipeline_uid=pipeline_uid,
               pipeline_run=None,
               node_id='Trainer',
               old_state=pstate.NodeState(state='started'),
@@ -474,7 +473,7 @@ class PipelineStateTest(test_utils.TfxTest):
                   ])),
           event_observer.NodeStateChange(
               execution=None,
-              pipeline_id='pipeline1',
+              pipeline_uid=pipeline_uid,
               pipeline_run=None,
               node_id='Trainer',
               old_state=pstate.NodeState(
@@ -501,7 +500,7 @@ class PipelineStateTest(test_utils.TfxTest):
                   ])),
           event_observer.NodeStateChange(
               execution=None,
-              pipeline_id='pipeline1',
+              pipeline_uid=pipeline_uid,
               pipeline_run=None,
               node_id='Trainer',
               old_state=pstate.NodeState(

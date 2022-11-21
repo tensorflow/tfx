@@ -470,8 +470,7 @@ class PipelineState:
         mlmd_handle=mlmd_handle, pipeline=pipeline, execution_id=execution.id)
     event_observer.notify(
         event_observer.PipelineStarted(
-            pipeline_id=pipeline_uid.pipeline_id,
-            pipeline_state=pipeline_state))
+            pipeline_uid=pipeline_uid, pipeline_state=pipeline_state))
     record_state_change_time()
     return pipeline_state
 
@@ -1259,7 +1258,7 @@ def _notify_node_state_change(execution: metadata_store_pb2.Execution,
   event_observer.notify(
       event_observer.NodeStateChange(
           execution=execution,
-          pipeline_id=node_uid.pipeline_uid.pipeline_id,
+          pipeline_uid=node_uid.pipeline_uid,
           pipeline_run=pipeline_run_id,
           node_id=node_uid.node_id,
           old_state=old_state,

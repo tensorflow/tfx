@@ -51,7 +51,7 @@ class ExecutionStateChange:
 @dataclasses.dataclass(frozen=True)
 class PipelineStarted:
   """PipelineStarted event."""
-  pipeline_id: str
+  pipeline_uid: task_lib.PipelineUid
   # Should be pipeline_state.PipelineState, but importing pipeline_state
   # would introduce a circular dependency
   pipeline_state: Any
@@ -60,7 +60,7 @@ class PipelineStarted:
 @dataclasses.dataclass(frozen=True)
 class PipelineFinished:
   """PipelineFinished event."""
-  pipeline_id: str
+  pipeline_uid: task_lib.PipelineUid
   # Should be pipeline_state.PipelineState, but importing pipeline_state
   # would introduce a circular dependency
   pipeline_state: Any
@@ -71,7 +71,7 @@ class PipelineFinished:
 class NodeStateChange:
   """NodeStateChange event."""
   execution: metadata_store_pb2.Execution
-  pipeline_id: str
+  pipeline_uid: task_lib.PipelineUid
   pipeline_run: str
   node_id: str
   # old_state and new_state are of type NodeState, but we can't refer to that

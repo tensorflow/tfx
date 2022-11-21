@@ -843,7 +843,7 @@ def _orchestrate_stop_initiated_pipeline(
           _mlmd_execution_code(stop_reason))
       event_observer.notify(
           event_observer.PipelineFinished(
-              pipeline_id=pipeline_state.pipeline_uid.pipeline_id,
+              pipeline_uid=pipeline_state.pipeline_uid,
               pipeline_state=pipeline_state,
               status=stop_reason))
 
