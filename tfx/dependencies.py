@@ -190,7 +190,7 @@ def make_extra_packages_tfdf():
   # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
   return [
       # NOTE: TFDF 1.0.1 is only compatible with TF 2.10.x.
-      'tensorflow-decision-forests==1.0.1',
+      'tensorflow-decision-forests>=1.0.1,<2',
   ]
 
 

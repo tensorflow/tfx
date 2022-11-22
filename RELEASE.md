@@ -14,6 +14,10 @@
 
 ## Dependency Updates
 
+| Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow-decision-forests` | `>=1.0.1,<2` | `==1.0.1` | Make it compatible with more TF versions. |
+
 ## Documentation Updates
 
 # Version 1.11.0
