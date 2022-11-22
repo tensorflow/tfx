@@ -28,14 +28,14 @@ from tfx.utils import typing_utils
 
 
 def _resolve_channels_dict(
-    handle_like: mlmd_cm.HandleLike,
+    metadata_handle: mlmd_cm.MLMDHandleType,
     node_inputs: pipeline_pb2.NodeInputs) -> typing_utils.ArtifactMultiMap:
   """Resolves initial input dict from input channel definition."""
   result = {}
   for key, input_spec in node_inputs.inputs.items():
     if input_spec.channels:
       result[key] = channel_resolver.resolve_union_channels(
-          handle_like, input_spec.channels)
+          metadata_handle, input_spec.channels)
   return result
 
 
@@ -71,7 +71,7 @@ class Skip(tuple, Sequence[typing_utils.ArtifactMultiMap]):
 
 
 def _resolve_node_inputs_with_resolver_config(
-    handle_like: mlmd_cm.HandleLike,
+    metadata_handle: mlmd_cm.MLMDHandleType,
     node_inputs: pipeline_pb2.NodeInputs,
 ) -> Sequence[typing_utils.ArtifactMultiMap]:
   """Resolve inputs with pipeline_pb2.ResolverConfig.
@@ -86,7 +86,7 @@ def _resolve_node_inputs_with_resolver_config(
      return as-is.
 
   Args:
-    handle_like: Metadata or MLMDConnectionManager instance for handling
+    metadata_handle: Metadata or MLMDConnectionManager instance for handling
       mlmd db connections.
     node_inputs: Current NodeInputs on which input resolution is running.
 
@@ -96,10 +96,10 @@ def _resolve_node_inputs_with_resolver_config(
   Returns:
     A resolved list of dicts (can be empty).
   """
-  initial_dict = _resolve_channels_dict(handle_like, node_inputs)
+  initial_dict = _resolve_channels_dict(metadata_handle, node_inputs)
   try:
     resolved = resolver_config_resolver.resolve(
-        mlmd_cm.get_handle(handle_like).store, initial_dict,
+        mlmd_cm.get_primary_handle(metadata_handle).store, initial_dict,
         node_inputs.resolver_config)
   except exceptions.SkipSignal:
     return []
@@ -117,7 +117,7 @@ def _resolve_node_inputs_with_resolver_config(
 def resolve_input_artifacts(
     *,
     pipeline_node: pipeline_pb2.PipelineNode,
-    metadata_handler: mlmd_cm.HandleLike,
+    metadata_handler: mlmd_cm.MLMDHandleType,
 ) -> Union[Trigger, Skip]:
   """Resolve input artifacts according to a pipeline node IR definition.
 

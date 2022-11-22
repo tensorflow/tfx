@@ -460,11 +460,13 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           m, self._execution_type, contexts).id
       executor_output = execution_result_pb2.ExecutorOutput()
       executor_output.output_artifacts['examples'].artifacts.add().type_id = 10
+      examples = standard_artifacts.Examples()
+      examples.type_id = 11
 
       with self.assertRaisesRegex(RuntimeError, 'change artifact type'):
         execution_publish_utils.publish_succeeded_execution(
             m, execution_id, contexts,
-            {'examples': [standard_artifacts.Examples(),]}, executor_output)
+            {'examples': [examples,]}, executor_output)
 
   @parameterized.named_parameters(
       # Not direct sub-dir of the original uri

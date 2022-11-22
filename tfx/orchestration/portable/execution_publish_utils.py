@@ -34,8 +34,18 @@ def _check_validity(new_artifact: metadata_store_pb2.Artifact,
                     original_artifact: types.Artifact,
                     has_multiple_artifacts: bool) -> None:
   """Check the validity of new artifact against the original artifact."""
-  if new_artifact.type_id != original_artifact.type_id:
-    raise RuntimeError('Executor output should not change artifact type.')
+  if (original_artifact.mlmd_artifact.HasField('type_id')
+      and new_artifact.HasField('type_id')
+      and new_artifact.type_id != original_artifact.type_id):
+    raise RuntimeError('Executor output should not change artifact type '
+                       f'(original type_id={original_artifact.type_id}, '
+                       f'new type_id={new_artifact.type_id}).')
+  if (original_artifact.mlmd_artifact.HasField('type')
+      and new_artifact.HasField('type')
+      and new_artifact.type != original_artifact.type_name):
+    raise RuntimeError('Executor output should not change artifact type '
+                       f'(original type_name={original_artifact.type_name}, '
+                       f'new type_name={new_artifact.type}).')
 
   # If the artifact is external and the uri is resolved during runtime, it
   # doesn't check the validity of uri.
@@ -137,7 +147,6 @@ def publish_succeeded_execution(
                         for key, artifacts in output_artifacts.items()}
   else:
     output_artifacts = {}
-
   if executor_output:
     if not set(executor_output.output_artifacts.keys()).issubset(
         output_artifacts.keys()):
@@ -146,14 +155,21 @@ def publish_succeeded_execution(
           (executor_output, output_artifacts))
     for key, artifact_list in output_artifacts.items():
       if key not in executor_output.output_artifacts:
+        # The executor output did not include the output key, which implies the
+        # component doesn't need to update these output artifacts. In this case,
+        # we publish the pre-registered output artifacts as-is.
         continue
       updated_artifact_list = executor_output.output_artifacts[key].artifacts
 
       # We assume the original output dict must include at least one output
       # artifact and all artifacts in the list share the same type/properties.
-      original_artifact = artifact_list[0]
+      default_original_artifact = copy.deepcopy(artifact_list[0])
+      default_original_artifact.mlmd_artifact.ClearField('id')
 
-      # Update the artifact list with what's in the executor output
+      # Update the artifact list with what's in the executor output. Note the
+      # original artifacts are the ones that were registered in MLMD before the
+      # execution, so these have existing artifact IDs.
+      original_artifacts_by_uri = {x.uri: x for x in artifact_list}
       artifact_list.clear()
       # TODO(b/175426744): revisit this:
       # 1) Whether multiple output is needed or not after TFX componets
@@ -166,6 +182,19 @@ def publish_succeeded_execution(
           # Don't register the output artifact if the component didn't set the
           # actual resolved artifact URI in the executor output.
           continue
+        elif updated_artifact_proto.uri in original_artifacts_by_uri:
+          # The updated artifact matches one of the original artifacts.
+          original_artifact = original_artifacts_by_uri[
+              updated_artifact_proto.uri]
+          if original_artifact.mlmd_artifact.HasField('id'):
+            updated_artifact_proto.id = original_artifact.id
+          del original_artifacts_by_uri[updated_artifact_proto.uri]
+        else:
+          # The updated artifact proto doesn't match one of the original
+          # artifacts, so it will be newly created in MLMD.
+          original_artifact = default_original_artifact
+          updated_artifact_proto.ClearField('id')
+
         _check_validity(updated_artifact_proto, original_artifact,
                         len(updated_artifact_list) > 1)
         merged_artifact = merge_utils.merge_output_artifact(
