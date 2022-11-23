@@ -77,39 +77,28 @@ class LatestPipelineRunOutputs(
         pipeline_end_node_executions,
         key=lambda e: (e.create_time_since_epoch, e.id))
 
-    artifacts_by_id = {
-        a.id: a for a in self.context.store.get_artifacts_by_context(
-            context_id=pipeline_end_node_ctx.id)
-    }
-    if not artifacts_by_id:
-      raise exceptions.SkipSignal(
-          f'Pipeline {self.pipeline_name} does not have any output artifacts '
-          'from PipelineEnd node.')
-
     # From the latest execution, find out the latest artifacts.
     end_node_output_events = [
         e for e in self.context.store.get_events_by_execution_ids(
             execution_ids=[latest_execution.id])
         if event_lib.is_valid_output_event(e)
     ]
-    artifact_dict = event_lib.get_artifact_dict(end_node_output_events)
-    # If output_keys is not provided, use all the keys by default.
-    if not self.output_keys:
-      self.output_keys = list(artifact_dict.keys())
-    result = {}
-    for key, ids in artifact_dict.items():
-      if key not in self.output_keys:
-        continue
-
-      artifact_protos = [artifacts_by_id[id] for id in ids]
-      if not artifact_protos:
-        result[key] = []
-      else:
-        artifact_type = self.context.store.get_artifact_types_by_id(
-            [artifact_protos[0].type_id])[0]
-        result[key] = [
-            artifact_utils.deserialize_artifact(artifact_type, a)
-            for a in artifact_protos
-        ]
-
+    if not end_node_output_events:
+      raise exceptions.SkipSignal(
+          f'Pipeline {self.pipeline_name} does not have any output artifacts '
+          'from PipelineEnd node.')
+    artifacts = self.context.store.get_artifacts_by_id(
+        [e.artifact_id for e in end_node_output_events])
+    artifact_types = self.context.store.get_artifact_types_by_id(
+        list({a.type_id for a in artifacts}))
+    artifact_types_by_id = {t.id: t for t in artifact_types}
+    tfx_artifacts = [
+        artifact_utils.deserialize_artifact(
+            artifact_types_by_id[a.type_id], a) for a in artifacts]
+    result = event_lib.reconstruct_artifact_multimap(
+        tfx_artifacts, end_node_output_events)
+    if self.output_keys:
+      for key in list(result):
+        if key not in self.output_keys:
+          del result[key]
     return result

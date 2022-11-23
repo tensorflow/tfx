@@ -14,7 +14,10 @@
 """Portable libraries for event related APIs."""
 
 import collections
-from typing import Dict, List, Optional, Tuple
+import contextlib
+from typing import Dict, List, Optional, Sequence, Tuple, TypeVar
+
+from tfx import types
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -27,6 +30,97 @@ _VALID_INPUT_EVENT_TYPES = frozenset([
     metadata_store_pb2.Event.INPUT, metadata_store_pb2.Event.INTERNAL_INPUT,
     metadata_store_pb2.Event.DECLARED_INPUT
 ])
+_Artifact = TypeVar(
+    '_Artifact', metadata_store_pb2.Artifact, types.Artifact)
+_ArtifactMultiDict = Dict[str, List[_Artifact]]
+
+
+def _parse_path(event: metadata_store_pb2.Event) -> List[Tuple[str, int]]:
+  """Parses event.path to the list of (key, index)."""
+  if len(event.path.steps) % 2 != 0:
+    raise ValueError(
+        'len(event.path.steps) should be even number but got: '
+        f'{event.path.steps}.')
+  result = []
+  steps = list(event.path.steps)
+  i = 0
+  while steps:
+    s0, s1, *steps = steps
+    if s0.WhichOneof('value') != 'key':
+      raise ValueError(
+          f'steps[{i}] should have "key" but got {event.path.steps}.')
+    if s1.WhichOneof('value') != 'index':
+      raise ValueError(
+          f'steps[{i+1}] should have "index" but got {event.path.steps}.')
+    i += 2
+    result.append((s0.key, s1.index))
+  return result
+
+
+def _reconstruct_artifact_id_multimap(
+    events: Sequence[metadata_store_pb2.Event]) -> Dict[str, List[int]]:
+  """Reconstructs events to the {key: [artifact_ids]} multimap."""
+  key_to_index_and_id = collections.defaultdict(list)
+  for event in events:
+    for key, index in _parse_path(event):
+      key_to_index_and_id[key].append((index, event.artifact_id))
+  result = {}
+  for key in key_to_index_and_id:
+    indices, artifact_ids = zip(*sorted(key_to_index_and_id[key]))
+    if tuple(indices) != tuple(range(len(indices))):
+      raise ValueError(
+          f'Index values for key "{key}" are not consecutive. '
+          'Maybe some events are missing?')
+    result[key] = artifact_ids
+  return result
+
+
+def reconstruct_artifact_multimap(
+    artifacts: Sequence[_Artifact],
+    events: Sequence[metadata_store_pb2.Event]) -> _ArtifactMultiDict:
+  """Reconstructs input or output artifact maps from events."""
+  execution_ids = {e.execution_id for e in events}
+  events_by_artifact_id = {e.artifact_id: e for e in events}
+  if len(execution_ids) > 1:
+    raise ValueError(
+        'All events should be from the same execution but got: '
+        f'{execution_ids}.')
+
+  artifacts_by_id = {a.id: a for a in artifacts}
+  artifact_id_multimap = _reconstruct_artifact_id_multimap(events)
+  result = {
+      key: [artifacts_by_id[i] for i in artifact_ids]
+      for key, artifact_ids in artifact_id_multimap.items()
+  }
+  for key, artifacts in result.items():
+    artifact_types = {a.type_id for a in artifacts}
+    if len(artifact_types) != 1:
+      raise ValueError(
+          f'Artifact type of key "{key}" is heterogeneous: {artifact_types}')
+    event_types = {events_by_artifact_id[a.id].type for a in artifacts}
+    if len(event_types) != 1:
+      raise ValueError(
+          f'Event type of key "{key}" is heterogeneous: {event_types}')
+  return result
+
+
+def reconstruct_inputs_and_outputs(
+    artifacts: Sequence[_Artifact],
+    events: Sequence[metadata_store_pb2.Event],
+) -> Tuple[_ArtifactMultiDict, _ArtifactMultiDict]:
+  """Reconstructs input and output artifact maps from events."""
+  execution_ids = {event.execution_id for event in events}
+  if len(execution_ids) > 1:
+    raise ValueError(
+        'All events should be from the same execution but got: '
+        f'{execution_ids}.')
+
+  input_events = [e for e in events if e.type in _VALID_INPUT_EVENT_TYPES]
+  output_events = [e for e in events if e.type in VALID_OUTPUT_EVENT_TYPES]
+  return (
+      reconstruct_artifact_multimap(artifacts, input_events),
+      reconstruct_artifact_multimap(artifacts, output_events),
+  )
 
 
 def is_valid_output_event(event: metadata_store_pb2.Event,
@@ -40,12 +134,17 @@ def is_valid_output_event(event: metadata_store_pb2.Event,
   Returns:
     A bool value indicating result
   """
+  if event.type not in VALID_OUTPUT_EVENT_TYPES:
+    return False
   if expected_output_key:
-    return (len(event.path.steps) == 2 and  # Valid event should have 2 steps.
-            event.path.steps[0].key == expected_output_key
-            and event.type in VALID_OUTPUT_EVENT_TYPES)
-  else:
-    return event.type in VALID_OUTPUT_EVENT_TYPES
+    # Ignores errors during event.path parsing which indicates the event is
+    # invalid, and returns False.
+    with contextlib.suppress(ValueError):
+      for key, _ in _parse_path(event):
+        if key == expected_output_key:
+          return True
+    return False
+  return True
 
 
 def is_valid_input_event(event: metadata_store_pb2.Event,
@@ -59,15 +158,17 @@ def is_valid_input_event(event: metadata_store_pb2.Event,
   Returns:
     A bool value indicating result
   """
+  if event.type not in _VALID_INPUT_EVENT_TYPES:
+    return False
   if expected_input_key:
-    # Valid event should have even number of steps.
-    if not (event.type in _VALID_INPUT_EVENT_TYPES and
-            len(event.path.steps) % 2 == 0):
-      return False
-    keys = set(s.key for s in event.path.steps if s.HasField('key'))
-    return expected_input_key in keys
-  else:
-    return event.type in _VALID_INPUT_EVENT_TYPES
+    # Ignores errors during event.path parsing which indicates the event is
+    # invalid, and returns False.
+    with contextlib.suppress(ValueError):
+      for key, _ in _parse_path(event):
+        if key == expected_input_key:
+          return True
+    return False
+  return True
 
 
 def add_event_path(
@@ -114,58 +215,3 @@ def generate_event(
     event.execution_id = execution_id
 
   return event
-
-
-def get_artifact_path(event: metadata_store_pb2.Event) -> Tuple[str, int]:
-  """Gets the artifact path from the event.
-
-  This is useful for reconstructing the artifact dict (mapping from key to an
-  ordered list of artifacts) for an execution. The key and index of an artifact
-  are expected to be stored in the event in two steps where the first step is
-  the key and second is the index of the artifact within the list.
-
-  Args:
-    event: The event from which to extract path to the artifact.
-
-  Returns:
-    A tuple (<artifact key>, <artifact index>).
-
-  Raises:
-    ValueError: If there are not exactly 2 steps in the path corresponding to
-      the key and index of the artifact.
-  """
-  if len(event.path.steps) != 2:
-    raise ValueError(
-        'Expected exactly two steps corresponding to key and index in event: {}'
-        .format(event))
-  return (event.path.steps[0].key, event.path.steps[1].index)
-
-
-def get_artifact_dict(
-    events: List[metadata_store_pb2.Event]) -> Dict[str, List[int]]:
-  """Gets the mapping from artifact key to artifact ids.
-
-  This is for reconstructing the artifact dict (mapping from key to an ordered
-  list of artifacts) for a list of events of an execution.
-
-  Args:
-    events: A list of events from which to reconstruct the mapping. The list of
-      events should be the same type.
-
-  Returns:
-    A dict, key is artifact key, value is a list of artifact ordered by index.
-  """
-  key_to_index_and_id = collections.defaultdict(list)
-  for event in events:
-    key, index = get_artifact_path(event)
-    key_to_index_and_id[key].append((index, event.artifact_id))
-
-  # Sorts each artifact list by index.
-  result = {}
-  for key, value in key_to_index_and_id.items():
-    value.sort(key=lambda e: e[0])
-    if any(e[0] != index for index, e in enumerate(value)):
-      raise ValueError('The indexes in the input Events are not sequential.')
-    result[key] = [a[1] for a in value]
-
-  return result

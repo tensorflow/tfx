@@ -14,7 +14,6 @@
 """Portable libraries for execution related APIs."""
 
 import collections
-import itertools
 import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
@@ -444,44 +443,10 @@ def get_artifacts_dict(
       fetched from MLMD.
   """
   events = metadata_handler.store.get_events_by_execution_ids([execution_id])
-
-  # Create a map from "key" to list of (index, artifact_id)s.
-  indexed_artifact_ids_dict = collections.defaultdict(list)
-  for event in events:
-    if event.type not in event_types:
-      continue
-    key, index = event_lib.get_artifact_path(event)
-    artifact_id = event.artifact_id
-    indexed_artifact_ids_dict[key].append((index, artifact_id))
-
-  # Create a map from "key" to ordered list of artifact ids.
-  artifact_ids_dict = {}
-  for key, indexed_artifact_ids in indexed_artifact_ids_dict.items():
-    ordered_artifact_ids = sorted(indexed_artifact_ids, key=lambda x: x[0])
-    # There shouldn't be any missing or duplicate indices.
-    indices = [idx for idx, _ in ordered_artifact_ids]
-    if indices != list(range(0, len(indices))):
-      raise ValueError(
-          f'Cannot construct artifact ids dict due to missing or duplicate '
-          f'indices: {indexed_artifact_ids_dict}')
-    artifact_ids_dict[key] = [aid for _, aid in ordered_artifact_ids]
-
-  # Fetch all the relevant TFX artifacts.
+  valid_events = [event for event in events if event.type in event_types]
   artifacts = artifact_lib.get_artifacts_by_ids(
-      metadata_handler, list(itertools.chain(*artifact_ids_dict.values())))
-
-  # Create a map from artifact id to `types.Artifact` instances.
-  artifacts_by_id = {artifact.id: artifact for artifact in artifacts}
-
-  # Create a map from "key" to ordered list of `types.Artifact` to be returned.
-  # The ordering of artifacts is in accordance with their "index" derived from
-  # the events above.
-  result = collections.defaultdict(list)
-  for key, artifact_ids in artifact_ids_dict.items():
-    for artifact_id in artifact_ids:
-      result[key].append(artifacts_by_id[artifact_id])
-
-  return result
+      metadata_handler, [event.artifact_id for event in valid_events])
+  return event_lib.reconstruct_artifact_multimap(artifacts, valid_events)
 
 
 def set_execution_result(execution_result: execution_result_pb2.ExecutionResult,
