@@ -34,6 +34,20 @@ def latest_created(artifacts, n: int = 1):
 
 
 @resolver_function.resolver_function
+def latest_version(artifacts, n: int = 1):
+  """Returns the n latest version artifacts, ties broken by artifact id.
+
+  Args:
+    artifacts: The artifacts to filter.
+    n: The number of latest artifacts to return, must be > 0.
+
+  Returns:
+    The n latest artifacts.
+  """
+  return ops.LatestVersion(artifacts, n=n)
+
+
+@resolver_function.resolver_function
 def static_range(artifacts,
                  *,
                  start_span_number: int = -1,

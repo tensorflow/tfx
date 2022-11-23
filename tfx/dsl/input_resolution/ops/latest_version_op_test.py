@@ -38,15 +38,19 @@ class LatestVersionOpTest(tf.test.TestCase):
     actual = test_utils.run_resolver_op(ops.LatestVersion, [a1])
     self.assertEqual(actual, [a1])
 
-  def testLatestVersion(self):
+  def testLatestVersion_SameSpan(self):
     a1 = test_utils.DummyArtifact()
     a2 = test_utils.DummyArtifact()
     a3 = test_utils.DummyArtifact()
     a4 = ArtifactWithoutVersion()
 
+    a1.id = 1
+    a2.id = 2
+    a3.id = 3
+
     a1.version = 1
     a2.version = 2
-    a3.version = 3
+    a3.version = 2
 
     artifacts = [a1, a3, a2, a4]
 
@@ -54,12 +58,52 @@ class LatestVersionOpTest(tf.test.TestCase):
     self.assertEqual(actual, [a3])
 
     actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=2)
-    self.assertEqual(actual, [a3, a2])
+    self.assertEqual(actual, [a2, a3])
 
-    actual = test_utils.run_resolver_op(
-        ops.LatestVersion, artifacts, keep_all=True)
-    self.assertEqual(actual, [a3, a2, a1])
+    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=3)
+    self.assertEqual(actual, [a1, a2, a3])
 
+    # Although n = 4, only 3 artifacts are returned because only 3 are
+    # available.
+    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=4)
+    self.assertEqual(actual, [a1, a2, a3])
+
+  def testLatestVersion_DifferentSpans(self):
+    a10 = test_utils.DummyArtifact()
+    a11 = test_utils.DummyArtifact()
+    a20 = test_utils.DummyArtifact()
+    a21 = test_utils.DummyArtifact()
+
+    a10.span = 1
+    a11.span = 1
+    a20.span = 2
+    a21.span = 2
+
+    a10.version = 0
+    a11.version = 1
+    a20.version = 0
+    a21.version = 1
+
+    artifacts = [a10, a20, a21, a11]
+
+    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts)
+    self.assertEqual(actual, [a21])
+
+    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=2)
+    self.assertEqual(actual, [a20, a21])
+
+    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=3)
+    self.assertEqual(actual, [a11, a20, a21])
+
+    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=4)
+    self.assertEqual(actual, [a10, a11, a20, a21])
+
+  def testLatestSpan_InvalidN(self):
+    a1 = test_utils.DummyArtifact()
+    a1.version = 1
+
+    with self.assertRaisesRegex(ValueError, 'n must be > 0'):
+      test_utils.run_resolver_op(ops.LatestVersion, [a1], n=-1)
 
 if __name__ == '__main__':
   tf.test.main()

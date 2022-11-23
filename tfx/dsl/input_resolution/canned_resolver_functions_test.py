@@ -165,6 +165,28 @@ class CannedResolverFunctionsTest(
     expected_artifacts = [mlmd_artifact_2, mlmd_artifact_3]
     self.assertArtifactListEqual(actual_artifacts, expected_artifacts)
 
+  def testLatestVersionFn_E2E(self):
+    channel = canned_resolver_functions.latest_version(
+        types.Channel(test_utils.DummyArtifact, output_key='x'),
+        n=1,
+    )
+    pipeline_node = _compile_inputs({'x': channel})
+
+    spans = [0, 0, 0]
+    versions = [0, 1, 2]
+    mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+    self.assertIsInstance(resolved, inputs_utils.Trigger)
+
+    # The resolved artifacts should have (span, version) tuples of:
+    # [(0, 2)].
+    actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
+    expected_artifacts = [mlmd_artifacts[2]]
+    self.assertArtifactListEqual(
+        actual_artifacts, expected_artifacts, check_span_and_version=True)
+
   def testStaticRangeResolverFn_E2E(self):
     channel = canned_resolver_functions.static_range(
         types.Channel(test_utils.DummyArtifact, output_key='x'),
