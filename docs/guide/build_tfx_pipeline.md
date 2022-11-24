@@ -5,7 +5,7 @@ Note: For a conceptual view of TFX Pipelines, see
 
 Note: Want to build your first pipeline before you dive into the details? Get
 started
-[building a pipeline using a template](#build_a_pipeline_using_a_template).
+[building a pipeline using a template](https://www.tensorflow.org/tfx/guide/build_local_pipeline#build_a_pipeline_using_a_template).
 
 ## Using the `Pipeline` class
 
