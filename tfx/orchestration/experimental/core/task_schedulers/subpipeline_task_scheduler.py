@@ -93,7 +93,7 @@ class SubPipelineTaskScheduler(
     raise RuntimeError(
         f'Subpipeline {self._pipeline_uid.pipeline_i} scheduling failed.')
 
-  def cancel(self) -> None:
+  def cancel(self, cancel_task: task_lib.CancelTask) -> None:
     pipeline_ops.stop_pipeline(self.mlmd_handle, self._pipeline_uid)
 
 
