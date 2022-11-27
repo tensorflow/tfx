@@ -113,7 +113,13 @@ def external_project_artifact_query(
 
   Returns:
     channel.ExternalProjectChannel instance.
+
+  Raises:
+    ValueError, if project_owner or project_name is missing.
   """
+  if not project_owner or not project_name:
+    raise ValueError('project_owner or project_name is missing.')
+
   return channel.ExternalProjectChannel(
       artifact_type=artifact_type,
       project_owner=project_owner,
