@@ -158,10 +158,10 @@ from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import data_types
-from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.input_resolution import input_graph_resolver
 from tfx.orchestration.portable.input_resolution import partition_utils
+from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
 from tfx.utils import typing_utils

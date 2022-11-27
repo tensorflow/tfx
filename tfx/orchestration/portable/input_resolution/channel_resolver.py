@@ -13,17 +13,15 @@
 # limitations under the License.
 """Module for InputSpec.Channel resolution."""
 
-from typing import List, Optional, Sequence, Tuple, cast
+from typing import List, Optional, Sequence, Tuple
 
 from absl import logging
 from tfx import types
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
-from tfx.proto.orchestration import metadata_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
-from tfx.types import external_artifact_utils
 
 import ml_metadata as mlmd
 from ml_metadata import errors
@@ -123,23 +121,7 @@ def resolve_single_channel(
     channel: pipeline_pb2.InputSpec.Channel,
 ) -> List[types.Artifact]:
   """Evaluate a single InputSpec.Channel."""
-  handle = mlmd_cm.get_primary_handle(mlmd_handle)
-  config = metadata_pb2.MLMDServiceConfig()
-  if channel.HasField('metadata_connection_config'):
-    if not isinstance(mlmd_handle, mlmd_cm.MLMDConnectionManager):
-      raise RuntimeError(
-          'The channel has the field metadata_connection_config, but the '
-          'mlmd_handle is not MLMDConnectionManager.')
-    mlmd_connection_manager = cast(mlmd_cm.MLMDConnectionManager, mlmd_handle)
-    channel.metadata_connection_config.Unpack(config)
-    handle = mlmd_connection_manager.get_mlmd_service_handle(
-        owner=config.owner,
-        name=config.name,
-        server_address=config.mlmd_service_target)
-    if not handle:
-      raise ConnectionError('Not able to connect to external MLMD db.')
-
-  store = handle.store
+  store = mlmd_cm.get_primary_handle(mlmd_handle).store
   contexts = []
   for context_query in channel.context_queries:
     maybe_context = _get_context_from_context_query(store, context_query)
@@ -158,16 +140,7 @@ def resolve_single_channel(
   artifacts, artifact_type = _filter_by_artifact_query(
       store, artifacts, channel.artifact_query)
 
-  result = []
-  for a in artifacts:
-    if channel.HasField('metadata_connection_config'):
-      result.append(
-          external_artifact_utils.prepare_external_artifact(
-              artifact_type, a, config.owner, config.name))
-    else:
-      result.append(artifact_utils.deserialize_artifact(artifact_type, a))
-
-  return result
+  return artifact_utils.deserialize_artifacts(artifact_type, artifacts)
 
 
 def resolve_union_channels(
@@ -179,8 +152,7 @@ def resolve_union_channels(
   result = []
   for channel in channels:
     for artifact in resolve_single_channel(mlmd_handle, channel):
-      identifier = external_artifact_utils.artifact_identifier(artifact)
-      if identifier not in seen:
-        seen.add(identifier)
+      if artifact.id not in seen:
+        seen.add(artifact.id)
         result.append(artifact)
   return result

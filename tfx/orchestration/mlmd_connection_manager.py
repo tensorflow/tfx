@@ -99,16 +99,18 @@ class MLMDConnectionManager:
 
   @property
   def primary_mlmd_handle(self) -> metadata.Metadata:
-    return self._get_mlmd_handle(self._primary_connection_config)
+    return self.get_mlmd_handle(self._primary_connection_config)
 
-  def _get_mlmd_handle(
-      self, connection_config: metadata.ConnectionConfigType,
+  def get_mlmd_handle(
+      self, connection_config: Optional[metadata.ConnectionConfigType],
   ) -> metadata.Metadata:
     """Gets or creates a memoized MLMD handle for the connection config."""
     if not self._enter_count:
       raise RuntimeError(
           'MLMDConnectionManager is not entered yet. Please use with statement '
           'first before calling get_mlmd_handle().')
+    if connection_config is None:
+      connection_config = self._primary_connection_config
     config_id = self._get_identifier(connection_config)
     if config_id in self._mlmd_handle_by_config_id:
       return self._mlmd_handle_by_config_id[config_id]
@@ -116,11 +118,6 @@ class MLMDConnectionManager:
     self._mlmd_handle_by_config_id[config_id] = result
     self._exit_stack.enter_context(result)
     return result
-
-  def get_mlmd_service_handle(
-      self, owner: str, name: str, server_address: str) -> metadata.Metadata:
-    """Gets metadata handle for MLMD Service."""
-    raise NotImplementedError('MLMD Service not supported.')
 
 
 MLMDHandleType = Union[metadata.Metadata, MLMDConnectionManager]
