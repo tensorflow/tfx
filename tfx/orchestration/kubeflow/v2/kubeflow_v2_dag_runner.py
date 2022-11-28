@@ -33,7 +33,7 @@ from tfx.utils import version_utils
 
 from google.protobuf import json_format
 
-_KUBEFLOW_TFX_CMD = (
+KUBEFLOW_TFX_CMD = (
     'python', '-m',
     'tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor')
 
@@ -80,7 +80,7 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
     self.display_name = display_name
     self.default_image = default_image or _KUBEFLOW_TFX_IMAGE
     if default_commands is None:
-      self.default_commands = _KUBEFLOW_TFX_CMD
+      self.default_commands = KUBEFLOW_TFX_CMD
     else:
       self.default_commands = default_commands
 
