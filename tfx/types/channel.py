@@ -624,5 +624,5 @@ class ExternalProjectChannel(BaseChannel):
             f'mlmd_service_target={self.mlmd_service_target}, '
             f'pipeline_name={self.pipeline_name}, '
             f'producer_component_id={self.producer_component_id}, '
-            f'output_key={self.output_key}), '
-            f'pipeline_run_id={self.pipeline_run_id}.')
+            f'output_key={self.output_key}, '
+            f'pipeline_run_id={self.pipeline_run_id})')
