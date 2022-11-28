@@ -138,10 +138,12 @@ def resolve_input_artifacts(
   try:
     node_inputs = pipeline_node.inputs
     if node_inputs.resolver_config.resolver_steps:
-      resolved = _resolve_node_inputs_with_resolver_config(
-          metadata_handler, node_inputs)
+      with metadata_handler:
+        resolved = _resolve_node_inputs_with_resolver_config(
+            metadata_handler, node_inputs)
     else:
-      resolved = node_inputs_resolver.resolve(metadata_handler, node_inputs)
+      with metadata_handler:
+        resolved = node_inputs_resolver.resolve(metadata_handler, node_inputs)
     return Trigger(resolved) if resolved else Skip()
   except exceptions.SkipSignal as e:
     logging.info('Input resolution skipped; reason = %s', e)
