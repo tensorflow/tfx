@@ -378,7 +378,7 @@ def _filter_conditionals(
 
 
 def resolve(
-    mlmd_handle: mlmd_cm.MLMDHandleType,
+    handle_like: mlmd_cm.HandleLike,
     node_inputs: pipeline_pb2.NodeInputs,
 ) -> List[typing_utils.ArtifactMultiMap]:
   """Resolve a NodeInputs."""
@@ -395,11 +395,11 @@ def resolve(
 
     if input_spec.channels:
       artifacts = channel_resolver.resolve_union_channels(
-          mlmd_handle, input_spec.channels)
+          handle_like, input_spec.channels)
       resolved[input_key] = [(partition_utils.NO_PARTITION, artifacts)]
     elif input_spec.input_graph_ref.graph_id:
       _resolve_input_graph_ref(
-          mlmd_cm.get_primary_handle(mlmd_handle), node_inputs, input_key,
+          mlmd_cm.get_handle(handle_like), node_inputs, input_key,
           resolved)
     elif input_spec.mixed_inputs.input_keys:
       _resolve_mixed_inputs(node_inputs, input_key, resolved)

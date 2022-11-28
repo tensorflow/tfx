@@ -117,11 +117,11 @@ def _filter_by_artifact_query(
 
 # TODO(b/234806996): Migrate to MLMD filter query.
 def resolve_single_channel(
-    mlmd_handle: mlmd_cm.MLMDHandleType,
+    handle_like: mlmd_cm.HandleLike,
     channel: pipeline_pb2.InputSpec.Channel,
 ) -> List[types.Artifact]:
   """Evaluate a single InputSpec.Channel."""
-  store = mlmd_cm.get_primary_handle(mlmd_handle).store
+  store = mlmd_cm.get_handle(handle_like).store
   contexts = []
   for context_query in channel.context_queries:
     maybe_context = _get_context_from_context_query(store, context_query)
@@ -144,7 +144,7 @@ def resolve_single_channel(
 
 
 def resolve_union_channels(
-    mlmd_handle: mlmd_cm.MLMDHandleType,
+    mlmd_handle: mlmd_cm.HandleLike,
     channels: Sequence[pipeline_pb2.InputSpec.Channel],
 ) -> List[types.Artifact]:
   """Evaluate InputSpec.channels."""

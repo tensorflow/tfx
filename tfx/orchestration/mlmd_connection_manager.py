@@ -99,10 +99,10 @@ class MLMDConnectionManager:
 
   @property
   def primary_mlmd_handle(self) -> metadata.Metadata:
-    return self.get_mlmd_handle(self._primary_connection_config)
+    return self.get_mlmd_handle()
 
   def get_mlmd_handle(
-      self, connection_config: Optional[metadata.ConnectionConfigType],
+      self, connection_config: Optional[metadata.ConnectionConfigType] = None,
   ) -> metadata.Metadata:
     """Gets or creates a memoized MLMD handle for the connection config."""
     if not self._enter_count:
@@ -120,11 +120,11 @@ class MLMDConnectionManager:
     return result
 
 
-MLMDHandleType = Union[metadata.Metadata, MLMDConnectionManager]
+HandleLike = Union[metadata.Metadata, MLMDConnectionManager]
 
 
-def get_primary_handle(mlmd_handle: MLMDHandleType) -> metadata.Metadata:
-  if isinstance(mlmd_handle, MLMDConnectionManager):
-    return mlmd_handle.primary_mlmd_handle
+def get_handle(handle_like: HandleLike) -> metadata.Metadata:
+  if isinstance(handle_like, MLMDConnectionManager):
+    return cast(MLMDConnectionManager, handle_like).get_mlmd_handle()
   else:
-    return mlmd_handle
+    return handle_like
