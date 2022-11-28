@@ -34,8 +34,11 @@ def import_class_by_path(class_path: str) -> Type[Any]:
   """
   classname = class_path.split('.')[-1]
   modulename = '.'.join(class_path.split('.')[0:-1])
-  mod = importlib.import_module(modulename)
-  return getattr(mod, classname)
+  try:
+    mod = importlib.import_module(modulename)
+    return getattr(mod, classname)
+  except Exception as e:
+    raise ImportError(f'Could not import {class_path}') from e
 
 
 def import_func_from_module(module_path: str, fn_name: str) -> Callable:  # pylint: disable=g-bare-generic
