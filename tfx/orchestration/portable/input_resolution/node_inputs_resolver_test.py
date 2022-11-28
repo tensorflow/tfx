@@ -17,11 +17,11 @@ from typing import Set
 from unittest import mock
 
 import tensorflow as tf
+from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.input_resolution import input_graph_resolver
 from tfx.orchestration.portable.input_resolution import node_inputs_resolver
 from tfx.orchestration.portable.input_resolution import partition_utils
-from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.proto.orchestration import pipeline_pb2
 import tfx.types
 

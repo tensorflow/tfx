@@ -13,7 +13,9 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.input_resolution.channel_resolver."""
 
+from absl.testing.absltest import mock
 import tensorflow as tf
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import test_case_utils
@@ -419,6 +421,42 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
     resolved = channel_resolver.resolve_single_channel(
         self.mlmd_handle, ch)
     self.assertEmpty(resolved)
+
+  @mock.patch.object(mlmd_cm, 'get_primary_handle')
+  def testResolveSingleChannel_ExternalDB(self, mock_get_mlmd_handle):
+    p = self.put_context('pipeline', 'pipeline')
+    artifact = self.put_artifact('Examples')
+    self.put_execution(
+        'ExampleGen', inputs={}, outputs={'examples': [artifact]}, contexts=[p])
+
+    ch = self.make_channel_spec("""
+      context_queries {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "pipeline"
+          }
+        }
+      }
+      artifact_query {
+        type {
+          name: "Examples"
+        }
+      }
+      output_key: "examples"
+    """)
+
+    mock_mlmd_connection_manager = mock.create_autospec(
+        mlmd_cm.MLMDConnectionManager, instance=True)
+    mock_get_mlmd_handle.return_value = self.mlmd_handle
+
+    resolved = channel_resolver.resolve_single_channel(
+        mock_mlmd_connection_manager, ch)
+
+    mock_mlmd_connection_manager.get_mlmd_service_handle.assert_not_called()
+    self.assertLen(resolved, 1)
 
   def testResolveUnionChannels_Deduplication(self):
     p = self.put_context('pipeline', 'my-pipeline')

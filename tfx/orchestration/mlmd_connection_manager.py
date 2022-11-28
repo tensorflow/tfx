@@ -119,6 +119,11 @@ class MLMDConnectionManager:
     self._exit_stack.enter_context(result)
     return result
 
+  def get_mlmd_service_handle(
+      self, owner: str, name: str, server_address: str) -> metadata.Metadata:
+    """Gets metadata handle for MLMD Service."""
+    raise NotImplementedError('MLMD Service not supported.')
+
 
 HandleLike = Union[metadata.Metadata, MLMDConnectionManager]
 

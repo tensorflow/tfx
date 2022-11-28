@@ -285,7 +285,7 @@ def get_artifact_type_class(
 def deserialize_artifact(
     artifact_type: metadata_store_pb2.ArtifactType,
     artifact: Optional[metadata_store_pb2.Artifact] = None) -> Artifact:
-  """Reconstructs an Artifact object from MLMD proto descriptors.
+  """Reconstruct Artifact object from MLMD proto descriptors.
 
   Internal method, no backwards compatibility guarantees.
 
@@ -293,29 +293,8 @@ def deserialize_artifact(
     artifact_type: A metadata_store_pb2.ArtifactType proto object describing the
       type of the artifact.
     artifact: A metadata_store_pb2.Artifact proto object describing the contents
-      of the artifact. If not provided, an Artifact of the desired type with
+      of the artifact.  If not provided, an Artifact of the desired type with
       empty contents is created.
-
-  Returns:
-    Artifact subclass object for the given MLMD proto descriptors.
-  """
-  if artifact is None:
-    artifact = metadata_store_pb2.Artifact()
-  return deserialize_artifacts(artifact_type, [artifact])[0]
-
-
-def deserialize_artifacts(
-    artifact_type: metadata_store_pb2.ArtifactType,
-    artifacts: List[metadata_store_pb2.Artifact]) -> List[Artifact]:
-  """Reconstructs Artifact objects from MLMD proto descriptors.
-
-  Internal method, no backwards compatibility guarantees.
-
-  Args:
-    artifact_type: A metadata_store_pb2.ArtifactType proto object describing the
-      type of the artifact.
-    artifacts: List of metadata_store_pb2.Artifact proto describing the contents
-      of the artifact.
 
   Returns:
     Artifact subclass object for the given MLMD proto descriptors.
@@ -325,20 +304,16 @@ def deserialize_artifacts(
     raise ValueError(
         'Expected metadata_store_pb2.ArtifactType for artifact_type, got '
         f'{artifact_type} instead')
-  for artifact in artifacts:
-    if not isinstance(artifact, metadata_store_pb2.Artifact):
-      raise ValueError(
-          f'Expected metadata_store_pb2.Artifact for artifact, got {artifact} '
-          'instead')
+  if artifact and not isinstance(artifact, metadata_store_pb2.Artifact):
+    raise ValueError(
+        f'Expected metadata_store_pb2.Artifact for artifact, got {artifact} '
+        'instead')
 
   # Get the artifact's class and construct the Artifact object.
   artifact_cls = get_artifact_type_class(artifact_type)
-  result = []
-  for artifact in artifacts:
-    item = artifact_cls()
-    item.artifact_type.CopyFrom(artifact_type)
-    item.set_mlmd_artifact(artifact)
-    result.append(item)
+  result = artifact_cls()
+  result.artifact_type.CopyFrom(artifact_type)
+  result.set_mlmd_artifact(artifact or metadata_store_pb2.Artifact())
   return result
 
 
