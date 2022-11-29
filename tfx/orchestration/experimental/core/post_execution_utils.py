@@ -47,10 +47,8 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
   ) -> None:
     assert status.code != status_lib.Code.OK
     _remove_output_dirs(task)
-    _remove_task_dirs(
-        stateful_working_dir=task.stateful_working_dir,
-        tmp_dir=task.tmp_dir,
-        executor_output_uri=task.executor_output_uri)
+    _remove_temporary_task_dirs(
+        stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
     if status.code == status_lib.Code.CANCELLED:
       logging.info('Cancelling execution (id: %s); task id: %s; status: %s',
                    task.execution_id, task.task_id, status)
@@ -85,10 +83,8 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
                 message=executor_output.execution_result.result_message),
             executor_output.execution_result)
         return
-    _remove_task_dirs(
-        stateful_working_dir=task.stateful_working_dir,
-        tmp_dir=task.tmp_dir,
-        executor_output_uri=task.executor_output_uri)
+    _remove_temporary_task_dirs(
+        stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
     execution_publish_utils.publish_succeeded_execution(
         mlmd_handle,
         execution_id=task.execution_id,
@@ -100,10 +96,8 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
                                                        task.get_node())
   elif isinstance(result.output, ts.ImporterNodeOutput):
     output_artifacts = result.output.output_artifacts
-    _remove_task_dirs(
-        stateful_working_dir=task.stateful_working_dir,
-        tmp_dir=task.tmp_dir,
-        executor_output_uri=task.executor_output_uri)
+    _remove_temporary_task_dirs(
+        stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
     execution_publish_utils.publish_succeeded_execution(
         mlmd_handle,
         execution_id=task.execution_id,
@@ -130,10 +124,9 @@ def publish_execution_results(
   """Publishes execution result to MLMD for single component run."""
   if executor_output.execution_result.code != status_lib.Code.OK:
     outputs_utils.remove_output_dirs(execution_info.output_dict)
-    _remove_task_dirs(
+    _remove_temporary_task_dirs(
         stateful_working_dir=execution_info.stateful_working_dir,
-        tmp_dir=execution_info.tmp_dir,
-        executor_output_uri=execution_info.execution_output_uri)
+        tmp_dir=execution_info.tmp_dir)
     node_uid = task_lib.NodeUid(
         pipeline_uid=task_lib.PipelineUid.from_pipeline_id_and_run_id(
             pipeline_id=execution_info.pipeline_info.id,
@@ -147,10 +140,9 @@ def publish_execution_results(
         error_msg=executor_output.execution_result.result_message,
         execution_result=executor_output.execution_result)
     return
-  _remove_task_dirs(
+  _remove_temporary_task_dirs(
       stateful_working_dir=execution_info.stateful_working_dir,
-      tmp_dir=execution_info.tmp_dir,
-      executor_output_uri=execution_info.execution_output_uri)
+      tmp_dir=execution_info.tmp_dir)
   return execution_publish_utils.publish_succeeded_execution(
       mlmd_handle,
       execution_id=execution_info.execution_id,
@@ -186,10 +178,9 @@ def _remove_output_dirs(task: task_lib.ExecNodeTask) -> None:
   outputs_utils.remove_output_dirs(task.output_artifacts)
 
 
-def _remove_task_dirs(stateful_working_dir: str = '',
-                      tmp_dir: str = '',
-                      executor_output_uri: str = '') -> None:
-  """Removes directories created for the task."""
+def _remove_temporary_task_dirs(stateful_working_dir: str = '',
+                                tmp_dir: str = '') -> None:
+  """Removes temporary directories created for the task."""
   if stateful_working_dir:
     try:
       fileio.rmtree(stateful_working_dir)
@@ -202,10 +193,3 @@ def _remove_task_dirs(stateful_working_dir: str = '',
     except fileio.NotFoundError:
       logging.warning(
           'tmp_dir %s not found while attempting to delete, ignoring.')
-  if executor_output_uri:
-    try:
-      fileio.remove(executor_output_uri)
-    except fileio.NotFoundError:
-      logging.warning(
-          'Skipping deletion of executor_output_uri (file not found): %s',
-          executor_output_uri)
