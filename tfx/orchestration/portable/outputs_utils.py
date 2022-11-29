@@ -42,7 +42,9 @@ _EXECUTOR_OUTPUT_FILE = 'executor_output.pb'
 _VALUE_ARTIFACT_FILE_NAME = 'value'
 # The fixed special value to indicate that the binary will set the output URI
 # value during its execution.
+# LINT.IFCHANGE
 RESOLVED_AT_RUNTIME = '{resolved_at_runtime}'
+# LINT.ThenChange(<Internal source code>)
 
 
 def make_output_dirs(
