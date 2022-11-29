@@ -5,13 +5,10 @@ data. It can detect different classes of anomalies in the data. For example it
 can:
 
 1.  perform validity checks by comparing data statistics against a schema that
-    codifies expectations of the user.
+    codifies expectations of the user
 1.  detect training-serving skew by comparing training and serving
     data.
 1.  detect data drift by looking at a series of data.
-<!-- TODO(b/239095455): Add link to TFDV custom validation documentation with
-sample configs. -->
-1.  perform custom validations using a SQL-based configuration.
 
 The ExampleValidator pipeline component identifies any anomalies in the example data
 by comparing data statistics computed by the StatisticsGen pipeline component against a

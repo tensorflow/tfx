@@ -56,8 +56,6 @@ class Executor(base_executor.BaseExecutor):
       exec_properties: A dict of execution properties.
         - exclude_splits: JSON-serialized list of names of splits that the
           example validator should not validate.
-        - custom_validation_config: An optional configuration for specifying
-          custom validations with SQL.
 
     Returns:
       None
@@ -99,13 +97,8 @@ class Executor(base_executor.BaseExecutor):
       stats = stats_artifact_utils.load_statistics(stats_artifact,
                                                    split).proto()
       label_inputs = {
-          standard_component_specs.STATISTICS_KEY:
-              stats,
-          standard_component_specs.SCHEMA_KEY:
-              schema,
-          standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY:
-              exec_properties.get(
-                  standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY),
+          standard_component_specs.STATISTICS_KEY: stats,
+          standard_component_specs.SCHEMA_KEY: schema
       }
       output_uri = artifact_utils.get_split_uri(
           output_dict[standard_component_specs.ANOMALIES_KEY], split)
@@ -125,8 +118,6 @@ class Executor(base_executor.BaseExecutor):
       inputs: A dictionary of labeled input values, including:
         - STATISTICS_KEY: the feature statistics to validate
         - SCHEMA_KEY: the schema to respect
-        - CUSTOM_VALIDATION_CONFIG: an optional config for specifying SQL-based
-          custom validations.
         - (Optional) labels.ENVIRONMENT: if an environment is specified, only
           validate the feature statistics of the fields in that environment.
           Otherwise, validate all fields.
@@ -149,12 +140,7 @@ class Executor(base_executor.BaseExecutor):
                                      standard_component_specs.STATISTICS_KEY)
     schema_diff_path = value_utils.GetSoleValue(
         outputs, labels.SCHEMA_DIFF_PATH)
-    custom_validation_config = value_utils.GetSoleValue(
-        inputs, standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY)
-    anomalies = tfdv.validate_statistics(
-        statistics=stats,
-        schema=schema,
-        custom_validation_config=custom_validation_config)
+    anomalies = tfdv.validate_statistics(stats, schema)
     io_utils.write_bytes_file(
         os.path.join(schema_diff_path, DEFAULT_FILE_NAME),
         anomalies.SerializeToString())

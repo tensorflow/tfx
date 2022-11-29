@@ -140,6 +140,8 @@ def initiate_pipeline_start(
       logging.info(
           'No artifact_reuse_strategy specified for the partial pipeline run, '
           'defaulting to latest_pipeline_run_strategy.')
+      (snapshot_settings.latest_pipeline_run_strategy.CopyFrom(
+          pipeline_pb2.SnapshotSettings.LatestPipelineRunStrategy()))
       partial_run_utils.set_latest_pipeline_run_strategy(snapshot_settings)
     reused_pipeline_view = _load_reused_pipeline_view(
         mlmd_handle, pipeline, partial_run_option.snapshot_settings)
