@@ -148,7 +148,7 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
           one_example[name] = [one_line[name].encode('utf8')]
       else:
         # TF serve does not like missing features, so we'll populate
-        # missing features with mean / mode values of that feature
+        # the missing features with their mean/mode instead
         if feature.type == schema_pb2.FLOAT:
           one_example[name] = [feature_stats.num_stats.mean]
         elif feature.type == schema_pb2.INT:
@@ -158,7 +158,7 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
           if len(top_values) > 0:
             one_example[name] = [top_values[0].value.encode('utf8')]
           else:
-            one_example[name] = ["".encode('utf8')]
+            one_example[name] = [''.encode('utf8')]
 
     serialized_example = proto_coder.encode(one_example)
     serialized_examples.append(serialized_example)
