@@ -384,8 +384,19 @@ class _Generator:
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
-    resolved_info = task_gen_utils.generate_resolved_info(
-        self._mlmd_connection_manager, node)
+    try:
+      resolved_info = task_gen_utils.generate_resolved_info(
+          self._mlmd_connection_manager, node)
+    except ValueError as e:
+      logging.error('Guowei execepion: %s', e)
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid,
+              state=pstate.NodeState.FAILED,
+              status=status_lib.Status(
+                  code=status_lib.Code.ABORTED, message=str(e))))
+      return result
+
     if resolved_info is None:
       result.append(
           task_lib.UpdateNodeStateTask(

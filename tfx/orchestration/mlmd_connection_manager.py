@@ -17,6 +17,7 @@ import contextlib
 import types
 from typing import Optional, Type, Union, cast
 
+from absl import logging
 from tfx.orchestration import metadata
 
 from ml_metadata.proto import metadata_store_pb2
@@ -114,9 +115,13 @@ class MLMDConnectionManager:
     config_id = self._get_identifier(connection_config)
     if config_id in self._mlmd_handle_by_config_id:
       return self._mlmd_handle_by_config_id[config_id]
+
+    logging.error('Guowei MLMDConnectionManager connection_config %s',
+                  connection_config)
     result = metadata.Metadata(connection_config)
     self._mlmd_handle_by_config_id[config_id] = result
     self._exit_stack.enter_context(result)
+    logging.error('Guowei MLMDConnectionManager finish')
     return result
 
 
