@@ -22,7 +22,7 @@ nodes {
       }
       contexts {
         type {
-          name: "component"
+          name: "node"
         }
         name {
           field_value {
@@ -62,7 +62,7 @@ nodes {
             }
             context_queries {
               type {
-                name: "component"
+                name: "node"
               }
               name {
                 field_value {
@@ -99,7 +99,7 @@ nodes {
             }
             context_queries {
               type {
-                name: "component"
+                name: "node"
               }
               name {
                 field_value {
@@ -160,7 +160,7 @@ nodes {
       }
       contexts {
         type {
-          name: "component"
+          name: "node"
         }
         name {
           field_value {
@@ -182,7 +182,7 @@ nodes {
     }
     inputs {
       inputs {
-        key: "models"
+        key: "_generated_model_2"
         value {
           channels {
             producer_node_query {
@@ -200,7 +200,7 @@ nodes {
             }
             context_queries {
               type {
-                name: "component"
+                name: "node"
               }
               name {
                 field_value {
@@ -218,10 +218,52 @@ nodes {
           min_count: 1
         }
       }
-      resolver_config {
-        resolver_steps {
-          class_path: "tfx.dsl.input_resolution.strategies.latest_artifact_strategy.LatestArtifactStrategy"
-          config_json: "{}"
+      inputs {
+        key: "models"
+        value {
+          input_graph_ref {
+            graph_id: "graph_1"
+            key: "models"
+          }
+        }
+      }
+      input_graphs {
+        key: "graph_1"
+        value {
+          nodes {
+            key: "dict_2"
+            value {
+              output_data_type: ARTIFACT_MULTIMAP
+              dict_node {
+                node_ids {
+                  key: "models"
+                  value: "input_3"
+                }
+              }
+            }
+          }
+          nodes {
+            key: "input_3"
+            value {
+              output_data_type: ARTIFACT_LIST
+              input_node {
+                input_key: "_generated_model_2"
+              }
+            }
+          }
+          nodes {
+            key: "op_1"
+            value {
+              output_data_type: ARTIFACT_MULTIMAP
+              op_node {
+                op_type: "tfx.dsl.input_resolution.strategies.latest_artifact_strategy.LatestArtifactStrategy"
+                args {
+                  node_id: "dict_2"
+                }
+              }
+            }
+          }
+          result_node: "op_1"
         }
       }
     }

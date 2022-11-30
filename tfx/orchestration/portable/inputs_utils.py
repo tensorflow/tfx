@@ -21,38 +21,8 @@ from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.input_resolution import node_inputs_resolver
-from tfx.orchestration.portable.input_resolution import resolver_config_resolver
-from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import typing_utils
-
-
-def _resolve_channels_dict(
-    handle_like: mlmd_cm.HandleLike,
-    node_inputs: pipeline_pb2.NodeInputs) -> typing_utils.ArtifactMultiMap:
-  """Resolves initial input dict from input channel definition."""
-  result = {}
-  for key, input_spec in node_inputs.inputs.items():
-    if input_spec.channels:
-      result[key] = channel_resolver.resolve_union_channels(
-          handle_like, input_spec.channels)
-  return result
-
-
-def _check_sufficient(
-    input_dicts: Sequence[typing_utils.ArtifactMultiMap],
-    node_inputs: pipeline_pb2.NodeInputs) -> None:
-  """Checks given artifact multimap has enough artifacts from input_spec."""
-  min_counts = {
-      key: input_spec.min_count
-      for key, input_spec in node_inputs.inputs.items()
-  }
-  for input_dict in input_dicts:
-    for key, artifacts in input_dict.items():
-      if len(artifacts) < min_counts[key]:
-        raise exceptions.FailedPreconditionError(
-            f'inputs[{key}] has min_count = {min_counts[key]} but only got '
-            f'{len(artifacts)} artifact(s).')
 
 
 class Trigger(tuple, Sequence[typing_utils.ArtifactMultiMap]):
@@ -68,50 +38,6 @@ class Skip(tuple, Sequence[typing_utils.ArtifactMultiMap]):
 
   def __new__(cls):
     return super().__new__(cls)
-
-
-def _resolve_node_inputs_with_resolver_config(
-    handle_like: mlmd_cm.HandleLike,
-    node_inputs: pipeline_pb2.NodeInputs,
-) -> Sequence[typing_utils.ArtifactMultiMap]:
-  """Resolve inputs with pipeline_pb2.ResolverConfig.
-
-  Input artifacts are resolved in the following steps:
-
-  1. An initial input dict (Mapping[str, Sequence[Artifact]]) is fetched from
-     the input channel definitions (in NodeInputs.inputs.channels).
-  2. Each NodeInputs.resolver_config.resolver_steps is applied sequentially.
-  3. If the final output is a single dict (Mapping[str, Sequence[Artifact]]),
-     then wraps it as a list of single element. Otherwise (list of dicts),
-     return as-is.
-
-  Args:
-    handle_like: Metadata or MLMDConnectionManager instance for handling
-      mlmd db connections.
-    node_inputs: Current NodeInputs on which input resolution is running.
-
-  Raises:
-    InputResolutionError: If input resolution went wrong.
-
-  Returns:
-    A resolved list of dicts (can be empty).
-  """
-  initial_dict = _resolve_channels_dict(handle_like, node_inputs)
-  try:
-    resolved = resolver_config_resolver.resolve(
-        mlmd_cm.get_handle(handle_like).store, initial_dict,
-        node_inputs.resolver_config)
-  except exceptions.SkipSignal:
-    return []
-
-  if typing_utils.is_artifact_multimap(resolved):
-    resolved = [resolved]
-  if not typing_utils.is_list_of_artifact_multimap(resolved):
-    raise exceptions.FailedPreconditionError(
-        'Invalid input resolution result; expected Sequence[ArtifactMultiMap] '
-        f'type but got {resolved}.')
-  _check_sufficient(resolved, node_inputs)
-  return resolved  # pytype: disable=bad-return-type
 
 
 def resolve_input_artifacts(
@@ -137,11 +63,7 @@ def resolve_input_artifacts(
   """
   try:
     node_inputs = pipeline_node.inputs
-    if node_inputs.resolver_config.resolver_steps:
-      resolved = _resolve_node_inputs_with_resolver_config(
-          metadata_handler, node_inputs)
-    else:
-      resolved = node_inputs_resolver.resolve(metadata_handler, node_inputs)
+    resolved = node_inputs_resolver.resolve(metadata_handler, node_inputs)
     return Trigger(resolved) if resolved else Skip()
   except exceptions.SkipSignal as e:
     logging.info('Input resolution skipped; reason = %s', e)

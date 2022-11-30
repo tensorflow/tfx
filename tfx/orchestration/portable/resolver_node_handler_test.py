@@ -31,8 +31,6 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.utils import test_case_utils
 
-from google.protobuf import text_format
-
 
 class ResolverNodeHandlerTest(test_case_utils.TfxTest):
 
@@ -98,56 +96,11 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
         pipeline_runtime_spec=self._pipeline_runtime_spec)
 
     with self._mlmd_connection as m:
-      # There is no way to directly verify the output artifact of the resolver
-      # So here a fake downstream component is created which listens to the
-      # resolver's output and we verify its input.
-      down_stream_node = text_format.Parse(
-          """
-        inputs {
-          inputs {
-            key: "input_models"
-            value {
-              channels {
-                producer_node_query {
-                  id: "my_resolver"
-                }
-                context_queries {
-                  type {
-                    name: "pipeline"
-                  }
-                  name {
-                    field_value {
-                      string_value: "my_pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "component"
-                  }
-                  name {
-                    field_value {
-                      string_value: "my_resolver"
-                    }
-                  }
-                }
-                artifact_query {
-                  type {
-                    name: "Model"
-                  }
-                }
-                output_key: "models"
-              }
-              min_count: 1
-            }
-          }
-        }
-        upstream_nodes: "my_resolver"
-        """, pipeline_pb2.PipelineNode())
-      downstream_input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=down_stream_node)[0]
-      downstream_input_model = downstream_input_artifacts['input_models']
-      self.assertLen(downstream_input_model, 1)
+      resolved_inputs = inputs_utils.resolve_input_artifacts(
+          metadata_handler=m, pipeline_node=self._my_resolver)
+      self.assertLen(resolved_inputs, 1)
+      self.assertIn('models', resolved_inputs[0])
+      self.assertLen(resolved_inputs[0]['models'], 1)
       self.assertProtoPartiallyEquals(
           f"""
           id: 2
@@ -161,7 +114,7 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
             key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
             value {{string_value: "{version.__version__}"}}
           }}""",
-          downstream_input_model[0].mlmd_artifact,
+          resolved_inputs[0]['models'][0].mlmd_artifact,
           ignored_fields=[
               'type_id', 'create_time_since_epoch',
               'last_update_time_since_epoch'
