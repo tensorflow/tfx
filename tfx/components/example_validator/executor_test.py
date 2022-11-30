@@ -14,8 +14,11 @@
 """Tests for tfx.components.example_validator.executor."""
 
 import os
-import tensorflow as tf
+import tempfile
 
+from absl.testing import absltest
+from absl.testing import parameterized
+from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.example_validator import executor
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
@@ -25,10 +28,63 @@ from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 
+from google.protobuf import text_format
 
-class ExecutorTest(tf.test.TestCase):
 
-  def testDo(self):
+class ExecutorTest(parameterized.TestCase):
+
+  def _get_temp_dir(self):
+    return tempfile.mkdtemp()
+
+  def _assert_equal_anomalies(self, actual_anomalies, expected_anomalies):
+    # Check if the actual anomalies matches with the expected anomalies.
+    for feature_name in expected_anomalies:
+      self.assertIn(feature_name, actual_anomalies.anomaly_info)
+      # Do not compare diff_regions.
+      actual_anomalies.anomaly_info[feature_name].ClearField('diff_regions')
+
+      self.assertEqual(actual_anomalies.anomaly_info[feature_name],
+                       expected_anomalies[feature_name])
+    self.assertEqual(
+        len(actual_anomalies.anomaly_info), len(expected_anomalies))
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'No_anomalies',
+          'custom_validation_config': None,
+          'expected_anomalies': {}
+      }, {
+          'testcase_name':
+              'Custom_validation',
+          'custom_validation_config':
+              """
+              feature_validations {
+              feature_path { step: 'company' }
+              validations {
+                sql_expression: 'feature.string_stats.common_stats.min_num_values > 5'
+                severity: ERROR
+                description: 'Feature does not have enough values.'
+                }
+              }
+              """,
+          'expected_anomalies': {
+              'company': text_format.Parse(
+                  """
+                  path {
+                    step: 'company'
+                  }
+                  severity: ERROR
+                  short_description: 'Feature does not have enough values.'
+                  description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
+                  reason {
+                    description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
+                    type: CUSTOM_VALIDATION
+                    short_description: 'Feature does not have enough values.'
+                  }
+                  """, anomalies_pb2.AnomalyInfo())
+          }
+      })
+  def testDo(self, custom_validation_config, expected_anomalies):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
@@ -41,7 +97,7 @@ class ExecutorTest(tf.test.TestCase):
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
 
     output_data_dir = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self._get_temp_dir()),
         self._testMethodName)
 
     validation_output = standard_artifacts.ExampleAnomalies()
@@ -52,9 +108,17 @@ class ExecutorTest(tf.test.TestCase):
         standard_component_specs.SCHEMA_KEY: [schema_artifact],
     }
 
+    if custom_validation_config is not None:
+      custom_validation_config = text_format.Parse(
+          custom_validation_config,
+          custom_validation_config_pb2.CustomValidationConfig()
+      )
     exec_properties = {
         # List needs to be serialized before being passed into Do function.
-        standard_component_specs.EXCLUDE_SPLITS_KEY: json_utils.dumps(['test'])
+        standard_component_specs.EXCLUDE_SPLITS_KEY:
+            json_utils.dumps(['test']),
+        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY:
+            custom_validation_config,
     }
 
     output_dict = {
@@ -81,8 +145,9 @@ class ExecutorTest(tf.test.TestCase):
     eval_anomalies_bytes = io_utils.read_bytes_file(eval_anomalies_path)
     eval_anomalies = anomalies_pb2.Anomalies()
     eval_anomalies.ParseFromString(eval_anomalies_bytes)
-    self.assertEqual(0, len(train_anomalies.anomaly_info))
-    self.assertEqual(0, len(eval_anomalies.anomaly_info))
+
+    self._assert_equal_anomalies(train_anomalies, expected_anomalies)
+    self._assert_equal_anomalies(eval_anomalies, expected_anomalies)
 
     # Assert 'test' split is excluded.
     train_file_path = os.path.join(validation_output.uri, 'Split-test',
@@ -92,4 +157,4 @@ class ExecutorTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()

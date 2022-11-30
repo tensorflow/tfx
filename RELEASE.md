@@ -12,6 +12,8 @@
 
 ## Bug Fixes and Other Changes
 
+*   ExampleValidator now supports custom validations.
+
 | Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
 | -- | -- | -- | -- |
 | `tensorflow` | `~=2.11.0` | `>=1.15.5,<2` or `~=2.10.0` | |
