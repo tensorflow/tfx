@@ -24,8 +24,13 @@ from tfx.orchestration.portable.input_resolution import partition_utils
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.proto.orchestration import pipeline_pb2
 import tfx.types
+from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
+
+NodeInputs = pipeline_pb2.NodeInputs
+InputSpec = pipeline_pb2.InputSpec
+Static = pipeline_pb2.InputSpec.Static
 
 
 def partition(**kwargs):
@@ -759,6 +764,73 @@ class NodeInputsResolverTest(tf.test.TestCase):
           exceptions.FailedPreconditionError,
           r'inputs\[x2\] has min_count = 1 but only got 0 artifacts'):
         node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
+
+
+class LiveTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
+
+  def setUp(self):
+    super().setUp()
+    self.init_mlmd()
+
+  def testStaticInputs(self):
+    e1 = self.put_artifact('Examples')
+    e2 = self.put_artifact('Examples')
+    e3 = self.put_artifact('Examples')  # pylint: disable=unused-variable
+    e4 = self.put_artifact('Examples')
+
+    node_inputs = NodeInputs(
+        inputs={
+            'x': InputSpec(
+                static_inputs=Static(
+                    artifact_ids=[e1.id, e2.id, e1.id, e4.id])
+            ),
+        }
+    )
+    result = node_inputs_resolver.resolve(self.mlmd_cm, node_inputs)
+    self.assertLen(result, 1)
+    self.assertEqual(list(result[0]), ['x'])
+    self.assertLen(result[0]['x'], 4)
+    # Ordering & duplications are preserved.
+    for actual, expected in zip(result[0]['x'], [e1, e2, e1, e4]):
+      self.assertIsInstance(actual, tfx.types.Artifact)
+      self.assertEqual(actual.mlmd_artifact, expected)
+
+  def testStaticInputs_Empty(self):
+    node_inputs = NodeInputs(
+        inputs={
+            'x': InputSpec(
+                static_inputs=Static(artifact_ids=[])
+            ),
+        }
+    )
+    result = node_inputs_resolver.resolve(self.mlmd_cm, node_inputs)
+    self.assertLen(result, 1)
+    self.assertEqual(result[0], {'x': []})
+
+  def testStaticInputs_InvalidArtifactId(self):
+    node_inputs = NodeInputs(
+        inputs={
+            'x': InputSpec(
+                static_inputs=Static(artifact_ids=[123])
+            ),
+        }
+    )
+    with self.assertRaises(exceptions.InvalidArgument):
+      node_inputs_resolver.resolve(self.mlmd_cm, node_inputs)
+
+  def testStaticInputs_NotHomogeneous(self):
+    a = self.put_artifact('A')
+    b = self.put_artifact('B')
+
+    node_inputs = NodeInputs(
+        inputs={
+            'x': InputSpec(
+                static_inputs=Static(artifact_ids=[a.id, b.id])
+            ),
+        }
+    )
+    with self.assertRaises(exceptions.FailedPreconditionError):
+      node_inputs_resolver.resolve(self.mlmd_cm, node_inputs)
 
 
 if __name__ == '__main__':

@@ -302,6 +302,11 @@ message InputSpec {
     google.protobuf.Any metadata_connection_config = 5;
   }
 
+  // Statically decided artifacts.
+  message Static {
+    repeated int64 artifact_ids = 1;
+  }
+
   // Reference to the InputGraph result.
   // When the InputGraph result is a ARTIFACT_MULTIMAP_LIST type, InputGraphRef
   // is NOT simple referring a list of artifacts; instead we should consider the
@@ -357,14 +362,18 @@ message InputSpec {
     repeated string input_keys = 2;
   }
 
-  // Exactly one of `channels`, `input_graph_ref`, or `mixed_inputs` field
-  // should be set.
+  // Exactly one of `channels`, `input_graph_ref`, `mixed_inputs`, or
+  // `static_inputs` field should be set. We don't mandate oneof constraints as
+  // the legacy `channels` field is a repeated field that cannot be wrapped into
+  // oneof.
   // Union of Channels.
   repeated Channel channels = 1;
   // A reference to the InputGraph.
   InputGraphRef input_graph_ref = 3;
   // A mixture of InputSpecs.
   Mixed mixed_inputs = 4;
+  // Static artifacts.
+  Static static_inputs = 6;
 
   // The minimum number of artifacts desired. If minimum requirement is not met,
   // the execution should not be triggered. If min_count is less than or equal

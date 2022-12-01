@@ -163,6 +163,7 @@ from tfx.orchestration.portable.input_resolution import input_graph_resolver
 from tfx.orchestration.portable.input_resolution import partition_utils
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact_utils
 from tfx.utils import topsort
 from tfx.utils import typing_utils
 
@@ -354,6 +355,42 @@ def _resolve_mixed_inputs(
   resolved[input_key] = result
 
 
+def _resolve_static_inputs(
+    mlmd_handle: metadata.Metadata,
+    static_inputs: pipeline_pb2.InputSpec.Static,
+):
+  """Resolves an InputSpec.Static."""
+  # artifact_ids can be empty, in which case the result looks: {'result': []}
+  if not static_inputs.artifact_ids:
+    return []
+
+  artifacts = mlmd_handle.store.get_artifacts_by_id(static_inputs.artifact_ids)
+  artifacts_by_id = {a.id: a for a in artifacts}
+  if len(artifacts_by_id) != len(set(static_inputs.artifact_ids)):
+    # If artifact ID does not exist, MetadataStore.get_artifacts_by_id does not
+    # raises an error but silently excludes them from the result. Still this is
+    # an error in our case.
+    not_found = set(static_inputs.artifact_ids).difference(artifacts_by_id)
+    raise exceptions.InvalidArgument(
+        f'InputSpec.Static.artifact_ids {static_inputs.artifact_ids} contains '
+        f'non-existing artifact IDs: {not_found}')
+
+  type_ids = {a.type_id for a in artifacts}
+  artifact_types = mlmd_handle.store.get_artifact_types_by_id(list(type_ids))
+  if len(artifact_types) != 1:
+    artifact_ids_by_type = {
+        t.name: [a.id for a in artifacts if a.type_id == t.id]
+        for t in artifact_types
+    }
+    raise exceptions.FailedPreconditionError(
+        'InputSpec.Static should contain the homogeneous artifact type but got '
+        f'multiple: {artifact_ids_by_type}')
+
+  ordered_artifacts = [artifacts_by_id[i] for i in static_inputs.artifact_ids]
+  return artifact_utils.deserialize_artifacts(
+      artifact_types[0], ordered_artifacts)
+
+
 def _filter_conditionals(
     artifact_maps: List[typing_utils.ArtifactMultiDict],
     conditionals: Mapping[str, pipeline_pb2.NodeInputs.Conditional],
@@ -403,6 +440,10 @@ def resolve(
           resolved)
     elif input_spec.mixed_inputs.input_keys:
       _resolve_mixed_inputs(node_inputs, input_key, resolved)
+    elif input_spec.HasField('static_inputs'):
+      artifacts = _resolve_static_inputs(
+          mlmd_cm.get_handle(handle_like), input_spec.static_inputs)
+      resolved[input_key] = [(partition_utils.NO_PARTITION, artifacts)]
     else:
       raise exceptions.FailedPreconditionError(
           'Exactly one of InputSpec.channels, InputSpec.input_graph_ref, or '
