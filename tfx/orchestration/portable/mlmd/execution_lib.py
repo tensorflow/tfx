@@ -14,6 +14,7 @@
 """Portable libraries for execution related APIs."""
 
 import collections
+import itertools
 import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
@@ -32,6 +33,8 @@ from tfx.utils import typing_utils
 
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
+
+ArtifactState = types.artifact.ArtifactState
 
 _EXECUTION_RESULT = '__execution_result__'
 _PROPERTY_SCHEMA_PREFIX = '__schema__'
@@ -377,6 +380,90 @@ def put_executions(
   return executions
 
 
+def _artifact_maps_contain_same_uris(
+    left: typing_utils.ArtifactMultiMap,
+    right: typing_utils.ArtifactMultiMap) -> bool:
+  """Returns true if the artifact maps contain exactly the same URIs."""
+  if left.keys() != right.keys():
+    return False
+
+  for key, left_artifact_list in left.items():
+    right_artifact_list = right[key]
+    if len(left_artifact_list) != len(right_artifact_list):
+      return False
+    for left_artifact, right_artifact in zip(left_artifact_list,
+                                             right_artifact_list):
+      if left_artifact.uri != right_artifact.uri:
+        return False
+  return True
+
+
+def register_pending_output_artifacts(
+    metadata_handle: metadata.Metadata, execution_id: int,
+    output_artifacts: typing_utils.ArtifactMultiMap) -> None:
+  """Registers pending output artifacts for a given execution in MLMD.
+
+  This operation does not modify the execution itself, but simply creates the
+  output artifacts in MLMD with a PENDING state and adds events with type
+  PENDING_OUTPUT to associate them with the execution. The output artifacts will
+  be modified in-place to add IDs as registered by MLMD.
+
+  This function is idempotent if called more than once with the same output
+  artifact dict. In that case, the function will find the already registered
+  output artifacts for the execution and reuse their IDs. This function cannot,
+  however, be called for the same execution more than once with different
+  output artifact dicts.
+
+  Args:
+    metadata_handle: A handle to access MLMD
+    execution_id: The ID of an existing execution to apply output artifacts to.
+    output_artifacts: The output artifact dict to register. Artifacts will be
+      modified in place to add IDs after creation in MLMD.
+
+  Raises:
+    ValueError if the specified execution is not active, or if this function
+    was called once before for the same execution but with a different output
+    artifact dict.
+  """
+  [execution] = metadata_handle.store.get_executions_by_id([execution_id])
+  if not is_execution_running(execution):
+    raise ValueError('Cannot register output artifacts on inactive '
+                     f'execution ID={execution_id} with state = '
+                     f'{execution.last_known_state}')
+
+  for artifact in itertools.chain.from_iterable(output_artifacts.values()):
+    artifact.state = ArtifactState.PENDING
+
+  existing_pending_output_artifacts = get_pending_output_artifacts(
+      metadata_handle, execution_id)
+  if existing_pending_output_artifacts:
+    # Reuse existing pending output artifacts if this function was already
+    # called with the same arguments and for the same execution.
+    if not _artifact_maps_contain_same_uris(output_artifacts,
+                                            existing_pending_output_artifacts):
+      raise ValueError('Pending output artifacts were already registered for'
+                       'this execution, but with a different set of output'
+                       'artifacts.\nProvided output_artifacts:\n'
+                       f'{output_artifacts}\nExisting pending output '
+                       f'artifacts:\n{existing_pending_output_artifacts}')
+    # The output maps have the same content so copy over existing artifact IDs.
+    for key, existing_artifact_list in (
+        existing_pending_output_artifacts.items()):
+      provided_artifact_list = output_artifacts[key]
+      for existing_artifact, provided_artifact in zip(existing_artifact_list,
+                                                      provided_artifact_list):
+        provided_artifact.id = existing_artifact.id
+  else:
+    # Register the pending output artifacts for this execution.
+    contexts = metadata_handle.store.get_contexts_by_execution(execution_id)
+    _ = put_execution(
+        metadata_handle,
+        execution,
+        contexts,
+        output_artifacts=output_artifacts,
+        output_event_type=metadata_store_pb2.Event.PENDING_OUTPUT)
+
+
 def get_executions_associated_with_all_contexts(
     metadata_handler: metadata.Metadata,
     contexts: Iterable[metadata_store_pb2.Context]
@@ -465,6 +552,33 @@ def get_output_artifacts(
   artifacts = artifact_lib.get_artifacts_by_ids(
       metadata_handle, [e.artifact_id for e in output_events])
   return event_lib.reconstruct_artifact_multimap(artifacts, output_events)
+
+
+def get_pending_output_artifacts(
+    metadata_handle: metadata.Metadata,
+    execution_id: int) -> typing_utils.ArtifactMultiDict:
+  """Gets pending output artifacts of the execution.
+
+  Each execution is associated with a single pending output artifacts multimap,
+  where the key is the same key associated with `NodeOutputs.outputs` in the
+  pipeline IR. Artifacts and event information are fetched from MLMD.
+
+  Args:
+    metadata_handle: A Metadata instance that is in entered state.
+    execution_id: A valid MLMD execution ID. If the execution_id does not exist,
+      this function will return an empty dict instead of raising an error.
+
+  Returns:
+    A reconstructed pending output artifacts multimap.
+  """
+  events = metadata_handle.store.get_events_by_execution_ids([execution_id])
+  pending_output_events = [
+      e for e in events if e.type == metadata_store_pb2.Event.PENDING_OUTPUT
+  ]
+  artifacts = artifact_lib.get_artifacts_by_ids(
+      metadata_handle, [e.artifact_id for e in pending_output_events])
+  return event_lib.reconstruct_artifact_multimap(artifacts,
+                                                 pending_output_events)
 
 
 def set_execution_result(execution_result: execution_result_pb2.ExecutionResult,

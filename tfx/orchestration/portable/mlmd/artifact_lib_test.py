@@ -56,84 +56,87 @@ class ArtifactLibTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
-    self._connection_config = metadata_store_pb2.ConnectionConfig()
-    self._connection_config.sqlite.SetInParent()
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.SetInParent()
+    mlmd_connection = metadata.Metadata(connection_config=connection_config)
+    self._mlmd_handle = self.enter_context(mlmd_connection)
 
   def testGetArtifactsByIdsSuccessfullyReadsAndDeserializes(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      original_artifact = _create_tfx_artifact(
-          uri='a/b/c', state=types.artifact.ArtifactState.PENDING)
-      original_artifact.set_string_custom_property('foo', 'bar')
-      [artifact_id] = _write_tfx_artifacts(m, [original_artifact])
-      [actual_artifact] = artifact_lib.get_artifacts_by_ids(m, [artifact_id])
-      self.assertIsInstance(actual_artifact, types.Artifact)
-      self.assertEqual(actual_artifact.uri, 'a/b/c')
-      self.assertEqual(actual_artifact.id, artifact_id)
-      self.assertEqual(actual_artifact.state,
-                       types.artifact.ArtifactState.PENDING)
-      self.assertEqual(actual_artifact.get_string_custom_property('foo'), 'bar')
+    original_artifact = _create_tfx_artifact(
+        uri='a/b/c', state=types.artifact.ArtifactState.PENDING)
+    original_artifact.set_string_custom_property('foo', 'bar')
+    [artifact_id] = _write_tfx_artifacts(self._mlmd_handle, [original_artifact])
+    [actual_artifact
+    ] = artifact_lib.get_artifacts_by_ids(self._mlmd_handle, [artifact_id])
+    self.assertIsInstance(actual_artifact, types.Artifact)
+    self.assertEqual(actual_artifact.uri, 'a/b/c')
+    self.assertEqual(actual_artifact.id, artifact_id)
+    self.assertEqual(actual_artifact.state,
+                     types.artifact.ArtifactState.PENDING)
+    self.assertEqual(actual_artifact.get_string_custom_property('foo'), 'bar')
 
   def testGetArtifactsByIdsMissingIdsRaisesError(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      tfx_artifacts = [
-          _create_tfx_artifact('a/b/1'),
-          _create_tfx_artifact('a/b/2'),
-      ]
-      [artifact_id1, artifact_id2] = _write_tfx_artifacts(m, tfx_artifacts)
-      unknown_artifact_id = artifact_id2 + 1
-      with self.assertRaisesRegex(ValueError,
-                                  'Could not find all MLMD artifacts'):
-        artifact_lib.get_artifacts_by_ids(
-            m, [artifact_id1, unknown_artifact_id, artifact_id2])
+    tfx_artifacts = [
+        _create_tfx_artifact('a/b/1'),
+        _create_tfx_artifact('a/b/2'),
+    ]
+    [artifact_id1, artifact_id2] = _write_tfx_artifacts(self._mlmd_handle,
+                                                        tfx_artifacts)
+    unknown_artifact_id = artifact_id2 + 1
+    with self.assertRaisesRegex(ValueError,
+                                'Could not find all MLMD artifacts'):
+      artifact_lib.get_artifacts_by_ids(
+          self._mlmd_handle, [artifact_id1, unknown_artifact_id, artifact_id2])
 
   def testUpdateArtifactsWithoutNewState(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      tfx_artifacts = [
-          _create_tfx_artifact('a/b/1'),
-          _create_tfx_artifact('a/b/2'),
-      ]
-      created_artifact_ids = _write_tfx_artifacts(m, tfx_artifacts)
+    artifact1 = _create_tfx_artifact('a/b/1')
+    artifact2 = _create_tfx_artifact('a/b/2')
+    created_artifact_ids = _write_tfx_artifacts(self._mlmd_handle,
+                                                [artifact1, artifact2])
 
-      for tfx_artifact in tfx_artifacts:
-        tfx_artifact.set_string_custom_property('foo', 'bar')
+    artifact1.set_string_custom_property('foo', 'bar')
+    artifact2.set_string_custom_property('foo', 'bar')
 
-      artifact_lib.update_artifacts(m, tfx_artifacts)
+    artifact_lib.update_artifacts(self._mlmd_handle, {
+        'key1': [artifact1],
+        'key2': [artifact2],
+    })
 
-      updated_tfx_artifacts = artifact_lib.get_artifacts_by_ids(
-          m, created_artifact_ids)
-      self.assertLen(updated_tfx_artifacts, len(tfx_artifacts))
-      for tfx_artifact in updated_tfx_artifacts:
-        self.assertEqual(tfx_artifact.get_string_custom_property('foo'), 'bar')
+    updated_tfx_artifacts = artifact_lib.get_artifacts_by_ids(
+        self._mlmd_handle, created_artifact_ids)
+    self.assertLen(updated_tfx_artifacts, 2)
+    for tfx_artifact in updated_tfx_artifacts:
+      self.assertEqual(tfx_artifact.get_string_custom_property('foo'), 'bar')
 
   def testUpdateArtifactsWithNewState(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      tfx_artifacts = [
-          _create_tfx_artifact('foo/1', types.artifact.ArtifactState.PENDING),
-          _create_tfx_artifact('foo/2', types.artifact.ArtifactState.PENDING),
-      ]
-      created_artifact_ids = _write_tfx_artifacts(m, tfx_artifacts)
+    artifact1 = _create_tfx_artifact('a/b/1',
+                                     types.artifact.ArtifactState.PENDING)
+    artifact2 = _create_tfx_artifact('a/b/2',
+                                     types.artifact.ArtifactState.PENDING)
+    created_artifact_ids = _write_tfx_artifacts(self._mlmd_handle,
+                                                [artifact1, artifact2])
 
-      artifact_lib.update_artifacts(m, tfx_artifacts,
-                                    types.artifact.ArtifactState.MISSING)
+    artifact_lib.update_artifacts(self._mlmd_handle, {
+        'key1': [artifact1],
+        'key2': [artifact2],
+    }, types.artifact.ArtifactState.MISSING)
 
-      updated_tfx_artifacts = artifact_lib.get_artifacts_by_ids(
-          m, created_artifact_ids)
-      self.assertLen(updated_tfx_artifacts, len(tfx_artifacts))
-      for tfx_artifact in updated_tfx_artifacts:
-        self.assertEqual(tfx_artifact.state,
-                         types.artifact.ArtifactState.MISSING)
+    updated_tfx_artifacts = artifact_lib.get_artifacts_by_ids(
+        self._mlmd_handle, created_artifact_ids)
+    self.assertLen(updated_tfx_artifacts, 2)
+    for tfx_artifact in updated_tfx_artifacts:
+      self.assertEqual(tfx_artifact.state, types.artifact.ArtifactState.MISSING)
 
   def testUpdateArtifactsWithoutIdRaisesError(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      tfx_artifacts = [
-          _create_tfx_artifact('x/y/1'),
-          _create_tfx_artifact('x/y/2'),
-      ]
-      _ = _write_tfx_artifacts(m, tfx_artifacts)
-      tfx_artifacts[1].mlmd_artifact.ClearField('id')
+    artifact1 = _create_tfx_artifact('x/y/1')
+    artifact2 = _create_tfx_artifact('x/y/2')
+    _ = _write_tfx_artifacts(self._mlmd_handle, [artifact1, artifact2])
+    artifact1.mlmd_artifact.ClearField('id')
 
-      with self.assertRaisesRegex(ValueError, 'Artifact must have an MLMD ID'):
-        artifact_lib.update_artifacts(m, tfx_artifacts)
+    with self.assertRaisesRegex(ValueError, 'Artifact must have an MLMD ID'):
+      artifact_lib.update_artifacts(self._mlmd_handle, {
+          'key': [artifact1, artifact2],
+      })
 
 
 if __name__ == '__main__':

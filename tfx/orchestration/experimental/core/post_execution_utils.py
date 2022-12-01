@@ -27,7 +27,6 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
-from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import status as status_lib
@@ -46,7 +45,6 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
       execution_result: Optional[execution_result_pb2.ExecutionResult] = None
   ) -> None:
     assert status.code != status_lib.Code.OK
-    _remove_output_dirs(task)
     _remove_temporary_task_dirs(
         stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
     if status.code == status_lib.Code.CANCELLED:
@@ -123,7 +121,6 @@ def publish_execution_results(
     contexts: List[proto.Context]) -> Optional[typing_utils.ArtifactMultiMap]:
   """Publishes execution result to MLMD for single component run."""
   if executor_output.execution_result.code != status_lib.Code.OK:
-    outputs_utils.remove_output_dirs(execution_info.output_dict)
     _remove_temporary_task_dirs(
         stateful_working_dir=execution_info.stateful_working_dir,
         tmp_dir=execution_info.tmp_dir)
@@ -172,10 +169,6 @@ def _update_execution_state_in_mlmd(
           error_msg)
     if execution_result:
       execution_lib.set_execution_result(execution_result, execution)
-
-
-def _remove_output_dirs(task: task_lib.ExecNodeTask) -> None:
-  outputs_utils.remove_output_dirs(task.output_artifacts)
 
 
 def _remove_temporary_task_dirs(stateful_working_dir: str = '',

@@ -36,6 +36,12 @@ def merge_output_artifact(
   updated_artifact = types.Artifact(original_artifact.artifact_type)
   updated_artifact.set_mlmd_artifact(updated_artifact_proto)
 
+  # Ensure the updated artifact has a consistent ID with the original.
+  if original_artifact.mlmd_artifact.HasField('id'):
+    updated_artifact_proto.id = original_artifact.mlmd_artifact.id
+  else:
+    updated_artifact_proto.ClearField('id')
+
   # Ensure the updated artifact has a consistent type ID with the original type.
   if original_artifact.artifact_type.HasField('id'):
     updated_artifact.type_id = original_artifact.artifact_type.id

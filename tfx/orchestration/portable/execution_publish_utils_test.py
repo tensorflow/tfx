@@ -19,6 +19,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import context_lib
+from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
@@ -166,6 +167,8 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       output_key = 'examples'
       output_example = standard_artifacts.Examples()
       output_example.uri = '/examples_uri'
+      execution_lib.register_pending_output_artifacts(
+          m, execution_id, {output_key: [output_example]})
       executor_output = execution_result_pb2.ExecutorOutput()
       text_format.Parse(
           """
@@ -192,7 +195,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       [artifact] = m.store.get_artifacts()
       self.assertProtoPartiallyEquals(
           f"""
-          id: 1
+          id: {output_example.id}
           state: LIVE
           uri: '/examples_uri'
           custom_properties {{
@@ -216,7 +219,24 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
               'type_id', 'create_time_since_epoch',
               'last_update_time_since_epoch'
           ])
-      [event] = m.store.get_events_by_execution_ids([execution.id])
+      [pre_registration_event, publish_event] = (
+          m.store.get_events_by_execution_ids([execution.id]))
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'examples'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: PENDING_OUTPUT
+          """,
+          pre_registration_event,
+          ignored_fields=['milliseconds_since_epoch'])
       self.assertProtoPartiallyEquals(
           """
           artifact_id: 1
@@ -231,7 +251,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           }
           type: OUTPUT
           """,
-          event,
+          publish_event,
           ignored_fields=['milliseconds_since_epoch'])
       # Verifies the context-execution edges are set up.
       self.assertCountEqual(
@@ -252,20 +272,49 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       output_example = standard_artifacts.Examples()
       output_example.uri = outputs_utils.RESOLVED_AT_RUNTIME
       output_example.is_external = True
+      execution_lib.register_pending_output_artifacts(
+          m, execution_id, {output_key: [output_example]})
       executor_output = execution_result_pb2.ExecutorOutput()
-      text_format.Parse(
-          """
-          uri: '/examples_uri'
-          custom_properties {
-            key: 'is_external'
-            value {int_value: 1}
-          }
-          """, executor_output.output_artifacts[output_key].artifacts.add())
+      # The executor output contains two artifacts compared to the original one.
+      for output_artifact_uri in ['/examples_uri/1', '/examples_uri/2']:
+        text_format.Parse(
+            f"""
+            uri: '{output_artifact_uri}'
+            custom_properties {{
+              key: 'is_external'
+              value {{int_value: 1}}
+            }}
+            """, executor_output.output_artifacts[output_key].artifacts.add())
+
       output_dict = execution_publish_utils.publish_succeeded_execution(
           m, execution_id, contexts, {output_key: [output_example]},
           executor_output)
-      self.assertLen(output_dict[output_key], 1)
-      self.assertEqual(output_dict[output_key][0].uri, '/examples_uri')
+      self.assertLen(output_dict[output_key], 2)
+      self.assertEqual(output_dict[output_key][0].uri, '/examples_uri/1')
+      self.assertEqual(output_dict[output_key][1].uri, '/examples_uri/2')
+      events = m.store.get_events_by_execution_ids([execution_id])
+      self.assertLen(events, 3)
+      for event, artifact_id, artifact_index, event_type in [
+          (events[0], 1, 0, 'PENDING_OUTPUT'),
+          (events[1], 2, 0, 'OUTPUT'),
+          (events[2], 3, 1, 'OUTPUT'),
+      ]:
+        self.assertProtoPartiallyEquals(
+            f"""
+            artifact_id: {artifact_id}
+            execution_id: 1
+            path {{
+              steps {{
+                key: 'examples'
+              }}
+              steps {{
+                index: {artifact_index}
+              }}
+            }}
+            type: {event_type}
+            """,
+            event,
+            ignored_fields=['milliseconds_since_epoch'])
 
   def testPublishSuccessfulExecutionOmitsArtifactIfNotResolvedDuringRuntime(
       self):
@@ -458,13 +507,15 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       contexts = self._generate_contexts(m)
       execution_id = execution_publish_utils.register_execution(
           m, self._execution_type, contexts).id
+      original_output_artifact = standard_artifacts.Examples()
+      original_output_artifact.type_id = 5
       executor_output = execution_result_pb2.ExecutorOutput()
       executor_output.output_artifacts['examples'].artifacts.add().type_id = 10
 
       with self.assertRaisesRegex(RuntimeError, 'change artifact type'):
         execution_publish_utils.publish_succeeded_execution(
-            m, execution_id, contexts,
-            {'examples': [standard_artifacts.Examples(),]}, executor_output)
+            m, execution_id, contexts, {'examples': [original_output_artifact]},
+            executor_output)
 
   @parameterized.named_parameters(
       # Not direct sub-dir of the original uri
@@ -699,7 +750,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertCountEqual(
           [c.id for c in contexts],
           [c.id for c in m.store.get_contexts_by_artifact(output_example.id)])
-
 
 if __name__ == '__main__':
   tf.test.main()

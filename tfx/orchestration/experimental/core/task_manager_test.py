@@ -421,8 +421,6 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     # Check that stateful working dir and tmp_dir are removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
-    # Output artifact URI remains as execution was successful.
-    self.assertTrue(os.path.exists(self._output_artifact_uri))
 
   def test_successful_execution_resulting_in_output_artifacts(self):
     # Register a fake task scheduler that returns a successful execution result
@@ -445,8 +443,6 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     # Check that stateful working dir and tmp_dir are removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
-    # Output artifact URI remains as execution was successful.
-    self.assertTrue(os.path.exists(self._output_artifact_uri))
 
   def test_scheduler_failure(self):
     # Register a fake task scheduler that returns a failure status.
@@ -472,7 +468,6 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     # removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
-    self.assertFalse(os.path.exists(self._output_artifact_uri))
 
   def test_executor_failure(self):
     # Register a fake task scheduler that returns success but the executor
@@ -503,7 +498,6 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     # removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
-    self.assertFalse(os.path.exists(self._output_artifact_uri))
 
   def test_scheduler_raises_exception(self):
     # Register a fake task scheduler that raises an exception in `schedule`.
@@ -522,7 +516,6 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     # removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
-    self.assertFalse(os.path.exists(self._output_artifact_uri))
 
 
 if __name__ == '__main__':

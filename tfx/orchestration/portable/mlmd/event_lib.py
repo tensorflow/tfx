@@ -127,6 +127,9 @@ def is_valid_output_event(event: metadata_store_pb2.Event,
                           expected_output_key: Optional[str] = None) -> bool:
   """Evaluates whether an event is an output event with the right output key.
 
+  This function only returns true if the event type produces a finalized output,
+  which excludes events of type PENDING_OUTPUT.
+
   Args:
     event: The event to evaluate.
     expected_output_key: The expected output key.
@@ -145,6 +148,11 @@ def is_valid_output_event(event: metadata_store_pb2.Event,
           return True
     return False
   return True
+
+
+def is_pending_output_event(event: metadata_store_pb2.Event) -> bool:
+  """Returns true if the event represents a pending (not finalized) output."""
+  return event.type == metadata_store_pb2.Event.PENDING_OUTPUT
 
 
 def is_valid_input_event(event: metadata_store_pb2.Event,

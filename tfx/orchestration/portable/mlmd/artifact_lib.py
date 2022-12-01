@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable APIs for managing artifacts in MLMD."""
-from typing import Iterable, Optional, Sequence
+import itertools
+from typing import Optional, Sequence
 
 from tfx import types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
+from tfx.utils import typing_utils
 
 
 def get_artifacts_by_ids(
@@ -58,11 +60,11 @@ def get_artifacts_by_ids(
 
 
 def update_artifacts(metadata_handler: metadata.Metadata,
-                     tfx_artifacts: Iterable[types.Artifact],
+                     tfx_artifact_map: typing_utils.ArtifactMultiMap,
                      new_artifact_state: Optional[str] = None) -> None:
   """Updates existing TFX artifacts in MLMD."""
   mlmd_artifacts_to_update = []
-  for tfx_artifact in tfx_artifacts:
+  for tfx_artifact in itertools.chain.from_iterable(tfx_artifact_map.values()):
     if not tfx_artifact.mlmd_artifact.HasField('id'):
       raise ValueError('Artifact must have an MLMD ID in order to be updated.')
     if new_artifact_state:

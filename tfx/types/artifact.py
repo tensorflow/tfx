@@ -49,6 +49,9 @@ class ArtifactState:
   MARKED_FOR_DELETION = 'MARKED_FOR_DELETION'
   # Indicates that the artifact has been garbage collected.
   DELETED = 'deleted'
+  # Indicates the artifact is abandoned, which is usually due to a failed or
+  # cancelled execution.
+  ABANDONED = 'abandoned'
 
 
 MlmdArtifactState = metadata_store_pb2.Artifact.State
@@ -58,6 +61,7 @@ _TFX_TO_MLMD_ARTIFACT_STATE = {
     ArtifactState.MISSING: MlmdArtifactState.UNKNOWN,
     ArtifactState.MARKED_FOR_DELETION: MlmdArtifactState.MARKED_FOR_DELETION,
     ArtifactState.DELETED: MlmdArtifactState.DELETED,
+    ArtifactState.ABANDONED: MlmdArtifactState.ABANDONED,
 }
 
 # Default split of examples data.
@@ -720,6 +724,8 @@ class Artifact(json_utils.Jsonable):
         'Unable to set properties from an artifact of different type: {} vs {}'
         .format(self.type_name, other.type_name))
     self.uri = other.uri
+    if other.artifact_type.HasField('id'):
+      self.type_id = other.artifact_type.id
 
     self._artifact.properties.clear()
     self._artifact.properties.MergeFrom(other._artifact.properties)  # pylint: disable=protected-access

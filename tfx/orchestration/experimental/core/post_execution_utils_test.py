@@ -80,7 +80,6 @@ class PostExecutionUtilsTest(tu.TfxTest):
     post_execution_utils.publish_execution_results(
         self.mlmd_handle, executor_output, execution_info, contexts=[])
 
-    self.assertFalse(fileio.exists(self.example_artifact.uri))
     [execution] = self.mlmd_handle.store.get_executions()
 
     self.assertEqual(execution.last_known_state, proto.Execution.FAILED)
@@ -95,7 +94,6 @@ class PostExecutionUtilsTest(tu.TfxTest):
     post_execution_utils.publish_execution_results(
         self.mlmd_handle, executor_output, execution_info, contexts=[])
 
-    self.assertTrue(fileio.exists(self.example_artifact.uri))
     [execution] = self.mlmd_handle.store.get_executions()
     mock_publish.assert_called_once_with(
         self.mlmd_handle,
