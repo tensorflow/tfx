@@ -122,10 +122,29 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                     input_dict[standard_component_specs.SCHEMA_KEY])))
         stats_options.schema = schema
 
+    tfxio_schema = None
+    if stats_options.experimental_filter_read_paths:
+      if stats_options.feature_allowlist:
+        # Check that the allowlist contains paths and not names.
+        for path in stats_options.feature_allowlist:
+          if isinstance(path, str):
+            raise ValueError(
+                'experimental_filter_read_paths requires allowlist passed as'
+                ' paths.')
+          tfxio_schema = tfdv.generate_dummy_schema_with_paths(
+              stats_options.feature_allowlist)
+      elif stats_options.schema is None:
+        raise ValueError(
+            'experimental_filter_read_paths requires allowlist features or schema.'
+        )
+      else:
+        tfxio_schema = stats_options.schema
+
     split_and_tfxio = []
     tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
         examples=[examples],
-        telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
+        telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
+        schema=tfxio_schema)
     for split in artifact_utils.decode_split_names(examples.split_names):
       if split in exclude_splits:
         continue
