@@ -20,7 +20,6 @@ import threading
 import typing
 from typing import Callable, Iterator, MutableMapping, Optional
 
-import cachetools
 from tfx.orchestration import metadata
 
 from ml_metadata.proto import metadata_store_pb2
@@ -60,48 +59,20 @@ class _LocksManager:
           del self._locks[value]
 
 
-class _ExecutionCache:
-  """Read-through / write-through cache for MLMD executions."""
-
-  def __init__(self):
-    self._cache: MutableMapping[
-        int, metadata_store_pb2.Execution] = cachetools.LRUCache(maxsize=1024)
-    self._lock = threading.Lock()
-
-  def get_execution(self, mlmd_handle: metadata.Metadata,
-                    execution_id: int) -> metadata_store_pb2.Execution:
-    """Gets execution either from cache or, upon cache miss, from MLMD."""
-    with self._lock:
-      execution = self._cache.get(execution_id)
-    if not execution:
-      executions = mlmd_handle.store.get_executions_by_id([execution_id])
-      if executions:
-        execution = executions[0]
-        with self._lock:
-          self._cache[execution_id] = execution
-    if not execution:
-      raise ValueError(f'Execution not found for execution id: {execution_id}')
-    return execution
-
-  def put_execution(self, mlmd_handle: metadata.Metadata,
-                    execution: metadata_store_pb2.Execution) -> None:
-    """Writes execution to MLMD and updates cache."""
-    mlmd_handle.store.put_executions([execution])
-    # The execution is fetched from MLMD again to ensure that the in-memory
-    # value of `last_update_time_since_epoch` of the execution is same as the
-    # one stored in MLMD.
-    [execution] = mlmd_handle.store.get_executions_by_id([execution.id])
-    with self._lock:
-      self._cache[execution.id] = execution
-
-  def clear_cache(self):
-    """Clears underlying cache; MLMD is untouched."""
-    with self._lock:
-      self._cache.clear()
-
-
-_execution_cache = _ExecutionCache()
 _execution_id_locks = _LocksManager()
+
+
+def _get_execution(mlmd_handle: metadata.Metadata,
+                   execution_id: int) -> metadata_store_pb2.Execution:
+  executions = mlmd_handle.store.get_executions_by_id([execution_id])
+  if not executions:
+    raise ValueError(f'Execution not found for execution id: {execution_id}')
+  return executions[0]
+
+
+def _put_execution(mlmd_handle: metadata.Metadata,
+                   execution: metadata_store_pb2.Execution) -> None:
+  mlmd_handle.store.put_executions([execution])
 
 
 @contextlib.contextmanager
@@ -113,10 +84,6 @@ def mlmd_execution_atomic_op(
                  None]] = None,
 ) -> Iterator[metadata_store_pb2.Execution]:
   """Context manager for accessing or mutating an execution atomically.
-
-  The idea of using this context manager is to ensure that the in-memory state
-  of an MLMD execution is centrally managed so that it stays in sync with the
-  execution in MLMD even when multiple threads in the process may be mutating.
 
   If execution for given execution id exists in MLMD, it is locked before being
   yielded so that no other thread in the process can make conflicting updates if
@@ -140,7 +107,7 @@ def mlmd_execution_atomic_op(
     ValueError: If execution having given execution id is not found in MLMD.
   """
   with _execution_id_locks.lock(execution_id):
-    execution = _execution_cache.get_execution(mlmd_handle, execution_id)
+    execution = _get_execution(mlmd_handle, execution_id)
     execution_copy = copy.deepcopy(execution)
     yield execution_copy
     if execution != execution_copy:
@@ -150,14 +117,9 @@ def mlmd_execution_atomic_op(
             'context.')
       # Make a copy before writing to cache as the yielded `execution_copy`
       # object may be modified even after exiting the contextmanager.
-      _execution_cache.put_execution(mlmd_handle, copy.deepcopy(execution_copy))
+      _put_execution(mlmd_handle, copy.deepcopy(execution_copy))
       if on_commit is not None:
         pre_commit_execution = copy.deepcopy(execution)
         post_commit_execution = copy.deepcopy(
-            _execution_cache.get_execution(mlmd_handle, execution_copy.id))
+            _get_execution(mlmd_handle, execution_copy.id))
         on_commit(pre_commit_execution, post_commit_execution)
-
-
-def clear_in_memory_state():
-  """Clears cached state. Useful in tests."""
-  _execution_cache.clear_cache()

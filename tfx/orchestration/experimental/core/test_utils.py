@@ -23,7 +23,6 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import env
-from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -47,7 +46,6 @@ class TfxTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
-    mlmd_state.clear_in_memory_state()
     pstate._PipelineIRCodec.testonly_reset()  # pylint: disable=protected-access
 
 

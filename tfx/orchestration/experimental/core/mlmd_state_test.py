@@ -114,7 +114,7 @@ class MlmdStateTest(test_utils.TfxTest):
                        got_post_commit_execution.last_known_state)
 
       # Test that we made a deep copy of the executions, so mutating them
-      # doesn't mutate the values in the cache.
+      # doesn't cause them to be written to MLMD.
       got_pre_commit_execution.last_known_state = (
           metadata_store_pb2.Execution.UNKNOWN)
       got_post_commit_execution.last_known_state = (
@@ -124,9 +124,6 @@ class MlmdStateTest(test_utils.TfxTest):
       [execution] = m.store.get_executions_by_id([execution.id])
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
                        execution.last_known_state)
-      # Test that in-memory state is also in sync.
-      self.assertEqual(execution,
-                       mlmd_state._execution_cache._cache[execution.id])
       # Test that on_commit callback was invoked.
       self.assertTrue(event_on_commit.is_set())
       # Sanity checks that the updated execution is yielded in the next call.
