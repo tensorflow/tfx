@@ -166,9 +166,16 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.utils import topsort
 from tfx.utils import typing_utils
+from tfx.utils import governance_utils
 
 _T = TypeVar('_T')
 _DataType = pipeline_pb2.InputGraph.DataType
+
+
+def _filter_live(
+    artifacts: Sequence[types.Artifact]) -> List[types.Artifact]:
+  """Filters live artifacts regarding ArtifactGovernance."""
+  return [a for a in artifacts if not governance_utils.is_expired(a)]
 
 
 def _check_cycle(
@@ -318,19 +325,19 @@ def _resolve_input_graph_ref(
     result = graph_fn(input_dict)
     if graph_output_type == _DataType.ARTIFACT_LIST:
       # result == [Artifact()]
-      resolved[input_key].append((partition, result))
+      resolved[input_key].append((partition, _filter_live(result)))
     elif graph_output_type == _DataType.ARTIFACT_MULTIMAP:
       # result == {'x': [Artifact()], 'y': [Artifact()]}
       for each_input_key, input_graph_ref in same_graph_inputs.items():
         resolved[each_input_key].append(
-            (partition, result[input_graph_ref.key]))
+            (partition, _filter_live(result[input_graph_ref.key])))
     elif graph_output_type == _DataType.ARTIFACT_MULTIMAP_LIST:
       # result == [{'x': [Artifact()]}, {'x': [Artifact()]}]
       for index, each_result in enumerate(result):
         new_partition = partition | {graph_id: index}
         for each_input_key, input_graph_ref in same_graph_inputs.items():
           resolved[each_input_key].append(
-              (new_partition, each_result[input_graph_ref.key]))
+              (new_partition, _filter_live(each_result[input_graph_ref.key])))
 
 
 def _resolve_mixed_inputs(
@@ -350,7 +357,7 @@ def _resolve_mixed_inputs(
             artifact.id: artifact for artifact in input_dict[sub_key]
         })
       artifacts = list(artifacts_by_id.values())
-    result.append((partition, artifacts))
+    result.append((partition, _filter_live(artifacts)))
 
   resolved[input_key] = result
 
@@ -387,8 +394,14 @@ def _resolve_static_inputs(
         f'multiple: {artifact_ids_by_type}')
 
   ordered_artifacts = [artifacts_by_id[i] for i in static_inputs.artifact_ids]
-  return artifact_utils.deserialize_artifacts(
+  result = artifact_utils.deserialize_artifacts(
       artifact_types[0], ordered_artifacts)
+  for resolved_artifact in result:
+    if governance_utils.is_expired(resolved_artifact):
+      raise exceptions.InvalidArgument(
+          f'Static inputs {static_inputs} contains expired artifact:\n'
+          f'{resolved_artifact}')
+  return result
 
 
 def _filter_conditionals(
@@ -433,7 +446,9 @@ def resolve(
     if input_spec.channels:
       artifacts = channel_resolver.resolve_union_channels(
           handle_like, input_spec.channels)
-      resolved[input_key] = [(partition_utils.NO_PARTITION, artifacts)]
+      resolved[input_key] = [
+          (partition_utils.NO_PARTITION, _filter_live(artifacts))
+      ]
     elif input_spec.input_graph_ref.graph_id:
       _resolve_input_graph_ref(
           mlmd_cm.get_handle(handle_like), node_inputs, input_key,
@@ -443,7 +458,9 @@ def resolve(
     elif input_spec.HasField('static_inputs'):
       artifacts = _resolve_static_inputs(
           mlmd_cm.get_handle(handle_like), input_spec.static_inputs)
-      resolved[input_key] = [(partition_utils.NO_PARTITION, artifacts)]
+      resolved[input_key] = [
+          (partition_utils.NO_PARTITION, _filter_live(artifacts))
+      ]
     else:
       raise exceptions.FailedPreconditionError(
           'Exactly one of InputSpec.channels, InputSpec.input_graph_ref, or '
