@@ -216,14 +216,14 @@ class PipelineStateTest(test_utils.TfxTest):
           pipeline_state.pipeline_uid)
 
   @mock.patch.object(pstate, 'get_all_node_executions')
-  @mock.patch.object(execution_lib, 'get_artifacts_dict')
-  def test_get_all_node_artifacts(self, mock_get_artifacts_dict,
+  @mock.patch.object(execution_lib, 'get_output_artifacts')
+  def test_get_all_node_artifacts(self, mock_get_output_artifacts,
                                   mock_get_all_pipeline_executions):
     artifact = metadata_store_pb2.Artifact(id=1)
     artifact_obj = mock.Mock()
     artifact_obj.mlmd_artifact = artifact
     with self._mlmd_connection as m:
-      mock_get_artifacts_dict.return_value = {'key': [artifact_obj]}
+      mock_get_output_artifacts.return_value = {'key': [artifact_obj]}
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       mock_get_all_pipeline_executions.return_value = {
           pipeline.nodes[0].pipeline_node.node_info.id: [

@@ -22,7 +22,7 @@ from tfx import types
 from ml_metadata.proto import metadata_store_pb2
 
 
-VALID_OUTPUT_EVENT_TYPES = frozenset([
+_VALID_OUTPUT_EVENT_TYPES = frozenset([
     metadata_store_pb2.Event.OUTPUT, metadata_store_pb2.Event.INTERNAL_OUTPUT,
     metadata_store_pb2.Event.DECLARED_OUTPUT
 ])
@@ -116,7 +116,7 @@ def reconstruct_inputs_and_outputs(
         f'{execution_ids}.')
 
   input_events = [e for e in events if e.type in _VALID_INPUT_EVENT_TYPES]
-  output_events = [e for e in events if e.type in VALID_OUTPUT_EVENT_TYPES]
+  output_events = [e for e in events if e.type in _VALID_OUTPUT_EVENT_TYPES]
   return (
       reconstruct_artifact_multimap(artifacts, input_events),
       reconstruct_artifact_multimap(artifacts, output_events),
@@ -134,7 +134,7 @@ def is_valid_output_event(event: metadata_store_pb2.Event,
   Returns:
     A bool value indicating result
   """
-  if event.type not in VALID_OUTPUT_EVENT_TYPES:
+  if event.type not in _VALID_OUTPUT_EVENT_TYPES:
     return False
   if expected_output_key:
     # Ignores errors during event.path parsing which indicates the event is

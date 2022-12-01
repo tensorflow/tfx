@@ -70,8 +70,8 @@ def generate_task_from_execution(
 
   contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
   exec_properties = extract_properties(execution)
-  input_artifacts = execution_lib.get_artifacts_dict(
-      metadata_handler, execution.id, [metadata_store_pb2.Event.INPUT])
+  input_artifacts = execution_lib.get_input_artifacts(
+      metadata_handler, execution.id)
   outputs_resolver = outputs_utils.OutputsResolver(node, pipeline.pipeline_info,
                                                    pipeline.runtime_spec,
                                                    pipeline.execution_mode)
@@ -412,8 +412,8 @@ def register_retry_execution(
 
   contexts = metadata_handle.store.get_contexts_by_execution(
       failed_execution.id)
-  input_artifacts = execution_lib.get_artifacts_dict(
-      metadata_handle, failed_execution.id, [metadata_store_pb2.Event.INPUT])
+  input_artifacts = execution_lib.get_input_artifacts(
+      metadata_handle, failed_execution.id)
   return execution_lib.put_execution(
       metadata_handle,
       retry_execution,

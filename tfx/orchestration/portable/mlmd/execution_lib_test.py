@@ -420,12 +420,12 @@ class ExecutionLibTest(test_case_utils.TfxTest):
           [c.id for c in m.store.get_contexts_by_execution(execution_2.id)],
           context_ids)
 
-  def testGetArtifactsDict(self):
+  def testGetInputsAndOutputs(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       # Create and shuffle a few artifacts. The shuffled order should be
-      # retained in the output of `execution_lib.get_artifacts_dict`.
+      # retained in the output of `execution_lib.get_input_artifacts`.
       input_artifact_keys = ('input1', 'input2', 'input3')
-      input_artifacts_dict = collections.OrderedDict()
+      expected_input_artifacts = collections.OrderedDict()
       for input_key in input_artifact_keys:
         input_examples = []
         for i in range(10):
@@ -435,7 +435,7 @@ class ExecutionLibTest(test_case_utils.TfxTest):
               m, input_example.artifact_type).id
           input_examples.append(input_example)
         random.shuffle(input_examples)
-        input_artifacts_dict[input_key] = input_examples
+        expected_input_artifacts[input_key] = input_examples
 
       output_models = []
       for i in range(8):
@@ -445,12 +445,12 @@ class ExecutionLibTest(test_case_utils.TfxTest):
             m, output_model.artifact_type).id
         output_models.append(output_model)
       random.shuffle(output_models)
-      output_artifacts_dict = {'model': output_models}
+      expected_output_artifacts = {'model': output_models}
 
       # Store input artifacts only. Outputs will be saved in put_execution().
       input_mlmd_artifacts = [
           a.mlmd_artifact
-          for a in itertools.chain(*input_artifacts_dict.values())
+          for a in itertools.chain(*expected_input_artifacts.values())
       ]
       artifact_ids = m.store.put_artifacts(input_mlmd_artifacts)
       for artifact_id, mlmd_artifact in zip(artifact_ids, input_mlmd_artifacts):
@@ -463,27 +463,26 @@ class ExecutionLibTest(test_case_utils.TfxTest):
       contexts = self._generate_contexts(m)
 
       # Change the order of the OrderedDict to shuffle the order of input keys.
-      input_artifacts_dict.move_to_end('input1')
+      expected_input_artifacts.move_to_end('input1')
       execution = execution_lib.put_execution(
           m,
           execution,
           contexts,
-          input_artifacts=input_artifacts_dict,
-          output_artifacts=output_artifacts_dict)
+          input_artifacts=expected_input_artifacts,
+          output_artifacts=expected_output_artifacts)
 
       # Verify that the same artifacts are returned in the correct order.
-      artifacts_dict = execution_lib.get_artifacts_dict(
-          m, execution.id, [metadata_store_pb2.Event.INPUT])
-      self.assertEqual(set(input_artifact_keys), set(artifacts_dict.keys()))
-      for key in artifacts_dict:
-        self.assertEqual([ex.uri for ex in input_artifacts_dict[key]],
-                         [a.uri for a in artifacts_dict[key]], f'for key={key}')
-      artifacts_dict = execution_lib.get_artifacts_dict(
-          m, execution.id, [metadata_store_pb2.Event.OUTPUT])
-      self.assertEqual({'model'}, set(artifacts_dict.keys()))
+      input_artifacts = execution_lib.get_input_artifacts(m, execution.id)
+      output_artifacts = execution_lib.get_output_artifacts(m, execution.id)
+      self.assertEqual(set(input_artifact_keys), set(input_artifacts.keys()))
+      for key in input_artifacts:
+        self.assertEqual([ex.uri for ex in expected_input_artifacts[key]],
+                         [a.uri for a in input_artifacts[key]],
+                         f'for key={key}')
+      self.assertEqual({'model'}, set(output_artifacts.keys()))
       self.assertEqual([model.uri for model in output_models],
-                       [a.uri for a in artifacts_dict['model']])
-      self.assertEqual(artifacts_dict['model'][0].mlmd_artifact.type,
+                       [a.uri for a in output_artifacts['model']])
+      self.assertEqual(output_artifacts['model'][0].mlmd_artifact.type,
                        standard_artifacts.Model.TYPE_NAME)
 
   def test_set_and_get_execution_result(self):

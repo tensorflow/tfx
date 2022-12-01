@@ -23,7 +23,6 @@ from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
-from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -721,10 +720,8 @@ class _ArtifactRecycler:
       else:
         new_execution = prev_cache_executions[-1]
 
-    output_artifacts = execution_lib.get_artifacts_dict(
-        self._mlmd,
-        existing_execution.id,
-        event_types=list(event_lib.VALID_OUTPUT_EVENT_TYPES))
+    output_artifacts = execution_lib.get_output_artifacts(
+        self._mlmd, existing_execution.id)
 
     execution_publish_utils.publish_cached_execution(
         self._mlmd,

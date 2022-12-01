@@ -419,34 +419,52 @@ def get_artifact_ids_by_event_type_for_execution_id(
   return result
 
 
-def get_artifacts_dict(
-    metadata_handler: metadata.Metadata, execution_id: int,
-    event_types: 'List[metadata_store_pb2.Event.Type]'
-) -> typing_utils.ArtifactMultiDict:
-  """Returns a map from key to an ordered list of artifacts for the given execution id.
+def get_input_artifacts(
+    metadata_handle: metadata.Metadata,
+    execution_id: int) -> typing_utils.ArtifactMultiDict:
+  """Gets input artifacts of the execution.
 
-  The dict is constructed purely from information stored in MLMD for the
-  execution given by `execution_id`. The "key" is the tag associated with the
-  `InputSpec` or `OutputSpec` in the pipeline IR.
+  Each execution is associated with a single input artifacts multimap, where the
+  key is the same key associated with `NodeInputs.inputs` in the pipeline IR.
+  Artifacts and event information are fetched from the MLMD.
 
   Args:
-    metadata_handler: A handler to access MLMD.
-    execution_id: Id of the execution for which to get artifacts.
-    event_types: Event types to filter by.
+    metadata_handle: A Metadata instance that is in entered state.
+    execution_id: A valid MLMD execution ID. If the execution_id does not exist,
+        this function will return an empty dict instead of raising an error.
 
   Returns:
-    A dict mapping key to an ordered list of artifacts.
-
-  Raises:
-    ValueError: If the events are badly formed and correct ordering of
-      artifacts cannot be determined or if all the artifacts could not be
-      fetched from MLMD.
+    A reconstructed input artifacts multimap.
   """
-  events = metadata_handler.store.get_events_by_execution_ids([execution_id])
-  valid_events = [event for event in events if event.type in event_types]
+  events = metadata_handle.store.get_events_by_execution_ids([execution_id])
+  input_events = [e for e in events if event_lib.is_valid_input_event(e)]
   artifacts = artifact_lib.get_artifacts_by_ids(
-      metadata_handler, [event.artifact_id for event in valid_events])
-  return event_lib.reconstruct_artifact_multimap(artifacts, valid_events)
+      metadata_handle, [e.artifact_id for e in input_events])
+  return event_lib.reconstruct_artifact_multimap(artifacts, input_events)
+
+
+def get_output_artifacts(
+    metadata_handle: metadata.Metadata,
+    execution_id: int) -> typing_utils.ArtifactMultiDict:
+  """Gets output artifacts of the execution.
+
+  Each execution is associated with a single output artifacts multimap, where
+  the key is the same key associated with `NodeOutputs.outputs` in the pipeline
+  IR. Artifacts and event information are fetched from the MLMD.
+
+  Args:
+    metadata_handle: A Metadata instance that is in entered state.
+    execution_id: A valid MLMD execution ID. If the execution_id does not exist,
+        this function will return an empty dict instead of raising an error.
+
+  Returns:
+    A reconstructed output artifacts multimap.
+  """
+  events = metadata_handle.store.get_events_by_execution_ids([execution_id])
+  output_events = [e for e in events if event_lib.is_valid_output_event(e)]
+  artifacts = artifact_lib.get_artifacts_by_ids(
+      metadata_handle, [e.artifact_id for e in output_events])
+  return event_lib.reconstruct_artifact_multimap(artifacts, output_events)
 
 
 def set_execution_result(execution_result: execution_result_pb2.ExecutionResult,

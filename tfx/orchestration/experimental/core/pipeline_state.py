@@ -1081,11 +1081,8 @@ def get_all_node_artifacts(
     node_artifacts = {}
     for execution in executions:
       execution_artifacts = {}
-      for key, artifacts in execution_lib.get_artifacts_dict(
-          mlmd_handle, execution.id, [
-              metadata_store_pb2.Event.OUTPUT,
-              metadata_store_pb2.Event.DECLARED_OUTPUT
-          ]).items():
+      for key, artifacts in execution_lib.get_output_artifacts(
+          mlmd_handle, execution.id).items():
         execution_artifacts[key] = [
             artifact.mlmd_artifact for artifact in artifacts
         ]

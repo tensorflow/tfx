@@ -449,17 +449,17 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertIsNone(
           retry_execution.custom_properties.get('should_not_be_copied'))
       # Check all input artifacts are the same.
-      retry_execution_input_artifacts = execution_lib.get_artifacts_dict(
-          m, retry_execution.id, [metadata_store_pb2.Event.INPUT])
-      failed_execution_input_artifacts = execution_lib.get_artifacts_dict(
-          m, failed_execution.id, [metadata_store_pb2.Event.INPUT])
-      self.assertEqual(retry_execution_input_artifacts.keys(),
-                       failed_execution_input_artifacts.keys())
-      for key in retry_execution_input_artifacts:
+      retry_execution_inputs = execution_lib.get_input_artifacts(
+          m, retry_execution.id)
+      failed_execution_inputs = execution_lib.get_input_artifacts(
+          m, failed_execution.id)
+      self.assertEqual(retry_execution_inputs.keys(),
+                       failed_execution_inputs.keys())
+      for key in retry_execution_inputs:
         retry_execution_artifacts_ids = sorted(
-            [a.id for a in retry_execution_input_artifacts[key]])
+            [a.id for a in retry_execution_inputs[key]])
         failed_execution_artifacts_ids = sorted(
-            [a.id for a in failed_execution_input_artifacts[key]])
+            [a.id for a in failed_execution_inputs[key]])
         self.assertEqual(retry_execution_artifacts_ids,
                          failed_execution_artifacts_ids)
 
