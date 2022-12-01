@@ -29,6 +29,7 @@ from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
@@ -196,8 +197,14 @@ class _Generator:
                                                       oldest_active_execution))
       return result
 
-    resolved_info = task_gen_utils.generate_resolved_info(
-        self._mlmd_connection_manager, node)
+    try:
+      resolved_info = task_gen_utils.generate_resolved_info(
+          self._mlmd_connection_manager, node)
+    except exceptions.InputResolutionError as e:
+      logging.exception(
+          'Task cannot be generated for node %s since no input artifacts '
+          'are resolved. Error: %s', node.node_info.id, e)
+      return result
 
     # Note that some nodes e.g. ImportSchemaGen don't have inputs, and for those
     # nodes it is okay that there are no resolved input artifacts.

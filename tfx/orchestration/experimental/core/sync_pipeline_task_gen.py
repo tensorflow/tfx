@@ -29,6 +29,7 @@ from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import outputs_utils
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
@@ -384,22 +385,24 @@ class _Generator:
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
-    resolved_info = task_gen_utils.generate_resolved_info(
-        self._mlmd_connection_manager, node)
-    if resolved_info is None:
-      result.append(
-          task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=pstate.NodeState.SKIPPED))
-      return result
-
-    if not resolved_info.input_and_params:
-      error_msg = f'failure to resolve inputs; node uid: {node_uid}'
+    try:
+      resolved_info = task_gen_utils.generate_resolved_info(
+          self._mlmd_connection_manager, node)
+    except exceptions.InputResolutionError as e:
+      error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
+                   f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid,
               state=pstate.NodeState.FAILED,
               status=status_lib.Status(
                   code=status_lib.Code.ABORTED, message=error_msg)))
+      return result
+
+    if not resolved_info.input_and_params:
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid, state=pstate.NodeState.SKIPPED))
       return result
 
     # Copys artifact types of the external artifacts to local db, in idempotent
