@@ -105,7 +105,7 @@ class ComponentSpecTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         TypeError,
         "Expected type <(class|type) 'int'> for parameter u?'folds' but got "
-        'string.'):
+        'str.'):
       spec = _BasicComponentSpec(
           folds='string', input=input_channel, output=output_channel)
 
@@ -313,21 +313,23 @@ class ComponentSpecTest(tf.test.TestCase):
     list_parameter = ExecutionParameter(type=List[int])
     list_parameter.type_check('list_parameter', [])
     list_parameter.type_check('list_parameter', [42])
-    with self.assertRaisesRegex(TypeError, 'Expecting a list for parameter'):
+    with self.assertRaisesRegex(TypeError,
+                                r'Expected type typing\.List\[int\]'):
       list_parameter.type_check('list_parameter', 42)
 
-    with self.assertRaisesRegex(TypeError, "Expecting item type <(class|type) "
-                                "'int'> for parameter u?'list_parameter'"):
+    with self.assertRaisesRegex(TypeError, r"Expected type typing\.List\[int\] "
+                                "for parameter u?'list_parameter'"):
       list_parameter.type_check('list_parameter', [42, 'wrong item'])
 
     dict_parameter = ExecutionParameter(type=Dict[str, int])
     dict_parameter.type_check('dict_parameter', {})
     dict_parameter.type_check('dict_parameter', {'key1': 1, 'key2': 2})
-    with self.assertRaisesRegex(TypeError, 'Expecting a dict for parameter'):
+    with self.assertRaisesRegex(
+        TypeError, r'Expected type typing\.Dict\[str, int\] for parameter'):
       dict_parameter.type_check('dict_parameter', 'simple string')
 
-    with self.assertRaisesRegex(TypeError, "Expecting value type "
-                                "<(class|type) 'int'>"):
+    with self.assertRaisesRegex(
+        TypeError, r'Expected type typing\.Dict\[str, int\] for parameter'):
       dict_parameter.type_check('dict_parameter', {'key1': '1'})
 
     proto_parameter = ExecutionParameter(type=example_gen_pb2.Input)
@@ -367,18 +369,20 @@ class ComponentSpecTest(tf.test.TestCase):
     list_parameter = ExecutionParameter(type=list[int])
     list_parameter.type_check('list_parameter', [])
     list_parameter.type_check('list_parameter', [42])
-    with self.assertRaisesRegex(TypeError, 'Expecting a list for parameter'):
+    with self.assertRaisesRegex(TypeError,
+                                r'Expected type list\[int\] for parameter'):
       list_parameter.type_check('list_parameter', 42)
 
     with self.assertRaisesRegex(
-        TypeError, 'Expecting item type <(class|type) '
-        "'int'> for parameter u?'list_parameter'"):
+        TypeError,
+        r"Expected type list\[int\] for parameter u?'list_parameter'"):
       list_parameter.type_check('list_parameter', [42, 'wrong item'])
 
     dict_parameter = ExecutionParameter(type=dict[str, int])
     dict_parameter.type_check('dict_parameter', {})
     dict_parameter.type_check('dict_parameter', {'key1': 1, 'key2': 2})
-    with self.assertRaisesRegex(TypeError, 'Expecting a dict for parameter'):
+    with self.assertRaisesRegex(
+        TypeError, r'Expected type dict\[str, int\] for parameter'):
       dict_parameter.type_check('dict_parameter', 'simple string')
 
   def testExecutionParameterUseProto(self):

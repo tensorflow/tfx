@@ -119,7 +119,7 @@ class DataTypesTest(tf.test.TestCase):
       }
 
     _ = ComponentSpecWithContainer(x={u'key': parameter_str}, y=[parameter_int])
-    with self.assertRaisesRegex(TypeError, 'Expecting value type'):
+    with self.assertRaisesRegex(TypeError, 'Expected type'):
       _ = ComponentSpecWithContainer(x={u'key': parameter_int}, y=[])
 
 

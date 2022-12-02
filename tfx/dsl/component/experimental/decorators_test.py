@@ -322,6 +322,19 @@ def _beam_component_with_artifact_inputs(
   fileio.makedirs(processed_examples.uri)
 
 
+@component
+def _json_compat_parameters(
+    a: Parameter[Dict[str, int]],
+    b: Parameter[List[bool]],
+    c: Parameter[Dict[str, List[bool]]],
+    d: Parameter[List[Dict[str, float]]]
+):
+  assert a == {'foo': 1, 'bar': 2}
+  assert b == [True, False]
+  assert c == {'foo': [True, False], 'bar': [True, False]}
+  assert d == [{'foo': 1.0}, {'bar': 2.0}]
+
+
 class ComponentDecoratorTest(tf.test.TestCase):
 
   def setUp(self):
@@ -650,6 +663,32 @@ class ComponentDecoratorTest(tf.test.TestCase):
         'Return value .* for output \'a\' is incompatible with output type .*$'
     ):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+  def testJsonCompatParameter(self):
+    instance_1 = _json_compat_parameters(
+        a={
+            'foo': 1,
+            'bar': 2
+        },
+        b=[True, False],
+        c={
+            'foo': [True, False],
+            'bar': [True, False]
+        },
+        d=[{
+            'foo': 1.0
+        }, {
+            'bar': 2.0
+        }])
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1])
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
 
 if __name__ == '__main__':
   tf.test.main()

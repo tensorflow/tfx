@@ -99,6 +99,7 @@
     Apache Parquet format.
 *   ExampleDiff outputs statistics on the matching process, and optional counts
     of paired feature values.
+*   Allow lists and dicts to be passed into decorator components as parameters.
 
 ## Breaking Changes
 

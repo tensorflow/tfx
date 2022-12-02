@@ -122,6 +122,7 @@ message Value {
         ValueType list_type = 1;
         ProtoType proto_type = 2;
         BooleanType boolean_type = 3;
+        ValueType dict_type = 4;
       }
     }
 
