@@ -4,8 +4,8 @@ This directory includes YAML schema of various artifact types defined in TFX
 DSL.
 
 Currently, all user-defined artifact types by deriving the `artifact.Artifact`
-Python class will be associated with `Artifact.yaml`, with the class import path
-encoded as the title. The artifact types in
+Python class will be associated with `Artifact.yaml`, with the artifact
+`TYPE_NAME` encoded as the title. The artifact types in
 `tfx.types.standard_artifacts` and `tfx.types.experimental.simple_artifacts`
 will be associated with `tfx.{TypeName}.yaml`, where `{TypeName}` is the Python
 type name of the artifact type.
@@ -18,7 +18,7 @@ At the top level, the artifact type YAML spec should contains three fields:
 
 - **title**: The identifier of the schema. For all the TFX first party artifact
 types, the title is `tfx.{TypeName}`. For example, `tfx.Model` and
-`tfx.Examples`. For custom artifact types this will be the class import path.
+`tfx.Examples`. For custom artifact types this will be `artifact.TYPE_NAME`.
 
 - **type**: For artifact types, this field should be set to `object`.
 

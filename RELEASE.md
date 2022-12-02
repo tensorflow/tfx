@@ -45,7 +45,8 @@
 
 ## Breaking Changes
 
-*   N/A
+*   Custom artifact types in kubeflow will encode `artifact.TYPE_NAME` as the
+    schema title for the artifact instead of the class import path.
 
 ### For Pipeline Authors
 

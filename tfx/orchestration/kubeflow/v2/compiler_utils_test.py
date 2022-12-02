@@ -31,17 +31,17 @@ import yaml
 from google.protobuf import text_format
 
 _EXPECTED_MY_ARTIFACT_SCHEMA = """
-title: __main__._MyArtifact
+title: test.Type
 type: object
 """
 
 _EXPECTED_MY_BAD_ARTIFACT_SCHEMA = """
-title: __main__._MyArtifactWithProperty
+title: test.BadType
 type: object
 """
 
 _MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES = """
-title: __main__._MyArtifactWithProperty
+title: test.BadType
 type: object
 properties:
   int1:
@@ -50,13 +50,21 @@ properties:
 
 
 class _MyArtifact(artifact.Artifact):
-  TYPE_NAME = 'TestType'
+  TYPE_NAME = 'test.Type'
+
+
+class _CustomArtifactBadSchemaTitle(artifact.Artifact):
+  TYPE_NAME = 'bad_title'
+
+
+class _CustomArtifactSchemaTitleTooManyDots(artifact.Artifact):
+  TYPE_NAME = 'test.Bad.Bad'
 
 
 # _MyArtifactWithProperty should fail the compilation by specifying
 # custom property schema, which is not supported yet.
 class _MyArtifactWithProperty(artifact.Artifact):
-  TYPE_NAME = 'TestBadType'
+  TYPE_NAME = 'test.BadType'
   PROPERTIES = {
       'int1': artifact.Property(type=artifact.PropertyType.INT),
   }
@@ -99,6 +107,14 @@ class CompilerUtilsTest(tf.test.TestCase):
     self.assertDictEqual(
         yaml.safe_load(my_artifact_schema),
         yaml.safe_load(_EXPECTED_MY_ARTIFACT_SCHEMA))
+
+  def testCustomArtifactBadSchemaTitleFails(self):
+    bad_schemas = [_CustomArtifactBadSchemaTitle,
+                   _CustomArtifactSchemaTitleTooManyDots]
+    for schema in bad_schemas:
+      with self.assertRaisesRegex(ValueError,
+                                  'Invalid custom artifact type name'):
+        _ = compiler_utils.get_artifact_schema(schema)
 
   def testCustomArtifactMappingFails(self):
     my_artifact_with_property_schema = compiler_utils.get_artifact_schema(

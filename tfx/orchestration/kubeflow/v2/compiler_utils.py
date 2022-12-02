@@ -17,6 +17,7 @@
 import itertools
 import json
 import os
+import re
 from typing import Any, Dict, List, Mapping, Optional, Type, Union
 
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
@@ -41,6 +42,11 @@ from ml_metadata.proto import metadata_store_pb2
 # Key of TFX type path and name in artifact custom properties.
 TFX_TYPE_KEY = 'tfx_type'
 TYPE_NAME_KEY = 'type_name'
+
+# Regex of the acceptable schema title name. Must be of the
+# form `<namespace>.<title>`
+_SCHEMA_TITLE_RE = re.compile(
+    r'^[a-z][a-z0-9-_]{2,20}[.][A-Z][a-zA-Z0-9-_]{2,49}$')
 
 _SUPPORTED_STANDARD_ARTIFACT_TYPES = frozenset(
     (standard_artifacts.ExampleAnomalies, standard_artifacts.ExampleStatistics,
@@ -294,7 +300,17 @@ def get_mlmd_value(
 
 
 def get_artifact_schema(artifact_type: Type[artifact.Artifact]) -> str:
-  """Gets the YAML schema string associated with the artifact type."""
+  """Gets the YAML schema string associated with the artifact type.
+
+  Args:
+    artifact_type: the artifact type that the schema is generated for.
+
+  Returns:
+    the encoded yaml schema definition for the artifact.
+
+  Raises:
+    ValueError if custom artifact type name does not adhere to KFP schema title.
+  """
   if artifact_type in _SUPPORTED_STANDARD_ARTIFACT_TYPES:
     # For supported first-party artifact types, get the built-in schema yaml per
     # its type name.
@@ -304,15 +320,18 @@ def get_artifact_schema(artifact_type: Type[artifact.Artifact]) -> str:
     return fileio.open(schema_path, 'rb').read()
   else:
     # Otherwise, fall back to the generic `Artifact` type schema.
-    # To recover the Python type object at runtime, the class import path will
+    # To recover the Python type object at runtime, the artifact TYPE_NAME will
     # be encoded as the schema title.
 
     # Read the generic artifact schema template.
+    if not _SCHEMA_TITLE_RE.fullmatch(artifact_type.TYPE_NAME):
+      raise ValueError(
+          f'Invalid custom artifact type name: {artifact_type.TYPE_NAME}')
     schema_path = os.path.join(
         os.path.dirname(__file__), 'artifact_types', 'Artifact.yaml')
     data = yaml.safe_load(fileio.open(schema_path, 'rb').read())
-    # Encode class import path.
-    data['title'] = name_utils.get_full_name(artifact_type)
+    # Encode artifact TYPE_NAME.
+    data['title'] = artifact_type.TYPE_NAME
     return yaml.dump(data, sort_keys=False)
 
 
