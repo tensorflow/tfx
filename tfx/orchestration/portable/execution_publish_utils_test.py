@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.execution_publish_utils."""
+import copy
+
 from absl.testing import parameterized
 import tensorflow as tf
 from tfx import version
@@ -322,10 +324,19 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       contexts = self._generate_contexts(m)
       execution_id = execution_publish_utils.register_execution(
           m, self._execution_type, contexts).id
-      output_key = 'examples'
-      output_example = standard_artifacts.Examples()
-      output_example.uri = outputs_utils.RESOLVED_AT_RUNTIME
-      output_example.is_external = True
+      runtime_resolved_external_artifact = standard_artifacts.Examples()
+      runtime_resolved_external_artifact.uri = outputs_utils.RESOLVED_AT_RUNTIME
+      runtime_resolved_external_artifact.is_external = True
+      predefined_external_artifact = standard_artifacts.Examples()
+      predefined_external_artifact.uri = '/foo/bar'
+      predefined_external_artifact.is_external = True
+      original_artifacts = {
+          'key1': [runtime_resolved_external_artifact],
+          'key2': [
+              copy.deepcopy(runtime_resolved_external_artifact),
+              predefined_external_artifact,
+          ],
+      }
       executor_output = execution_result_pb2.ExecutorOutput()
       text_format.Parse(
           f"""
@@ -334,11 +345,13 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             key: 'is_external'
             value {{int_value: 1}}
           }}
-          """, executor_output.output_artifacts[output_key].artifacts.add())
+          """, executor_output.output_artifacts['key1'].artifacts.add())
       output_dict = execution_publish_utils.publish_succeeded_execution(
-          m, execution_id, contexts, {output_key: [output_example]},
-          executor_output)
-      self.assertEmpty(output_dict[output_key])
+          m, execution_id, contexts, original_artifacts, executor_output)
+      self.assertEmpty(output_dict['key1'])
+      self.assertNotEmpty(output_dict['key2'])
+      self.assertLen(output_dict['key2'], 1)
+      self.assertEqual(output_dict['key2'][0].uri, '/foo/bar')
 
   def testPublishSuccessExecutionFailNewKey(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

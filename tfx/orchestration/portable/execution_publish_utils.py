@@ -153,7 +153,14 @@ def publish_succeeded_execution(
       if key not in executor_output.output_artifacts:
         # The executor output did not include the output key, which implies the
         # component doesn't need to update these output artifacts. In this case,
-        # we publish the output artifacts as-is.
+        # we remove any output artifacts with a URI value of RESOLVED_AT_RUNTIME
+        # and publish the remaining output artifacts as-is.
+        filtered_artifacts = [
+            artifact for artifact in artifact_list
+            if artifact.uri != _RESOLVED_AT_RUNTIME
+        ]
+        artifact_list.clear()
+        artifact_list.extend(filtered_artifacts)
         continue
 
       updated_artifact_list = executor_output.output_artifacts[key].artifacts
