@@ -414,11 +414,10 @@ def register_retry_execution(
       failed_execution.id)
   input_artifacts = execution_lib.get_input_artifacts(
       metadata_handle, failed_execution.id)
-  return execution_lib.put_execution(
-      metadata_handle,
-      retry_execution,
+  return execution_lib.put_executions(
+      metadata_handle, [retry_execution],
       contexts,
-      input_artifacts=input_artifacts)
+      input_artifacts_maps=[input_artifacts])[0]
 
 
 def register_executions(
@@ -455,22 +454,13 @@ def register_executions(
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
         execution_name=str(uuid.uuid4()))
-  # LINT.IfChange(execution_custom_properties)
+    # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXECUTION_SET_SIZE].int_value = len(
         input_and_params)
     execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     executions.append(execution)
   # LINT.ThenChange(:retry_execution_custom_properties)
-
-  if len(executions) == 1:
-    return [
-        execution_lib.put_execution(
-            metadata_handler,
-            executions[0],
-            contexts,
-            input_artifacts=input_and_params[0].input_artifacts)
-    ]
 
   return execution_lib.put_executions(
       metadata_handler, executions, contexts,

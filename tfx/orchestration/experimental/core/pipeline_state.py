@@ -465,7 +465,8 @@ class PipelineState:
           execution.custom_properties[_PIPELINE_RUN_ID],
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
       _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
-    execution = execution_lib.put_execution(mlmd_handle, execution, [context])
+    [execution] = execution_lib.put_executions(mlmd_handle, [execution],
+                                               [context])
     pipeline_state = cls(
         mlmd_handle=mlmd_handle, pipeline=pipeline, execution_id=execution.id)
     event_observer.notify(

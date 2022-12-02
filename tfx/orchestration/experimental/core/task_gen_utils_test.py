@@ -420,11 +420,10 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           task_gen_utils
           ._EXTERNAL_EXECUTION_INDEX].int_value = 1
       failed_execution.custom_properties['should_not_be_copied'].int_value = 1
-      failed_execution = execution_lib.put_execution(
-          m,
-          failed_execution,
+      [failed_execution] = execution_lib.put_executions(
+          m, [failed_execution],
           contexts,
-          input_artifacts=input_and_param.input_artifacts)
+          input_artifacts_maps=[input_and_param.input_artifacts])
 
       # Register a retry execution from a failed execution.
       retry_execution = task_gen_utils.register_retry_execution(

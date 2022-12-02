@@ -83,12 +83,11 @@ def publish_cached_execution(
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.CACHED
 
-  execution_lib.put_execution(
-      metadata_handler,
-      execution,
+  execution_lib.put_executions(
+      metadata_handler, [execution],
       contexts,
-      input_artifacts=None,
-      output_artifacts=output_artifacts)
+      input_artifacts_maps=None,
+      output_artifacts_maps=[output_artifacts] if output_artifacts else None)
 
 
 def _set_execution_result_if_not_empty(
@@ -214,8 +213,10 @@ def publish_succeeded_execution(
       execution.custom_properties[key].CopyFrom(value)
   _set_execution_result_if_not_empty(executor_output, execution)
 
-  execution_lib.put_execution(
-      metadata_handler, execution, contexts, output_artifacts=output_artifacts)
+  execution_lib.put_executions(
+      metadata_handler, [execution],
+      contexts,
+      output_artifacts_maps=[output_artifacts])
 
   return output_artifacts
 
@@ -238,7 +239,7 @@ def publish_failed_execution(
   execution.last_known_state = metadata_store_pb2.Execution.FAILED
   _set_execution_result_if_not_empty(executor_output, execution)
 
-  execution_lib.put_execution(metadata_handler, execution, contexts)
+  execution_lib.put_executions(metadata_handler, [execution], contexts)
 
 
 def publish_internal_execution(
@@ -259,11 +260,10 @@ def publish_internal_execution(
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
 
-  execution_lib.put_execution(
-      metadata_handler,
-      execution,
+  execution_lib.put_executions(
+      metadata_handler, [execution],
       contexts,
-      output_artifacts=output_artifacts,
+      output_artifacts_maps=[output_artifacts] if output_artifacts else None,
       output_event_type=metadata_store_pb2.Event.INTERNAL_OUTPUT)
 
 
@@ -306,5 +306,7 @@ def register_execution(
       exec_properties,
       execution_name=exec_name)
 
-  return execution_lib.put_execution(
-      metadata_handler, execution, contexts, input_artifacts=input_artifacts)
+  return execution_lib.put_executions(
+      metadata_handler, [execution],
+      contexts,
+      input_artifacts_maps=[input_artifacts] if input_artifacts else None)[0]

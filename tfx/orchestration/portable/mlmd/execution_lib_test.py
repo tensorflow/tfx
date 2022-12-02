@@ -225,15 +225,16 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
         },
         state=metadata_store_pb2.Execution.COMPLETE)
     contexts = self._generate_contexts(self._mlmd_handle)
-    execution = execution_lib.put_execution(
-        self._mlmd_handle,
-        execution,
+    [execution] = execution_lib.put_executions(
+        self._mlmd_handle, [execution],
         contexts,
-        input_artifacts={
+        input_artifacts_maps=[{
             'example': [input_example],
             'another_example': [input_example]
-        },
-        output_artifacts={'model': [output_model]})
+        }],
+        output_artifacts_maps=[{
+            'model': [output_model]
+        }])
 
     self.assertProtoPartiallyEquals(
         output_model.mlmd_artifact,
@@ -279,22 +280,22 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
         self._mlmd_handle,
         metadata_store_pb2.ExecutionType(name='my_execution_type'),
         metadata_store_pb2.Execution.RUNNING)
-    execution1 = execution_lib.put_execution(self._mlmd_handle, execution1,
-                                             [contexts[0]])
+    [execution1] = execution_lib.put_executions(self._mlmd_handle, [execution1],
+                                                [contexts[0]])
     execution2 = execution_lib.prepare_execution(
         self._mlmd_handle,
         metadata_store_pb2.ExecutionType(name='my_execution_type'),
         metadata_store_pb2.Execution.COMPLETE)
-    execution2 = execution_lib.put_execution(self._mlmd_handle, execution2,
-                                             [contexts[1]])
+    [execution2] = execution_lib.put_executions(self._mlmd_handle, [execution2],
+                                                [contexts[1]])
 
     # Create another execution and associate with both contexts.
     execution3 = execution_lib.prepare_execution(
         self._mlmd_handle,
         metadata_store_pb2.ExecutionType(name='my_execution_type'),
         metadata_store_pb2.Execution.NEW)
-    execution3 = execution_lib.put_execution(self._mlmd_handle, execution3,
-                                             contexts)
+    [execution3] = execution_lib.put_executions(self._mlmd_handle, [execution3],
+                                                contexts)
 
     # Verify that the right executions are returned.
     with self.subTest(for_contexts=(0,)):
@@ -333,12 +334,15 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
         },
         state=metadata_store_pb2.Execution.COMPLETE)
     contexts = self._generate_contexts(self._mlmd_handle)
-    execution = execution_lib.put_execution(
-        self._mlmd_handle,
-        execution,
+    [execution] = execution_lib.put_executions(
+        self._mlmd_handle, [execution],
         contexts,
-        input_artifacts={'example': [input_example]},
-        output_artifacts={'model': [output_model]})
+        input_artifacts_maps=[{
+            'example': [input_example]
+        }],
+        output_artifacts_maps=[{
+            'model': [output_model]
+        }])
 
     artifact_ids_by_event_type = (
         execution_lib.get_artifact_ids_by_event_type_for_execution_id(
@@ -498,7 +502,7 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
     random.shuffle(output_models)
     expected_output_artifacts = {'model': output_models}
 
-    # Store input artifacts only. Outputs will be saved in put_execution().
+    # Store input artifacts only. Outputs will be saved in put_executions().
     input_mlmd_artifacts = [
         a.mlmd_artifact
         for a in itertools.chain(*expected_input_artifacts.values())
@@ -515,12 +519,11 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     # Change the order of the OrderedDict to shuffle the order of input keys.
     expected_input_artifacts.move_to_end('input1')
-    execution = execution_lib.put_execution(
-        self._mlmd_handle,
-        execution,
+    [execution] = execution_lib.put_executions(
+        self._mlmd_handle, [execution],
         contexts,
-        input_artifacts=expected_input_artifacts,
-        output_artifacts=expected_output_artifacts)
+        input_artifacts_maps=[expected_input_artifacts],
+        output_artifacts_maps=[expected_output_artifacts])
 
     # Verify that the same artifacts are returned in the correct order.
     input_artifacts = execution_lib.get_input_artifacts(self._mlmd_handle,
@@ -579,14 +582,17 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
   def testRegisterOutputArtifacts(self):
     input_example = _create_tfx_artifact(uri='example')
     _ = _write_tfx_artifacts(self._mlmd_handle, [input_example])
-    execution = execution_lib.put_execution(
-        self._mlmd_handle,
-        execution_lib.prepare_execution(
-            self._mlmd_handle,
-            metadata_store_pb2.ExecutionType(name='my_execution_type'),
-            state=metadata_store_pb2.Execution.RUNNING),
+    [execution] = execution_lib.put_executions(
+        self._mlmd_handle, [
+            execution_lib.prepare_execution(
+                self._mlmd_handle,
+                metadata_store_pb2.ExecutionType(name='my_execution_type'),
+                state=metadata_store_pb2.Execution.RUNNING)
+        ],
         self._generate_contexts(self._mlmd_handle),
-        input_artifacts={'example': [input_example]})
+        input_artifacts_maps=[{
+            'example': [input_example]
+        }])
 
     output_model = _create_tfx_artifact(uri='model')
     output_artifacts = {'model': [output_model]}
@@ -621,13 +627,13 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertLen(pending_output_event.path.steps, 2)
 
   def testRegisterOutputArtifactsOnInactiveExecutionFails(self):
-    execution = execution_lib.put_execution(
-        self._mlmd_handle,
+    [execution
+    ] = execution_lib.put_executions(self._mlmd_handle, [
         execution_lib.prepare_execution(
             self._mlmd_handle,
             metadata_store_pb2.ExecutionType(name='my_execution_type'),
-            state=metadata_store_pb2.Execution.COMPLETE),
-        self._generate_contexts(self._mlmd_handle))
+            state=metadata_store_pb2.Execution.COMPLETE)
+    ], self._generate_contexts(self._mlmd_handle))
 
     with self.assertRaisesRegex(
         ValueError, 'Cannot register output artifacts on inactive execution'):
@@ -636,13 +642,13 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
 
   def testRegisterOutputArtifactsTwiceWithSameArgumentsReusesExistingArtifact(
       self):
-    execution = execution_lib.put_execution(
-        self._mlmd_handle,
+    [execution
+    ] = execution_lib.put_executions(self._mlmd_handle, [
         execution_lib.prepare_execution(
             self._mlmd_handle,
             metadata_store_pb2.ExecutionType(name='my_execution_type'),
-            state=metadata_store_pb2.Execution.RUNNING),
-        self._generate_contexts(self._mlmd_handle))
+            state=metadata_store_pb2.Execution.RUNNING)
+    ], self._generate_contexts(self._mlmd_handle))
 
     artifact_uri = '/model/1'
     output_model_first_call = _create_tfx_artifact(artifact_uri)
@@ -659,13 +665,13 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(output_model_second_call.uri, artifact_uri)
 
   def testRegisterOutputArtifactsTwiceWithDifferentArgumentsRaisesError(self):
-    execution = execution_lib.put_execution(
-        self._mlmd_handle,
+    [execution
+    ] = execution_lib.put_executions(self._mlmd_handle, [
         execution_lib.prepare_execution(
             self._mlmd_handle,
             metadata_store_pb2.ExecutionType(name='my_execution_type'),
-            state=metadata_store_pb2.Execution.RUNNING),
-        self._generate_contexts(self._mlmd_handle))
+            state=metadata_store_pb2.Execution.RUNNING)
+    ], self._generate_contexts(self._mlmd_handle))
 
     output_model_first_call = _create_tfx_artifact('/model/1')
     execution_lib.register_pending_output_artifacts(

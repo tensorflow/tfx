@@ -239,71 +239,6 @@ def _create_artifact_and_event_pairs(
   return result
 
 
-def put_execution(
-    metadata_handler: metadata.Metadata,
-    execution: metadata_store_pb2.Execution,
-    contexts: Sequence[metadata_store_pb2.Context],
-    input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
-    output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
-    input_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
-    .INPUT,
-    output_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
-    .OUTPUT
-) -> metadata_store_pb2.Execution:
-  """Writes an execution-centric subgraph to MLMD.
-
-  This function mainly leverages metadata.put_execution() method to write the
-  execution centric subgraph to MLMD.
-
-  Args:
-    metadata_handler: A handler to access MLMD.
-    execution: The execution to be written to MLMD.
-    contexts: MLMD contexts to associated with the execution.
-    input_artifacts: Input artifacts of the execution. Each artifact will be
-      linked with the execution through an event with type input_event_type.
-      Each artifact will also be linked with every context in the `contexts`
-      argument.
-    output_artifacts: Output artifacts of the execution. Each artifact will be
-      linked with the execution through an event with type output_event_type.
-      Each artifact will also be linked with every context in the `contexts`
-      argument.
-    input_event_type: The type of the input event, default to be INPUT.
-    output_event_type: The type of the output event, default to be OUTPUT.
-
-  Returns:
-    An MLMD execution that is written to MLMD, with id pupulated.
-  """
-  artifact_and_events = []
-  if input_artifacts:
-    artifact_and_events.extend(
-        _create_artifact_and_event_pairs(
-            metadata_handler=metadata_handler,
-            artifact_dict=input_artifacts,
-            event_type=input_event_type))
-  if output_artifacts:
-    outputs_utils.tag_output_artifacts_with_version(output_artifacts)
-    artifact_and_events.extend(
-        _create_artifact_and_event_pairs(
-            metadata_handler=metadata_handler,
-            artifact_dict=output_artifacts,
-            event_type=output_event_type))
-  execution_id, artifact_ids, contexts_ids = (
-      metadata_handler.store.put_execution(
-          execution=execution,
-          artifact_and_events=artifact_and_events,
-          contexts=contexts,
-          reuse_context_if_already_exist=True,
-          reuse_artifact_if_already_exist_by_external_id=True))
-  execution.id = execution_id
-  for artifact_and_event, a_id in zip(artifact_and_events, artifact_ids):
-    artifact, _ = artifact_and_event
-    artifact.id = a_id
-  for context, c_id in zip(contexts, contexts_ids):
-    context.id = c_id
-
-  return execution
-
-
 def put_executions(
     metadata_handler: metadata.Metadata,
     executions: Sequence[metadata_store_pb2.Execution],
@@ -461,11 +396,10 @@ def register_pending_output_artifacts(
   else:
     # Register the pending output artifacts for this execution.
     contexts = metadata_handle.store.get_contexts_by_execution(execution_id)
-    _ = put_execution(
-        metadata_handle,
-        execution,
+    _ = put_executions(
+        metadata_handle, [execution],
         contexts,
-        output_artifacts=output_artifacts,
+        output_artifacts_maps=[output_artifacts],
         output_event_type=metadata_store_pb2.Event.PENDING_OUTPUT)
 
 
