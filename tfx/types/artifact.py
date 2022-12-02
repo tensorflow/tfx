@@ -592,6 +592,7 @@ class Artifact(json_utils.Jsonable):
     """Set producer component of the artifact."""
     self._set_system_property('producer_component', producer_component)
 
+  # LINT.IfChange
   @property
   @doc_controls.do_not_doc_in_subclasses
   def is_external(self) -> bool:
@@ -602,6 +603,7 @@ class Artifact(json_utils.Jsonable):
   def is_external(self, is_external: bool):
     """Sets if the artifact is external."""
     self.set_int_custom_property('is_external', is_external)
+  # LINT.ThenChange(<Internal source code>)
 
   # Custom property accessors.
   @doc_controls.do_not_doc_in_subclasses
