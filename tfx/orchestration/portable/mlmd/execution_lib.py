@@ -367,16 +367,21 @@ def put_executions(
         artifacts.append(artifact)
         artifact_event_edges.append((idx, len(artifacts) - 1, event))
 
-  execution_ids, _, _ = metadata_handler.store.put_lineage_subgraph(
-      executions,
-      artifacts,
-      contexts,
-      artifact_event_edges,
-      reuse_context_if_already_exist=True,
-      reuse_artifact_if_already_exist_by_external_id=True)
+  execution_ids, artifact_ids, context_ids = (
+      metadata_handler.store.put_lineage_subgraph(
+          executions,
+          artifacts,
+          contexts,
+          artifact_event_edges,
+          reuse_context_if_already_exist=True,
+          reuse_artifact_if_already_exist_by_external_id=True))
 
-  for execution_id, execution in zip(execution_ids, executions):
+  for execution, execution_id in zip(executions, execution_ids):
     execution.id = execution_id
+  for artifact, artifact_id in zip(artifacts, artifact_ids):
+    artifact.id = artifact_id
+  for context, context_id in zip(contexts, context_ids):
+    context.id = context_id
   return executions
 
 
