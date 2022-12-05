@@ -18,7 +18,7 @@ from tfx.dsl.components.base import base_node
 from tfx.orchestration.kubeflow.decorators import FinalStatusStr
 
 # Key of dag for all TFX components when compiling pipeline with exit handler.
-TFX_DAG_NAME = '_tfx_dag'
+TFX_DAG_NAME = 'tfx-dag'
 
 
 def replace_exec_properties(component: base_node.BaseNode) -> None:
