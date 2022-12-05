@@ -222,7 +222,7 @@ class ComponentSpec(json_utils.Jsonable):
         continue
       value = raw_args[arg_name]
 
-      if (inspect.isclass(arg.type) and issubclass(arg.type, message.Message)
+      if (inspect.isclass(arg.type) and issubclass(arg.type, message.Message)  # pytype: disable=not-supported-yet
           and value and not _is_runtime_param(value)) and not isinstance(
               value, placeholder.Placeholder):
         if arg.use_proto:

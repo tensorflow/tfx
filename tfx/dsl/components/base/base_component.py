@@ -112,7 +112,7 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
   @classmethod
   def _validate_component_class(cls):
     """Validate that the SPEC_CLASSES property of this class is set properly."""
-    if not (inspect.isclass(cls.SPEC_CLASS) and
+    if not (inspect.isclass(cls.SPEC_CLASS) and  # pytype: disable=not-supported-yet
             issubclass(cls.SPEC_CLASS, types.ComponentSpec)):
       raise TypeError(
           ('Component class %s expects SPEC_CLASS property to be a subclass '
@@ -121,7 +121,7 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
       raise TypeError((
           'Component class %s expects EXECUTOR_SPEC property to be an instance '
           'of ExecutorSpec; got %s instead.') % (cls, type(cls.EXECUTOR_SPEC)))
-    if not (inspect.isclass(cls.DRIVER_CLASS) and
+    if not (inspect.isclass(cls.DRIVER_CLASS) and  # pytype: disable=not-supported-yet
             issubclass(cls.DRIVER_CLASS, base_driver.BaseDriver)):
       raise TypeError(
           ('Component class %s expects DRIVER_CLASS property to be a subclass '

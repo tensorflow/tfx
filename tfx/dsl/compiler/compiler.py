@@ -457,7 +457,7 @@ def _gather_implicit_inputs_from_exec_properties(
     tfx_node: base_node.BaseNode) -> Iterator[Tuple[str, types.Channel]]:
   for value in tfx_node.exec_properties.values():
     if isinstance(value, placeholder.ChannelWrappedPlaceholder):
-      if not (inspect.isclass(value.channel.type) and
+      if not (inspect.isclass(value.channel.type) and  # pytype: disable=not-supported-yet
               issubclass(value.channel.type, value_artifact.ValueArtifact)):
         raise ValueError(
             "Dynamic execution property only supports ValueArtifact typed "
