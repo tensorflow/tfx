@@ -346,6 +346,15 @@ def _resolve_mixed_inputs(
     resolved: Dict[str, List[_Entry]],
 ) -> None:
   """Resolves an InputSpec.Mixed."""
+
+  def identifier(artifact: types.Artifact):
+    if artifact.id:
+      return artifact.id
+    else:
+      # If the artifact is a cold-imported external artifact, its id and type_id
+      # is reset. We shall use external_id then.
+      return artifact.mlmd_artifact.external_id
+
   mixed_inputs = node_inputs.inputs[input_key].mixed_inputs
   result = []
   for partition, input_dict in _join_artifacts(
@@ -354,7 +363,7 @@ def _resolve_mixed_inputs(
       artifacts_by_id = {}
       for sub_key in mixed_inputs.input_keys:
         artifacts_by_id.update({
-            artifact.id: artifact for artifact in input_dict[sub_key]
+            identifier(artifact): artifact for artifact in input_dict[sub_key]
         })
       artifacts = list(artifacts_by_id.values())
     result.append((partition, _filter_live(artifacts)))
