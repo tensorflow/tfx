@@ -20,7 +20,7 @@ import copy
 import functools
 import sys
 import types
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
@@ -274,7 +274,7 @@ def component(
     component_annotation: Optional[Type[
         system_executions.SystemExecution]] = None,
     use_beam: bool = False,
-) -> Callable[..., Any]:
+) -> Any:
   """Decorator: creates a component from a typehint-annotated Python function.
 
   This decorator creates a component based on typehint annotations specified for
@@ -502,4 +502,5 @@ def component(
           'SPEC_CLASS': component_spec_class,
           'EXECUTOR_SPEC': executor_spec_instance,
           '__module__': func.__module__,
+          'test_call': staticmethod(func),  # pytype: disable=not-callable
       })

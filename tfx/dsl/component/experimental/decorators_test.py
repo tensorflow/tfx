@@ -77,6 +77,14 @@ class _VerifyAnnotation(SystemExecution):
   MLMD_SYSTEM_BASE_TYPE = 3
 
 
+def _no_op():
+  pass
+
+
+_decorated_no_op = component(_no_op)
+_decorated_with_arg_no_op = component()(_no_op)
+
+
 @component
 def _injector_1(
     foo: Parameter[int], bar: Parameter[str]) -> OutputDict(
@@ -688,6 +696,10 @@ class ComponentDecoratorTest(tf.test.TestCase):
         metadata_connection_config=metadata_config,
         components=[instance_1])
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+  def testPyComponentTestCallIsTheFuncBeingDecorated(self):
+    self.assertEqual(_decorated_no_op.test_call, _no_op)
+    self.assertEqual(_decorated_with_arg_no_op.test_call, _no_op)
 
 
 if __name__ == '__main__':
