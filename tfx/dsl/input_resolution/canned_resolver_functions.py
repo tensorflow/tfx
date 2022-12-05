@@ -433,11 +433,11 @@ def sequential_rolling_range(artifacts,
       keep_all_versions=keep_all_versions,
       denylist=exclude_span_numbers)
 
-  resolved_artifacts = ops.SlidingWindow(
-      resolved_artifacts, window_size=num_spans)
-
   if shuffle:
     resolved_artifacts = ops.Shuffle(resolved_artifacts)
+
+  resolved_artifacts = ops.SlidingWindow(
+      resolved_artifacts, window_size=num_spans)
 
   return resolved_artifacts
 
