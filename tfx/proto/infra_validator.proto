@@ -134,6 +134,10 @@ message PodOverrides {
   // Optional.
   // Environment variables to apply to the pod's Container.
   repeated EnvVar env = 2;
+
+  // Optional.
+  // Pod resources (cpu, memory).
+  Resources resources = 3;
 }
 
 // https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1EnvVar.md
@@ -177,6 +181,12 @@ message SecretKeySelector {
   string name = 1;
   // The key of the secret to select from.  Must be a valid secret key.
   string key = 2;
+}
+
+// https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1ResourceRequirements.md
+message Resources {
+  map<string, string> requests = 1;
+  map<string, string> limits = 2;
 }
 
 // Specification for validation criteria and thresholds.

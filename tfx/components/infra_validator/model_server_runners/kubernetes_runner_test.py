@@ -190,21 +190,40 @@ class KubernetesRunnerTest(tf.test.TestCase):
   def testBuildPodManifest_InsideKfp_OverrideConfig(self):
     # Prepare mocks and variables.
     self._AssumeInsideKfp()
-    runner = self._CreateKubernetesRunner(k8s_config_dict={
+    k8s_config_dict = {
         'service_account_name': 'chocolate-latte',
         'active_deadline_seconds': 123,
         'serving_pod_overrides': {
-            'annotations': {'best_ticker': 'goog'},
-            'env': [
-                {'name': 'TICKER', 'value': 'GOOG'},
-                {'name': 'NAME_ONLY'},
-                {'name': 'SECRET', 'value_from': {
+            'annotations': {
+                'best_ticker': 'goog'
+            },
+            'env': [{
+                'name': 'TICKER',
+                'value': 'GOOG'
+            }, {
+                'name': 'NAME_ONLY'
+            }, {
+                'name': 'SECRET',
+                'value_from': {
                     'secret_key_ref': {
                         'name': 'my_secret',
-                        'key': 'my_key'}}}
-            ]
+                        'key': 'my_key'
+                    }
+                }
+            }],
+            'resources': {
+                'requests': {
+                    'memory': '2Gi',
+                    'cpu': '1'
+                },
+                'limits': {
+                    'memory': '4Gi',
+                    'cpu': '2'
+                },
+            }
         }
-    })
+    }
+    runner = self._CreateKubernetesRunner(k8s_config_dict=k8s_config_dict)
 
     # Act.
     pod_manifest = runner._BuildPodManifest()
@@ -221,6 +240,9 @@ class KubernetesRunnerTest(tf.test.TestCase):
                      'my_secret')
     self.assertEqual(container_envs['SECRET'].value_from.secret_key_ref.key,
                      'my_key')
+    container_resources = pod_manifest.spec.containers[0].resources
+    self.assertDictEqual(container_resources.to_dict(),
+                         k8s_config_dict['serving_pod_overrides']['resources'])
 
   def testStart_FailsIfOutsideKfp(self):
     # Prepare mocks and variables.
