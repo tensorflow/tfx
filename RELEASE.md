@@ -12,7 +12,7 @@
 
 ## Bug Fixes and Other Changes
 
-*   ExampleValidator now supports custom validations.
+*   ExampleValidator and DistributionValidator now support custom validations.
 
 | Package Name | Version Constraints | Previously (in `v1.8.0`) | Comments |
 | -- | -- | -- | -- |

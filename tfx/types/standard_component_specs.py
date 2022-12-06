@@ -526,6 +526,11 @@ class DistributionValidatorSpec(ComponentSpec):
           ExecutionParameter(
               type=distribution_validator_pb2.DistributionValidatorConfig,
               use_proto=True),
+      CUSTOM_VALIDATION_CONFIG_KEY:
+          ExecutionParameter(
+              type=custom_validation_config_pb2.CustomValidationConfig,
+              optional=True,
+              use_proto=True),
   }
   INPUTS = {
       STATISTICS_KEY:

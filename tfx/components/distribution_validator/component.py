@@ -15,6 +15,7 @@
 
 from typing import List, Optional, Tuple
 
+from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx import types
 from tfx.components.distribution_validator import executor
 from tfx.dsl.components.base import base_component
@@ -30,6 +31,9 @@ class DistributionValidator(base_component.BaseComponent):
 
   Identifies distribution shifts between datasets by examining their summary
   statistics.
+
+  Also supports running custom validations between two datasets using an
+  optional SQL-based config.
   """
   SPEC_CLASS = standard_component_specs.DistributionValidatorSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
@@ -38,7 +42,9 @@ class DistributionValidator(base_component.BaseComponent):
                statistics: types.BaseChannel,
                baseline_statistics: types.BaseChannel,
                config: distribution_validator_pb2.DistributionValidatorConfig,
-               include_split_pairs: Optional[List[Tuple[str, str]]] = None):
+               include_split_pairs: Optional[List[Tuple[str, str]]] = None,
+               custom_validation_config: Optional[
+                   custom_validation_config_pb2.CustomValidationConfig] = None):
     """Construct a DistributionValidation component.
 
     Args:
@@ -52,6 +58,8 @@ class DistributionValidator(base_component.BaseComponent):
         should be run on. Default behavior if not supplied is to run on pairs of
         the same splits (i.e., (train, train), (test, test), etc.).
         Order is (statistics, baseline_statistics).
+      custom_validation_config: Optional configuration for specifying SQL-based
+        custom validations.
     """
     anomalies = types.Channel(type=standard_artifacts.ExampleAnomalies)
     spec = standard_component_specs.DistributionValidatorSpec(
@@ -60,9 +68,12 @@ class DistributionValidator(base_component.BaseComponent):
                 statistics,
             standard_component_specs.BASELINE_STATISTICS_KEY:
                 baseline_statistics,
-            standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY: config,
+            standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY:
+                config,
             standard_component_specs.INCLUDE_SPLIT_PAIRS_KEY:
                 json_utils.dumps(include_split_pairs),
+            standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY:
+                custom_validation_config,
             standard_component_specs.ANOMALIES_KEY:
                 anomalies
         })

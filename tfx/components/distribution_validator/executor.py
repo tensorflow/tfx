@@ -42,7 +42,10 @@ _COMPARISON_ANOMALY_TYPES = frozenset([
     anomalies_pb2.AnomalyInfo.Type.COMPARATOR_L_INFTY_HIGH,
     anomalies_pb2.AnomalyInfo.Type.COMPARATOR_JENSEN_SHANNON_DIVERGENCE_HIGH,
     anomalies_pb2.AnomalyInfo.Type.COMPARATOR_LOW_NUM_EXAMPLES,
-    anomalies_pb2.AnomalyInfo.Type.COMPARATOR_HIGH_NUM_EXAMPLES
+    anomalies_pb2.AnomalyInfo.Type.COMPARATOR_HIGH_NUM_EXAMPLES,
+    # Any custom validation anomalies generated are passed through, regardless
+    # of whether those anomalies are generated from multiple datasets.
+    anomalies_pb2.AnomalyInfo.Type.CUSTOM_VALIDATION
 ])
 
 
@@ -184,6 +187,8 @@ class Executor(base_executor.BaseExecutor):
 
     config = exec_properties.get(
         standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY)
+    custom_validation_config = exec_properties.get(
+        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY)
 
     logging.info('Running distribution_validator with config %s', config)
 
@@ -226,7 +231,10 @@ class Executor(base_executor.BaseExecutor):
 
       schema = _make_schema_from_config(config, baseline_stats_split)
       full_anomalies = tfdv.validate_statistics(
-          test_stats_split, schema, previous_statistics=baseline_stats_split)
+          test_stats_split,
+          schema,
+          previous_statistics=baseline_stats_split,
+          custom_validation_config=custom_validation_config)
       anomalies = _get_comparison_only_anomalies(full_anomalies)
       anomalies = _add_anomalies_for_missing_comparisons(anomalies, config)
       io_utils.write_bytes_file(
