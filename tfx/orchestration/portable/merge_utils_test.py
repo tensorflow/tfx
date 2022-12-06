@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.merge_utils."""
-from typing import Dict, Optional, Mapping
+from typing import Dict, Mapping, Optional, Sequence
 
 from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx.orchestration.portable import merge_utils
 from tfx.orchestration.portable import outputs_utils
-from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
 from tfx.utils import typing_utils
@@ -48,16 +47,13 @@ def _tfx_artifact(
   return artifact
 
 
-def _build_executor_output_artifact_dict(
+def _build_output_artifact_dict(
     output_artifacts: typing_utils.ArtifactMultiMap
-) -> Mapping[str, execution_result_pb2.ExecutorOutput.ArtifactList]:
-  executor_output_artifact_dict = {}
-  for key, tfx_artifact_list in output_artifacts.items():
-    artifact_list = execution_result_pb2.ExecutorOutput.ArtifactList()
-    for tfx_artifact in tfx_artifact_list:
-      artifact_list.artifacts.add().CopyFrom(tfx_artifact.mlmd_artifact)
-    executor_output_artifact_dict[key] = artifact_list
-  return executor_output_artifact_dict
+) -> Mapping[str, Sequence[metadata_store_pb2.Artifact]]:
+  return {
+      k: [artifact.mlmd_artifact for artifact in artifacts
+         ] for k, artifacts in output_artifacts.items()
+  }
 
 
 class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
@@ -245,8 +241,7 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
       updated_artifacts: typing_utils.ArtifactMultiMap,
       expected_merged_artifacts: typing_utils.ArtifactMultiMap):
     merged_output_artifacts = merge_utils.merge_updated_output_artifacts(
-        original_artifacts,
-        _build_executor_output_artifact_dict(updated_artifacts))
+        original_artifacts, _build_output_artifact_dict(updated_artifacts))
     self.assertArtifactMapsEqual(expected_merged_artifacts,
                                  merged_output_artifacts)
 
@@ -256,8 +251,7 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     with self.assertRaisesRegex(
         RuntimeError, 'Executor output should not change artifact type'):
       merge_utils.merge_updated_output_artifacts(
-          original_artifacts,
-          _build_executor_output_artifact_dict(updated_artifacts))
+          original_artifacts, _build_output_artifact_dict(updated_artifacts))
 
   def testMergeOutputArtifactsUnrecognizedKeyInUpdatedDictRaisesError(self):
     original_artifacts = {'key1': [_tfx_artifact(uri='/x/1')]}
@@ -265,8 +259,7 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     with self.assertRaisesRegex(RuntimeError,
                                 'contains more keys than output skeleton'):
       merge_utils.merge_updated_output_artifacts(
-          original_artifacts,
-          _build_executor_output_artifact_dict(updated_artifacts))
+          original_artifacts, _build_output_artifact_dict(updated_artifacts))
 
   def testMergeOutputArtifactsUpdatedArtifactUriNotSubdirectoryRaisesError(
       self):
@@ -278,8 +271,8 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     with self.assertRaisesRegex(RuntimeError,
                                 'URIs should be direct sub-directories'):
       merge_utils.merge_updated_output_artifacts(
-          original_artifacts,
-          _build_executor_output_artifact_dict(updated_artifacts))
+          original_artifacts, _build_output_artifact_dict(updated_artifacts))
+
 
 if __name__ == '__main__':
   tf.test.main()

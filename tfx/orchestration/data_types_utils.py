@@ -15,6 +15,7 @@
 from typing import Dict, Iterable, List, Mapping, Optional
 
 from tfx import types
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.utils import json_utils
@@ -40,6 +41,14 @@ def build_artifact_dict(
           artifact_utils.deserialize_artifact(artifact_and_type.type,
                                               artifact_and_type.artifact))
   return result
+
+
+def unpack_executor_output_artifacts(
+    executor_output_artifacts: Mapping[
+        str, execution_result_pb2.ExecutorOutput.ArtifactList]
+) -> Dict[str, List[metadata_store_pb2.Artifact]]:
+  """Unpacks the ArtifactList in an Executor's output artifacts mapping."""
+  return {k: list(v.artifacts) for k, v in executor_output_artifacts.items()}
 
 
 def build_artifact_struct_dict(

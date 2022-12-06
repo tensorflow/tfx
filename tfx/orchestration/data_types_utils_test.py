@@ -15,7 +15,9 @@
 
 from absl.testing import parameterized
 import tensorflow as tf
+from tfx import types
 from tfx.orchestration import data_types_utils
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.utils import proto_utils
@@ -23,8 +25,18 @@ from tfx.utils import test_case_utils
 
 from google.protobuf import struct_pb2
 from google.protobuf import text_format
+
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
+
+_DEFAULT_ARTIFACT_TYPE_NAME = 'Examples'
+
+
+def _create_artifact(uri: str) -> types.Artifact:
+  artifact = types.Artifact(
+      metadata_store_pb2.ArtifactType(name=_DEFAULT_ARTIFACT_TYPE_NAME))
+  artifact.uri = uri
+  return artifact
 
 
 class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
@@ -91,6 +103,32 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertLen(self.artifact_dict[k], len(v))
       self.assertEqual(self.artifact_dict[k][0].id, v[0].id)
       self.assertEqual(self.artifact_dict[k][0].type_name, v[0].type_name)
+
+  def testUnpackExecutorOutput(self):
+    artifact0 = _create_artifact('uri0').mlmd_artifact
+    artifact1 = _create_artifact('uri1').mlmd_artifact
+    artifact2 = _create_artifact('uri2').mlmd_artifact
+    executor_output_artifacts = {
+        'artifact_key0':
+            execution_result_pb2.ExecutorOutput.ArtifactList(artifacts=[]),
+        'artifact_key1':
+            execution_result_pb2.ExecutorOutput.ArtifactList(artifacts=[
+                artifact0,
+            ]),
+        'artifact_key2':
+            execution_result_pb2.ExecutorOutput.ArtifactList(artifacts=[
+                artifact1,
+                artifact2,
+            ])
+    }
+    expected_output = {
+        'artifact_key0': [],
+        'artifact_key1': [artifact0],
+        'artifact_key2': [artifact1, artifact2],
+    }
+    actual_output = data_types_utils.unpack_executor_output_artifacts(
+        executor_output_artifacts)
+    self.assertEqual(expected_output, actual_output)
 
   def testBuildArtifactStructDict(self):
     actual_artifact_struct_dict = data_types_utils.build_artifact_struct_dict(
@@ -502,10 +540,8 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     actual_list = pipeline_pb2.Value()
     expected_list = pipeline_pb2.Value()
     text_format.Parse(expected, expected_list)
-    self.assertEqual(
-        expected_list,
-        data_types_utils.set_parameter_value(actual_list, value)
-    )
+    self.assertEqual(expected_list,
+                     data_types_utils.set_parameter_value(actual_list, value))
 
 
 if __name__ == '__main__':
