@@ -458,6 +458,7 @@ def register_pending_output_artifacts(
       for existing_artifact, provided_artifact in zip(existing_artifact_list,
                                                       provided_artifact_list):
         provided_artifact.id = existing_artifact.id
+        provided_artifact.type_id = existing_artifact.type_id
   else:
     # Register the pending output artifacts for this execution.
     contexts = metadata_handle.store.get_contexts_by_execution(execution_id)

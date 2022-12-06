@@ -649,12 +649,18 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
     execution_lib.register_pending_output_artifacts(
         self._mlmd_handle, execution.id, {'model': [output_model_first_call]})
 
+    # Assert the new artifact was registered in MLMD with valid IDs.
+    self.assertGreater(output_model_first_call.id, 0)
+    self.assertGreater(output_model_first_call.type_id, 0)
+
     output_model_second_call = _create_tfx_artifact(artifact_uri)
     execution_lib.register_pending_output_artifacts(
         self._mlmd_handle, execution.id, {'model': [output_model_second_call]})
 
-    self.assertGreater(output_model_first_call.id, 0)
+    # Assert the second call reuses the type IDs from the first call.
     self.assertEqual(output_model_first_call.id, output_model_second_call.id)
+    self.assertEqual(output_model_first_call.type_id,
+                     output_model_second_call.type_id)
     self.assertEqual(output_model_first_call.uri, artifact_uri)
     self.assertEqual(output_model_second_call.uri, artifact_uri)
 
