@@ -366,7 +366,7 @@ def _resolve_mixed_inputs(
             identifier(artifact): artifact for artifact in input_dict[sub_key]
         })
       artifacts = list(artifacts_by_id.values())
-    result.append((partition, _filter_live(artifacts)))
+    result.append((partition, artifacts))
 
   resolved[input_key] = result
 
@@ -467,9 +467,7 @@ def resolve(
     elif input_spec.HasField('static_inputs'):
       artifacts = _resolve_static_inputs(
           mlmd_cm.get_handle(handle_like), input_spec.static_inputs)
-      resolved[input_key] = [
-          (partition_utils.NO_PARTITION, _filter_live(artifacts))
-      ]
+      resolved[input_key] = [(partition_utils.NO_PARTITION, artifacts)]
     else:
       raise exceptions.FailedPreconditionError(
           'Exactly one of InputSpec.channels, InputSpec.input_graph_ref, or '
