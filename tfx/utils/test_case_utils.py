@@ -28,7 +28,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.utils import io_utils
-from tfx.utils import json_utils
 
 from google.protobuf import message
 from google.protobuf import text_format
@@ -115,11 +114,18 @@ class TfxTest(tf.test.TestCase):
       actual_artifact_map: Mapping[str, Sequence[types.Artifact]],
   ) -> None:
     """Asserts that two Artifact maps are equal."""
-    # The Artifact class doesn't implement __eq__ but the class is Jsonable, so
-    # assert equivalence with JSON-ified versions of the maps.
-    self.assertEqual(
-        json_utils.dumps(expected_artifact_map),
-        json_utils.dumps(actual_artifact_map))
+    self.assertEqual(actual_artifact_map.keys(), expected_artifact_map.keys(),
+                     'The artifact maps contain a different number of keys.')
+    for key, expected_artifact_list in expected_artifact_map.items():
+      actual_artifact_list = actual_artifact_map[key]
+      self.assertEqual(
+          len(expected_artifact_list), len(actual_artifact_list),
+          f'Artifact lists for key {key} have differing sizes.')
+      for expected, actual in zip(expected_artifact_list, actual_artifact_list):
+        self.assertProtoEquals(expected.mlmd_artifact, actual.mlmd_artifact,
+                               f'Artifacts not equal for key {key}')
+        self.assertProtoEquals(expected.artifact_type, actual.artifact_type,
+                               f'Artifact types not equal for key {key}')
 
 
 @contextlib.contextmanager

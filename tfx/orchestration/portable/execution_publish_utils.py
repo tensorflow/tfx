@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable library for registering and publishing executions."""
-import copy
 import itertools
-import os
 from typing import Mapping, Optional, Sequence
 import uuid
-from absl import logging
 
 from tfx import types
 from tfx.orchestration import metadata
-from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import merge_utils
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import typing_utils
@@ -30,39 +27,6 @@ from tfx.utils import typing_utils
 from ml_metadata.proto import metadata_store_pb2
 
 _RESOLVED_AT_RUNTIME = outputs_utils.RESOLVED_AT_RUNTIME
-
-
-def _check_validity(new_artifact: metadata_store_pb2.Artifact,
-                    original_artifact: types.Artifact,
-                    has_multiple_artifacts: bool) -> None:
-  """Check the validity of new artifact against the original artifact."""
-  if (original_artifact.mlmd_artifact.HasField('type_id') and
-      new_artifact.HasField('type_id') and
-      new_artifact.type_id != original_artifact.type_id):
-    raise RuntimeError('Executor output should not change artifact type '
-                       f'(original type_id={original_artifact.type_id}, '
-                       f'new type_id={new_artifact.type_id}).')
-
-  # If the artifact is external and the uri is resolved during runtime, it
-  # doesn't check the validity of uri.
-  if original_artifact.is_external and original_artifact.uri == outputs_utils.RESOLVED_AT_RUNTIME:
-    return
-
-  if has_multiple_artifacts:
-    # If there are multiple artifacts in the executor output, their URIs should
-    # be a direct sub-dir of the system generated URI.
-    if os.path.dirname(new_artifact.uri) != original_artifact.uri:
-      raise RuntimeError(
-          'When there are multiple artifacts to publish, their URIs '
-          'should be direct sub-directories of the URI of the system generated '
-          'artifact.')
-  else:
-    # If there is only one output artifact, its URI should not be changed
-    if new_artifact.uri != original_artifact.uri:
-      # TODO(b/175426744): Data Binder will modify the uri.
-      logging.warning(
-          'When there is one artifact to publish, the URI of it should be '
-          'identical to the URI of system generated artifact.')
 
 
 def publish_cached_execution(
@@ -126,10 +90,10 @@ def publish_succeeded_execution(
     executor_output: Executor outputs. `executor_output.output_artifacts` will
       be used to update system-generated output artifacts passed in through
       `output_artifacts` arg. There are three contraints to the update: 1. The
-        keys in `executor_output.output_artifacts` are expected to be a subset
-        of the system-generated output artifacts dict. 2. An update to a certain
-        key should contains all the artifacts under that key. 3. An update to an
-        artifact should not change the type of the artifact.
+      keys in `executor_output.output_artifacts` are expected to be a subset of
+      the system-generated output artifacts dict. 2. An update to a certain key
+      should contains all the artifacts under that key. 3. An update to an
+      artifact should not change the type of the artifact.
 
   Returns:
     The maybe updated output_artifacts, note that only outputs whose key are in
@@ -138,73 +102,12 @@ def publish_succeeded_execution(
   Raises:
     RuntimeError: if the executor output to a output channel is partial.
   """
-  if output_artifacts is not None:
-    output_artifacts = {key: [copy.deepcopy(a) for a in artifacts]
-                        for key, artifacts in output_artifacts.items()}
-  else:
-    output_artifacts = {}
-  if executor_output:
-    if not set(executor_output.output_artifacts.keys()).issubset(
-        output_artifacts.keys()):
-      raise RuntimeError(
-          'Executor output %s contains more keys than output skeleton %s.' %
-          (executor_output, output_artifacts))
-    for key, artifact_list in output_artifacts.items():
-      if key not in executor_output.output_artifacts:
-        # The executor output did not include the output key, which implies the
-        # component doesn't need to update these output artifacts. In this case,
-        # we remove any output artifacts with a URI value of RESOLVED_AT_RUNTIME
-        # and publish the remaining output artifacts as-is.
-        filtered_artifacts = [
-            artifact for artifact in artifact_list
-            if artifact.uri != _RESOLVED_AT_RUNTIME
-        ]
-        artifact_list.clear()
-        artifact_list.extend(filtered_artifacts)
-        continue
-
-      updated_artifact_list = executor_output.output_artifacts[key].artifacts
-
-      # We assume the original output dict must include at least one output
-      # artifact and all artifacts in the list share the same type/properties.
-      default_original_artifact = copy.deepcopy(artifact_list[0])
-      default_original_artifact.mlmd_artifact.ClearField('id')
-
-      # Update the artifact list with what's in the executor output. Note the
-      # original artifacts may have existing artifact IDs if they were
-      # registered in MLMD before the execution.
-      original_artifacts_by_uri = {x.uri: x for x in artifact_list}
-      artifact_list.clear()
-      # TODO(b/175426744): revisit this:
-      # 1) Whether multiple output is needed or not after TFX componets
-      #    are upgraded.
-      # 2) If multiple output are needed and is a common practice, should we
-      #    use driver instead to create the list of output artifact instead
-      #    of letting executor to create them.
-      for updated_artifact_proto in updated_artifact_list:
-        updated_artifact_uri = updated_artifact_proto.uri
-        if updated_artifact_uri == _RESOLVED_AT_RUNTIME:
-          # Don't publish the output artifact if the component didn't set the
-          # actual resolved artifact URI in the executor output.
-          continue
-
-        # Determine which original artifact to merge with this updated artifact.
-        if updated_artifact_uri in original_artifacts_by_uri:
-          original_artifact = original_artifacts_by_uri[updated_artifact_uri]
-          del original_artifacts_by_uri[updated_artifact_uri]
-        else:
-          # The updated artifact proto doesn't match one of the original
-          # artifacts, so it will be newly created in MLMD.
-          original_artifact = copy.deepcopy(default_original_artifact)
-
-        _check_validity(updated_artifact_proto, original_artifact,
-                        len(updated_artifact_list) > 1)
-        merged_artifact = merge_utils.merge_output_artifact(
-            original_artifact, updated_artifact_proto)
-        artifact_list.append(merged_artifact)
+  output_artifacts_to_publish = merge_utils.merge_updated_output_artifacts(
+      output_artifacts,
+      executor_output.output_artifacts if executor_output is not None else None)
 
   # Marks output artifacts as PUBLISHED (i.e. LIVE in MLMD).
-  for artifact in itertools.chain.from_iterable(output_artifacts.values()):
+  for artifact in itertools.chain(*output_artifacts_to_publish.values()):
     artifact.state = types.artifact.ArtifactState.PUBLISHED
 
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
@@ -215,9 +118,12 @@ def publish_succeeded_execution(
   _set_execution_result_if_not_empty(executor_output, execution)
 
   execution_lib.put_execution(
-      metadata_handler, execution, contexts, output_artifacts=output_artifacts)
+      metadata_handler,
+      execution,
+      contexts,
+      output_artifacts=output_artifacts_to_publish)
 
-  return output_artifacts
+  return output_artifacts_to_publish
 
 
 def publish_failed_execution(

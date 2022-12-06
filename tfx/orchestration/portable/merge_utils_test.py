@@ -12,15 +12,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.merge_utils."""
+from typing import Dict, Optional, Mapping
 
+from absl.testing import parameterized
 import tensorflow as tf
+from tfx import types
 from tfx.orchestration.portable import merge_utils
+from tfx.orchestration.portable import outputs_utils
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import standard_artifacts
+from tfx.utils import test_case_utils
+from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
+_DEFAULT_ARTIFACT_TYPE = standard_artifacts.Examples
+_RUNTIME_RESOLVED_URI = outputs_utils.RESOLVED_AT_RUNTIME
 
-class MergeUtilsTest(tf.test.TestCase):
+
+def _tfx_artifact(
+    uri: str,
+    artifact_id: Optional[int] = None,
+    type_id: Optional[int] = None,
+    custom_properties: Optional[Dict[str, str]] = None) -> types.Artifact:
+  artifact = _DEFAULT_ARTIFACT_TYPE()
+  artifact.uri = uri
+  artifact.is_external = False
+  if artifact_id is not None:
+    artifact.id = artifact_id
+  if type_id is not None:
+    artifact.type_id = type_id
+  if custom_properties:
+    for key, value in custom_properties.items():
+      artifact.set_string_custom_property(key, value)
+  return artifact
+
+
+def _build_executor_output_artifact_dict(
+    output_artifacts: typing_utils.ArtifactMultiMap
+) -> Mapping[str, execution_result_pb2.ExecutorOutput.ArtifactList]:
+  executor_output_artifact_dict = {}
+  for key, tfx_artifact_list in output_artifacts.items():
+    artifact_list = execution_result_pb2.ExecutorOutput.ArtifactList()
+    for tfx_artifact in tfx_artifact_list:
+      artifact_list.artifacts.add().CopyFrom(tfx_artifact.mlmd_artifact)
+    executor_output_artifact_dict[key] = artifact_list
+  return executor_output_artifact_dict
+
+
+class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
 
   def testMergeOutputArtifactsAppliesUpdates(self):
     original_artifact = standard_artifacts.Examples()
@@ -30,7 +70,7 @@ class MergeUtilsTest(tf.test.TestCase):
     updated_artifact_proto.uri = '/a/b/c/d'
     updated_artifact_proto.properties['span'].int_value = 5
 
-    merged_artifact = merge_utils.merge_output_artifact(
+    merged_artifact = merge_utils._merge_output_artifact(
         original_artifact, updated_artifact_proto)
 
     expected_artifact = standard_artifacts.Examples()
@@ -54,7 +94,7 @@ class MergeUtilsTest(tf.test.TestCase):
     updated_artifact_proto.uri = '/a/b/c'
     updated_artifact_proto.properties['span'].int_value = 5
 
-    merged_artifact = merge_utils.merge_output_artifact(
+    merged_artifact = merge_utils._merge_output_artifact(
         original_artifact, updated_artifact_proto)
 
     self.assertEqual(4, original_artifact.span)
@@ -65,7 +105,7 @@ class MergeUtilsTest(tf.test.TestCase):
     original_artifact.uri = '/a/b/c'
     original_artifact.is_external = True
     updated_artifact_proto = metadata_store_pb2.Artifact(uri='/a/b/c')
-    merged_artifact = merge_utils.merge_output_artifact(
+    merged_artifact = merge_utils._merge_output_artifact(
         original_artifact, updated_artifact_proto)
     self.assertTrue(merged_artifact.is_external)
 
@@ -74,29 +114,172 @@ class MergeUtilsTest(tf.test.TestCase):
     original_artifact.uri = '/a/b/c'
     updated_artifact_proto = metadata_store_pb2.Artifact(uri='/a/b/c')
     updated_artifact_proto.custom_properties['is_external'].int_value = 1
-    merged_artifact = merge_utils.merge_output_artifact(
+    merged_artifact = merge_utils._merge_output_artifact(
         original_artifact, updated_artifact_proto)
     self.assertFalse(merged_artifact.is_external)
 
   def testMergeOutputArtifactsPreservesOriginalArtifactId(self):
     original_artifact = standard_artifacts.Examples()
     updated_artifact_proto = metadata_store_pb2.Artifact(id=2)
-    merged_artifact = merge_utils.merge_output_artifact(original_artifact,
-                                                        updated_artifact_proto)
+    merged_artifact = merge_utils._merge_output_artifact(
+        original_artifact, updated_artifact_proto)
     self.assertFalse(merged_artifact.mlmd_artifact.HasField('id'))
 
     original_artifact.id = 1
-    merged_artifact = merge_utils.merge_output_artifact(original_artifact,
-                                                        updated_artifact_proto)
+    merged_artifact = merge_utils._merge_output_artifact(
+        original_artifact, updated_artifact_proto)
     self.assertEqual(1, merged_artifact.id)
 
   def testMergeOutputArtifactsPreservesOriginalArtifactTypeId(self):
     original_artifact = standard_artifacts.Examples()
     original_artifact.artifact_type.id = 1
     updated_artifact_proto = metadata_store_pb2.Artifact(type_id=2)
-    merged_artifact = merge_utils.merge_output_artifact(original_artifact,
-                                                        updated_artifact_proto)
+    merged_artifact = merge_utils._merge_output_artifact(
+        original_artifact, updated_artifact_proto)
     self.assertEqual(1, merged_artifact.type_id)
+
+  @parameterized.named_parameters([
+      dict(
+          testcase_name='WithoutUpdatedArtifactsPreservesOriginal',
+          original_artifacts={
+              'key': [_tfx_artifact(uri='foo/bar')],
+          },
+          updated_artifacts={},
+          expected_merged_artifacts={
+              'key': [_tfx_artifact(uri='foo/bar')],
+          }),
+      dict(
+          testcase_name='WithoutKeyInUpdatedArtifactsPreservesOriginal',
+          original_artifacts={
+              'key1': [_tfx_artifact(uri='/a/1')],
+              'key2': [_tfx_artifact(uri='/a/2')],
+          },
+          updated_artifacts={
+              'key1': [_tfx_artifact(uri='/a/1')],
+          },
+          expected_merged_artifacts={
+              'key1': [_tfx_artifact(uri='/a/1')],
+              'key2': [_tfx_artifact(uri='/a/2')],
+          }),
+      dict(
+          testcase_name='AppliesUpdatedProperties',
+          original_artifacts={
+              'key1': [
+                  _tfx_artifact(uri='/a/1', custom_properties={'foo': 'bar'})
+              ],
+          },
+          updated_artifacts={
+              'key1': [
+                  _tfx_artifact(uri='/a/1', custom_properties={'bar': 'foo'})
+              ],
+          },
+          expected_merged_artifacts={
+              'key1': [
+                  _tfx_artifact(uri='/a/1', custom_properties={'bar': 'foo'})
+              ],
+          }),
+      dict(
+          testcase_name='RuntimeResolvedUriIsRemovedFromOriginalDict',
+          original_artifacts={
+              'key1': [_tfx_artifact(uri='/a/1')],
+              'key2': [_tfx_artifact(uri=_RUNTIME_RESOLVED_URI)],
+          },
+          updated_artifacts={
+              'key1': [_tfx_artifact(uri='/a/1')],
+          },
+          expected_merged_artifacts={
+              'key1': [_tfx_artifact(uri='/a/1')],
+              'key2': [],
+          }),
+      dict(
+          testcase_name='RuntimeResolvedUriIsRemovedFromUpdatedDict',
+          original_artifacts={
+              'key1': [_tfx_artifact(uri='/a/1')],
+              'key2': [_tfx_artifact(uri=_RUNTIME_RESOLVED_URI)],
+          },
+          updated_artifacts={
+              'key1': [_tfx_artifact(uri='/a/1')],
+              'key2': [_tfx_artifact(uri=_RUNTIME_RESOLVED_URI)],
+          },
+          expected_merged_artifacts={
+              'key1': [_tfx_artifact(uri='/a/1')],
+              'key2': [],
+          }),
+      dict(
+          testcase_name='ReusesOriginalIdIfUriMatchesUpdatedArtifact',
+          original_artifacts={
+              'key1': [_tfx_artifact(uri='/x/1', artifact_id=1)],
+              'key2': [_tfx_artifact(uri='/x/2', artifact_id=2)],
+          },
+          updated_artifacts={
+              'key1': [_tfx_artifact(uri='/x/1', artifact_id=1)],
+              'key2': [
+                  _tfx_artifact(uri='/x/2/a', artifact_id=2),
+                  _tfx_artifact(uri='/x/2/b')
+              ],
+          },
+          expected_merged_artifacts={
+              'key1': [_tfx_artifact(uri='/x/1', artifact_id=1)],
+              'key2': [
+                  _tfx_artifact(uri='/x/2/a'),
+                  _tfx_artifact(uri='/x/2/b')
+              ],
+          }),
+      dict(
+          testcase_name='UpdatedDictOmitsArtifactInListIsOmittedInResult',
+          original_artifacts={
+              'key1': [_tfx_artifact(uri='/x/1')],
+              'key2': [_tfx_artifact(uri='/x/2')],
+          },
+          updated_artifacts={
+              'key1': [_tfx_artifact(uri='/x/1')],
+              'key2': [],
+          },
+          expected_merged_artifacts={
+              'key1': [_tfx_artifact(uri='/x/1')],
+              'key2': [],
+          }),
+  ])
+  def testMergeOutputArtifacts(
+      self, original_artifacts: typing_utils.ArtifactMultiMap,
+      updated_artifacts: typing_utils.ArtifactMultiMap,
+      expected_merged_artifacts: typing_utils.ArtifactMultiMap):
+    merged_output_artifacts = merge_utils.merge_updated_output_artifacts(
+        original_artifacts,
+        _build_executor_output_artifact_dict(updated_artifacts))
+    self.assertArtifactMapsEqual(expected_merged_artifacts,
+                                 merged_output_artifacts)
+
+  def testMergeOutputArtifactsUpdatedDictChangesArtifactTypeRaisesError(self):
+    original_artifacts = {'key1': [_tfx_artifact(uri='/x/1', type_id=1)]}
+    updated_artifacts = {'key1': [_tfx_artifact(uri='/x/2', type_id=2)]}
+    with self.assertRaisesRegex(
+        RuntimeError, 'Executor output should not change artifact type'):
+      merge_utils.merge_updated_output_artifacts(
+          original_artifacts,
+          _build_executor_output_artifact_dict(updated_artifacts))
+
+  def testMergeOutputArtifactsUnrecognizedKeyInUpdatedDictRaisesError(self):
+    original_artifacts = {'key1': [_tfx_artifact(uri='/x/1')]}
+    updated_artifacts = {'key2': [_tfx_artifact(uri='/x/2')]}
+    with self.assertRaisesRegex(RuntimeError,
+                                'contains more keys than output skeleton'):
+      merge_utils.merge_updated_output_artifacts(
+          original_artifacts,
+          _build_executor_output_artifact_dict(updated_artifacts))
+
+  def testMergeOutputArtifactsUpdatedArtifactUriNotSubdirectoryRaisesError(
+      self):
+    original_artifacts = {'key1': [_tfx_artifact(uri='/x/1')]}
+    updated_artifacts = {
+        'key1': [_tfx_artifact(uri='/y/1'),
+                 _tfx_artifact(uri='/y/2')]
+    }
+    with self.assertRaisesRegex(RuntimeError,
+                                'URIs should be direct sub-directories'):
+      merge_utils.merge_updated_output_artifacts(
+          original_artifacts,
+          _build_executor_output_artifact_dict(updated_artifacts))
 
 if __name__ == '__main__':
   tf.test.main()
