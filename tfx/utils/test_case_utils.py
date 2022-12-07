@@ -161,9 +161,14 @@ class MlmdMixins:
   _artifact_type_ids: Dict[str, int]
   _execution_type_ids: Dict[str, int]
 
-  def init_mlmd(self):
+  def init_mlmd(
+      self, *,
+      connection_config: Optional[metadata.ConnectionConfigType] = None):
     """Initialize fake MLMD connection for testing."""
-    self.mlmd_cm = mlmd_cm.MLMDConnectionManager.fake()
+    if connection_config is not None:
+      self.mlmd_cm = mlmd_cm.MLMDConnectionManager(connection_config)
+    else:
+      self.mlmd_cm = mlmd_cm.MLMDConnectionManager.fake()
     self.__exit_stack = contextlib.ExitStack()
     self.__exit_stack.enter_context(self.mlmd_cm)
     assert isinstance(self, unittest.TestCase), (
