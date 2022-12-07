@@ -18,6 +18,7 @@ import uuid
 
 from tfx import types
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.portable import merge_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -89,7 +90,7 @@ def publish_succeeded_execution(
       event with type OUTPUT.
     executor_output: Executor outputs. `executor_output.output_artifacts` will
       be used to update system-generated output artifacts passed in through
-      `output_artifacts` arg. There are three contraints to the update: 1. The
+      `output_artifacts` arg. There are three constraints to the update: 1. The
       keys in `executor_output.output_artifacts` are expected to be a subset of
       the system-generated output artifacts dict. 2. An update to a certain key
       should contains all the artifacts under that key. 3. An update to an
@@ -102,28 +103,29 @@ def publish_succeeded_execution(
   Raises:
     RuntimeError: if the executor output to a output channel is partial.
   """
-  output_artifacts_to_publish = merge_utils.merge_updated_output_artifacts(
-      output_artifacts,
-      executor_output.output_artifacts if executor_output is not None else None)
+  with mlmd_state.evict_from_cache(execution_id):
+    output_artifacts_to_publish = merge_utils.merge_updated_output_artifacts(
+        output_artifacts, executor_output.output_artifacts
+        if executor_output is not None else None)
 
-  # Marks output artifacts as PUBLISHED (i.e. LIVE in MLMD).
-  for artifact in itertools.chain(*output_artifacts_to_publish.values()):
-    artifact.state = types.artifact.ArtifactState.PUBLISHED
+    # Marks output artifacts as PUBLISHED (i.e. LIVE in MLMD).
+    for artifact in itertools.chain(*output_artifacts_to_publish.values()):
+      artifact.state = types.artifact.ArtifactState.PUBLISHED
 
-  [execution] = metadata_handler.store.get_executions_by_id([execution_id])
-  execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
-  if executor_output:
-    for key, value in executor_output.execution_properties.items():
-      execution.custom_properties[key].CopyFrom(value)
-  _set_execution_result_if_not_empty(executor_output, execution)
+    [execution] = metadata_handler.store.get_executions_by_id([execution_id])
+    execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
+    if executor_output:
+      for key, value in executor_output.execution_properties.items():
+        execution.custom_properties[key].CopyFrom(value)
+    _set_execution_result_if_not_empty(executor_output, execution)
 
-  execution_lib.put_execution(
-      metadata_handler,
-      execution,
-      contexts,
-      output_artifacts=output_artifacts_to_publish)
+    execution_lib.put_execution(
+        metadata_handler,
+        execution,
+        contexts,
+        output_artifacts=output_artifacts_to_publish)
 
-  return output_artifacts_to_publish
+    return output_artifacts_to_publish
 
 
 def publish_failed_execution(

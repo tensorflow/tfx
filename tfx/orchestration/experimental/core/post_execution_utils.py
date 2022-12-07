@@ -85,12 +85,13 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
         return
     _remove_temporary_task_dirs(
         stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
-    execution_publish_utils.publish_succeeded_execution(
-        mlmd_handle,
-        execution_id=task.execution_id,
-        contexts=task.contexts,
-        output_artifacts=task.output_artifacts,
-        executor_output=executor_output)
+    with mlmd_state.evict_from_cache(task.execution_id):
+      execution_publish_utils.publish_succeeded_execution(
+          mlmd_handle,
+          execution_id=task.execution_id,
+          contexts=task.contexts,
+          output_artifacts=task.output_artifacts,
+          executor_output=executor_output)
     garbage_collection.run_garbage_collection_for_node(mlmd_handle,
                                                        task.node_uid,
                                                        task.get_node())

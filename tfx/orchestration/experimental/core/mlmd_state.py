@@ -94,6 +94,11 @@ class _ExecutionCache:
     with self._lock:
       self._cache[execution.id] = execution
 
+  def evict(self, execution_id: int) -> None:
+    """Evicts execution with the given execution_id from the cache if one exists.
+    """
+    self._cache.pop(execution_id, None)
+
   def clear_cache(self):
     """Clears underlying cache; MLMD is untouched."""
     with self._lock:
@@ -156,6 +161,26 @@ def mlmd_execution_atomic_op(
         post_commit_execution = copy.deepcopy(
             _execution_cache.get_execution(mlmd_handle, execution_copy.id))
         on_commit(pre_commit_execution, post_commit_execution)
+
+
+@contextlib.contextmanager
+def evict_from_cache(execution_id: int) -> Iterator[None]:
+  """Context manager for mutating an MLMD execution using cache unaware functions.
+
+  It is preferable to use `mlmd_execution_atomic_op` for mutating MLMD
+  executions but sometimes it may be necessary to use third party functions
+  which are not cache aware. Such functions should be invoked within this
+  context for proper locking and cache eviction to prevent stale entries.
+
+  Args:
+    execution_id: Id of the execution to be evicted from cache.
+
+  Yields:
+    Nothing
+  """
+  with _execution_id_locks.lock(execution_id):
+    _execution_cache.evict(execution_id)
+    yield
 
 
 def clear_in_memory_state():
