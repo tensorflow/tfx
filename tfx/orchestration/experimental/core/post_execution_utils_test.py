@@ -14,6 +14,7 @@
 """Tests for tfx.orchestration.experimental.core.post_execution_utils."""
 import os
 
+from absl.testing import parameterized
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.dsl.io import fileio
@@ -25,12 +26,13 @@ from tfx.orchestration.portable import execution_publish_utils
 from tfx.proto.orchestration import execution_invocation_pb2
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import standard_artifacts
+from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils as tu
 
 from ml_metadata import proto
 
 
-class PostExecutionUtilsTest(tu.TfxTest):
+class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -69,12 +71,21 @@ class PostExecutionUtilsTest(tu.TfxTest):
         execution_id=execution.id)
     return data_types.ExecutionInfo.from_proto(execution_invocation)
 
-  def test_publish_execution_results_failed_execution(self):
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='canceled-execution',
+          code=status_lib.Code.CANCELLED,
+          expected_execution_state=proto.Execution.CANCELED),
+      dict(
+          testcase_name='failed-execution',
+          code=status_lib.Code.INVALID_ARGUMENT,
+          expected_execution_state=proto.Execution.FAILED))
+  def test_publish_execution_results_failed_execution(self, code,
+                                                      expected_execution_state):
     execution_info = self._prepare_execution_info()
 
     executor_output = execution_result_pb2.ExecutorOutput()
-    # Code as defined in google.rpc.Code - INVALID_ARGUMENT
-    executor_output.execution_result.code = 3
+    executor_output.execution_result.code = code
     executor_output.execution_result.result_message = 'failed execution'
 
     post_execution_utils.publish_execution_results(
@@ -82,7 +93,7 @@ class PostExecutionUtilsTest(tu.TfxTest):
 
     [execution] = self.mlmd_handle.store.get_executions()
 
-    self.assertEqual(execution.last_known_state, proto.Execution.FAILED)
+    self.assertEqual(execution.last_known_state, expected_execution_state)
 
   @mock.patch.object(execution_publish_utils, 'publish_succeeded_execution')
   def test_publish_execution_results_succeeded_execution(self, mock_publish):

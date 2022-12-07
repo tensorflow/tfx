@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utils for publishing execution results."""
-from typing import List, Optional
+from __future__ import annotations
+
+from typing import Optional
 
 from absl import logging
 from tfx.dsl.io import fileio
@@ -118,9 +120,13 @@ def publish_execution_results(
     mlmd_handle: metadata.Metadata,
     executor_output: execution_result_pb2.ExecutorOutput,
     execution_info: data_types.ExecutionInfo,
-    contexts: List[proto.Context]) -> Optional[typing_utils.ArtifactMultiMap]:
+    contexts: list[proto.Context]) -> Optional[typing_utils.ArtifactMultiMap]:
   """Publishes execution result to MLMD for single component run."""
   if executor_output.execution_result.code != status_lib.Code.OK:
+    if executor_output.execution_result.code == status_lib.Code.CANCELLED:
+      execution_state = proto.Execution.CANCELED
+    else:
+      execution_state = proto.Execution.FAILED
     _remove_temporary_task_dirs(
         stateful_working_dir=execution_info.stateful_working_dir,
         tmp_dir=execution_info.tmp_dir)
@@ -133,7 +139,7 @@ def publish_execution_results(
         mlmd_handle=mlmd_handle,
         node_uid=node_uid,
         execution_id=execution_info.execution_id,
-        new_state=proto.Execution.FAILED,
+        new_state=execution_state,
         error_msg=executor_output.execution_result.result_message,
         execution_result=executor_output.execution_result)
     return
