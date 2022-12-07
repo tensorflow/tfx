@@ -267,6 +267,24 @@ class CannedResolverFunctionsTest(
     self.assertArtifactListEqual(
         actual_artifacts, expected_artifacts, check_span_and_version=True)
 
+  def testShuffleResolverFn_E2E(self):
+    channel = canned_resolver_functions.shuffle(
+        types.Channel(test_utils.DummyArtifact, output_key='x'))
+    pipeline_node = _compile_inputs({'x': channel})
+
+    spans = [1, 2, 3, 4]
+    versions = [0, 0, 0, 0]
+    self._insert_artifacts_into_mlmd(spans, versions)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+    self.assertIsInstance(resolved, inputs_utils.Trigger)
+
+    actual_spans = sorted([
+        r.mlmd_artifact.properties['span'].int_value for r in resolved[0]['x']
+    ])
+    self.assertListEqual(actual_spans, spans)
+
   def testLatestPipelineRunOutputsResolverFn(self):
     producer_pipeline = pipeline.Pipeline(
         outputs={'x': types.Channel(test_utils.DummyArtifact, output_key='x')},
