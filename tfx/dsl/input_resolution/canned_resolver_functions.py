@@ -47,6 +47,9 @@ def latest_version(artifacts, n: int = 1):
   return ops.LatestVersion(artifacts, n=n)
 
 
+# TODO(b/261792805): Consider removing shuffle argument once the migration tool
+# and AST library can handle nested resolver function invocations, e.g.
+# shuffle(static_range(...)).
 @resolver_function.resolver_function
 def static_range(artifacts,
                  *,
@@ -142,6 +145,9 @@ def static_range(artifacts,
   return ops.SkipIfLessThanNSpans(resolved_artifacts, n=min_spans)
 
 
+# TODO(b/261792805): Consider removing shuffle argument once the migration tool
+# and AST library can handle nested resolver function invocations, e.g.
+# shuffle(rolling_range(...)).
 @resolver_function.resolver_function
 def rolling_range(artifacts,
                   *,
