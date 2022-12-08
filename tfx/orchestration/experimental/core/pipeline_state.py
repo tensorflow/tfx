@@ -215,31 +215,6 @@ class NodeState(json_utils.Jsonable):
     """Convert from dictionary data to an object."""
     return cls(**dict_data)
 
-  def latest_predicate_time_s(
-      self, predicate: Callable[[str], bool]) -> Optional[int]:
-    """Returns the latest time the node state satisfies the given predicate.
-
-    Args:
-      predicate: Predicate that takes the state string.
-
-    Returns:
-      The latest time (in the state history) the node state satisfies the given
-      predicate, or None if the predicate is never satisfied.
-    """
-    for s in reversed(self.state_history):
-      if predicate(s.state):
-        return int(s.update_time)
-    return None
-
-  def latest_running_time_s(self) -> Optional[int]:
-    """Returns the latest time the node entered a RUNNING state.
-
-    Returns:
-      The latest time (in the state history) the node entered a RUNNING
-      state, or None if the node never entered a RUNNING state.
-    """
-    return self.latest_predicate_time_s(is_node_state_running)
-
 
 def is_node_state_success(state: str) -> bool:
   return state in (NodeState.COMPLETE, NodeState.SKIPPED,
@@ -248,10 +223,6 @@ def is_node_state_success(state: str) -> bool:
 
 def is_node_state_failure(state: str) -> bool:
   return state == NodeState.FAILED
-
-
-def is_node_state_running(state: str) -> bool:
-  return state == NodeState.RUNNING
 
 
 _NODE_STATE_TO_RUN_STATE_MAP = {
