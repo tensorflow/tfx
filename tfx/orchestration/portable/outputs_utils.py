@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Portable library for output artifacts resolution including caching decision."""
+"""Portable library for output artifacts resolution including caching decision.
+"""
 
 import collections
 import copy
@@ -42,7 +43,7 @@ _EXECUTOR_OUTPUT_FILE = 'executor_output.pb'
 _VALUE_ARTIFACT_FILE_NAME = 'value'
 # The fixed special value to indicate that the binary will set the output URI
 # value during its execution.
-# LINT.IFCHANGE
+# LINT.IfChange
 RESOLVED_AT_RUNTIME = '{resolved_at_runtime}'
 # LINT.ThenChange(<Internal source code>)
 
@@ -91,9 +92,20 @@ def clear_output_dirs(
       # Omit lifecycle management for external artifacts.
       if artifact.is_external:
         continue
-      if fileio.isdir(artifact.uri) and fileio.listdir(artifact.uri):
-        fileio.rmtree(artifact.uri)
-        fileio.mkdir(artifact.uri)
+      # Clear out the contents of the output directory while preserving the
+      # output directory itself. Needed to preserve any storage attributes of
+      # the output directory.
+      if not fileio.isdir(artifact.uri):
+        continue
+      child_paths = [
+          os.path.join(artifact.uri, filename)
+          for filename in fileio.listdir(artifact.uri)
+      ]
+      for path in child_paths:
+        if fileio.isdir(path):
+          fileio.rmtree(path)
+        else:
+          fileio.remove(path)
 
 
 def remove_stateful_working_dir(stateful_working_dir: str) -> None:
@@ -200,8 +212,8 @@ class OutputsResolver:
         will be <node_dir>/.system/stateful_working_dir/<execution_id>. If
         execution_id is not provided, for backward compatibility purposes,
         <pipeline_run_id> is used instead of <execution_id> but an error is
-        raised if the execution_mode is not SYNC (since ASYNC pipelines have
-        no pipeline_run_id).
+        raised if the execution_mode is not SYNC (since ASYNC pipelines have no
+        pipeline_run_id).
 
     Returns:
       Path to stateful working directory.
@@ -221,8 +233,7 @@ class OutputsResolver:
 def _generate_output_artifact(
     output_spec: pipeline_pb2.OutputSpec) -> types.Artifact:
   """Generates each output artifact given output_spec."""
-  artifact = artifact_utils.deserialize_artifact(
-      output_spec.artifact_spec.type)
+  artifact = artifact_utils.deserialize_artifact(output_spec.artifact_spec.type)
   _attach_artifact_properties(output_spec.artifact_spec, artifact)
 
   return artifact
