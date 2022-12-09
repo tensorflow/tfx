@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+* Update the TFMA evaluator Colab to use the latest dataframe API for plotting.
+
 ## Breaking Changes
 
 ### For Pipeline Authors
