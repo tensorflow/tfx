@@ -85,12 +85,15 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
         return
     _remove_temporary_task_dirs(
         stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
-    execution_publish_utils.publish_succeeded_execution(
-        mlmd_handle,
-        execution_id=task.execution_id,
-        contexts=task.contexts,
-        output_artifacts=task.output_artifacts,
-        executor_output=executor_output)
+    # TODO(b/262040844): Instead of directly using the context manager here, we
+    # should consider creating and using wrapper functions.
+    with mlmd_state.evict_from_cache(task.execution_id):
+      execution_publish_utils.publish_succeeded_execution(
+          mlmd_handle,
+          execution_id=task.execution_id,
+          contexts=task.contexts,
+          output_artifacts=task.output_artifacts,
+          executor_output=executor_output)
     garbage_collection.run_garbage_collection_for_node(mlmd_handle,
                                                        task.node_uid,
                                                        task.get_node())
@@ -98,18 +101,24 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     output_artifacts = result.output.output_artifacts
     _remove_temporary_task_dirs(
         stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
-    execution_publish_utils.publish_succeeded_execution(
-        mlmd_handle,
-        execution_id=task.execution_id,
-        contexts=task.contexts,
-        output_artifacts=output_artifacts)
+    # TODO(b/262040844): Instead of directly using the context manager here, we
+    # should consider creating and using wrapper functions.
+    with mlmd_state.evict_from_cache(task.execution_id):
+      execution_publish_utils.publish_succeeded_execution(
+          mlmd_handle,
+          execution_id=task.execution_id,
+          contexts=task.contexts,
+          output_artifacts=output_artifacts)
   elif isinstance(result.output, ts.ResolverNodeOutput):
     resolved_input_artifacts = result.output.resolved_input_artifacts
-    execution_publish_utils.publish_internal_execution(
-        mlmd_handle,
-        execution_id=task.execution_id,
-        contexts=task.contexts,
-        output_artifacts=resolved_input_artifacts)
+    # TODO(b/262040844): Instead of directly using the context manager here, we
+    # should consider creating and using wrapper functions.
+    with mlmd_state.evict_from_cache(task.execution_id):
+      execution_publish_utils.publish_internal_execution(
+          mlmd_handle,
+          execution_id=task.execution_id,
+          contexts=task.contexts,
+          output_artifacts=resolved_input_artifacts)
   else:
     raise TypeError(f'Unable to process task scheduler result: {result}')
 
@@ -146,12 +155,15 @@ def publish_execution_results(
   _remove_temporary_task_dirs(
       stateful_working_dir=execution_info.stateful_working_dir,
       tmp_dir=execution_info.tmp_dir)
-  return execution_publish_utils.publish_succeeded_execution(
-      mlmd_handle,
-      execution_id=execution_info.execution_id,
-      contexts=contexts,
-      output_artifacts=execution_info.output_dict,
-      executor_output=executor_output)
+  # TODO(b/262040844): Instead of directly using the context manager here, we
+  # should consider creating and using wrapper functions.
+  with mlmd_state.evict_from_cache(execution_info.execution_id):
+    return execution_publish_utils.publish_succeeded_execution(
+        mlmd_handle,
+        execution_id=execution_info.execution_id,
+        contexts=contexts,
+        output_artifacts=execution_info.output_dict,
+        executor_output=executor_output)
 
 
 def _update_execution_state_in_mlmd(
