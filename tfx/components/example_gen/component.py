@@ -32,7 +32,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
   """A TFX component to ingest examples from query based systems.
 
   The QueryBasedExampleGen component can be extended to ingest examples from
-  query based systems such as Presto or Bigquery. The component will also
+  query based systems such as Presto or BigQuery. The component will also
   convert the input data into
   tf.record](https://www.tensorflow.org/tutorials/load_data/tf_records)
   and generate train and eval example splits for downstream components.
