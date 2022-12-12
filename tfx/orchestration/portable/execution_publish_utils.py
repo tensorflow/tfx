@@ -17,6 +17,7 @@ from typing import Mapping, Optional, Sequence
 import uuid
 
 from tfx import types
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import merge_utils
 from tfx.orchestration.portable import outputs_utils
@@ -102,9 +103,11 @@ def publish_succeeded_execution(
   Raises:
     RuntimeError: if the executor output to a output channel is partial.
   """
+  unpacked_output_artifacts = None if executor_output is None else (
+      data_types_utils.unpack_executor_output_artifacts(
+          executor_output.output_artifacts))
   output_artifacts_to_publish = merge_utils.merge_updated_output_artifacts(
-      output_artifacts,
-      executor_output.output_artifacts if executor_output is not None else None)
+      output_artifacts, unpacked_output_artifacts)
 
   # Marks output artifacts as PUBLISHED (i.e. LIVE in MLMD).
   for artifact in itertools.chain(*output_artifacts_to_publish.values()):
@@ -151,8 +154,7 @@ def publish_internal_execution(
     metadata_handler: metadata.Metadata,
     contexts: Sequence[metadata_store_pb2.Context],
     execution_id: int,
-    output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None
-) -> None:
+    output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None) -> None:
   """Marks an exeisting execution as as success and links its output to an INTERNAL_OUTPUT event.
 
   Args:
