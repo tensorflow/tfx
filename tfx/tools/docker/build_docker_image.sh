@@ -84,7 +84,7 @@ docker build -t ${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG} \
   --build-arg "ADDITIONAL_PACKAGES=${ADDITIONAL_PACKAGES}" \
   . "$@"
 
-if [[ -n "${installed_tf_version}" ]]; then
+if [[ -n "${installed_tf_version}" && ! "${installed_tf_version}" =~ rc ]]; then
   # Double-check whether TF is re-installed.
   current_tf_version=$(_get_tf_version_of_image "${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG}")
   if [[ "${installed_tf_version}" != "${current_tf_version}" ]]; then
