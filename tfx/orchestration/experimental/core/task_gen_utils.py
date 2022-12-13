@@ -170,7 +170,7 @@ def resolve_exec_properties(
 
 def generate_resolved_info(
     mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
-    node: node_proto_view.NodeProtoView) -> Optional[ResolvedInfo]:
+    node: node_proto_view.NodeProtoView) -> ResolvedInfo:
   """Returns a `ResolvedInfo` object for executing the node or `None` to skip.
 
   Args:
@@ -179,12 +179,11 @@ def generate_resolved_info(
     node: The pipeline node for which to generate.
 
   Returns:
-    A `ResolvedInfo` with input resolutions or `None` if execution should be
-    skipped.
+    A `ResolvedInfo` with input resolutions. If execution should be skipped,
+    ResolvedInfo has empty input_and_params.
 
   Raises:
-    NotImplementedError: Multiple dicts returned by inputs_utils
-      resolve_input_artifacts, which is currently not supported.
+    InputResolutionError: If there are some errors when we try to resolve input.
   """
   # Register node contexts.
   contexts = context_lib.prepare_contexts(
@@ -202,12 +201,11 @@ def generate_resolved_info(
     resolved_input_artifacts = inputs_utils.resolve_input_artifacts(
         metadata_handler=mlmd_connection_manager, pipeline_node=node)
   except exceptions.InputResolutionError as e:
-    logging.warning('[%s] Input resolution error: %s',
-                    node.node_info.id, e, exc_info=True)
-    return ResolvedInfo(contexts=contexts, input_and_params=[])
+    logging.exception('[%s] Input resolution error: %s', node.node_info.id, e)
+    raise
   else:
     if isinstance(resolved_input_artifacts, inputs_utils.Skip):
-      return None
+      return ResolvedInfo(contexts=contexts, input_and_params=[])
     assert isinstance(resolved_input_artifacts, inputs_utils.Trigger)
     assert resolved_input_artifacts
 
@@ -217,10 +215,9 @@ def generate_resolved_info(
         dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
             node_parameters=node.parameters, input_artifacts=input_artifacts)
       except exceptions.InputResolutionError as e:
-        logging.warning(
-            '[%s] Parameter resolution error: %s',
-            node.node_info.id, e, exc_info=True)
-        return ResolvedInfo(contexts=contexts, input_and_params=[])
+        logging.exception('[%s] Parameter resolution error: %s',
+                          node.node_info.id, e)
+        raise
 
       if not dynamic_exec_properties:
         cur_exec_properties = exec_properties
@@ -455,7 +452,7 @@ def register_executions(
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
         execution_name=str(uuid.uuid4()))
-  # LINT.IfChange(execution_custom_properties)
+    # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXECUTION_SET_SIZE].int_value = len(
         input_and_params)
     execution.custom_properties[_EXECUTION_TIMESTAMP].int_value = timestamp
