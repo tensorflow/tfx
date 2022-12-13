@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX DataViewBinder component executor."""
+import json
 from typing import Any, Dict, List
 
+from absl import logging
 from tfx import types
 from tfx.components.experimental.data_view import constants
 from tfx.dsl.components.base import base_executor
+from tfx.orchestration import data_types_utils
 from tfx.types import artifact_utils
 
 
@@ -34,7 +37,16 @@ class DataViewBinderExecutor(base_executor.BaseExecutor):
   def Do(self, input_dict: Dict[str, List[types.Artifact]],
          output_dict: Dict[str, List[types.Artifact]],
          exec_properties: Dict[str, Any]) -> None:
-    self._log_startup(input_dict, output_dict, exec_properties)
+    # TODO(b/261951727): Remove unnecessary logging after fixing the failure.
+    logging.debug('Inputs for %s are: %s', self.__class__.__name__,
+                  artifact_utils.jsonify_artifact_dict(input_dict))
+    logging.debug('Outputs for %s are: %s', self.__class__.__name__,
+                  artifact_utils.jsonify_artifact_dict(output_dict))
+    logging.debug(
+        'Execution properties for %s are: %s', self.__class__.__name__,
+        json.dumps(
+            data_types_utils.build_value_dict(
+                data_types_utils.build_metadata_value_dict(exec_properties))))
 
     data_view_artifact = artifact_utils.get_single_instance(
         input_dict.get(_DATA_VIEW_KEY))
