@@ -54,6 +54,12 @@ def _register_op(cls: _ResolverOpType) -> None:
     raise ValueError(f'Duplicated name {cls.canonical_name} while registering.')
   _OPS_BY_NAME[cls.canonical_name] = cls
 
+
+def register_youtube_op(cls: _ResolverOpType) -> None:
+  """This function should only be used by YouTube to register new ResolverOp."""
+  _register_op(cls)
+
+
 # go/keep-sorted start
 AllSpans = all_spans_op.AllSpans
 ConsecutiveSpans = consecutive_spans_op.ConsecutiveSpans
