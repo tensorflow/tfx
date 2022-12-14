@@ -255,6 +255,8 @@ class Compiler:
             "success_optional")
       node.execution_options.max_execution_retries = (
           node_execution_options.get("max_execution_retries", 0))
+      node.execution_options.execution_timeout_sec = node_execution_options.get(
+          "execution_timeout_sec", 0)
     # Step 9: Per-node platform config
     if isinstance(tfx_node, base_component.BaseComponent):
       tfx_component = cast(base_component.BaseComponent, tfx_node)
