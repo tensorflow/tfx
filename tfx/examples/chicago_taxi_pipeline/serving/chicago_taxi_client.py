@@ -25,6 +25,7 @@ from typing import List
 from absl import app
 from absl.flags import argparse_flags
 import requests
+import tensorflow_data_validation as tfdv
 from tensorflow_transform import coders as tft_coders
 from tensorflow_transform.tf_metadata import schema_utils
 
@@ -126,6 +127,7 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
 
   csv_reader = csv.DictReader(open(examples_file, 'r'))
 
+  dataset_stats = tfdv.generate_statistics_from_csv(examples_file)
   serialized_examples = []
   for _ in range(num_examples):
     one_line = next(csv_reader)
@@ -135,6 +137,8 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
     one_example = {}
     for feature in schema.feature:
       name = feature.name
+      feature_stats = tfdv.get_feature_stats(dataset_stats.datasets[0],
+                                             tfdv.FeaturePath([name]))
       if one_line[name]:
         if feature.type == schema_pb2.FLOAT:
           one_example[name] = [float(one_line[name])]
@@ -143,7 +147,18 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
         elif feature.type == schema_pb2.BYTES:
           one_example[name] = [one_line[name].encode('utf8')]
       else:
-        one_example[name] = []
+        # TF serve does not like missing features, so we'll populate
+        # the missing features with their mean/mode instead
+        if feature.type == schema_pb2.FLOAT:
+          one_example[name] = [feature_stats.num_stats.mean]
+        elif feature.type == schema_pb2.INT:
+          one_example[name] = [int(feature_stats.num_stats.mean)]
+        elif feature.type == schema_pb2.BYTES:
+          top_values = list(feature_stats.string_stats.top_values)
+          if top_values:
+            one_example[name] = [top_values[0].value.encode('utf8')]
+          else:
+            one_example[name] = [''.encode('utf8')]
 
     serialized_example = proto_coder.encode(one_example)
     serialized_examples.append(serialized_example)
@@ -182,7 +197,7 @@ def _parse_flags(argv: List[str]) -> argparse.Namespace:
 
   parser.add_argument(
       '--schema_file', help='File holding the schema for the input data')
-  return parser.parse_args(argv)
+  return parser.parse_args(argv[1:])
 
 
 def main(args: argparse.Namespace):
