@@ -175,36 +175,13 @@ def preprocessing_fn(inputs):
 ### Understanding the inputs to the preprocessing_fn
 
 The `preprocessing_fn` describes a series of operations on tensors (that is,
-`Tensor`s or `SparseTensor`s) and so to write the `preprocessing_fn` correctly
-it is necessary to understand how your data is represented as tensors. The input
-to the `preprocessing_fn` is determined by the schema. A `Schema` proto contains
-a list of `Feature`s, and Transform converts these to a "feature spec"
-(sometimes called a "parsing spec") which is a dict whose keys are feature names
-and whose values are one of `FixedLenFeature` or `VarLenFeature` (or other
-options not used by TensorFlow Transform).
-
-The rules for inferring a feature spec from the `Schema` are
-
--   Each `feature` with `shape` set will result in a `tf.FixedLenFeature` with
-    shape and `default_value=None`.  `presence.min_fraction` must be `1`
-    otherwise and error will result, since when there is no default value, a
-    `tf.FixedLenFeature` requires the feature to always be present.
--   Each `feature` with `shape` not set will result in a `VarLenFeature`.
--   Each `sparse_feature` will result in a `tf.SparseFeature` whose `size` and
-    `is_sorted` are determined by the `fixed_shape` and `is_sorted` fields of
-    the `SparseFeature` message.
--   Features used as the `index_feature` or `value_feature` of a
-    `sparse_feature` will not have their own entry generated in the feature
-    spec.
--   The correspondence between `type` field of the `feature` (or the values
-    feature of a `sparse_feature` proto) and the `dtype` of the feature spec is
-    given by the following table:
-
-`type`             | `dtype`
------------------- | ------------
-`schema_pb2.INT`   | `tf.int64`
-`schema_pb2.FLOAT` | `tf.float32`
-`schema_pb2.BYTES` | `tf.string`
+`Tensor`s, `SparseTensor`s, or `RaggedTensor`s). In order to define the
+`preprocessing_fn` correctly it is necessary to understand how the data is
+represented as tensors. The input to the `preprocessing_fn` is determined by the
+schema. A [`Schema` proto](https://github.com/tensorflow/metadata/blob/master/tensorflow_metadata/proto/v0/schema.proto#L72)
+is eventually converted to a "feature spec" (sometimes called a
+"parsing spec") that is used for data parsing, see more details about the
+conversion logic [here](https://github.com/tensorflow/metadata/blob/master/tfx_bsl/docs/schema_interpretation.md).
 
 ## Using TensorFlow Transform to handle string labels
 
