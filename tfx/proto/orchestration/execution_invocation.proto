@@ -21,7 +21,7 @@ import "ml_metadata/proto/metadata_store_service.proto";
 import "tfx/proto/orchestration/pipeline.proto";
 
 // All the information needed for a TFX component execution.
-// Next ID: 15
+// Next ID: 16
 message ExecutionInvocation {
   reserved 1, 2;
 
@@ -64,4 +64,6 @@ message ExecutionInvocation {
 
   // Flags passed to a component.
   map<string, string> extra_flags = 14;
+
+  string owner = 15;
 }
