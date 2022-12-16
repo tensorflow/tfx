@@ -70,12 +70,12 @@ class ResolutionContext:
 # Placeholder does not support bytes, which may result from proto field access.
 # Please use base64 encode operator to explicitly convert it into str.
 _PlaceholderResolvedTypes = (int, float, str, bool, type(None), list, dict)
-_PlaceholderResolvedTypeHints = Union[_PlaceholderResolvedTypes]
+PlaceholderResolvedTypeHints = Union[_PlaceholderResolvedTypes]
 
 
 def resolve_placeholder_expression(
     expression: placeholder_pb2.PlaceholderExpression,
-    context: ResolutionContext) -> _PlaceholderResolvedTypeHints:
+    context: ResolutionContext) -> PlaceholderResolvedTypeHints:
   """Evaluates a placeholder expression using the given context.
 
   Normally the resolved value will be used as command line flags in strings.
