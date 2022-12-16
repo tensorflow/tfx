@@ -47,6 +47,9 @@ def latest_version(artifacts, n: int = 1):
   return ops.LatestVersion(artifacts, n=n)
 
 
+# TODO(b/261792805): Consider removing shuffle argument once the migration tool
+# and AST library can handle nested resolver function invocations, e.g.
+# shuffle(static_range(...)).
 @resolver_function.resolver_function
 def static_range(artifacts,
                  *,
@@ -54,7 +57,8 @@ def static_range(artifacts,
                  end_span_number: int = -1,
                  keep_all_versions: bool = False,
                  exclude_span_numbers: Sequence[int] = (),
-                 min_spans: Optional[int] = None):
+                 min_spans: Optional[int] = None,
+                 shuffle: bool = False):  # pylint: disable=redefined-outer-name
   """Returns artifacts with spans in [start_span, end_span] inclusive.
 
   This resolver function is based on the span-version semantics, which only
@@ -101,7 +105,7 @@ def static_range(artifacts,
   Args:
     artifacts: The artifacts to filter.
     start_span_number: The smallest span number to keep, inclusive. If < 0, set
-      to the smallest span in the artifacts.
+      to the the smallest span in the artifacts.
     end_span_number: The largest span number to keep, inclusive. If < 0, set to
       the largest span in the artifacts.
     keep_all_versions: If true, all artifacts with spans in the range are kept.
@@ -112,6 +116,7 @@ def static_range(artifacts,
       min_spans is None, and if both end_span_number and start_span_number are
       positive, it is set to end_span_number - start_span_number + 1. Else if
       min_spans is None, it is set to -1.
+    shuffle: If true, then the artifacts will be randomly shuffled.
 
   Returns:
     Artifacts with spans in [start_span, end_span] inclusive.
@@ -134,9 +139,15 @@ def static_range(artifacts,
     else:
       min_spans = -1
 
+  if shuffle:
+    resolved_artifacts = ops.Shuffle(resolved_artifacts)
+
   return ops.SkipIfLessThanNSpans(resolved_artifacts, n=min_spans)
 
 
+# TODO(b/261792805): Consider removing shuffle argument once the migration tool
+# and AST library can handle nested resolver function invocations, e.g.
+# shuffle(rolling_range(...)).
 @resolver_function.resolver_function
 def rolling_range(artifacts,
                   *,
@@ -145,7 +156,8 @@ def rolling_range(artifacts,
                   skip_num_recent_spans: int = 0,
                   keep_all_versions: bool = False,
                   exclude_span_numbers: Sequence[int] = (),
-                  min_spans: Optional[int] = None):
+                  min_spans: Optional[int] = None,
+                  shuffle: bool = False):  # pylint: disable=redefined-outer-name
   """Returns artifacts with spans in a rolling range.
 
   A rolling range covers the latest (largest) spans. It's calculated in the
@@ -195,7 +207,7 @@ def rolling_range(artifacts,
 
     span 8 is removed because skip_num_recent_spans=1, leaving spans [3, 7].
 
-    Although num_spans=5, only two unique span numbers are available, 3 and 7,
+    Although num_spans=5, only two unique span numbers are availble, 3 and 7,
     so both spans [3, 7] are kept.
 
     Because keep_all_versions=True, both artifacts with span=3 are kept.
@@ -223,6 +235,7 @@ def rolling_range(artifacts,
     exclude_span_numbers: The span numbers to exclude.
     min_spans: Minimum number of desired example spans in the range. If
       min_spans is None, it is set to num_spans.
+    shuffle: If true, then the artifacts will be randomly shuffled.
 
   Returns:
     Artifacts with spans in the rolling range.
@@ -239,6 +252,9 @@ def rolling_range(artifacts,
 
   if min_spans is None:
     min_spans = num_spans
+
+  if shuffle:
+    resolved_artifacts = ops.Shuffle(resolved_artifacts)
 
   return ops.SkipIfLessThanNSpans(resolved_artifacts, n=min_spans)
 
@@ -323,7 +339,7 @@ def latest_pipeline_run_outputs(pipeline, output_keys: Sequence[str] = ()):
     pipeline: The pipeline producing the artifacts
     output_keys: (Optional) A list of output keys. If provided, only the
       artifacts of the key in this list will return by this function, otherwise,
-      all available output keys of the producer pipeline will be used.
+      all avaliable output keys of the producer pipeline will be used.
 
   Returns:
     The artifacts in the latest COMPLETE pipeline run.
@@ -345,7 +361,7 @@ def _infer_latest_pipeline_run_type(pipeline, output_keys: Sequence[str] = ()):
     pipeline: The pipeline producing the artifacts.
     output_keys: (Optional) A list of output keys. If provided, only the
       artifacts of the key in this list will return by this function, otherwise,
-      all available output keys of the producer pipeline will be used.
+      all avaliable output keys of the producer pipeline will be used.
 
   Returns:
     A Dict: key is output key, value is output type.

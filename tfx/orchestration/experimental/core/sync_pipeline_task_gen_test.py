@@ -873,32 +873,32 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
     self._stats_gen.execution_options.max_execution_retries = 2
-    [exec_node_task] = self._generate(False, True, fail_fast=True)
-    self.assertEqual(self._stats_gen.node_info.id,
-                     exec_node_task.node_uid.node_id)
-
-    # Simulate fail and rerun StatsGen twice.
-    for _ in range(self._stats_gen.execution_options.max_execution_retries):
+    def _fail_node_execution(node):
+      [task] = self._generate(False, True, fail_fast=True)
+      self.assertEqual(node.node_info.id, task.node_uid.node_id)
       # Simulate StatsGen failure.
       with self._mlmd_connection as m:
         with mlmd_state.mlmd_execution_atomic_op(
-            m, exec_node_task.execution_id) as ev_exec:
+            m, task.execution_id) as ev_exec:
+          # Fail stats-gen execution.
           ev_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+          data_types_utils.set_metadata_value(
+              ev_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+              'error')
 
-      # It should generate a ExecNodeTask due to retry.
+    _fail_node_execution(self._stats_gen)
+    for _ in range(
+        self._stats_gen.execution_options.max_execution_retries):
+      # It should generate a ExecNodeTask(state=STARTING) due to retry.
       [update_node_task, exec_node_task] = self._generate(
           False, False, fail_fast=True)
       self.assertIsInstance(exec_node_task, task_lib.ExecNodeTask)
       self.assertIsInstance(update_node_task, task_lib.UpdateNodeStateTask)
       self.assertEqual(update_node_task.state, pstate.NodeState.RUNNING)
+      # Fail it again.
+      _fail_node_execution(self._stats_gen)
 
-    # Fail StatsGen the third time.
-    with self._mlmd_connection as m:
-      with mlmd_state.mlmd_execution_atomic_op(
-          m, exec_node_task.execution_id) as ev_exec:
-        ev_exec.last_known_state = metadata_store_pb2.Execution.FAILED
-
-    # Fail the pipeline since StatsGen can not retry anymore.
+    # Fail a pipeline if a failed node can't be retried anymore.
     [finalize_task] = self._generate(False, True, fail_fast=True)
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
     self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
