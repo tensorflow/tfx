@@ -93,6 +93,8 @@ class _TFMAPredictionDoFn(tfma.utils.DoFnWithModels):
       for i, v in enumerate(result[tfma.FEATURES_KEY][key]):
         if i >= len(features):
           features.append([])
+        if len(v) == 1:
+          v = v.item()
         features[i].append(v)
     result[tfma.LABELS_KEY] = result[tfma.FEATURES_KEY][self._label_key]
 
