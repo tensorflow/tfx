@@ -302,6 +302,8 @@ class MlmdMixins:
       self,
       execution_type: str,
       properties: Optional[Dict[str, metadata_store_pb2.PropertyType]] = None,
+      custom_properties: Optional[Dict[str,
+                                       metadata_store_pb2.PropertyType]] = None,
       inputs: Optional[_ArtifactMultiMap] = None,
       outputs: Optional[_ArtifactMultiMap] = None,
       contexts: Sequence[metadata_store_pb2.Context] = (),
@@ -317,6 +319,8 @@ class MlmdMixins:
         name=name,
         last_known_state=metadata_store_pb2.Execution.COMPLETE,
         properties=data_types_utils.build_metadata_value_dict(properties),
+        custom_properties=data_types_utils.build_metadata_value_dict(
+            custom_properties),
     )
     artifact_and_events = []
     for input_key, artifacts in inputs.items():
