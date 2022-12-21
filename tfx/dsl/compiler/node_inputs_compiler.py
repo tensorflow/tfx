@@ -346,6 +346,47 @@ def _compile_inputs_for_dynamic_properties(
         result=result)
 
 
+def _validate_min_count(
+    input_key: str,
+    min_count: int,
+    channel: channel_types.OutputChannel,
+    consumer_node: base_node.BaseNode,
+) -> None:
+  """Validates artifact min count against node execution options.
+
+  Note that the validation is not comprehensive. It only applies to components
+  in the same pipeline. Other min_count violations will be handled as node
+  failure at run time.
+
+  Args:
+    input_key: Artifact input key to be displayed in error messages.
+    min_count: Minimum artifact count to be set in InputSpec.
+    channel: OutputChannel used as an input to be compiled.
+    consumer_node: Node using the artifact as an input.
+
+  Raises:
+    ValueError: if min_count is invalid.
+
+  Returns:
+    None if the validation passes.
+  """
+  producer_options = channel.producer_component.node_execution_options
+  if producer_options and producer_options.success_optional and min_count > 0:
+    raise ValueError(
+        f'Node({channel.producer_component}) is set to success_optional '
+        f'= True but its consumer Node({consumer_node.id}).inputs[{input_key}] '
+        'has min_count > 0.'
+    )
+
+  consumer_options = consumer_node.node_execution_options
+  if consumer_options and consumer_options.trigger_strategy == (
+      pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED
+  ) and min_count > 0:
+    raise ValueError(f'Node({consumer_node.id}) has '
+                     'trigger_strategy = ALL_UPSTREAM_NODES_COMPLETED '
+                     f'but its inputs[{input_key}] has min_count > 0.')
+
+
 def compile_node_inputs(
     context: compiler_context.PipelineContext,
     tfx_node: base_node.BaseNode,
@@ -360,6 +401,12 @@ def compile_node_inputs(
       min_count = 0
     else:
       min_count = 1
+      if isinstance(channel, channel_types.OutputChannel):
+        _validate_min_count(
+            input_key=input_key,
+            min_count=min_count,
+            channel=channel,
+            consumer_node=tfx_node)
     _compile_input_spec(
         pipeline_ctx=context,
         tfx_node=tfx_node,

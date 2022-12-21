@@ -24,6 +24,7 @@ from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.control_flow import for_each
 from tfx.dsl.experimental.conditionals import conditional
+from tfx.dsl.experimental.node_execution_options import utils as execution_options_utils
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import pipeline
@@ -384,9 +385,10 @@ class NodeInputsCompilerTest(tf.test.TestCase):
         super().__init__(DummyComponentSpec(**inputs))
 
     producer = DummyNode('Producer')
-    c1 = DummyComponent(
-        required=producer.output('x'),
-    ).with_id('Consumer1')
+    optional_producer = DummyNode('OptionalProducer')
+    optional_producer.node_execution_options = (
+        execution_options_utils.NodeExecutionOptions(success_optional=True))
+    c1 = DummyComponent(required=producer.output('x')).with_id('Consumer1')
     c2 = DummyComponent(
         required=producer.output('x'),
         optional_but_not_allow_empty=producer.output('x'),
@@ -395,9 +397,21 @@ class NodeInputsCompilerTest(tf.test.TestCase):
         required=producer.output('x'),
         optional_and_allow_empty=producer.output('x'),
     ).with_id('Consumer3')
+    c4 = DummyComponent(
+        required=optional_producer.output('x')).with_id('Consumer4')
+    c5 = DummyComponent(
+        required=producer.output('x')).with_id('Consumer5')
+    c5.node_execution_options = execution_options_utils.NodeExecutionOptions(
+        trigger_strategy=pipeline_pb2.NodeExecutionOptions
+        .ALL_UPSTREAM_NODES_COMPLETED)
 
-    p = self._prepare_pipeline([producer, c1, c2, c3])
+    p = self._prepare_pipeline(
+        [producer, optional_producer, c1, c2, c3, c4, c5])
     ctx = compiler_context.PipelineContext(p)
+    # Add dummy already compiled output channels to compiler context.
+    ctx.channels[producer.output('x')] = pipeline_pb2.InputSpec.Channel()
+    ctx.channels[optional_producer.output(
+        'x')] = pipeline_pb2.InputSpec.Channel()
 
     r1 = pipeline_pb2.NodeInputs()
     node_inputs_compiler.compile_node_inputs(ctx, c1, r1)
@@ -409,6 +423,13 @@ class NodeInputsCompilerTest(tf.test.TestCase):
     self.assertEqual(r1.inputs['required'].min_count, 1)
     self.assertEqual(r2.inputs['optional_but_not_allow_empty'].min_count, 1)
     self.assertEqual(r2.inputs['optional_and_allow_empty'].min_count, 0)
+    # Validation should catch invalid min counts against node_execution_options.
+    with self.assertRaises(ValueError):
+      r4 = pipeline_pb2.NodeInputs()
+      node_inputs_compiler.compile_node_inputs(ctx, c4, r4)
+    with self.assertRaises(ValueError):
+      r5 = pipeline_pb2.NodeInputs()
+      node_inputs_compiler.compile_node_inputs(ctx, c5, r5)
 
 
 if __name__ == '__main__':

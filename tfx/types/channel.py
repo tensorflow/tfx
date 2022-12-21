@@ -421,9 +421,15 @@ class OutputChannel(Channel):
   def get_data_dependent_node_ids(self) -> Set[str]:
     return {self.producer_component_id}
 
+  @property
   @doc_controls.do_not_generate_docs
-  def set_producer_component(self, value: Any):
-    self._producer_component = value
+  def producer_component(self):
+    return self._producer_component
+
+  @producer_component.setter
+  @doc_controls.do_not_generate_docs
+  def producer_component(self, producer_component):
+    self._producer_component = producer_component
 
   @property
   @doc_controls.do_not_generate_docs

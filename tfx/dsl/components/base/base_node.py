@@ -68,7 +68,6 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._id = None
-    # Node execution options for experimental orchestrator.
     self._node_execution_options = None
     dsl_context_registry.get().put_node(self)
 
@@ -151,6 +150,16 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
   @doc_controls.do_not_doc_in_subclasses
   def upstream_nodes(self):
     return self._upstream_nodes
+
+  @property
+  @doc_controls.do_not_doc_in_subclasses
+  def node_execution_options(self):
+    return self._node_execution_options
+
+  @node_execution_options.setter
+  @doc_controls.do_not_doc_in_subclasses
+  def node_execution_options(self, node_execution_options):
+    self._node_execution_options = node_execution_options
 
   @doc_controls.do_not_doc_in_subclasses
   def add_upstream_node(self, upstream_node):
