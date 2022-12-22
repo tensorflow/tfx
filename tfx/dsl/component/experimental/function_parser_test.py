@@ -149,14 +149,14 @@ class FunctionParserTest(tf.test.TestCase):
     def func_a(examples: InputArtifact[standard_artifacts.Examples],
                model: OutputArtifact[standard_artifacts.Model], a: int,
                b: float, c: Parameter[int], d: Parameter[str],
-               e: Parameter[bytes], f: BeamComponentParameter[beam.Pipeline]):
+               e: Parameter[bool], f: BeamComponentParameter[beam.Pipeline]):
       del examples, model, a, b, c, d, e, f
 
     # `None` output typehint.
     def func_b(examples: InputArtifact[standard_artifacts.Examples],
                model: OutputArtifact[standard_artifacts.Model], a: int,
                b: float, c: Parameter[int], d: Parameter[str],
-               e: Parameter[bytes],
+               e: Parameter[bool],
                f: BeamComponentParameter[beam.Pipeline]) -> None:
       del examples, model, a, b, c, d, e, f
 
@@ -177,7 +177,7 @@ class FunctionParserTest(tf.test.TestCase):
       self.assertDictEqual(parameters, {
           'c': int,
           'd': str,
-          'e': bytes,
+          'e': bool,
           'f': beam.Pipeline,
       })
       self.assertDictEqual(

@@ -75,7 +75,7 @@ class _PrimitiveTypeGenericMeta(type):
   """Metaclass for _PrimitiveTypeGeneric, to enable primitive type indexing."""
 
   def __getitem__(cls: Type['_PrimitiveTypeGeneric'],
-                  params: Type[Union[int, float, str, bytes, bool]]):
+                  params: Type[Union[int, float, str, bool]]):
     """Metaclass method allowing indexing class (`_PrimitiveTypeGeneric[T]`)."""
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 
@@ -85,13 +85,13 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
 
   def __init__(  # pylint: disable=invalid-name
       self,
-      artifact_type: Type[Union[int, float, str, bytes, bool]],
+      artifact_type: Type[Union[int, float, str, bool]],
       _init_via_getitem=False):
     if not _init_via_getitem:
       class_name = self.__class__.__name__
       raise ValueError(
           ('%s should be instantiated via the syntax `%s[T]`, where T is '
-           '`int`, `float`, `str`, `bytes` or `bool`.') %
+           '`int`, `float`, `str`, or `bool`.') %
           (class_name, class_name))
     self._type = artifact_type
 
@@ -99,14 +99,14 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
   def _generic_getitem(cls, params):
     """Return the result of `_PrimitiveTypeGeneric[T]` for a given type T."""
     # Check that the given parameter is a primitive type.
-    if (inspect.isclass(params) and params in (int, float, str, bytes, bool) or
+    if (inspect.isclass(params) and params in (int, float, str, bool) or
         json_compat.is_json_compatible(params)):
       return cls(params, _init_via_getitem=True)
     else:
       class_name = cls.__name__
       raise ValueError(
           ('Generic type `%s[T]` expects the single parameter T to be '
-           '`int`, `float`, `str`, `bytes`, `bool` or JSON-compatible types '
+           '`int`, `float`, `str`, `bool` or JSON-compatible types '
            '(Dict[str, T], List[T]) (got %r instead).') %
           (class_name, params))
 

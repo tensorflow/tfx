@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.annotations."""
 
-from typing import Dict, List
+from typing import Dict
 
 import apache_beam as beam
 import tensorflow as tf
@@ -51,29 +51,31 @@ class AnnotationsTest(tf.test.TestCase):
   def testPrimitiveTypeGenericAnnotation(self):
     # Error: type hint whose parameter is not a primitive type
     with self.assertRaisesRegex(
-        ValueError, 'T to be `int`, `float`, `str`, `bytes`, `bool`'):
+        ValueError, 'T to be `int`, `float`, `str`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric[artifact.Artifact]
     with self.assertRaisesRegex(
-        ValueError, 'T to be `int`, `float`, `str`, `bytes`, `bool`'):
+        ValueError, 'T to be `int`, `float`, `str`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric[object]
     with self.assertRaisesRegex(
-        ValueError, 'T to be `int`, `float`, `str`, `bytes`, `bool`'):
+        ValueError, 'T to be `int`, `float`, `str`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric[123]
     with self.assertRaisesRegex(
-        ValueError, 'T to be `int`, `float`, `str`, `bytes`, `bool`'):
+        ValueError, 'T to be `int`, `float`, `str`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric['string']
     with self.assertRaisesRegex(
-        ValueError, 'T to be `int`, `float`, `str`, `bytes`, `bool`'):
+        ValueError, 'T to be `int`, `float`, `str`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric[Dict[int, int]]
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `int`, `float`, `str`, `bool`'):
+      _ = annotations._PrimitiveTypeGeneric[bytes]
 
     # OK.
     _ = annotations._PrimitiveTypeGeneric[int]
     _ = annotations._PrimitiveTypeGeneric[float]
     _ = annotations._PrimitiveTypeGeneric[str]
-    _ = annotations._PrimitiveTypeGeneric[bytes]
     _ = annotations._PrimitiveTypeGeneric[bool]
     _ = annotations._PrimitiveTypeGeneric[Dict[str, float]]
-    _ = annotations._PrimitiveTypeGeneric[List[str]]
+    _ = annotations._PrimitiveTypeGeneric[bool]
 
   def testPipelineTypeGenericAnnotation(self):
     # Error: type hint whose parameter is not a primitive type
@@ -97,7 +99,6 @@ class AnnotationsTest(tf.test.TestCase):
     _ = annotations.Parameter[int]
     _ = annotations.Parameter[float]
     _ = annotations.Parameter[str]
-    _ = annotations.Parameter[bytes]
     _ = annotations.Parameter[bool]
 
 
