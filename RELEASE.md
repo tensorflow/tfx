@@ -12,6 +12,8 @@
 
 ## Bug Fixes and Other Changes
 
+*  Propagates unexpected import failures in the public v1 module.
+
 ## Dependency Updates
 
 ## Documentation Updates

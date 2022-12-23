@@ -20,8 +20,10 @@ try:
   from tfx.v1 import components
   from tfx.v1 import extensions
   from tfx.v1 import orchestration
-except (ImportError, ModuleNotFoundError):
-  pass
+except ImportError as e:
+  # 'tfx.v1' is needed for the error during the circular dependency resolution.
+  if e.name not in ['tfx.v1', 'components', 'extensions', 'orchestration']:
+    raise
 
 from tfx.v1 import dsl
 from tfx.v1 import proto
