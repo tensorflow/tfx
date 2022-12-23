@@ -204,7 +204,7 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
 
 In above serving function, tf.Transform transformations need to be applied to
 the raw data for inference, using the
-[`tft.TransformFeaturesLayer`](https://github.com/tensorflow/transform/blob/master/docs/api_docs/python/tft/TransformFeaturesLayer.md)
+[`tft.TransformFeaturesLayer`](https://www.tensorflow.org/tfx/transform/api_docs/python/tft/TransformFeaturesLayer)
 layer. The previous `_serving_input_receiver_fn` which was required for
 Estimators will no longer be needed with Keras.
 
