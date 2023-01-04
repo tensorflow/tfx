@@ -196,6 +196,11 @@ class _Generator:
                                                       self._pipeline, node,
                                                       oldest_active_execution))
       return result
+    else:
+      # Always change the node state to STARTED if there is no active execution.
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid, state=pstate.NodeState.STARTED))
 
     try:
       resolved_info = task_gen_utils.generate_resolved_info(
