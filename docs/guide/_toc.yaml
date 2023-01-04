@@ -60,10 +60,12 @@ toc:
 
 - heading: "Orchestrators"
   style: divider
+- title: "Local orchestrator"
+  path: /tfx/guide/local_orchestrator
+- title: "Vertex AI Pipelines"
+  path: /tfx/guide/vertex
 - title: "Apache Airflow"
   path: /tfx/guide/airflow
-- title: "Apache Beam"
-  path: /tfx/guide/beam_orchestrator
 - title: "Kubeflow Pipelines"
   path: /tfx/guide/kubeflow
 
