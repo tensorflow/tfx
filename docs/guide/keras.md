@@ -96,7 +96,7 @@ for FeatureColumns.
 Here are several examples with native Keras:
 
 *   [Penguin](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_local.py)
-    ([module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils.py)):
+    ([module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils_keras.py)):
     'Hello world' end-to-end example.
 *   [MNIST](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_pipeline_native_keras.py)
     ([module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_utils_native_keras.py)):
