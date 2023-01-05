@@ -26,6 +26,7 @@ from typing import Any, Dict, Optional, Tuple, Type, Union
 
 from tfx.dsl.component.experimental import annotations
 from tfx.dsl.component.experimental import json_compat
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 
@@ -58,6 +59,9 @@ _PRIMITIVE_TO_ARTIFACT = {
 # to extract the value of `T` from its optional typehint, since the internal
 # fields of the typehint vary depending on the Python version.
 _OPTIONAL_PRIMITIVE_MAP = dict((Optional[t], t) for t in _PRIMITIVE_TO_ARTIFACT)
+
+
+_OPTIONAL_PLACEHOLDER_MAP = {Optional[ph.Placeholder]: ph.Placeholder}
 
 
 def _validate_signature(
@@ -109,7 +113,8 @@ def _parse_signature(
 ) -> Tuple[
     Dict[str, Type[artifact.Artifact]],
     Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[Union[int, float, str, bytes, _BeamPipeline]]],
+    Dict[str, Type[
+        Union[int, float, str, bytes, _BeamPipeline, ph.Placeholder]]],
     Dict[str, Any],
     Dict[str, ArgFormats],
     Dict[str, bool],
@@ -129,8 +134,8 @@ def _parse_signature(
       subclass of `tfx.types.Artifact`).
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
-    parameters: A dictionary mapping each parameter name to its primitive type
-      (one of `int`, `float`, `Text`, `bytes` and `beam.Pipeline`).
+    parameters: A dictionary mapping each parameter name to its type (one of
+      `int`, `float`, `Text`, `bytes`, `beam.Pipeline` and `Placeholder`).
     arg_formats: Dictionary representing the input arguments of the given
       component executor function. Each entry's key is the argument's string
       name; each entry's value is the format of the argument to be passed into
@@ -218,6 +223,17 @@ def _parse_signature(
           'whether it is used as an input or output artifact by using the '
           '`InputArtifact[ArtifactType]` or `OutputArtifact[ArtifactType]` '
           'typehint annotations.') % (arg, func))
+    elif arg_typehint in _OPTIONAL_PLACEHOLDER_MAP:
+      if arg in arg_defaults:
+        if not (arg_defaults[arg] is None or isinstance(
+            arg_defaults[arg], _OPTIONAL_PLACEHOLDER_MAP[arg_typehint])):
+          raise ValueError((
+              'The default value for optional dynamic parameter %r on function %r must '
+              'be an instance of its declared type %r or `None` (got %r '
+              'instead)') % (arg, func, _OPTIONAL_PLACEHOLDER_MAP[arg_typehint],
+                             arg_defaults[arg]))
+      arg_formats[arg] = ArgFormats.PARAMETER
+      parameters[arg] = _OPTIONAL_PLACEHOLDER_MAP[arg_typehint]
     else:
       raise ValueError(
           'Unknown type hint annotation for argument %r on function %r' %
@@ -253,7 +269,7 @@ def parse_typehint_component_function(
 ) -> Tuple[
     Dict[str, Type[artifact.Artifact]],
     Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[Union[int, float, str, bytes]]],
+    Dict[str, Type[Union[int, float, str, bytes, ph.Placeholder]]],
     Dict[str, Any],
     Dict[str, ArgFormats],
     Dict[str, bool],
@@ -275,8 +291,8 @@ def parse_typehint_component_function(
       subclass of `tfx.types.Artifact`).
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
-    parameters: A dictionary mapping each parameter name to its primitive type
-      (one of `int`, `float`, `Text`, `bytes` and `beam.Pipeline`).
+    parameters: A dictionary mapping each parameter name to its type one of
+      `int`, `float`, `Text`, `bytes`, `beam.Pipeline` and `Placeholder`).
     arg_formats: Dictionary representing the input arguments of the given
       component executor function. Each entry's key is the argument's string
       name; each entry's value is the format of the argument to be passed into

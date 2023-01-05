@@ -24,7 +24,14 @@ from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.function_parser import ArgFormats
 from tfx.dsl.component.experimental.function_parser import parse_typehint_component_function
+from tfx.dsl.placeholder import placeholder as ph
+from tfx.types import artifact
+from tfx.types import channel
 from tfx.types import standard_artifacts
+
+
+class _MyArtifactType(artifact.Artifact):
+  TYPE_NAME = '_MyType'
 
 
 class FunctionParserTest(tf.test.TestCase):
@@ -327,6 +334,41 @@ class FunctionParserTest(tf.test.TestCase):
     self.assertDictEqual(json_typehints, {})
     self.assertDictEqual(return_json_typehints,
                          {'optional_json': Optional[Dict[str, List[bool]]]})
+
+  def testPlaceHolderArguments(self):
+    # Placeholder argument with or without defaults.
+    chnl = channel.Channel(type=_MyArtifactType)
+    future = chnl.future()
+
+    def func_a(a: Optional[ph.Placeholder],
+               b: Optional[ph.Placeholder] = None,
+               c: Optional[ph.Placeholder] = future):
+      del a, b, c
+
+    (inputs, outputs, parameters, arg_formats, arg_defaults, returned_values,
+     json_typehints, return_json_typehints) = (
+         parse_typehint_component_function(func_a))
+    self.assertDictEqual(inputs, {})
+    self.assertDictEqual(outputs, {})
+    self.assertDictEqual(parameters, {
+        'a': ph.Placeholder,
+        'b': ph.Placeholder,
+        'c': ph.Placeholder,
+    })
+    self.assertDictEqual(
+        arg_formats, {
+            'a': ArgFormats.PARAMETER,
+            'b': ArgFormats.PARAMETER,
+            'c': ArgFormats.PARAMETER,
+        })
+    self.assertDictEqual(
+        arg_defaults, {
+            'b': None,
+            'c': future,
+        })
+    self.assertEqual(returned_values, {})
+    self.assertDictEqual(json_typehints, {})
+    self.assertDictEqual(return_json_typehints, {})
 
   def testFunctionParseErrors(self):
     # Non-function arguments.
