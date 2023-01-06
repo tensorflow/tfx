@@ -347,18 +347,16 @@ class TaskManagerE2ETest(test_utils.TfxTest):
       tasks = asptg.AsyncPipelineTaskGenerator(
           mlmd_connection_manager, self._task_queue.contains_task_id,
           service_jobs.DummyServiceJobManager()).generate(pipeline_state)
-    self.assertLen(tasks, 3)
+    self.assertLen(tasks, 2)
     self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
-    self.assertEqual('my_example_gen', tasks[0].node_uid.node_id)
-    self.assertIsInstance(tasks[1], task_lib.UpdateNodeStateTask)
-    self.assertEqual(pstate.NodeState.RUNNING, tasks[1].state)
+    self.assertEqual('my_transform', tasks[0].node_uid.node_id)
+    self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
+    self.assertIsInstance(tasks[1], task_lib.ExecNodeTask)
     self.assertEqual('my_transform', tasks[1].node_uid.node_id)
+    self.assertTrue(os.path.exists(tasks[1].stateful_working_dir))
+    self.assertTrue(os.path.exists(tasks[1].tmp_dir))
 
-    self.assertIsInstance(tasks[2], task_lib.ExecNodeTask)
-    self.assertEqual('my_transform', tasks[2].node_uid.node_id)
-    self.assertTrue(os.path.exists(tasks[2].stateful_working_dir))
-    self.assertTrue(os.path.exists(tasks[2].tmp_dir))
-    self._task = tasks[2]
+    self._task = tasks[1]
     self._output_artifact_uri = self._task.output_artifacts['transform_graph'][
         0].uri
     self.assertTrue(os.path.exists(self._output_artifact_uri))

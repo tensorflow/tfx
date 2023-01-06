@@ -197,6 +197,14 @@ class _Generator:
                                                       oldest_active_execution))
       return result
 
+    with self._pipeline_state:
+      node_state = self._pipeline_state.get_node_state(node_uid)
+    if node_state.state != pstate.NodeState.STARTED:
+      # If there is no active execution, change the node state to STARTED.
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid, state=pstate.NodeState.STARTED))
+
     try:
       resolved_info = task_gen_utils.generate_resolved_info(
           self._mlmd_connection_manager, node)
@@ -256,9 +264,6 @@ class _Generator:
         unprocessed_inputs.append(input_and_param)
 
     if not unprocessed_inputs:
-      result.append(
-          task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=pstate.NodeState.STARTED))
       return result
 
     # Don't need to register all executions in one transaction. If the
