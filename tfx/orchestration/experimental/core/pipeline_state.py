@@ -215,19 +215,30 @@ class NodeState(json_utils.Jsonable):
     """Convert from dictionary data to an object."""
     return cls(**dict_data)
 
-  def latest_predicate_time_s(
-      self, predicate: Callable[[str], bool]) -> Optional[int]:
-    """Returns the latest time the node state satisfies the given predicate.
+  def latest_predicate_time_s(self, predicate: Callable[[StateRecord], bool],
+                              include_current_state: bool) -> Optional[int]:
+    """Returns the latest time the StateRecord satisfies the given predicate.
 
     Args:
       predicate: Predicate that takes the state string.
+      include_current_state: Whether to include the current node state when
+        checking the node state history (the node state history doesn't include
+        the current node state).
 
     Returns:
-      The latest time (in the state history) the node state satisfies the given
+      The latest time (in the state history) the StateRecord satisfies the given
       predicate, or None if the predicate is never satisfied.
     """
+    if include_current_state:
+      current_record = StateRecord(
+          state=self.state,
+          status_code=self.status_code,
+          update_time=self.last_updated_time)
+      if predicate(current_record):
+        return int(current_record.update_time)
+
     for s in reversed(self.state_history):
-      if predicate(s.state):
+      if predicate(s):
         return int(s.update_time)
     return None
 
@@ -238,7 +249,8 @@ class NodeState(json_utils.Jsonable):
       The latest time (in the state history) the node entered a RUNNING
       state, or None if the node never entered a RUNNING state.
     """
-    return self.latest_predicate_time_s(is_node_state_running)
+    return self.latest_predicate_time_s(
+        lambda s: is_node_state_running(s.state), include_current_state=True)
 
 
 def is_node_state_success(state: str) -> bool:
