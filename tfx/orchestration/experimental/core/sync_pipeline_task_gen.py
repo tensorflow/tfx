@@ -237,11 +237,7 @@ class _Generator:
         # and output directories.
         error_msg = f'service job failed; node uid: {node_uid}'
         result.append(
-            task_lib.UpdateNodeStateTask(
-                node_uid=node_uid,
-                state=pstate.NodeState.FAILED,
-                status=status_lib.Status(
-                    code=status_lib.Code.ABORTED, message=error_msg)))
+            self._update_node_state_to_failed_task(node_uid, error_msg))
       elif service_status == service_jobs.ServiceStatus.SUCCESS:
         logging.info('Service node successful: %s', node_uid)
         result.append(
@@ -259,12 +255,7 @@ class _Generator:
     service_status = self._ensure_node_services_if_mixed(node.node_info.id)
     if service_status == service_jobs.ServiceStatus.FAILED:
       error_msg = f'associated service job failed; node uid: {node_uid}'
-      result.append(
-          task_lib.UpdateNodeStateTask(
-              node_uid=node_uid,
-              state=pstate.NodeState.FAILED,
-              status=status_lib.Status(
-                  code=status_lib.Code.ABORTED, message=error_msg)))
+      result.append(self._update_node_state_to_failed_task(node_uid, error_msg))
       return result
 
     # If a task for the node is already tracked by the task queue, it need
@@ -277,7 +268,7 @@ class _Generator:
     latest_executions_set = task_gen_utils.get_latest_executions_set(
         node_executions)
 
-    # If all the executions in the set for the node are successful, we're done.
+    # If all the executions are successful, the node is COMPLETE.
     if latest_executions_set and all(
         execution_lib.is_execution_successful(e)
         for e in latest_executions_set):
@@ -287,97 +278,96 @@ class _Generator:
               node_uid=node_uid, state=pstate.NodeState.COMPLETE))
       return result
 
-    # If an execution failed, try to retry it.
-    latest_failed_executions = [
-        e for e in latest_executions_set
-        if execution_lib.is_execution_failed(e)
+    # If the node has a failed execution, try to retry the failed execution.
+    failed_executions = [
+        e for e in latest_executions_set if execution_lib.is_execution_failed(e)
     ]
-    # TODO(b/223627713): We currently carry over execution failures after users
-    # stop and restart the node. Should we consider to reset the count?
-    if latest_failed_executions:
-      # There must be at most one failed execution in the latest_execution_set.
-      # Fail the node if there are more as it's an unexpected behavior.
-      if len(latest_failed_executions) > 1:
+    if failed_executions:
+      if len(failed_executions) > 1:
         error_msg = (f'node {node_uid} failed; error: More than one failed '
                      'executions found in the latest execution set.')
         result.append(
-            task_lib.UpdateNodeStateTask(
-                node_uid=node_uid,
-                state=pstate.NodeState.FAILED,
-                status=status_lib.Status(
-                    code=status_lib.Code.ABORTED, message=error_msg)))
+            self._update_node_state_to_failed_task(
+                node_uid=node_uid, error_msg=error_msg))
         return result
-      latest_failed_execution = latest_failed_executions[0]
-      if (node.execution_options.max_execution_retries >=
-          task_gen_utils.get_num_of_failures_from_failed_execution(
-              node_executions, latest_failed_execution)):
-        # Step 1: Replicate a new execution from latest_failed_execution.
+      elif (node.execution_options.max_execution_retries >=
+            task_gen_utils.get_num_of_failures_from_failed_execution(
+                node_executions, failed_executions[0])):
         retry_execution = task_gen_utils.register_retry_execution(
-            self._mlmd_handle, node, latest_failed_execution)
-        # Step 2: Update node state to RUNNING.
-        result.append(
-            task_lib.UpdateNodeStateTask(
-                node_uid=node_uid, state=pstate.NodeState.RUNNING))
-        # Step 3: Create an ExecNodeTask.
-        result.append(
-            task_gen_utils.generate_task_from_execution(self._mlmd_handle,
-                                                        self._pipeline, node,
-                                                        retry_execution))
+            self._mlmd_handle, node, failed_executions[0])
+        result.extend(
+            self._generate_tasks_from_existing_execution(retry_execution, node))
         return result
-    # If one of the executions in the set for the node cancelled, the
-    # pipeline should be aborted if the node is not in state STARTING.
-    # For nodes that are in state STARTING, new executions are created.
-    # TODO(b/223627713): a node in a ForEach is not restartable, it is better
-    # to prevent restarting for now.
-    failed_or_canceled_executions = [
-        e for e in latest_executions_set
-        if execution_lib.is_execution_failed(e) or
-        execution_lib.is_execution_canceled(e)
-    ]
-    if failed_or_canceled_executions and (
-        len(latest_executions_set) > 1 or
-        node_state.state != pstate.NodeState.STARTING):
-      error_msg = f'node {node_uid} failed; '
-      for e in failed_or_canceled_executions:
-        error_msg_value = e.custom_properties.get(
+      elif node_state.state != pstate.NodeState.STARTING:
+        error_msg = failed_executions[0].custom_properties.get(
             constants.EXECUTION_ERROR_MSG_KEY)
-        error_msg_value = data_types_utils.get_metadata_value(
-            error_msg_value) if error_msg_value else ''
-        error_msg_value = textwrap.shorten(error_msg_value, width=512)
-        error_msg += f'error: {error_msg_value}; '
+        error_msg = data_types_utils.get_metadata_value(
+            error_msg) if error_msg else ''
+        error_msg = f'node {node_uid} failed; error: {error_msg}.'
+        result.append(
+            self._update_node_state_to_failed_task(
+                node_uid=node_uid, error_msg=error_msg))
+        return result
+
+    # TODO(b/223627713): a node in a ForEach is not restartable, we fail the
+    # node for now. Will fix this in a separate CL.
+    canceled_executions = [
+        e for e in latest_executions_set
+        if execution_lib.is_execution_canceled(e)
+    ]
+    if canceled_executions and (len(latest_executions_set) > 1 or
+                                node_state.state != pstate.NodeState.STARTING):
       result.append(
-          task_lib.UpdateNodeStateTask(
+          self._update_node_state_to_failed_task(
               node_uid=node_uid,
-              state=pstate.NodeState.FAILED,
-              status=status_lib.Status(
-                  code=status_lib.Code.ABORTED, message=error_msg)))
+              error_msg='Restart from canceled node wrapped in ForEach is not supported.'
+          ))
       return result
 
-    # Gets the oldest active execution. If the oldest active execution exists,
-    # generates a task from it.
+    # If the node has active executions, creates tasks from the oldest active
+    # execution.
     oldest_active_execution = next((e for e in latest_executions_set
                                     if execution_lib.is_execution_active(e)),
                                    None)
-
     if oldest_active_execution:
-      with mlmd_state.mlmd_execution_atomic_op(
-          mlmd_handle=self._mlmd_handle,
-          execution_id=oldest_active_execution.id) as execution:
-        execution.last_known_state = metadata_store_pb2.Execution.RUNNING
-      result.append(
-          task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=pstate.NodeState.RUNNING))
-      result.append(
-          task_gen_utils.generate_task_from_execution(self._mlmd_handle,
-                                                      self._pipeline, node,
-                                                      execution))
+      result.extend(
+          self._generate_tasks_from_existing_execution(oldest_active_execution,
+                                                       node))
       return result
 
     # Finally, we are ready to generate tasks for the node by resolving inputs.
-    result.extend(self._resolve_inputs_and_generate_tasks_for_node(node))
+    result.extend(self._generate_tasks_from_resolved_inputs(node))
     return result
 
-  def _resolve_inputs_and_generate_tasks_for_node(
+  def _update_node_state_to_failed_task(self, node_uid: task_lib.NodeUid,
+                                        error_msg: str) -> task_lib.Task:
+    """Generates fail tasks for a node."""
+    error_msg = textwrap.shorten(error_msg, width=512)
+    return task_lib.UpdateNodeStateTask(
+        node_uid=node_uid,
+        state=pstate.NodeState.FAILED,
+        status=status_lib.Status(
+            code=status_lib.Code.ABORTED, message=error_msg))
+
+  def _generate_tasks_from_existing_execution(
+      self, execution: metadata_store_pb2.Execution,
+      node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
+    """Generates tasks for a node from its existing execution."""
+    tasks = []
+    node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+    with mlmd_state.mlmd_execution_atomic_op(
+        mlmd_handle=self._mlmd_handle, execution_id=execution.id) as e:
+      e.last_known_state = metadata_store_pb2.Execution.RUNNING
+
+    tasks.append(
+        task_lib.UpdateNodeStateTask(
+            node_uid=node_uid, state=pstate.NodeState.RUNNING))
+    tasks.append(
+        task_gen_utils.generate_task_from_execution(self._mlmd_handle,
+                                                    self._pipeline, node, e))
+    return tasks
+
+  def _generate_tasks_from_resolved_inputs(
       self,
       node: node_proto_view.NodeProtoView,
   ) -> List[task_lib.Task]:
@@ -391,12 +381,7 @@ class _Generator:
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
                    f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')
-      result.append(
-          task_lib.UpdateNodeStateTask(
-              node_uid=node_uid,
-              state=pstate.NodeState.FAILED,
-              status=status_lib.Status(
-                  code=status_lib.Code.ABORTED, message=error_msg)))
+      result.append(self._update_node_state_to_failed_task(node_uid, error_msg))
       return result
 
     if not resolved_info.input_and_params:

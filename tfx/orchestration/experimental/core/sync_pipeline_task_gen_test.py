@@ -669,6 +669,51 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(pstate.NodeState.RUNNING, update_node_state_task.state)
     self.assertEqual(node_uid, stats_gen_task.node_uid)
 
+  def test_restart_failed_node(self):
+    """Tests restarting a failed node."""
+    test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
+                                    1)
+
+    [stats_gen_task] = self._generate_and_test(
+        False,
+        num_initial_executions=1,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        ignore_update_node_state_tasks=True,
+        fail_fast=False)
+    node_uid = task_lib.NodeUid.from_node(self._pipeline, self._stats_gen)
+    self.assertEqual(node_uid, stats_gen_task.node_uid)
+
+    # Fail stats-gen execution.
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, stats_gen_task.execution_id) as stats_gen_exec:
+        stats_gen_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+        data_types_utils.set_metadata_value(
+            stats_gen_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+            'foobar error')
+
+    # Restart stats-gen by changing state of the node to STARTING.
+    with self._mlmd_connection as m:
+      pipeline_state = test_utils.get_or_create_pipeline_state(
+          m, self._pipeline)
+      with pipeline_state:
+        with pipeline_state.node_state_update_context(node_uid) as node_state:
+          node_state.update(pstate.NodeState.STARTING)
+
+    # New execution should be created for failed node if node state is STARTING.
+    [update_node_state_task, stats_gen_task] = self._generate_and_test(
+        False,
+        num_initial_executions=2,
+        num_tasks_generated=2,
+        num_new_executions=1,
+        num_active_executions=1)
+    self.assertIsInstance(update_node_state_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(node_uid, update_node_state_task.node_uid)
+    self.assertEqual(pstate.NodeState.RUNNING, update_node_state_task.state)
+    self.assertEqual(node_uid, stats_gen_task.node_uid)
+
   @parameterized.parameters(False, True)
   def test_conditional_execution(self, evaluate):
     """Tests conditionals in the pipeline.
