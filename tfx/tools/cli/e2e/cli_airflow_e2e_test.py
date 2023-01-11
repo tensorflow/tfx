@@ -337,9 +337,16 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
     # Run pipeline.
     self._valid_run_and_check(self._pipeline_name)
 
-    time.sleep(1)  # Sleep to ensure two pipelines have different timestamps.
+    time.sleep(10)  # Sleep to ensure two pipelines have different timestamps.
     # Run pipeline again.
     self._valid_run_and_check(self._pipeline_name)
+
+    result = self.runner.invoke(cli_group, [
+        'run', 'list', '--engine', 'airflow', '--pipeline_name',
+        self._pipeline_name
+    ])
+    print(result.output)
+    time.sleep(10)
 
     # List pipeline runs.
     result = self.runner.invoke(cli_group, [
