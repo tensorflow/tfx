@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX DSL module."""
+# pylint: disable=unused-import
 
 from tfx.dsl.components.common.importer import Importer
 from tfx.dsl.components.common.resolver import Resolver

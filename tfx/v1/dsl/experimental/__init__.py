@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX dsl.experimental module."""
+# pylint: disable=unused-import
 
 from tfx.dsl.component.experimental.container_component import create_container_component
 from tfx.dsl.components.common.resolver import ResolverStrategy

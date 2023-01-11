@@ -13,7 +13,7 @@
 # limitations under the License.
 """TFX Channel utilities."""
 
-from typing import cast, Dict, Iterable, List, Type
+from typing import cast, Dict, Iterable, List, Type, Optional
 
 from tfx.types import artifact
 from tfx.types import channel
@@ -37,8 +37,9 @@ def as_channel(artifacts: Iterable[artifact.Artifact]) -> channel.Channel:
       return channel.Channel(type=first_element.type).set_artifacts(artifacts)
     else:
       raise ValueError('Invalid artifact iterable: {}'.format(artifacts))
-  except StopIteration:
-    raise ValueError('Cannot convert empty artifact iterable into Channel')
+  except StopIteration as e:
+    raise ValueError(
+        'Cannot convert empty artifact iterable into Channel') from e
 
 
 def unwrap_channel_dict(
@@ -84,6 +85,21 @@ def union(channels: Iterable[channel.BaseChannel]) -> channel.UnionChannel:
     A BaseChannel that represents the union of channels.
   """
   return channel.UnionChannel(channels)
+
+
+def artifact_query(
+    artifact_type: Type[artifact.Artifact],
+    *,
+    producer_component_id: Optional[str] = None,
+    output_key: Optional[str] = None,
+) -> channel.Channel:
+  """Creates a MLMD query based channel."""
+  if output_key is not None and producer_component_id is None:
+    raise ValueError('producer_component_id must be set to use output_key.')
+  return channel.Channel(
+      artifact_type,
+      producer_component_id=producer_component_id,
+      output_key=output_key)
 
 
 def external_project_artifact_query(
