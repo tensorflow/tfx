@@ -33,6 +33,7 @@ from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
+from ml_metadata import errors
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -252,13 +253,40 @@ class _Generator:
 
     unprocessed_inputs = []
     for input_and_param in resolved_info.input_and_params:
-      current_exec_input_artifact_ids = set(
-          a.id
-          for a in itertools.chain(*input_and_param.input_artifacts.values()))
+      resolved_input_ids = set()
+      resolved_input_external_ids = set()
+      for a in itertools.chain(*input_and_param.input_artifacts.values()):
+        if a.id:
+          resolved_input_ids.add(a.id)
+        elif a.mlmd_artifact.external_id:
+          resolved_input_external_ids.add(a.mlmd_artifact.external_id)
+
+      # If the resolved inputs are from different pipelines, we use the field
+      # external_id to get their ids in local db.
+      if resolved_input_external_ids:
+        ids_by_external_ids = set()
+        try:
+          for a in metadata_handler.store.get_artifacts_by_external_ids(
+              external_ids=resolved_input_external_ids
+          ):
+            ids_by_external_ids.add(a.id)
+        except errors.NotFoundError:
+          pass
+        except Exception as e:  # pylint:disable=broad-except
+          logging.exception(
+              'Error when getting artifacts by external ids. Error: %s', e
+          )
+          return result
+
+        if len(ids_by_external_ids) == len(resolved_input_external_ids):
+          resolved_input_ids.update(ids_by_external_ids)
+        else:
+          # Adding -1 indicates that some resolved artifacts are from external
+          # pipelines and they have not been processed yet.
+          resolved_input_ids.add(-1)
 
       for execution_identifier in execution_identifiers:
-        if (execution_identifier['artifact_ids'] ==
-            current_exec_input_artifact_ids):
+        if execution_identifier['artifact_ids'] == resolved_input_ids:
           break
       else:
         unprocessed_inputs.append(input_and_param)
