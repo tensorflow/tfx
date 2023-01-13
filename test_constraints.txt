@@ -10,3 +10,6 @@
 
 # TODO(b/232490018) Remove pinned Cython after pycocotools issue resolved.
 Cython<1
+
+# TODO(b/265052215): Remove pinned version after resolving the issue.
+cachelib<0.10.0
