@@ -15,19 +15,24 @@
 
 from concurrent import futures
 import sys
+import textwrap
 import threading
 import traceback
 import typing
 from typing import Dict, Optional
 
 from absl import logging
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
-
 from tfx.utils import status as status_lib
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 _MAX_DEQUEUE_WAIT_SECS = 5.0
@@ -231,11 +236,34 @@ class TaskManager:
     # that a new ExecNodeTask would be issued for resuming the execution.
     if not (scheduler.pause and
             result.status.code == status_lib.Code.CANCELLED):
-      post_execution_utils.publish_execution_results_for_task(
-          mlmd_handle=self._mlmd_handle, task=task, result=result)
+      try:
+        post_execution_utils.publish_execution_results_for_task(
+            mlmd_handle=self._mlmd_handle, task=task, result=result
+        )
+      except Exception as e:  # pylint: disable=broad-except
+        logging.exception(
+            (
+                'Attempting to mark execution (id: %s) as FAILED after failure'
+                ' to publish task scheduler execution results: %s'
+            ),
+            task.execution_id,
+            result,
+        )
+        self._fail_execution(task.execution_id, str(e))
     with self._tm_lock:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)
+
+  def _fail_execution(self, execution_id: int, error_msg: str) -> None:
+    with mlmd_state.mlmd_execution_atomic_op(
+        self._mlmd_handle, execution_id
+    ) as execution:
+      if error_msg:
+        data_types_utils.set_metadata_value(
+            execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+            textwrap.shorten(error_msg, width=512),
+        )
+      execution.last_known_state = metadata_store_pb2.Execution.FAILED
 
   def _cleanup(self, final: bool = False) -> None:
     """Cleans up any remnant effects."""
@@ -254,5 +282,3 @@ class TaskManager:
             len(exceptions),
             exc_info=(type(e), e, e.__traceback__))
       raise TasksProcessingError(exceptions)
-
-

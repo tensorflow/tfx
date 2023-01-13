@@ -214,16 +214,20 @@ class TaskManagerTest(test_utils.TfxTest):
     self.assertLen(mock_publish.mock_calls, 3)
 
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
-  def test_exceptions_are_surfaced(self, mock_publish):
-
+  @mock.patch.object(tm.TaskManager, '_fail_execution')
+  def test_exceptions_are_surfaced(self, mock_fail_exec, mock_publish):
     def _publish(**kwargs):
       task = kwargs['task']
       assert isinstance(task, task_lib.ExecNodeTask)
       if task.node_uid.node_id == 'Transform':
-        raise ValueError('test error')
+        raise ValueError('test error 1')
       return mock.DEFAULT
 
+    def _fail_execution(*args, **kwargs):
+      raise ValueError('test error 2')
+
     mock_publish.side_effect = _publish
+    mock_fail_exec.side_effect = _fail_execution
 
     collector = _Collector()
 
@@ -248,7 +252,7 @@ class TaskManagerTest(test_utils.TfxTest):
     self.assertIsNotNone(exception)
     self.assertIsInstance(exception, tm.TasksProcessingError)
     self.assertLen(exception.errors, 1)
-    self.assertEqual('test error', str(exception.errors[0]))
+    self.assertEqual('test error 2', str(exception.errors[0]))
 
     self.assertCountEqual([transform_task, trainer_task],
                           collector.scheduled_tasks)
@@ -260,6 +264,7 @@ class TaskManagerTest(test_utils.TfxTest):
         mock.call(mlmd_handle=mock.ANY, task=trainer_task, result=result_ok),
     ],
                                   any_order=True)
+    mock_fail_exec.assert_called_once()
 
 
 class _FakeComponentScheduler(ts.TaskScheduler):
@@ -514,6 +519,43 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     # removed.
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
+
+  @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
+  def test_graceful_handling_if_error_publishing_scheduler_results(
+      self, mock_publish
+  ):
+    def _publish(**kwargs):
+      raise ValueError('test error')
+
+    mock_publish.side_effect = _publish
+
+    # Register a fake task scheduler that returns a successful execution result
+    # and `OK` task scheduler status.
+    self._register_task_scheduler(
+        ts.TaskSchedulerResult(
+            status=status_lib.Status(code=status_lib.Code.OK),
+            output=ts.ImporterNodeOutput(
+                output_artifacts=self._task.output_artifacts
+            ),
+        )
+    )
+
+    task_manager = self._run_task_manager()
+    mock_publish.assert_called_once()
+    self.assertTrue(task_manager.done())
+    self.assertIsNone(task_manager.exception())
+
+    # Verify that execution is marked as failed.
+    execution = self._get_execution()
+    self.assertEqual(
+        metadata_store_pb2.Execution.FAILED, execution.last_known_state
+    )
+    self.assertEqual(
+        'test error',
+        data_types_utils.get_metadata_value(
+            execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]
+        ),
+    )
 
 
 if __name__ == '__main__':
