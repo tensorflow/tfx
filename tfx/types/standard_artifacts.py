@@ -172,6 +172,30 @@ class ModelRun(_TfxArtifact):
 
 
 class ModelBlessing(_TfxArtifact):
+  """Artifact that contains the evaluation of a trained model.
+
+  This artifact is usually used with
+  Conditional when determining
+  whether to push this model on service or not.
+
+  ```python
+  # Run pusher if evaluator has blessed the model.
+  with conditional.Cond(evaluator.outputs['blessing'].future()
+                      [0].custom_property('blessed') == 1):
+    pusher = Pusher(...)
+  ```
+
+  * File structure:
+    - `{uri}/`
+        - `BLESSED`: if the evaluator has blessed the model.
+        - `NOT_BLESSED`: if the evaluator has not blessed the model.
+    - See tfx/components/evaluator/executor.py for how to write
+    ModelBlessing.
+
+  * Commonly used custom properties of the ModelBlessing artifact:
+    - `blessed`: int value that represents whether the evaluator has blessed its
+    model or not.
+  """
   TYPE_NAME = 'ModelBlessing'
 
 
