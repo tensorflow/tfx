@@ -93,8 +93,7 @@ nodes {
             metadata_connection_config {
               [type.googleapis.com/tfx.orchestration.MLMDServiceConfig] {
                 owner: "owner"
-                name: "producer-project"
-                mlmd_service_target: "mlmd-service-target"
+                name: "producer-pipeline"
               }
             }
           }

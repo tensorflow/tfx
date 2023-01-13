@@ -23,15 +23,14 @@ from tfx.types import standard_artifacts
 
 def create_test_pipeline():
   """Builds a consumer pipeline that gets artifacts from another project."""
-  external_examples = channel_utils.external_project_artifact_query(
+  external_examples = channel_utils.external_pipeline_artifact_query(
       artifact_type=standard_artifacts.Examples,
-      project_owner='owner',
-      project_name='producer-project',
+      owner='owner',
       pipeline_name='producer-pipeline',
       producer_component_id='producer-component-id',
       output_key='output-key',
       pipeline_run_id='pipeline-run-id',
-      mlmd_service_target='mlmd-service-target')
+  )
 
   example_gen_resolver = resolver.Resolver(
       strategy_class=latest_artifacts_resolver.LatestArtifactsResolver,

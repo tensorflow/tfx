@@ -190,8 +190,8 @@ def _compile_input_spec(
         output_key=channel.output_key,
         result=result.inputs[input_key].channels.add())
 
-  elif isinstance(channel, channel_types.ExternalProjectChannel):
-    channel = cast(channel_types.ExternalProjectChannel, channel)
+  elif isinstance(channel, channel_types.ExternalPipelineChannel):
+    channel = cast(channel_types.ExternalPipelineChannel, channel)
     result_input_channel = result.inputs[input_key].channels.add()
     _compile_channel_pb(
         artifact_type=channel.type,
@@ -210,17 +210,19 @@ def _compile_input_spec(
           pipeline_ctx.pipeline.platform_config.project_platform_config)
       project_name = project_config.project_name
       project_owner = project_config.owner
-      if (project_name == channel.project_name and
-          project_owner == channel.project_owner):
+      if (
+          project_name == channel.pipeline_name
+          and project_owner == channel.owner
+      ):
         raise ValueError(
             'External project artifact query has the same project owner and '
             'project name as current project. Please set the valid external '
             'project endpoint.')
 
     config = metadata_pb2.MLMDServiceConfig(
-        owner=channel.project_owner,
-        name=channel.project_name,
-        mlmd_service_target=channel.mlmd_service_target)
+        owner=channel.owner,
+        name=channel.pipeline_name,
+    )
     result_input_channel.metadata_connection_config.Pack(config)
 
   elif isinstance(channel, channel_types.Channel):
