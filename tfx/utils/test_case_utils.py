@@ -238,6 +238,9 @@ class MlmdMixins:
       artifact_type: str,
       name: Optional[str] = None,
       uri: str = '/fake',
+      state: Union[
+          str, metadata_store_pb2.Artifact.State
+      ] = metadata_store_pb2.Artifact.State.LIVE,
       properties: Optional[Dict[str, types.ExecPropertyTypes]] = None,
       custom_properties: Optional[Dict[str, types.ExecPropertyTypes]] = None,
   ) -> metadata_store_pb2.Artifact:
@@ -247,6 +250,7 @@ class MlmdMixins:
       artifact_type: The artifact type. For example, "DummyArtifact".
       name: `Artifact.name`. Default not set.
       uri: `Artifact.uri`. Defaults to '/fake'.
+      state: Artifact state. Default to LIVE.
       properties: The raw property values to insert in the Artifact. Example:
         {"span": 3, "version": 1}
       custom_properties: The raw custom property values to insert in the
@@ -272,7 +276,7 @@ class MlmdMixins:
         type_id=type_id,
         name=name,
         uri=uri,
-        state=metadata_store_pb2.Artifact.LIVE,
+        state=state,
         properties=data_types_utils.build_metadata_value_dict(properties),
         custom_properties=data_types_utils.build_metadata_value_dict(
             custom_properties),
@@ -301,6 +305,9 @@ class MlmdMixins:
   def put_execution(
       self,
       execution_type: str,
+      last_known_state: Union[
+          str, metadata_store_pb2.Execution.State
+      ] = metadata_store_pb2.Execution.State.COMPLETE,
       properties: Optional[Dict[str, metadata_store_pb2.PropertyType]] = None,
       custom_properties: Optional[Dict[str,
                                        metadata_store_pb2.PropertyType]] = None,
@@ -317,7 +324,7 @@ class MlmdMixins:
     execution = metadata_store_pb2.Execution(
         type_id=self._get_execution_type_id(type_name=execution_type),
         name=name,
-        last_known_state=metadata_store_pb2.Execution.COMPLETE,
+        last_known_state=last_known_state,
         properties=data_types_utils.build_metadata_value_dict(properties),
         custom_properties=data_types_utils.build_metadata_value_dict(
             custom_properties),

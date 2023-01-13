@@ -25,9 +25,9 @@ from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.orchestration.portable.mlmd import store_ext
 from tfx.proto.orchestration import garbage_collection_policy_pb2
 from tfx.utils import status as status_lib
-import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -39,14 +39,11 @@ def _get_output_artifacts_for_node(
     mlmd_handle: metadata.Metadata,
     node_uid: task_lib.NodeUid) -> List[metadata_store_pb2.Artifact]:
   """Gets all output artifacts of the node for the node_id."""
-  node_context_name = '%s.%s' % (node_uid.pipeline_uid.pipeline_id,
-                                 node_uid.node_id)
-  context = mlmd_handle.store.get_context_by_type_and_name(
-      'node', node_context_name)
-  if context is None:
-    return []
-  return mlmd_handle.store.get_artifacts_by_context(
-      context.id, list_options=mlmd.ListOptions(filter_query='state = LIVE'))
+  return store_ext.get_live_output_artifacts_of_node(
+      mlmd_handle.store,
+      pipeline_id=node_uid.pipeline_uid.pipeline_id,
+      node_id=node_uid.node_id
+  )
 
 
 def _get_events_for_artifacts(
