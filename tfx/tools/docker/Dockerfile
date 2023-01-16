@@ -69,6 +69,17 @@ ARG ADDITIONAL_PACKAGES
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
+# TODO(b/264498526): Remove after DLVM upgrades its python version.
+ENV PATH="/usr/bin:${PATH}"
+RUN ln -s /usr/bin/python3.8 /usr/bin/python
+
+ARG APT_COMMAND="apt-get -o Acquire::Retries=3 -y"
+
+RUN ${APT_COMMAND} update && \
+  ${APT_COMMAND} install \
+  build-essential \
+  python3.8-dev
+
 # Copy from image matching installed version of 'apache-beam'.
 COPY --from=beam-worker /opt/apache/beam /opt/apache/beam
 # Dataflow SDK worker image looks for pip at a different location by default
