@@ -21,7 +21,7 @@ from tfx.dsl.input_resolution.ops import all_spans_op
 from tfx.dsl.input_resolution.ops import consecutive_spans_op
 from tfx.dsl.input_resolution.ops import exclude_spans_op
 from tfx.dsl.input_resolution.ops import latest_create_time_op
-from tfx.dsl.input_resolution.ops import latest_pipeline_run_outputs_op
+from tfx.dsl.input_resolution.ops import latest_pipeline_run_outputs_op as latest_pipeline_run_op
 from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import latest_version_op
 from tfx.dsl.input_resolution.ops import shuffle_op
@@ -29,8 +29,6 @@ from tfx.dsl.input_resolution.ops import skip_if_empty_op
 from tfx.dsl.input_resolution.ops import skip_if_less_than_n_spans_op
 from tfx.dsl.input_resolution.ops import sliding_window_op
 from tfx.dsl.input_resolution.ops import static_span_range_op
-from tfx.dsl.input_resolution.ops import temp_latest_create_time_op
-from tfx.dsl.input_resolution.ops import temp_latest_span_op
 from tfx.dsl.input_resolution.ops import unnest_op
 from tfx.dsl.input_resolution.strategies import conditional_strategy
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
@@ -61,7 +59,7 @@ AllSpans = all_spans_op.AllSpans
 ConsecutiveSpans = consecutive_spans_op.ConsecutiveSpans
 ExcludeSpans = exclude_spans_op.ExcludeSpans
 LatestCreateTime = latest_create_time_op.LatestCreateTime
-LatestPipelineRunOutputs = latest_pipeline_run_outputs_op.LatestPipelineRunOutputs
+LatestPipelineRunOutputs = latest_pipeline_run_op.LatestPipelineRunOutputs
 LatestSpan = latest_span_op.LatestSpan
 LatestVersion = latest_version_op.LatestVersion
 Shuffle = shuffle_op.Shuffle
@@ -69,8 +67,6 @@ SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
 SkipIfLessThanNSpans = skip_if_less_than_n_spans_op.SkipIfLessThanNSpans
 SlidingWindow = sliding_window_op.SlidingWindow
 StaticSpanRange = static_span_range_op.StaticSpanRange
-TempLatestCreateTime = temp_latest_create_time_op.TempLatestCreateTime
-TempLatestSpan = temp_latest_span_op.TempLatestSpan
 Unnest = unnest_op.Unnest
 # go/keep-sorted end
 # go/keep-sorted start
@@ -86,8 +82,6 @@ _register_op(SkipIfEmpty)
 _register_op(SkipIfLessThanNSpans)
 _register_op(SlidingWindow)
 _register_op(StaticSpanRange)
-_register_op(TempLatestCreateTime)
-_register_op(TempLatestSpan)
 _register_op(Unnest)
 # go/keep-sorted end
 
