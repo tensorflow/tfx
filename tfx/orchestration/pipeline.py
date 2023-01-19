@@ -376,7 +376,9 @@ class Pipeline(base_node.BaseNode):
       if component.id in node_by_id:
         raise RuntimeError(
             f'Duplicated node_id {component.id} for component type'
-            f'{component.type}.')
+            f'{component.type}. Try setting a different node_id using '
+            '`.with_id()`.'
+        )
       node_by_id[component.id] = component
 
     # Connects nodes based on producer map.
