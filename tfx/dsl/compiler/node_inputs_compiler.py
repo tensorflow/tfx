@@ -208,16 +208,14 @@ def _compile_input_spec(
     if pipeline_ctx.pipeline.platform_config:
       project_config = (
           pipeline_ctx.pipeline.platform_config.project_platform_config)
-      project_name = project_config.project_name
-      project_owner = project_config.owner
-      if (
-          project_name == channel.pipeline_name
-          and project_owner == channel.owner
-      ):
+      pipeline_name = project_config.project_name
+      owner = project_config.owner
+      if pipeline_name == channel.pipeline_name and owner == channel.owner:
         raise ValueError(
-            'External project artifact query has the same project owner and '
-            'project name as current project. Please set the valid external '
-            'project endpoint.')
+            'External pipeline artifact query has the same pipeline owner and '
+            'pipeline name as current pipeline. Please set the valid external '
+            'pipeline endpoint.'
+        )
 
     config = metadata_pb2.MLMDServiceConfig(
         owner=channel.owner,
