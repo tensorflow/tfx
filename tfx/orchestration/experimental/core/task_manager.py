@@ -59,7 +59,19 @@ class _SchedulerWrapper:
     self.pause = False
 
   def schedule(self) -> ts.TaskSchedulerResult:
-    return self._task_scheduler.schedule()
+    logging.info(
+        'Began processing %s having id: %s',
+        self._task_scheduler.task.task_type_id(),
+        self._task_scheduler.task.task_id,
+    )
+    try:
+      return self._task_scheduler.schedule()
+    finally:
+      logging.info(
+          'Finished processing %s having id: %s',
+          self._task_scheduler.task.task_type_id(),
+          self._task_scheduler.task.task_id,
+      )
 
   def cancel(self, cancel_task: task_lib.CancelNodeTask) -> None:
     self.pause = cancel_task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC
@@ -150,6 +162,12 @@ class TaskManager:
     """Runs the main task management loop."""
     try:
       while not self._stop_event.is_set():
+        logging.log_every_n_seconds(
+            logging.INFO,
+            'Number of active task schedulers: %d',
+            30,
+            len(self._ts_futures),
+        )
         self._cleanup()
         task = self._task_queue.dequeue(self._max_dequeue_wait_secs)
         if task is None:
