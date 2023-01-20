@@ -18,8 +18,12 @@ from typing import Dict, Type, Union
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import all_spans_op
+from tfx.dsl.input_resolution.ops import artifact_list_slice_op
+from tfx.dsl.input_resolution.ops import artifact_map_list_slice_op
 from tfx.dsl.input_resolution.ops import consecutive_spans_op
 from tfx.dsl.input_resolution.ops import exclude_spans_op
+from tfx.dsl.input_resolution.ops import filter_artifacts_op
+from tfx.dsl.input_resolution.ops import group_by_lineage_op
 from tfx.dsl.input_resolution.ops import latest_create_time_op
 from tfx.dsl.input_resolution.ops import latest_pipeline_run_outputs_op as latest_pipeline_run_op
 from tfx.dsl.input_resolution.ops import latest_span_op
@@ -58,6 +62,15 @@ def _register_op(cls: _ResolverOpType) -> None:
 AllSpans = all_spans_op.AllSpans
 ConsecutiveSpans = consecutive_spans_op.ConsecutiveSpans
 ExcludeSpans = exclude_spans_op.ExcludeSpans
+FilterArtifacts = filter_artifacts_op.FilterArtifacts
+FirstArtifactMapOrSkip = artifact_map_list_slice_op.FirstArtifactMapOrSkip
+FirstNArtifactMaps = artifact_map_list_slice_op.FirstNArtifactMaps
+FirstNArtifacts = artifact_list_slice_op.FirstNArtifacts
+GroupByDisjointLineage = group_by_lineage_op.GroupByDisjointLineage
+GroupByPivot = group_by_lineage_op.GroupByPivot
+LastArtifactMapOrSkip = artifact_map_list_slice_op.LastArtifactMapOrSkip
+LastNArtifactMaps = artifact_map_list_slice_op.LastNArtifactMaps
+LastNArtifacts = artifact_list_slice_op.LastNArtifacts
 LatestCreateTime = latest_create_time_op.LatestCreateTime
 LatestPipelineRunOutputs = latest_pipeline_run_op.LatestPipelineRunOutputs
 LatestSpan = latest_span_op.LatestSpan
@@ -73,6 +86,14 @@ Unnest = unnest_op.Unnest
 _register_op(AllSpans)
 _register_op(ConsecutiveSpans)
 _register_op(ExcludeSpans)
+_register_op(FirstArtifactMapOrSkip)
+_register_op(FirstNArtifactMaps)
+_register_op(FirstNArtifacts)
+_register_op(GroupByDisjointLineage)
+_register_op(GroupByPivot)
+_register_op(LastArtifactMapOrSkip)
+_register_op(LastNArtifactMaps)
+_register_op(LastNArtifacts)
 _register_op(LatestCreateTime)
 _register_op(LatestPipelineRunOutputs)
 _register_op(LatestSpan)
@@ -83,6 +104,7 @@ _register_op(SkipIfLessThanNSpans)
 _register_op(SlidingWindow)
 _register_op(StaticSpanRange)
 _register_op(Unnest)
+_register_op(filter_artifacts_op.FilterArtifactsInternal)
 # go/keep-sorted end
 
 
