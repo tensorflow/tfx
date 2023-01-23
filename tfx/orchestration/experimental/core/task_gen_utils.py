@@ -16,7 +16,7 @@
 import collections
 import itertools
 import time
-from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence
+from typing import Dict, Iterable, MutableMapping, Optional, Sequence
 import uuid
 
 from absl import logging
@@ -54,8 +54,8 @@ class InputAndParam:
 
 @attr.s(auto_attribs=True)
 class ResolvedInfo:
-  contexts: List[metadata_store_pb2.Context]
-  input_and_params: List[InputAndParam]
+  contexts: list[metadata_store_pb2.Context]
+  input_and_params: list[InputAndParam]
 
 
 def generate_task_from_execution(
@@ -232,8 +232,8 @@ def generate_resolved_info(
 
 
 def get_executions(
-    metadata_handler: metadata.Metadata,
-    node: node_proto_view.NodeProtoView) -> List[metadata_store_pb2.Execution]:
+    metadata_handler: metadata.Metadata, node: node_proto_view.NodeProtoView
+) -> list[metadata_store_pb2.Execution]:
   """Returns all executions for the given pipeline node.
 
   This finds all executions having the same set of contexts as the pipeline
@@ -262,8 +262,8 @@ def get_executions(
 
 
 def get_latest_executions_set(
-    executions: Iterable[metadata_store_pb2.Execution]
-) -> List[metadata_store_pb2.Execution]:  # pylint: disable=g-doc-args
+    executions: Iterable[metadata_store_pb2.Execution],
+) -> list[metadata_store_pb2.Execution]:  # pylint: disable=g-doc-args
   """Returns latest set of executions, ascendingly ordered by __external_execution_index__.
 
   When _EXECUTION_SET_SIZE > 1 and there are retry executions, e.g., consider
@@ -422,7 +422,7 @@ def register_executions(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
-    input_and_params: List[InputAndParam]
+    input_and_params: list[InputAndParam],
 ) -> Sequence[metadata_store_pb2.Execution]:
   """Registers multiple executions in MLMD.
 
@@ -500,3 +500,74 @@ def update_external_artifact_type(local_mlmd_handle: metadata.Metadata,
       local_artifact_type_id = local_type_id_by_name[type_name]
       artifact.type_id = local_artifact_type_id
       artifact.artifact_type.id = local_artifact_type_id
+
+
+def get_unprocessed_inputs(
+    metadata_handle: metadata.Metadata,
+    executions: Sequence[metadata_store_pb2.Execution],
+    resolved_info: ResolvedInfo,
+) -> list[InputAndParam]:
+  """Get a list of unprocessed input from resolved_info.
+
+  Args:
+    metadata_handle: A handle to access local MLMD db.
+    executions: A list of executions
+    resolved_info: Resolved input of a node. It may contain processed and
+      unprocessed input.
+
+  Returns:
+    A list of InputAndParam that have not been processed.
+  """
+  processed_artifact_ids_by_execution: Dict[str, set[int]] = {}
+  for execution in executions:
+    artifact_ids_by_event_type = (
+        execution_lib.get_artifact_ids_by_event_type_for_execution_id(
+            metadata_handle, execution.id
+        )
+    )
+    # TODO(b/250075208) Support notrigger, trigger_by, etc.
+    processed_artifact_ids_by_execution[execution.id] = (
+        artifact_ids_by_event_type.get(metadata_store_pb2.Event.INPUT, set())
+    )
+
+  unprocessed_inputs = []
+  for input_and_param in resolved_info.input_and_params:
+    resolved_input_ids = set()
+    resolved_input_external_ids = set()
+    for artifact in itertools.chain(*input_and_param.input_artifacts.values()):
+      if artifact.id:
+        resolved_input_ids.add(artifact.id)
+      elif artifact.mlmd_artifact.external_id:
+        resolved_input_external_ids.add(artifact.mlmd_artifact.external_id)
+
+    # If the resolved inputs are from different pipelines, we use the field
+    # external_id to get their ids in local db.
+    artifact_ids_by_external_ids: Dict[str, int] = {}
+    if resolved_input_external_ids:
+      try:
+        for a in metadata_handle.store.get_artifacts_by_external_ids(
+            external_ids=resolved_input_external_ids
+        ):
+          artifact_ids_by_external_ids[a.external_id] = a.id
+      except errors.NotFoundError:
+        pass
+      except Exception as e:  # pylint:disable=broad-except
+        logging.exception(
+            'Error when getting artifacts by external ids. Error: %s', e
+        )
+        return []
+
+      if len(artifact_ids_by_external_ids) == len(resolved_input_external_ids):
+        resolved_input_ids.update(artifact_ids_by_external_ids.keys())
+      else:
+        # Adding -1 indicates that some resolved artifacts are from external
+        # pipelines and they have not been processed yet.
+        resolved_input_ids.add(-1)
+
+    for processed_ids in processed_artifact_ids_by_execution.values():
+      if processed_ids == resolved_input_ids:
+        break
+    else:
+      unprocessed_inputs.append(input_and_param)
+
+  return unprocessed_inputs

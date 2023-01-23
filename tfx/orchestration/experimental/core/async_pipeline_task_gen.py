@@ -13,8 +13,7 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
-import itertools
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 from absl import logging
 from tfx.orchestration import metadata
@@ -33,7 +32,6 @@ from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
-from ml_metadata import errors
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -63,8 +61,9 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
 
-  def generate(self,
-               pipeline_state: pstate.PipelineState) -> List[task_lib.Task]:
+  def generate(
+      self, pipeline_state: pstate.PipelineState
+  ) -> list[task_lib.Task]:
     """Generates tasks for all executable nodes in the async pipeline.
 
     The returned tasks must have `exec_task` populated. List may be empty if no
@@ -101,7 +100,7 @@ class _Generator:
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
 
-  def __call__(self) -> List[task_lib.Task]:
+  def __call__(self) -> list[task_lib.Task]:
     result = []
     for node in [node_proto_view.get_view(n) for n in self._pipeline.nodes]:
       node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
@@ -160,8 +159,10 @@ class _Generator:
     return result
 
   def _generate_tasks_for_node(
-      self, metadata_handler: metadata.Metadata,
-      node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
+      self,
+      metadata_handler: metadata.Metadata,
+      node: node_proto_view.NodeProtoView,
+  ) -> list[task_lib.Task]:
     """Generates a node execution task.
 
     If a node execution is not feasible, `None` is returned.
@@ -241,57 +242,10 @@ class _Generator:
     successful_executions = [
         e for e in executions if execution_lib.is_execution_successful(e)
     ]
-    execution_identifiers = []
-    for execution in successful_executions:
-      execution_identifier = {}
-      artifact_ids_by_event_type = (
-          execution_lib.get_artifact_ids_by_event_type_for_execution_id(
-              metadata_handler, execution.id))
-      # TODO(b/250075208) Support notrigger, trigger_by, etc.
-      execution_identifier['artifact_ids'] = artifact_ids_by_event_type.get(
-          metadata_store_pb2.Event.INPUT, set())
-      execution_identifiers.append(execution_identifier)
 
-    unprocessed_inputs = []
-    for input_and_param in resolved_info.input_and_params:
-      resolved_input_ids = set()
-      resolved_input_external_ids = set()
-      for a in itertools.chain(*input_and_param.input_artifacts.values()):
-        if a.id:
-          resolved_input_ids.add(a.id)
-        elif a.mlmd_artifact.external_id:
-          resolved_input_external_ids.add(a.mlmd_artifact.external_id)
-
-      # If the resolved inputs are from different pipelines, we use the field
-      # external_id to get their ids in local db.
-      if resolved_input_external_ids:
-        ids_by_external_ids = set()
-        try:
-          for a in metadata_handler.store.get_artifacts_by_external_ids(
-              external_ids=resolved_input_external_ids
-          ):
-            ids_by_external_ids.add(a.id)
-        except errors.NotFoundError:
-          pass
-        except Exception as e:  # pylint:disable=broad-except
-          logging.exception(
-              'Error when getting artifacts by external ids. Error: %s', e
-          )
-          return result
-
-        if len(ids_by_external_ids) == len(resolved_input_external_ids):
-          resolved_input_ids.update(ids_by_external_ids)
-        else:
-          # Adding -1 indicates that some resolved artifacts are from external
-          # pipelines and they have not been processed yet.
-          resolved_input_ids.add(-1)
-
-      for execution_identifier in execution_identifiers:
-        if execution_identifier['artifact_ids'] == resolved_input_ids:
-          break
-      else:
-        unprocessed_inputs.append(input_and_param)
-
+    unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+        metadata_handler, successful_executions, resolved_info
+    )
     if not unprocessed_inputs:
       return result
 

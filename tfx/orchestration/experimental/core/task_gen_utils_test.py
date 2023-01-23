@@ -483,5 +483,63 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       # artifact should have the new type id.
       self.assertEqual(artifact_types_in_local[0].id, artifact_pb.type_id)
 
+  def test_get_unprocessed_inputs(self):
+    with self._mlmd_connection as m:
+      # Prepare context.
+      context_type = metadata_store_pb2.ContextType(name='ctx_type')
+      context_type_id = m.store.put_context_type(context_type)
+      context = metadata_store_pb2.Context(name='ctx', type_id=context_type_id)
+      m.store.put_contexts([context])
+
+      # Prepare artifact.
+      artifact_type = metadata_store_pb2.ArtifactType(name='a_type')
+      artifact_type.id = m.store.put_artifact_type(artifact_type)
+      artifact_pb = metadata_store_pb2.Artifact(type_id=artifact_type.id)
+      artifact_pb.id = m.store.put_artifacts([artifact_pb])[0]
+      artifact = artifact_utils.deserialize_artifacts(
+          artifact_type, [artifact_pb]
+      )
+
+      with self.subTest(name='NoInput'):
+        # There is no input.
+        resolved_info = task_gen_utils.ResolvedInfo(
+            contexts=[context], input_and_params=[]
+        )
+        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+            m, [], resolved_info
+        )
+        self.assertEmpty(unprocessed_inputs)
+
+      with self.subTest(name='OneUnprocessedInput'):
+        # There is 1 unprocessed_input
+        input_and_param = task_gen_utils.InputAndParam(
+            input_artifacts={'examples': artifact}
+        )
+        resolved_info = task_gen_utils.ResolvedInfo(
+            contexts=[context],
+            input_and_params=[input_and_param],
+        )
+        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+            m, [], resolved_info
+        )
+        self.assertLen(unprocessed_inputs, 1)
+        self.assertEqual(unprocessed_inputs[0], input_and_param)
+
+      with self.subTest(name='OnePprocessedInput'):
+        # Simulate that the input artifact is processed.
+        execution = execution_lib.prepare_execution(
+            m,
+            execution_type=metadata_store_pb2.ExecutionType(name='my_ex_type'),
+            state=metadata_store_pb2.Execution.COMPLETE,
+        )
+        execution = execution_lib.put_execution(
+            m, execution, [context], input_artifacts={'examples': artifact}
+        )
+        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+            m, [execution], resolved_info
+        )
+        self.assertEmpty(unprocessed_inputs)
+
+
 if __name__ == '__main__':
   tf.test.main()
