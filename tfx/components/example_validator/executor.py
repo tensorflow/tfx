@@ -27,7 +27,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
-
+from tfx.utils import writer_utils
 
 # Default file name for anomalies output.
 DEFAULT_FILE_NAME = 'SchemaDiff.pb'
@@ -155,6 +155,6 @@ class Executor(base_executor.BaseExecutor):
         statistics=stats,
         schema=schema,
         custom_validation_config=custom_validation_config)
-    io_utils.write_bytes_file(
-        os.path.join(schema_diff_path, DEFAULT_FILE_NAME),
-        anomalies.SerializeToString())
+    writer_utils.write_anomalies(
+        os.path.join(schema_diff_path, DEFAULT_FILE_NAME), anomalies
+    )
