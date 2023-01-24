@@ -89,6 +89,19 @@ def fake_example_gen_run(mlmd_connection,
                                             is_external)
 
 
+def fake_example_gen_execution_with_state(mlmd_connection, example_gen,
+                                          last_known_state):
+  """Writes fake example_gen execution to MLMD."""
+  with mlmd_connection as m:
+    contexts = context_lib.prepare_contexts(m, example_gen.contexts)
+    execution = execution_publish_utils.register_execution(
+        m,
+        example_gen.node_info.type,
+        contexts,
+        last_known_state=last_known_state)
+    return execution
+
+
 def fake_upstream_node_run(mlmd_connection: metadata.Metadata,
                            upstream_node: pipeline_pb2.PipelineNode,
                            tmp_path: str) -> metadata_store_pb2.Execution:

@@ -232,7 +232,9 @@ def generate_resolved_info(
 
 
 def get_executions(
-    metadata_handler: metadata.Metadata, node: node_proto_view.NodeProtoView
+    metadata_handler: metadata.Metadata,
+    node: node_proto_view.NodeProtoView,
+    only_active: bool = False,
 ) -> List[metadata_store_pb2.Execution]:
   """Returns all executions for the given pipeline node.
 
@@ -242,6 +244,9 @@ def get_executions(
   Args:
     metadata_handler: A handler to access MLMD db.
     node: The pipeline node for which to obtain executions.
+    only_active: If set to true, only active executions are returned. Otherwise,
+      all executions are returned. Active executions mean executions with NEW or
+      RUNNING last_known_state.
 
   Returns:
     List of executions for the given node in MLMD db.
@@ -257,6 +262,11 @@ def get_executions(
         f"(contexts_{i}.type = '{context_type}' AND contexts_{i}.name = '{context_name}')"
     )
   filter_query = ' AND '.join(contexts)
+  if only_active:
+    active_state_filter_query = (
+        '(last_known_state = NEW OR last_known_state = RUNNING)'
+    )
+    filter_query = ' AND '.join([filter_query, active_state_filter_query])
   return metadata_handler.store.get_executions(
       list_options=mlmd.ListOptions(filter_query=filter_query))
 

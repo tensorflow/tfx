@@ -32,6 +32,8 @@ from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils as tu
 from ml_metadata.proto import metadata_store_pb2
 
+State = metadata_store_pb2.Execution.State
+
 
 class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
@@ -111,6 +113,60 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertCountEqual(all_transform_execs[1:],
                             task_gen_utils.get_executions(m, self._transform))
       self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
+
+  def test_get_executions_only_active(self):
+    with self._mlmd_connection as m:
+      for node in [n.pipeline_node for n in self._pipeline.nodes]:
+        self.assertEmpty(task_gen_utils.get_executions(m, node))
+
+    # Create executions for the same nodes under different pipeline contexts.
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
+    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
+                                              self._example_gen, State.NEW)
+    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
+                                              self._example_gen, State.RUNNING)
+    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
+                                              self._example_gen, State.COMPLETE)
+    otu.fake_component_output(self._mlmd_connection, self._transform)
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
+    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
+                                              self._example_gen, State.NEW)
+    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
+                                              self._example_gen, State.RUNNING)
+    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
+                                              self._example_gen, State.COMPLETE)
+    otu.fake_component_output(self._mlmd_connection, self._transform)
+
+    # Get all ExampleGen executions across all pipeline contexts.
+    with self._mlmd_connection as m:
+      all_eg_execs = sorted(
+          m.store.get_executions_by_type(self._example_gen.node_info.type.name),
+          key=lambda e: e.id)
+      active_eg_execs = [
+          execution for execution in all_eg_execs
+          if execution.last_known_state == State.RUNNING or
+          execution.last_known_state == State.NEW
+      ]
+
+    # Check that correct executions are returned for each node in each pipeline.
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
+    with self._mlmd_connection as m:
+      self.assertCountEqual(
+          active_eg_execs[0:2],
+          task_gen_utils.get_executions(m, self._example_gen, only_active=True))
+      self.assertEmpty(
+          task_gen_utils.get_executions(m, self._transform, only_active=True))
+      self.assertEmpty(
+          task_gen_utils.get_executions(m, self._trainer, only_active=True))
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
+    with self._mlmd_connection as m:
+      self.assertCountEqual(
+          active_eg_execs[2:],
+          task_gen_utils.get_executions(m, self._example_gen, only_active=True))
+      self.assertEmpty(
+          task_gen_utils.get_executions(m, self._transform, only_active=True))
+      self.assertEmpty(
+          task_gen_utils.get_executions(m, self._trainer, only_active=True))
 
   def test_generate_task_from_active_execution(self):
     with self._mlmd_connection as m:
