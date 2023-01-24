@@ -16,7 +16,7 @@
 import collections
 import itertools
 import time
-from typing import Dict, Iterable, MutableMapping, Optional, Sequence
+from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence
 import uuid
 
 from absl import logging
@@ -54,8 +54,8 @@ class InputAndParam:
 
 @attr.s(auto_attribs=True)
 class ResolvedInfo:
-  contexts: list[metadata_store_pb2.Context]
-  input_and_params: list[InputAndParam]
+  contexts: List[metadata_store_pb2.Context]
+  input_and_params: List[InputAndParam]
 
 
 def generate_task_from_execution(
@@ -233,7 +233,7 @@ def generate_resolved_info(
 
 def get_executions(
     metadata_handler: metadata.Metadata, node: node_proto_view.NodeProtoView
-) -> list[metadata_store_pb2.Execution]:
+) -> List[metadata_store_pb2.Execution]:
   """Returns all executions for the given pipeline node.
 
   This finds all executions having the same set of contexts as the pipeline
@@ -263,7 +263,7 @@ def get_executions(
 
 def get_latest_executions_set(
     executions: Iterable[metadata_store_pb2.Execution],
-) -> list[metadata_store_pb2.Execution]:  # pylint: disable=g-doc-args
+) -> List[metadata_store_pb2.Execution]:  # pylint: disable=g-doc-args
   """Returns latest set of executions, ascendingly ordered by __external_execution_index__.
 
   When _EXECUTION_SET_SIZE > 1 and there are retry executions, e.g., consider
@@ -422,7 +422,7 @@ def register_executions(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
-    input_and_params: list[InputAndParam],
+    input_and_params: List[InputAndParam],
 ) -> Sequence[metadata_store_pb2.Execution]:
   """Registers multiple executions in MLMD.
 
@@ -506,7 +506,7 @@ def get_unprocessed_inputs(
     metadata_handle: metadata.Metadata,
     executions: Sequence[metadata_store_pb2.Execution],
     resolved_info: ResolvedInfo,
-) -> list[InputAndParam]:
+) -> List[InputAndParam]:
   """Get a list of unprocessed input from resolved_info.
 
   Args:

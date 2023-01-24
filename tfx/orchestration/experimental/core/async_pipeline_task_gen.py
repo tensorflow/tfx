@@ -13,7 +13,7 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 from absl import logging
 from tfx.orchestration import metadata
@@ -63,7 +63,7 @@ class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
 
   def generate(
       self, pipeline_state: pstate.PipelineState
-  ) -> list[task_lib.Task]:
+  ) -> List[task_lib.Task]:
     """Generates tasks for all executable nodes in the async pipeline.
 
     The returned tasks must have `exec_task` populated. List may be empty if no
@@ -100,7 +100,7 @@ class _Generator:
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
 
-  def __call__(self) -> list[task_lib.Task]:
+  def __call__(self) -> List[task_lib.Task]:
     result = []
     for node in [node_proto_view.get_view(n) for n in self._pipeline.nodes]:
       node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
@@ -162,7 +162,7 @@ class _Generator:
       self,
       metadata_handler: metadata.Metadata,
       node: node_proto_view.NodeProtoView,
-  ) -> list[task_lib.Task]:
+  ) -> List[task_lib.Task]:
     """Generates a node execution task.
 
     If a node execution is not feasible, `None` is returned.
