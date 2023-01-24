@@ -292,8 +292,11 @@ class _Generator:
       elif (node.execution_options.max_execution_retries >=
             task_gen_utils.get_num_of_failures_from_failed_execution(
                 node_executions, failed_executions[0])):
-        retry_execution = task_gen_utils.register_retry_execution(
-            self._mlmd_handle, node, failed_executions[0])
+        [retry_execution] = (
+            task_gen_utils.register_executions_from_existing_executions(
+                self._mlmd_handle, node, failed_executions
+            )
+        )
         result.extend(
             self._generate_tasks_from_existing_execution(retry_execution, node))
       else:

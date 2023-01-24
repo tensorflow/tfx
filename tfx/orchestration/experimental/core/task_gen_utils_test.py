@@ -446,7 +446,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         task_gen_utils.get_num_of_failures_from_failed_execution(
             executions, failed_execution))
 
-  def test_register_retry_executions(self):
+  def test_register_execution_from_existing_execution(self):
     with self._mlmd_connection as m:
       # Put contexts.
       context_type = metadata_store_pb2.ContextType(name='my_ctx_type')
@@ -483,11 +483,15 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           input_artifacts=input_and_param.input_artifacts)
 
       # Register a retry execution from a failed execution.
-      retry_execution = task_gen_utils.register_retry_execution(
-          m, self._example_gen, failed_execution)
+      [retry_execution] = (
+          task_gen_utils.register_executions_from_existing_executions(
+              m, self._example_gen, [failed_execution]
+          )
+      )
 
-      self.assertEqual(retry_execution.last_known_state,
-                       metadata_store_pb2.Execution.RUNNING)
+      self.assertEqual(
+          retry_execution.last_known_state, metadata_store_pb2.Execution.NEW
+      )
       self.assertEqual(
           retry_execution.custom_properties[task_gen_utils._EXECUTION_SET_SIZE],
           failed_execution.custom_properties[
