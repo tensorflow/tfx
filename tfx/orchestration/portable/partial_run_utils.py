@@ -15,6 +15,7 @@
 
 import collections
 import enum
+import re
 from typing import Collection, List, Mapping, Optional, Set, Tuple
 
 from absl import logging
@@ -127,6 +128,31 @@ def mark_pipeline(
               nodes_requiring_snapshot, snapshot_node)
   pipeline.runtime_spec.snapshot_settings.CopyFrom(snapshot_settings)
   return pipeline
+
+
+def select_nodes_with_regex(pipeline: pipeline_pb2.Pipeline,
+                            selector: str) -> List[str]:
+  """Select nodes from a pipeline using regex.
+
+  Args:
+    pipeline: The pipeline IR.
+    selector: Comma-separated regular expression filter to select skip node ids.
+              For example: ".*", "node-prefix.*"
+
+  Returns:
+    ids of selected nodes.
+  """
+  result = []
+  if not selector:
+    return result
+  select_regexes = selector.split(',')
+  for pipeline_or_node in pipeline.nodes:
+    node_id = pipeline_or_node.pipeline_node.node_info.id
+    for regex in select_regexes:
+      if re.fullmatch(regex, node_id):
+        result.append(node_id)
+        break
+  return result
 
 
 def snapshot(mlmd_handle: metadata.Metadata,

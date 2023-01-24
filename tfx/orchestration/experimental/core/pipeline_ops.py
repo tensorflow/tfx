@@ -147,11 +147,20 @@ def initiate_pipeline_start(
     # Nodes marked as SKIPPED (due to conditional) do not have an execution
     # registered in MLMD, so we skip their snapshotting step.
     try:
+      selected_from_nodes = set(partial_run_utils.select_nodes_with_regex(
+          pipeline, partial_run_option.from_nodes_selector
+      )) | set(partial_run_option.from_nodes)
+      selected_to_nodes = set(partial_run_utils.select_nodes_with_regex(
+          pipeline, partial_run_option.to_nodes_selector
+      )) | set(partial_run_option.to_nodes)
+      selected_skip_nodes = set(partial_run_utils.select_nodes_with_regex(
+          pipeline, partial_run_option.skip_nodes_selector
+      )) | set(partial_run_option.skip_nodes)
       pipeline = partial_run_utils.mark_pipeline(
           pipeline,
-          from_nodes=partial_run_option.from_nodes,
-          to_nodes=partial_run_option.to_nodes,
-          skip_nodes=partial_run_option.skip_nodes,
+          from_nodes=selected_from_nodes,
+          to_nodes=selected_to_nodes,
+          skip_nodes=selected_skip_nodes,
           skip_snapshot_nodes=_get_previously_skipped_nodes(
               reused_pipeline_view),
           snapshot_settings=partial_run_option.snapshot_settings)

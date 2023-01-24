@@ -453,7 +453,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # partial_run_option without artifact_reuse_strategy should default to
       # latest_pipeline_run_strategy.
       partial_run_option = pipeline_pb2.PartialRun(
-          from_nodes=['Transform'], to_nodes=['Trainer'])
+          from_nodes_selector='Transform', to_nodes=['Trainer'])
 
       expected_pipeline = copy.deepcopy(pipeline)
       partial_run_utils.set_latest_pipeline_run_strategy(
@@ -512,7 +512,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         _stop_pipeline(pipeline_state_run0)
 
       partial_run_option = pipeline_pb2.PartialRun(
-          from_nodes=['Trainer'], to_nodes=['Trainer'])
+          from_nodes=['Trainer'], to_nodes_selector='Trainer')
       expected_pipeline = copy.deepcopy(pipeline)
       partial_run_utils.set_latest_pipeline_run_strategy(
           expected_pipeline.runtime_spec.snapshot_settings)

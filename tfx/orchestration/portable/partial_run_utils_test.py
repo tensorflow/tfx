@@ -598,6 +598,22 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_required_to_reuse=set([]),
         nodes_optional_to_reuse=set(['a']))
 
+  def testSelectNodesWithRegex(self):
+    input_pipeline = self._createInputPipeline(
+        {'aa': ['ab'], 'ab': ['ac'], 'ac': ['ad'], 'ad': []}
+    )
+    self.assertCountEqual(
+        [], partial_run_utils.select_nodes_with_regex(input_pipeline, '')
+    )
+    self.assertCountEqual(
+        ['aa', 'ab', 'ac', 'ad'],
+        partial_run_utils.select_nodes_with_regex(input_pipeline, '.*'),
+    )
+    self.assertCountEqual(
+        ['aa', 'ab'],
+        partial_run_utils.select_nodes_with_regex(input_pipeline, '.?b,aa'),
+    )
+
 
 # pylint: disable=invalid-name
 @component
