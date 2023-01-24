@@ -107,7 +107,7 @@ class TaskScheduler(abc.ABC, Generic[_TaskT]):
     """Cancels task scheduler.
 
     This method will be invoked from a different thread than the thread that's
-    blocked on call to `schedule`. `cancel` must return immediately when called.
+    blocked on call to `schedule`. `cancel` must be non-blocking.
     Upon cancellation, `schedule` method is expected to stop any ongoing work,
     clean up and return as soon as possible. It's technically possible for
     `cancel` to be invoked before `schedule`; scheduler implementations should

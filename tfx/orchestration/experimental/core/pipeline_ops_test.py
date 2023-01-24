@@ -558,6 +558,14 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(status_lib.Code.NOT_FOUND,
                        exception_context.exception.code)
 
+      # Stop a non-existent pipeline with ignore_non_existent_or_inactive set
+      # should not raise.
+      pipeline_ops.stop_pipelines(
+          m,
+          [task_lib.PipelineUid.from_pipeline(pipeline)],
+          ignore_non_existent_or_inactive=True,
+      )
+
       # Initiate pipeline start and mark it completed.
       pipeline_ops.initiate_pipeline_start(m, pipeline)
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)

@@ -14,7 +14,7 @@
 """A task scheduler for subpipeline."""
 
 import copy
-import time
+import threading
 from typing import Callable, Optional
 
 from absl import flags
@@ -41,6 +41,10 @@ class SubPipelineTaskScheduler(
   def __init__(self, mlmd_handle: metadata.Metadata,
                pipeline: pipeline_pb2.Pipeline, task: task_lib.ExecNodeTask):
     super().__init__(mlmd_handle, pipeline, task)
+    self._cancel = threading.Event()
+    if task.cancel_type:
+      self._cancel.set()
+
     pipeline_node = self.task.get_node()
     self._sub_pipeline = subpipeline_ir_rewrite(pipeline_node.raw_proto(),
                                                 task.execution_id)
@@ -59,42 +63,60 @@ class SubPipelineTaskScheduler(
       return None
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
-    if not self._get_pipeline_view():
+    if not self._cancel.is_set() or not self._get_pipeline_view():
       try:
+        logging.info('[Subpipeline Task Scheduler]: start subpipeline.')
         pipeline_ops.initiate_pipeline_start(self.mlmd_handle,
                                              self._sub_pipeline, None, None)
       except status_lib.StatusNotOkError as e:
         return task_scheduler.TaskSchedulerResult(status=e.status())
 
-    while True:
+    while not self._cancel.wait(_POLLING_INTERVAL_SECS.value):
       view = self._get_pipeline_view()
       if view:
         if execution_lib.is_execution_successful(view.execution):
           return task_scheduler.TaskSchedulerResult(
               status=status_lib.Status(code=status_lib.Code.OK))
-        if execution_lib.is_execution_failed(
-            view.execution) or execution_lib.is_execution_canceled(
-                view.execution):
+        if execution_lib.is_execution_failed(view.execution):
           return task_scheduler.TaskSchedulerResult(
               status=status_lib.Status(
-                  code=status_lib.Code.UNKNOWN,
-                  message='Subpipeline execution is cancelled or failed.'))
+                  code=status_lib.Code.ABORTED,
+                  message='Subpipeline execution is failed.'))
+        if execution_lib.is_execution_canceled(view.execution):
+          return task_scheduler.TaskSchedulerResult(
+              status=status_lib.Status(
+                  code=status_lib.Code.CANCELLED,
+                  message='Subpipeline execution is cancelled.',
+              )
+          )
       else:
         return task_scheduler.TaskSchedulerResult(
             status=status_lib.Status(
                 code=status_lib.Code.INTERNAL,
-                message='Failed to find the state of a subpipeline run.'))
+                message=(
+                    'Failed to find the subpipeline run with run id: '
+                    f'{self._pipeline_run_id}.'
+                ),
+            )
+        )
 
-      logging.info('Waiting %s secs for subpipeline %s to finish.',
-                   _POLLING_INTERVAL_SECS.value, self._pipeline_uid.pipeline_id)
-      time.sleep(_POLLING_INTERVAL_SECS.value)
-
-    # Should not reach here.
-    raise RuntimeError(
-        f'Subpipeline {self._pipeline_uid.pipeline_i} scheduling failed.')
+    view = self._get_pipeline_view()
+    if view and execution_lib.is_execution_active(view.execution):
+      logging.info(
+          '[Subpipeline Task Scheduler]: stopping subpipeline %s',
+          self._pipeline_uid,
+      )
+      pipeline_ops.stop_pipeline(self.mlmd_handle, self._pipeline_uid)
+      logging.info(
+          '[Subpipeline Task Scheduler]: subpipeline stopped %s',
+          self._pipeline_uid,
+      )
+    return task_scheduler.TaskSchedulerResult(
+        status=status_lib.Status(code=status_lib.Code.CANCELLED)
+    )
 
   def cancel(self, cancel_task: task_lib.CancelTask) -> None:
-    pipeline_ops.stop_pipeline(self.mlmd_handle, self._pipeline_uid)
+    self._cancel.set()
 
 
 def _visit_pipeline_nodes_recursively(

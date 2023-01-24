@@ -173,9 +173,12 @@ def initiate_pipeline_start(
 
 
 @_to_status_not_ok_error
-def stop_pipelines(mlmd_handle: metadata.Metadata,
-                   pipeline_uids: List[task_lib.PipelineUid],
-                   timeout_secs: Optional[float] = None) -> None:
+def stop_pipelines(
+    mlmd_handle: metadata.Metadata,
+    pipeline_uids: List[task_lib.PipelineUid],
+    timeout_secs: Optional[float] = None,
+    ignore_non_existent_or_inactive: Optional[bool] = False,
+) -> None:
   """Stops multiple pipelines.
 
   Initiates pipeline stop operations and waits for the pipeline executions to be
@@ -186,6 +189,10 @@ def stop_pipelines(mlmd_handle: metadata.Metadata,
     pipeline_uids: UIDs of the pipeline to be stopped.
     timeout_secs: Amount of time in seconds total to wait for all pipelines to
       stop. If `None`, waits indefinitely.
+    ignore_non_existent_or_inactive: If a pipeline is not found or inactive,
+      skips it. This is useful if pipeline uids contain nested pipelines.
+      Stopping outer pipeline automatically stops inner pipelines, hence we may
+      need to skip inner pipelines here.
 
   Raises:
     status_lib.StatusNotOkError: Failure to initiate pipeline stop.
@@ -196,13 +203,24 @@ def stop_pipelines(mlmd_handle: metadata.Metadata,
                pipeline_ids_str)
   with _PIPELINE_OPS_LOCK:
     for pipeline_uid in pipeline_uids:
-      with pstate.PipelineState.load(mlmd_handle,
-                                     pipeline_uid) as pipeline_state:
-        pipeline_state.initiate_stop(
-            status_lib.Status(
-                code=status_lib.Code.CANCELLED,
-                message='Cancellation requested by client.'))
-        pipeline_states.append(pipeline_state)
+      try:
+        with pstate.PipelineState.load(mlmd_handle,
+                                       pipeline_uid) as pipeline_state:
+          pipeline_state.initiate_stop(
+              status_lib.Status(
+                  code=status_lib.Code.CANCELLED,
+                  message='Cancellation requested by client.'))
+          pipeline_states.append(pipeline_state)
+      except status_lib.StatusNotOkError as e:
+        if (
+            e.code == status_lib.Code.NOT_FOUND
+            and ignore_non_existent_or_inactive
+        ):
+          logging.info(
+              'Ignored non-existent or inactive pipeline %s.', pipeline_uid
+          )
+          continue
+        raise e
   logging.info('Waiting for pipelines to be stopped; pipeline ids: %s',
                pipeline_ids_str)
 
