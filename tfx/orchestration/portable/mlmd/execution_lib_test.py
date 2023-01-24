@@ -23,6 +23,7 @@ import tensorflow as tf
 from tfx import types
 from tfx import version
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -35,6 +36,7 @@ from tfx.utils import typing_utils
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
+
 
 _DEFAULT_ARTIFACT_TYPE = standard_artifacts.Examples
 
@@ -471,6 +473,39 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
         c.id for c in self._mlmd_handle.store.get_contexts_by_execution(
             execution_2.id)
     ], context_ids)
+
+  def testPutExecutions_None_Input(self):
+    # Prepares input artifacts.
+    input_example = standard_artifacts.Examples()
+    input_example.type_id = common_utils.register_type_if_not_exist(
+        self._mlmd_handle, input_example.artifact_type
+    ).id
+    [input_example.id] = self._mlmd_handle.store.put_artifacts(
+        [input_example.mlmd_artifact]
+    )
+    # Prepares executions.
+    execution = execution_lib.prepare_execution(
+        self._mlmd_handle,
+        metadata_store_pb2.ExecutionType(name='my_execution_type'),
+        state=metadata_store_pb2.Execution.COMPLETE,
+    )
+    # Prepares contexts.
+    contexts = self._generate_contexts(self._mlmd_handle)
+
+    # Runs the function for test, with None input
+    input_and_params = task_gen_utils.InputAndParam(input_artifacts=None)
+    [execution] = execution_lib.put_executions(
+        self._mlmd_handle,
+        [execution],
+        contexts,
+        input_artifacts_maps=[input_and_params.input_artifacts],
+    )
+
+    # Verifies that events should be empty.
+    events = self._mlmd_handle.store.get_events_by_artifact_ids(
+        [input_example.id]
+    )
+    self.assertEmpty(events)
 
   def testGetInputsAndOutputs(self):
     # Create and shuffle a few artifacts. The shuffled order should be

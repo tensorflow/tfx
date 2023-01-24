@@ -208,6 +208,9 @@ def _create_artifact_and_event_pairs(
   Returns:
     A list of [Artifact, Event] tuples
   """
+  if not artifact_dict:
+    return []
+
   result = []
   artifact_event_map = dict()
   for key, artifact_list in artifact_dict.items():
@@ -350,11 +353,10 @@ def put_executions(
   artifacts = []
   artifact_event_edges = []
   if input_artifacts_maps:
-    for idx in range(len(executions)):
+    for idx, input_artifacts in enumerate(input_artifacts_maps):
       artifact_and_event_pairs = _create_artifact_and_event_pairs(
-          metadata_handler,
-          input_artifacts_maps[idx],
-          event_type=input_event_type)
+          metadata_handler, input_artifacts, event_type=input_event_type
+      )
       for artifact, event in artifact_and_event_pairs:
         artifacts.append(artifact)
         artifact_event_edges.append((idx, len(artifacts) - 1, event))
