@@ -23,6 +23,8 @@ from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 
 # The query to get data from BigQuery.
+# The threshold number (0.0004) is for extracting minimal data to run
+# a test pipeline.
 _BIGQUERY_QUERY = """
         SELECT
           pickup_community_area,
@@ -45,7 +47,7 @@ _BIGQUERY_QUERY = """
           tips
         FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
         WHERE (ABS(FARM_FINGERPRINT(unique_key)) / 0x7FFFFFFFFFFFFFFF)
-          < 0.000001"""
+          < 0.0004"""
 
 
 class BigqueryIntegrationTest(base_test_case.BaseKubeflowV2Test):
