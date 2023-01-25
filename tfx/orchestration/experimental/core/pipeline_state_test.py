@@ -79,24 +79,36 @@ class NodeStateTest(test_utils.TfxTest):
 
     status = status_lib.Status(code=status_lib.Code.CANCELLED, message='foobar')
     node_state.update(pstate.NodeState.STOPPING, status)
-    self.assertEqual([
-        pstate.StateRecord(
-            state=pstate.NodeState.STARTED,
-            status_code=None,
-            update_time=mock_time.time.return_value)
-    ], node_state.state_history)
+    self.assertEqual(
+        [
+            pstate.StateRecord(
+                state=pstate.NodeState.STARTED,
+                backfill_token='',
+                status_code=None,
+                update_time=mock_time.time.return_value,
+            )
+        ],
+        node_state.state_history,
+    )
 
     node_state.update(pstate.NodeState.STOPPED)
-    self.assertEqual([
-        pstate.StateRecord(
-            state=pstate.NodeState.STARTED,
-            status_code=None,
-            update_time=mock_time.time.return_value),
-        pstate.StateRecord(
-            state=pstate.NodeState.STOPPING,
-            status_code=status_lib.Code.CANCELLED,
-            update_time=mock_time.time.return_value)
-    ], node_state.state_history)
+    self.assertEqual(
+        [
+            pstate.StateRecord(
+                state=pstate.NodeState.STARTED,
+                backfill_token='',
+                status_code=None,
+                update_time=mock_time.time.return_value,
+            ),
+            pstate.StateRecord(
+                state=pstate.NodeState.STOPPING,
+                backfill_token='',
+                status_code=status_lib.Code.CANCELLED,
+                update_time=mock_time.time.return_value,
+            ),
+        ],
+        node_state.state_history,
+    )
 
   def test_node_state_json(self):
     node_state = pstate.NodeState.from_json_dict(
@@ -456,7 +468,8 @@ class PipelineStateTest(test_utils.TfxTest):
 
       want = [
           event_observer.PipelineStarted(
-              pipeline_state=None, pipeline_uid=pipeline_uid),
+              pipeline_state=None, pipeline_uid=pipeline_uid
+          ),
           event_observer.NodeStateChange(
               execution=None,
               pipeline_uid=pipeline_uid,
@@ -468,9 +481,13 @@ class PipelineStateTest(test_utils.TfxTest):
                   state_history=[
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
+                          backfill_token='',
                           status_code=None,
-                          update_time=mock_time.time.return_value)
-                  ])),
+                          update_time=mock_time.time.return_value,
+                      )
+                  ],
+              ),
+          ),
           event_observer.NodeStateChange(
               execution=None,
               pipeline_uid=pipeline_uid,
@@ -481,9 +498,12 @@ class PipelineStateTest(test_utils.TfxTest):
                   state_history=[
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
+                          backfill_token='',
                           status_code=None,
-                          update_time=mock_time.time.return_value)
-                  ]),
+                          update_time=mock_time.time.return_value,
+                      )
+                  ],
+              ),
               new_state=pstate.NodeState(
                   state='stopping',
                   status_code=status_lib.Code.ABORTED,
@@ -491,13 +511,19 @@ class PipelineStateTest(test_utils.TfxTest):
                   state_history=[
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
+                          backfill_token='',
                           status_code=None,
-                          update_time=mock_time.time.return_value),
+                          update_time=mock_time.time.return_value,
+                      ),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
+                          backfill_token='',
                           status_code=None,
-                          update_time=mock_time.time.return_value)
-                  ])),
+                          update_time=mock_time.time.return_value,
+                      ),
+                  ],
+              ),
+          ),
           event_observer.NodeStateChange(
               execution=None,
               pipeline_uid=pipeline_uid,
@@ -510,29 +536,42 @@ class PipelineStateTest(test_utils.TfxTest):
                   state_history=[
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
+                          backfill_token='',
                           status_code=None,
-                          update_time=mock_time.time.return_value),
+                          update_time=mock_time.time.return_value,
+                      ),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
+                          backfill_token='',
                           status_code=None,
-                          update_time=mock_time.time.return_value)
-                  ]),
+                          update_time=mock_time.time.return_value,
+                      ),
+                  ],
+              ),
               new_state=pstate.NodeState(
                   state='started',
                   state_history=[
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTED,
+                          backfill_token='',
                           status_code=None,
-                          update_time=mock_time.time.return_value),
+                          update_time=mock_time.time.return_value,
+                      ),
                       pstate.StateRecord(
                           state=pstate.NodeState.STARTING,
+                          backfill_token='',
                           status_code=None,
-                          update_time=mock_time.time.return_value),
+                          update_time=mock_time.time.return_value,
+                      ),
                       pstate.StateRecord(
                           state=pstate.NodeState.STOPPING,
+                          backfill_token='',
                           status_code=status_lib.Code.ABORTED,
-                          update_time=mock_time.time.return_value)
-                  ])),
+                          update_time=mock_time.time.return_value,
+                      ),
+                  ],
+              ),
+          ),
       ]
       # Set execution / pipeline_state to None, so we don't compare those fields
       got = []
@@ -572,36 +611,45 @@ class PipelineStateTest(test_utils.TfxTest):
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         self.assertEqual(
             {
-                eg_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.COMPLETE,
-                        state_history=[
-                            pstate.StateRecord(
-                                state=pstate.NodeState.STARTED,
-                                status_code=None,
-                                update_time=mock_time.time.return_value)
-                        ]),
-                transform_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.RUNNING,
-                        state_history=[
-                            pstate.StateRecord(
-                                state=pstate.NodeState.STARTED,
-                                status_code=None,
-                                update_time=mock_time.time.return_value)
-                        ]),
-                trainer_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.STARTING,
-                        state_history=[
-                            pstate.StateRecord(
-                                state=pstate.NodeState.STARTED,
-                                status_code=None,
-                                update_time=mock_time.time.return_value)
-                        ]),
-                evaluator_node_uid:
-                    pstate.NodeState(state=pstate.NodeState.STARTED),
-            }, pipeline_state.get_node_states_dict())
+                eg_node_uid: pstate.NodeState(
+                    state=pstate.NodeState.COMPLETE,
+                    state_history=[
+                        pstate.StateRecord(
+                            state=pstate.NodeState.STARTED,
+                            backfill_token='',
+                            status_code=None,
+                            update_time=mock_time.time.return_value,
+                        )
+                    ],
+                ),
+                transform_node_uid: pstate.NodeState(
+                    state=pstate.NodeState.RUNNING,
+                    state_history=[
+                        pstate.StateRecord(
+                            backfill_token='',
+                            state=pstate.NodeState.STARTED,
+                            status_code=None,
+                            update_time=mock_time.time.return_value,
+                        )
+                    ],
+                ),
+                trainer_node_uid: pstate.NodeState(
+                    state=pstate.NodeState.STARTING,
+                    state_history=[
+                        pstate.StateRecord(
+                            state=pstate.NodeState.STARTED,
+                            backfill_token='',
+                            status_code=None,
+                            update_time=mock_time.time.return_value,
+                        )
+                    ],
+                ),
+                evaluator_node_uid: pstate.NodeState(
+                    state=pstate.NodeState.STARTED
+                ),
+            },
+            pipeline_state.get_node_states_dict(),
+        )
 
   def test_save_and_remove_property(self):
     property_key = 'key'
@@ -882,25 +930,31 @@ class PipelineStateTest(test_utils.TfxTest):
             }, pipeline_state.get_node_states_dict())
         self.assertEqual(
             {
-                eg_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.COMPLETE,
-                        state_history=[
-                            pstate.StateRecord(
-                                state=pstate.NodeState.STARTED,
-                                status_code=None,
-                                update_time=mock_time.time.return_value)
-                        ]),
-                transform_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.FAILED,
-                        state_history=[
-                            pstate.StateRecord(
-                                state=pstate.NodeState.STARTED,
-                                status_code=None,
-                                update_time=mock_time.time.return_value)
-                        ]),
-            }, pipeline_state.get_previous_node_states_dict())
+                eg_node_uid: pstate.NodeState(
+                    state=pstate.NodeState.COMPLETE,
+                    state_history=[
+                        pstate.StateRecord(
+                            state=pstate.NodeState.STARTED,
+                            backfill_token='',
+                            status_code=None,
+                            update_time=mock_time.time.return_value,
+                        )
+                    ],
+                ),
+                transform_node_uid: pstate.NodeState(
+                    state=pstate.NodeState.FAILED,
+                    state_history=[
+                        pstate.StateRecord(
+                            state=pstate.NodeState.STARTED,
+                            backfill_token='',
+                            status_code=None,
+                            update_time=mock_time.time.return_value,
+                        )
+                    ],
+                ),
+            },
+            pipeline_state.get_previous_node_states_dict(),
+        )
 
   @mock.patch.object(pstate, 'time')
   def test_get_previous_node_run_states_for_skipped_nodes(self, mock_time):

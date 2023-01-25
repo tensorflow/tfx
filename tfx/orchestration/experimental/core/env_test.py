@@ -32,6 +32,9 @@ class _TestEnv(env.Env):
   def concurrent_pipeline_runs_enabled(self):
     raise NotImplementedError()
 
+  def is_pure_service_node(self, pipeline_state, node_id) -> bool:
+    raise NotImplementedError()
+
 
 class EnvTest(test_utils.TfxTest):
 

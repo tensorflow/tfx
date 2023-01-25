@@ -18,6 +18,7 @@ import os
 from absl.testing import parameterized
 from absl.testing.absltest import mock
 import tensorflow as tf
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -76,6 +77,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         _is_pure_service_node)
     self._mock_service_job_manager.is_mixed_service_node.side_effect = (
         _is_mixed_service_node)
+    self._mock_service_job_manager.stop_node_services.return_value = True
 
     def _default_ensure_node_services(unused_pipeline_state, node_id):
       self.assertIn(
@@ -86,9 +88,13 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _default_ensure_node_services)
 
-  def _finish_node_execution(self, use_task_queue, exec_node_task):
+  def _finish_node_execution(
+      self, use_task_queue, exec_node_task, success=True
+  ):
     """Simulates successful execution of a node."""
-    test_utils.fake_execute_node(self._mlmd_connection, exec_node_task)
+    test_utils.fake_execute_node(
+        self._mlmd_connection, exec_node_task, None, success
+    )
     if use_task_queue:
       dequeued_task = self._task_queue.dequeue()
       self._task_queue.task_done(dequeued_task)
@@ -477,6 +483,265 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     self.assertIsInstance(example_gen_update_task, task_lib.UpdateNodeStateTask)
     self.assertIsInstance(transform_update_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(status_lib.Code.ABORTED, transform_update_task.status.code)
+
+  def test_backfill(self):
+    """Tests async pipeline task generation for backfill."""
+    use_task_queue = True
+    # Simulate that ExampleGen has already completed successfully.
+    test_utils.fake_example_gen_run(
+        self._mlmd_connection, self._example_gen, 1, 1
+    )
+
+    # Generate once.
+    [update_example_gen_task, update_transform_task, exec_transform_task] = (
+        self._generate_and_test(
+            use_task_queue,
+            num_initial_executions=1,
+            num_tasks_generated=3,
+            num_new_executions=1,
+            num_active_executions=1,
+            expected_exec_nodes=[self._transform],
+        )
+    )
+    self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.RUNNING, update_transform_task.state)
+    self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
+
+    self._mock_service_job_manager.ensure_node_services.assert_has_calls([
+        mock.call(mock.ANY, self._example_gen.node_info.id),
+        mock.call(mock.ANY, self._transform.node_info.id),
+    ])
+
+    # Mark transform execution complete.
+    self._finish_node_execution(use_task_queue, exec_transform_task)
+
+    # Trainer execution task should be generated next.
+    [update_transform_task, update_trainer_task, exec_trainer_task] = (
+        self._generate_and_test(
+            use_task_queue,
+            num_initial_executions=2,
+            num_tasks_generated=3,
+            num_new_executions=1,
+            num_active_executions=1,
+            expected_exec_nodes=[self._trainer],
+        )
+    )
+    self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
+    self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.RUNNING, update_trainer_task.state)
+    self.assertIsInstance(exec_trainer_task, task_lib.ExecNodeTask)
+
+    # Mark the trainer execution complete.
+    self._finish_node_execution(use_task_queue, exec_trainer_task)
+
+    # Only UpdateNodeStateTask are generated as there are no new inputs.
+    [update_trainer_task] = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=3,
+        num_tasks_generated=1,
+        num_new_executions=0,
+        num_active_executions=0,
+    )
+    self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
+
+    # Put Transform in backfill mode.
+    with pstate.PipelineState.load(
+        self._mlmd_connection,
+        task_lib.PipelineUid.from_pipeline(self._pipeline),
+    ) as pipeline_state:
+      transform_node = task_lib.NodeUid.from_node(
+          self._pipeline, node_proto_view.get_view(self._transform)
+      )
+      with pipeline_state.node_state_update_context(
+          transform_node
+      ) as node_state:
+        node_state.update(
+            pstate.NodeState.STARTING,
+            backfill_token='backfill-20221215-180505-123456',
+        )
+
+    # Transform tasks should be generated as it will start a backfill.
+    # Trainer will just be updated to STARTED state, since there are no new
+    # inputs.
+    [
+        update_transform_to_started_task,
+        update_transform_to_running_task,
+        exec_transform_task,
+    ] = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=3,
+        num_tasks_generated=3,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._transform],
+    )
+    self.assertIsInstance(
+        update_transform_to_started_task, task_lib.UpdateNodeStateTask
+    )
+    self.assertEqual(
+        pstate.NodeState.STARTED, update_transform_to_started_task.state
+    )
+    self.assertEqual(
+        'backfill-20221215-180505-123456',
+        update_transform_to_started_task.backfill_token,
+    )
+    self.assertIsInstance(
+        update_transform_to_running_task, task_lib.UpdateNodeStateTask
+    )
+    self.assertEqual(
+        pstate.NodeState.RUNNING, update_transform_to_running_task.state
+    )
+    self.assertEqual(
+        'backfill-20221215-180505-123456',
+        update_transform_to_running_task.backfill_token,
+    )
+    self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
+
+    # Mark transform execution complete.
+    self._finish_node_execution(use_task_queue, exec_transform_task)
+
+    # Transform should be stopped, since the backfill is complete.
+    # Trainer should be triggered again due to transform producing new output.
+    [update_transform_task, update_trainer_task, exec_trainer_task] = (
+        self._generate_and_test(
+            use_task_queue,
+            num_initial_executions=4,
+            num_tasks_generated=3,
+            num_new_executions=1,
+            num_active_executions=1,
+            expected_exec_nodes=[self._trainer],
+        )
+    )
+    self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STOPPED, update_transform_task.state)
+    self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.RUNNING, update_trainer_task.state)
+    self.assertIsInstance(exec_trainer_task, task_lib.ExecNodeTask)
+
+    # Trainer completes, goes back into STARTED state.
+    self._finish_node_execution(use_task_queue, exec_trainer_task)
+    [update_trainer_task] = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=5,
+        num_tasks_generated=1,
+        num_new_executions=0,
+        num_active_executions=0,
+    )
+    self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
+
+    # Put Transform in backfill mode with the same token as before.
+    with pstate.PipelineState.load(
+        self._mlmd_connection,
+        task_lib.PipelineUid.from_pipeline(self._pipeline),
+    ) as pipeline_state:
+      transform_node = task_lib.NodeUid.from_node(
+          self._pipeline, node_proto_view.get_view(self._transform)
+      )
+      with pipeline_state.node_state_update_context(
+          transform_node
+      ) as node_state:
+        node_state.update(
+            pstate.NodeState.STARTING,
+            backfill_token='backfill-20221215-180505-123456',
+        )
+
+    # Transform should stop immediately, since it sees the previous backfill
+    # execution.
+    [update_transform_to_started_task, update_transform_to_stopped_task] = (
+        self._generate_and_test(
+            use_task_queue,
+            num_initial_executions=5,
+            num_tasks_generated=2,
+            num_new_executions=0,
+            num_active_executions=0,
+        )
+    )
+    self.assertIsInstance(
+        update_transform_to_started_task, task_lib.UpdateNodeStateTask
+    )
+    self.assertEqual(
+        pstate.NodeState.STARTED, update_transform_to_started_task.state
+    )
+    self.assertIsInstance(
+        update_transform_to_stopped_task, task_lib.UpdateNodeStateTask
+    )
+    self.assertEqual(
+        pstate.NodeState.STOPPED, update_transform_to_stopped_task.state
+    )
+
+    # Put Transform in backfill mode with a new token.
+    with pstate.PipelineState.load(
+        self._mlmd_connection,
+        task_lib.PipelineUid.from_pipeline(self._pipeline),
+    ) as pipeline_state:
+      transform_node = task_lib.NodeUid.from_node(
+          self._pipeline, node_proto_view.get_view(self._transform)
+      )
+      with pipeline_state.node_state_update_context(
+          transform_node
+      ) as node_state:
+        node_state.update(
+            pstate.NodeState.STARTING,
+            backfill_token='backfill-20221215-192233-234567',
+        )
+
+    # Transform tasks should be generated as it will start a new backfill.
+    [
+        update_transform_to_started_task,
+        update_transform_to_running_task,
+        exec_transform_task,
+    ] = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=5,
+        num_tasks_generated=3,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._transform],
+    )
+    self.assertIsInstance(
+        update_transform_to_started_task, task_lib.UpdateNodeStateTask
+    )
+    self.assertEqual(
+        pstate.NodeState.STARTED, update_transform_to_started_task.state
+    )
+    self.assertEqual(
+        'backfill-20221215-192233-234567',
+        update_transform_to_started_task.backfill_token,
+    )
+    self.assertIsInstance(
+        update_transform_to_running_task, task_lib.UpdateNodeStateTask
+    )
+    self.assertEqual(
+        pstate.NodeState.RUNNING, update_transform_to_running_task.state
+    )
+    self.assertEqual(
+        'backfill-20221215-192233-234567',
+        update_transform_to_running_task.backfill_token,
+    )
+    self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
+
+    # Mark transform execution complete, but FAILED.
+    self._finish_node_execution(
+        use_task_queue, exec_transform_task, success=False
+    )
+
+    # In backfill mode, we don't retry failed executions, so Transform should
+    # be stopped, since the backfill is complete.
+    [update_transform_task] = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=6,
+        num_tasks_generated=1,
+        num_new_executions=0,
+        num_active_executions=0,
+        expected_exec_nodes=[],
+    )
+    self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STOPPED, update_transform_task.state)
 
 
 if __name__ == '__main__':

@@ -14,8 +14,10 @@
 """Pipeline-level operations."""
 
 import copy
+import datetime
 import functools
 import itertools
+import random
 import threading
 import time
 from typing import Callable, List, Mapping, Optional, Sequence
@@ -272,6 +274,80 @@ def initiate_node_start(mlmd_handle: metadata.Metadata,
       if node_state.is_startable():
         node_state.update(pstate.NodeState.STARTING)
   return pipeline_state
+
+
+@_to_status_not_ok_error
+@_pipeline_ops_lock
+def initiate_node_backfill(
+    mlmd_handle: metadata.Metadata, node_uid: task_lib.NodeUid
+) -> None:
+  """Initiates a node backfill operation for a pipeline node.
+
+  Only works on ASYNC pipelines. Doesn't work on nodes within subpipelines.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    node_uid: Uid of the node to be backfilled.
+
+  Returns:
+    The `PipelineState` object upon success.
+
+  Raises:
+    status_lib.StatusNotOkError: Failure to initiate node backfill operation.
+  """
+  logging.info('Received request to backfill node; node uid: %s', node_uid)
+  with pstate.PipelineState.load(
+      mlmd_handle, node_uid.pipeline_uid
+  ) as pipeline_state:
+    if pipeline_state.pipeline.execution_mode != pipeline_pb2.Pipeline.ASYNC:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(
+              'Can only backfill nodes in an ASYNC pipeline, but pipeline '
+              f'{node_uid.pipeline_uid.pipeline_id} is not ASYNC'
+          ),
+      )
+
+    if env.get_env().is_pure_service_node(
+        pipeline_state.pipeline, node_uid.node_id
+    ):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(
+              f'Cannot backfill pure service nodes, but node {node_uid} is a '
+              'pure service node.'
+          ),
+      )
+
+    with pipeline_state.node_state_update_context(node_uid) as node_state:
+      if node_state.backfill_token:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.INVALID_ARGUMENT,
+            message=(
+                f'Node {node_uid} is already in backfill mode with token '
+                f'{node_state.backfill_token}. If you want to abort the '
+                'backfill and start a new one, stop the node first.'
+            ),
+        )
+
+      if node_state.is_backfillable():
+        # Generate a unique backfill token for this request.
+        backfill_token = 'backfill-%s-%06s' % (
+            datetime.datetime.now().strftime('%Y%m%d-%H%M%S'),
+            random.randint(0, 999999),
+        )
+        node_state.update(
+            pstate.NodeState.STARTING, backfill_token=backfill_token
+        )
+      else:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.INVALID_ARGUMENT,
+            message=(
+                'Can only backfill nodes in a stopped or failed state, '
+                f'but node {node_uid} was in state {node_state.state}. '
+                'Try stopping the node first.'
+            ),
+        )
 
 
 def _check_nodes_exist(node_uids: Sequence[task_lib.NodeUid],
@@ -1045,7 +1121,7 @@ def _orchestrate_active_pipeline(
       if isinstance(task, task_lib.UpdateNodeStateTask):
         with pipeline_state.node_state_update_context(
             task.node_uid) as node_state:
-          node_state.update(task.state, task.status)
+          node_state.update(task.state, task.status, task.backfill_token)
 
     tasks = [
         t for t in tasks if not isinstance(t, task_lib.UpdateNodeStateTask)

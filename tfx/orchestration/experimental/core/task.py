@@ -217,6 +217,7 @@ class UpdateNodeStateTask(Task):
   node_uid: NodeUid
   state: str
   status: Optional[status_lib.Status] = None
+  backfill_token: str = ''
 
   @property
   def task_id(self) -> TaskId:

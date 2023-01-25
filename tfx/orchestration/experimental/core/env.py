@@ -52,6 +52,12 @@ class Env(abc.ABC):
   def concurrent_pipeline_runs_enabled(self) -> bool:
     """Returns whether concurrent pipeline runs are enabled."""
 
+  @abc.abstractmethod
+  def is_pure_service_node(
+      self, pipeline: pipeline_pb2.Pipeline, node_id: str
+  ) -> bool:
+    """Returns whether the given node is a pure service node."""
+
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -69,6 +75,11 @@ class _DefaultEnv(Env):
     return None
 
   def concurrent_pipeline_runs_enabled(self) -> bool:
+    return False
+
+  def is_pure_service_node(
+      self, pipeline: pipeline_pb2.Pipeline, node_id: str
+  ) -> bool:
     return False
 
 

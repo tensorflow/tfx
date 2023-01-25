@@ -200,7 +200,9 @@ def get_node(pipeline, node_id):
   raise ValueError(f'could not find {node_id}')
 
 
-def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
+def fake_execute_node(
+    mlmd_connection, task, artifact_custom_properties=None, success=True
+):
   """Simulates node execution given ExecNodeTask."""
   node = task.get_node()
   with mlmd_connection as m:
@@ -219,9 +221,15 @@ def fake_execute_node(mlmd_connection, task, artifact_custom_properties=None):
       output_artifacts = {output_key: [output]}
     else:
       output_artifacts = None
-    execution_publish_utils.publish_succeeded_execution(m, task.execution_id,
-                                                        task.contexts,
-                                                        output_artifacts)
+
+    if success:
+      execution_publish_utils.publish_succeeded_execution(
+          m, task.execution_id, task.contexts, output_artifacts
+      )
+    else:
+      execution_publish_utils.publish_failed_execution(
+          m, task.contexts, task.execution_id
+      )
 
 
 def fake_start_node_with_handle(
@@ -313,7 +321,7 @@ def run_generator(mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
         with pipeline_state:
           with pipeline_state.node_state_update_context(
               task.node_uid) as node_state:
-            node_state.update(task.state, task.status)
+            node_state.update(task.state, task.status, task.backfill_token)
   if ignore_update_node_state_tasks:
     tasks = [
         t for t in tasks if not isinstance(t, task_lib.UpdateNodeStateTask)

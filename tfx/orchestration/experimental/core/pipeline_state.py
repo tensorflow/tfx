@@ -90,6 +90,7 @@ _EXECUTION_STATE_TO_RUN_STATE_MAP = {
 @dataclasses.dataclass
 class StateRecord(json_utils.Jsonable):
   state: str
+  backfill_token: str
   status_code: Optional[int]
   update_time: float
   # TODO(b/242083811) Some status_msg have already been written into MLMD.
@@ -132,6 +133,7 @@ class NodeState(json_utils.Jsonable):
           SKIPPED_PARTIAL_RUN, PAUSING, PAUSED, FAILED
       ]),
       on_setattr=attr.setters.validate)
+  backfill_token: str = ''
   status_code: Optional[int] = None
   status_msg: str = ''
   last_updated_time: float = attr.ib(factory=lambda: time.time())  # pylint:disable=unnecessary-lambda
@@ -144,20 +146,27 @@ class NodeState(json_utils.Jsonable):
       return status_lib.Status(code=self.status_code, message=self.status_msg)
     return None
 
-  def update(self,
-             state: str,
-             status: Optional[status_lib.Status] = None) -> None:
+  def update(
+      self,
+      state: str,
+      status: Optional[status_lib.Status] = None,
+      backfill_token: str = '',
+  ) -> None:
     if self.state != state:
       self.state_history.append(
           StateRecord(
               state=self.state,
+              backfill_token=self.backfill_token,
               status_code=self.status_code,
-              update_time=self.last_updated_time))
+              update_time=self.last_updated_time,
+          )
+      )
       if len(self.state_history) > _MAX_STATE_HISTORY_LEN:
         self.state_history = self.state_history[-_MAX_STATE_HISTORY_LEN:]
       self.last_updated_time = time.time()
 
     self.state = state
+    self.backfill_token = backfill_token
     self.status_code = status.code if status is not None else None
     self.status_msg = status.message if status is not None else ''
 
@@ -174,6 +183,10 @@ class NodeState(json_utils.Jsonable):
   def is_pausable(self) -> bool:
     """Returns True if the node can be stopped."""
     return self.state in set([self.STARTING, self.STARTED, self.RUNNING])
+
+  def is_backfillable(self) -> bool:
+    """Returns True if the node can be backfilled."""
+    return self.state in set([self.STOPPED, self.FAILED])
 
   def is_programmatically_skippable(self) -> bool:
     """Returns True if the node can be skipped via programmatic operation."""
@@ -232,8 +245,10 @@ class NodeState(json_utils.Jsonable):
     if include_current_state:
       current_record = StateRecord(
           state=self.state,
+          backfill_token=self.backfill_token,
           status_code=self.status_code,
-          update_time=self.last_updated_time)
+          update_time=self.last_updated_time,
+      )
       if predicate(current_record):
         return int(current_record.update_time)
 

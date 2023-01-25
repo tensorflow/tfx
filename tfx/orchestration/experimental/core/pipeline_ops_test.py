@@ -622,6 +622,58 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(status_lib.Code.DEADLINE_EXCEEDED,
                        exception_context.exception.code)
 
+  def test_backfill_node(self):
+    pipeline = test_async_pipeline.create_pipeline()
+
+    pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+    example_gen_node_uid = task_lib.NodeUid(
+        node_id='my_example_gen', pipeline_uid=pipeline_uid
+    )
+    trainer_node_uid = task_lib.NodeUid(
+        node_id='my_trainer', pipeline_uid=pipeline_uid
+    )
+
+    class _TestEnv(env._DefaultEnv):
+
+      def is_pure_service_node(self, pipeline_state, node_id):
+        return node_id == 'my_example_gen'
+
+    with _TestEnv(), self._mlmd_connection as m:
+      pipeline_state = pstate.PipelineState.new(m, pipeline)
+
+      # Check - can't backfill a pure service node
+      with self.assertRaisesRegex(
+          status_lib.StatusNotOkError,
+          'Cannot backfill pure service nodes',
+      ):
+        pipeline_ops.initiate_node_backfill(m, example_gen_node_uid)
+
+      # Check - can't backfill a RUNNING node
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        with pipeline_state.node_state_update_context(
+            trainer_node_uid
+        ) as node_state:
+          node_state.update(pstate.NodeState.RUNNING)
+
+      with self.assertRaisesRegex(
+          status_lib.StatusNotOkError,
+          'Can only backfill nodes in a stopped or failed',
+      ):
+        pipeline_ops.initiate_node_backfill(m, trainer_node_uid)
+
+      # Check - can backfill a STOPPED node
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        with pipeline_state.node_state_update_context(
+            trainer_node_uid
+        ) as node_state:
+          node_state.update(pstate.NodeState.STOPPED)
+      pipeline_ops.initiate_node_backfill(m, trainer_node_uid)
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        node_state = pipeline_state.get_node_state(trainer_node_uid)
+        self.assertEqual(pstate.NodeState.STARTING, node_state.state)
+        self.assertNotEqual('', node_state.backfill_token)
+
   def test_stop_node_wait_for_inactivation(self):
     pipeline = test_async_pipeline.create_pipeline()
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
