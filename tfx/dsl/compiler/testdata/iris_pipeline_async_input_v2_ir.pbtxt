@@ -804,9 +804,6 @@ nodes {
         key: "examples"
         value {
           channels {
-            producer_node_query {
-              id: "CsvExampleGen"
-            }
             context_queries {
               type {
                 name: "pipeline"
@@ -929,6 +926,14 @@ nodes {
     downstream_nodes: "Pusher"
     execution_options {
       caching_options {
+      }
+      async_trigger {
+        input_triggers {
+          key: "examples"
+          value {
+            no_trigger: true
+          }
+        }
       }
     }
   }

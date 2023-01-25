@@ -13,7 +13,7 @@
 # limitations under the License.
 """Module for `ForEach` context manager."""
 
-from typing import Union, cast
+from typing import Union, cast, Any
 
 from tfx.dsl.context_managers import dsl_context_manager
 from tfx.dsl.control_flow import for_each_internal
@@ -36,7 +36,7 @@ def _for_each_output_type(channel: channel_types.BaseChannel):
   return {'out': channel.type}
 
 
-class ForEach(dsl_context_manager.DslContextManager[for_each_internal.LoopVar]):
+class ForEach(dsl_context_manager.DslContextManager[Any]):
   """ForEach context manager.
 
   ForEach context manager is a declarative version of For loop in a pipeline
@@ -89,6 +89,7 @@ class ForEach(dsl_context_manager.DslContextManager[for_each_internal.LoopVar]):
   def create_context(self) -> ForEachContext:
     return for_each_internal.ForEachContext()
 
-  def enter(  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
-      self, context: ForEachContext) -> for_each_internal.LoopVar:
+  # TODO(b/266112670): Return value should be a generic type (T) once the
+  # Loopable type become generic as well (Loopable[T]).
+  def enter(self, context: ForEachContext) -> Any:  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
     return self._loopable.get_loop_var(context)

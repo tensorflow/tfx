@@ -105,7 +105,7 @@ def create_test_pipeline():
               })
       ])
   evaluator = Evaluator(
-      examples=example_gen.outputs["examples"],
+      examples=example_gen.outputs["examples"].notrigger(),
       model=trainer.outputs["model"],
       # TODO(b/257197093): Use corresponding resolver function instead.
       # baseline_model=model_resolver.outputs["baseline_model"],

@@ -561,6 +561,38 @@ message NodeExecutionOptions {
   // Maximum time in seconds before failing an execution. Only supported
   // in the internal orchestrator. Default to 0 which means never timeout.
   uint32 execution_timeout_sec = 7;
+
+  // Fine-grained trigger configuration for the ASYNC execution mode.
+  message AsyncTrigger {
+    message InputTrigger {
+      // Trigger by new property values seen.
+      message TriggerByProperty {
+        repeated string property_keys = 1;
+      }
+      oneof type {
+        // If `True`, this input is not used for triggering.
+        bool no_trigger = 1;
+        // Trigger if new artifact property values are seen. For example if you
+        // want the component to be triggered if the new `span` arrives but skip
+        // when the new `version` of the previous span arrives, set this to
+        // `{ property_keys: ["span"] }`.
+        // Note that `properties` and `custom_properties` are not distinguished
+        // (but `properties` is higher precedence). If the property key is not
+        // found in both property dicts, it will always trigger the new
+        // execution (default behavior).
+        TriggerByProperty trigger_by_property = 2;
+        // Future candidate input triggers: Throttling(timedelta)
+      }
+    }
+
+    // Map from `input_key` to `InputTrigger`.
+    // By default (i.e. `input_key` not presents in the map), any new input
+    // artifacts (distinguished by `id`) will trigger new execution.
+    map<string, InputTrigger> input_triggers = 1;
+  }
+
+  // Async mode trigger configuration for this node.
+  AsyncTrigger async_trigger = 8;
 }
 
 // Pipeline node definition.

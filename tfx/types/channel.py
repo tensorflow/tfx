@@ -14,10 +14,12 @@
 """TFX Channel definition."""
 
 import abc
+import copy
+import dataclasses
 import inspect
 import json
 import textwrap
-from typing import Any, cast, Dict, Iterable, List, Optional, Type, Union, Set
+from typing import Any, cast, Dict, Iterable, List, Optional, Type, Union, Set, Sequence
 from absl import logging
 
 from tfx.dsl.placeholder import placeholder
@@ -46,6 +48,23 @@ def _is_property_dict(value: Any):
       isinstance(value, dict) and
       all(isinstance(k, str) for k in value.keys()) and
       all(isinstance(v, _EXEC_PROPERTY_CLASSES) for v in value.values()))
+
+
+class NoTrigger:
+  _instance = None
+
+  def __new__(cls):
+    if cls._instance is None:
+      cls._instance = object.__new__(cls)
+    return cls._instance
+
+
+@dataclasses.dataclass(frozen=True)
+class TriggerByProperty:
+  property_keys: Sequence[str]
+
+
+_InputTrigger = Union[NoTrigger, TriggerByProperty]
 
 
 class BaseChannel(abc.ABC):
@@ -85,6 +104,7 @@ class BaseChannel(abc.ABC):
           'Argument "type" of BaseChannel constructor must be a subclass of '
           f'tfx.Artifact (got {type}).')
     self._artifact_type = type
+    self._input_trigger = None
 
   @property
   def type(self):  # pylint: disable=redefined-builtin
@@ -115,6 +135,25 @@ class BaseChannel(abc.ABC):
   def type_name(self):
     """Name of the artifact type class that Channel takes."""
     return self.type.TYPE_NAME
+
+  @property
+  @doc_controls.do_not_generate_docs
+  def input_trigger(self) -> _InputTrigger:  # pylint: disable=g-missing-from-attributes
+    return self._input_trigger
+
+  def _with_input_trigger(self, input_trigger: _InputTrigger):
+    """Creates shallow-copied channel with new annotations."""
+    result = copy.copy(self)
+    result._input_trigger = input_trigger  # pylint: disable=protected-access
+    return result
+
+  @doc_controls.do_not_generate_docs
+  def notrigger(self):
+    return self._with_input_trigger(NoTrigger())
+
+  @doc_controls.do_not_generate_docs
+  def trigger_by_property(self, *property_keys: str):
+    return self._with_input_trigger(TriggerByProperty(property_keys))
 
   def future(self) -> placeholder.ChannelWrappedPlaceholder:
     return placeholder.ChannelWrappedPlaceholder(self)

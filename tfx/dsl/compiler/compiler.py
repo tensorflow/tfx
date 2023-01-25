@@ -31,6 +31,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import channel as channel_types
 from tfx.types import value_artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import name_utils
@@ -245,6 +246,17 @@ class Compiler:
       node.execution_options.node_success_optional = node_execution_options.success_optional
       node.execution_options.max_execution_retries = node_execution_options.max_execution_retries
       node.execution_options.execution_timeout_sec = node_execution_options.execution_timeout_sec
+
+    if pipeline_ctx.is_async_mode:
+      input_triggers = node.execution_options.async_trigger.input_triggers
+      for input_key, input_channel in tfx_node.inputs.items():
+        if isinstance(input_channel.input_trigger, channel_types.NoTrigger):
+          input_triggers[input_key].no_trigger = True
+        if isinstance(input_channel.input_trigger,
+                      channel_types.TriggerByProperty):
+          input_triggers[input_key].trigger_by_property.property_keys.extend(
+              input_channel.input_trigger.property_keys
+          )
 
     # Step 9: Per-node platform config
     if isinstance(tfx_node, base_component.BaseComponent):
