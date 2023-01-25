@@ -32,8 +32,7 @@
 #  $ cat tfx/scripts/tfx_test_installed.sh | docker run --rm -e 'INSTALL_TFX_VERSION=0.28.0' -i gcr.io/deeplearning-platform-release/tf2-cpu.2-4  bash -c 'source /dev/stdin'
 #
 
-# TFX should be installed with DLVM images for TF 1.15 or 2.1 ~ 2.4.
-TFX_SUPPORTED_TF1_VERSION="1.15"
+# TFX should be installed with DLVM images for 2.1 ~ 2.4.
 TFX_SUPPORTED_TF2_MIN_VERSION="1"
 TFX_SUPPORTED_TF2_MAX_VERSION="4"
 
@@ -55,10 +54,9 @@ TENSORFLOW_VERSION=$(${PYTHON_BINARY} -c 'import tensorflow; print(tensorflow.__
 if ! python -c 'import tfx'; then
   tf_version_arr=(${TENSORFLOW_VERSION//./ })
   max_tf_version_arr=(${MAX_TFX_SUPPORTED_TF_VERSION//./ })
-  if [[ "${tf_version_arr[0]}.${tf_version_arr[1]}" == $TFX_SUPPORTED_TF1_VERSION || \
-         ${tf_version_arr[0]} == 2 && \
-         ${tf_version_arr[1]} -ge $TFX_SUPPORTED_TF2_MIN_VERSION && \
-         ${tf_version_arr[1]} -le $TFX_SUPPORTED_TF2_MAX_VERSION ]]; then
+  if [[ ${tf_version_arr[0]} == 2 && \
+        ${tf_version_arr[1]} -ge $TFX_SUPPORTED_TF2_MIN_VERSION && \
+        ${tf_version_arr[1]} -le $TFX_SUPPORTED_TF2_MAX_VERSION ]]; then
       echo "TFX should be installed with TF==${TENSORFLOW_VERSION} but missing."
       exit 1
   else
@@ -97,74 +95,6 @@ SKIP_LIST=(
   'tfx/components/trainer/rewriting/tfjs_rewriter_test.py'
 )
 
-# TODO(b/179861879): Delete the following tests after TF1 images using TFX 0.28
-#                    which includes skipIf branches for TF2 only tests.
-if [[ "${TENSORFLOW_VERSION}" == 1.* ]]; then
-  SKIP_LIST+=(
-    "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/beam_pipeline_test.py"
-    "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/graph_partition_test.py"
-    # Output of components test result is only compatible with TF2.
-    "tfx/components/bulk_inferrer/executor_test.py"
-    "tfx/components/evaluator/executor_test.py"
-    "tfx/components/model_validator/executor_test.py"
-    "tfx/components/tuner/executor_test.py"
-    # Native keras models only work with TF2.
-    "tfx/examples/chicago_taxi_pipeline/taxi_pipeline_native_keras_e2e_test.py"
-    "tfx/examples/imdb/imdb_pipeline_native_keras_e2e_test.py"
-    "tfx/examples/penguin/*"
-    "tfx/examples/mnist/mnist_pipeline_native_keras_e2e_test.py"
-    "tfx/experimental/templates/penguin/e2e_tests/local_e2e_test.py"
-    "tfx/experimental/templates/taxi/e2e_tests/local_e2e_test.py"
-  )
-fi
-
-# TODO(b/179328863): TF 2.1 is LTS and we should keep TFX 0.21.x until TF 2.1 retires.
-if [[ "${TFX_VERSION}" == 0.21.* ]]; then
-  SKIP_LIST+=(
-    "tfx/utils/dependency_utils_test.py"
-    "tfx/components/transform/executor_with_tfxio_test.py"
-    "tfx/components/statistics_gen/executor_test.py"
-    "tfx/components/evaluator/executor_test.py"
-    "tfx/orchestration/beam/beam_dag_runner_test.py"
-    "tfx/examples/chicago_taxi_pipeline/taxi_pipeline_portable_beam_test.py"
-    "tfx/examples/chicago_taxi_pipeline/taxi_utils_test.py"
-    "tfx/tools/cli/container_builder/dockerfile_test.py"
-    "tfx/tools/cli/handler/beam_handler_test.py"
-  )
-fi
-
-# TODO(b/189059446): Delete this after TF 2.2 is retired.
-if [[ "${TFX_VERSION}" == 0.22.* ]]; then
-  SKIP_LIST+=(
-    "tfx/utils/dependency_utils_test.py"
-    "tfx/components/transform/executor_with_tfxio_test.py"
-    "tfx/components/statistics_gen/executor_test.py"
-    "tfx/components/evaluator/executor_test.py"
-    "tfx/orchestration/beam/beam_dag_runner_test.py"
-  )
-fi
-
-if [[ "${TENSORFLOW_VERSION}" == 1.* && "${TFX_VERSION}" == 0.23.* ]]; then
-  SKIP_LIST+=(
-    "tfx/components/*"
-    "tfx/dsl/*"
-    "tfx/examples/*"
-    "tfx/experimental/distributed_inference/*"
-    "tfx/experimental/pipeline_testing/*"
-    "tfx/experimental/templates/*"
-    "tfx/extensions/*"
-    "tfx/orchestration/*"
-    "tfx/scripts/*"
-    "tfx/tools/cli/*"
-    "tfx/types/artifact_test.py"
-    "tfx/types/artifact_utils_test.py"
-    "tfx/types/standard_artifacts_test.py"
-    "tfx/utils/channel_test.py"
-    "tfx/utils/dependency_utils_test.py"
-    "tfx/utils/io_utils_test.py"
-  )
-fi
-
 # TODO(b/177609153): TF 2.3 is LTS and we should keep TFX 0.26.x until TF 2.3 retires
 if [[ "${TFX_VERSION}" == 0.26.* ]]; then
   SKIP_LIST+=(
@@ -174,21 +104,9 @@ if [[ "${TFX_VERSION}" == 0.26.* ]]; then
   )
 fi
 
-# TODO(b/188658375): Delete the following test after TFX 1.0.0 released.
-if [[ "${TFX_VERSION}" == 0.30.0 ]]; then
-  SKIP_LIST+=(
-    "tfx/orchestration/portable/execution_watcher_test.py"
-  )
-fi
-
 # TODO(b/182435431): Delete the following test after the hanging issue resolved.
 SKIP_LIST+=(
   "tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/beam_pipeline_test.py"
-)
-
-# TODO(b/188223200): Add back following test for TFX 1.0 and later.
-SKIP_LIST+=(
-  "tfx/tools/cli/commands/pipeline_test.py"
 )
 
 # TODO(b/154871293): Migrate to pytest after fixing pytest issues.
