@@ -513,8 +513,8 @@ class PlaceholderTest(tf.test.TestCase):
       expected_pb = text_format.ParseLines(
           text_pb_file, placeholder_pb2.PlaceholderExpression())
     placeholder = ph.exec_property('splits_config').analyze[0]
-    component_spec = standard_component_specs.TransformSpec
-    self.assertProtoEquals(placeholder.encode(component_spec), expected_pb)
+    param_types = standard_component_specs.TransformSpec.PARAMETERS
+    self.assertProtoEquals(placeholder.encode(param_types), expected_pb)
 
   def testProtoFutureValueOperator(self):
     test_pb_filepath = os.path.join(
@@ -881,8 +881,8 @@ class PlaceholderTest(tf.test.TestCase):
           text_pb_file, placeholder_pb2.PlaceholderExpression())
     placeholder = ph.exec_property('splits_config').serialize(
         ph.ProtoSerializationFormat.JSON)
-    component_spec = standard_component_specs.TransformSpec
-    self.assertProtoEquals(placeholder.encode(component_spec), expected_pb)
+    param_types = standard_component_specs.TransformSpec.PARAMETERS
+    self.assertProtoEquals(placeholder.encode(param_types), expected_pb)
 
   def testExecInvocation(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(

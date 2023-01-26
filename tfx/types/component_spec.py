@@ -291,7 +291,7 @@ class ComponentSpec(json_utils.Jsonable):
         self.outputs[key] = channel_.as_output_channel(producer_component, key)
 
 
-class ExecutionParameter:
+class ExecutionParameter(placeholder.ParameterTypeInfo):
   """An execution parameter in a ComponentSpec.
 
   This type of parameter should be specified in the PARAMETERS dict of a
@@ -327,6 +327,9 @@ class ExecutionParameter:
     return (isinstance(other.__class__, self.__class__) and
             other.type == self.type and other.optional == self.optional and
             other.use_proto == self.use_proto)
+
+  def get_type(self) -> Type[Any]:
+    return self.type
 
   def type_check(self, arg_name: str, value: Any):
     """Perform type check to the parameter passed in."""

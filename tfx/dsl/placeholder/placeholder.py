@@ -18,7 +18,7 @@ import abc
 import copy
 import enum
 import functools
-from typing import Any, Callable, Iterator, List, Optional, Sequence, Type, TypeVar, Union, cast
+from typing import Any, Callable, Iterator, List, Mapping, Optional, Sequence, Type, TypeVar, Union, cast
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
@@ -36,6 +36,15 @@ types = Any  # tfx.types imports channel.py, which in turn imports this module.
 _ValueLikeType = Union[int, float, str, 'ChannelWrappedPlaceholder']
 
 
+class ParameterTypeInfo(abc.ABC):
+  @abc.abstractmethod
+  def get_type(self) -> Type[Any]:
+    raise NotImplementedError()
+
+
+ParameterTypeInfos = Mapping[str, ParameterTypeInfo]
+
+
 class _PlaceholderOperator(json_utils.Jsonable):
   """An Operator performs an operation on a Placeholder.
 
@@ -49,7 +58,7 @@ class _PlaceholderOperator(json_utils.Jsonable):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     pass
 
@@ -70,9 +79,9 @@ class _ArtifactUriOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    del component_spec  # Unused by ArtifactUriOperator
+    del param_types  # Unused by ArtifactUriOperator
 
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.artifact_uri_op.expression.CopyFrom(sub_expression_pb)
@@ -90,9 +99,9 @@ class _ArtifactValueOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    del component_spec  # Unused by ArtifactValueOperator
+    del param_types  # Unused by ArtifactValueOperator
 
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.artifact_value_op.expression.CopyFrom(sub_expression_pb)
@@ -112,9 +121,9 @@ class _IndexOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    del component_spec  # Unused by IndexOperator
+    del param_types  # Unused by IndexOperator
 
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.index_op.expression.CopyFrom(sub_expression_pb)
@@ -139,9 +148,9 @@ class _PropertyOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    del component_spec  # Unused by PropertyOperator
+    del param_types  # Unused by PropertyOperator
 
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.artifact_property_op.expression.CopyFrom(sub_expression_pb)
@@ -167,9 +176,9 @@ class _ConcatOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    del component_spec  # Unused by ConcatOperator
+    del param_types  # Unused by ConcatOperator
 
     # ConcatOperator's proto version contains multiple placeholder expressions
     # as operands. For convenience, the Python version is implemented taking
@@ -257,7 +266,7 @@ class _ProtoOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.proto_op.expression.CopyFrom(sub_expression_pb)
@@ -269,23 +278,23 @@ class _ProtoOperator(_PlaceholderOperator):
           self._serialization_format.value)
 
     # Attach proto descriptor if available through component spec.
-    if (component_spec and sub_expression_pb.placeholder.type
+    if (param_types and sub_expression_pb.placeholder.type
         == placeholder_pb2.Placeholder.EXEC_PROPERTY):
       exec_property_name = sub_expression_pb.placeholder.key
-      if exec_property_name not in component_spec.PARAMETERS:
+      if exec_property_name not in param_types:
         raise ValueError(
             f"Can't find provided placeholder key {exec_property_name} in "
             "component spec's exec properties. "
-            f'Available exec property keys: {component_spec.PARAMETERS.keys()}.'
+            f'Available exec property keys: {param_types.keys()}.'
         )
-      execution_param = component_spec.PARAMETERS[exec_property_name]
-      if not issubclass(execution_param.type, message.Message):
+      execution_param_type = param_types[exec_property_name].get_type()
+      if not issubclass(execution_param_type, message.Message):
         raise ValueError(
             "Can't apply placeholder proto operator on non-proto type "
-            f'exec property. Got {execution_param.type}.')
+            f'exec property. Got {execution_param_type}.')
       proto_schema = result.operator.proto_op.proto_schema
-      proto_schema.message_type = execution_param.type.DESCRIPTOR.full_name
-      proto_utils.build_file_descriptor_set(execution_param.type,
+      proto_schema.message_type = execution_param_type.DESCRIPTOR.full_name
+      proto_utils.build_file_descriptor_set(execution_param_type,
                                             proto_schema.file_descriptors)
 
     return result
@@ -305,9 +314,9 @@ class _ListSerializationOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    del component_spec
+    del param_types
 
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.list_serialization_op.expression.CopyFrom(sub_expression_pb)
@@ -324,9 +333,9 @@ class _Base64EncodeOperator(_PlaceholderOperator):
   def encode(
       self,
       sub_expression_pb: placeholder_pb2.PlaceholderExpression,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    del component_spec  # Unused by B64EncodeOperator
+    del param_types  # Unused by B64EncodeOperator
 
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.base64_encode_op.expression.CopyFrom(sub_expression_pb)
@@ -382,12 +391,12 @@ class Placeholder(json_utils.Jsonable):
 
   def encode(
       self,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     """Encodes a placeholder as PlaceholderExpression proto.
 
     Args:
-      component_spec: Optional. Information about the component that may be
+      param_types: Optional. Information about the component that may be
         needed during encoding.
 
     Returns:
@@ -398,7 +407,7 @@ class Placeholder(json_utils.Jsonable):
     if self._key:
       result.placeholder.key = self._key
     for op in self._operators:
-      result = op.encode(result, component_spec)
+      result = op.encode(result, param_types)
     return result
 
   def placeholders_involved(self) -> List['Placeholder']:
@@ -840,10 +849,10 @@ class Predicate(Placeholder):
 
   def encode(
       self,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     """This just calls `encode_with_keys` without arguments."""
-    del component_spec  # not used for encoding Predicates
+    del param_types  # not used for encoding Predicates
     return self.encode_with_keys()
 
   def encode_with_keys(
@@ -926,14 +935,14 @@ class ListPlaceholder(Placeholder):
 
   def encode(
       self,
-      component_spec: Optional[Type['types.ComponentSpec']] = None
+      param_types: Optional[ParameterTypeInfos] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     expressions = result.operator.list_concat_op.expressions
     for input_placeholder in self._input_placeholders:
-      expressions.append(input_placeholder.encode(component_spec))
+      expressions.append(input_placeholder.encode(param_types))
     for op in self._operators:
-      result = op.encode(result, component_spec)
+      result = op.encode(result, param_types)
     return result
 
 
