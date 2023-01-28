@@ -554,10 +554,12 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       # Prepare artifact.
       artifact_type = metadata_store_pb2.ArtifactType(name='a_type')
       artifact_type.id = m.store.put_artifact_type(artifact_type)
-      artifact_pb = metadata_store_pb2.Artifact(type_id=artifact_type.id)
-      artifact_pb.id = m.store.put_artifacts([artifact_pb])[0]
-      artifact = artifact_utils.deserialize_artifacts(
-          artifact_type, [artifact_pb]
+      artifact_pb_1 = metadata_store_pb2.Artifact(type_id=artifact_type.id)
+      artifact_pb_1.id = m.store.put_artifacts([artifact_pb_1])[0]
+      artifact_pb_2 = metadata_store_pb2.Artifact(type_id=artifact_type.id)
+      artifact_pb_2.id = m.store.put_artifacts([artifact_pb_2])[0]
+      [artifact_1, artifact_2] = artifact_utils.deserialize_artifacts(
+          artifact_type, [artifact_pb_1, artifact_pb_2]
       )
 
       with self.subTest(name='NoInput'):
@@ -573,7 +575,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       with self.subTest(name='OneUnprocessedInput'):
         # There is 1 unprocessed_input
         input_and_param = task_gen_utils.InputAndParam(
-            input_artifacts={'examples': artifact}
+            input_artifacts={'examples': [artifact_1, artifact_2]}
         )
         resolved_info = task_gen_utils.ResolvedInfo(
             contexts=[context],
@@ -585,20 +587,45 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         self.assertLen(unprocessed_inputs, 1)
         self.assertEqual(unprocessed_inputs[0], input_and_param)
 
-      with self.subTest(name='OnePprocessedInput'):
-        # Simulate that the input artifact is processed.
-        execution = execution_lib.prepare_execution(
-            m,
-            execution_type=metadata_store_pb2.ExecutionType(name='my_ex_type'),
-            state=metadata_store_pb2.Execution.COMPLETE,
+      # Simulate that artifact_1 and artifact_2 are processed.
+      execution = execution_lib.prepare_execution(
+          m,
+          execution_type=metadata_store_pb2.ExecutionType(name='my_ex_type'),
+          state=metadata_store_pb2.Execution.COMPLETE,
+      )
+      execution = execution_lib.put_execution(
+          m,
+          execution,
+          [context],
+          input_artifacts={'examples': [artifact_1, artifact_2]},
+      )
+
+      with self.subTest(name='ResolvedArtifactsMatchProcessedArtifacts'):
+        input_and_param = task_gen_utils.InputAndParam(
+            input_artifacts={'examples': [artifact_1, artifact_2]}
         )
-        execution = execution_lib.put_execution(
-            m, execution, [context], input_artifacts={'examples': artifact}
+        resolved_info = task_gen_utils.ResolvedInfo(
+            contexts=[context],
+            input_and_params=[input_and_param],
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
             m, [execution], resolved_info
         )
         self.assertEmpty(unprocessed_inputs)
+
+      with self.subTest(name='ResolvedArtifactsNotMatchProcessedArtifacts'):
+        input_and_param = task_gen_utils.InputAndParam(
+            input_artifacts={'key1': [artifact_1], 'key2': [artifact_2]}
+        )
+        resolved_info = task_gen_utils.ResolvedInfo(
+            contexts=[context],
+            input_and_params=[input_and_param],
+        )
+        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+            m, [execution], resolved_info
+        )
+        self.assertLen(unprocessed_inputs, 1)
+        self.assertEqual(unprocessed_inputs[0], input_and_param)
 
 
 if __name__ == '__main__':
