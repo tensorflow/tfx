@@ -32,6 +32,7 @@ from tfx.orchestration import pipeline
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
+from tfx.types import channel_utils
 from tfx.types import value_artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import name_utils
@@ -534,7 +535,10 @@ def _set_node_parameters(node: pipeline_pb2.PipelineNode,
     elif isinstance(value, placeholder.ChannelWrappedPlaceholder):
       compiler_utils.validate_dynamic_exec_ph_operator(value)
       parameter_value.placeholder.CopyFrom(
-          value.encode_with_keys(compiler_utils.implicit_channel_key))
+          channel_utils.encode_placeholder_with_channels(
+              value, compiler_utils.implicit_channel_key
+          )
+      )
     else:
       try:
         data_types_utils.set_parameter_value(parameter_value, value)

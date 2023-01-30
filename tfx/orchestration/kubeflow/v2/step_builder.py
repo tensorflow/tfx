@@ -284,8 +284,10 @@ class StepBuilder:
             implicit_input_channels[implicit_key] = channel
             # Store the producer node and add it to the upstream nodes later.
             implicit_upstream_node_ids.add(channel.producer_component_id)
-        placeholder_pb = predicate.encode_with_keys(
-            tfx_compiler_utils.build_channel_to_key_fn(implicit_keys_map))
+        placeholder_pb = channel_utils.encode_placeholder_with_channels(
+            predicate,
+            tfx_compiler_utils.build_channel_to_key_fn(implicit_keys_map),
+        )
         cel_predicates.append(compiler_utils.placeholder_to_cel(placeholder_pb))
       task_spec.trigger_policy.condition = ' && '.join(cel_predicates)
 

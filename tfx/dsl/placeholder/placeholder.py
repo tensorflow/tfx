@@ -18,7 +18,7 @@ import abc
 import copy
 import enum
 import functools
-from typing import Any, Callable, Iterator, List, Optional, Sequence, Type, TypeVar, Union, cast
+from typing import Any, Iterator, List, Optional, Sequence, Type, TypeVar, Union, cast
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
@@ -32,7 +32,7 @@ from google.protobuf import message
 types = Any  # tfx.types imports channel.py, which in turn imports this module.
 
 # TODO(b/190409099): Support RuntimeParameter.
-_ValueLikeType = Union[int, float, str, 'ChannelWrappedPlaceholder']
+_ValueLikeType = Union[int, float, str, 'Placeholder']
 
 
 class _PlaceholderOperator(json_utils.Jsonable):
@@ -600,6 +600,9 @@ class ChannelWrappedPlaceholder(ArtifactPlaceholder):
     super().__init__(placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT)
     self.channel = channel
 
+  def set_key(self, key: Optional[str]):
+    self._key = key
+
   def _clone_and_use_operators(self: _T,
                                operators: List[_PlaceholderOperator]) -> _T:
     # Avoid copying the wrapped channel, because
@@ -629,33 +632,15 @@ class ChannelWrappedPlaceholder(ArtifactPlaceholder):
   def __ge__(self, other: _ValueLikeType) -> 'Predicate':
     return logical_not(self < other)
 
-  def encode_with_keys(
-      self, channel_to_key_fn: Optional[Callable[['types.Channel'], str]]
-  ) -> placeholder_pb2.PlaceholderExpression:
-    original_key = self._key
-    self._key = channel_to_key_fn(self.channel)
-    result = self.encode()
-    self._key = original_key
-    return result
-
 
 def _encode_value_like(
     x: _ValueLikeType,
-    channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
+    component_spec: Optional[Type['types.ComponentSpec']] = None,
 ) -> placeholder_pb2.PlaceholderExpression:
   """Encodes x to a placeholder expression proto."""
 
-  if isinstance(x, ChannelWrappedPlaceholder):
-    if channel_to_key_fn:
-      # pylint: disable=protected-access
-      old_key = x._key
-      x._key = channel_to_key_fn(x.channel)
-      result = x.encode()
-      x._key = old_key
-      # pylint: enable=protected-access
-    else:
-      result = x.encode()
-    return result
+  if isinstance(x, Placeholder):
+    return x.encode(component_spec)
   result = placeholder_pb2.PlaceholderExpression()
   if isinstance(x, int):
     result.value.int_value = x
@@ -664,8 +649,7 @@ def _encode_value_like(
   elif isinstance(x, str):
     result.value.string_value = x
   else:
-    raise ValueError(
-        f'x must be an int, float, str, or ChannelWrappedPlaceholder. x: {x}')
+    raise ValueError(f'x must be an int, float, str, or Placeholder. x: {x}')
   return result
 
 
@@ -681,18 +665,17 @@ class _Comparison:
   left = attr.ib(type=_ValueLikeType)
   right = attr.ib(type=_ValueLikeType)
 
-  def encode_with_keys(
-      self,
-      channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
+  def encode(
+      self, component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    """Encode as a PlaceholderExpression proto."""
-
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.compare_op.op = self.compare_op.value
-    left_pb = _encode_value_like(self.left, channel_to_key_fn)
-    result.operator.compare_op.lhs.CopyFrom(left_pb)
-    right_pb = _encode_value_like(self.right, channel_to_key_fn)
-    result.operator.compare_op.rhs.CopyFrom(right_pb)
+    result.operator.compare_op.lhs.CopyFrom(
+        _encode_value_like(self.left, component_spec)
+    )
+    result.operator.compare_op.rhs.CopyFrom(
+        _encode_value_like(self.right, component_spec)
+    )
     return result
 
   def traverse(self) -> Iterator[Placeholder]:
@@ -717,19 +700,15 @@ class _NotExpression:
 
   pred_dataclass = attr.ib(type=_PredicateSubtype)
 
-  def encode_with_keys(
-      self,
-      channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
+  def encode(
+      self, component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    """Encode as a PlaceholderExpression proto."""
-
-    pred_pb = self.pred_dataclass.encode_with_keys(channel_to_key_fn)
+    pred_pb = self.pred_dataclass.encode(component_spec)
     # not(not(a)) becomes a
     if isinstance(self.pred_dataclass, _NotExpression):
       return pred_pb.operator.unary_logical_op.expression
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.unary_logical_op.op = _LogicalOp.NOT.value
-    pred_pb = self.pred_dataclass.encode_with_keys(channel_to_key_fn)
     result.operator.unary_logical_op.expression.CopyFrom(pred_pb)
     return result
 
@@ -746,18 +725,17 @@ class _BinaryLogicalExpression:
   left = attr.ib(type=_PredicateSubtype)
   right = attr.ib(type=_PredicateSubtype)
 
-  def encode_with_keys(
-      self,
-      channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
+  def encode(
+      self, component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    """Encode as a PlaceholderExpression proto."""
-
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.binary_logical_op.op = self.logical_op.value
-    left_pb = self.left.encode_with_keys(channel_to_key_fn)
-    result.operator.binary_logical_op.lhs.CopyFrom(left_pb)
-    right_pb = self.right.encode_with_keys(channel_to_key_fn)
-    result.operator.binary_logical_op.rhs.CopyFrom(right_pb)
+    result.operator.binary_logical_op.lhs.CopyFrom(
+        self.left.encode(component_spec)
+    )
+    result.operator.binary_logical_op.rhs.CopyFrom(
+        self.right.encode(component_spec)
+    )
     return result
 
   def traverse(self) -> Iterator[Placeholder]:
@@ -804,44 +782,7 @@ class Predicate(Placeholder):
       self,
       component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
-    """This just calls `encode_with_keys` without arguments."""
-    del component_spec  # not used for encoding Predicates
-    return self.encode_with_keys()
-
-  def encode_with_keys(
-      self,
-      channel_to_key_fn: Optional[Callable[['types.Channel'], str]] = None
-  ) -> placeholder_pb2.PlaceholderExpression:
-    """Encodes a Predicate as a PlaceholderExpression proto.
-
-    When a ChannelWrappedPlaceholder is initially constructed, it does not have
-    a key. This means that Predicates, which comprise of
-    ChannelWrappedPlaceholders, do not contain sufficient information to be
-    evaluated at run time. Thus, after the Pipeline is fully defined, the
-    compiler will use this method to fill in the keys.
-
-    Within the context of each node, each Channel corresponds to a key in the
-    input_dict (see `ResolverStrategy.resolve_artifacts`).
-    The Predicate has an internal tree data structure to keep track of
-    all the placeholders and operations. As we traverse this tree to create
-    this proto, `channel_to_key_fn` is called each time a
-    ChannelWrappedPlaceholder is encountered, and its output is used as the
-    placeholder key in the Placeholder proto produced during encoding.
-
-    Note that the ChannelWrappedPlaceholder itself remains unchanged.
-
-    Args:
-      channel_to_key_fn: The function used to determine the placeholder key for
-        each ChannelWrappedPlaceholder. If None, no attempt to fill in the
-        placeholder keys will be made.
-
-    Returns:
-      PlaceholderExpression proto containing all information of this Predicate,
-      with the placeholder keys filled in. Note that the Predicate instance
-      is unchanged.
-    """
-
-    return self.pred_dataclass.encode_with_keys(channel_to_key_fn)
+    return self.pred_dataclass.encode(component_spec)
 
 
 class ListPlaceholder(Placeholder):
