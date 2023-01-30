@@ -129,6 +129,12 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
         importlib.import_module('tensorflow_decision_forests')
       except (ImportError, tf.errors.NotFoundError):
         self.skipTest('TensorflowDecisionForests is not available')
+    elif model_framework == 'flax_experimental':
+      # Skip if flax is not available or incompatible.
+      try:
+        importlib.import_module('flax')
+      except (ImportError, tf.errors.NotFoundError):
+        self.skipTest('flax is not available')
     module_file = self._module_file_name(model_framework)
     pipeline = penguin_pipeline_local.create_pipeline(
         pipeline_name=self._pipeline_name,
@@ -226,6 +232,12 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
         importlib.import_module('tensorflow_decision_forests')
       except (ImportError, tf.errors.NotFoundError):
         self.skipTest('TensorflowDecisionForests is not available')
+    elif model_framework == 'flax_experimental':
+      # Skip if flax is not available or incompatible.
+      try:
+        importlib.import_module('flax')
+      except (ImportError, tf.errors.NotFoundError):
+        self.skipTest('flax is not available')
     module_file = self._module_file_name(model_framework)
     LocalDagRunner().run(
         penguin_pipeline_local.create_pipeline(

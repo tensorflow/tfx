@@ -14,6 +14,7 @@
 """E2E Tests for tfx.examples.tfjs_next_page_prediction.tfjs_next_page_prediction_pipeline."""
 
 import os
+import unittest
 
 import tensorflow as tf
 
@@ -22,7 +23,15 @@ from tfx.examples.tfjs_next_page_prediction import tfjs_next_page_prediction_pip
 from tfx.orchestration import metadata
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
+try:
+  import tensorflowjs  # pylint: disable=g-import-not-at-top
+except ImportError:
+  tensorflowjs = None
 
+
+@unittest.skipIf(tensorflowjs is None,
+                 'Cannot import required modules. This can happen when'
+                 ' tensorflowjs is not available.')
 class TFJSNextPagePredictionPipelineEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
