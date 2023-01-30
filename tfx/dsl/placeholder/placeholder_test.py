@@ -15,6 +15,7 @@
 
 import copy
 import os
+from typing import Type, TypeVar
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -28,7 +29,21 @@ from tfx.types.artifact import PropertyType
 from tfx.types.channel import Channel
 from tfx.utils import json_utils
 
+from google.protobuf import message
 from google.protobuf import text_format
+
+
+_P = TypeVar('_P', bound=message.Message)
+
+
+def load_testdata(
+    filename: str, proto_class: Type[_P] = placeholder_pb2.PlaceholderExpression
+) -> _P:
+  test_pb_filepath = os.path.join(
+      os.path.dirname(__file__), 'testdata', filename
+  )
+  with open(test_pb_filepath) as text_pb_file:
+    return text_format.ParseLines(text_pb_file, proto_class())
 
 
 class _MyType(Artifact):
@@ -506,27 +521,21 @@ class PlaceholderTest(tf.test.TestCase):
     """)
 
   def testProtoOperatorDescriptor(self):
-    test_pb_filepath = os.path.join(
-        os.path.dirname(__file__), 'testdata',
-        'proto_placeholder_operator.pbtxt')
-    with open(test_pb_filepath) as text_pb_file:
-      expected_pb = text_format.ParseLines(
-          text_pb_file, placeholder_pb2.PlaceholderExpression())
     placeholder = ph.exec_property('splits_config').analyze[0]
     component_spec = standard_component_specs.TransformSpec
-    self.assertProtoEquals(placeholder.encode(component_spec), expected_pb)
+    self.assertProtoEquals(
+        placeholder.encode(component_spec),
+        load_testdata('proto_placeholder_operator.pbtxt'),
+    )
 
   def testProtoFutureValueOperator(self):
-    test_pb_filepath = os.path.join(
-        os.path.dirname(__file__), 'testdata',
-        'proto_placeholder_future_value_operator.pbtxt')
-    with open(test_pb_filepath) as text_pb_file:
-      expected_pb = text_format.ParseLines(
-          text_pb_file, placeholder_pb2.PlaceholderExpression())
     output_channel = Channel(type=standard_artifacts.Integer)
     placeholder = output_channel.future()[0].value
     placeholder._key = '_component.num'
-    self.assertProtoEquals(placeholder.encode(), expected_pb)
+    self.assertProtoEquals(
+        placeholder.encode(),
+        load_testdata('proto_placeholder_future_value_operator.pbtxt'),
+    )
 
   def testConcatWithSelfReferences(self):
     # Tests that Placeholder operators should not mutate the placeholder.
@@ -685,7 +694,6 @@ class PlaceholderTest(tf.test.TestCase):
 
   def testJoinPlaceholdersWithSeparator(self):
     a = ph.output('model').uri
-    print(ph.join([a, '-', a, a], separator=',').encode())
     self._assert_placeholder_pb_equal_and_deepcopyable(
         ph.join([a, '-', a, a], separator=','), """
           operator {
@@ -873,16 +881,13 @@ class PlaceholderTest(tf.test.TestCase):
         """)
 
   def testProtoSerializationWithDescriptor(self):
-    test_pb_filepath = os.path.join(
-        os.path.dirname(__file__), 'testdata',
-        'proto_placeholder_serialization_operator.pbtxt')
-    with open(test_pb_filepath) as text_pb_file:
-      expected_pb = text_format.ParseLines(
-          text_pb_file, placeholder_pb2.PlaceholderExpression())
     placeholder = ph.exec_property('splits_config').serialize(
         ph.ProtoSerializationFormat.JSON)
     component_spec = standard_component_specs.TransformSpec
-    self.assertProtoEquals(placeholder.encode(component_spec), expected_pb)
+    self.assertProtoEquals(
+        placeholder.encode(component_spec),
+        load_testdata('proto_placeholder_serialization_operator.pbtxt'),
+    )
 
   def testExecInvocation(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
