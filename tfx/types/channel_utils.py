@@ -139,3 +139,47 @@ def external_pipeline_artifact_query(
       output_key=output_key,
       pipeline_run_id=pipeline_run_id,
   )
+
+
+# TODO(b/265337852) Remove this function once Project is completely removed.
+def external_project_artifact_query(
+    artifact_type: Type[artifact.Artifact],
+    *,
+    project_owner: str,
+    project_name: str,
+    producer_component_id: str,
+    output_key: str,
+    pipeline_name: str = '',
+    pipeline_run_id: str = '',
+) -> channel.ExternalPipelineChannel:
+  """Helper function to construct a query to get artifacts from an MLMD db.
+
+  Args:
+    artifact_type: Subclass of Artifact for this channel.
+    project_owner: Onwer of the MLMD db.
+    project_name: Name of the MLMD db.
+    producer_component_id: Id of the component produces the artifacts.
+    output_key: The output key when producer component produces the artifacts in
+      this Channel.
+    pipeline_name: (Optional) Name of the pipeline the artifacts belong to. If
+      not provided, default to project name.
+    pipeline_run_id: (Optional) Pipeline run id the artifacts belong to.
+
+  Returns:
+    channel.ExternalProjectChannel instance.
+
+  Raises:
+    ValueError, if project_owner or project_name is missing.
+  """
+  if not project_owner or not project_name:
+    raise ValueError('project_owner or project_name is missing.')
+
+  return channel.ExternalPipelineChannel(
+      artifact_type=artifact_type,
+      owner=project_owner,
+      project_name=project_name,
+      pipeline_name=pipeline_name,
+      producer_component_id=producer_component_id,
+      output_key=output_key,
+      pipeline_run_id=pipeline_run_id,
+  )

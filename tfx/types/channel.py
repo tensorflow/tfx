@@ -635,6 +635,8 @@ class ExternalPipelineChannel(BaseChannel):
       producer_component_id: str,
       output_key: str,
       pipeline_run_id: str = '',
+      # TODO(b/265337852) Remove project name.
+      project_name: str = '',
   ):
     """Initialization of ExternalPipelineChannel.
 
@@ -646,6 +648,7 @@ class ExternalPipelineChannel(BaseChannel):
       output_key: The output key when producer component produces the artifacts
         in this Channel.
       pipeline_run_id: (Optional) Pipeline run id the artifacts belong to.
+      project_name: (Optional) Name of the project.
     """
     super().__init__(type=artifact_type)
     self.owner = owner
@@ -653,6 +656,7 @@ class ExternalPipelineChannel(BaseChannel):
     self.producer_component_id = producer_component_id
     self.output_key = output_key
     self.pipeline_run_id = pipeline_run_id
+    self.project_name = project_name
 
   def get_data_dependent_node_ids(self) -> Set[str]:
     return set()

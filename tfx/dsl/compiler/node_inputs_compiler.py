@@ -205,21 +205,26 @@ def _compile_input_spec(
       ctx.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
       ctx.name.field_value.string_value = channel.pipeline_run_id
 
+    # TODO(b/265337852) Change project_name to pipeline_name.
+    pipeline_asset_name = (
+        channel.project_name if channel.project_name else channel.pipeline_name
+    )
     if pipeline_ctx.pipeline.platform_config:
       project_config = (
           pipeline_ctx.pipeline.platform_config.project_platform_config)
-      pipeline_name = project_config.project_name
-      owner = project_config.owner
-      if pipeline_name == channel.pipeline_name and owner == channel.owner:
+      if (
+          channel.owner == project_config.owner
+          and pipeline_asset_name == project_config.project_name
+      ):
         raise ValueError(
-            'External pipeline artifact query has the same pipeline owner and '
-            'pipeline name as current pipeline. Please set the valid external '
-            'pipeline endpoint.'
+            'External project artifact query has the same project owner and '
+            'project name as current project. Please set the valid external '
+            'project endpoint.'
         )
 
     config = metadata_pb2.MLMDServiceConfig(
         owner=channel.owner,
-        name=channel.pipeline_name,
+        name=pipeline_asset_name,
     )
     result_input_channel.metadata_connection_config.Pack(config)
 
