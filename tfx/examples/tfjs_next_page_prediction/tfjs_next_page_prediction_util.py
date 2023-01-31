@@ -113,10 +113,10 @@ def _build_keras_model() -> keras.Model:
           cur_page_input)
   x = keras.layers.Concatenate()([cur_page_emb, session_index_input])
   x = keras.layers.Dense(_UNITS, activation='relu')(x)
-  outputs = keras.layers.Dense(_TOP_K + 1, activation='softmax')(x)
+  outputs = keras.layers.Dense(_TOP_K + 1)(x)
   model = keras.Model(inputs=inputs, outputs=outputs)
   model.compile(
-      loss=keras.losses.SparseCategoricalCrossentropy(),
+      loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
       optimizer=keras.optimizers.Adam(0.0001),
       metrics=[
           'sparse_categorical_accuracy', 'sparse_top_k_categorical_accuracy'

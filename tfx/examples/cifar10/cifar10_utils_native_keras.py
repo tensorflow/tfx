@@ -200,14 +200,14 @@ def _build_keras_model() -> tf.keras.Model:
           input_shape=(224, 224, 3), name=_transformed_name(_IMAGE_KEY)),
       base_model,
       tf.keras.layers.Dropout(0.1),
-      tf.keras.layers.Dense(10, activation='softmax')
+      tf.keras.layers.Dense(10)
   ])
 
   # Freeze the whole MobileNet backbone to first train the top classifer only
   _freeze_model_by_percentage(base_model, 1.0)
 
   model.compile(
-      loss='sparse_categorical_crossentropy',
+      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
       optimizer=tf.keras.optimizers.RMSprop(lr=_CLASSIFIER_LEARNING_RATE),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)

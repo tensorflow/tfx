@@ -75,9 +75,9 @@ def build_keras_model() -> tf.keras.Model:
   model.add(tf.keras.layers.Dropout(0.2))
   model.add(tf.keras.layers.Dense(64, activation='relu'))
   model.add(tf.keras.layers.Dropout(0.2))
-  model.add(tf.keras.layers.Dense(10, activation='softmax'))
+  model.add(tf.keras.layers.Dense(10))
   model.compile(
-      loss='sparse_categorical_crossentropy',
+      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
       optimizer=tf.keras.optimizers.RMSprop(lr=0.0015),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
