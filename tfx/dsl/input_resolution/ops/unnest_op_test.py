@@ -29,8 +29,12 @@ class UnnestOpTest(tf.test.TestCase):
         for i in range(1, n + 1)
     ]
 
-  def testUnnest_KeyIsRequired(self):
+  def _unnest(self, *args, **kwargs):
+    return test_utils.strict_run_resolver_op(
+        ops.Unnest, args=args, kwargs=kwargs
+    )
 
+  def testUnnest_KeyIsRequired(self):
     @resolver_function.resolver_function
     def f(root):
       return ops.Unnest(root)
@@ -44,7 +48,7 @@ class UnnestOpTest(tf.test.TestCase):
     [x1, x2, x3] = self.create_artifacts(uri_prefix='x/', n=3)
     input_dict = {'x': [x1, x2, x3]}
 
-    result = test_utils.run_resolver_op(ops.Unnest, input_dict, key='x')
+    result = self._unnest(input_dict, key='x')
 
     self.assertEqual(result, [{'x': [x1]}, {'x': [x2]}, {'x': [x3]}])
 
@@ -53,13 +57,16 @@ class UnnestOpTest(tf.test.TestCase):
     ys = self.create_artifacts(uri_prefix='y/', n=2)
     input_dict = {'x': [x1, x2, x3], 'y': ys}
 
-    result = test_utils.run_resolver_op(ops.Unnest, input_dict, key='x')
+    result = self._unnest(input_dict, key='x')
 
-    self.assertEqual(result, [
-        {'x': [x1], 'y': ys},
-        {'x': [x2], 'y': ys},
-        {'x': [x3], 'y': ys},
-    ])
+    self.assertEqual(
+        result,
+        [
+            {'x': [x1], 'y': ys},
+            {'x': [x2], 'y': ys},
+            {'x': [x3], 'y': ys},
+        ],
+    )
 
   def testUnnest_NonExistingKey(self):
     [x1, x2, x3] = self.create_artifacts(uri_prefix='x/', n=3)
@@ -69,12 +76,12 @@ class UnnestOpTest(tf.test.TestCase):
         exceptions.FailedPreconditionError,
         'Input dict does not contain the key y.',
     ):
-      test_utils.run_resolver_op(ops.Unnest, input_dict, key='y')
+      self._unnest(input_dict, key='y')
 
   def testUnnest_EmptyChannel_ReturnsEmptyList(self):
     input_dict = {'x': []}
 
-    result = test_utils.run_resolver_op(ops.Unnest, input_dict, key='x')
+    result = self._unnest(input_dict, key='x')
 
     self.assertEmpty(result)
 

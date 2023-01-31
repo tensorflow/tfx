@@ -21,6 +21,11 @@ from tfx.dsl.input_resolution.ops import test_utils
 
 class ShuffleOpTest(tf.test.TestCase):
 
+  def _shuffle(self, *args, **kwargs):
+    return test_utils.strict_run_resolver_op(
+        ops.Shuffle, args=args, kwargs=kwargs
+    )
+
   def testShuffle(self):
     a10 = test_utils.DummyArtifact()
     a20 = test_utils.DummyArtifact()
@@ -40,11 +45,11 @@ class ShuffleOpTest(tf.test.TestCase):
     idxs = [1, 4, 3, 2, 0, 5]
     artifacts = [artifacts[i] for i in idxs]
 
-    actual = test_utils.run_resolver_op(ops.Shuffle, artifacts)
+    actual = self._shuffle(artifacts)
     self.assertCountEqual(actual, artifacts)
 
   def testShuffle_NoArtifacts(self):
-    actual = test_utils.run_resolver_op(ops.Shuffle, [])
+    actual = self._shuffle([])
     self.assertEqual(actual, [])
 
 

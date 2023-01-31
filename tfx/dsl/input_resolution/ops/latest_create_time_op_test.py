@@ -21,13 +21,18 @@ from tfx.dsl.input_resolution.ops import test_utils
 
 class LatestCreateTimeOpTest(tf.test.TestCase):
 
+  def _latest_create_time(self, *args, **kwargs):
+    return test_utils.strict_run_resolver_op(
+        ops.LatestCreateTime, args=args, kwargs=kwargs
+    )
+
   def testLatestCreateTime_Empty(self):
-    actual = test_utils.run_resolver_op(ops.LatestCreateTime, [])
+    actual = self._latest_create_time([])
     self.assertEqual(actual, [])
 
   def testLatestCreateTime_SingleEntry(self):
     a1 = test_utils.DummyArtifact(id=1, create_time_since_epoch=1)
-    actual = test_utils.run_resolver_op(ops.LatestCreateTime, [a1])
+    actual = self._latest_create_time([a1])
     self.assertEqual(actual, [a1])
 
   def testLatestCreateTime_TieBreak(self):
@@ -35,17 +40,17 @@ class LatestCreateTimeOpTest(tf.test.TestCase):
     a2 = test_utils.DummyArtifact(id=2, create_time_since_epoch=10)
     a3 = test_utils.DummyArtifact(id=3, create_time_since_epoch=10)
 
-    actual = test_utils.run_resolver_op(ops.LatestCreateTime, [a1, a2, a3])
+    actual = self._latest_create_time([a1, a2, a3])
     self.assertEqual(actual, [a3])
 
-    actual = test_utils.run_resolver_op(ops.LatestCreateTime, [a1, a2, a3], n=2)
+    actual = self._latest_create_time([a1, a2, a3], n=2)
     self.assertEqual(actual, [a2, a3])
 
   def testLatestSpan_InvalidN(self):
     a1 = test_utils.DummyArtifact()
 
     with self.assertRaisesRegex(ValueError, 'n must be > 0'):
-      test_utils.run_resolver_op(ops.LatestCreateTime, [a1], n=-1)
+      self._latest_create_time([a1], n=-1)
 
 
 if __name__ == '__main__':

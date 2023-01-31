@@ -22,20 +22,26 @@ from tfx.dsl.input_resolution.ops import test_utils
 
 class ArtifactWithoutVersion(types.Artifact):
   """An Artifact without "version" as a PROPERTY."""
+
   TYPE_NAME = 'ArtifactWithoutVersion'
 
 
 class LatestVersionOpTest(tf.test.TestCase):
 
+  def _latest_version(self, *args, **kwargs):
+    return test_utils.strict_run_resolver_op(
+        ops.LatestVersion, args=args, kwargs=kwargs
+    )
+
   def testLatestVersion_Empty(self):
-    actual = test_utils.run_resolver_op(ops.LatestVersion, [])
+    actual = self._latest_version([])
     self.assertEqual(actual, [])
 
   def testLatestVersion_SingleEntry(self):
     a1 = test_utils.DummyArtifact()
     a1.version = 1
 
-    actual = test_utils.run_resolver_op(ops.LatestVersion, [a1])
+    actual = self._latest_version([a1])
     self.assertEqual(actual, [a1])
 
   def testLatestVersion_SameSpan(self):
@@ -54,18 +60,18 @@ class LatestVersionOpTest(tf.test.TestCase):
 
     artifacts = [a1, a3, a2, a4]
 
-    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts)
+    actual = self._latest_version(artifacts)
     self.assertEqual(actual, [a3])
 
-    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=2)
+    actual = self._latest_version(artifacts, n=2)
     self.assertEqual(actual, [a2, a3])
 
-    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=3)
+    actual = self._latest_version(artifacts, n=3)
     self.assertEqual(actual, [a1, a2, a3])
 
     # Although n = 4, only 3 artifacts are returned because only 3 are
     # available.
-    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=4)
+    actual = self._latest_version(artifacts, n=4)
     self.assertEqual(actual, [a1, a2, a3])
 
   def testLatestVersion_DifferentSpans(self):
@@ -86,16 +92,16 @@ class LatestVersionOpTest(tf.test.TestCase):
 
     artifacts = [a10, a20, a21, a11]
 
-    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts)
+    actual = self._latest_version(artifacts)
     self.assertEqual(actual, [a21])
 
-    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=2)
+    actual = self._latest_version(artifacts, n=2)
     self.assertEqual(actual, [a20, a21])
 
-    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=3)
+    actual = self._latest_version(artifacts, n=3)
     self.assertEqual(actual, [a11, a20, a21])
 
-    actual = test_utils.run_resolver_op(ops.LatestVersion, artifacts, n=4)
+    actual = self._latest_version(artifacts, n=4)
     self.assertEqual(actual, [a10, a11, a20, a21])
 
   def testLatestSpan_InvalidN(self):
@@ -103,7 +109,8 @@ class LatestVersionOpTest(tf.test.TestCase):
     a1.version = 1
 
     with self.assertRaisesRegex(ValueError, 'n must be > 0'):
-      test_utils.run_resolver_op(ops.LatestVersion, [a1], n=-1)
+      self._latest_version([a1], n=-1)
+
 
 if __name__ == '__main__':
   tf.test.main()

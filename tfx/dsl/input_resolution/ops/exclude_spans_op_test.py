@@ -27,8 +27,13 @@ class ArtifactWithoutSpan(types.Artifact):
 
 class ExcludeSpansOpTest(tf.test.TestCase):
 
+  def _exclude_spans(self, *args, **kwargs):
+    return test_utils.strict_run_resolver_op(
+        ops.ExcludeSpans, args=args, kwargs=kwargs
+    )
+
   def testExcludeSpans_Empty(self):
-    actual = test_utils.run_resolver_op(ops.ExcludeSpans, [])
+    actual = self._exclude_spans([])
     self.assertEqual(actual, [])
 
   def testExcludeSpans_SingleEntry(self):
@@ -36,15 +41,13 @@ class ExcludeSpansOpTest(tf.test.TestCase):
     a1.span = 1
     artifacts = [a1]
 
-    actual = test_utils.run_resolver_op(ops.ExcludeSpans, artifacts)
+    actual = self._exclude_spans(artifacts)
     self.assertEqual(actual, [a1])
 
-    actual = test_utils.run_resolver_op(
-        ops.ExcludeSpans, artifacts, denylist=[1])
+    actual = self._exclude_spans(artifacts, denylist=[1])
     self.assertEqual(actual, [])
 
-    actual = test_utils.run_resolver_op(
-        ops.ExcludeSpans, artifacts, denylist=[2])
+    actual = self._exclude_spans(artifacts, denylist=[2])
     self.assertEqual(actual, [a1])
 
   def testExcludeSpans(self):
@@ -59,20 +62,16 @@ class ExcludeSpansOpTest(tf.test.TestCase):
 
     artifacts = [a1, a2, a3, a4]
 
-    actual = test_utils.run_resolver_op(
-        ops.ExcludeSpans, artifacts, denylist=[])
+    actual = self._exclude_spans(artifacts, denylist=[])
     self.assertEqual(actual, [a1, a2, a3])
 
-    actual = test_utils.run_resolver_op(
-        ops.ExcludeSpans, artifacts, denylist=[1])
+    actual = self._exclude_spans(artifacts, denylist=[1])
     self.assertEqual(actual, [a2, a3])
 
-    actual = test_utils.run_resolver_op(
-        ops.ExcludeSpans, artifacts, denylist=[2])
+    actual = self._exclude_spans(artifacts, denylist=[2])
     self.assertEqual(actual, [a1])
 
-    actual = test_utils.run_resolver_op(
-        ops.ExcludeSpans, artifacts, denylist=[1, 2])
+    actual = self._exclude_spans(artifacts, denylist=[1, 2])
     self.assertEqual(actual, [])
 
 

@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Testing utility for builtin resolver ops."""
-from typing import Type, Any, Optional
+from typing import Type, Any, Optional, Tuple, Mapping
+from unittest import mock
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.types import artifact
+from tfx.utils import typing_utils
+
+import ml_metadata as mlmd
 
 
 class DummyArtifact(types.Artifact):
@@ -30,10 +34,12 @@ class DummyArtifact(types.Artifact):
   }
 
   # pylint: disable=redefined-builtin
-  def __init__(self,
-               id: Optional[str] = None,
-               uri: Optional[str] = None,
-               create_time_since_epoch: Optional[int] = None):
+  def __init__(
+      self,
+      id: Optional[str] = None,
+      uri: Optional[str] = None,
+      create_time_since_epoch: Optional[int] = None,
+  ):
     super().__init__()
     if id is not None:
       self.id = id
@@ -43,11 +49,63 @@ class DummyArtifact(types.Artifact):
       self.mlmd_artifact.create_time_since_epoch = create_time_since_epoch
 
 
-def run_resolver_op(op_type: Type[resolver_op.ResolverOp],
-                    *arg: Any,
-                    context: Optional[resolver_op.Context] = None,
-                    **kwargs: Any):
+def run_resolver_op(
+    op_type: Type[resolver_op.ResolverOp],
+    *arg: Any,
+    context: Optional[resolver_op.Context] = None,
+    **kwargs: Any,
+):
   op = op_type.create(**kwargs)
   if context:
     op.set_context(context)
   return op.apply(*arg)
+
+
+def strict_run_resolver_op(
+    op_type: Type[resolver_op.ResolverOp],
+    *,
+    args: Tuple[Any, ...],
+    kwargs: Mapping[str, Any],
+    store: Optional[mlmd.MetadataStore] = None,
+):
+  """Runs ResolverOp with strict type checking."""
+  if len(args) != len(op_type.arg_data_types):
+    raise TypeError(
+        f'len({op_type}.arg_data_types) = {len(op_type.arg_data_types)} but'
+        f' got len(args) = {len(args)}'
+    )
+  if op_type.arg_data_types:
+    for i, arg, expected_data_type in zip(
+        range(len(args)), args, op_type.arg_data_types
+    ):
+      if expected_data_type == resolver_op.DataType.ARTIFACT_LIST:
+        if not typing_utils.is_artifact_list(arg):
+          raise TypeError(f'Expected ARTIFACT_LIST but arg[{i}] = {arg}')
+      elif expected_data_type == resolver_op.DataType.ARTIFACT_MULTIMAP:
+        if not typing_utils.is_artifact_multimap(arg):
+          raise TypeError(f'Expected ARTIFACT_MULTIMAP but arg[{i}] = {arg}')
+      elif expected_data_type == resolver_op.DataType.ARTIFACT_MULTIMAP_LIST:
+        if not typing_utils.is_list_of_artifact_multimap(arg):
+          raise TypeError(
+              f'Expected ARTIFACT_MULTIMAP_LIST but arg[{i}] = {arg}'
+          )
+  op = op_type.create(**kwargs)
+  context = resolver_op.Context(
+      store=store
+      if store is not None
+      else mock.MagicMock(spec=mlmd.MetadataStore)
+  )
+  op.set_context(context)
+  result = op.apply(*args)
+  if op_type.return_data_type == resolver_op.DataType.ARTIFACT_LIST:
+    if not typing_utils.is_homogeneous_artifact_list(result):
+      raise TypeError(f'Expected ARTIFACT_LIST result but got {result}')
+  elif op_type.return_data_type == resolver_op.DataType.ARTIFACT_MULTIMAP:
+    if not typing_utils.is_artifact_multimap(result):
+      raise TypeError(f'Expected ARTIFACT_MULTIMAP result but got {result}')
+  elif op_type.return_data_type == resolver_op.DataType.ARTIFACT_MULTIMAP_LIST:
+    if not typing_utils.is_list_of_artifact_multimap(result):
+      raise TypeError(
+          f'Expected ARTIFACT_MULTIMAP_LIST result but got {result}'
+      )
+  return result

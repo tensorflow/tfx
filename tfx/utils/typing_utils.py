@@ -139,6 +139,10 @@ def is_homogeneous_artifact_list(value: Any) -> bool:
       all(isinstance(v, type(value[0])) for v in value[1:]))
 
 
+def is_artifact_list(value: Any) -> bool:
+  return is_compatible(value, Sequence[tfx.types.Artifact])
+
+
 def is_artifact_multimap(value: Any) -> bool:
   """Checks value is Mapping[str, Sequence[Artifact]] type."""
   return is_compatible(value, ArtifactMultiMap)

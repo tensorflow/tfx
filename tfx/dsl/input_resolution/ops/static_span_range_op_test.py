@@ -39,31 +39,31 @@ class StaticSpanRangeOpTest(tf.test.TestCase):
       artifact.span = spans[i]
       artifact.version = versions[i]
 
+  def _static_span_range(self, *args, **kwargs):
+    return test_utils.strict_run_resolver_op(
+        ops.StaticSpanRange, args=args, kwargs=kwargs
+    )
+
   def testStaticSpanRange_Empty(self):
-    actual = test_utils.run_resolver_op(ops.StaticSpanRange, [])
+    actual = self._static_span_range([])
     self.assertEqual(actual, [])
 
   def testStaticSpanRange_NoStartEndSpan(self):
-    actual = test_utils.run_resolver_op(ops.StaticSpanRange, self.artifacts)
+    actual = self._static_span_range(self.artifacts)
     self.assertEqual(actual, [self.a1, self.a2, self.a3, self.a6])
 
   def testStaticSpanRange_KeepAll(self):
-    actual = test_utils.run_resolver_op(
-        ops.StaticSpanRange,
-        self.artifacts,
-        start_span=3,
-        end_span=4,
-        keep_all_versions=True)
+    actual = self._static_span_range(
+        self.artifacts, start_span=3, end_span=4, keep_all_versions=True
+    )
     self.assertEqual(actual, [self.a3, self.a4, self.a5, self.a6])
 
   def testStaticSpanRange_OutOfBoundStartEndSpan(self):
-    actual = test_utils.run_resolver_op(
-        ops.StaticSpanRange, self.artifacts, start_span=-1, end_span=10)
+    actual = self._static_span_range(self.artifacts, start_span=-1, end_span=10)
     self.assertEqual(actual, [self.a1, self.a2, self.a3, self.a6])
 
   def testStaticSpanRange(self):
-    actual = test_utils.run_resolver_op(
-        ops.StaticSpanRange, self.artifacts, start_span=1, end_span=3)
+    actual = self._static_span_range(self.artifacts, start_span=1, end_span=3)
     self.assertEqual(actual, [self.a1, self.a2, self.a3])
 
 

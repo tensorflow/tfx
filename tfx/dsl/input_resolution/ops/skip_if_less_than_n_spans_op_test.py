@@ -22,6 +22,11 @@ from tfx.orchestration.portable.input_resolution import exceptions
 
 class SkipIfLessThanNSpansOpTest(tf.test.TestCase):
 
+  def _skip_if_lt_n_spans(self, *args, **kwargs):
+    return test_utils.strict_run_resolver_op(
+        ops.SkipIfLessThanNSpans, args=args, kwargs=kwargs
+    )
+
   def setUp(self):
     super().setUp()
 
@@ -37,34 +42,30 @@ class SkipIfLessThanNSpansOpTest(tf.test.TestCase):
 
   def testSkipIfLessThanNSpans_LessThanNSpans_RaisesSkipSignal(self):
     with self.assertRaises(exceptions.SkipSignal):
-      test_utils.run_resolver_op(ops.SkipIfLessThanNSpans, self.artifacts, n=4)
+      self._skip_if_lt_n_spans(self.artifacts, n=4)
 
     with self.assertRaises(exceptions.SkipSignal):
-      test_utils.run_resolver_op(ops.SkipIfLessThanNSpans, self.artifacts, n=5)
+      self._skip_if_lt_n_spans(self.artifacts, n=5)
 
     with self.assertRaises(exceptions.SkipSignal):
-      test_utils.run_resolver_op(ops.SkipIfLessThanNSpans, self.artifacts, n=10)
+      self._skip_if_lt_n_spans(self.artifacts, n=10)
 
   def testSkipIfLessThanNSpans_OnNonEmpty_ReturnsAsIs(self):
-    result = test_utils.run_resolver_op(
-        ops.SkipIfLessThanNSpans, self.artifacts, n=3)
+    result = self._skip_if_lt_n_spans(self.artifacts, n=3)
     self.assertEqual(result, self.artifacts)
 
-    result = test_utils.run_resolver_op(
-        ops.SkipIfLessThanNSpans, self.artifacts, n=2)
+    result = self._skip_if_lt_n_spans(self.artifacts, n=2)
     self.assertEqual(result, self.artifacts)
 
-    result = test_utils.run_resolver_op(
-        ops.SkipIfLessThanNSpans, self.artifacts, n=1)
+    result = self._skip_if_lt_n_spans(self.artifacts, n=1)
     self.assertEqual(result, self.artifacts)
 
-    result = test_utils.run_resolver_op(
-        ops.SkipIfLessThanNSpans, self.artifacts, n=0)
+    result = self._skip_if_lt_n_spans(self.artifacts, n=0)
     self.assertEqual(result, self.artifacts)
 
-    result = test_utils.run_resolver_op(
-        ops.SkipIfLessThanNSpans, self.artifacts, n=-1)
+    result = self._skip_if_lt_n_spans(self.artifacts, n=-1)
     self.assertEqual(result, self.artifacts)
+
 
 if __name__ == '__main__':
   tf.test.main()

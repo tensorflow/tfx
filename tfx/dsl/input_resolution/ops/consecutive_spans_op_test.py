@@ -25,11 +25,13 @@ from tfx.types import artifact
 
 class ArtifactWithoutSpanOrVersion(types.Artifact):
   """An Artifact without "span" or "version" as a PROPERTY."""
+
   TYPE_NAME = 'ArtifactWithoutSpanOrVersion'
 
 
 class ArtifactWithoutSpan(types.Artifact):
   """An Artifact without "span" as a PROPERTY."""
+
   TYPE_NAME = 'ArtifactWithoutSpan'
 
   PROPERTIES = {
@@ -39,8 +41,14 @@ class ArtifactWithoutSpan(types.Artifact):
 
 class ConsecutiveSpansOpTest(tf.test.TestCase):
 
+  def _consecutive_spans(self, *args, **kwargs):
+    return test_utils.strict_run_resolver_op(
+        ops.ConsecutiveSpans, args=args, kwargs=kwargs
+    )
+
   def _get_artifacts_for_sequential_rolling_range_tests(
-      self) -> Sequence[types.Artifact]:
+      self,
+  ) -> Sequence[types.Artifact]:
     a10 = test_utils.DummyArtifact()
     a20 = test_utils.DummyArtifact()
     a31 = test_utils.DummyArtifact()
@@ -65,14 +73,14 @@ class ConsecutiveSpansOpTest(tf.test.TestCase):
     return artifacts
 
   def testConsecutiveSpans_Empty(self):
-    actual = test_utils.run_resolver_op(ops.ConsecutiveSpans, [])
+    actual = self._consecutive_spans([])
     self.assertEqual(actual, [])
 
   def testConsecutiveSpans_SingleEntry(self):
     a1 = test_utils.DummyArtifact()
     a1.span = 1
 
-    actual = test_utils.run_resolver_op(ops.ConsecutiveSpans, [a1])
+    actual = self._consecutive_spans([a1])
     self.assertEqual(actual, [a1])
 
   def testConsecutiveSpans_ArtifactsWithoutSpanAndVersion(self):
@@ -93,7 +101,7 @@ class ConsecutiveSpansOpTest(tf.test.TestCase):
 
     artifacts = [a11, a21, a31, a_1, a__]
 
-    actual = test_utils.run_resolver_op(ops.ConsecutiveSpans, artifacts)
+    actual = self._consecutive_spans(artifacts)
     self.assertEqual(actual, [a11, a21, a31])
 
   def testConsecutiveSpans_AllSameSpanSameVersion(self):
@@ -116,11 +124,10 @@ class ConsecutiveSpansOpTest(tf.test.TestCase):
 
     artifacts = [a1, a2, a3]
 
-    actual = test_utils.run_resolver_op(ops.ConsecutiveSpans, artifacts)
+    actual = self._consecutive_spans(artifacts)
     self.assertEqual(actual, [a3])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, keep_all_versions=True)
+    actual = self._consecutive_spans(artifacts, keep_all_versions=True)
     self.assertEqual(actual, [a1, a2, a3])
 
   def testConsecutiveSpans_MultipleGaps(self):
@@ -134,190 +141,177 @@ class ConsecutiveSpansOpTest(tf.test.TestCase):
 
     artifacts = [a5, a1, a3]
 
-    actual = test_utils.run_resolver_op(ops.ConsecutiveSpans, artifacts)
+    actual = self._consecutive_spans(artifacts)
     self.assertEqual(actual, [a1])
 
   def testConsecutiveSpans_SkipLastN(self):
     artifacts = self._get_artifacts_for_sequential_rolling_range_tests()
     a10, a20, a31, a30, a40, a50, _, _ = artifacts
 
-    actual = test_utils.run_resolver_op(ops.ConsecutiveSpans, artifacts)
+    actual = self._consecutive_spans(artifacts)
     self.assertEqual(actual, [a10, a20, a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=1)
+    actual = self._consecutive_spans(artifacts, skip_last_n=1)
     self.assertEqual(actual, [a10, a20, a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=2)
+    actual = self._consecutive_spans(artifacts, skip_last_n=2)
     self.assertEqual(actual, [a10, a20, a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=3)
+    actual = self._consecutive_spans(artifacts, skip_last_n=3)
     self.assertEqual(actual, [a10, a20, a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=4)
+    actual = self._consecutive_spans(artifacts, skip_last_n=4)
     self.assertEqual(actual, [a10, a20, a31, a40])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=5)
+    actual = self._consecutive_spans(artifacts, skip_last_n=5)
     self.assertEqual(actual, [a10, a20, a31])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=6)
+    actual = self._consecutive_spans(artifacts, skip_last_n=6)
     self.assertEqual(actual, [a10, a20])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=7)
+    actual = self._consecutive_spans(artifacts, skip_last_n=7)
     self.assertEqual(actual, [a10])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=8)
+    actual = self._consecutive_spans(artifacts, skip_last_n=8)
     self.assertEqual(actual, [])
 
     # Tests version conflicts when keep_all_versions=True.
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, keep_all_versions=True)
+    actual = self._consecutive_spans(artifacts, keep_all_versions=True)
     self.assertEqual(actual, [a10, a20, a30, a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=5, keep_all_versions=True)
+    actual = self._consecutive_spans(
+        artifacts, skip_last_n=5, keep_all_versions=True
+    )
     self.assertEqual(actual, [a10, a20, a30, a31])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=6, keep_all_versions=True)
+    actual = self._consecutive_spans(
+        artifacts, skip_last_n=6, keep_all_versions=True
+    )
     self.assertEqual(actual, [a10, a20])
 
     # skip_last_n=9 is greater than the largest spans availble (8), so an
     # invalid range [0, -1] is created and no artifacts are returned.
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, skip_last_n=9)
+    actual = self._consecutive_spans(artifacts, skip_last_n=9)
     self.assertEqual(actual, [])
 
   def testConsecutiveSpans_FirstSpan(self):
     artifacts = self._get_artifacts_for_sequential_rolling_range_tests()
     a10, a20, a31, a30, a40, a50, _, _ = artifacts
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, first_span=1)
+    actual = self._consecutive_spans(artifacts, first_span=1)
     self.assertEqual(actual, [a10, a20, a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, first_span=2)
+    actual = self._consecutive_spans(artifacts, first_span=2)
     self.assertEqual(actual, [a20, a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, first_span=3)
+    actual = self._consecutive_spans(artifacts, first_span=3)
     self.assertEqual(actual, [a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, first_span=4)
+    actual = self._consecutive_spans(artifacts, first_span=4)
     self.assertEqual(actual, [a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, first_span=5)
+    actual = self._consecutive_spans(artifacts, first_span=5)
     self.assertEqual(actual, [a50])
 
     # first_span=6 is greater than the largest spans availble (5), so an invalid
     # [6, 5] is created and no artifacts are returned.
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, first_span=6)
+    actual = self._consecutive_spans(artifacts, first_span=6)
     self.assertEqual(actual, [])
 
     # Tests version conflicts when keep_all_versions=True.
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, first_span=3, keep_all_versions=True)
+    actual = self._consecutive_spans(
+        artifacts, first_span=3, keep_all_versions=True
+    )
     self.assertEqual(actual, [a30, a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, first_span=4, keep_all_versions=True)
+    actual = self._consecutive_spans(
+        artifacts, first_span=4, keep_all_versions=True
+    )
     self.assertEqual(actual, [a40, a50])
 
   def testConsecutiveSpans_Denylist(self):
     artifacts = self._get_artifacts_for_sequential_rolling_range_tests()
     a10, a20, a31, _, a40, a50, _, _ = artifacts
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans, artifacts, first_span=1, skip_last_n=0)
+    actual = self._consecutive_spans(artifacts, first_span=1, skip_last_n=0)
     self.assertEqual(actual, [a10, a20, a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans,
+    actual = self._consecutive_spans(
         artifacts,
         first_span=1,
         skip_last_n=0,
-        denylist=[1])
+        denylist=[1],
+    )
     self.assertEqual(actual, [a20, a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans,
+    actual = self._consecutive_spans(
         artifacts,
         first_span=1,
         skip_last_n=0,
-        denylist=[1, 2])
+        denylist=[1, 2],
+    )
     self.assertEqual(actual, [a31, a40, a50])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans,
+    actual = self._consecutive_spans(
         artifacts,
         first_span=1,
         skip_last_n=0,
-        denylist=[1, 3])
+        denylist=[1, 3],
+    )
     self.assertEqual(actual, [a20])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans,
+    actual = self._consecutive_spans(
         artifacts,
         first_span=1,
         skip_last_n=0,
-        denylist=[1, 2, 5])
+        denylist=[1, 2, 5],
+    )
     self.assertEqual(actual, [a31, a40])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans,
+    actual = self._consecutive_spans(
         artifacts,
         first_span=1,
         skip_last_n=5,
-        denylist=[1, 2, 5])
+        denylist=[1, 2, 5],
+    )
     self.assertEqual(actual, [a31])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans,
+    actual = self._consecutive_spans(
         artifacts,
         first_span=3,
         skip_last_n=5,
-        denylist=[3])
+        denylist=[3],
+    )
     self.assertEqual(actual, [])
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans,
+    actual = self._consecutive_spans(
         artifacts,
         first_span=1,
         skip_last_n=0,
-        denylist=[3])
+        denylist=[3],
+    )
     self.assertEqual(actual, [a10, a20])
 
   def testConsecutiveSpans_SmallValidSpanRange(self):
     artifacts = self._get_artifacts_for_sequential_rolling_range_tests()
     _, _, a31, a30, _, _, _, _ = artifacts
 
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans,
+    actual = self._consecutive_spans(
         artifacts,
         first_span=3,
         skip_last_n=5,
-        keep_all_versions=True)
+        keep_all_versions=True,
+    )
     self.assertEqual(actual, [a30, a31])
 
     # The arguments lead to the invalid spans range [3, 0], so no artifacts are
     # returned.
-    actual = test_utils.run_resolver_op(
-        ops.ConsecutiveSpans,
+    actual = self._consecutive_spans(
         artifacts,
         first_span=3,
         skip_last_n=8,
-        keep_all_versions=True)
+        keep_all_versions=True,
+    )
     self.assertEqual(actual, [])
 
 

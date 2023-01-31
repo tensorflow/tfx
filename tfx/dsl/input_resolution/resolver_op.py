@@ -101,8 +101,16 @@ class _ResolverOpMeta(abc.ABCMeta):
     super().__init__(name, bases, attrs)
 
   @property
-  def canonical_name(cls):
+  def canonical_name(cls) -> str:
     return cls._canonical_name or cls.__name__
+
+  @property
+  def arg_data_types(cls) -> Sequence[DataType]:
+    return cls._arg_data_types
+
+  @property
+  def return_data_type(cls) -> DataType:
+    return cls._return_data_type
 
   def __call__(cls, *args: Union['Node', Mapping[str, 'Node']], **kwargs: Any):
     """Fake instantiation of the ResolverOp class.
