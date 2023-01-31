@@ -22,7 +22,6 @@ from typing import Any, Callable, Iterator, List, Optional, Sequence, Type, Type
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
-from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
@@ -781,47 +780,6 @@ class Predicate(Placeholder):
 
     super().__init__(placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT)
     self.pred_dataclass = pred_dataclass
-
-  @classmethod
-  @deprecation_utils.deprecated(
-      None,
-      'Use the expression-based syntax to instantiate a Predicate as described '
-      'in the Predicate class documentation.')
-  def from_comparison(cls, compare_op: _CompareOp,
-                      left: ChannelWrappedPlaceholder,
-                      right: _ValueLikeType) -> 'Predicate':
-    """Creates a Predicate instance.
-
-    DEPRECATED: Use the expression-based syntax to instantiate a Predicate as
-    described in the Predicate class documentation.
-
-    Note that even though the `left` argument is assumed to be a
-    ChannelWrappedPlaceholder, we can still compare placeholders like
-    this:
-
-      `5 > channel.future()[0].value()`
-
-    This is because python's comparison operations will automatically flip
-    the arguments if only the right side has overloaded comparision
-    operations. e.g.,
-
-      `5 > channel.future()[0].value()` becomes
-      `(5).__gt__(pred)` which becomes
-      `pred.__lt__(5)`.
-
-    Thus, the left argument can always be assumed to be an
-    ChannelWrappedPlaceholder.
-
-    Args:
-      compare_op: A _CompareOp (EQUAL, LESS_THAN, GREATER_THAN)
-      left: The left side of the comparison.
-      right: The right side of the comparison. Might also be an int, float, or
-        str.
-
-    Returns:
-      A Predicate.
-    """
-    return cls(_Comparison(compare_op, left, right))
 
   def __add__(self, right):
     # Unlike Placeholders, Predicates cannot be added.
