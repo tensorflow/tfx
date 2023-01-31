@@ -59,23 +59,21 @@ class _SchedulerWrapper:
     self.pause = False
 
   def schedule(self) -> ts.TaskSchedulerResult:
-    logging.info(
-        'Began processing %s having id: %s',
-        self._task_scheduler.task.task_type_id(),
-        self._task_scheduler.task.task_id,
-    )
+    logging.info('Starting task scheduler: %s', self._task_scheduler)
     try:
       return self._task_scheduler.schedule()
     finally:
-      logging.info(
-          'Finished processing %s having id: %s',
-          self._task_scheduler.task.task_type_id(),
-          self._task_scheduler.task.task_id,
-      )
+      logging.info('Task scheduler finished: %s', self._task_scheduler)
 
   def cancel(self, cancel_task: task_lib.CancelNodeTask) -> None:
+    logging.info('Cancelling task scheduler: %s', self._task_scheduler)
     self.pause = cancel_task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC
     self._task_scheduler.cancel(cancel_task=cancel_task)
+
+  def __str__(self) -> str:
+    return (
+        f'{str(self._task_scheduler)} wrapped in {self.__class__.__qualname__}'
+    )
 
 
 class TaskManager:
@@ -214,6 +212,7 @@ class TaskManager:
               ts.TaskScheduler[task_lib.ExecNodeTask],
               ts.TaskSchedulerRegistry.create_task_scheduler(
                   self._mlmd_handle, task.pipeline, task)))
+      logging.info('Instantiated task scheduler: %s', scheduler)
       if task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC:
         scheduler.pause = True
       self._scheduler_by_node_uid[node_uid] = scheduler
@@ -246,14 +245,16 @@ class TaskManager:
     try:
       result = scheduler.schedule()
     except Exception:  # pylint: disable=broad-except
-      logging.exception('Exception raised by task scheduler; node uid: %s',
-                        task.node_uid)
+      logging.exception('Exception raised by: %s', scheduler)
       result = ts.TaskSchedulerResult(
           status=status_lib.Status(
               code=status_lib.Code.ABORTED,
               message=''.join(traceback.format_exception(*sys.exc_info()))))
-    logging.info('For ExecNodeTask id: %s, task-scheduler result status: %s',
-                 task.task_id, result.status)
+    logging.info(
+        'TaskSchedulerResult status %s from running %s',
+        result.status,
+        scheduler,
+    )
     # If the node was paused, we do not complete the execution as it is expected
     # that a new ExecNodeTask would be issued for resuming the execution.
     if not (scheduler.pause and

@@ -117,6 +117,9 @@ class TaskScheduler(abc.ABC, Generic[_TaskT]):
       cancel_task: The task of this cancellation.
     """
 
+  def __str__(self) -> str:
+    return f'{self.__class__.__qualname__} instance for {self.task.task_id}'
+
 
 T = TypeVar('T', bound='TaskSchedulerRegistry')
 
