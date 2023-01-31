@@ -26,8 +26,8 @@ from tfx.dsl.components.base import base_executor
 from tfx.proto import distribution_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
-from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx.utils import writer_utils
 
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -237,6 +237,11 @@ class Executor(base_executor.BaseExecutor):
           custom_validation_config=custom_validation_config)
       anomalies = _get_comparison_only_anomalies(full_anomalies)
       anomalies = _add_anomalies_for_missing_comparisons(anomalies, config)
-      io_utils.write_bytes_file(
-          os.path.join(anomalies_artifact.uri, 'SplitPair-%s' % split_pair,
-                       DEFAULT_FILE_NAME), anomalies.SerializeToString())
+      writer_utils.write_anomalies(
+          os.path.join(
+              anomalies_artifact.uri,
+              'SplitPair-%s' % split_pair,
+              DEFAULT_FILE_NAME,
+          ),
+          anomalies,
+      )
