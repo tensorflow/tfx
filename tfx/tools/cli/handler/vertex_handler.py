@@ -117,9 +117,7 @@ class VertexHandler(base_handler.BaseHandler):
         display_name=pipeline_name,
         template_path=self._get_pipeline_definition_path(pipeline_name),
         parameter_values=unparsed_runtime_parameters)
-    # TODO(b/198114641): Delete pytype exception after upgrading source code
-    # to aiplatform>=1.6.2.
-    job.submit()  # pytype: disable=attribute-error
+    job.submit()
 
     click.echo('Run created for pipeline: ' + pipeline_name)
     self._print_run(job)

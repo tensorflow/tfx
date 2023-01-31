@@ -202,9 +202,6 @@ class VertexHandlerTest(test_case_utils.TfxTest):
         labels.GCP_REGION: _TEST_REGION,
         labels.RUNTIME_PARAMETER: self.runtime_parameter,
     }
-    # TODO(b/198114641): Delete following override after upgrading source code
-    # to aiplatform>=1.6.2.
-    mock_pipeline_job.return_value.submit = mock.MagicMock()
 
     handler = vertex_handler.VertexHandler(flags_dict)
     handler.create_run()
