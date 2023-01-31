@@ -217,7 +217,9 @@ class _EventObserver:
     self._observers = []
     self._observers_lock = threading.Lock()
     self._shutdown_event = threading.Event()
-    self._main_executor = futures.ThreadPoolExecutor(max_workers=1)
+    self._main_executor = futures.ThreadPoolExecutor(
+        max_workers=1, thread_name_prefix="orchestrator_event_observer"
+    )
     self._main_future = None
 
   def start(self):

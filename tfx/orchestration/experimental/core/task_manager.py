@@ -114,12 +114,16 @@ class TaskManager:
     self._scheduler_by_node_uid: Dict[task_lib.NodeUid, _SchedulerWrapper] = {}
 
     # Async executor for the main task management thread.
-    self._main_executor = futures.ThreadPoolExecutor(max_workers=1)
+    self._main_executor = futures.ThreadPoolExecutor(
+        max_workers=1, thread_name_prefix='orchestrator_task_manager_main'
+    )
     self._main_future = None
 
     # Async executor for task schedulers.
     self._ts_executor = futures.ThreadPoolExecutor(
-        max_workers=max_active_task_schedulers)
+        max_workers=max_active_task_schedulers,
+        thread_name_prefix='orchestrator_active_task_schedulers',
+    )
     self._ts_futures = set()
 
   def __enter__(self):
