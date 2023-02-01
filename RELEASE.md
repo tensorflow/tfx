@@ -19,6 +19,9 @@
 *  Propagates unexpected import failures in the public v1 module.
 
 ## Dependency Updates
+| Package Name | Version Constraints | Previously (in `v1.12.0`) | Comments |
+| -- | -- | -- | -- |
+| `click` | `>=7,<9` | `>=7,<8` | |
 
 ## Documentation Updates
 
