@@ -16,7 +16,7 @@
 import collections
 import itertools
 import time
-from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence
+from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple
 import uuid
 
 from absl import logging
@@ -31,6 +31,7 @@ from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import context_lib
+from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import proto_utils
@@ -40,6 +41,7 @@ from google.protobuf import any_pb2
 import ml_metadata as mlmd
 from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
+
 
 _EXECUTION_SET_SIZE = '__execution_set_size__'
 _EXECUTION_TIMESTAMP = '__execution_timestamp__'
@@ -542,54 +544,64 @@ def get_unprocessed_inputs(
   Returns:
     A list of InputAndParam that have not been processed.
   """
-  processed_artifact_ids_by_execution: Dict[str, set[int]] = {}
+  # Gets the processed inputs.
+  processed_inputs: List[Dict[str, Tuple[int, ...]]] = []
   for execution in executions:
-    artifact_ids_by_event_type = (
-        execution_lib.get_artifact_ids_by_event_type_for_execution_id(
-            metadata_handle, execution.id
-        )
-    )
-    # TODO(b/250075208) Support notrigger, trigger_by, etc.
-    processed_artifact_ids_by_execution[execution.id] = (
-        artifact_ids_by_event_type.get(metadata_store_pb2.Event.INPUT, set())
-    )
+    events = metadata_handle.store.get_events_by_execution_ids([execution.id])
+    input_events = [
+        e
+        for e in events
+        if e.type == metadata_store_pb2.Event.INPUT
+        and event_lib.is_valid_input_event(e)
+    ]
+    ids_by_key = event_lib.reconstruct_artifact_id_multimap(input_events)
+    # Filters out the keys starting with underscore.
+    ids_by_key = {k: v for k, v in ids_by_key.items() if not k.startswith('_')}
+    processed_inputs.append(ids_by_key)
 
+  # Some input artifacts are from external pipelines, so we need to find out the
+  # external_id to id mapping in the local db.
+  local_id_by_external_id: Dict[str, int] = {}
+  for input_and_param in resolved_info.input_and_params:
+    for artifact in itertools.chain(*input_and_param.input_artifacts.values()):
+      if artifact.mlmd_artifact.external_id:
+        local_id_by_external_id[artifact.mlmd_artifact.external_id] = -1
+  if local_id_by_external_id:
+    try:
+      for artifact in metadata_handle.store.get_artifacts_by_external_ids(
+          external_ids=local_id_by_external_id
+      ):
+        local_id_by_external_id[artifact.external_id] = artifact.id
+    except errors.NotFoundError:
+      # If all the external ids do not exist in local db, we get NotFoundError.
+      # It is safe to pass, and we will handle them in the following code.
+      pass
+    except Exception as e:  # pylint:disable=broad-except
+      logging.exception('Error when getting artifacts by external ids: %s', e)
+      return []
+
+  # Finds out the unprocessed inputs.
   unprocessed_inputs = []
   for input_and_param in resolved_info.input_and_params:
-    resolved_input_ids = set()
-    resolved_input_external_ids = set()
-    for artifact in itertools.chain(*input_and_param.input_artifacts.values()):
-      if artifact.id:
-        resolved_input_ids.add(artifact.id)
-      elif artifact.mlmd_artifact.external_id:
-        resolved_input_external_ids.add(artifact.mlmd_artifact.external_id)
+    resolved_input_ids_by_key = collections.defaultdict(list)
+    for key, artifacts in input_and_param.input_artifacts.items():
+      for a in artifacts:
+        if a.id:
+          resolved_input_ids_by_key[key].append(a.id)
+        elif a.mlmd_artifact.external_id:
+          resolved_input_ids_by_key[key].append(
+              local_id_by_external_id[a.mlmd_artifact.external_id]
+          )
+      resolved_input_ids_by_key[key] = tuple(resolved_input_ids_by_key[key])
 
-    # If the resolved inputs are from different pipelines, we use the field
-    # external_id to get their ids in local db.
-    artifact_ids_by_external_ids: Dict[str, int] = {}
-    if resolved_input_external_ids:
-      try:
-        for a in metadata_handle.store.get_artifacts_by_external_ids(
-            external_ids=resolved_input_external_ids
-        ):
-          artifact_ids_by_external_ids[a.external_id] = a.id
-      except errors.NotFoundError:
-        pass
-      except Exception as e:  # pylint:disable=broad-except
-        logging.exception(
-            'Error when getting artifacts by external ids. Error: %s', e
-        )
-        return []
-
-      if len(artifact_ids_by_external_ids) == len(resolved_input_external_ids):
-        resolved_input_ids.update(artifact_ids_by_external_ids.keys())
-      else:
-        # Adding -1 indicates that some resolved artifacts are from external
-        # pipelines and they have not been processed yet.
-        resolved_input_ids.add(-1)
-
-    for processed_ids in processed_artifact_ids_by_execution.values():
-      if processed_ids == resolved_input_ids:
+    # Filters out the keys starting with underscore.
+    resolved_input_ids_by_key = {
+        k: v
+        for k, v in resolved_input_ids_by_key.items()
+        if not k.startswith('_')
+    }
+    for processed in processed_inputs:
+      if processed == resolved_input_ids_by_key:
         break
     else:
       unprocessed_inputs.append(input_and_param)
