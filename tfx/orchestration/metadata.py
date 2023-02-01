@@ -198,22 +198,8 @@ class Metadata:
     artifact_type.id = type_id
     return artifact_type
 
-  def update_artifact_state(self, artifact: metadata_store_pb2.Artifact,
-                            new_state: str) -> None:
-    """Update the state of a given artifact."""
-    if not artifact.id:
-      raise ValueError('Artifact id missing for %s' % artifact)
-    # TODO(b/146936257): unify artifact access logic by wrapping raw MLMD
-    # artifact protos into tfx.types.Artifact objects at a lower level.
-    if _ARTIFACT_TYPE_KEY_STATE in artifact.properties:
-      artifact.properties[_ARTIFACT_TYPE_KEY_STATE].string_value = new_state
-    else:
-      artifact.custom_properties[
-          _ARTIFACT_TYPE_KEY_STATE].string_value = new_state
-    self.store.put_artifacts([artifact])
-
   def _upsert_artifacts(self, tfx_artifact_list: List[Artifact],
-                        state: str) -> None:
+                        state: ArtifactState) -> None:
     """Updates or inserts a list of artifacts.
 
     This call will also update original tfx artifact list to contain the
@@ -530,7 +516,7 @@ class Metadata:
       self,
       artifact_dict: Dict[str, List[Artifact]],
       event_type: metadata_store_pb2.Event.Type,
-      new_state: Optional[str] = None,
+      new_state: Optional[ArtifactState] = None,
       registered_artifacts_ids: Optional[Set[int]] = None
   ) -> List[Tuple[metadata_store_pb2.Artifact,
                   Optional[metadata_store_pb2.Event]]]:
@@ -580,7 +566,7 @@ class Metadata:
       output_artifacts: Optional[Dict[str, List[Artifact]]] = None,
       exec_properties: Optional[Dict[str, Any]] = None,
       execution_state: Optional[str] = None,
-      artifact_state: Optional[str] = None,
+      artifact_state: Optional[ArtifactState] = None,
       contexts: Optional[List[metadata_store_pb2.Context]] = None) -> None:
     """Updates the given execution in MLMD based on given information.
 

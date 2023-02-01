@@ -16,6 +16,7 @@
 import os
 import subprocess
 import sys
+import unittest
 
 from absl import logging
 import tensorflow as tf
@@ -23,6 +24,8 @@ import tensorflow as tf
 from tfx.experimental.templates import test_utils
 
 
+@unittest.skipIf(tf.__version__ < '2',
+                 'Uses keras Model only compatible with TF 2.x')
 class PenguinTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):
   """This test runs all components in the template."""
 

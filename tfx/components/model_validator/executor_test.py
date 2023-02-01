@@ -14,6 +14,7 @@
 """Tests for tfx.components.model_validator.executor."""
 
 import os
+import unittest
 import tensorflow as tf
 
 from tfx.components.model_validator import constants
@@ -23,6 +24,8 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
+@unittest.skipIf(tf.__version__ < '2',
+                 'This test uses testdata only compatible with TF 2.x')
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):

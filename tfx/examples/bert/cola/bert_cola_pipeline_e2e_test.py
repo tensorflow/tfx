@@ -14,6 +14,7 @@
 """E2E Tests for tfx.examples.bert.cola.bert_cola_pipeline."""
 
 import os
+import unittest
 
 import tensorflow as tf
 
@@ -23,6 +24,8 @@ from tfx.orchestration import metadata
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
 
+@unittest.skipIf(tf.__version__ < '2',
+                 'Bert model requires tf.text >=2 and TF >= 2.')
 class ColaPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
   def setUp(self):

@@ -15,6 +15,7 @@
 
 import builtins
 import copy
+import enum
 import importlib
 import json
 from typing import Any, Dict, List, Optional, Type, Union
@@ -35,7 +36,7 @@ Property = artifact_property.Property
 PropertyType = artifact_property.PropertyType
 
 
-class ArtifactState:
+class ArtifactState(enum.Enum):
   """Enumeration of possible Artifact states."""
 
   # Indicates that there is a pending execution producing the artifact.
@@ -62,6 +63,9 @@ _TFX_TO_MLMD_ARTIFACT_STATE = {
     ArtifactState.MARKED_FOR_DELETION: MlmdArtifactState.MARKED_FOR_DELETION,
     ArtifactState.DELETED: MlmdArtifactState.DELETED,
     ArtifactState.ABANDONED: MlmdArtifactState.ABANDONED,
+}
+_MLMD_TO_TFX_ARTIFACT_STATE = {
+    v: k for k, v in _TFX_TO_MLMD_ARTIFACT_STATE.items()
 }
 
 # Default split of examples data.
@@ -558,17 +562,16 @@ class Artifact(json_utils.Jsonable):
 
   @property
   @doc_controls.do_not_doc_in_subclasses
-  def state(self) -> str:
+  def state(self) -> ArtifactState:
     """State of the underlying mlmd artifact."""
-    return self._get_system_property('state')
+    return _MLMD_TO_TFX_ARTIFACT_STATE[self._artifact.state]
 
   @state.setter
-  def state(self, state: str):
+  def state(self, state: ArtifactState):
     """Set state of the underlying artifact."""
-    self._set_system_property('state', state)
-    self._artifact.state = (
-        _TFX_TO_MLMD_ARTIFACT_STATE[state]
-        if state in _TFX_TO_MLMD_ARTIFACT_STATE else MlmdArtifactState.UNKNOWN)
+    if state not in _TFX_TO_MLMD_ARTIFACT_STATE:
+      raise ValueError('Invalid state: {state}')
+    self._artifact.state = _TFX_TO_MLMD_ARTIFACT_STATE[state]
 
   @property
   @doc_controls.do_not_doc_in_subclasses

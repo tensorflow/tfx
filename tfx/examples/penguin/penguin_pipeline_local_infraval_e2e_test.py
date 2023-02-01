@@ -14,6 +14,7 @@
 """E2E Tests for tfx.examples.penguin.penguin_pipeline_local_infraval."""
 
 import os
+import unittest
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -32,6 +33,8 @@ _OUTPUT_EVENT_TYPES = [
 ]
 
 
+@unittest.skipIf(tf.__version__ < '2',
+                 'Uses keras Model only compatible with TF 2.x')
 class PenguinPipelineLocalInfravalEndToEndTest(
     tf.test.TestCase, parameterized.TestCase):
 

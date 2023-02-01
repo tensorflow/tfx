@@ -15,6 +15,7 @@
 
 import glob
 import os
+import unittest
 
 from absl import logging
 from absl.testing import parameterized
@@ -31,6 +32,8 @@ from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
 
+@unittest.skipIf(tf.__version__ < '2',
+                 'This test uses testdata only compatible with TF 2.x')
 class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(

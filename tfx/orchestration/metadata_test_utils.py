@@ -136,12 +136,6 @@ class MetadataTest(tf.test.TestCase):
                            m.get_artifacts_by_type(
                                standard_artifacts.Examples.TYPE_NAME))
 
-      # Test artifact state.
-      self.assertEqual(artifact.state, metadata_store_pb2.Artifact.LIVE)
-      self._check_artifact_state(m, artifact, ArtifactState.PUBLISHED)
-      m.update_artifact_state(artifact, ArtifactState.DELETED)
-      self._check_artifact_state(m, artifact, ArtifactState.DELETED)
-
   def testArtifactTypeRegistrationForwardCompatible(self):
     with self.metadata() as m:
       self.assertListEqual([], m.store.get_artifacts())
