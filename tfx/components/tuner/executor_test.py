@@ -16,7 +16,6 @@
 import copy
 import json
 import os
-import unittest
 
 from keras_tuner import HyperParameters
 import tensorflow as tf
@@ -35,8 +34,6 @@ from tfx.utils import proto_utils
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 
-@unittest.skipIf(tf.__version__ < '2',
-                 'This test uses testdata only compatible with TF 2.x')
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):

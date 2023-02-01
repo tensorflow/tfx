@@ -14,7 +14,6 @@
 """E2E Tests for tfx.examples.experimental.penguin_pipeline_sklearn_local."""
 
 import os
-import unittest
 
 import tensorflow as tf
 from tfx import v1 as tfx
@@ -22,8 +21,6 @@ from tfx.examples.penguin.experimental import penguin_pipeline_sklearn_local
 from tfx.orchestration import metadata
 
 
-@unittest.skipIf(tf.__version__ < '2',
-                 'Uses keras Model only compatible with TF 2.x')
 class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
   def setUp(self):

@@ -15,7 +15,6 @@
 
 import os
 import types
-import unittest
 
 import apache_beam as beam
 import tensorflow as tf
@@ -113,8 +112,6 @@ class TaxiUtilsTest(tf.test.TestCase):
     transformed_schema.ClearField('annotation')
     self.assertEqual(transformed_schema, expected_transformed_schema)
 
-  @unittest.skipIf(tf.__version__ < '2',
-                   'This test uses testdata only compatible with TF 2.x')
   def testTrainerFn(self):
     temp_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),

@@ -16,7 +16,6 @@
 import importlib
 import os
 from typing import List
-import unittest
 
 from absl import logging
 from absl.testing import parameterized
@@ -33,8 +32,6 @@ from ml_metadata.proto import metadata_store_pb2
 _SPAN_PROPERTY_NAME = 'span'
 
 
-@unittest.skipIf(tf.__version__ < '2',
-                 'Uses keras Model only compatible with TF 2.x')
 class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
                                        parameterized.TestCase):
 

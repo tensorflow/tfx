@@ -14,7 +14,6 @@
 """E2E Tests for tfx.examples.imdb.imdb_pipeline_native_keras."""
 
 import os
-import unittest
 
 import tensorflow as tf
 
@@ -24,8 +23,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
-@unittest.skipIf(tf.__version__ < '2',
-                 'Uses keras Model only compatible with TF 2.x')
 class ImdbPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
   def setUp(self):

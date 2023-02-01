@@ -14,15 +14,12 @@
 """Tests for tfx.components.transform.executor with sequnce examples."""
 
 import os
-import unittest
 import tensorflow as tf
 from tfx.components.testdata.module_file import transform_sequence_module
 from tfx.components.transform import executor_test
 from tfx.proto import example_gen_pb2
 
 
-@unittest.skipIf(tf.__version__ < '2',
-                 'Native SequenceExample support not available with TF1')
 class ExecutorWithSequenceExampleTest(executor_test.ExecutorTest):
 
   # Should not rely on inherited _SOURCE_DATA_DIR for integration tests to work

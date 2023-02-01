@@ -173,8 +173,6 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
                       raw_record_column_name=None,
                       provide_data_view_uri=False,
                       read_as_raw_records=False):
-    if provide_data_view_uri and tf.__version__ < '2':
-      self.skipTest('DataView is not supported under TF 1.x.')
     if payload_format is None:
       payload_format = 'FORMAT_TF_EXAMPLE'
     data_view_uri = None
@@ -199,8 +197,6 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
                                            raw_record_column_name=None,
                                            provide_data_view_uri=False,
                                            read_as_raw_records=False):
-    if provide_data_view_uri and tf.__version__ < '2':
-      self.skipTest('DataView is not supported under TF 1.x.')
     examples = standard_artifacts.Examples()
     if payload_format is not None:
       examples_utils.set_payload_format(examples, payload_format)
