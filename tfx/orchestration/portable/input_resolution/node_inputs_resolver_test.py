@@ -729,8 +729,9 @@ class NodeInputsResolverTest(tf.test.TestCase):
     with self.subTest('min_count = 1'):
       node_inputs.inputs['x1'].min_count = 1
       with self.assertRaisesRegex(
-          exceptions.FailedPreconditionError,
-          r'inputs\[x1\] has min_count = 1 but only got 0 artifacts'):
+          exceptions.SkipSignal,
+          r'inputs\[x1\] has min_count = 1 but only got 0 artifacts',
+      ):
         node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
     x2 = self.parse_input_spec("""
@@ -761,8 +762,9 @@ class NodeInputsResolverTest(tf.test.TestCase):
           inputs={'x2': x2},
           input_graphs={'graph_1': graph_1})
       with self.assertRaisesRegex(
-          exceptions.FailedPreconditionError,
-          r'inputs\[x2\] has min_count = 1 but only got 0 artifacts'):
+          exceptions.SkipSignal,
+          r'inputs\[x2\] has min_count = 1 but only got 0 artifacts',
+      ):
         node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
 
 
