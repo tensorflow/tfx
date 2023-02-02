@@ -21,6 +21,7 @@ import time
 from absl.testing import parameterized
 from absl.testing.absltest import mock
 import tensorflow as tf
+from tfx import types
 from tfx.dsl.compiler import constants
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
@@ -39,6 +40,7 @@ from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.experimental.core.testing import test_manual_node
+from tfx.orchestration.experimental.core.testing import test_sync_pipeline
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import partial_run_utils
@@ -46,6 +48,7 @@ from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -1473,23 +1476,62 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         node_state = pipeline_state.get_node_state(trainer_node_uid)
         self.assertEqual(pstate.NodeState.STARTED, node_state.state)
 
-  @parameterized.parameters(
-      _test_pipeline('pipeline1'),
-      _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC))
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='async', pipeline=test_async_pipeline.create_pipeline()
+      ),
+      dict(
+          testcase_name='sync',
+          pipeline=test_sync_pipeline.create_pipeline(),
+      ),
+  )
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
-  def test_pure_service_node_stop_then_start_flow(self, pipeline,
-                                                  mock_async_task_gen,
-                                                  mock_sync_task_gen):
+  def test_pure_service_node_stop_then_start_flow(
+      self,
+      mock_async_task_gen,
+      mock_sync_task_gen,
+      pipeline,
+  ):
+    runtime_parameter_utils.substitute_runtime_parameter(
+        pipeline,
+        {
+            constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'test-pipeline-run',
+        },
+    )
+    self._mock_service_job_manager.is_pure_service_node.side_effect = (
+        lambda _, node_id: node_id == 'my_example_gen'
+    )
     with self._mlmd_connection_manager as mlmd_connection_manager:
       m = mlmd_connection_manager.primary_mlmd_handle
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
-
-      example_gen_node_uid = task_lib.NodeUid.from_node(
-          pipeline, pipeline.nodes[0].pipeline_node)
+      example_gen = pipeline.nodes[0].pipeline_node
+      example_gen_node_uid = task_lib.NodeUid.from_node(pipeline, example_gen)
 
       pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      test_utils.fake_example_gen_execution_with_state(
+          m,
+          example_gen,
+          metadata_store_pb2.Execution.State.RUNNING,
+      )
+
+      eg_execs = m.store.get_executions_by_type(example_gen.node_info.type.name)
+      self.assertLen(eg_execs, 1)
+      self.assertEqual(
+          metadata_store_pb2.Execution.State.RUNNING,
+          eg_execs[0].last_known_state,
+      )
+      execution_lib.register_pending_output_artifacts(
+          m, eg_execs[0].id, {'Examples': [standard_artifacts.Examples()]}
+      )
+      eg_artifact = execution_lib.get_pending_output_artifacts(
+          m, eg_execs[0].id
+      )
+      self.assertEqual(
+          types.artifact.ArtifactState.PENDING, eg_artifact['Examples'][0].state
+      )
+
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         with pipeline_state.node_state_update_context(
@@ -1505,7 +1547,21 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # stop_node_services should be called for ExampleGen which is a pure
       # service node.
       self._mock_service_job_manager.stop_node_services.assert_called_once_with(
-          mock.ANY, 'ExampleGen')
+          mock.ANY, 'my_example_gen'
+      )
+      eg_execs = m.store.get_executions_by_type(example_gen.node_info.type.name)
+      self.assertLen(eg_execs, 1)
+      self.assertEqual(
+          metadata_store_pb2.Execution.State.CANCELED,
+          eg_execs[0].last_known_state,
+      )
+      eg_artifact = execution_lib.get_pending_output_artifacts(
+          m, eg_execs[0].id
+      )
+      self.assertEqual(
+          types.artifact.ArtifactState.ABANDONED,
+          eg_artifact['Examples'][0].state,
+      )
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         node_state = pipeline_state.get_node_state(example_gen_node_uid)

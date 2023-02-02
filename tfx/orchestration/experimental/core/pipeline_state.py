@@ -450,15 +450,10 @@ class PipelineState:
         context_type_name=_ORCHESTRATOR_RESERVED_ID,
         context_name=pipeline_uid.pipeline_id)
 
-    active_pipeline_executions = mlmd_handle.store.get_executions_by_context(
-        context.id,
-        list_options=mlmd.ListOptions(
-            filter_query='last_known_state = NEW OR last_known_state = RUNNING'
-        ),
-    )
-    assert all(
-        execution_lib.is_execution_active(e) for e in active_pipeline_executions
-    )
+    executions = mlmd_handle.store.get_executions_by_context(context.id)
+    active_pipeline_executions = [
+        e for e in executions if execution_lib.is_execution_active(e)
+    ]
     active_async_pipeline_executions = [
         e for e in active_pipeline_executions
         if _retrieve_pipeline_exec_mode(e) == pipeline_pb2.Pipeline.ASYNC
@@ -616,13 +611,11 @@ class PipelineState:
       List of active pipeline states.
     """
     pipeline_id = pipeline_id_from_orchestrator_context(context)
-    active_executions = mlmd_handle.store.get_executions_by_context(
-        context.id,
-        list_options=mlmd.ListOptions(
-            filter_query='last_known_state = NEW OR last_known_state = RUNNING'
-        ),
-    )
-    assert all(execution_lib.is_execution_active(e) for e in active_executions)
+    # TODO(b/254578300): Use filter_query and load only the relevant executions.
+    executions = mlmd_handle.store.get_executions_by_context(context.id)
+    active_executions = [
+        e for e in executions if execution_lib.is_execution_active(e)
+    ]
     result = []
     for execution in active_executions:
       pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(

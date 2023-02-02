@@ -41,6 +41,7 @@ from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import partial_run_utils
+from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
@@ -865,15 +866,34 @@ def orchestrate(mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
   return True
 
 
-def _cancel_node(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
-                 service_job_manager: service_jobs.ServiceJobManager,
-                 pipeline_state: pstate.PipelineState,
-                 node: node_proto_view.NodeProtoView, pause: bool) -> bool:
+def _cancel_node(
+    mlmd_handle: metadata.Metadata,
+    task_queue: tq.TaskQueue,
+    service_job_manager: service_jobs.ServiceJobManager,
+    pipeline_state: pstate.PipelineState,
+    node: node_proto_view.NodeProtoView,
+    pause: bool,
+) -> bool:
   """Returns `True` if node cancelled successfully or no cancellation needed."""
   if service_job_manager.is_pure_service_node(pipeline_state,
                                               node.node_info.id):
-    return service_job_manager.stop_node_services(pipeline_state,
-                                                  node.node_info.id)
+    node_uid = task_lib.NodeUid.from_node(pipeline_state.pipeline, node)
+    logging.info('Stopping services for node: %s', node_uid)
+    if service_job_manager.stop_node_services(
+        pipeline_state, node.node_info.id
+    ):
+      # Do not cancel active executions for node reload.
+      if not pause:
+        logging.info(
+            'Canceling active executions for pure service node: %s', node_uid
+        )
+        active_executions = task_gen_utils.get_executions(
+            mlmd_handle, node, only_active=True
+        )
+        _cancel_executions(active_executions, mlmd_handle, node_uid)
+      return True
+    else:
+      return False
   if _maybe_enqueue_cancellation_task(
       mlmd_handle, pipeline_state, node, task_queue, pause=pause):
     return False
@@ -882,6 +902,33 @@ def _cancel_node(mlmd_handle: metadata.Metadata, task_queue: tq.TaskQueue,
     return service_job_manager.stop_node_services(pipeline_state,
                                                   node.node_info.id)
   return True
+
+
+def _cancel_executions(
+    executions: List[metadata_store_pb2.Execution],
+    mlmd_handle: metadata.Metadata,
+    node_uid: task_lib.NodeUid,
+) -> None:
+  """Cancels the given executions for the given node."""
+  for execution in executions:
+    previous_state = execution.last_known_state
+    with mlmd_state.mlmd_execution_atomic_op(
+        mlmd_handle=mlmd_handle,
+        execution_id=execution.id,
+        on_commit=event_observer.make_notify_execution_state_change_fn(
+            node_uid
+        ),
+    ) as e:
+      e.last_known_state = metadata_store_pb2.Execution.CANCELED
+    if previous_state == metadata_store_pb2.Execution.RUNNING:
+      pending_output_artifacts = execution_lib.get_pending_output_artifacts(
+          mlmd_handle, execution.id
+      )
+      artifact_lib.update_artifacts(
+          mlmd_handle,
+          pending_output_artifacts,
+          types.artifact.ArtifactState.ABANDONED,
+      )
 
 
 def _orchestrate_stop_initiated_pipeline(
@@ -916,7 +963,8 @@ def _orchestrate_stop_initiated_pipeline(
         service_job_manager,
         pipeline_state,
         node,
-        pause=False):
+        pause=False,
+    ):
       stopped_nodes.append(node)
 
   # Change the state of stopped nodes to STOPPED.
@@ -979,7 +1027,8 @@ def _orchestrate_update_initiated_pipeline(
         service_job_manager,
         pipeline_state,
         node,
-        pause=True):
+        pause=True,
+    ):
       paused_nodes.append(node)
 
   # Change the state of paused nodes to PAUSED.
@@ -1052,6 +1101,13 @@ def _orchestrate_active_pipeline(
                        state_str: str) -> List[_NodeInfo]:
     return [n for n in node_infos if n.state.state == state_str]
 
+  def _filter_by_node_id(
+      node_infos: List[_NodeInfo], node_id: str
+  ) -> _NodeInfo:
+    results = [n for n in node_infos if n.node.node_info.id == node_id]
+    assert len(results) == 1
+    return results[0]
+
   node_infos = _get_node_infos(pipeline_state)
   stopping_node_infos = _filter_by_state(node_infos, pstate.NodeState.STOPPING)
 
@@ -1066,7 +1122,8 @@ def _orchestrate_active_pipeline(
         service_job_manager,
         pipeline_state,
         node_info.node,
-        pause=False):
+        pause=False,
+    ):
       stopped_node_infos.append(node_info)
 
   # Change the state of stopped nodes from STOPPING to STOPPED.
@@ -1110,7 +1167,24 @@ def _orchestrate_active_pipeline(
             pstate.is_node_state_failure(task.state)):
       continue
     logging.info('Stopping services for node: %s', task.node_uid)
-    if not service_job_manager.stop_node_services(pipeline_state, node_id):
+    if service_job_manager.stop_node_services(pipeline_state, node_id):
+      if service_job_manager.is_pure_service_node(
+          pipeline_state, node_id
+      ) and pstate.is_node_state_failure(task.state):
+        logging.info(
+            'Canceling active executions for pure service node: %s',
+            task.node_uid,
+        )
+        node = _filter_by_node_id(node_infos, node_id).node
+        active_executions = task_gen_utils.get_executions(
+            mlmd_connection_manager.primary_mlmd_handle, node, only_active=True
+        )
+        _cancel_executions(
+            active_executions,
+            mlmd_connection_manager.primary_mlmd_handle,
+            task.node_uid,
+        )
+    else:
       logging.warning(
           'Ignoring failure to stop services for node %s which is in state %s',
           task.node_uid, task.state)
