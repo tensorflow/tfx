@@ -23,6 +23,7 @@ from tfx.dsl.input_resolution.ops import exclude_spans_op
 from tfx.dsl.input_resolution.ops import group_by_lineage_op
 from tfx.dsl.input_resolution.ops import latest_create_time_op
 from tfx.dsl.input_resolution.ops import latest_pipeline_run_outputs_op as latest_pipeline_run_op
+from tfx.dsl.input_resolution.ops import latest_policy_model_op
 from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import latest_version_op
 from tfx.dsl.input_resolution.ops import shuffle_op
@@ -63,6 +64,7 @@ GroupByDisjointLineage = group_by_lineage_op.GroupByDisjointLineage
 GroupByPivot = group_by_lineage_op.GroupByPivot
 LatestCreateTime = latest_create_time_op.LatestCreateTime
 LatestPipelineRunOutputs = latest_pipeline_run_op.LatestPipelineRunOutputs
+LatestPolicyModel = latest_policy_model_op.LatestPolicyModel
 LatestSpan = latest_span_op.LatestSpan
 LatestVersion = latest_version_op.LatestVersion
 Shuffle = shuffle_op.Shuffle
@@ -80,6 +82,7 @@ _register_op(GroupByDisjointLineage)
 _register_op(GroupByPivot)
 _register_op(LatestCreateTime)
 _register_op(LatestPipelineRunOutputs)
+_register_op(LatestPolicyModel)
 _register_op(LatestSpan)
 _register_op(LatestVersion)
 _register_op(Shuffle)
