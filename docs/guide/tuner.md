@@ -221,7 +221,7 @@ the AI Platform Vizier service. See this
 [guide](https://cloud.google.com/ai-platform/training/docs/custom-service-account#custom)
 to set up a custom service account. After that, you should specify the custom
 service account for your training job in the pipeline code. More details see
-[E2E CloudTuner on GCP exmaple](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_kubeflow_gcp.py).
+[E2E CloudTuner on GCP example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_kubeflow.py).
 
 ## Links
 
