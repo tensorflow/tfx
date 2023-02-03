@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.latest_policy_model_op."""
-from typing import Optional
+from typing import Dict, List, Optional
 
 from absl.testing import parameterized
 
@@ -62,9 +62,9 @@ class LatestPolicyModelOpTest(
   def _latest_policy_model(
       self,
       policy: latest_policy_model_op.Policy,
-      model: Optional[list[types.Artifact]] = None,
-      model_blessing: Optional[list[types.Artifact]] = None,
-      model_infra_blessing: Optional[list[types.Artifact]] = None,
+      model: Optional[List[types.Artifact]] = None,
+      model_blessing: Optional[List[types.Artifact]] = None,
+      model_infra_blessing: Optional[List[types.Artifact]] = None,
   ):
     """Run the LatestPolicyModel ResolverOp."""
     input_dict = {'model': model or self.artifacts}
@@ -85,7 +85,7 @@ class LatestPolicyModelOpTest(
   def _prepare_tfx_artifact(
       self,
       artifact: types.Artifact,
-      custom_properties: Optional[dict[str, int | str]] = None,
+      custom_properties: Optional[Dict[str, int | str]] = None,
   ) -> types.Artifact:
     """Adds a single artifact to MLMD and returns the TFleX Artifact object."""
     mlmd_artifact = self.put_artifact(
@@ -157,8 +157,8 @@ class LatestPolicyModelOpTest(
 
   def assertArtifactDictEqual(
       self,
-      actual: dict[str, types.Artifact],
-      expected: dict[str, types.Artifact],
+      actual: Dict[str, types.Artifact],
+      expected: Dict[str, types.Artifact],
   ):
     # The call to artifact_utils.deserialize_artifact() in
     # latest_policy_model_op._get_latest_created() results in an artifact with
@@ -529,11 +529,11 @@ class LatestPolicyModelOpTest(
   )
   def testLatestPolicyModelOp_RealisticModelExecutions_ModelResolvedCorrectly(
       self,
-      eval_models: list[types.Artifact],
-      infra_val_models: list[types.Artifact],
-      push_models: list[types.Artifact],
+      eval_models: List[types.Artifact],
+      infra_val_models: List[types.Artifact],
+      push_models: List[types.Artifact],
       policy: latest_policy_model_op.Policy,
-      expected: list[types.Artifact],
+      expected: List[types.Artifact],
   ):
     str_to_model = {
         'm1': self.model_1,
