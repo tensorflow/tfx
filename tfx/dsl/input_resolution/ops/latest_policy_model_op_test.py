@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.latest_policy_model_op."""
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from absl.testing import parameterized
 
@@ -85,7 +85,7 @@ class LatestPolicyModelOpTest(
   def _prepare_tfx_artifact(
       self,
       artifact: types.Artifact,
-      custom_properties: Optional[Dict[str, int | str]] = None,
+      custom_properties: Optional[Dict[str, Union[int, str]]] = None,
   ) -> types.Artifact:
     """Adds a single artifact to MLMD and returns the TFleX Artifact object."""
     mlmd_artifact = self.put_artifact(
