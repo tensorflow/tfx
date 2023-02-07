@@ -109,7 +109,15 @@ def deserialize_proto_message(
   pool = descriptor_pool.Default()
   if file_descriptors:
     for file_descriptor in file_descriptors.file:
-      pool.Add(file_descriptor)
+      try:
+        pool.Add(file_descriptor)
+      except TypeError as e:
+        # If the same file_descriptor is already added to the current descriptor
+        # pool (and sadly there's no way to check this before calling Add()), we
+        # can ignore this.
+        if 'A file with this name is already in the pool' in str(e):
+          continue
+        raise
 
   proto_instance = _create_proto_instance_from_name(message_name, pool)
   return json_format.Parse(
