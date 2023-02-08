@@ -14,9 +14,11 @@
 """Tests for tfx.utils.channel."""
 
 import tensorflow as tf
+from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact
 from tfx.types import channel
 from tfx.types import channel_utils
+from tfx.types import standard_artifacts
 
 
 class _MyArtifact(artifact.Artifact):
@@ -61,6 +63,23 @@ class ChannelUtilsTest(tf.test.TestCase):
     result = channel_utils.get_individual_channels(
         channel.union([one_channel, another_channel]))
     self.assertEqual(result, [one_channel, another_channel])
+
+  def testPredicateDependentChannels(self):
+    int1 = channel.Channel(type=standard_artifacts.Integer)
+    int2 = channel.Channel(type=standard_artifacts.Integer)
+    pred1 = int1.future().value == 1
+    pred2 = int1.future().value == int2.future().value
+    pred3 = placeholder.logical_not(pred1)
+    pred4 = placeholder.logical_and(pred1, pred2)
+
+    self.assertEqual(set(channel_utils.get_dependent_channels(pred1)), {int1})
+    self.assertEqual(
+        set(channel_utils.get_dependent_channels(pred2)), {int1, int2}
+    )
+    self.assertEqual(set(channel_utils.get_dependent_channels(pred3)), {int1})
+    self.assertEqual(
+        set(channel_utils.get_dependent_channels(pred4)), {int1, int2}
+    )
 
 
 if __name__ == '__main__':

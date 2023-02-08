@@ -13,8 +13,9 @@
 # limitations under the License.
 """TFX Channel utilities."""
 
-from typing import cast, Dict, Iterable, List, Type, Optional
+from typing import cast, Dict, Iterable, Iterator, List, Type, Optional
 
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.types import artifact
 from tfx.types import channel
 
@@ -183,3 +184,12 @@ def external_project_artifact_query(
       output_key=output_key,
       pipeline_run_id=pipeline_run_id,
   )
+
+
+def get_dependent_channels(
+    placeholder: ph.Placeholder,
+) -> Iterator[channel.Channel]:
+  """Yields all Channels used in/under the given placeholder."""
+  for p in placeholder.traverse():
+    if isinstance(p, ph.ChannelWrappedPlaceholder):
+      yield p.channel

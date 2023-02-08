@@ -27,6 +27,7 @@ from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import channel
+from tfx.types import channel_utils
 from tfx.utils import doc_controls
 from tfx.utils import topsort
 
@@ -389,8 +390,7 @@ class Pipeline(base_node.BaseNode):
           channels.append(exec_property.channel)
       for predicate in conditional.get_predicates(component,
                                                   self.dsl_context_registry):
-        for chnl in predicate.dependent_channels():
-          channels.append(chnl)
+        channels.extend(channel_utils.get_dependent_channels(predicate))
 
       for input_channel in channels:
         for node_id in input_channel.get_data_dependent_node_ids():

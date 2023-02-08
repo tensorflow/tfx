@@ -695,12 +695,6 @@ class _Comparison:
     result.operator.compare_op.rhs.CopyFrom(right_pb)
     return result
 
-  def dependent_channels(self) -> Iterator['types.Channel']:
-    if isinstance(self.left, ChannelWrappedPlaceholder):
-      yield self.left.channel
-    if isinstance(self.right, ChannelWrappedPlaceholder):
-      yield self.right.channel
-
   def traverse(self) -> Iterator[Placeholder]:
     """Yields all placeholders under this predicate."""
     if isinstance(self.left, Placeholder):
@@ -739,9 +733,6 @@ class _NotExpression:
     result.operator.unary_logical_op.expression.CopyFrom(pred_pb)
     return result
 
-  def dependent_channels(self) -> Iterator['types.Channel']:
-    yield from self.pred_dataclass.dependent_channels()
-
   def traverse(self) -> Iterator[Placeholder]:
     """Yields all placeholders under this predicate."""
     yield from self.pred_dataclass.traverse()
@@ -768,10 +759,6 @@ class _BinaryLogicalExpression:
     right_pb = self.right.encode_with_keys(channel_to_key_fn)
     result.operator.binary_logical_op.rhs.CopyFrom(right_pb)
     return result
-
-  def dependent_channels(self) -> Iterator['types.Channel']:
-    yield from self.left.dependent_channels()
-    yield from self.right.dependent_channels()
 
   def traverse(self) -> Iterator[Placeholder]:
     """Yields all placeholders under this predicate."""
@@ -808,9 +795,6 @@ class Predicate(Placeholder):
   def b64encode(self):
     # Unlike Placeholders, Predicates cannot be b64encoded.
     raise NotImplementedError
-
-  def dependent_channels(self) -> Iterator['types.Channel']:
-    yield from self.pred_dataclass.dependent_channels()
 
   def traverse(self) -> Iterator[Placeholder]:
     """Yields all placeholders under this predicate."""

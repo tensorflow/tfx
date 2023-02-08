@@ -27,6 +27,7 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
+from tfx.types import channel_utils
 
 
 class PipelineContext:
@@ -94,7 +95,7 @@ class PipelineContext:
   def _collect_conditional_dependency(self, here: base_node.BaseNode) -> None:
     for predicate in conditional.get_predicates(here,
                                                 self.dsl_context_registry):
-      for chnl in predicate.dependent_channels():
+      for chnl in channel_utils.get_dependent_channels(predicate):
         if isinstance(chnl, channel_types.OutputChannel):
           self._add_implicit_dependency(chnl.producer_component_id, here.id)
 

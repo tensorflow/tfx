@@ -38,6 +38,7 @@ from tfx.orchestration.kubeflow import decorators
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.channel import Channel
 from tfx.utils import deprecation_utils
@@ -276,7 +277,7 @@ class StepBuilder:
       }
       cel_predicates = []
       for predicate in predicates:
-        for channel in predicate.dependent_channels():
+        for channel in channel_utils.get_dependent_channels(predicate):
           implicit_key = tfx_compiler_utils.implicit_channel_key(channel)
           if implicit_key not in implicit_keys_map:
             # Store this channel and add it to the node inputs later.

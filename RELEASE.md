@@ -4,10 +4,12 @@
 
 ## Breaking Changes
 
+### For Pipeline Authors
+
 *   `placeholder.Placeholder.placeholders_involved()` was replaced with
     `placeholder.Placeholder.traverse()`.
-
-### For Pipeline Authors
+*   `placeholder.Predicate.dependent_channels()` was replaced with
+    `channel_utils.get_dependent_channels(Placeholder)`.
 
 *   `placeholder.Predicate.from_comparison()` removed (was deprecated)
 

@@ -28,6 +28,7 @@ from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import metadata_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
+from tfx.types import channel_utils
 from tfx.types import resolved_channel
 from tfx.types import value_artifact
 from tfx.utils import deprecation_utils
@@ -298,7 +299,7 @@ def _compile_conditionals(
     if not isinstance(dsl_context, conditional.CondContext):
       continue
     cond_context = cast(conditional.CondContext, dsl_context)
-    for channel in cond_context.predicate.dependent_channels():
+    for channel in channel_utils.get_dependent_channels(cond_context.predicate):
       _compile_input_spec(
           pipeline_ctx=context,
           tfx_node=tfx_node,
