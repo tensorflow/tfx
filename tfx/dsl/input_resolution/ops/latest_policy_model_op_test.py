@@ -62,12 +62,16 @@ class LatestPolicyModelOpTest(
   def _latest_policy_model(
       self,
       policy: latest_policy_model_op.Policy,
+      raise_skip_signal=True,
       model: Optional[List[types.Artifact]] = None,
       model_blessing: Optional[List[types.Artifact]] = None,
       model_infra_blessing: Optional[List[types.Artifact]] = None,
   ):
     """Run the LatestPolicyModel ResolverOp."""
-    input_dict = {'model': model or self.artifacts}
+    if model is None:
+      input_dict = {'model': self.artifacts}
+    else:
+      input_dict = {'model': model}
 
     if model_blessing is not None:
       input_dict['model_blessing'] = model_blessing
@@ -80,6 +84,7 @@ class LatestPolicyModelOpTest(
         input_dict,
         context=resolver_op.Context(store=self.store),
         policy=policy,
+        raise_skip_signal=raise_skip_signal,
     )
 
   def _prepare_tfx_artifact(
@@ -179,24 +184,91 @@ class LatestPolicyModelOpTest(
 
     self.artifacts = [self.model_1, self.model_2, self.model_3]
 
-  def testLatestPolicyModelOpTest_EmptyInput_RaiesSkipSignal(self):
+  def testLatestPolicyModelOpTest_RaisesSkipSignal(self):
     with self.assertRaises(exceptions.SkipSignal):
       test_utils.run_resolver_op(
           ops.LatestPolicyModel,
           {},
           policy=latest_policy_model_op.Policy.LATEST_EXPORTED,
+          raise_skip_signal=True,
           context=resolver_op.Context(store=self.store),
       )
 
+      # Keys present in input_dict but contains no artifacts.
+      self._latest_policy_model(_LATEST_EXPORTED, model=[])
+      self._latest_policy_model(_LATEST_EVALUATOR_BLESSED, model_blessing=[])
+      self._latest_policy_model(
+          _LATEST_INFRA_VALIDATOR_BLESSED, model_infra_blessing=[]
+      )
+      self._latest_policy_model(
+          _LATEST_BLESSED, model_blessing=[], model_infra_blessing=[]
+      )
+
+      # Models present in input_dict but none of them meet the specified policy.
+      self._latest_policy_model(_LATEST_EVALUATOR_BLESSED)
+      self._latest_policy_model(_LATEST_INFRA_VALIDATOR_BLESSED)
+      self._latest_policy_model(_LATEST_BLESSED)
+      self._latest_policy_model(_LATEST_PUSHED)
+
+  def testLatestPolicyModelOpTest_DoesNotRaiseSkipSignal(self):
+    self.assertEmpty(
+        test_utils.run_resolver_op(
+            ops.LatestPolicyModel,
+            {},
+            policy=latest_policy_model_op.Policy.LATEST_EXPORTED,
+            raise_skip_signal=False,
+            context=resolver_op.Context(store=self.store),
+        )
+    )
+
+    # Keys present in input_dict but contains no artifacts.
+    self.assertEmpty(
+        self._latest_policy_model(
+            _LATEST_EXPORTED, raise_skip_signal=False, model=[]
+        )
+    )
+    self.assertEmpty(
+        self._latest_policy_model(
+            _LATEST_EVALUATOR_BLESSED,
+            raise_skip_signal=False,
+            model_blessing=[],
+        )
+    )
+    self.assertEmpty(
+        self._latest_policy_model(
+            _LATEST_INFRA_VALIDATOR_BLESSED,
+            raise_skip_signal=False,
+            model_infra_blessing=[],
+        )
+    )
+    self.assertEmpty(
+        self._latest_policy_model(
+            _LATEST_BLESSED,
+            raise_skip_signal=False,
+            model_blessing=[],
+            model_infra_blessing=[],
+        )
+    )
+
+    # Models present in input_dict but none of them meet the specified policy.
+    self.assertEmpty(
+        self._latest_policy_model(
+            _LATEST_EVALUATOR_BLESSED, raise_skip_signal=False
+        )
+    )
+    self.assertEmpty(
+        self._latest_policy_model(
+            _LATEST_INFRA_VALIDATOR_BLESSED, raise_skip_signal=False
+        )
+    )
+    self.assertEmpty(
+        self._latest_policy_model(_LATEST_BLESSED, raise_skip_signal=False)
+    )
+    self.assertEmpty(
+        self._latest_policy_model(_LATEST_PUSHED, raise_skip_signal=False)
+    )
+
   def testLatestPolicyModelOpTest_ValidateInputDict(self):
-    with self.assertRaises(exceptions.SkipSignal):
-      # Empty input dictionary.
-      latest_policy_model_op._validate_input_dict({})
-
-      # 'model' key present but contains no artifacts.
-      input_dict = {'model_blessing': []}
-      latest_policy_model_op._validate_input_dict(input_dict)
-
     with self.assertRaises(exceptions.InvalidArgument):
       # "model" key is missing.
       input_dict = {'model_blessing': [self.model_1]}
@@ -298,6 +370,23 @@ class LatestPolicyModelOpTest(
       self._latest_policy_model(_LATEST_INFRA_VALIDATOR_BLESSED)
       self._latest_policy_model(_LATEST_BLESSED)
       self._latest_policy_model(_LATEST_PUSHED)
+
+    self.assertEmpty(
+        self._latest_policy_model(
+            _LATEST_EVALUATOR_BLESSED, raise_skip_signal=False
+        )
+    )
+    self.assertEmpty(
+        self._latest_policy_model(
+            _LATEST_INFRA_VALIDATOR_BLESSED, raise_skip_signal=False
+        )
+    )
+    self.assertEmpty(
+        self._latest_policy_model(_LATEST_BLESSED, raise_skip_signal=False)
+    )
+    self.assertEmpty(
+        self._latest_policy_model(_LATEST_PUSHED, raise_skip_signal=False)
+    )
 
     model_push_1 = self._push_model(self.model_1)
 

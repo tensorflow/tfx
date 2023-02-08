@@ -21,6 +21,7 @@ from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import event_lib
+from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.types import artifact_utils
 from tfx.utils import typing_utils
 
@@ -149,16 +150,10 @@ def _is_infra_blessed(
 
 def _validate_input_dict(input_dict: typing_utils.ArtifactMultiMap):
   """Checks that the input_dict is properly formatted."""
-  if not input_dict:
-    raise exceptions.SkipSignal()
-
   if MODEL_KEY not in input_dict.keys():
     raise exceptions.InvalidArgument(
         f'{MODEL_KEY} is a required key of the input_dict.'
     )
-
-  if not input_dict[MODEL_KEY]:
-    raise exceptions.SkipSignal()
 
   valid_keys = {MODEL_KEY, MODEL_BLESSSING_KEY, MODEL_INFRA_BLESSING_KEY}
   for key in input_dict.keys():
@@ -222,6 +217,16 @@ class LatestPolicyModel(
   # returned. See _NAMES for other options.
   policy = resolver_op.Property(type=Policy)
 
+  # If true, a SkipSignal will be raised . Else, an empty dictionary will be
+  # returned. See Raises section below for full conditions in which a
+  # SkipSignal raised/empty dict returned.
+  raise_skip_signal = resolver_op.Property(type=bool, default=True)
+
+  def _raise_skip_signal_or_return_empty_dict(self, error_msg: str = ''):
+    if self.raise_skip_signal:
+      raise exceptions.SkipSignal(error_msg)
+    return {}
+
   def apply(self, input_dict: typing_utils.ArtifactMultiMap):
     """Finds the latest created model via a certain policy.
 
@@ -268,13 +273,24 @@ class LatestPolicyModel(
 
     Raises:
       InvalidArgument: If the models are not Model artifacts.
-      SkipSignal: 1) If no models are passed in. 2) No latest model was found
-        that matches the policy.
+      SkipSignal: If raise_skip_signal is True and one of the following:
+        1. The input_dict is empty.
+        2. If no models are passed in.
+        3. If input_dict contains "model_blessing" and/or "model_infra_blessing"
+           as keys but have empty lists as values for them.
+        4. No latest model was found that matches the policy.
     """
     if not input_dict:
-      raise exceptions.SkipSignal()
+      return self._raise_skip_signal_or_return_empty_dict(
+          'The input dictionary is empty.'
+      )
 
     _validate_input_dict(input_dict)
+
+    if not input_dict[MODEL_KEY]:
+      return self._raise_skip_signal_or_return_empty_dict(
+          'The "model" key in the input dict contained no Model artifacts.'
+      )
 
     # Sort the models from from latest created to oldest.
     models = input_dict.get(MODEL_KEY)
@@ -302,7 +318,11 @@ class LatestPolicyModel(
     # child artifacts can be considered and we raise a SkipSignal. This can
     # occur when a Model has been trained but not blessed yet, for example.
     if specifies_child_artifacts and not input_child_artifact_ids:
-      raise exceptions.SkipSignal()
+      return self._raise_skip_signal_or_return_empty_dict(
+          '"model_blessing" and/or "model_infra_blessing" were specified as '
+          'keys in the input dictionary, but contained no '
+          'ModelBlessing/ModelInfraBlessing artifacts.'
+      )
 
     # In MLMD, two artifacts are related by:
     #
@@ -318,20 +338,44 @@ class LatestPolicyModel(
     # a child artifact of type child_artifact_type. Note we perform batch
     # queries to reduce the number round trips to the database.
 
-    # TODO(kshivvy): Refactor to use get_lineage_graph(), to reduce the number
-    # of RPC calls to MLMD from 4 to 1.
+    model_artifact_ids = sorted(set(m.id for m in models))
+    boundary_artifact_type_names = [
+        MODEL_BLESSING_TYPE_NAME,
+        MODEL_INFRA_BLESSSING_TYPE_NAME,
+        MODEL_PUSH_TYPE_NAME,
+    ]
+
+    # Build the query to MLMD.
+    query = metadata_store_pb2.LineageGraphQueryOptions()
+    # Filter by Model artifact ids.
+    query.artifacts_options.filter_query = (
+        f'id IN {q.to_sql_string(model_artifact_ids)}'
+    )
+    # Only consider child ModelBlessing, ModelInfraBlessing, or ModelPush
+    # artifacts.
+    query.stop_conditions.boundary_artifacts = (
+        f'type IN {q.to_sql_string(boundary_artifact_type_names)}'
+    )
+    query.stop_conditions.max_num_hops = 2
+    # By setting max_node_size <= 0, we get the entire MLMD subgraph. Otherwise,
+    # we risk flaky tests (and undefined ResolverOp behavior).
+    query.max_node_size = 0
+
+    # Get the lineage graph from MLMD of Model -> ModelBlessing,
+    # Model -> ModelInfraBlessing, and Model -> ModelPush relationships.
+    lineage_graph = self.context.store.get_lineage_graph(query)
 
     # Get all Executions in MLMD associated with the Model artifacts.
-    model_artifact_ids = set(m.id for m in models)
     execution_ids = set()
     # There could be multiple events with the same execution ID but different
     # artifact IDs (e.g. model and baseline_model passed to an Evaluator), so we
     # keep the values of model_artifact_ids_by_execution_id as sets.
     model_artifact_ids_by_execution_id = collections.defaultdict(set)
-    for event in self.context.store.get_events_by_artifact_ids(
-        model_artifact_ids
-    ):
-      if event_lib.is_valid_input_event(event, MODEL_KEY):
+    for event in lineage_graph.events:
+      if (
+          event_lib.is_valid_input_event(event, MODEL_KEY)
+          and event.artifact_id in model_artifact_ids
+      ):
         model_artifact_ids_by_execution_id[event.execution_id].add(
             event.artifact_id
         )
@@ -343,31 +387,38 @@ class LatestPolicyModel(
     child_artifact_ids = set()
     child_artifact_ids_by_model_artifact_id = collections.defaultdict(set)
     model_artifact_ids_by_child_artifact_id = collections.defaultdict(set)
-    for event in self.context.store.get_events_by_execution_ids(execution_ids):
-      if event_lib.is_valid_output_event(event):
-        child_artifact_id = event.artifact_id
-        # Only consider child artifacts present in input_dict, if specified.
-        if (
-            specifies_child_artifacts
-            and child_artifact_id not in input_child_artifact_ids
-        ):
-          continue
-        child_artifact_ids.add(child_artifact_id)
-        model_artifact_ids = model_artifact_ids_by_execution_id[
-            event.execution_id
-        ]
-        model_artifact_ids_by_child_artifact_id[child_artifact_id] = (
-            model_artifact_ids
+    for event in lineage_graph.events:
+      if (
+          event.execution_id not in execution_ids
+          or not event_lib.is_valid_output_event(event)
+      ):
+        continue
+
+      child_artifact_id = event.artifact_id
+      # Only consider child artifacts present in input_dict, if specified.
+      if (
+          specifies_child_artifacts
+          and child_artifact_id not in input_child_artifact_ids
+      ):
+        continue
+
+      child_artifact_ids.add(child_artifact_id)
+      model_artifact_ids = model_artifact_ids_by_execution_id[
+          event.execution_id
+      ]
+      model_artifact_ids_by_child_artifact_id[child_artifact_id] = (
+          model_artifact_ids
+      )
+
+      for model_artifact_id in model_artifact_ids:
+        child_artifact_ids_by_model_artifact_id[model_artifact_id].add(
+            child_artifact_id
         )
-        for model_artifact_id in model_artifact_ids:
-          child_artifact_ids_by_model_artifact_id[model_artifact_id].add(
-              child_artifact_id
-          )
 
     # Get Model, ModelBlessing, ModelInfraBlessing, and ModelPush ArtifactTypes.
     artifact_type_by_type_id = {}
     artifact_type_by_name = {}
-    for artifact_type in self.context.store.get_artifact_types():
+    for artifact_type in lineage_graph.artifact_types:
       artifact_type_by_type_id[artifact_type.id] = artifact_type
       artifact_type_by_name[artifact_type.name] = artifact_type
 
@@ -377,7 +428,10 @@ class LatestPolicyModel(
     model_relations_by_model_artifact_id = collections.defaultdict(
         ModelRelations
     )
-    for artifact in self.context.store.get_artifacts_by_id(child_artifact_ids):
+    for artifact in lineage_graph.artifacts:
+      if artifact.id not in child_artifact_ids:
+        continue
+
       child_artifact_by_artifact_id[artifact.id] = artifact
       for model_artifact_id in model_artifact_ids_by_child_artifact_id[
           artifact.id
@@ -404,7 +458,7 @@ class LatestPolicyModel(
         result[MODEL_KEY] = model
         break
     else:
-      raise exceptions.SkipSignal(
+      return self._raise_skip_signal_or_return_empty_dict(
           f'No model found that meets the Policy {Policy(self.policy).name}'
       )
 
