@@ -338,7 +338,7 @@ class ExecutionParameter:
       if isinstance(value, placeholder.Placeholder):
         if isinstance(value, placeholder.ChannelWrappedPlaceholder):
           return
-        placeholders_involved = value.placeholders_involved()
+        placeholders_involved = list(value.traverse())
         if (len(placeholders_involved) != 1 or not isinstance(
             placeholders_involved[0], placeholder.RuntimeInfoPlaceholder)):
           placeholders_involved_str = [

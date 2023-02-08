@@ -52,8 +52,9 @@ class _PlaceholderOperator(json_utils.Jsonable):
   ) -> placeholder_pb2.PlaceholderExpression:
     pass
 
-  def placeholders_involved(self) -> List['Placeholder']:
-    return []
+  def traverse(self) -> Iterator['Placeholder']:
+    """Yields all placeholders under this operator."""
+    yield from ()  # Empty generator function.
 
 
 class _ArtifactUriOperator(_PlaceholderOperator):
@@ -214,10 +215,10 @@ class _ConcatOperator(_PlaceholderOperator):
     raise RuntimeError(
         'ConcatOperator does not have the other expression to concat.')
 
-  def placeholders_involved(self) -> List['Placeholder']:
-    if self._right and isinstance(self._right, Placeholder):
-      return self._right.placeholders_involved()
-    return []
+  def traverse(self) -> Iterator['Placeholder']:
+    """Yields all placeholders under this operator."""
+    if isinstance(self._right, Placeholder):
+      yield from self._right.traverse()
 
 
 class ProtoSerializationFormat(enum.Enum):
@@ -400,12 +401,11 @@ class Placeholder(json_utils.Jsonable):
       result = op.encode(result, component_spec)
     return result
 
-  def placeholders_involved(self) -> List['Placeholder']:
-    """Returns a list of all Placeholder involved in this expression."""
-    result = [self]
+  def traverse(self) -> Iterator['Placeholder']:
+    """Yields all placeholders under and including this one."""
+    yield self
     for op in self._operators:
-      result.extend(op.placeholders_involved())
-    return result
+      yield from op.traverse()
 
 
 def join(placeholders: Sequence[Union[str, Placeholder]],
@@ -701,6 +701,13 @@ class _Comparison:
     if isinstance(self.right, ChannelWrappedPlaceholder):
       yield self.right.channel
 
+  def traverse(self) -> Iterator[Placeholder]:
+    """Yields all placeholders under this predicate."""
+    if isinstance(self.left, Placeholder):
+      yield from self.left.traverse()
+    if isinstance(self.right, Placeholder):
+      yield from self.right.traverse()
+
 
 class _LogicalOp(enum.Enum):
   """An alias for logical operation enums in placeholder.proto."""
@@ -735,6 +742,10 @@ class _NotExpression:
   def dependent_channels(self) -> Iterator['types.Channel']:
     yield from self.pred_dataclass.dependent_channels()
 
+  def traverse(self) -> Iterator[Placeholder]:
+    """Yields all placeholders under this predicate."""
+    yield from self.pred_dataclass.traverse()
+
 
 @attr.s
 class _BinaryLogicalExpression:
@@ -761,6 +772,11 @@ class _BinaryLogicalExpression:
   def dependent_channels(self) -> Iterator['types.Channel']:
     yield from self.left.dependent_channels()
     yield from self.right.dependent_channels()
+
+  def traverse(self) -> Iterator[Placeholder]:
+    """Yields all placeholders under this predicate."""
+    yield from self.left.traverse()
+    yield from self.right.traverse()
 
 
 class Predicate(Placeholder):
@@ -795,6 +811,10 @@ class Predicate(Placeholder):
 
   def dependent_channels(self) -> Iterator['types.Channel']:
     yield from self.pred_dataclass.dependent_channels()
+
+  def traverse(self) -> Iterator[Placeholder]:
+    """Yields all placeholders under this predicate."""
+    yield from self.pred_dataclass.traverse()
 
   def encode(
       self,
@@ -881,6 +901,12 @@ class ListPlaceholder(Placeholder):
     """
     return self._clone_and_use_operators(
         [_ListSerializationOperator(serialization_format)])
+
+  def traverse(self) -> Iterator[Placeholder]:
+    """Yields all placeholders under and including this one."""
+    yield from super().traverse()
+    for p in self._input_placeholders:
+      yield from p.traverse()
 
   def encode(
       self,
