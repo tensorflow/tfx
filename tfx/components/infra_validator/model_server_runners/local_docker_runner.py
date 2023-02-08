@@ -116,7 +116,7 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
     if isinstance(self._serving_binary, serving_bins.TensorFlowServing):
       is_local = os.path.isdir(self._model_path)
       run_params = self._serving_binary.MakeDockerRunParams(
-          model_path=self._model_path,
+          model_path=os.path.abspath(self._model_path),
           needs_mount=is_local)
     else:
       raise NotImplementedError('Unsupported serving binary {}'.format(
