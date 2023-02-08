@@ -95,6 +95,7 @@ class DslContextRegistry:
 
   def push_context(self, context: dsl_context.DslContext):
     """Pushes the context to the top of active context frames."""
+    assert context not in self._active_contexts
     self._check_mutable()
     self._active_contexts.append(context)
     self._all_contexts.append(context)
