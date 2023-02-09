@@ -260,7 +260,7 @@ def all_spans(artifacts):
 
     will return artifacts:
       spans    = [1, 2, 3, 7, 8]
-      versions = [0, 0, 1, 1, 2]
+      versions = [0, 0, 1, 2, 1]
 
     Note that there are 2 artifacts with span 3, but only the one with the
     latest version is returned. Spans are sorted in ascending order.
