@@ -21,7 +21,6 @@ from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import event_lib
-from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.types import artifact_utils
 from tfx.utils import typing_utils
 
@@ -338,44 +337,18 @@ class LatestPolicyModel(
     # a child artifact of type child_artifact_type. Note we perform batch
     # queries to reduce the number round trips to the database.
 
-    model_artifact_ids = sorted(set(m.id for m in models))
-    boundary_artifact_type_names = [
-        MODEL_BLESSING_TYPE_NAME,
-        MODEL_INFRA_BLESSSING_TYPE_NAME,
-        MODEL_PUSH_TYPE_NAME,
-    ]
-
-    # Build the query to MLMD.
-    query = metadata_store_pb2.LineageGraphQueryOptions()
-    # Filter by Model artifact ids.
-    query.artifacts_options.filter_query = (
-        f'id IN {q.to_sql_string(model_artifact_ids)}'
-    )
-    # Only consider child ModelBlessing, ModelInfraBlessing, or ModelPush
-    # artifacts.
-    query.stop_conditions.boundary_artifacts = (
-        f'type IN {q.to_sql_string(boundary_artifact_type_names)}'
-    )
-    query.stop_conditions.max_num_hops = 2
-    # By setting max_node_size <= 0, we get the entire MLMD subgraph. Otherwise,
-    # we risk flaky tests (and undefined ResolverOp behavior).
-    query.max_node_size = 0
-
-    # Get the lineage graph from MLMD of Model -> ModelBlessing,
-    # Model -> ModelInfraBlessing, and Model -> ModelPush relationships.
-    lineage_graph = self.context.store.get_lineage_graph(query)
-
     # Get all Executions in MLMD associated with the Model artifacts.
+    model_artifact_ids = sorted(set(m.id for m in models))
     execution_ids = set()
     # There could be multiple events with the same execution ID but different
     # artifact IDs (e.g. model and baseline_model passed to an Evaluator), so we
     # keep the values of model_artifact_ids_by_execution_id as sets.
+    model_artifact_ids = set(m.id for m in models)
     model_artifact_ids_by_execution_id = collections.defaultdict(set)
-    for event in lineage_graph.events:
-      if (
-          event_lib.is_valid_input_event(event, MODEL_KEY)
-          and event.artifact_id in model_artifact_ids
-      ):
+    for event in self.context.store.get_events_by_artifact_ids(
+        model_artifact_ids
+    ):
+      if event_lib.is_valid_input_event(event, MODEL_KEY):
         model_artifact_ids_by_execution_id[event.execution_id].add(
             event.artifact_id
         )
@@ -387,11 +360,8 @@ class LatestPolicyModel(
     child_artifact_ids = set()
     child_artifact_ids_by_model_artifact_id = collections.defaultdict(set)
     model_artifact_ids_by_child_artifact_id = collections.defaultdict(set)
-    for event in lineage_graph.events:
-      if (
-          event.execution_id not in execution_ids
-          or not event_lib.is_valid_output_event(event)
-      ):
+    for event in self.context.store.get_events_by_execution_ids(execution_ids):
+      if not event_lib.is_valid_output_event(event):
         continue
 
       child_artifact_id = event.artifact_id
@@ -418,7 +388,7 @@ class LatestPolicyModel(
     # Get Model, ModelBlessing, ModelInfraBlessing, and ModelPush ArtifactTypes.
     artifact_type_by_type_id = {}
     artifact_type_by_name = {}
-    for artifact_type in lineage_graph.artifact_types:
+    for artifact_type in self.context.store.get_artifact_types():
       artifact_type_by_type_id[artifact_type.id] = artifact_type
       artifact_type_by_name[artifact_type.name] = artifact_type
 
@@ -428,10 +398,7 @@ class LatestPolicyModel(
     model_relations_by_model_artifact_id = collections.defaultdict(
         ModelRelations
     )
-    for artifact in lineage_graph.artifacts:
-      if artifact.id not in child_artifact_ids:
-        continue
-
+    for artifact in self.context.store.get_artifacts_by_id(child_artifact_ids):
       child_artifact_by_artifact_id[artifact.id] = artifact
       for model_artifact_id in model_artifact_ids_by_child_artifact_id[
           artifact.id
