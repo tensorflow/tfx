@@ -171,8 +171,8 @@ def _add_factory_condition_to_test_cases(test_cases: List[Dict[Any, Any]]):
 
   def copy_with_factory_setting(d: Dict[Any, Any], factory: bool):
     result = d.copy()
-    result['testcase_name'] = d['testcase_name'] + (
-        'nofactory' if factory else ''
+    result['testcase_name'] = (
+        d['testcase_name'] + ('nofactory' if factory else '')
     )
     result['use_factory'] = factory
     return result
