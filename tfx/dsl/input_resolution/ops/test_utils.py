@@ -17,6 +17,7 @@ from unittest import mock
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.types import artifact
 from tfx.utils import typing_utils
 
@@ -47,6 +48,30 @@ class DummyArtifact(types.Artifact):
       self.uri = uri
     if create_time_since_epoch is not None:
       self.mlmd_artifact.create_time_since_epoch = create_time_since_epoch
+
+
+class Examples(DummyArtifact):
+  TYPE_NAME = ops_utils.EXAMPLES_TYPE_NAME
+
+
+class TransformGraph(DummyArtifact):
+  TYPE_NAME = ops_utils.TRANSFORM_GRAPH_TYPE_NAME
+
+
+class Model(DummyArtifact):
+  TYPE_NAME = ops_utils.MODEL_TYPE_NAME
+
+
+class ModelBlessing(DummyArtifact):
+  TYPE_NAME = ops_utils.MODEL_BLESSING_TYPE_NAME
+
+
+class ModelInfraBlessing(DummyArtifact):
+  TYPE_NAME = ops_utils.MODEL_INFRA_BLESSSING_TYPE_NAME
+
+
+class ModelPush(DummyArtifact):
+  TYPE_NAME = ops_utils.MODEL_PUSH_TYPE_NAME
 
 
 def run_resolver_op(

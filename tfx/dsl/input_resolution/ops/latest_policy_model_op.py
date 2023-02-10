@@ -19,33 +19,13 @@ from typing import Dict
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.types import artifact_utils
 from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
-
-# Valid keys for the ResolverOp input/output dictionaries.
-MODEL_KEY = 'model'
-MODEL_BLESSSING_KEY = 'model_blessing'
-MODEL_INFRA_BLESSING_KEY = 'model_infra_blessing'
-MODEL_PUSH_KEY = 'model_push'
-
-# Taken from tfx.tflex.dsl.types.standard_artifacts. We don't use the existing
-# constants due to Copybara.
-MODEL_TYPE_NAME = 'Model'
-MODEL_BLESSING_TYPE_NAME = 'ModelBlessing'
-MODEL_INFRA_BLESSSING_TYPE_NAME = 'ModelInfraBlessingPath'
-MODEL_PUSH_TYPE_NAME = 'ModelPushPath'
-
-# Valid artifact TYPE_NAMEs by key.
-_ARTIFACT_TYPE_NAME_BY_KEY = {
-    MODEL_KEY: MODEL_TYPE_NAME,
-    MODEL_BLESSSING_KEY: MODEL_BLESSING_TYPE_NAME,
-    MODEL_INFRA_BLESSING_KEY: MODEL_INFRA_BLESSSING_TYPE_NAME,
-    MODEL_PUSH_KEY: MODEL_PUSH_TYPE_NAME,
-}
 
 
 # TODO(kshivvy): Consider supporting LATEST_PUSHED_DIFFERENT_DATA and
@@ -102,17 +82,17 @@ class ModelRelations:
       self, artifact_type: metadata_store_pb2.ArtifactType
   ) -> types.Artifact:
     """Gets the latest created artifact with matchign ArtifactType."""
-    if artifact_type.name == MODEL_BLESSING_TYPE_NAME:
+    if artifact_type.name == ops_utils.MODEL_BLESSING_TYPE_NAME:
       artifacts = self.model_blessing_by_artifact_id.values()
-    elif artifact_type.name == MODEL_INFRA_BLESSSING_TYPE_NAME:
+    elif artifact_type.name == ops_utils.MODEL_INFRA_BLESSSING_TYPE_NAME:
       artifacts = self.infra_blessing_by_artifact_id.values()
-    elif artifact_type.name == MODEL_PUSH_TYPE_NAME:
+    elif artifact_type.name == ops_utils.MODEL_PUSH_TYPE_NAME:
       artifacts = self.model_push_by_artifact_id.values()
     else:
       raise exceptions.InvalidArgument(
           'ModelRelations.latest_created() can only be called with an '
           'artifact_type.name in '
-          f'{MODEL_BLESSSING_KEY, MODEL_INFRA_BLESSING_KEY, MODEL_PUSH_KEY}.'
+          f'{ops_utils.MODEL_BLESSSING_KEY, ops_utils.MODEL_INFRA_BLESSING_KEY, ops_utils.MODEL_PUSH_KEY}.'
       )
 
     # Sort the artifacts by latest created, ties broken by id.
@@ -131,7 +111,7 @@ def _is_eval_blessed(
 ) -> bool:
   """Checks if an MLMD artifact is a blessed ModelBlessing."""
   return (
-      type_name == MODEL_BLESSING_TYPE_NAME
+      type_name == ops_utils.MODEL_BLESSING_TYPE_NAME
       and artifact.custom_properties['blessed'].int_value == 1
   )
 
@@ -141,7 +121,7 @@ def _is_infra_blessed(
 ) -> bool:
   """Checks if an MLMD artifact is a blessed ModelInfrablessing."""
   return (
-      type_name == MODEL_INFRA_BLESSSING_TYPE_NAME
+      type_name == ops_utils.MODEL_INFRA_BLESSSING_TYPE_NAME
       and artifact.custom_properties['blessing_status'].string_value
       in ['INFRA_BLESSED', 'INFRA_DELEGATED']
   )
@@ -149,12 +129,16 @@ def _is_infra_blessed(
 
 def _validate_input_dict(input_dict: typing_utils.ArtifactMultiMap):
   """Checks that the input_dict is properly formatted."""
-  if MODEL_KEY not in input_dict.keys():
+  if ops_utils.MODEL_KEY not in input_dict.keys():
     raise exceptions.InvalidArgument(
-        f'{MODEL_KEY} is a required key of the input_dict.'
+        f'{ops_utils.MODEL_KEY} is a required key of the input_dict.'
     )
 
-  valid_keys = {MODEL_KEY, MODEL_BLESSSING_KEY, MODEL_INFRA_BLESSING_KEY}
+  valid_keys = {
+      ops_utils.MODEL_KEY,
+      ops_utils.MODEL_BLESSSING_KEY,
+      ops_utils.MODEL_INFRA_BLESSING_KEY,
+  }
   for key in input_dict.keys():
     if key not in valid_keys:
       raise exceptions.InvalidArgument(
@@ -163,12 +147,12 @@ def _validate_input_dict(input_dict: typing_utils.ArtifactMultiMap):
       )
 
     for artifact in input_dict[key]:
-      if artifact.TYPE_NAME != _ARTIFACT_TYPE_NAME_BY_KEY[key]:
+      if artifact.TYPE_NAME != ops_utils.ARTIFACT_TYPE_NAME_BY_KEY[key]:
         raise exceptions.InvalidArgument(
-            f'Artifacts of input_dict["{key}"] are expected to have artifacts '
-            f'with TYPE_NAME {_ARTIFACT_TYPE_NAME_BY_KEY[key]}, but artifact '
-            f'{artifact} in input_dict["{key}"] had TYPE_NAME '
-            f'{artifact.TYPE_NAME}.'
+            f'Artifacts of input_dict["{key}"] are expected to have artifacts'
+            f' with TYPE_NAME {ops_utils.ARTIFACT_TYPE_NAME_BY_KEY[key]}, but'
+            f' artifact {artifact} in input_dict["{key}"] had TYPE_NAME'
+            f' {artifact.TYPE_NAME}.'
         )
 
 
@@ -183,8 +167,8 @@ def _build_result_dictionary(
       policy == Policy.LATEST_EVALUATOR_BLESSED
       or policy == Policy.LATEST_BLESSED
   ):
-    result[MODEL_BLESSSING_KEY] = model_relations.latest_created(
-        artifact_type_by_name[MODEL_BLESSING_TYPE_NAME]
+    result[ops_utils.MODEL_BLESSSING_KEY] = model_relations.latest_created(
+        artifact_type_by_name[ops_utils.MODEL_BLESSING_TYPE_NAME]
     )
 
   # Intentionally use if instead of elif to handle LATEST_BLESSED Policy.
@@ -192,13 +176,13 @@ def _build_result_dictionary(
       policy == Policy.LATEST_INFRA_VALIDATOR_BLESSED
       or policy == Policy.LATEST_BLESSED
   ):
-    result[MODEL_INFRA_BLESSING_KEY] = model_relations.latest_created(
-        artifact_type_by_name[MODEL_INFRA_BLESSSING_TYPE_NAME]
+    result[ops_utils.MODEL_INFRA_BLESSING_KEY] = model_relations.latest_created(
+        artifact_type_by_name[ops_utils.MODEL_INFRA_BLESSSING_TYPE_NAME]
     )
 
   elif policy == Policy.LATEST_PUSHED:
-    result[MODEL_PUSH_KEY] = model_relations.latest_created(
-        artifact_type_by_name[MODEL_PUSH_TYPE_NAME]
+    result[ops_utils.MODEL_PUSH_KEY] = model_relations.latest_created(
+        artifact_type_by_name[ops_utils.MODEL_PUSH_TYPE_NAME]
     )
 
   return result
@@ -286,13 +270,13 @@ class LatestPolicyModel(
 
     _validate_input_dict(input_dict)
 
-    if not input_dict[MODEL_KEY]:
+    if not input_dict[ops_utils.MODEL_KEY]:
       return self._raise_skip_signal_or_return_empty_dict(
           'The "model" key in the input dict contained no Model artifacts.'
       )
 
     # Sort the models from from latest created to oldest.
-    models = input_dict.get(MODEL_KEY)
+    models = input_dict.get(ops_utils.MODEL_KEY)
     models.sort(  # pytype: disable=attribute-error
         key=lambda a: (a.mlmd_artifact.create_time_since_epoch, a.id),
         reverse=True,
@@ -300,17 +284,17 @@ class LatestPolicyModel(
 
     # Return the latest trained model if the policy is LATEST_EXPORTED.
     if self.policy == Policy.LATEST_EXPORTED:
-      return {MODEL_KEY: models[0]}
+      return {ops_utils.MODEL_KEY: models[0]}
 
     # If ModelBlessing and/or ModelInfraBlessing artifacts were included in
     # input_dict, then we will only consider those child artifacts.
     specifies_child_artifacts = (
-        MODEL_BLESSSING_KEY in input_dict.keys()
-        or MODEL_INFRA_BLESSING_KEY in input_dict.keys()
+        ops_utils.MODEL_BLESSSING_KEY in input_dict.keys()
+        or ops_utils.MODEL_INFRA_BLESSING_KEY in input_dict.keys()
     )
     input_child_artifacts = input_dict.get(
-        MODEL_BLESSSING_KEY, []
-    ) + input_dict.get(MODEL_INFRA_BLESSING_KEY, [])
+        ops_utils.MODEL_BLESSSING_KEY, []
+    ) + input_dict.get(ops_utils.MODEL_INFRA_BLESSING_KEY, [])
     input_child_artifact_ids = set([a.id for a in input_child_artifacts])
 
     # If the ModelBlessing and ModelInfraBlessing lists are empty, then no
@@ -348,7 +332,7 @@ class LatestPolicyModel(
     for event in self.context.store.get_events_by_artifact_ids(
         model_artifact_ids
     ):
-      if event_lib.is_valid_input_event(event, MODEL_KEY):
+      if event_lib.is_valid_input_event(event, ops_utils.MODEL_KEY):
         model_artifact_ids_by_execution_id[event.execution_id].add(
             event.artifact_id
         )
@@ -414,7 +398,7 @@ class LatestPolicyModel(
         elif _is_infra_blessed(artifact_type_name, artifact):
           model_relations.infra_blessing_by_artifact_id[artifact.id] = artifact
 
-        elif artifact_type_name == MODEL_PUSH_TYPE_NAME:
+        elif artifact_type_name == ops_utils.MODEL_PUSH_TYPE_NAME:
           model_relations.model_push_by_artifact_id[artifact.id] = artifact
 
     # Find the latest model and ModelRelations that meets the Policy.
@@ -422,7 +406,7 @@ class LatestPolicyModel(
     for model in models:
       model_relations = model_relations_by_model_artifact_id[model.id]
       if model_relations.meets_policy(self.policy):
-        result[MODEL_KEY] = model
+        result[ops_utils.MODEL_KEY] = model
         break
     else:
       return self._raise_skip_signal_or_return_empty_dict(

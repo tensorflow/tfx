@@ -25,6 +25,31 @@ VERSION_PROPERTY = {'version': types.artifact.PropertyType.INT}
 
 SPAN_AND_VERSION_PROPERTIES = {**SPAN_PROPERTY, **VERSION_PROPERTY}
 
+# Valid keys for the ResolverOp input/output dictionaries.
+EXAMPLES_KEY = 'examples'
+MODEL_KEY = 'model'
+MODEL_BLESSSING_KEY = 'model_blessing'
+MODEL_INFRA_BLESSING_KEY = 'model_infra_blessing'
+MODEL_PUSH_KEY = 'model_push'
+
+# Taken from tfx.tflex.dsl.types.standard_artifacts. We don't use the existing
+# constants due to Copybara.
+EXAMPLES_TYPE_NAME = 'Examples'
+TRANSFORM_GRAPH_TYPE_NAME = 'TransformGraph'
+MODEL_TYPE_NAME = 'Model'
+MODEL_BLESSING_TYPE_NAME = 'ModelBlessing'
+MODEL_INFRA_BLESSSING_TYPE_NAME = 'ModelInfraBlessingPath'
+MODEL_PUSH_TYPE_NAME = 'ModelPushPath'
+
+# Valid artifact TYPE_NAMEs by key.
+ARTIFACT_TYPE_NAME_BY_KEY = {
+    EXAMPLES_KEY: EXAMPLES_TYPE_NAME,
+    MODEL_KEY: MODEL_TYPE_NAME,
+    MODEL_BLESSSING_KEY: MODEL_BLESSING_TYPE_NAME,
+    MODEL_INFRA_BLESSING_KEY: MODEL_INFRA_BLESSSING_TYPE_NAME,
+    MODEL_PUSH_KEY: MODEL_PUSH_TYPE_NAME,
+}
+
 
 def get_valid_artifacts(
     artifacts: Sequence[types.Artifact],

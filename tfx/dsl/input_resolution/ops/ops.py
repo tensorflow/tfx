@@ -31,6 +31,7 @@ from tfx.dsl.input_resolution.ops import skip_if_empty_op
 from tfx.dsl.input_resolution.ops import skip_if_less_than_n_spans_op
 from tfx.dsl.input_resolution.ops import sliding_window_op
 from tfx.dsl.input_resolution.ops import static_span_range_op
+from tfx.dsl.input_resolution.ops import training_range_op
 from tfx.dsl.input_resolution.ops import unnest_op
 from tfx.dsl.input_resolution.strategies import conditional_strategy
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
@@ -72,6 +73,7 @@ SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
 SkipIfLessThanNSpans = skip_if_less_than_n_spans_op.SkipIfLessThanNSpans
 SlidingWindow = sliding_window_op.SlidingWindow
 StaticSpanRange = static_span_range_op.StaticSpanRange
+TrainingRange = training_range_op.TrainingRange
 Unnest = unnest_op.Unnest
 # go/keep-sorted end
 # go/keep-sorted start
@@ -90,6 +92,7 @@ _register_op(SkipIfEmpty)
 _register_op(SkipIfLessThanNSpans)
 _register_op(SlidingWindow)
 _register_op(StaticSpanRange)
+_register_op(TrainingRange)
 _register_op(Unnest)
 # go/keep-sorted end
 

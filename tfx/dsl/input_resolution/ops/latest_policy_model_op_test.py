@@ -39,22 +39,6 @@ _LATEST_BLESSED = latest_policy_model_op.Policy.LATEST_BLESSED
 _LATEST_PUSHED = latest_policy_model_op.Policy.LATEST_PUSHED
 
 
-class _Model(test_utils.DummyArtifact):
-  TYPE_NAME = latest_policy_model_op.MODEL_TYPE_NAME
-
-
-class _ModelBlessing(test_utils.DummyArtifact):
-  TYPE_NAME = latest_policy_model_op.MODEL_BLESSING_TYPE_NAME
-
-
-class _ModelInfraBlessing(test_utils.DummyArtifact):
-  TYPE_NAME = latest_policy_model_op.MODEL_INFRA_BLESSSING_TYPE_NAME
-
-
-class _ModelPush(test_utils.DummyArtifact):
-  TYPE_NAME = latest_policy_model_op.MODEL_PUSH_TYPE_NAME
-
-
 class LatestPolicyModelOpTest(
     tf.test.TestCase, parameterized.TestCase, mlmd_mixins.MlmdMixins
 ):
@@ -115,7 +99,7 @@ class LatestPolicyModelOpTest(
     else:
       custom_properties = {'blessed': 0}
     model_blessing = self._prepare_tfx_artifact(
-        _ModelBlessing, custom_properties
+        test_utils.ModelBlessing, custom_properties
     )
 
     inputs = {'model': self._unwrap_tfx_artifact(model)}
@@ -139,7 +123,7 @@ class LatestPolicyModelOpTest(
     else:
       custom_properties = {'blessing_status': 'INFRA_NOT_BLESSED'}
     model_infra_blessing = self._prepare_tfx_artifact(
-        _ModelInfraBlessing, custom_properties
+        test_utils.ModelInfraBlessing, custom_properties
     )
 
     self.put_execution(
@@ -152,7 +136,7 @@ class LatestPolicyModelOpTest(
 
   def _push_model(self, model: types.Artifact):
     """Add an Execution to MLMD where the Pusher pushes the model."""
-    model_push = self._prepare_tfx_artifact(_ModelPush)
+    model_push = self._prepare_tfx_artifact(test_utils.ModelPush)
     self.put_execution(
         'ServomaticPusher',
         inputs={'model': self._unwrap_tfx_artifact(model)},
@@ -178,9 +162,9 @@ class LatestPolicyModelOpTest(
     super().setUp()
     self.init_mlmd()
 
-    self.model_1 = self._prepare_tfx_artifact(_Model)
-    self.model_2 = self._prepare_tfx_artifact(_Model)
-    self.model_3 = self._prepare_tfx_artifact(_Model)
+    self.model_1 = self._prepare_tfx_artifact(test_utils.Model)
+    self.model_2 = self._prepare_tfx_artifact(test_utils.Model)
+    self.model_3 = self._prepare_tfx_artifact(test_utils.Model)
 
     self.artifacts = [self.model_1, self.model_2, self.model_3]
 
