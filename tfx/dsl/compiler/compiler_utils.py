@@ -208,7 +208,7 @@ def implicit_channel_key(channel: types.BaseChannel):
 def build_channel_to_key_fn(implicit_keys_map):
   """Builds a function that returns the key of a channel for consumer node."""
 
-  def channel_to_key_fn(channel: types.Channel) -> str:
+  def channel_to_key_fn(channel: types.BaseChannel) -> str:
     implicit_key = implicit_channel_key(channel)
     if implicit_key in implicit_keys_map:
       return implicit_keys_map[implicit_key]

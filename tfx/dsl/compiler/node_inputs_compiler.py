@@ -309,8 +309,9 @@ def _compile_conditionals(
           min_count=1,
           result=result)
     cond_id = context.get_conditional_id(cond_context)
-    expr = cond_context.predicate.encode_with_keys(
-        context.get_node_context(tfx_node).get_input_key)
+    expr = channel_utils.encode_placeholder_with_channels(
+        cond_context.predicate, context.get_node_context(tfx_node).get_input_key
+    )
     result.conditionals[cond_id].placeholder_expression.CopyFrom(expr)
 
 
