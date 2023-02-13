@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.training_range_op."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from absl.testing import parameterized
 
@@ -42,7 +42,7 @@ class TrainingRangeOpTest(
   def _prepare_tfx_artifact(
       self,
       artifact: types.Artifact,
-      properties: Optional[Dict[str, int | str]] = None,
+      properties: Optional[Dict[str, Union[int, str]]] = None,
   ) -> types.Artifact:
     """Adds a single artifact to MLMD and returns the TFleX Artifact object."""
     mlmd_artifact = self.put_artifact(artifact.TYPE_NAME, properties=properties)
