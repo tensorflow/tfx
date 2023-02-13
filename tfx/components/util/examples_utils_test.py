@@ -36,6 +36,17 @@ class ExamplesUtilsTest(tf.test.TestCase):
     self.assertEqual(examples_utils.get_payload_format_string(examples),
                      'FORMAT_PROTO')
 
+  def test_get_split_pattern(self):
+    examples = standard_artifacts.Examples()
+    examples.uri = '/test/uri'
+    examples.split_names = '["train"]'
+    self.assertEqual(
+        examples_utils.get_split_file_patterns([examples], 'train'),
+        ['/test/uri/Split-train/*'],
+    )
+    with self.assertRaises(ValueError):
+      examples_utils.get_split_file_patterns([examples], 'missing_split')
+
   def test_get_payload_format_invalid_artifact_type(self):
     artifact = standard_artifacts.Schema()
     with self.assertRaises(AssertionError):

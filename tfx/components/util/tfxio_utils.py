@@ -94,6 +94,52 @@ def resolve_payload_format_and_data_view_uri(
       .format(violating_artifacts))
 
 
+def get_split_tfxio(
+    examples: List[artifact.Artifact],
+    split: str,
+    telemetry_descriptors: List[str],
+    schema: Optional[schema_pb2.Schema] = None,
+    read_as_raw_records: bool = False,
+    raw_record_column_name: Optional[str] = None,
+) -> tfxio.TFXIO:
+  """Returns a TFXIO for a single split.
+
+  Args:
+    examples: The Examples artifacts that the TFXIO is intended to access.
+    split: The split to read. Must be a split contained in examples.
+    telemetry_descriptors: A set of descriptors that identify the component that
+      is instantiating the TFXIO. These will be used to construct the namespace
+      to contain metrics for profiling and are therefore expected to be
+      identifiers of the component itself and not individual instances of source
+      use.
+    schema: TFMD schema. Note that without a schema, some TFXIO interfaces in
+      certain TFXIO implementations might not be available.
+    read_as_raw_records: If True, ignore the payload type of `examples`. Always
+      use RawTfRecord TFXIO.
+    raw_record_column_name: If provided, the arrow RecordBatch produced by the
+      TFXIO will contain a string column of the given name, and the contents of
+      that column will be the raw records. Note that not all TFXIO supports this
+      option, and an error will be raised in that case. Required if
+      read_as_raw_records == True.
+
+  Returns:
+    A function that takes a file pattern as input and returns a TFXIO
+    instance.
+
+  Raises:
+    NotImplementedError: when given an unsupported example payload type.
+  """
+  factory = get_tfxio_factory_from_artifact(
+      examples=examples,
+      telemetry_descriptors=telemetry_descriptors,
+      schema=schema,
+      read_as_raw_records=read_as_raw_records,
+      raw_record_column_name=raw_record_column_name,
+  )
+  split_patterns = examples_utils.get_split_file_patterns(examples, split)
+  return factory(split_patterns)
+
+
 def get_tfxio_factory_from_artifact(
     examples: List[artifact.Artifact],
     telemetry_descriptors: List[str],

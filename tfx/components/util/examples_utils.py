@@ -13,11 +13,15 @@
 # limitations under the License.
 """Utility functions related to Examples artifact shared by components."""
 
+from typing import List
+
 from absl import logging
 from tfx import types
 from tfx.components.example_gen import utils as example_gen_utils
 from tfx.proto import example_gen_pb2
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import io_utils
 
 _DEFAULT_PAYLOAD_FORMAT = example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE
 _DEFAULT_FILE_FORMAT = 'tfrecords_gzip'
@@ -102,3 +106,11 @@ def set_file_format(examples: types.Artifact, file_format: str):
       'examples must be of type standard_artifacts.Examples')
   examples.set_string_custom_property(
       example_gen_utils.FILE_FORMAT_PROPERTY_NAME, file_format)
+
+
+def get_split_file_patterns(
+    artifacts: List[types.Artifact], split: str
+) -> List[str]:
+  """Returns a file pattern for reading examples from a split."""
+  uris = artifact_utils.get_split_uris(artifacts, split)
+  return list(io_utils.all_files_pattern(x) for x in uris)

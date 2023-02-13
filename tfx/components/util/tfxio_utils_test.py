@@ -15,7 +15,7 @@
 
 import inspect
 import tempfile
-from typing import Callable, Iterator
+from typing import Any, Callable, Dict, Iterator, List
 from absl.testing import parameterized
 import pyarrow as pa
 import tensorflow as tf
@@ -166,6 +166,22 @@ class _SimpleTfGraphRecordDecoder(tf_graph_record_decoder.TFGraphRecordDecoder):
     }
 
 
+def _add_factory_condition_to_test_cases(test_cases: List[Dict[Any, Any]]):
+  """Adds use_factory = True/False to test cases."""
+
+  def copy_with_factory_setting(d: Dict[Any, Any], factory: bool):
+    result = d.copy()
+    result['testcase_name'] = d['testcase_name'] + (
+        'nofactory' if factory else ''
+    )
+    result['use_factory'] = factory
+    return result
+
+  result = [copy_with_factory_setting(tc, False) for tc in test_cases]
+  result += [copy_with_factory_setting(tc, True) for tc in test_cases]
+  return result
+
+
 class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(*_MAKE_TFXIO_TEST_CASES)
@@ -190,14 +206,20 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
     # Since we provide a schema, ArrowSchema() should not raise.
     _ = tfxio.ArrowSchema()
 
-  @parameterized.named_parameters(*_MAKE_TFXIO_TEST_CASES)
-  def test_get_tfxio_factory_from_artifact(self,
-                                           payload_format,
-                                           expected_tfxio_type,
-                                           raw_record_column_name=None,
-                                           provide_data_view_uri=False,
-                                           read_as_raw_records=False):
+  @parameterized.named_parameters(
+      *_add_factory_condition_to_test_cases(_MAKE_TFXIO_TEST_CASES)
+  )
+  def test_get_tfxio_from_artifact(
+      self,
+      payload_format,
+      expected_tfxio_type,
+      raw_record_column_name=None,
+      provide_data_view_uri=False,
+      read_as_raw_records=False,
+      use_factory=False,
+  ):
     examples = standard_artifacts.Examples()
+    examples.split_names = '["train"]'
     if payload_format is not None:
       examples_utils.set_payload_format(examples, payload_format)
     data_view_uri = None
@@ -210,13 +232,24 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
                                           data_view_uri)
       examples.set_string_custom_property(constants.DATA_VIEW_CREATE_TIME_KEY,
                                           '1')
-    tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
-        [examples],
-        _TELEMETRY_DESCRIPTORS,
-        _SCHEMA,
-        read_as_raw_records,
-        raw_record_column_name)
-    tfxio = tfxio_factory(_FAKE_FILE_PATTERN)
+    if use_factory:
+      tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
+          [examples],
+          _TELEMETRY_DESCRIPTORS,
+          _SCHEMA,
+          read_as_raw_records,
+          raw_record_column_name,
+      )
+      tfxio = tfxio_factory(_FAKE_FILE_PATTERN)
+    else:
+      tfxio = tfxio_utils.get_split_tfxio(
+          [examples],
+          'train',
+          _TELEMETRY_DESCRIPTORS,
+          _SCHEMA,
+          read_as_raw_records,
+          raw_record_column_name,
+      )
     self.assertIsInstance(tfxio, expected_tfxio_type)
     self.assertEqual(tfxio.telemetry_descriptors, _TELEMETRY_DESCRIPTORS)
     if isinstance(tfxio, record_based_tfxio.RecordBasedTFXIO):

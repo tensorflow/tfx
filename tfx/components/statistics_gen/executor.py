@@ -135,23 +135,23 @@ class Executor(base_beam_executor.BaseBeamExecutor):
               stats_options.feature_allowlist)
       elif stats_options.schema is None:
         raise ValueError(
-            'experimental_filter_read_paths requires allowlist features or schema.'
+            'experimental_filter_read_paths requires allowlist features or'
+            ' schema.'
         )
       else:
         tfxio_schema = stats_options.schema
 
     split_and_tfxio = []
-    tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
-        examples=[examples],
-        telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
-        schema=tfxio_schema)
     for split in artifact_utils.decode_split_names(examples.split_names):
       if split in exclude_splits:
         continue
-
-      uri = artifact_utils.get_split_uri([examples], split)
-      split_and_tfxio.append(
-          (split, tfxio_factory(io_utils.all_files_pattern(uri))))
+      tfxio = tfxio_utils.get_split_tfxio(
+          examples=[examples],
+          split=split,
+          telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
+          schema=tfxio_schema,
+      )
+      split_and_tfxio.append((split, tfxio))
     if not split_and_tfxio:
       raise ValueError('No splits for examples artifact: %s' % examples)
     with self._make_beam_pipeline() as p:
