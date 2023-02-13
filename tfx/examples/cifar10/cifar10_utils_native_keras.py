@@ -330,7 +330,7 @@ def run_fn(fn_args: FnArgs):
   absl.logging.info('Tensorboard logging to {}'.format(fn_args.model_run_dir))
   # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=fn_args.model_run_dir, update_freq='batch')
+      log_dir=fn_args.model_run_dir, update_freq='epoch')
 
   # Our training regime has two phases: we first freeze the backbone and train
   # the newly added classifier only, then unfreeze part of the backbone and

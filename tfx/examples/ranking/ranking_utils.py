@@ -82,7 +82,7 @@ def run_fn(trainer_fn_args):
   log_dir = trainer_fn_args.model_run_dir
   # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=log_dir, update_freq='batch')
+      log_dir=log_dir, update_freq='epoch')
   model.fit(
       train_dataset,
       steps_per_epoch=trainer_fn_args.train_steps,
