@@ -92,4 +92,6 @@ class ForEach(dsl_context_manager.DslContextManager[Any]):
   # TODO(b/266112670): Return value should be a generic type (T) once the
   # Loopable type become generic as well (Loopable[T]).
   def enter(self, context: ForEachContext) -> Any:  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
-    return self._loopable.get_loop_var(context)
+    result = self._loopable.get_loop_var(context)
+    context.loop_variable = result
+    return result

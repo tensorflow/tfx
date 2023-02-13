@@ -28,20 +28,18 @@ from tfx.utils import doc_controls
 from tfx.utils import typing_utils
 
 
-# TODO(b/259604560): Make ResolverFunctionInvocation, e.g. to handle tracing
+# TODO(b/259604560): Make Invocation more general, e.g. to handle tracing
 # other function calls.
-@dataclasses.dataclass
-class ResolverFunctionInvocation:
+@dataclasses.dataclass(frozen=True)
+class Invocation:
   """Stores resolver function invocation details for later reconstruction.
 
   Attributes:
-    resolver_function: The ResolverFunction function object.
+    function: The called object.
     args: The non-keyword arguments to the resolver function.
     kwargs: The keyword argument dictionary to the resolver function.
   """
-  # We use Any type instead of ResolverFunction for the resolver_function
-  # attribute to avoid a BUILD dependency cycle.
-  resolver_function: Any
+  function: Any
   args: Sequence[Any]
   kwargs: Mapping[str, Any]
 
@@ -65,7 +63,7 @@ class ResolvedChannel(channel.BaseChannel):
       artifact_type: Type[artifact.Artifact],
       output_node: resolver_op.Node,
       output_key: Optional[str] = None,
-      invocation: Optional[ResolverFunctionInvocation] = None,
+      invocation: Optional[Invocation] = None,
       for_each_context: Optional[for_each_internal.ForEachContext] = None):
     super().__init__(artifact_type)
     self._output_node = output_node
@@ -95,3 +93,15 @@ class ResolvedChannel(channel.BaseChannel):
   @property
   def for_each_context(self) -> Optional[for_each_internal.ForEachContext]:
     return self._for_each_context
+
+  @property
+  def invocation(self) -> Invocation:
+    return self._invocation
+
+  def __repr__(self) -> str:
+    debug_str = str(self._output_node)
+    if self._for_each_context is not None:
+      debug_str = f'ForEach({debug_str})'
+    if self._output_key is not None:
+      debug_str += f'["{self._output_key}"]'
+    return f'ResolvedChannel(artifact_type={self.type_name}, {debug_str})'

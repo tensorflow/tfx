@@ -370,13 +370,15 @@ class CannedResolverFunctionsTest(
         types.Channel(test_utils.DummyArtifact, output_key='x'), n=2)
 
     self.assertIsInstance(channel, resolved_channel.ResolvedChannel)
-    self.assertEqual(channel._invocation.resolver_function._function.__name__,
-                     'latest_created')
+    self.assertEqual(channel.invocation.function.__name__, 'latest_created')
+    self.assertEndsWith(channel.invocation.function.__module__,
+                        'canned_resolver_functions')
+    self.assertTrue(hasattr(channel.invocation.function, '__signature__'))
 
-    self.assertLen(channel._invocation.args, 1)
-    self.assertIsInstance(channel._invocation.args[0], resolver_op.InputNode)
+    self.assertLen(channel.invocation.args, 1)
+    self.assertIsInstance(channel.invocation.args[0], resolver_op.InputNode)
 
-    self.assertEqual(channel._invocation.kwargs, {'n': 2})
+    self.assertEqual(channel.invocation.kwargs, {'n': 2})
 
 if __name__ == '__main__':
   tf.test.main()
