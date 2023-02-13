@@ -35,7 +35,7 @@ types = Any  # tfx.types imports channel.py, which in turn imports this module.
 _ValueLikeType = Union[int, float, str, 'Placeholder']
 
 
-class _PlaceholderOperator(json_utils.Jsonable):
+class _PlaceholderOperator(json_utils.Jsonable, abc.ABC):
   """An Operator performs an operation on a Placeholder.
 
   It knows how to encode itself into a proto.

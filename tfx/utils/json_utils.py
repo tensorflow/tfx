@@ -13,7 +13,6 @@
 # limitations under the License.
 """Utilities to dump and load Jsonable object to/from JSONs."""
 
-import abc
 import importlib
 import inspect
 import json
@@ -54,7 +53,7 @@ class _ObjectType:
   PROTO = 'proto'
 
 
-class Jsonable(abc.ABC):
+class Jsonable:
   """Base class for serializing and deserializing objects to/from JSON.
 
   The default implementation assumes that the subclass can be restored by
