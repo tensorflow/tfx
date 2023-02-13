@@ -532,6 +532,7 @@ def get_unprocessed_inputs(
     metadata_handle: metadata.Metadata,
     executions: Sequence[metadata_store_pb2.Execution],
     resolved_info: ResolvedInfo,
+    node: node_proto_view.NodeProtoView,
 ) -> List[InputAndParam]:
   """Get a list of unprocessed input from resolved_info.
 
@@ -540,10 +541,17 @@ def get_unprocessed_inputs(
     executions: A list of executions
     resolved_info: Resolved input of a node. It may contain processed and
       unprocessed input.
+    node: The pipeline node of the input.
 
   Returns:
     A list of InputAndParam that have not been processed.
   """
+  # Finds out the keys that should be ignored.
+  input_triggers = node.execution_options.async_trigger.input_triggers
+  ignore_keys = set(
+      [key for key, trigger in input_triggers.items() if trigger.no_trigger]
+  )
+
   # Gets the processed inputs.
   processed_inputs: List[Dict[str, Tuple[int, ...]]] = []
   for execution in executions:
@@ -555,8 +563,12 @@ def get_unprocessed_inputs(
         and event_lib.is_valid_input_event(e)
     ]
     ids_by_key = event_lib.reconstruct_artifact_id_multimap(input_events)
-    # Filters out the keys starting with underscore.
-    ids_by_key = {k: v for k, v in ids_by_key.items() if not k.startswith('_')}
+    # Filters out the keys starting with '_' and the keys should be ingored.
+    ids_by_key = {
+        k: v
+        for k, v in ids_by_key.items()
+        if not k.startswith('_') and k not in ignore_keys
+    }
     processed_inputs.append(ids_by_key)
 
   # Some input artifacts are from external pipelines, so we need to find out the
@@ -594,12 +606,15 @@ def get_unprocessed_inputs(
           )
       resolved_input_ids_by_key[key] = tuple(resolved_input_ids_by_key[key])
 
-    # Filters out the keys starting with underscore.
+    # Filters out the keys starting with '_' and the keys should be ingored.
     resolved_input_ids_by_key = {
         k: v
         for k, v in resolved_input_ids_by_key.items()
-        if not k.startswith('_')
+        if not k.startswith('_') and k not in ignore_keys
     }
+    if not resolved_input_ids_by_key:
+      continue
+
     for processed in processed_inputs:
       if processed == resolved_input_ids_by_key:
         break

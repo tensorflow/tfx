@@ -30,6 +30,7 @@ from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils as tu
+
 from ml_metadata.proto import metadata_store_pb2
 
 State = metadata_store_pb2.Execution.State
@@ -568,7 +569,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             contexts=[context], input_and_params=[]
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [], resolved_info
+            m, [], resolved_info, self._transform
         )
         self.assertEmpty(unprocessed_inputs)
 
@@ -582,7 +583,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             input_and_params=[input_and_param],
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [], resolved_info
+            m, [], resolved_info, self._transform
         )
         self.assertLen(unprocessed_inputs, 1)
         self.assertEqual(unprocessed_inputs[0], input_and_param)
@@ -609,7 +610,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             input_and_params=[input_and_param],
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [execution], resolved_info
+            m, [execution], resolved_info, self._transform
         )
         self.assertEmpty(unprocessed_inputs)
 
@@ -622,10 +623,35 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             input_and_params=[input_and_param],
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [execution], resolved_info
+            m, [execution], resolved_info, self._transform
         )
         self.assertLen(unprocessed_inputs, 1)
         self.assertEqual(unprocessed_inputs[0], input_and_param)
+
+  def test_get_unprocessed_inputs_no_trigger(self):
+    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
+
+    # There is 1 unprocessed_input, but set the input as NO_TRIGGER.
+    input_trigger = (
+        self._transform.execution_options.async_trigger.input_triggers[
+            'examples'
+        ]
+    )
+    input_trigger.no_trigger = True
+
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      resolved_info = task_gen_utils.generate_resolved_info(
+          mlmd_connection_manager, self._transform
+      )
+      unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+          mlmd_connection_manager.primary_mlmd_handle,
+          [],
+          resolved_info,
+          self._transform,
+      )
+
+      # Should return empty input since the input is no trigger.
+      self.assertEmpty(unprocessed_inputs)
 
 
 if __name__ == '__main__':

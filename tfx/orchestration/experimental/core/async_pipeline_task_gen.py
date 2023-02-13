@@ -358,7 +358,7 @@ class _Generator:
       ]
 
     unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-        metadata_handler, successful_executions, resolved_info
+        metadata_handler, successful_executions, resolved_info, node
     )
     if not unprocessed_inputs:
       return result

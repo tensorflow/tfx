@@ -148,7 +148,7 @@ class BaseChannel(abc.ABC):
     return result
 
   @doc_controls.do_not_generate_docs
-  def notrigger(self):
+  def no_trigger(self):
     return self._with_input_trigger(NoTrigger())
 
   @doc_controls.do_not_generate_docs

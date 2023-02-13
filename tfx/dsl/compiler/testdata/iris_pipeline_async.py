@@ -105,11 +105,12 @@ def create_test_pipeline():
               })
       ])
   evaluator = Evaluator(
-      examples=example_gen.outputs["examples"].notrigger(),
+      examples=example_gen.outputs["examples"].no_trigger(),
       model=trainer.outputs["model"],
       # TODO(b/257197093): Use corresponding resolver function instead.
       # baseline_model=model_resolver.outputs["baseline_model"],
-      eval_config=eval_config)
+      eval_config=eval_config,
+  )
 
   pusher = Pusher(
       model=trainer.outputs["model"],
