@@ -42,6 +42,11 @@ try:
 except ImportError as e:
   logging.info('tensorflow_text is not available: %s', e)
 
+try:
+  import tensorflow_recommenders as _  # pylint: disable=g-import-not-at-top
+except ImportError as e:
+  logging.info('tensorflow_recommenders is not available: %s', e)
+
 
 _PREDICTION_LOGS_FILE_NAME = 'prediction_logs'
 _EXAMPLES_FILE_NAME = 'examples'
