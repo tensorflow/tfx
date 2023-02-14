@@ -13,9 +13,11 @@
 # limitations under the License.
 """Shared utility functions for ResolverOps."""
 
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Set
 
 from tfx import types
+from tfx.orchestration.portable.input_resolution import exceptions
+from tfx.utils import typing_utils
 
 # Maps from "span" and "version" to PropertyType.INT. Many ResolverOps require
 # one or both of these properties, so we define constants here for convenience.
@@ -49,6 +51,57 @@ ARTIFACT_TYPE_NAME_BY_KEY = {
     MODEL_INFRA_BLESSING_KEY: MODEL_INFRA_BLESSSING_TYPE_NAME,
     MODEL_PUSH_KEY: MODEL_PUSH_TYPE_NAME,
 }
+
+
+# TODO(b/269147946): Put validation logic inside ResolverOp Property instead,
+# providing compile time check.
+def validate_argument(
+    argument_name: str,
+    argument_value: int,
+    min_value: Optional[int] = None,
+    max_value: Optional[int] = None,
+):
+  """Validates that the argument is >= a min value and/or <= a max value."""
+  if min_value is not None and argument_value < min_value:
+    raise exceptions.InvalidArgument(
+        f'{argument_name} must be >= {min_value} but was set to'
+        f' {argument_value}.'
+    )
+
+  if max_value is not None and argument_value > max_value:
+    raise exceptions.InvalidArgument(
+        f'{argument_name} must be <= {max_value} but was set to'
+        f' {argument_value}.'
+    )
+
+
+def validate_input_dict(
+    input_dict: typing_utils.ArtifactMultiMap,
+    valid_keys: Set[str],
+    requires_all: bool = False,
+):
+  """Checks that the input_dict is properly formatted."""
+  if requires_all and set(input_dict.keys()) != valid_keys:
+    raise exceptions.InvalidArgument(
+        f'input_dict must have all keys in {valid_keys}, but only had '
+        f'{input_dict.keys()}'
+    )
+
+  for key in input_dict.keys():
+    if key not in valid_keys:
+      raise exceptions.InvalidArgument(
+          'input_dict can only have keys {valid_keys}, but contained'
+          f' key {key}.'
+      )
+
+    for artifact in input_dict[key]:
+      if artifact.TYPE_NAME != ARTIFACT_TYPE_NAME_BY_KEY[key]:
+        raise exceptions.InvalidArgument(
+            f'Artifacts of input_dict["{key}"] are expected to have artifacts'
+            f' with TYPE_NAME {ARTIFACT_TYPE_NAME_BY_KEY[key]}, but'
+            f' artifact {artifact} in input_dict["{key}"] had TYPE_NAME'
+            f' {artifact.TYPE_NAME}.'
+        )
 
 
 def get_valid_artifacts(

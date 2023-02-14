@@ -43,6 +43,8 @@ def training_range(store: Any, model: types.Artifact) -> List[types.Artifact]:
 
   Returns the Examples artifact the Model was trained on.
 
+  Note that only the standard TFleX Model and Examples artifacts are supported.
+
   Args:
    store: The MetadataStore.
    model: The Model artifact whose trained Examples to return.

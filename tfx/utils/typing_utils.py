@@ -145,7 +145,9 @@ def is_artifact_list(value: Any) -> bool:
 
 def is_artifact_multimap(value: Any) -> bool:
   """Checks value is Mapping[str, Sequence[Artifact]] type."""
-  return is_compatible(value, ArtifactMultiMap)
+  return is_compatible(value, ArtifactMultiMap) or is_compatible(
+      value, ArtifactMultiDict
+  )
 
 
 def is_list_of_artifact_multimap(value):

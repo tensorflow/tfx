@@ -81,7 +81,7 @@ class ModelRelations:
   def latest_created(
       self, artifact_type: metadata_store_pb2.ArtifactType
   ) -> types.Artifact:
-    """Gets the latest created artifact with matchign ArtifactType."""
+    """Gets the latest created artifact with matching ArtifactType."""
     if artifact_type.name == ops_utils.MODEL_BLESSING_TYPE_NAME:
       artifacts = self.model_blessing_by_artifact_id.values()
     elif artifact_type.name == ops_utils.MODEL_INFRA_BLESSSING_TYPE_NAME:
@@ -139,21 +139,7 @@ def _validate_input_dict(input_dict: typing_utils.ArtifactMultiMap):
       ops_utils.MODEL_BLESSSING_KEY,
       ops_utils.MODEL_INFRA_BLESSING_KEY,
   }
-  for key in input_dict.keys():
-    if key not in valid_keys:
-      raise exceptions.InvalidArgument(
-          f'input_dict can only have keys {valid_keys}, but contained key '
-          f'{key}.'
-      )
-
-    for artifact in input_dict[key]:
-      if artifact.TYPE_NAME != ops_utils.ARTIFACT_TYPE_NAME_BY_KEY[key]:
-        raise exceptions.InvalidArgument(
-            f'Artifacts of input_dict["{key}"] are expected to have artifacts'
-            f' with TYPE_NAME {ops_utils.ARTIFACT_TYPE_NAME_BY_KEY[key]}, but'
-            f' artifact {artifact} in input_dict["{key}"] had TYPE_NAME'
-            f' {artifact.TYPE_NAME}.'
-        )
+  ops_utils.validate_input_dict(input_dict, valid_keys)
 
 
 def _build_result_dictionary(
@@ -230,6 +216,9 @@ class LatestPolicyModel(
     include: 1) Resolving inputs to a Pusher 2) Specifying ModelBlessing
     artifacts from a specific Evaluator, in cases where the pipeline has
     multiple Evaluators.
+
+    Note that only the standard TFleX Model, ModelBlessing, ModelInfraBlessing,
+    and ModelPush artifacts are supported.
 
     Args:
       input_dict: An input dict containing "model", "model_blessing",
