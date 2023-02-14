@@ -16,7 +16,7 @@
 import importlib
 import inspect
 import json
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, Type, Union, Mapping, Sequence
 
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
@@ -76,11 +76,15 @@ class Jsonable:
     return instance
 
 
-JsonableValue = Union[bool, float, int, Jsonable, message.Message, str,
-                      Type, 'JsonableType']
-JsonableList = List[JsonableValue]
-JsonableDict = Dict[str, Union[JsonableValue, JsonableList]]
-JsonableType = Union[JsonableValue, JsonableList, JsonableDict]
+JsonValue = Union[None, bool, float, int, str, 'JsonDict', 'JsonList']
+JsonDict = Mapping[str, JsonValue]
+JsonList = Sequence[JsonValue]
+
+_JsonCompat = Union[Jsonable, message.Message, Type]
+JsonableValue = Union[JsonValue, _JsonCompat, 'JsonableDict', 'JsonableList']
+JsonableDict = Mapping[str, JsonableValue]
+JsonableList = Sequence[JsonableValue]
+JsonableType = JsonableValue
 
 
 class _DefaultEncoder(json.JSONEncoder):
