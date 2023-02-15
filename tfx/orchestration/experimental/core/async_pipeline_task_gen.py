@@ -298,7 +298,7 @@ class _Generator:
       resolved_info = task_gen_utils.generate_resolved_info(
           mlmd_connection_manager=self._mlmd_connection_manager,
           node=node,
-          skip_errors=[exceptions.InsufficientInputError],
+          is_async_mode=True,
       )
     except exceptions.InputResolutionError as e:
       logging.exception(

@@ -16,7 +16,7 @@
 import collections
 import itertools
 import time
-from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple, Type
+from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple
 import uuid
 
 from absl import logging
@@ -173,7 +173,7 @@ def resolve_exec_properties(
 def generate_resolved_info(
     mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     node: node_proto_view.NodeProtoView,
-    skip_errors: Iterable[Type[exceptions.InputResolutionError]] = (),
+    is_async_mode: bool = False,
 ) -> ResolvedInfo:
   """Returns a `ResolvedInfo` object for executing the node or `None` to skip.
 
@@ -181,7 +181,7 @@ def generate_resolved_info(
     mlmd_connection_manager: MLMDConnectionManager instance for handling
       multiple mlmd db connections.
     node: The pipeline node for which to generate.
-    skip_errors: A list of errors to skip on the given error types.
+    is_async_mode: A boolean value indecates whether the pipeline is async mode.
 
   Returns:
     A `ResolvedInfo` with input resolutions. If execution should be skipped,
@@ -209,10 +209,10 @@ def generate_resolved_info(
         metadata_handler=mlmd_connection_manager, pipeline_node=node
     )
   except exceptions.InputResolutionError as e:
-    for skip_error in skip_errors:
-      if isinstance(e, skip_error):
-        logging.info('[%s] Input resolution skipped: %s', node.node_info.id, e)
-        return result
+    if is_async_mode and isinstance(e, exceptions.InsufficientInputError):
+      # Skips raising InsufficientInputError if the pipeline is async pipeline.
+      logging.info('[%s] Input resolution skipped: %s', node.node_info.id, e)
+      return result
     raise
   if not resolved_input_artifacts:
     return result
