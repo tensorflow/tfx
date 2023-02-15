@@ -889,10 +889,10 @@ class TransformProcessor:
       # picklable.
       return self.to_runner_api_parameter(context)
 
-    def expand(
-        self, pipeline: beam.Pipeline
-    ) -> Tuple[Dict[str, Optional[_Dataset]], Optional[Dict[str, Dict[
-        str, beam.pvalue.PCollection]]], int]:
+    # TODO(b/269419184): Add output typehint when possible:
+    # -> Tuple[Dict[str, Optional[_Dataset]],
+    #          Optional[Dict[str, Dict[str, beam.pvalue.PCollection]]], int]
+    def expand(self, pipeline: beam.Pipeline):
       # TODO(b/170304777): Remove this Create once the issue is fixed in beam.
       # Forcing beam to treat this PTransform as non-primitive.
       _ = pipeline | 'WorkaroundForBug170304777' >> beam.Create([None])
