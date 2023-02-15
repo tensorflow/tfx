@@ -14,6 +14,7 @@
 """Tests for tfx.orchestration.experimental.core.task_gen_utils."""
 
 import os
+import time
 import uuid
 
 from absl.testing import parameterized
@@ -358,6 +359,9 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
                 input_and_param.input_artifacts
                 for input_and_param in input_and_params
             ]))
+        # sleep 10 ms to make sure two groups executions have different
+        # `create_time_since_epoch`
+        time.sleep(0.01)
 
       # Get expected results.
       expected_execution_set = [
