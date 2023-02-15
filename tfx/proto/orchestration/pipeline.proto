@@ -160,6 +160,7 @@ message PropertyPredicate {
     //     operated on Dict[Text, List[Artifact]].
     string input_key = 4;
     int32 input_index = 5;
+    bool is_custom_property = 6;
   }
   // Logical operator on one element.
   message UnaryLogicalOperator {
