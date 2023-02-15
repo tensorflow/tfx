@@ -35,6 +35,9 @@ jobs:
         #comment on issues if stale for more then 14 days. 
         close-issue-message: "Closing as stale. Please reopen if you'd like to work on this further"
               
+        # reason for closed the issue default value is not_planned 
+        close-issue-reason: completed
+        
         # Number of days of inactivity before a stale issue is closed
         days-before-issue-close: 14
         
