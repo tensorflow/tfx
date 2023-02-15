@@ -33,7 +33,7 @@ from ml_metadata.proto import metadata_store_pb2
 _TESTDATA_DIR = os.path.join(os.path.dirname(__file__), 'testdata')
 
 
-class _TestMixin:
+class _TestMixin(test_case_utils.TfxTest):
   """Helper methods for inputs_utils_test."""
 
   def get_metadata(self):
@@ -104,7 +104,7 @@ class _TestMixin:
       self.assertArtifactMapEqual(expected_item, actual_item)
 
 
-class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
+class InputsUtilsTest(_TestMixin):
 
   def testResolveParameters(self):
     parameters = pipeline_pb2.NodeParameters()

@@ -30,7 +30,6 @@ from tfx.orchestration.portable import inputs_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
 from tfx.types import resolved_channel
-from tfx.utils import test_case_utils
 
 
 from ml_metadata.proto import metadata_store_pb2
@@ -77,17 +76,20 @@ def _compile_inputs(
 
 
 class CannedResolverFunctionsTest(
-    test_case_utils.TfxTest, test_case_utils.MlmdMixins):
+    test_utils.ResolverTestCase,
+):
 
   def setUp(self):
     super().setUp()
     self.init_mlmd()
     self.enter_context(self.mlmd_handle)
 
-  def assertArtifactEqual(self,
-                          resolved_artifact: metadata_store_pb2.Artifact,
-                          mlmd_artifact: metadata_store_pb2.Artifact,
-                          check_span_and_version: bool = False):
+  def assertResolvedAndMLMDArtifactEqual(
+      self,
+      resolved_artifact: metadata_store_pb2.Artifact,
+      mlmd_artifact: metadata_store_pb2.Artifact,
+      check_span_and_version: bool = False,
+  ):
     """Checks that a MLMD artifacts and resolved artifact are equal."""
     self.assertEqual(mlmd_artifact.id, resolved_artifact.id)
     self.assertEqual(mlmd_artifact.type_id, resolved_artifact.type_id)
@@ -125,16 +127,19 @@ class CannedResolverFunctionsTest(
 
     return mlmd_artifacts
 
-  def assertArtifactListEqual(self,
-                              resolved_artifacts: metadata_store_pb2.Artifact,
-                              mlmd_artifacts: metadata_store_pb2.Artifact,
-                              check_span_and_version: bool = False):
+  def assertResolvedAndMLMDArtifactListEqual(
+      self,
+      resolved_artifacts: metadata_store_pb2.Artifact,
+      mlmd_artifacts: metadata_store_pb2.Artifact,
+      check_span_and_version: bool = True,
+  ):
     """Checks that a list of MLMD artifacts and resolved artifacts are equal."""
     self.assertEqual(len(mlmd_artifacts), len(resolved_artifacts))
     for mlmd_artifact, resolved_artifact in zip(mlmd_artifacts,
                                                 resolved_artifacts):
-      self.assertArtifactEqual(resolved_artifact, mlmd_artifact,
-                               check_span_and_version)
+      self.assertResolvedAndMLMDArtifactEqual(
+          resolved_artifact, mlmd_artifact, check_span_and_version
+      )
 
   def testLatestCreatedResolverFn_E2E(self):
     channel = canned_resolver_functions.latest_created(
@@ -163,7 +168,9 @@ class CannedResolverFunctionsTest(
     # those two artifacts are the latest artifacts and n=2.
     actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
     expected_artifacts = [mlmd_artifact_2, mlmd_artifact_3]
-    self.assertArtifactListEqual(actual_artifacts, expected_artifacts)
+    self.assertResolvedAndMLMDArtifactListEqual(
+        actual_artifacts, expected_artifacts
+    )
 
   def testLatestVersionFn_E2E(self):
     channel = canned_resolver_functions.latest_version(
@@ -184,8 +191,9 @@ class CannedResolverFunctionsTest(
     # [(0, 2)].
     actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
     expected_artifacts = [mlmd_artifacts[2]]
-    self.assertArtifactListEqual(
-        actual_artifacts, expected_artifacts, check_span_and_version=True)
+    self.assertResolvedAndMLMDArtifactListEqual(
+        actual_artifacts, expected_artifacts
+    )
 
   def testStaticRangeResolverFn_E2E(self):
     channel = canned_resolver_functions.static_range(
@@ -207,8 +215,9 @@ class CannedResolverFunctionsTest(
     # [(0, 0), (1, 0), (3, 0), (3, 3), (5, 0)].
     actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
     expected_artifacts = [mlmd_artifacts[i] for i in [0, 1, 3, 4, 5]]
-    self.assertArtifactListEqual(
-        actual_artifacts, expected_artifacts, check_span_and_version=True)
+    self.assertResolvedAndMLMDArtifactListEqual(
+        actual_artifacts, expected_artifacts
+    )
 
   def testStaticRangeResolverFn_MinSpans_RaisesSkipSignal(self):
     channel = canned_resolver_functions.static_range(
@@ -246,8 +255,9 @@ class CannedResolverFunctionsTest(
     # [(3, 0), (3, 1), (7, 1)].
     actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
     expected_artifacts = [mlmd_artifacts[i] for i in [3, 2, 4]]
-    self.assertArtifactListEqual(
-        actual_artifacts, expected_artifacts, check_span_and_version=True)
+    self.assertResolvedAndMLMDArtifactListEqual(
+        actual_artifacts, expected_artifacts, check_span_and_version=True
+    )
 
   def testAllSpansResolverFn_E2E(self):
     channel = canned_resolver_functions.all_spans(
@@ -264,8 +274,9 @@ class CannedResolverFunctionsTest(
 
     actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
     expected_artifacts = [mlmd_artifacts[i] for i in [0, 1, 2, 4, 5, 6, 7]]
-    self.assertArtifactListEqual(
-        actual_artifacts, expected_artifacts, check_span_and_version=True)
+    self.assertResolvedAndMLMDArtifactListEqual(
+        actual_artifacts, expected_artifacts
+    )
 
   def testShuffleResolverFn_E2E(self):
     channel = canned_resolver_functions.shuffle(
@@ -340,8 +351,9 @@ class CannedResolverFunctionsTest(
       expected_artifacts = [
           mlmd_artifacts[j] for j in expected_artifact_idxs[i]
       ]
-      self.assertArtifactListEqual(
-          actual_artifacts, expected_artifacts, check_span_and_version=True)
+      self.assertResolvedAndMLMDArtifactListEqual(
+          actual_artifacts, expected_artifacts
+      )
 
   def testSequentialRollingRangeResolverFn_E2E_SkipSignalRaised(self):
     # The artifacts will only have consecutive spans from [1, 5] but
@@ -379,6 +391,7 @@ class CannedResolverFunctionsTest(
     self.assertIsInstance(channel.invocation.args[0], resolver_op.InputNode)
 
     self.assertEqual(channel.invocation.kwargs, {'n': 2})
+
 
 if __name__ == '__main__':
   tf.test.main()

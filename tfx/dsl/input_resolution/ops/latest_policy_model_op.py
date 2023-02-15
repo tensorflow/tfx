@@ -143,7 +143,7 @@ def _validate_input_dict(input_dict: typing_utils.ArtifactMultiMap):
 
 
 def _build_result_dictionary(
-    result: Dict[str, types.Artifact],
+    result: typing_utils.ArtifactMultiDict,
     model_relations: ModelRelations,
     policy: Policy,
     artifact_type_by_name: Dict[str, metadata_store_pb2.ArtifactType],
@@ -153,23 +153,29 @@ def _build_result_dictionary(
       policy == Policy.LATEST_EVALUATOR_BLESSED
       or policy == Policy.LATEST_BLESSED
   ):
-    result[ops_utils.MODEL_BLESSSING_KEY] = model_relations.latest_created(
-        artifact_type_by_name[ops_utils.MODEL_BLESSING_TYPE_NAME]
-    )
+    result[ops_utils.MODEL_BLESSSING_KEY] = [
+        model_relations.latest_created(
+            artifact_type_by_name[ops_utils.MODEL_BLESSING_TYPE_NAME]
+        )
+    ]
 
   # Intentionally use if instead of elif to handle LATEST_BLESSED Policy.
   if (
       policy == Policy.LATEST_INFRA_VALIDATOR_BLESSED
       or policy == Policy.LATEST_BLESSED
   ):
-    result[ops_utils.MODEL_INFRA_BLESSING_KEY] = model_relations.latest_created(
-        artifact_type_by_name[ops_utils.MODEL_INFRA_BLESSSING_TYPE_NAME]
-    )
+    result[ops_utils.MODEL_INFRA_BLESSING_KEY] = [
+        model_relations.latest_created(
+            artifact_type_by_name[ops_utils.MODEL_INFRA_BLESSSING_TYPE_NAME]
+        )
+    ]
 
   elif policy == Policy.LATEST_PUSHED:
-    result[ops_utils.MODEL_PUSH_KEY] = model_relations.latest_created(
-        artifact_type_by_name[ops_utils.MODEL_PUSH_TYPE_NAME]
-    )
+    result[ops_utils.MODEL_PUSH_KEY] = [
+        model_relations.latest_created(
+            artifact_type_by_name[ops_utils.MODEL_PUSH_TYPE_NAME]
+        )
+    ]
 
   return result
 
@@ -232,15 +238,15 @@ class LatestPolicyModel(
       For example, for a LATEST_BLESSED policy, the following dict will be
       returned:
       {
-        "model": Model,
-        "model_blessing": ModelBlessing,
-        "model_infra_blessing": ModelInfraBlessing
+        "model": [Model],
+        "model_blessing": [ModelBlessing],
+        "model_infra_blessing": [ModelInfraBlessing]
       }
 
       For a LATEST_PUSHED policy, the following dict will be returned:
       {
-        "model": Model,
-        "model_push": ModelPush
+        "model": [Model],
+        "model_push": [ModelPush]
       }
 
     Raises:
@@ -273,7 +279,7 @@ class LatestPolicyModel(
 
     # Return the latest trained model if the policy is LATEST_EXPORTED.
     if self.policy == Policy.LATEST_EXPORTED:
-      return {ops_utils.MODEL_KEY: models[0]}
+      return {ops_utils.MODEL_KEY: [models[0]]}
 
     # If ModelBlessing and/or ModelInfraBlessing artifacts were included in
     # input_dict, then we will only consider those child artifacts.
@@ -395,7 +401,7 @@ class LatestPolicyModel(
     for model in models:
       model_relations = model_relations_by_model_artifact_id[model.id]
       if model_relations.meets_policy(self.policy):
-        result[ops_utils.MODEL_KEY] = model
+        result[ops_utils.MODEL_KEY] = [model]
         break
     else:
       return self._raise_skip_signal_or_return_empty_dict(

@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.span_driven_evaluator_inputs_op."""
-from typing import Dict, List, Optional, Union
-
-from absl.testing import parameterized
+from typing import List, Optional
 
 import tensorflow as tf
 
@@ -23,17 +21,15 @@ from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration.portable.input_resolution import exceptions
-from tfx.types import artifact_utils
-from tfx.utils import test_case_utils as mlmd_mixins
 
 
 # TODO(b/269144878): Refactor these tests to have a helper method check() to
 # compare expected and actual dictionaries.
 class SpanDrivenEvaluatorInputsOpTest(
-    tf.test.TestCase, parameterized.TestCase, mlmd_mixins.MlmdMixins
+    test_utils.ResolverTestCase,
 ):
 
-  def _span_driven_evaluator_build_input_dict(
+  def _span_driven_evaluator(
       self,
       models: Optional[List[types.Artifact]] = None,
       examples: Optional[List[types.Artifact]] = None,
@@ -43,9 +39,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: models,
         ops_utils.EXAMPLES_KEY: examples,
     }
-    return self._span_driven_evaluator(input_dict, **kwargs)
+    return self._run_span_driven_evaluator(input_dict, **kwargs)
 
-  def _span_driven_evaluator(self, *args, **kwargs):
+  def _run_span_driven_evaluator(self, *args, **kwargs):
     return test_utils.strict_run_resolver_op(
         ops.SpanDrivenEvaluatorInputs,
         args=args,
@@ -53,89 +49,40 @@ class SpanDrivenEvaluatorInputsOpTest(
         store=self.store,
     )
 
-  def _prepare_tfx_artifact(
-      self,
-      artifact: types.Artifact,
-      properties: Optional[Dict[str, Union[int, str]]] = None,
-  ) -> types.Artifact:
-    """Adds a single artifact to MLMD and returns the TFleX Artifact object."""
-    mlmd_artifact = self.put_artifact(artifact.TYPE_NAME, properties=properties)
-    artifact_type = self.store.get_artifact_type(artifact.TYPE_NAME)
-    return artifact_utils.deserialize_artifact(artifact_type, mlmd_artifact)
-
-  def _unwrap_tfx_artifact(self, artifact: types.Artifact) -> types.Artifact:
-    """Return the underlying MLMD Artifact of a TFleX Artifact object."""
-    return artifact.mlmd_artifact
-
-  def _train_on_examples(
-      self,
-      model: types.Artifact,
-      examples: List[types.Artifact],
-  ):
-    """Add an Execution to MLMD where a Trainer trains on the examples."""
-    self.put_execution(
-        'TFTrainer',
-        inputs={
-            ops_utils.EXAMPLES_KEY: [
-                self._unwrap_tfx_artifact(e) for e in examples
-            ],
-            'transform_graph': [
-                self._unwrap_tfx_artifact(self.transform_graph)
-            ],
-        },
-        outputs={ops_utils.MODEL_KEY: [self._unwrap_tfx_artifact(model)]},
-    )
-
-  def _assertArtifactEqual(self, actual, expected):
-    self.assertEqual(str(actual), str(expected))
-    self.assertEqual(actual.mlmd_artifact, expected.mlmd_artifact)
-
-  def assertArtifactDictEqual(self, actual, expected):
-    # Check that the Model artifacts are equal.
-    self.assertLen(actual['model'], 1)
-    self._assertArtifactEqual(actual['model'][0], expected['model'][0])
-
-    # Check that the list of Example artifacts are equal.
-    self.assertEqual(len(actual['examples']), len(expected['examples']))
-    for actual_examples, expected_examples in zip(
-        actual['examples'], expected['examples']
-    ):
-      self._assertArtifactEqual(actual_examples, expected_examples)
-
   def setUp(self):
     super().setUp()
     self.init_mlmd()
 
     # We intentionally save a variable of each Examples/Model artifact so that
     # the tests are more readable.
-    self.examples_1 = self._prepare_tfx_artifact(
+    self.examples_1 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 1, 'version': 1}
     )
-    self.examples_2 = self._prepare_tfx_artifact(
+    self.examples_2 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 2, 'version': 1}
     )
-    self.examples_3 = self._prepare_tfx_artifact(
+    self.examples_3 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 3, 'version': 1}
     )
-    self.examples_4 = self._prepare_tfx_artifact(
+    self.examples_4 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 4, 'version': 1}
     )
-    self.examples_5 = self._prepare_tfx_artifact(
+    self.examples_5 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 5, 'version': 1}
     )
-    self.examples_6 = self._prepare_tfx_artifact(
+    self.examples_6 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 6, 'version': 1}
     )
-    self.examples_7 = self._prepare_tfx_artifact(
+    self.examples_7 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 7, 'version': 1}
     )
-    self.examples_8 = self._prepare_tfx_artifact(
+    self.examples_8 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 8, 'version': 1}
     )
-    self.examples_9 = self._prepare_tfx_artifact(
+    self.examples_9 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 9, 'version': 1}
     )
-    self.examples_10 = self._prepare_tfx_artifact(
+    self.examples_10 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 10, 'version': 1}
     )
     self.examples = [
@@ -151,13 +98,13 @@ class SpanDrivenEvaluatorInputsOpTest(
         self.examples_10,
     ]
 
-    self.transform_graph = self._prepare_tfx_artifact(test_utils.TransformGraph)
+    transform_graph = self.prepare_tfx_artifact(test_utils.TransformGraph)
 
-    self.model_1 = self._prepare_tfx_artifact(test_utils.Model)
-    self.model_2 = self._prepare_tfx_artifact(test_utils.Model)
-    self.model_3 = self._prepare_tfx_artifact(test_utils.Model)
-    self.model_4 = self._prepare_tfx_artifact(test_utils.Model)
-    self.model_5 = self._prepare_tfx_artifact(test_utils.Model)
+    self.model_1 = self.prepare_tfx_artifact(test_utils.Model)
+    self.model_2 = self.prepare_tfx_artifact(test_utils.Model)
+    self.model_3 = self.prepare_tfx_artifact(test_utils.Model)
+    self.model_4 = self.prepare_tfx_artifact(test_utils.Model)
+    self.model_5 = self.prepare_tfx_artifact(test_utils.Model)
     self.models = [
         self.model_1,
         self.model_2,
@@ -168,24 +115,24 @@ class SpanDrivenEvaluatorInputsOpTest(
 
     # Each Model will train on a rolling window of 2 Examples.
     for i, model in enumerate(self.models):
-      self._train_on_examples(model, self.examples[i : i + 2])
+      self.train_on_examples(model, self.examples[i : i + 2], transform_graph)
 
   def testSpanDrivenEvaluatorInputs_InvalidArguments_RaisesInvalidArgument(
       self,
   ):
     with self.assertRaises(exceptions.InvalidArgument):
-      self._span_driven_evaluator_build_input_dict(
+      self._span_driven_evaluator(
           self.models, self.examples, wait_spans_before_eval=-1
       )
-      self._span_driven_evaluator_build_input_dict(
+      self._span_driven_evaluator(
           self.models, self.examples, additional_spans_per_eval=-1
       )
-      self._span_driven_evaluator_build_input_dict(
+      self._span_driven_evaluator(
           self.models, self.examples, start_span_number=-1
       )
 
     try:
-      self._span_driven_evaluator_build_input_dict(
+      self._span_driven_evaluator(
           self.models, self.examples, evaluation_training_offset=-1
       )
     except exceptions.InvalidArgument:
@@ -204,7 +151,7 @@ class SpanDrivenEvaluatorInputsOpTest(
           ops_utils.MODEL_KEY: self.examples,
           ops_utils.EXAMPLES_KEY: self.models,
       }
-      self._span_driven_evaluator(input_dict)
+      self._run_span_driven_evaluator(input_dict)
 
       # Invalid dict keys.
       input_dict = {
@@ -212,31 +159,31 @@ class SpanDrivenEvaluatorInputsOpTest(
           ops_utils.MODEL_KEY: self.models,
           ops_utils.MODEL_PUSH_KEY: self.models,
       }
-      self._span_driven_evaluator(input_dict)
+      self._run_span_driven_evaluator(input_dict)
 
       # Invalid and missing dict keys.
       input_dict = {
           ops_utils.EXAMPLES_KEY: self.examples,
           ops_utils.MODEL_PUSH_KEY: self.models,
       }
-      self._span_driven_evaluator(input_dict)
+      self._run_span_driven_evaluator(input_dict)
 
       # Input dict only contains "model" and is missing "examples" key.
       input_dict = {ops_utils.MODEL_KEY: self.models}
-      self._span_driven_evaluator(input_dict)
+      self._run_span_driven_evaluator(input_dict)
 
   def testSpanDrivenEvaluatorInputs_EmptyInputDict_RaisesSkipSignal(self):
     with self.assertRaises(exceptions.SkipSignal):
       # Empty input_dict.
-      self._span_driven_evaluator({})
+      self._run_span_driven_evaluator({})
 
       # "models" and "examples" keys present but do not contain artifacts.
-      self._span_driven_evaluator_build_input_dict([], [])
-      self._span_driven_evaluator_build_input_dict(self.models, [])
-      self._span_driven_evaluator_build_input_dict([], self.examples)
+      self._span_driven_evaluator([], [])
+      self._span_driven_evaluator(self.models, [])
+      self._span_driven_evaluator([], self.examples)
 
   def testSpanDrivenEvaluatorInputs_NoArguments(self):
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples[:9],
     )
@@ -244,9 +191,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_9],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples[:8],
     )
@@ -254,9 +201,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_8],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples[:3],
     )
@@ -264,9 +211,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_1],
         ops_utils.EXAMPLES_KEY: [self.examples_3],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models[:3],
         self.examples,
     )
@@ -274,21 +221,21 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_3],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     with self.assertRaises(exceptions.SkipSignal):
-      actual = self._span_driven_evaluator_build_input_dict(
+      actual = self._span_driven_evaluator(
           [self.model_1],
           [self.examples_1, self.examples_2],
       )
 
-      actual = self._span_driven_evaluator_build_input_dict(
+      actual = self._span_driven_evaluator(
           self.models,
           self.examples[:5],
       )
 
   def testSpanDrivenEvaluatorInputs_WaitSpansBeforeEval(self):
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         wait_spans_before_eval=0,
@@ -297,9 +244,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         wait_spans_before_eval=1,
@@ -308,9 +255,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_9],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         wait_spans_before_eval=2,
@@ -319,9 +266,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_8],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         wait_spans_before_eval=3,
@@ -330,11 +277,11 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_7],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     # end_span will be 10 - 4 = 6, Model 4 is the latest model not trained on
     # span 6.
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         wait_spans_before_eval=4,
@@ -343,11 +290,11 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_4],
         ops_utils.EXAMPLES_KEY: [self.examples_6],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     # end_span will be 10 - 5 = 5, Model 3 is the latest model not trained on
     # span 5.
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         wait_spans_before_eval=5,
@@ -356,25 +303,25 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_3],
         ops_utils.EXAMPLES_KEY: [self.examples_5],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     with self.assertRaises(exceptions.SkipSignal):
       # end_span will be 10 - 8 = 2 and no model was trained on a span < 2.
-      actual = self._span_driven_evaluator_build_input_dict(
+      actual = self._span_driven_evaluator(
           self.models,
           self.examples,
           wait_spans_before_eval=8,
       )
 
       # end_span will be < 1
-      actual = self._span_driven_evaluator_build_input_dict(
+      actual = self._span_driven_evaluator(
           self.models,
           self.examples,
           wait_spans_before_eval=50,
       )
 
   def testSpanDrivenEvaluatorInputs_AdditionalSpansPerEval(self):
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         additional_spans_per_eval=0,
@@ -383,9 +330,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         additional_spans_per_eval=1,
@@ -394,9 +341,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_9, self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         additional_spans_per_eval=2,
@@ -409,11 +356,11 @@ class SpanDrivenEvaluatorInputsOpTest(
             self.examples_10,
         ],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     # start_span will be 10 - 4 = 6 and Model 4 is the latest model not trained
     # on span 6.
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         additional_spans_per_eval=4,
@@ -428,25 +375,25 @@ class SpanDrivenEvaluatorInputsOpTest(
             self.examples_10,
         ],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     with self.assertRaises(exceptions.SkipSignal):
       # start_span will be 10 - 8 = 2 and no model was trained on a span < 2.
-      actual = self._span_driven_evaluator_build_input_dict(
+      actual = self._span_driven_evaluator(
           self.models,
           self.examples,
           additional_spans_per_eval=8,
       )
 
       # start_span will be < 1
-      actual = self._span_driven_evaluator_build_input_dict(
+      actual = self._span_driven_evaluator(
           self.models,
           self.examples,
           additional_spans_per_eval=50,
       )
 
   def testSpanDrivenEvaluatorInputs_EvaluationTrainingOffset(self):
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         evaluation_training_offset=0,
@@ -455,9 +402,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         evaluation_training_offset=1,
@@ -466,11 +413,11 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     # max_span for _get_model_to_evaluate will be 10 - 4 = 6 and Model 4 is the
     # latest model not trained on span 6.
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         evaluation_training_offset=4,
@@ -479,9 +426,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_4],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         evaluation_training_offset=-1,
@@ -490,11 +437,11 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     # max_span for _get_model_to_evaluate will be 6 - (-1) = 7 and Model 5 is
     # latest model not trained on span 7.
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples[:6],
         evaluation_training_offset=-1,
@@ -503,11 +450,11 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_6],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     # max_span for _get_model_to_evaluate will be 3 - (-2) = 5 and Model 3 is
     # latest model not trained on span 5.
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples[:3],
         evaluation_training_offset=-2,
@@ -516,11 +463,11 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_3],
         ops_utils.EXAMPLES_KEY: [self.examples_3],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     # max_span for _get_model_to_evaluate will be 10 - (-50) = 55 and Model 5 is
     # latest model not trained on span 55.
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         evaluation_training_offset=-50,
@@ -529,25 +476,25 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     with self.assertRaises(exceptions.SkipSignal):
       # max_span will be 10 - 8 = 2 and no model was trained on a span < 2.
-      actual = self._span_driven_evaluator_build_input_dict(
+      actual = self._span_driven_evaluator(
           self.models,
           self.examples,
           evaluation_training_offset=8,
       )
 
       # max_span will be < 1
-      actual = self._span_driven_evaluator_build_input_dict(
+      actual = self._span_driven_evaluator(
           self.models,
           self.examples,
           evaluation_training_offset=50,
       )
 
   def testSpanDrivenEvaluatorInputs_StartSpanNumber(self):
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         start_span_number=0,
@@ -556,9 +503,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         start_span_number=1,
@@ -567,9 +514,9 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         start_span_number=5,
@@ -578,31 +525,31 @@ class SpanDrivenEvaluatorInputsOpTest(
         ops_utils.MODEL_KEY: [self.model_5],
         ops_utils.EXAMPLES_KEY: [self.examples_10],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     with self.assertRaises(exceptions.SkipSignal):
-      actual = self._span_driven_evaluator_build_input_dict(
+      actual = self._span_driven_evaluator(
           self.models,
           self.examples,
           start_span_number=11,
       )
 
-      actual = self._span_driven_evaluator_build_input_dict(
+      actual = self._span_driven_evaluator(
           self.models,
           self.examples,
           start_span_number=50,
       )
 
   def testSpanDrivenEvaluatorInputs_MultipleVersions(self):
-    examples_3_2 = self._prepare_tfx_artifact(
+    examples_3_2 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 3, 'version': 2}
     )
 
-    examples_3_3 = self._prepare_tfx_artifact(
+    examples_3_3 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 3, 'version': 3}
     )
 
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         [self.examples_3, examples_3_2, examples_3_3],
     )
@@ -611,13 +558,13 @@ class SpanDrivenEvaluatorInputsOpTest(
         # Only the latest version of Examples with span 3 should be considered.
         ops_utils.EXAMPLES_KEY: [examples_3_3],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
   def testSpanDrivenEvaluatorInputs_AllArguments(self):
     # Evaluates the model on last-1-week rolling window. [start_span, end_span]
     # is [9, 9 - 3] = [9, 6]. max_span is 6 - 3 = 3. Model 1 is the latest model
     # that has not trained on span 3.
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples[:9],
         wait_spans_before_eval=1,
@@ -635,12 +582,12 @@ class SpanDrivenEvaluatorInputsOpTest(
             self.examples_8,
         ],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
     # Evaluates the model on last-1-week rolling window. [start_span, end_span]
     # is [10, 10 - 6] = [10, 4]. max_span is 4 - (-7) = 11. Model 5 is the
     # latest model that has not trained on span 11.
-    actual = self._span_driven_evaluator_build_input_dict(
+    actual = self._span_driven_evaluator(
         self.models,
         self.examples,
         additional_spans_per_eval=6,
@@ -658,7 +605,7 @@ class SpanDrivenEvaluatorInputsOpTest(
             self.examples_10,
         ],
     }
-    self.assertArtifactDictEqual(actual, expected)
+    self.assertArtifactMapsEqual(actual, expected)
 
 
 if __name__ == '__main__':

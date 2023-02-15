@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Testing utility for builtin resolver ops."""
-from typing import Type, Any, Optional, Tuple, Mapping
+from typing import Type, Any, Dict, List, Optional, Tuple, Union, Mapping
 from unittest import mock
+
+from absl.testing import parameterized
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
-from tfx.types import artifact
+from tfx.types import artifact as tfx_artifact
+from tfx.types import artifact_utils
+from tfx.utils import test_case_utils
 from tfx.utils import typing_utils
 
 import ml_metadata as mlmd
@@ -30,8 +34,8 @@ class DummyArtifact(types.Artifact):
   TYPE_NAME = 'DummyArtifact'
 
   PROPERTIES = {
-      'span': artifact.Property(type=artifact.PropertyType.INT),
-      'version': artifact.Property(type=artifact.PropertyType.INT),
+      'span': tfx_artifact.Property(type=tfx_artifact.PropertyType.INT),
+      'version': tfx_artifact.Property(type=tfx_artifact.PropertyType.INT),
   }
 
   # pylint: disable=redefined-builtin
@@ -72,6 +76,104 @@ class ModelInfraBlessing(DummyArtifact):
 
 class ModelPush(DummyArtifact):
   TYPE_NAME = ops_utils.MODEL_PUSH_TYPE_NAME
+
+
+class ResolverTestCase(
+    test_case_utils.MlmdMixins,
+    test_case_utils.TfxTest,
+    parameterized.TestCase,
+):
+  """MLMD mixins for testing ResolverOps and resolver functions."""
+
+  def prepare_tfx_artifact(
+      self,
+      artifact: Any,  # If set to types.Artifact, pytype throws spurious errors.
+      properties: Optional[Dict[str, Union[int, str]]] = None,
+      custom_properties: Optional[Dict[str, Union[int, str]]] = None,
+  ) -> types.Artifact:
+    """Adds a single artifact to MLMD and returns the TFleX Artifact object."""
+    mlmd_artifact = self.put_artifact(
+        artifact.TYPE_NAME,
+        properties=properties,
+        custom_properties=custom_properties,
+    )
+    artifact_type = self.store.get_artifact_type(artifact.TYPE_NAME)
+    return artifact_utils.deserialize_artifact(artifact_type, mlmd_artifact)
+
+  def unwrap_tfx_artifacts(
+      self, artifacts: List[types.Artifact]
+  ) -> List[types.Artifact]:
+    """Return the underlying MLMD Artifacta of a list of TFleX Artifacts."""
+    return [a.mlmd_artifact for a in artifacts]
+
+  def train_on_examples(
+      self,
+      model: types.Artifact,
+      examples: List[types.Artifact],
+      transform_graph: Optional[types.Artifact] = None,
+  ):
+    """Add an Execution to MLMD where a Trainer trains on the examples."""
+    inputs = {'examples': self.unwrap_tfx_artifacts(examples)}
+    if transform_graph is not None:
+      inputs['transform_graph'] = self.unwrap_tfx_artifacts([transform_graph])
+    self.put_execution(
+        'TFTrainer',
+        inputs=inputs,
+        outputs={'model': self.unwrap_tfx_artifacts([model])},
+    )
+
+  def evaluator_bless_model(
+      self,
+      model: types.Artifact,
+      blessed: bool = True,
+      baseline_model: Optional[types.Artifact] = None,
+  ) -> types.Artifact:
+    """Add an Execution to MLMD where the Evaluator blesses the model."""
+    model_blessing = self.prepare_tfx_artifact(
+        ModelBlessing, custom_properties={'blessed': int(blessed)}
+    )
+
+    inputs = {'model': self.unwrap_tfx_artifacts([model])}
+    if baseline_model is not None:
+      inputs['baseline_model'] = self.unwrap_tfx_artifacts([baseline_model])
+
+    self.put_execution(
+        'Evaluator',
+        inputs=inputs,
+        outputs={'blessing': self.unwrap_tfx_artifacts([model_blessing])},
+    )
+
+    return model_blessing
+
+  def infra_validator_bless_model(
+      self, model: types.Artifact, blessed: bool = True
+  ) -> types.Artifact:
+    """Add an Execution to MLMD where the InfraValidator blesses the model."""
+    if blessed:
+      custom_properties = {'blessing_status': 'INFRA_BLESSED'}
+    else:
+      custom_properties = {'blessing_status': 'INFRA_NOT_BLESSED'}
+    model_infra_blessing = self.prepare_tfx_artifact(
+        ModelInfraBlessing, custom_properties=custom_properties
+    )
+
+    self.put_execution(
+        'InfraValidator',
+        inputs={'model': self.unwrap_tfx_artifacts([model])},
+        outputs={'result': self.unwrap_tfx_artifacts([model_infra_blessing])},
+    )
+
+    return model_infra_blessing
+
+  def push_model(self, model: types.Artifact):
+    """Add an Execution to MLMD where the Pusher pushes the model."""
+    model_push = self.prepare_tfx_artifact(ModelPush)
+    self.put_execution(
+        'ServomaticPusher',
+        inputs={'model': self.unwrap_tfx_artifacts([model])},
+        outputs={'model_push': self.unwrap_tfx_artifacts([model_push])},
+    )
+    return model_push
 
 
 def run_resolver_op(

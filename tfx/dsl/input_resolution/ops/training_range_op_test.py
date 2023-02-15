@@ -13,9 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.training_range_op."""
 
-from typing import Dict, List, Optional, Union
-
-from absl.testing import parameterized
+from typing import List
 
 import tensorflow as tf
 
@@ -24,93 +22,53 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration.portable.input_resolution import exceptions
-from tfx.types import artifact_utils
-from tfx.utils import test_case_utils as mlmd_mixins
 
 
 class TrainingRangeOpTest(
-    tf.test.TestCase, parameterized.TestCase, mlmd_mixins.MlmdMixins
+    test_utils.ResolverTestCase,
 ):
 
-  def _training_range(self, model: types.Artifact):
-    return test_utils.run_resolver_op(
+  def _training_range(self, *args, **kwargs):
+    return test_utils.strict_run_resolver_op(
         ops.TrainingRange,
-        [model],
-        context=resolver_op.Context(store=self.store),
-    )
-
-  def _prepare_tfx_artifact(
-      self,
-      artifact: types.Artifact,
-      properties: Optional[Dict[str, Union[int, str]]] = None,
-  ) -> types.Artifact:
-    """Adds a single artifact to MLMD and returns the TFleX Artifact object."""
-    mlmd_artifact = self.put_artifact(artifact.TYPE_NAME, properties=properties)
-    artifact_type = self.store.get_artifact_type(artifact.TYPE_NAME)
-    return artifact_utils.deserialize_artifact(artifact_type, mlmd_artifact)
-
-  def _unwrap_tfx_artifact(self, artifact: types.Artifact) -> types.Artifact:
-    """Return the underlying MLMD Artifact of a TFleX Artifact object."""
-    return artifact.mlmd_artifact
-
-  def _train_on_examples(
-      self, model: types.Artifact, examples: List[types.Artifact]
-  ):
-    """Add an Execution to MLMD where a Trainer trains on the examples."""
-    self.put_execution(
-        'TFTrainer',
-        inputs={
-            'examples': [self._unwrap_tfx_artifact(e) for e in examples],
-            'transform_graph': [
-                self._unwrap_tfx_artifact(self.transform_graph)
-            ],
-        },
-        outputs={'model': [self._unwrap_tfx_artifact(model)]},
+        args=args,
+        kwargs=kwargs,
+        store=self.store,
     )
 
   def _build_examples(self, n: int) -> List[types.Artifact]:
     return [
-        self._prepare_tfx_artifact(
+        self.prepare_tfx_artifact(
             test_utils.Examples, properties={'span': i, 'version': 1}
         )
         for i in range(n)
     ]
 
-  def assertArtifactListEqual(
-      self,
-      actual: List[types.Artifact],
-      expected: List[types.Artifact],
-  ):
-    self.assertEqual(len(actual), len(expected))
-    for a, e in zip(actual, expected):
-      self.assertEqual(str(a), str(e))
-      self.assertEqual(a.mlmd_artifact, e.mlmd_artifact)
-
   def setUp(self):
     super().setUp()
     self.init_mlmd()
 
-    self.model = self._prepare_tfx_artifact(test_utils.Model)
-    self.transform_graph = self._prepare_tfx_artifact(test_utils.TransformGraph)
+    self.model = self.prepare_tfx_artifact(test_utils.Model)
+    self.transform_graph = self.prepare_tfx_artifact(test_utils.TransformGraph)
     self.examples = self._build_examples(10)
 
   def testTrainingRangeOp_SingleModelExecution(self):
-    self._train_on_examples(self.model, self.examples[:5])
+    self.train_on_examples(self.model, self.examples[:5], self.transform_graph)
 
-    actual = self._training_range(self.model)
+    actual = self._training_range([self.model])
     self.assertArtifactListEqual(actual, self.examples[:5])
 
   def testTrainingRangeOp_MultipleModels(self):
-    model_1 = self._prepare_tfx_artifact(test_utils.Model)
-    self._train_on_examples(model_1, self.examples[:5])
+    model_1 = self.prepare_tfx_artifact(test_utils.Model)
+    self.train_on_examples(model_1, self.examples[:5], self.transform_graph)
 
-    model_2 = self._prepare_tfx_artifact(test_utils.Model)
-    self._train_on_examples(model_2, self.examples[5:])
+    model_2 = self.prepare_tfx_artifact(test_utils.Model)
+    self.train_on_examples(model_2, self.examples[5:], self.transform_graph)
 
-    actual_1 = self._training_range(model_1)
+    actual_1 = self._training_range([model_1])
     self.assertArtifactListEqual(actual_1, self.examples[:5])
 
-    actual_2 = self._training_range(model_2)
+    actual_2 = self._training_range([model_2])
     self.assertArtifactListEqual(actual_2, self.examples[5:])
 
   def testTrainingRangeOp_TrainOnTransformedExamples_ReturnsTransformedExamples(
@@ -120,32 +78,34 @@ class TrainingRangeOpTest(
     self.put_execution(
         'Transform',
         inputs={
-            'examples': [self._unwrap_tfx_artifact(e) for e in self.examples],
+            'examples': self.unwrap_tfx_artifacts(self.examples),
         },
         outputs={
-            'transformed_examples': [
-                self._unwrap_tfx_artifact(e) for e in transformed_examples
-            ],
-            'transform_graph': [
-                self._unwrap_tfx_artifact(self.transform_graph)
-            ],
+            'transformed_examples': self.unwrap_tfx_artifacts(
+                transformed_examples
+            ),
+            'transform_graph': self.unwrap_tfx_artifacts(
+                [self.transform_graph]
+            ),
         },
     )
 
-    self._train_on_examples(self.model, transformed_examples)
-    actual = self._training_range(self.model)
+    self.train_on_examples(
+        self.model, transformed_examples, self.transform_graph
+    )
+    actual = self._training_range([self.model])
     self.assertArtifactListEqual(actual, transformed_examples)
 
   def testTrainingRangeOp_SameSpanMultipleVersions_AllVersionsReturned(self):
     examples = [
-        self._prepare_tfx_artifact(
+        self.prepare_tfx_artifact(
             test_utils.Examples, properties={'span': 1, 'version': i}
         )
         for i in range(10)
     ]
-    self._train_on_examples(self.model, examples[:5])
+    self.train_on_examples(self.model, examples[:5], self.transform_graph)
 
-    actual = self._training_range(self.model)
+    actual = self._training_range([self.model])
     self.assertArtifactListEqual(actual, examples[:5])
 
   def testTrainingRangeOp_EmptyListReturned(self):
@@ -158,16 +118,16 @@ class TrainingRangeOpTest(
     self.assertEmpty(actual)
 
     # No executions in MLMD.
-    actual = self._training_range(self.model)
+    actual = self._training_range([self.model])
     self.assertEmpty(actual)
 
     # Execution in MLMD does not have input Example artifacts.
     self.put_execution(
         'NoInputExamplesTFTrainer',
         inputs={},
-        outputs={'model': [self._unwrap_tfx_artifact(self.model)]},
+        outputs={'model': self.unwrap_tfx_artifacts([self.model])},
     )
-    actual = self._training_range(self.model)
+    actual = self._training_range([self.model])
     self.assertEmpty(actual)
 
   def testTrainingRangeOp_InvalidArgumentRaised(self):
@@ -187,7 +147,7 @@ class TrainingRangeOpTest(
       )
 
   def testTrainingRangeOp_BulkInferrerProducesExamples(self):
-    self._train_on_examples(self.model, self.examples[:5])
+    self.train_on_examples(self.model, self.examples[:5], self.transform_graph)
     bulk_inferrer_examples = self._build_examples(5)
 
     # The BulkInferrer takes in the same Examples used to Trainer the Model,
@@ -197,17 +157,15 @@ class TrainingRangeOpTest(
     self.put_execution(
         'TFTrainer',
         inputs={
-            'examples': [self._unwrap_tfx_artifact(e) for e in self.examples],
-            'model': [self._unwrap_tfx_artifact(self.model)],
+            'examples': self.unwrap_tfx_artifacts(self.examples),
+            'model': self.unwrap_tfx_artifacts([self.model]),
         },
         outputs={
-            'output_examples': [
-                self._unwrap_tfx_artifact(e) for e in bulk_inferrer_examples
-            ]
+            'output_examples': self.unwrap_tfx_artifacts(bulk_inferrer_examples)
         },
     )
 
-    actual = self._training_range(self.model)
+    actual = self._training_range([self.model])
     self.assertArtifactListEqual(actual, self.examples[:5])
 
 
