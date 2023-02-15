@@ -187,7 +187,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       # for both input channels (from example_gen and from transform) but we did
       # not publish anything from transform, it should return nothing.
       with self.assertRaisesRegex(
-          exceptions.InputResolutionError, 'InputSpec.min_count violation'):
+          exceptions.InsufficientInputError, 'InputSpec min_count has not met'):
         inputs_utils.resolve_input_artifacts(
             metadata_handler=m, pipeline_node=my_trainer)
 
@@ -199,7 +199,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
       context_query.type.name = 'non_existent_context'
       context_query.name.field_value.string_value = 'non_existent_context'
       with self.assertRaisesRegex(
-          exceptions.InputResolutionError, 'InputSpec.min_count violation'):
+          exceptions.InsufficientInputError, 'InputSpec min_count has not met'):
         inputs_utils.resolve_input_artifacts(
             metadata_handler=m, pipeline_node=my_transform)
 
@@ -255,7 +255,7 @@ class InputsUtilsTest(test_case_utils.TfxTest, _TestMixin):
     self._my_transform.inputs.inputs['examples_1'].min_count = 2
 
     with self.assertRaisesRegex(
-        exceptions.InputResolutionError,
+        exceptions.InsufficientInputError,
         r'inputs\[examples_1\] has min_count = 2 but only got 1'):
       inputs_utils.resolve_input_artifacts(
           pipeline_node=self._my_transform,

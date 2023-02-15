@@ -296,7 +296,10 @@ class _Generator:
 
     try:
       resolved_info = task_gen_utils.generate_resolved_info(
-          self._mlmd_connection_manager, node)
+          mlmd_connection_manager=self._mlmd_connection_manager,
+          node=node,
+          skip_errors=[exceptions.InsufficientInputError],
+      )
     except exceptions.InputResolutionError as e:
       logging.exception(
           'Task cannot be generated for node %s since no input artifacts '

@@ -476,8 +476,8 @@ def resolve(
     if input_spec.min_count:
       for _, artifacts in resolved[input_key]:
         if len(artifacts) < input_spec.min_count:
-          raise exceptions.FailedPreconditionError(
-              'InputSpec min_count violation; '
+          raise exceptions.InsufficientInputError(
+              'InputSpec min_count has not met: '
               f'inputs[{input_key}] has min_count = {input_spec.min_count} '
               f'but only got {len(artifacts)} artifacts. '
               f'(Artifact IDs: {[a.id for a in artifacts]})')
