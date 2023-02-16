@@ -244,12 +244,16 @@ class TaskManager:
     # a failed execution and MLMD is updated accordingly.
     try:
       result = scheduler.schedule()
-    except Exception:  # pylint: disable=broad-except
+    except Exception as e:  # pylint: disable=broad-except
       logging.exception('Exception raised by: %s', scheduler)
-      result = ts.TaskSchedulerResult(
-          status=status_lib.Status(
-              code=status_lib.Code.ABORTED,
-              message=''.join(traceback.format_exception(*sys.exc_info()))))
+      if isinstance(e, status_lib.StatusNotOkError):
+        status = status_lib.Status(code=e.code, message=e.message)
+      else:
+        status = status_lib.Status(
+            code=status_lib.Code.UNKNOWN,
+            message=''.join(traceback.format_exception(*sys.exc_info())),
+        )
+      result = ts.TaskSchedulerResult(status=status)
     logging.info(
         'TaskSchedulerResult status %s from running %s',
         result.status,

@@ -520,6 +520,36 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertFalse(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
+  def test_scheduler_raises_StatusNotOkError(self):
+    # Register a fake task scheduler that raises StatusNotOkError in `schedule`.
+    self._register_task_scheduler(
+        None,
+        exception=status_lib.StatusNotOkError(
+            code=status_lib.Code.CANCELLED, message='test error'
+        ),
+    )
+    task_manager = self._run_task_manager()
+    self.assertTrue(task_manager.done())
+    self.assertIsNone(task_manager.exception())
+
+    # Check that the task was processed and MLMD execution marked cancelled.
+    self.assertTrue(self._task_queue.is_empty())
+    execution = self._get_execution()
+    self.assertEqual(
+        metadata_store_pb2.Execution.CANCELED, execution.last_known_state
+    )
+    self.assertEqual(
+        'test error',
+        execution.custom_properties[
+            constants.EXECUTION_ERROR_MSG_KEY
+        ].string_value,
+    )
+
+    # Check that stateful working dir, tmp_dir and output artifact URI are
+    # removed.
+    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    self.assertFalse(os.path.exists(self._task.tmp_dir))
+
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
   def test_graceful_handling_if_error_publishing_scheduler_results(
       self, mock_publish
