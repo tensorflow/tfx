@@ -80,12 +80,57 @@ class PipelineInputs:
   """A utility class to help declare input signatures of composable pipelines."""
 
   def __init__(self, inputs: Optional[Dict[str, channel.BaseChannel]] = None):
-    self._inputs = inputs or {}
-    self._wrapped_inputs = {
-        k: channel.PipelineInputChannel(v, output_key=k)
-        for k, v in self._inputs.items()
-    }
-    self._pipeline = None
+    """Creates a new instance.
+
+    Args:
+      inputs: A dict of input channels. IMPORTANT: Do not pass the same channel
+        instances to the components inside your sub-pipeline. Instead, use
+        p_in['key'] to retrieve the _wrapped_ channel, as only that one is valid
+        within the sub-pipeline. We recommend using PipelineInputs.add() to
+        avoid this mistake.
+    """
+    self._inputs: Dict[str, channel.BaseChannel] = {}
+    self._wrapped_inputs: Dict[str, channel.PipelineInputChannel] = {}
+    self._pipeline: Optional['Pipeline'] = None
+    if inputs:
+      for key, input_channel in inputs.items():
+        self.add(key, input_channel)
+
+  def add(
+      self, key: str, input_channel: channel.BaseChannel
+  ) -> channel.PipelineInputChannel:
+    """Adds a single input and returns the wrapped channel.
+
+    Example usage:
+    ```
+    def my_sub_pipeline(foo: BaseChannel, bar: BaseChannel) -> Pipeline:
+      p_in = PipelineInputs()
+      foo = p_in.add('foo_key', foo)  # Overwrite the `foo` variable!
+      bar = p_in.add('bar_key', bar)
+      my_component = MyComponent(input=foo)
+      return Pipeline(inputs=p_in, components=[my_component], ...)
+    ```
+
+    Args:
+      key: The key for the input to the pipeline. Must not exist yet.
+      input_channel: The outer channel that feeds into this pipeline input.
+
+    Returns:
+      An input channel that supplies the input to the inner pipeline. Provided
+      that it's only used within the sub-pipeline and not further outer-pipeline
+      components, you should assign this return value to the same variable from
+      which you passed in the `input_channel`, to prevent accidental use of the
+      outer pipeline's channel within the inner pipeline.
+
+    Raises:
+      KeyError: When an input with this key has already been added.
+    """
+    if key in self._inputs:
+      raise KeyError(f'{key} already exists as an input')
+    self._inputs[key] = input_channel
+    inner_channel = channel.PipelineInputChannel(input_channel, output_key=key)
+    self._wrapped_inputs[key] = inner_channel
+    return inner_channel
 
   @property
   def raw_inputs(self) -> Dict[str, channel.BaseChannel]:

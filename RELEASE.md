@@ -6,13 +6,14 @@
 
 ### For Pipeline Authors
 
+*   `PipelineInputs.add()` was added, which allows for a safer idiom when adding
+    inputs for a sub-pipeline. See its documentation for details.
 *   `placeholder.Placeholder.placeholders_involved()` was replaced with
     `placeholder.Placeholder.traverse()`.
 *   `placeholder.Predicate.dependent_channels()` was replaced with
     `channel_utils.get_dependent_channels(Placeholder)`.
 *   `placeholder.Predicate.encode_with_keys(...)` was replaced with
     `channel_utils.encode_placeholder_with_channels(Placeholder, ...)`.
-
 *   `placeholder.Predicate.from_comparison()` removed (was deprecated)
 
 ### For Component Authors
