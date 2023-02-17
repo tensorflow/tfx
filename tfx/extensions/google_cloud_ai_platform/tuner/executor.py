@@ -223,7 +223,7 @@ class _WorkerExecutor(base_executor.BaseExecutor):
     # by environment variables, starting the chief oracle in a sub-process,
     # as opposed to another thread in the main process, in order not to leak
     # the environment variables.
-    result = multiprocessing.Process(
+    result = multiprocessing.Process(  # pytype: disable=attribute-error  # re-none
         target=self._run_chief_oracle, args=(
             input_dict,
             exec_properties,
