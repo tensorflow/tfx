@@ -90,6 +90,8 @@ toc:
   - title: "Preprocess and transform data"
     path: /tfx/guide/tft
   - include: /tfx/transform/_toc.yaml
+  - title: "Data preprocessing best practices"
+    path: /tfx/guide/tft_bestpractices
 
 - title: "Modeling"
   style: accordion
