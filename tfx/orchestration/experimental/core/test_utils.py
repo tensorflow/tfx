@@ -127,9 +127,15 @@ def fake_component_output_with_handle(mlmd_handle,
                                       active=False,
                                       exec_properties=None):
   """Writes fake component output and execution to MLMD."""
-  output_key, output_value = next(iter(component.outputs.outputs.items()))
-  output = types.Artifact(output_value.artifact_spec.type)
-  output.uri = str(uuid.uuid4())
+  try:
+    output_key, output_value = next(iter(component.outputs.outputs.items()))
+  except StopIteration:
+    # This component does not have output spec.
+    output_artifacts = None
+  else:
+    output = types.Artifact(output_value.artifact_spec.type)
+    output.uri = str(uuid.uuid4())
+    output_artifacts = {output_key: [output]}
   contexts = context_lib.prepare_contexts(mlmd_handle, component.contexts)
   if not execution:
     execution = execution_publish_utils.register_execution(
@@ -138,9 +144,9 @@ def fake_component_output_with_handle(mlmd_handle,
         contexts,
         exec_properties=exec_properties)
   if not active:
-    execution_publish_utils.publish_succeeded_execution(mlmd_handle,
-                                                        execution.id, contexts,
-                                                        {output_key: [output]})
+    execution_publish_utils.publish_succeeded_execution(
+        mlmd_handle, execution.id, contexts, output_artifacts
+    )
 
 
 def fake_component_output(mlmd_connection,
