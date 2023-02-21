@@ -22,11 +22,14 @@ from absl import flags
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import pipeline_ops
+from tfx.orchestration.experimental.core import pipeline_state as pstate
+from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_sync_pipeline
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import io_utils
+from tfx.utils import status as status_lib
 
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
@@ -66,20 +69,20 @@ def _test_pipeline(ir_path: str, pipeline_id: str, run_id: str,
 def _execute_nodes(handle: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
                    version: int):
   """Creates fake execution of nodes."""
-  example_gen = test_utils.get_node(pipeline, 'my_example_gen')
-  stats_gen = test_utils.get_node(pipeline, 'my_statistics_gen')
-  schema_gen = test_utils.get_node(pipeline, 'my_schema_gen')
-  transform = test_utils.get_node(pipeline, 'my_transform')
-  example_validator = test_utils.get_node(pipeline, 'my_example_validator')
-  trainer = test_utils.get_node(pipeline, 'my_trainer')
-
-  test_utils.fake_example_gen_run_with_handle(handle, example_gen, 1, version)
-  test_utils.fake_component_output_with_handle(handle, stats_gen, active=False)
-  test_utils.fake_component_output_with_handle(handle, schema_gen, active=False)
-  test_utils.fake_component_output_with_handle(handle, transform, active=False)
-  test_utils.fake_component_output_with_handle(
-      handle, example_validator, active=False)
-  test_utils.fake_component_output_with_handle(handle, trainer, active=False)
+  for node in pstate.get_all_nodes(pipeline):
+    if node.node_info.id == 'my_example_gen':
+      test_utils.fake_example_gen_run_with_handle(handle, node, 1, version)
+    else:
+      test_utils.fake_component_output_with_handle(handle, node, active=False)
+    pipeline_state = test_utils.get_or_create_pipeline_state(handle, pipeline)
+    with pipeline_state:
+      with pipeline_state.node_state_update_context(
+          task_lib.NodeUid.from_node(pipeline, node)
+      ) as node_state:
+        node_state.update(
+            pstate.NodeState.COMPLETE,
+            status_lib.Status(code=status_lib.Code.OK, message='all ok'),
+        )
 
 
 def _get_ir_path(external_ir_file: str):

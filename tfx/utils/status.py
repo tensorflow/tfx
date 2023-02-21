@@ -17,12 +17,14 @@ Keep the status codes aligned with `google.rpc.Code`:
 https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto
 """
 
+import enum
 from typing import Optional
 
 import attr
 
 
-class Code:
+@enum.unique
+class Code(enum.IntEnum):
   """Convenience enum class for status codes that mirrors `google.rpc.Code`.
 
   Keep the status codes aligned with `google.rpc.Code`:
