@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Compiles a TFX pipeline into a TFX DSL IR proto."""
-import inspect
 import itertools
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Type, cast
 
@@ -33,7 +32,6 @@ from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
 from tfx.types import channel_utils
-from tfx.types import value_artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import name_utils
 
@@ -455,18 +453,6 @@ def _set_node_context(node: pipeline_pb2.PipelineNode,
       compiler_utils.node_context_name(
           pipeline_ctx.pipeline_info.pipeline_context_name,
           node.node_info.id))
-
-
-def _gather_implicit_inputs_from_exec_properties(
-    tfx_node: base_node.BaseNode) -> Iterator[Tuple[str, types.Channel]]:
-  for value in tfx_node.exec_properties.values():
-    if isinstance(value, placeholder.ChannelWrappedPlaceholder):
-      if not (inspect.isclass(value.channel.type) and  # pytype: disable=not-supported-yet
-              issubclass(value.channel.type, value_artifact.ValueArtifact)):
-        raise ValueError(
-            "Dynamic execution property only supports ValueArtifact typed "
-            f"channel. Got {value.channel.type.TYPE_NAME}.")
-      yield compiler_utils.implicit_channel_key(value.channel), value.channel
 
 
 def _set_node_outputs(node: pipeline_pb2.PipelineNode,
