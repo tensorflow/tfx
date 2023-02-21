@@ -209,10 +209,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             value {{int_value: 1}}
           }}
           custom_properties {{
-            key: 'state'
-            value {{string_value: 'published'}}
-          }}
-          custom_properties {{
             key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
             value {{string_value: "{version.__version__}"}}
           }}""",
@@ -429,10 +425,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             value {{int_value: 1}}
           }}
           custom_properties {{
-            key: 'state'
-            value {{string_value: 'published'}}
-          }}
-          custom_properties {{
             key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
             value {{string_value: "{version.__version__}"}}
           }}""",
@@ -453,10 +445,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           custom_properties {{
             key: 'prop'
             value {{int_value: 2}}
-          }}
-          custom_properties {{
-            key: 'state'
-            value {{string_value: 'published'}}
           }}
           custom_properties {{
             key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'

@@ -246,12 +246,6 @@ class ArtifactTest(tf.test.TestCase):
           }
         }
         custom_properties {
-          key: "state"
-          value {
-            string_value: "deleted"
-          }
-        }
-        custom_properties {
           key: "string_key"
           value {
             string_value: "string_value"
@@ -1294,6 +1288,7 @@ class ArtifactTest(tf.test.TestCase):
     tfx_artifact.state = 'foobar'
     self.assertEqual(tfx_artifact.mlmd_artifact.state,
                      metadata_store_pb2.Artifact.State.UNKNOWN)
+    self.assertEqual(tfx_artifact.state, 'foobar')
 
 
 if __name__ == '__main__':

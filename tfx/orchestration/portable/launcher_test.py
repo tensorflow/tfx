@@ -439,12 +439,6 @@ class LauncherTest(test_case_utils.TfxTest):
           """
           id: 1
           custom_properties {
-            key: "state"
-            value {
-              string_value: "published"
-            }
-          }
-          custom_properties {
             key: "tfx_version"
             value {
               string_value: "0.123.4.dev"
@@ -494,12 +488,6 @@ class LauncherTest(test_case_utils.TfxTest):
             key: "is_external"
             value {
               int_value: 0
-            }
-          }
-          custom_properties {
-            key: "state"
-            value {
-              string_value: "published"
             }
           }
           custom_properties {
@@ -630,12 +618,6 @@ class LauncherTest(test_case_utils.TfxTest):
             }
           }
           custom_properties {
-            key: "state"
-            value {
-              string_value: "published"
-            }
-          }
-          custom_properties {
             key: "tfx_version"
             value {
               string_value: "0.123.4.dev"
@@ -679,12 +661,6 @@ class LauncherTest(test_case_utils.TfxTest):
             key: "is_external"
             value {
               int_value: 0
-            }
-          }
-          custom_properties {
-            key: "state"
-            value {
-              string_value: "published"
             }
           }
           custom_properties {
@@ -812,12 +788,6 @@ class LauncherTest(test_case_utils.TfxTest):
             }
           }
           custom_properties {
-            key: "state"
-            value {
-              string_value: "published"
-            }
-          }
-          custom_properties {
             key: "tfx_version"
             value {
               string_value: "0.123.4.dev"
@@ -933,12 +903,6 @@ class LauncherTest(test_case_utils.TfxTest):
             }
           }
           custom_properties {
-            key: "state"
-            value {
-              string_value: "published"
-            }
-          }
-          custom_properties {
             key: "version"
             value {
               int_value: 0
@@ -990,12 +954,6 @@ class LauncherTest(test_case_utils.TfxTest):
             key: "span"
             value {
               int_value: 2
-            }
-          }
-          custom_properties {
-            key: "state"
-            value {
-              string_value: "published"
             }
           }
           custom_properties {

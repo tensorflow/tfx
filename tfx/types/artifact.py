@@ -52,16 +52,21 @@ class ArtifactState:
   # Indicates the artifact is abandoned, which is usually due to a failed or
   # cancelled execution.
   ABANDONED = 'abandoned'
+  # Indicates the artifact is a copy for referencing an external artifact.
+  REFERENCE = 'reference'
 
 
 MlmdArtifactState = metadata_store_pb2.Artifact.State
 _TFX_TO_MLMD_ARTIFACT_STATE = {
     ArtifactState.PENDING: MlmdArtifactState.PENDING,
     ArtifactState.PUBLISHED: MlmdArtifactState.LIVE,
-    ArtifactState.MISSING: MlmdArtifactState.UNKNOWN,
     ArtifactState.MARKED_FOR_DELETION: MlmdArtifactState.MARKED_FOR_DELETION,
     ArtifactState.DELETED: MlmdArtifactState.DELETED,
     ArtifactState.ABANDONED: MlmdArtifactState.ABANDONED,
+    ArtifactState.REFERENCE: MlmdArtifactState.REFERENCE,
+}
+_MLMD_TO_TFX_ARTIFACT_STATE = {
+    v: k for k, v in _TFX_TO_MLMD_ARTIFACT_STATE.items()
 }
 
 # Default split of examples data.
@@ -535,7 +540,12 @@ class Artifact(json_utils.Jsonable):
         key in self._artifact.properties):
       # Legacy artifact types which have explicitly defined system properties.
       return self._artifact.properties[key].string_value
-    return self._artifact.custom_properties[key].string_value
+    elif key in self._artifact.custom_properties:
+      return self._artifact.custom_properties[key].string_value
+    else:
+      # Do not call __getitem__ on properties or custom_properties if key is
+      # missing, so that property mapping is not mutateed.
+      return ''
 
   def _set_system_property(self, key: str, value: str):
     if (key in self._artifact_type.properties and
@@ -560,15 +570,22 @@ class Artifact(json_utils.Jsonable):
   @doc_controls.do_not_doc_in_subclasses
   def state(self) -> str:
     """State of the underlying mlmd artifact."""
-    return self._get_system_property('state')
+    # Backward compatibility behavior; for unknown artifact state string we
+    # uses UNKNOWN and 'state' custom property.
+    if self._artifact.state not in _MLMD_TO_TFX_ARTIFACT_STATE:
+      return self._get_system_property('state')
+    return _MLMD_TO_TFX_ARTIFACT_STATE[self._artifact.state]
 
   @state.setter
   def state(self, state: str):
     """Set state of the underlying artifact."""
-    self._set_system_property('state', state)
-    self._artifact.state = (
-        _TFX_TO_MLMD_ARTIFACT_STATE[state]
-        if state in _TFX_TO_MLMD_ARTIFACT_STATE else MlmdArtifactState.UNKNOWN)
+    if state not in _TFX_TO_MLMD_ARTIFACT_STATE:
+      # Backward compatibility behavior; for unknown artifact state string we
+      # uses UNKNOWN and 'state' custom property.
+      self._artifact.state = MlmdArtifactState.UNKNOWN
+      self._set_system_property('state', state)
+    else:
+      self._artifact.state = _TFX_TO_MLMD_ARTIFACT_STATE[state]
 
   @property
   @doc_controls.do_not_doc_in_subclasses

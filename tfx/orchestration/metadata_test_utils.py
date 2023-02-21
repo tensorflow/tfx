@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.metadata."""
 
 import tensorflow as tf
-from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
@@ -59,16 +58,6 @@ class MetadataTest(tf.test.TestCase):
         component_type='a.b.c',
         component_id='my_component',
         pipeline_info=self._pipeline_info5)
-
-  def _check_artifact_state(self, metadata_handler: metadata.Metadata,
-                            target: types.Artifact, state: str):
-    [artifact] = metadata_handler.store.get_artifacts_by_id([target.id])
-    if 'state' in artifact.properties:
-      current_artifact_state = artifact.properties['state'].string_value
-    else:
-      # This is for forward compatible for the artifact type cleanup.
-      current_artifact_state = artifact.custom_properties['state'].string_value
-    self.assertEqual(current_artifact_state, state)
 
   def _get_all_runs(self, metadata_handler: metadata.Metadata,
                     pipeline_name: str):
@@ -120,12 +109,6 @@ class MetadataTest(tf.test.TestCase):
             string_value: "[\\"train\\", \\"eval\\"]"
           }
         }
-        custom_properties {
-          key: "state"
-          value {
-            string_value: "published"
-          }
-        }
         state: LIVE
         """, artifact)
 
@@ -138,9 +121,6 @@ class MetadataTest(tf.test.TestCase):
 
       # Test artifact state.
       self.assertEqual(artifact.state, metadata_store_pb2.Artifact.LIVE)
-      self._check_artifact_state(m, artifact, ArtifactState.PUBLISHED)
-      m.update_artifact_state(artifact, ArtifactState.DELETED)
-      self._check_artifact_state(m, artifact, ArtifactState.DELETED)
 
   def testArtifactTypeRegistrationForwardCompatible(self):
     with self.metadata() as m:
@@ -853,7 +833,7 @@ class MetadataTest(tf.test.TestCase):
           m.get_component_run_context(self._component_info).id)
       self.assertLen(artifacts, 2)
       [artifact_b] = (a for a in artifacts if a.id == 2)
-      self._check_artifact_state(m, artifact_b, ArtifactState.PUBLISHED)
+      self.assertEqual(artifact_b.state, metadata_store_pb2.Artifact.LIVE)
 
   def testGetQualifiedArtifacts(self):
     with self.metadata() as m:
