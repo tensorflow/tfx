@@ -17,6 +17,7 @@ from typing import Sequence, Optional
 
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution.ops import ops
+from tfx.types import standard_artifacts
 
 
 @resolver_function.resolver_function
@@ -450,3 +451,36 @@ def sequential_rolling_range(artifacts,
 @sequential_rolling_range.output_type_inferrer
 def _infer_seqential_rolling_range_type(channel, **kwargs):  # pylint: disable=unused-argument
   return {'window': channel.type}
+
+
+@resolver_function.resolver_function(output_type=standard_artifacts.Examples)
+def training_range(model):
+  """Returns the Examples artifacts that a Model was trained on.
+
+  Let there be [Examples 1, Examples 2, Examples 3, Examples 4] present in MLMD,
+  as well as [Model 1, Model 2, Model 3].
+
+  Also let Model 1 be trained on [Examples 2, Examples 3].
+
+  training_range() called on Model 1 will return [Examples 2, Examples 3].
+
+  Example Usage:
+
+    latest_trained_model = latest_trained(trainer.outputs["model"])
+    with ForEach(training_range(latest_trained_model)) as each_examples:
+      bulk_inferrer = BulkInferrer(
+          examples=each_examples.no_trigger(),
+          model=latest_trained_model,
+          ...
+      )
+
+    Note that BulkInferrer can only process a single Example at a time, hence
+    the ForEach.
+
+  Args:
+    model: The Model artifact to find training Examples of.
+
+  Returns:
+    The Examples artifacts used to train the Model.
+  """
+  return ops.TrainingRange(model)

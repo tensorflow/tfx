@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Testing utility for builtin resolver ops."""
-from typing import Type, Any, Dict, List, Optional, Tuple, Union, Mapping
+from typing import Type, Any, Dict, List, Optional, Sequence, Tuple, Union, Mapping
 from unittest import mock
 
 from absl.testing import parameterized
@@ -106,11 +106,33 @@ class ResolverTestCase(
     """Return the underlying MLMD Artifacta of a list of TFleX Artifacts."""
     return [a.mlmd_artifact for a in artifacts]
 
+  def create_examples(
+      self,
+      spans_and_versions: Sequence[Tuple[int, int]],
+      contexts: Sequence[resolver_op.Context] = (),
+  ) -> List[types.Artifact]:
+    """Build Examples artifacts and add an ExampleGen execution to MLMD."""
+    examples = []
+    for span, version in spans_and_versions:
+      examples.append(
+          self.prepare_tfx_artifact(
+              Examples, properties={'span': span, 'version': version}
+          )
+      )
+    self.put_execution(
+        'ExampleGen',
+        inputs={},
+        outputs={'examples': self.unwrap_tfx_artifacts(examples)},
+        contexts=contexts,
+    )
+    return examples
+
   def train_on_examples(
       self,
       model: types.Artifact,
       examples: List[types.Artifact],
       transform_graph: Optional[types.Artifact] = None,
+      contexts: Sequence[resolver_op.Context] = (),
   ):
     """Add an Execution to MLMD where a Trainer trains on the examples."""
     inputs = {'examples': self.unwrap_tfx_artifacts(examples)}
@@ -120,6 +142,7 @@ class ResolverTestCase(
         'TFTrainer',
         inputs=inputs,
         outputs={'model': self.unwrap_tfx_artifacts([model])},
+        contexts=contexts,
     )
 
   def evaluator_bless_model(

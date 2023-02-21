@@ -29,6 +29,7 @@ from tfx.orchestration import pipeline
 from tfx.orchestration.portable import inputs_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
+from tfx.types import channel_utils
 from tfx.types import resolved_channel
 
 
@@ -143,7 +144,9 @@ class CannedResolverFunctionsTest(
 
   def testLatestCreatedResolverFn_E2E(self):
     channel = canned_resolver_functions.latest_created(
-        types.Channel(test_utils.DummyArtifact, output_key='x'), n=2)
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
+        n=2,
+    )
     pipeline_node = _compile_inputs({'x': channel})
 
     # Populate the MLMD database with DummyArtifacts to test the input
@@ -174,7 +177,7 @@ class CannedResolverFunctionsTest(
 
   def testLatestVersionFn_E2E(self):
     channel = canned_resolver_functions.latest_version(
-        types.Channel(test_utils.DummyArtifact, output_key='x'),
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
         n=1,
     )
     pipeline_node = _compile_inputs({'x': channel})
@@ -197,10 +200,11 @@ class CannedResolverFunctionsTest(
 
   def testStaticRangeResolverFn_E2E(self):
     channel = canned_resolver_functions.static_range(
-        types.Channel(test_utils.DummyArtifact, output_key='x'),
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
         end_span_number=5,
         keep_all_versions=True,
-        exclude_span_numbers=[2])
+        exclude_span_numbers=[2],
+    )
     pipeline_node = _compile_inputs({'x': channel})
 
     spans = [0, 1, 2, 3, 3, 5, 7, 10]
@@ -221,9 +225,10 @@ class CannedResolverFunctionsTest(
 
   def testStaticRangeResolverFn_MinSpans_RaisesSkipSignal(self):
     channel = canned_resolver_functions.static_range(
-        types.Channel(test_utils.DummyArtifact, output_key='x'),
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
         start_span_number=0,
-        end_span_number=5)
+        end_span_number=5,
+    )
     pipeline_node = _compile_inputs({'x': channel})
 
     spans = [0, 1, 2, 3, 3, 5, 7, 10]
@@ -236,11 +241,12 @@ class CannedResolverFunctionsTest(
 
   def testRollingRangeResolverFn_E2E(self):
     channel = canned_resolver_functions.rolling_range(
-        types.Channel(test_utils.DummyArtifact, output_key='x'),
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
         start_span_number=3,
         num_spans=2,
         skip_num_recent_spans=1,
-        keep_all_versions=True)
+        keep_all_versions=True,
+    )
     pipeline_node = _compile_inputs({'x': channel})
 
     spans = [1, 2, 3, 3, 7, 8]
@@ -261,7 +267,8 @@ class CannedResolverFunctionsTest(
 
   def testAllSpansResolverFn_E2E(self):
     channel = canned_resolver_functions.all_spans(
-        types.Channel(test_utils.DummyArtifact, output_key='x'))
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact)
+    )
     pipeline_node = _compile_inputs({'x': channel})
 
     spans = [0, 1, 2, 3, 3, 5, 7, 10]
@@ -280,7 +287,8 @@ class CannedResolverFunctionsTest(
 
   def testShuffleResolverFn_E2E(self):
     channel = canned_resolver_functions.shuffle(
-        types.Channel(test_utils.DummyArtifact, output_key='x'))
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact)
+    )
     pipeline_node = _compile_inputs({'x': channel})
 
     spans = [1, 2, 3, 4]
@@ -298,8 +306,13 @@ class CannedResolverFunctionsTest(
 
   def testLatestPipelineRunOutputsResolverFn(self):
     producer_pipeline = pipeline.Pipeline(
-        outputs={'x': types.Channel(test_utils.DummyArtifact, output_key='x')},
-        pipeline_name='producer-pipeline')
+        outputs={
+            'x': channel_utils.artifact_query(
+                artifact_type=test_utils.DummyArtifact
+            )
+        },
+        pipeline_name='producer-pipeline',
+    )
     return_value = canned_resolver_functions.latest_pipeline_run_outputs(
         pipeline=producer_pipeline)
 
@@ -309,10 +322,11 @@ class CannedResolverFunctionsTest(
 
   def testRollingRangeResolverFn_MinSpans_RaisesSkipSignal(self):
     channel = canned_resolver_functions.rolling_range(
-        types.Channel(test_utils.DummyArtifact, output_key='x'),
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
         start_span_number=3,
         num_spans=5,
-        skip_num_recent_spans=1)
+        skip_num_recent_spans=1,
+    )
     pipeline_node = _compile_inputs({'x': channel})
 
     spans = [1, 2, 3, 3, 7, 8]
@@ -325,12 +339,13 @@ class CannedResolverFunctionsTest(
 
   def testSequentialRollingRangeResolverFn_E2E(self):
     xs = canned_resolver_functions.sequential_rolling_range(
-        types.Channel(test_utils.DummyArtifact),
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
         start_span_number=1,
         num_spans=3,
         skip_num_recent_spans=1,
         keep_all_versions=False,
-        exclude_span_numbers=[5])
+        exclude_span_numbers=[5],
+    )
     with for_each.ForEach(xs) as each_x:
       inputs = {'x': each_x}
     pipeline_node = _compile_inputs(inputs)
@@ -360,11 +375,12 @@ class CannedResolverFunctionsTest(
     # num_spans=10 so no artifacts will be returnd by the resolver_fn and
     # a SkipSignal will be raised during input resolution.
     xs = canned_resolver_functions.sequential_rolling_range(
-        types.Channel(test_utils.DummyArtifact),
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
         start_span_number=1,
         num_spans=10,
         skip_num_recent_spans=0,
-        keep_all_versions=False)
+        keep_all_versions=False,
+    )
     with for_each.ForEach(xs) as each_x:
       inputs = {'x': each_x}
     pipeline_node = _compile_inputs(inputs)
@@ -377,9 +393,40 @@ class CannedResolverFunctionsTest(
         pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
     self.assertIsInstance(resolved, inputs_utils.Skip)
 
+  def testTrainingRangeResolverFn_E2E(self):
+    contexts = [self.put_context('pipeline', 'pipeline')]
+
+    # Build Examples.
+    spans = [0, 1, 2, 3]
+    versions = [0, 0, 0, 0]
+    examples = self.create_examples(zip(spans, versions))
+
+    # Train a Model on spans [1, 2, 3].
+    model = self.prepare_tfx_artifact(test_utils.Model)
+    self.train_on_examples(model, examples[1:4], contexts=contexts)
+
+    # Perform input resoution.
+    channel = canned_resolver_functions.training_range(
+        channel_utils.artifact_query(artifact_type=test_utils.Model)
+    )
+    pipeline_node = _compile_inputs({'x': channel})
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle
+    )
+    self.assertIsInstance(resolved, inputs_utils.Trigger)
+
+    # Test that the input resolution returns Examples with spans 1, 2, and 3.
+    actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
+    expected_artifacts = [e.mlmd_artifact for e in examples[1:4]]
+    self.assertResolvedAndMLMDArtifactListEqual(
+        actual_artifacts, expected_artifacts
+    )
+
   def testResolverFnContext(self):
     channel = canned_resolver_functions.latest_created(
-        types.Channel(test_utils.DummyArtifact, output_key='x'), n=2)
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
+        n=2,
+    )
 
     self.assertIsInstance(channel, resolved_channel.ResolvedChannel)
     self.assertEqual(channel.invocation.function.__name__, 'latest_created')
