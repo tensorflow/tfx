@@ -17,6 +17,7 @@ from tfx.dsl.compiler import compiler
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.decorators import component
+from tfx.dsl.control_flow.for_each import ForEach
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.orchestration import pipeline as pipeline_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -123,5 +124,27 @@ def create_pipeline() -> pipeline_pb2.Pipeline:
           chore_b,
       ],
       enable_cache=True)
+  dsl_compiler = compiler.Compiler()
+  return dsl_compiler.compile(pipeline)
+
+
+def create_pipeline_with_foreach() -> pipeline_pb2.Pipeline:
+  """Builds a test pipeline with ForEach."""
+  # pylint: disable=no-value-for-parameter
+  example_gen = _example_gen().with_id('my_example_gen')
+  with ForEach(example_gen.outputs['examples']) as examples:
+    stats_gen = _statistics_gen(examples=examples).with_id(
+        'my_statistics_gen_in_foreach'
+    )
+
+  pipeline = pipeline_lib.Pipeline(
+      pipeline_name='my_pipeline',
+      pipeline_root='/path/to/root',
+      components=[
+          example_gen,
+          stats_gen,
+      ],
+      enable_cache=True,
+  )
   dsl_compiler = compiler.Compiler()
   return dsl_compiler.compile(pipeline)

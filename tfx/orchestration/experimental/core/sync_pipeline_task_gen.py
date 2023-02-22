@@ -268,10 +268,16 @@ class _Generator:
     latest_executions_set = task_gen_utils.get_latest_executions_set(
         node_executions)
 
+    # Generates tasks from resolved inputs if the node doesn't have any
+    # execution.
+    if not latest_executions_set:
+      result.extend(self._generate_tasks_from_resolved_inputs(node))
+      return result
+
     # If all the executions are successful, the node is COMPLETE.
-    if latest_executions_set and all(
-        execution_lib.is_execution_successful(e)
-        for e in latest_executions_set):
+    if all(
+        execution_lib.is_execution_successful(e) for e in latest_executions_set
+    ):
       logging.info('Node successful: %s', node_uid)
       result.append(
           task_lib.UpdateNodeStateTask(
@@ -310,19 +316,25 @@ class _Generator:
                 node_uid=node_uid, error_msg=error_msg))
       return result
 
-    # TODO(b/223627713): a node in a ForEach is not restartable, we fail the
-    # node for now. Will fix this in a separate CL.
+    # Restarts canceled node, if the node state is STARTING.
     canceled_executions = [
         e for e in latest_executions_set
         if execution_lib.is_execution_canceled(e)
     ]
-    if canceled_executions and (len(latest_executions_set) > 1 or
-                                node_state.state != pstate.NodeState.STARTING):
-      result.append(
-          self._update_node_state_to_failed_task(
-              node_uid=node_uid,
-              error_msg='Restart from canceled node wrapped in ForEach is not supported.'
-          ))
+    if canceled_executions and node_state.state == pstate.NodeState.STARTING:
+      new_executions = (
+          task_gen_utils.register_executions_from_existing_executions(
+              self._mlmd_handle, node, canceled_executions
+          )
+      )
+      with mlmd_state.mlmd_execution_atomic_op(
+          mlmd_handle=self._mlmd_handle, execution_id=new_executions[0].id
+      ) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+
+      result.extend(
+          self._generate_tasks_from_existing_execution(new_executions[0], node)
+      )
       return result
 
     # If the node has active executions, creates tasks from the oldest active
@@ -336,9 +348,7 @@ class _Generator:
                                                        node))
       return result
 
-    # Finally, we are ready to generate tasks for the node by resolving inputs.
-    result.extend(self._generate_tasks_from_resolved_inputs(node))
-    return result
+    raise RuntimeError('Task generation process should not reach this point.')
 
   def _update_node_state_to_failed_task(self, node_uid: task_lib.NodeUid,
                                         error_msg: str) -> task_lib.Task:

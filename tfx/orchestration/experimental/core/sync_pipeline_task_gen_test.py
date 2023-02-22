@@ -669,6 +669,89 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(pstate.NodeState.RUNNING, update_node_state_task.state)
     self.assertEqual(node_uid, stats_gen_task.node_uid)
 
+  def test_restart_node_cancelled_due_to_stopping_with_foreach(self):
+    """Tests that a node in ForEach previously cancelled can be restarted."""
+    pipeline = test_sync_pipeline.create_pipeline_with_foreach()
+    runtime_parameter_utils.substitute_runtime_parameter(
+        pipeline,
+        {
+            compiler_constants.PIPELINE_ROOT_PARAMETER_NAME: (
+                self._pipeline_root
+            ),
+            compiler_constants.PIPELINE_RUN_ID_PARAMETER_NAME: str(
+                uuid.uuid4()
+            ),
+        },
+    )
+    example_gen = test_utils.get_node(pipeline, 'my_example_gen')
+    stats_gen = test_utils.get_node(pipeline, 'my_statistics_gen_in_foreach')
+
+    # Simulates that ExampleGen has processed two spans.
+    test_utils.fake_example_gen_run(self._mlmd_connection, example_gen, 1, 1)
+    test_utils.fake_example_gen_run(self._mlmd_connection, example_gen, 2, 1)
+
+    # StatsGen should have two executions.
+    [stats_gen_task] = self._generate_and_test(
+        False,
+        num_initial_executions=2,
+        num_tasks_generated=1,
+        num_new_executions=2,
+        num_active_executions=2,
+        ignore_update_node_state_tasks=True,
+        pipeline=pipeline,
+    )
+    stats_gen_node_uid = task_lib.NodeUid.from_node(pipeline, stats_gen)
+    self.assertEqual(stats_gen_node_uid, stats_gen_task.node_uid)
+
+    with self._mlmd_connection as m:
+      # Simulates that the first execution of StatsGen is completed.
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, stats_gen_task.execution_id
+      ) as e:
+        e.last_known_state = metadata_store_pb2.Execution.COMPLETE
+
+      stats_gen_execution_type = [
+          t for t in m.store.get_execution_types() if 'statistics_gen' in t.name
+      ][0]
+      executions = m.store.get_executions_by_type(stats_gen_execution_type.name)
+      self.assertLen(executions, 2)
+
+      # Simulates that all other uncompleted executions of StatsGen is CANCELED.
+      with mlmd_state.mlmd_execution_atomic_op(m, executions[1].id) as e:
+        e.last_known_state = metadata_store_pb2.Execution.CANCELED
+
+      # Makes sure that at this point there are 2 executioins for StatsGen
+      # One of them is completed, while the other is canceled.
+      executions = m.store.get_executions_by_type(stats_gen_execution_type.name)
+      self.assertLen(executions, 2)
+      self.assertEqual(
+          executions[0].last_known_state, metadata_store_pb2.Execution.COMPLETE
+      )
+      self.assertEqual(
+          executions[1].last_known_state, metadata_store_pb2.Execution.CANCELED
+      )
+
+    # Changes node state of StatsGen to STARTING.
+    with self._mlmd_connection as m:
+      pipeline_state = test_utils.get_or_create_pipeline_state(m, pipeline)
+      with pipeline_state:
+        with pipeline_state.node_state_update_context(
+            stats_gen_node_uid
+        ) as node_state:
+          node_state.update(pstate.NodeState.STARTING)
+
+    # 1 new executions should be created for stats_gen.
+    [stats_gen_task] = self._generate_and_test(
+        False,
+        num_initial_executions=4,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        ignore_update_node_state_tasks=True,
+    )
+    self.assertEqual(stats_gen_node_uid, stats_gen_task.node_uid)
+    self.assertIsInstance(stats_gen_task, task_lib.ExecNodeTask)
+
   @parameterized.parameters(False, True)
   def test_conditional_execution(self, evaluate):
     """Tests conditionals in the pipeline.
