@@ -422,6 +422,46 @@ class CannedResolverFunctionsTest(
         actual_artifacts, expected_artifacts
     )
 
+  def testSpanDrivenEvaluatorsResolverFn_E2E(self):
+    contexts = [self.put_context('pipeline', 'pipeline')]
+
+    # Build Examples with spans [1, 2, ... , 10]
+    spans = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    versions = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    examples = self.create_examples(zip(spans, versions), contexts=contexts)
+
+    # Train 5 Models on 3 spans [N, N+1, N+2].
+    models = []
+    for i in range(5):
+      model = self.prepare_tfx_artifact(test_utils.Model)
+      self.train_on_examples(model, examples[i : i + 3], contexts=contexts)
+      models.append(model)
+
+    # Perform input resoution.
+    channel_by_str = canned_resolver_functions.span_driven_evaluator_inputs(
+        examples=channel_utils.artifact_query(
+            artifact_type=test_utils.Examples
+        ),
+        models=channel_utils.artifact_query(artifact_type=test_utils.Model),
+        wait_spans_before_eval=1,
+        evaluation_training_offset=2,
+        additional_spans_per_eval=3,
+        start_span_number=1,
+    )
+    pipeline_node = _compile_inputs(channel_by_str)
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle
+    )
+
+    self.assertNotEmpty(resolved)
+    expected = {
+        # The resolved Model should be trained on spans smaller than 6 - 2 = 4.
+        'model': [models[0]],
+        # The resolved Examples should have spans [10 - 1 - 3, 10 - 1] = [6, 9].
+        'examples': examples[5:9],
+    }
+    self.assertArtifactMapsEqual(expected, resolved[0])
+
   def testResolverFnContext(self):
     channel = canned_resolver_functions.latest_created(
         channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),

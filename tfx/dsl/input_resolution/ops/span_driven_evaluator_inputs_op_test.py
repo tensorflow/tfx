@@ -561,9 +561,9 @@ class SpanDrivenEvaluatorInputsOpTest(
     self.assertArtifactMapsEqual(actual, expected)
 
   def testSpanDrivenEvaluatorInputs_AllArguments(self):
-    # Evaluates the model on last-1-week rolling window. [start_span, end_span]
-    # is [9, 9 - 3] = [9, 6]. max_span is 6 - 3 = 3. Model 1 is the latest model
-    # that has not trained on span 3.
+    # Evaluates the model on the next 3 day rolling window.
+    # [start_span, end_span] is [9 - 1 - 3, 9 - 1] = [5, 8]. max_span is
+    # 5 - 2 = 3. Model 1 is the latest model that has not trained on span 3.
     actual = self._span_driven_evaluator(
         self.models,
         self.examples[:9],
@@ -585,7 +585,7 @@ class SpanDrivenEvaluatorInputsOpTest(
     self.assertArtifactMapsEqual(actual, expected)
 
     # Evaluates the model on last-1-week rolling window. [start_span, end_span]
-    # is [10, 10 - 6] = [10, 4]. max_span is 4 - (-7) = 11. Model 5 is the
+    # is [10 - 6, 10] = [4, 10]. max_span is 4 - (-7) = 11. Model 5 is the
     # latest model that has not trained on span 11.
     actual = self._span_driven_evaluator(
         self.models,

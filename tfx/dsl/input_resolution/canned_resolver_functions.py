@@ -17,6 +17,8 @@ from typing import Sequence, Optional
 
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution.ops import ops
+from tfx.dsl.input_resolution.ops import ops_utils
+from tfx.types import channel as channel_type
 from tfx.types import standard_artifacts
 
 
@@ -484,3 +486,129 @@ def training_range(model):
     The Examples artifacts used to train the Model.
   """
   return ops.TrainingRange(model)
+
+
+@resolver_function.resolver_function
+def span_driven_evaluator_inputs(
+    examples: channel_type.BaseChannel,
+    models: channel_type.BaseChannel,
+    wait_spans_before_eval: int = 0,
+    evaluation_training_offset: int = 0,
+    additional_spans_per_eval: int = 0,
+    start_span_number: int = 0,
+):
+  """Returns a dictionary with a Model and the Examples to evaluate it with.
+
+  ******************************************************************************
+  INTENDED FOR TFX -> TFLEX MIGRATION ONLY, CONSULT TFX TEAM BEFORE USE.
+  ******************************************************************************
+  See ContinuousSpanDrivenSpec in TFX for details.
+
+  Let max_span be the largest span present in the passed in examples.
+
+  The Examples with spans > start_span_number and in the following range
+  (inclusive) will be used to evaluate the Model:
+
+  [
+    max_span - wait_spans_before_eval - additional_spans_per_eval
+    max_span - wait_spans_before_eval
+  ]
+
+  Let start_span = max_span - wait_spans_before_eval - additional_spans_per_eval
+
+  Then, the latest created Model trained on a span smaller than (exclusive)
+  start_span - evaluation_training_offset will be selected.
+
+  Consider Examples with spans [1, 2, 3, ..., 10]. And let there be 7 Models,
+  where Model N was trained on spans [N, N+1, N+2]. So Model 4 was trained on
+  spans [3, 4, 5].
+
+  span_driven_evaluator_inputs(
+    examples,
+    models,
+    wait_spans_before_eval=1,
+    evaluation_training_offset=2,
+    additional_spans_per_eval=3
+    start_span_number=1,
+  )
+
+  The Examples with spans > start_span_number = 1, and within the range
+  [10 - 1 - 3, 10 - 1] = [6, 9] will be used for evaluation. Model 1, trained
+  on spans [1, 2, 3] is the latest created Model trained on a span smaller than
+  6 - 2 = 4.
+
+  Therefore,
+
+  {
+      "model": [Model 1]
+      "examples": [Example 6, Example 7, Example 8, Example 9]
+  }
+
+  will be returned.
+
+  A SkipSignal will be present in the compiled IR if:
+    1. There are no input Examples and/or Models.
+    2. The evaluation span range contains spans not present in the passed in
+       Examples.
+    3. No Model was found that was trained on an Example with a small enough
+       span.
+
+  This means the Evaluator component (and any downstream components) will not
+  run.
+
+  Example Usage:
+    evaluator_inputs = span_driven_evaluator_inputs(
+        example_gen.outputs["example"], trainer.outputs["model"])
+    evaluator = Evaluator(
+        model=evaluator_inputs["model"],
+        examples=evaluator_inputs["examples"],
+        ...
+    )
+
+  Args:
+    examples: The list of Examples artifacts to consider.
+    models: The list of Model artifacts to consider.
+    wait_spans_before_eval: If 0, as soon as a new example span appears, we
+      perform an evaluation on it.  Otherwise, when example span (D +
+      wait_spans_before_eval) first appears, we perform an evaluation on example
+      span D.
+    evaluation_training_offset: Indicates how to choose the model checkpoint for
+      evaluation. When evaluating examples from span D, we choose the latest
+      model checkpoint which did not train on span (D -
+      evaluation_training_offset).  Note that negative values are allowed here
+      intentionally.
+    additional_spans_per_eval: Indicates how many spans should be included with
+      an evaluation at span D. If 0, then only span D's Examples are evaluated.
+      Otherwise when evaluating using span D, we will also include examples in D
+      - 1, D - 2, ... up through D - additional_spans_per_eval.
+    start_span_number: Indicates the smallest span number to be considered. Only
+      spans >= start_span_number will be considered.
+
+  Returns:
+    A dictionary containing a single Model and the list of Examples to evaluate
+    it with. The Model will be latest created eligible model.
+  """
+  input_dict = {
+      ops_utils.EXAMPLES_KEY: examples,
+      ops_utils.MODEL_KEY: models,
+  }
+  return ops.SpanDrivenEvaluatorInputs(
+      input_dict,
+      wait_spans_before_eval=wait_spans_before_eval,
+      evaluation_training_offset=evaluation_training_offset,
+      additional_spans_per_eval=additional_spans_per_eval,
+      start_span_number=start_span_number,
+  )
+
+
+@span_driven_evaluator_inputs.output_type_inferrer
+def _infer_span_driven_evaluator_inputs_type(
+    examples: channel_type.BaseChannel,
+    models: channel_type.BaseChannel,
+    **kwargs,  # pylint: disable=unused-argument
+):
+  """Output type inferrer for span_driven_evaluator_inputs."""
+  return {
+      ops_utils.MODEL_KEY: models.type,
+      ops_utils.EXAMPLES_KEY: examples.type,
+  }

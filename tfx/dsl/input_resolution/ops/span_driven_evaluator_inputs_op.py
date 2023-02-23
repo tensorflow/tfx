@@ -92,7 +92,7 @@ class SpanDrivenEvaluatorInputs(
     raise exceptions.SkipSignal()
 
   def apply(self, input_dict: typing_utils.ArtifactMultiDict):
-    """Returns the sorted artifacts with unique spans.
+    """Returns a single Model and the list of Examples to evaluate it with.
 
     The input_dict is expected to have the following format:
 
