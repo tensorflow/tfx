@@ -8,7 +8,7 @@ intermediate outputs for the benchmarks, and trained models), use the following
 steps:
 
 1. Generate a CSV dataset. See the [TFX Chicago Taxi example][0] for details
-as to how to do so. In particular, [`taxi_pipeline_kubeflow_gcp.py`][1] has the
+as to how to do so. In particular, [`taxi_pipeline_kubeflow_gcp_bqml.py`][1] has the
 BigQuery query used to generate the dataset. You can run this query on BigQuery
 and export the results to a CSV file.
 
@@ -23,4 +23,4 @@ This will regenerate the derived TFRecords dataset, as well as all intermediate
 outputs required for running the benchmarks.
 
 [0]: https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/README.md
-[1]: https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow_gcp.py
+[1]: https://github.com/tensorflow/tfx/blob/master/tfx/examples/bigquery_ml/taxi_pipeline_kubeflow_gcp_bqml.py
