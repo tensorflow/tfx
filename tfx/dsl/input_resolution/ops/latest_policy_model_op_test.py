@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.latest_policy_model_op."""
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from absl.testing import parameterized
 
@@ -83,12 +83,30 @@ class LatestPolicyModelOpTest(
 
     self.artifacts = [self.model_1, self.model_2, self.model_3]
 
+  def assertDictKeysEmpty(
+      self,
+      output_dict: Dict[str, List[types.Artifact]],
+      policy: latest_policy_model_op.Policy,
+  ):
+    # Check that the corresponding Policy keys are in the output dictionary.
+    self.assertIn('model', output_dict)
+    if policy == _LATEST_EVALUATOR_BLESSED or policy == _LATEST_BLESSED:
+      self.assertIn('model_blessing', output_dict)
+    elif policy == _LATEST_INFRA_VALIDATOR_BLESSED or policy == _LATEST_BLESSED:
+      self.assertIn('model_infra_blessing', output_dict)
+    elif policy == _LATEST_PUSHED:
+      self.assertIn('model', output_dict)
+
+    # Check that all the artifact lists are empty.
+    for artifacts in output_dict.values():
+      self.assertEmpty(artifacts)
+
   def testLatestPolicyModelOpTest_RaisesSkipSignal(self):
     with self.assertRaises(exceptions.SkipSignal):
       test_utils.run_resolver_op(
           ops.LatestPolicyModel,
           {},
-          policy=latest_policy_model_op.Policy.LATEST_EXPORTED,
+          policy=_LATEST_EXPORTED,
           raise_skip_signal=True,
           context=resolver_op.Context(store=self.store),
       )
@@ -110,61 +128,70 @@ class LatestPolicyModelOpTest(
       self._latest_policy_model(_LATEST_PUSHED)
 
   def testLatestPolicyModelOpTest_DoesNotRaiseSkipSignal(self):
-    self.assertEmpty(
+    self.assertDictKeysEmpty(
         test_utils.run_resolver_op(
             ops.LatestPolicyModel,
             {},
-            policy=latest_policy_model_op.Policy.LATEST_EXPORTED,
+            policy=_LATEST_EXPORTED,
             raise_skip_signal=False,
             context=resolver_op.Context(store=self.store),
-        )
+        ),
+        policy=_LATEST_EXPORTED,
     )
 
     # Keys present in input_dict but contains no artifacts.
-    self.assertEmpty(
+    self.assertDictKeysEmpty(
         self._latest_policy_model(
             _LATEST_EXPORTED, raise_skip_signal=False, model=[]
-        )
+        ),
+        policy=_LATEST_EXPORTED,
     )
-    self.assertEmpty(
+    self.assertDictKeysEmpty(
         self._latest_policy_model(
             _LATEST_EVALUATOR_BLESSED,
             raise_skip_signal=False,
             model_blessing=[],
-        )
+        ),
+        policy=_LATEST_EXPORTED,
     )
-    self.assertEmpty(
+    self.assertDictKeysEmpty(
         self._latest_policy_model(
             _LATEST_INFRA_VALIDATOR_BLESSED,
             raise_skip_signal=False,
             model_infra_blessing=[],
-        )
+        ),
+        policy=_LATEST_INFRA_VALIDATOR_BLESSED,
     )
-    self.assertEmpty(
+    self.assertDictKeysEmpty(
         self._latest_policy_model(
             _LATEST_BLESSED,
             raise_skip_signal=False,
             model_blessing=[],
             model_infra_blessing=[],
-        )
+        ),
+        policy=_LATEST_BLESSED,
     )
 
     # Models present in input_dict but none of them meet the specified policy.
-    self.assertEmpty(
+    self.assertDictKeysEmpty(
         self._latest_policy_model(
             _LATEST_EVALUATOR_BLESSED, raise_skip_signal=False
-        )
+        ),
+        policy=_LATEST_EVALUATOR_BLESSED,
     )
-    self.assertEmpty(
+    self.assertDictKeysEmpty(
         self._latest_policy_model(
             _LATEST_INFRA_VALIDATOR_BLESSED, raise_skip_signal=False
-        )
+        ),
+        policy=_LATEST_INFRA_VALIDATOR_BLESSED,
     )
-    self.assertEmpty(
-        self._latest_policy_model(_LATEST_BLESSED, raise_skip_signal=False)
+    self.assertDictKeysEmpty(
+        self._latest_policy_model(_LATEST_BLESSED, raise_skip_signal=False),
+        policy=_LATEST_BLESSED,
     )
-    self.assertEmpty(
-        self._latest_policy_model(_LATEST_PUSHED, raise_skip_signal=False)
+    self.assertDictKeysEmpty(
+        self._latest_policy_model(_LATEST_PUSHED, raise_skip_signal=False),
+        policy=_LATEST_PUSHED,
     )
 
   def testLatestPolicyModelOpTest_ValidateInputDict(self):
@@ -270,21 +297,25 @@ class LatestPolicyModelOpTest(
       self._latest_policy_model(_LATEST_BLESSED)
       self._latest_policy_model(_LATEST_PUSHED)
 
-    self.assertEmpty(
+    self.assertDictKeysEmpty(
         self._latest_policy_model(
             _LATEST_EVALUATOR_BLESSED, raise_skip_signal=False
-        )
+        ),
+        policy=_LATEST_EVALUATOR_BLESSED,
     )
-    self.assertEmpty(
+    self.assertDictKeysEmpty(
         self._latest_policy_model(
             _LATEST_INFRA_VALIDATOR_BLESSED, raise_skip_signal=False
-        )
+        ),
+        policy=_LATEST_INFRA_VALIDATOR_BLESSED,
     )
-    self.assertEmpty(
-        self._latest_policy_model(_LATEST_BLESSED, raise_skip_signal=False)
+    self.assertDictKeysEmpty(
+        self._latest_policy_model(_LATEST_BLESSED, raise_skip_signal=False),
+        policy=_LATEST_BLESSED,
     )
-    self.assertEmpty(
-        self._latest_policy_model(_LATEST_PUSHED, raise_skip_signal=False)
+    self.assertDictKeysEmpty(
+        self._latest_policy_model(_LATEST_PUSHED, raise_skip_signal=False),
+        policy=_LATEST_PUSHED,
     )
 
     model_push_1 = self.push_model(self.model_1)

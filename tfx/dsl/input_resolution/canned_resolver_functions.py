@@ -16,6 +16,7 @@
 from typing import Sequence, Optional
 
 from tfx.dsl.input_resolution import resolver_function
+from tfx.dsl.input_resolution.ops import latest_policy_model_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.types import channel as channel_type
@@ -471,7 +472,7 @@ def training_range(model):
     latest_trained_model = latest_trained(trainer.outputs["model"])
     with ForEach(training_range(latest_trained_model)) as each_examples:
       bulk_inferrer = BulkInferrer(
-          examples=each_examples.no_trigger(),
+          examples=each_examples,
           model=latest_trained_model,
           ...
       )
@@ -612,3 +613,84 @@ def _infer_span_driven_evaluator_inputs_type(
       ops_utils.MODEL_KEY: models.type,
       ops_utils.EXAMPLES_KEY: examples.type,
   }
+
+
+@resolver_function.resolver_function
+def _latest_policy_model(
+    models: channel_type.BaseChannel,
+    policy: int,  # TODO(b/270621886): Change back to Policy Enum.
+    model_blessings: Optional[channel_type.BaseChannel] = None,
+    model_infra_blessings: Optional[channel_type.BaseChannel] = None,
+    raise_skip_signal: bool = False,
+):
+  """Calls the LatestPolicyModel ResolverOp. For internal use only."""
+  # Build the input dictionary.
+  input_dict = {ops_utils.MODEL_KEY: models}
+  if model_blessings is not None:
+    input_dict[ops_utils.MODEL_BLESSSING_KEY] = model_blessings
+  if model_infra_blessings is not None:
+    input_dict[ops_utils.MODEL_INFRA_BLESSING_KEY] = model_infra_blessings
+
+  # Perform input resolution.
+  return ops.LatestPolicyModel(
+      input_dict,
+      policy=policy,
+      raise_skip_signal=raise_skip_signal,
+  )
+
+
+@_latest_policy_model.output_type_inferrer
+def _infer_latest_policy_model_type(
+    models: channel_type.BaseChannel,
+    *,
+    model_blessings: Optional[channel_type.BaseChannel] = None,
+    model_infra_blessings: Optional[channel_type.BaseChannel] = None,
+    **kwargs,
+):  # pylint: disable=unused-argument
+  """Output type inferrer for _latest_policy_model."""
+  result = {ops_utils.MODEL_KEY: models.type}
+  if model_blessings is not None:
+    result[ops_utils.MODEL_BLESSSING_KEY] = model_blessings.type
+  if model_infra_blessings is not None:
+    result[ops_utils.MODEL_INFRA_BLESSING_KEY] = model_infra_blessings.type
+  return result
+
+
+def latest_trained(
+    models: channel_type.BaseChannel, raise_skip_signal: bool = True
+):
+  """Returns the latest trained (exported) Model artifact.
+
+  Example Usage:
+
+    Consider a TFTrainer has produced the following Model artifacts:
+
+    [Model 1, Model 2, Model 3], where Model 3 is the latest trained and Model 1
+    is the oldest trained (decided by artifact creation time).
+
+    latest_trained(trainer.outputs["model"])
+
+    will return Model 3, since it is the latest trained.
+
+  Args:
+    models: The list of Model artifacts, typically from a TFTrainer or
+      TrainerV1.
+    raise_skip_signal: If True and no Model artifacts are passed in, then a
+      SkipSignal will compiled in the IR and the component execution will be
+      skipped. Defaults to True.
+
+  Returns:
+    The latest trained (exported) Model.
+  """
+  with _latest_policy_model.given_invocation(
+      latest_trained,
+      args=(models,),
+      kwargs={
+          'raise_skip_signal': raise_skip_signal,
+      },
+  ):
+    return _latest_policy_model(
+        models,
+        policy=latest_policy_model_op.Policy.LATEST_EXPORTED,
+        raise_skip_signal=raise_skip_signal,
+    )[ops_utils.MODEL_KEY]

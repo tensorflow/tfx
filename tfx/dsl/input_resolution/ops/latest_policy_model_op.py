@@ -145,7 +145,7 @@ def _validate_input_dict(input_dict: typing_utils.ArtifactMultiMap):
 def _build_result_dictionary(
     result: typing_utils.ArtifactMultiDict,
     model_relations: ModelRelations,
-    policy: Policy,
+    policy: int,
     artifact_type_by_name: Dict[str, metadata_store_pb2.ArtifactType],
 ):
   """Adds child artifacts to the result dictionary, based on the Policy."""
@@ -188,11 +188,11 @@ class LatestPolicyModel(
 ):
   """LatestPolicyModel operator."""
 
-  # The child artifact type. If not set, the latest trained model will be
-  # returned. See _NAMES for other options.
-  policy = resolver_op.Property(type=Policy)
+  # The policy to select the the model by. See Policy enum for valid options.
+  # TODO(b/270621886): Restore to Policy Enum type.
+  policy = resolver_op.Property(type=int)
 
-  # If true, a SkipSignal will be raised . Else, an empty dictionary will be
+  # If true, a SkipSignal will be raised. Else, an empty dictionary will be
   # returned. See Raises section below for full conditions in which a
   # SkipSignal raised/empty dict returned.
   raise_skip_signal = resolver_op.Property(type=bool, default=True)
@@ -200,7 +200,27 @@ class LatestPolicyModel(
   def _raise_skip_signal_or_return_empty_dict(self, error_msg: str = ''):
     if self.raise_skip_signal:
       raise exceptions.SkipSignal(error_msg)
-    return {}
+
+    # Return a dictionary with the proper keys but empty artifact lists for
+    # values.
+    result = {ops_utils.MODEL_KEY: []}
+
+    if (
+        self.policy == Policy.LATEST_EVALUATOR_BLESSED
+        or self.policy == Policy.LATEST_BLESSED
+    ):
+      result[ops_utils.MODEL_BLESSSING_KEY] = []
+
+    if (
+        self.policy == Policy.LATEST_INFRA_VALIDATOR_BLESSED
+        or self.policy == Policy.LATEST_BLESSED
+    ):
+      result[ops_utils.MODEL_INFRA_BLESSING_KEY] = []
+
+    elif self.policy == Policy.LATEST_PUSHED:
+      result[ops_utils.MODEL_PUSH_KEY] = []
+
+    return result
 
   def apply(self, input_dict: typing_utils.ArtifactMultiMap):
     """Finds the latest created model via a certain policy.
@@ -255,7 +275,7 @@ class LatestPolicyModel(
         1. The input_dict is empty.
         2. If no models are passed in.
         3. If input_dict contains "model_blessing" and/or "model_infra_blessing"
-           as keys but have empty lists as values for them.
+           as keys but have empty lists as values for both of them.
         4. No latest model was found that matches the policy.
     """
     if not input_dict:
