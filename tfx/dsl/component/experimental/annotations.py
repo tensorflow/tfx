@@ -17,7 +17,7 @@ Experimental. No backwards compatibility guarantees.
 """
 
 import inspect
-from typing import Any, Type, Union
+from typing import Any, Type, Union, Dict, List
 
 from tfx.dsl.component.experimental import json_compat
 from tfx.types import artifact
@@ -74,8 +74,10 @@ class _ArtifactGeneric(metaclass=_ArtifactGenericMeta):
 class _PrimitiveTypeGenericMeta(type):
   """Metaclass for _PrimitiveTypeGeneric, to enable primitive type indexing."""
 
-  def __getitem__(cls: Type['_PrimitiveTypeGeneric'],
-                  params: Type[Union[int, float, str, bool]]):
+  def __getitem__(
+      cls: Type['_PrimitiveTypeGeneric'],
+      params: Type[Union[int, float, str, bool, List[Any], Dict[Any, Any]]],
+  ):
     """Metaclass method allowing indexing class (`_PrimitiveTypeGeneric[T]`)."""
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 

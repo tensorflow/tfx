@@ -29,7 +29,7 @@ class AnnotationsTest(tf.test.TestCase):
     # Error: type hint whose parameter is not an Artifact subclass.
     with self.assertRaisesRegex(ValueError,
                                 'expects .* a concrete subclass of'):
-      _ = annotations._ArtifactGeneric[int]
+      _ = annotations._ArtifactGeneric[int]  # pytype: disable=unsupported-operands
 
     # Error: type hint with abstract Artifact subclass.
     with self.assertRaisesRegex(ValueError,
@@ -50,6 +50,7 @@ class AnnotationsTest(tf.test.TestCase):
 
   def testPrimitiveTypeGenericAnnotation(self):
     # Error: type hint whose parameter is not a primitive type
+    # pytype: disable=unsupported-operands
     with self.assertRaisesRegex(
         ValueError, 'T to be `int`, `float`, `str`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric[artifact.Artifact]
@@ -68,7 +69,7 @@ class AnnotationsTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         ValueError, 'T to be `int`, `float`, `str`, `bool`'):
       _ = annotations._PrimitiveTypeGeneric[bytes]
-
+    # pytype: enable=unsupported-operands
     # OK.
     _ = annotations._PrimitiveTypeGeneric[int]
     _ = annotations._PrimitiveTypeGeneric[float]
@@ -85,12 +86,14 @@ class AnnotationsTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         ValueError, 'T to be `beam.Pipeline`'):
       _ = annotations._PipelineTypeGeneric[object]
+    # pytype: disable=unsupported-operands
     with self.assertRaisesRegex(
         ValueError, 'T to be `beam.Pipeline`'):
       _ = annotations._PipelineTypeGeneric[123]
     with self.assertRaisesRegex(
         ValueError, 'T to be `beam.Pipeline`'):
       _ = annotations._PipelineTypeGeneric['string']
+    # pytype: enable=unsupported-operands
 
     # OK.
     _ = annotations._PipelineTypeGeneric[beam.Pipeline]

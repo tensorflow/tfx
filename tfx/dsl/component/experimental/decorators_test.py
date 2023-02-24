@@ -88,7 +88,7 @@ _decorated_with_arg_no_op = component()(_no_op)
 @component
 def _injector_1(
     foo: Parameter[int], bar: Parameter[str]) -> OutputDict(
-        a=int, b=int, c=str, d=bytes):
+        a=int, b=int, c=str, d=bytes):  # pytype: disable=invalid-annotation,wrong-arg-types
   assert foo == 9
   assert bar == 'secret'
   return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
@@ -97,7 +97,7 @@ def _injector_1(
 @component(component_annotation=_InjectorAnnotation)
 def _injector_1_with_annotation(
     foo: Parameter[int], bar: Parameter[str]) -> OutputDict(
-        a=int, b=int, c=str, d=bytes):
+        a=int, b=int, c=str, d=bytes):  # pytype: disable=invalid-annotation,wrong-arg-types
   assert foo == 9
   assert bar == 'secret'
   return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
@@ -106,7 +106,7 @@ def _injector_1_with_annotation(
 @component
 def _simple_component(
     a: int, b: int, c: str, d: bytes) -> OutputDict(
-        e=float, f=float, g=Optional[str], h=Optional[str]):
+        e=float, f=float, g=Optional[str], h=Optional[str]):  # pytype: disable=invalid-annotation,wrong-arg-types
   del c, d
   return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
 
@@ -114,7 +114,7 @@ def _simple_component(
 @component(component_annotation=_SimpleComponentAnnotation)
 def _simple_component_with_annotation(
     a: int, b: int, c: str, d: bytes) -> OutputDict(
-        e=float, f=float, g=Optional[str], h=Optional[str]):
+        e=float, f=float, g=Optional[str], h=Optional[str]):  # pytype: disable=invalid-annotation,wrong-arg-types
   del c, d
   return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
 
@@ -124,19 +124,19 @@ def _simple_beam_component(
     a: int, b: int, c: str, d: bytes,
     beam_pipeline: BeamComponentParameter[beam.Pipeline] = None,
 ) -> OutputDict(
-    e=float, f=float, g=Optional[str], h=Optional[str]):
+    e=float, f=float, g=Optional[str], h=Optional[str]):  # pytype: disable=invalid-annotation,wrong-arg-types
   del c, d, beam_pipeline
   return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
 
 
-def _verify_beam_pipeline_arg(a: int) -> OutputDict(b=float):
+def _verify_beam_pipeline_arg(a: int) -> OutputDict(b=float):  # pytype: disable=invalid-annotation,wrong-arg-types
   return {'b': float(a)}
 
 
 def _verify_beam_pipeline_arg_non_none_default_value(
     a: int,
     beam_pipeline: BeamComponentParameter[beam.Pipeline] = beam.Pipeline()
-) -> OutputDict(b=float):
+) -> OutputDict(b=float):  # pytype: disable=invalid-annotation,wrong-arg-types
   del beam_pipeline
   return {'b': float(a)}
 
@@ -155,7 +155,7 @@ def _verify_with_annotation(e: float, f: float, g: Optional[str],
 @component
 def _injector_2(
     examples: OutputArtifact[standard_artifacts.Examples]
-) -> OutputDict(
+) -> OutputDict(  # pytype: disable=invalid-annotation,wrong-arg-types
     a=int,
     b=float,
     c=str,
@@ -182,7 +182,7 @@ def _injector_2(
 @component
 def _injector_3(
     examples: OutputArtifact[standard_artifacts.Examples]
-) -> OutputDict(
+) -> OutputDict(  # pytype: disable=invalid-annotation,wrong-arg-types
     a=int,
     b=float,
     c=str,
@@ -203,7 +203,7 @@ def _injector_3(
 
 
 @component
-def _injector_4() -> OutputDict(
+def _injector_4() -> OutputDict(  # pytype: disable=invalid-annotation,wrong-arg-types
     a=Dict[str, List[List[Any]]],
     b=List[Any],
     c=Optional[Dict[str, Dict[str, Any]]],
@@ -221,7 +221,7 @@ def _injector_4() -> OutputDict(
 
 
 @component
-def _injector_4_invalid() -> OutputDict(
+def _injector_4_invalid() -> OutputDict(  # pytype: disable=invalid-annotation,wrong-arg-types
     a=Dict[str, List[List[int]]]):
   return {
       'a': {'foo': [[1.], [2]]},
@@ -256,9 +256,9 @@ def _optionalarg_component(
     h: Parameter[str] = '2000',
     optional_examples_1: InputArtifact[standard_artifacts.Examples] = None,
     optional_examples_2: InputArtifact[standard_artifacts.Examples] = None,
-    list_input: List[Dict[str, float]] = None,
+    list_input: Optional[List[Dict[str, float]]] = None,
     dict_input: Optional[Dict[str, Dict[str, List[bool]]]] = None,
-    non_passed_dict: Dict[str, int] = None):
+    non_passed_dict: Optional[Dict[str, int]] = None):
   # Test non-optional parameters.
   assert foo == 9
   assert bar == 'secret'
@@ -335,12 +335,14 @@ def _json_compat_parameters(
     a: Parameter[Dict[str, int]],
     b: Parameter[List[bool]],
     c: Parameter[Dict[str, List[bool]]],
-    d: Parameter[List[Dict[str, float]]]
+    d: Parameter[List[Dict[str, float]]],
+    e: Parameter[List[str]]
 ):
   assert a == {'foo': 1, 'bar': 2}
   assert b == [True, False]
   assert c == {'foo': [True, False], 'bar': [True, False]}
   assert d == [{'foo': 1.0}, {'bar': 2.0}]
+  assert e == ['foo', 'bar']
 
 
 class ComponentDecoratorTest(tf.test.TestCase):
@@ -687,7 +689,8 @@ class ComponentDecoratorTest(tf.test.TestCase):
             'foo': 1.0
         }, {
             'bar': 2.0
-        }])
+        }],
+        e=['foo', 'bar'])
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     test_pipeline = pipeline.Pipeline(
