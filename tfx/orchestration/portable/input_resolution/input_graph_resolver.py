@@ -134,11 +134,17 @@ def _evaluate_op_node(
     op.set_context(resolver_op.Context(store=ctx.mlmd_handle.store))
     return op.apply(*args)
   elif issubclass(op_type, resolver.ResolverStrategy):
-    if len(args) != 1 or not typing_utils.is_artifact_multimap(args[0]):
+    if len(args) != 1:
       raise exceptions.FailedPreconditionError(
-          f'Invalid {op_type} argument: {args!r}')
+          f'Invalid number of {op_type} arguments: {args!r}'
+      )
+    arg = args[0]
+    if not typing_utils.is_artifact_multimap(arg):
+      raise exceptions.FailedPreconditionError(
+          f'Invalid {op_type} argument: {arg!r}'
+      )
     strategy: resolver.ResolverStrategy = op_type(**kwargs)
-    result = strategy.resolve_artifacts(ctx.mlmd_handle.store, args[0])
+    result = strategy.resolve_artifacts(ctx.mlmd_handle.store, arg)
     if result is None:
       raise exceptions.InputResolutionError(f'{strategy} returned None.')
     return result

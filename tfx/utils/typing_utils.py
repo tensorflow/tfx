@@ -17,10 +17,11 @@ import collections
 import collections.abc
 import inspect
 import typing
-from typing import TypeVar, Mapping, MutableMapping, Sequence, MutableSequence, Any, Dict, List
+from typing import Any, Dict, List, Mapping, MutableMapping, MutableSequence, Type, TypeVar, Sequence
 
 import tfx.types
 import typing_extensions
+from typing_extensions import TypeGuard  # Can be removed once we have Py 3.10+
 
 _KT = TypeVar('_KT')
 _VT = TypeVar('_VT')
@@ -42,8 +43,10 @@ ArtifactMutableMultiMap = MutableMultiMap[str, tfx.types.Artifact]
 # ArtifactMultiMap or ArtifactMutableMultiMap.
 ArtifactMultiDict = Dict[str, List[tfx.types.Artifact]]
 
+_T = TypeVar('_T')
 
-def is_compatible(value: Any, tp: Any) -> bool:
+
+def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
   """Whether the value is compatible with the type.
 
   Similar to builtin.isinstance(), but accepts more advanced subscripted type
@@ -132,24 +135,31 @@ def is_compatible(value: Any, tp: Any) -> bool:
   raise NotImplementedError(f'Unsupported type {tp}.')
 
 
-def is_homogeneous_artifact_list(value: Any) -> bool:
+_TArtifact = TypeVar('_TArtifact', bound=tfx.types.Artifact)
+
+
+def is_homogeneous_artifact_list(value: Any) -> TypeGuard[Sequence[_TArtifact]]:
   """Checks value is Sequence[T] where T is subclass of Artifact."""
   return (
       is_compatible(value, Sequence[tfx.types.Artifact]) and
       all(isinstance(v, type(value[0])) for v in value[1:]))
 
 
-def is_artifact_list(value: Any) -> bool:
+def is_artifact_list(value: Any) -> TypeGuard[Sequence[tfx.types.Artifact]]:
   return is_compatible(value, Sequence[tfx.types.Artifact])
 
 
-def is_artifact_multimap(value: Any) -> bool:
+def is_artifact_multimap(
+    value: Any,
+) -> TypeGuard[Mapping[str, Sequence[tfx.types.Artifact]]]:
   """Checks value is Mapping[str, Sequence[Artifact]] type."""
   return is_compatible(value, ArtifactMultiMap) or is_compatible(
       value, ArtifactMultiDict
   )
 
 
-def is_list_of_artifact_multimap(value):
+def is_list_of_artifact_multimap(
+    value,
+) -> TypeGuard[Sequence[Mapping[str, Sequence[tfx.types.Artifact]]]]:
   """Checks value is Sequence[Mapping[str, Sequence[Artifact]]] type."""
   return is_compatible(value, Sequence[ArtifactMultiMap])

@@ -14,7 +14,8 @@
 """Tests for tfx.utils.typing_utils."""
 
 import typing
-from typing import Any
+from typing import Any, List
+import unittest
 
 import tensorflow as tf
 import tfx.types
@@ -188,6 +189,25 @@ class TypingUtilsTest(tf.test.TestCase):
     yes('c', literal)
     no('d', literal)
     no(0, literal)
+
+  # pytype: disable=not-supported-yet
+  # NOTE: Sadly, these typing_extensions.assert_type() don't work today, i.e.
+  # they don't actually detect bad types. If they still don't work in the Python
+  # 3.10 future, we should switch to pytype_extensions.assert_type() once the
+  # version in dependencies.py is 4.2+.
+  @unittest.skipUnless(
+      hasattr(typing_extensions, 'assert_type'),
+      'Prevent failure on older Python versions',
+  )
+  def test_is_compatible_narrowing(self):
+    value = 'foo'
+    typing_extensions.assert_type(value, str)
+    if typing_utils.is_compatible(value, int):
+      typing_extensions.assert_type(value, int)
+    elif typing_utils.is_compatible(value, List[tfx.types.Artifact]):
+      typing_extensions.assert_type(value, List[tfx.types.Artifact])
+
+  # pytype: enable=not-supported-yet
 
 
 if __name__ == '__main__':

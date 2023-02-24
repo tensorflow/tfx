@@ -336,11 +336,14 @@ def _compile_inputs_for_dynamic_properties(
   for exec_property in tfx_node.exec_properties.values():
     if not isinstance(exec_property, placeholder.ChannelWrappedPlaceholder):
       continue
+    channel_type = exec_property.channel.type
     if not typing_utils.is_compatible(
-        exec_property.channel.type, Type[value_artifact.ValueArtifact]):
+        channel_type, Type[value_artifact.ValueArtifact]
+    ):
       raise ValueError(
           'Dynamic execution property only supports ValueArtifact typed '
-          f'channel. Got {exec_property.channel.type.TYPE_NAME}.')
+          f'channel. Got {channel_type.TYPE_NAME}.'
+      )
     _compile_input_spec(
         pipeline_ctx=context,
         tfx_node=tfx_node,

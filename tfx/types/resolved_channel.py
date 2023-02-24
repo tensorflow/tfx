@@ -74,11 +74,13 @@ class ResolvedChannel(channel.BaseChannel):
   def get_data_dependent_node_ids(self) -> Set[str]:
     result = set()
     for input_node in resolver_op.get_input_nodes(self._output_node):
-      if isinstance(input_node.wrapped, channel.BaseChannel):
-        result.update(input_node.wrapped.get_data_dependent_node_ids())
+      wrapped = input_node.wrapped
+      if isinstance(wrapped, channel.BaseChannel):
+        result.update(wrapped.get_data_dependent_node_ids())
       elif typing_utils.is_compatible(
-          input_node.wrapped, Mapping[str, channel.BaseChannel]):
-        for chan in input_node.wrapped.values():
+          wrapped, Mapping[str, channel.BaseChannel]
+      ):
+        for chan in wrapped.values():
           result.update(chan.get_data_dependent_node_ids())
     return result
 
