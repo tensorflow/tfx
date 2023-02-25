@@ -131,19 +131,19 @@ components {
       parameters {
         key: "param_float"
         value {
-          type: DOUBLE
+          parameter_type: NUMBER_DOUBLE
         }
       }
       parameters {
         key: "param_int"
         value {
-          type: INT
+          parameter_type: NUMBER_INTEGER
         }
       }
       parameters {
         key: "param_string"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
     }

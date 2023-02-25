@@ -136,18 +136,26 @@ class CompilerUtilsTest(tf.test.TestCase):
           _MyArtifactWithProperty.PROPERTIES)
 
   def testBuildParameterTypeSpec(self):
-    type_enum = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum
-    testdata = {
-        42: type_enum.INT,
-        42.1: type_enum.DOUBLE,
-        '42': type_enum.STRING,
-        data_types.RuntimeParameter(name='_', ptype=int): type_enum.INT,
-        data_types.RuntimeParameter(name='_', ptype=float): type_enum.DOUBLE,
-        data_types.RuntimeParameter(name='_', ptype=str): type_enum.STRING,
-    }
-    for value, expected_type_enum in testdata.items():
+    type_enum = pipeline_pb2.ParameterType.ParameterTypeEnum
+    testdata = (
+        (42, type_enum.NUMBER_INTEGER),
+        (42.1, type_enum.NUMBER_DOUBLE),
+        ('42', type_enum.STRING),
+        (['foo', 'bar'], type_enum.LIST),
+        ({'foo': 10}, type_enum.STRUCT),
+        (
+            data_types.RuntimeParameter(name='_', ptype=int),
+            type_enum.NUMBER_INTEGER,
+        ),
+        (
+            data_types.RuntimeParameter(name='_', ptype=float),
+            type_enum.NUMBER_DOUBLE,
+        ),
+        (data_types.RuntimeParameter(name='_', ptype=str), type_enum.STRING),
+    )
+    for value, expected_type_enum in testdata:
       self.assertEqual(
-          compiler_utils.build_parameter_type_spec(value).type,
+          compiler_utils.build_parameter_type_spec(value).parameter_type,
           expected_type_enum)
 
   def testBuildOutputParameterSpecValueArtifact(self):

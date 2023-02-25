@@ -81,7 +81,7 @@ class ModelEvaluationVisualization(visualizations.ArtifactVisualization):
     tfma_result = tfma.load_eval_result(artifact.uri)
     # TODO(ccy): add comment instructing user to use the TFMA library directly
     # in order to render non-default slicing metric views.
-    display(tfma.view.render_slicing_metrics(tfma_result))
+    tfma.view.render_slicing_metrics(tfma_result)
 
 
 class SchemaVisualization(visualizations.ArtifactVisualization):

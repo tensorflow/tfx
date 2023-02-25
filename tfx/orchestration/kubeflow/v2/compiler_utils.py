@@ -108,15 +108,25 @@ def build_parameter_type_spec(
   is_runtime_param = isinstance(value, data_types.RuntimeParameter)
   result = pipeline_pb2.ComponentInputsSpec.ParameterSpec()
   if isinstance(value, int) or (is_runtime_param and value.ptype == int):
-    result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.INT
+    result.parameter_type = (
+        pipeline_pb2.ParameterType.ParameterTypeEnum.NUMBER_INTEGER
+    )
   elif isinstance(value, float) or (is_runtime_param and value.ptype == float):
-    result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.DOUBLE
+    result.parameter_type = (
+        pipeline_pb2.ParameterType.ParameterTypeEnum.NUMBER_DOUBLE
+    )
   elif isinstance(value, str) or (is_runtime_param and value.ptype == str):
-    result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.STRING
+    result.parameter_type = pipeline_pb2.ParameterType.ParameterTypeEnum.STRING
+  elif isinstance(value, bool) or (is_runtime_param and value.ptype == bool):
+    result.parameter_type = pipeline_pb2.ParameterType.ParameterTypeEnum.BOOLEAN
+  elif isinstance(value, list):
+    result.parameter_type = pipeline_pb2.ParameterType.ParameterTypeEnum.LIST
+  elif isinstance(value, dict):
+    result.parameter_type = pipeline_pb2.ParameterType.ParameterTypeEnum.STRUCT
   else:
     # By default, unrecognized object will be json dumped, hence is string type.
     # For example, resolver class.
-    result.type = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum.STRING
+    result.parameter_type = pipeline_pb2.ParameterType.ParameterTypeEnum.STRING
   return result
 
 

@@ -152,25 +152,25 @@ components {
       parameters {
         key: "input_config"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
       parameters {
         key: "output_config"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
       parameters {
         key: "output_data_format"
         value {
-          type: INT
+          parameter_type: NUMBER_INTEGER
         }
       }
       parameters {
         key: "output_file_format"
         value {
-          type: INT
+          parameter_type: NUMBER_INTEGER
         }
       }
     }
@@ -194,7 +194,7 @@ components {
       parameters {
         key: "param1"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
     }
@@ -216,7 +216,7 @@ components {
       parameters {
         key: "exclude_splits"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
     }

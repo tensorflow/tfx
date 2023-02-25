@@ -123,7 +123,7 @@ components {
       parameters {
         key: "param1"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
     }
@@ -147,19 +147,19 @@ components {
       parameters {
         key: "artifact_uri"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
       parameters {
         key: "output_key"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
       parameters {
         key: "reimport"
         value {
-          type: INT
+          parameter_type: NUMBER_INTEGER
         }
       }
     }
