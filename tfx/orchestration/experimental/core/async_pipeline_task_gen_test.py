@@ -461,7 +461,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_new_executions=0,
         num_active_executions=0)
     self.assertIsInstance(update_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(status_lib.Code.ABORTED, update_task.status.code)
+    self.assertEqual(status_lib.Code.UNKNOWN, update_task.status.code)
 
   def test_mix_service_job_failed(self):
     """Tests task generation when my_transform mix service job fails."""
@@ -482,7 +482,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_active_executions=0)
     self.assertIsInstance(example_gen_update_task, task_lib.UpdateNodeStateTask)
     self.assertIsInstance(transform_update_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(status_lib.Code.ABORTED, transform_update_task.status.code)
+    self.assertEqual(status_lib.Code.UNKNOWN, transform_update_task.status.code)
 
   def test_backfill(self):
     """Tests async pipeline task generation for backfill."""

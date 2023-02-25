@@ -131,7 +131,7 @@ class _Generator:
                   node_uid=node_uid,
                   state=pstate.NodeState.FAILED,
                   status=status_lib.Status(
-                      code=status_lib.Code.ABORTED, message=error_msg)))
+                      code=status_lib.Code.UNKNOWN, message=error_msg)))
         elif node_state.state != pstate.NodeState.RUNNING:
           result.append(
               task_lib.UpdateNodeStateTask(
@@ -151,7 +151,7 @@ class _Generator:
                   node_uid=node_uid,
                   state=pstate.NodeState.FAILED,
                   status=status_lib.Status(
-                      code=status_lib.Code.ABORTED, message=error_msg)))
+                      code=status_lib.Code.UNKNOWN, message=error_msg)))
           continue
 
       # If a task for the node is already tracked by the task queue, it need

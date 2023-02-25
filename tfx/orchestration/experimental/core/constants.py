@@ -13,6 +13,7 @@
 # limitations under the License.
 """Constants shared across modules."""
 
+EXECUTION_ERROR_CODE_KEY = '__execution_error_code__'
 EXECUTION_ERROR_MSG_KEY = '__execution_error_msg__'
 EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY = '__execution_start_time__'
 

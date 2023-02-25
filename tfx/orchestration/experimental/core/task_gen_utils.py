@@ -15,6 +15,7 @@
 
 import collections
 import itertools
+import textwrap
 import time
 from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple, Type
 import uuid
@@ -25,6 +26,7 @@ from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import inputs_utils
@@ -35,6 +37,7 @@ from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import proto_utils
+from tfx.utils import status as status_lib
 from tfx.utils import typing_utils
 
 from google.protobuf import any_pb2
@@ -630,3 +633,57 @@ def get_unprocessed_inputs(
       unprocessed_inputs.append(input_and_param)
 
   return unprocessed_inputs
+
+
+def interpret_status_from_failed_execution(
+    execution: metadata_store_pb2.Execution,
+) -> status_lib.Status:
+  """Interprets `Status` from given failed execution.
+
+  Args:
+    execution: An execution with last_known_state=FAILED.
+
+  Returns:
+    A `Status` object interpreted from the execution state.
+
+  Raises:
+    ValueError: If the given execution has `last_known_state` other than
+    `FAILED`.
+  """
+  if not execution_lib.is_execution_failed(execution):
+    raise ValueError(
+        'Must be called with an execution with last_known_state = FAILED.'
+    )
+  # If execution result is available, that will have the most proximate cause
+  # for the failed execution.
+  execution_result = execution_lib.get_execution_result(
+      execution, ignore_parse_errors=True
+  )
+  if execution_result is not None:
+    # We expect the error code to be non-OK but if by any chance it is OK,
+    # we account it as UNKNOWN.
+    error_code = execution_result.code or status_lib.Code.UNKNOWN
+    error_msg = execution_result.result_message or None
+  else:
+    error_code_value = execution.custom_properties.get(
+        constants.EXECUTION_ERROR_CODE_KEY
+    )
+    if error_code_value is not None:
+      # If error code is set, we expect it to be non-OK. By any chance if it is
+      # OK, we account it as UNKNOWN.
+      error_code = (
+          data_types_utils.get_metadata_value(error_code_value)
+          or status_lib.Code.UNKNOWN
+      )
+    else:
+      error_code = status_lib.Code.UNKNOWN
+    error_msg_value = execution.custom_properties.get(
+        constants.EXECUTION_ERROR_MSG_KEY
+    )
+    error_msg = (
+        data_types_utils.get_metadata_value(error_msg_value)
+        if error_msg_value is not None
+        else None
+    )
+  error_msg = textwrap.shorten(error_msg, width=512) if error_msg else None
+  return status_lib.Status(code=error_code, message=error_msg)

@@ -168,7 +168,7 @@ class NodeState(json_utils.Jsonable):
     self.state = state
     self.backfill_token = backfill_token
     self.status_code = status.code if status is not None else None
-    self.status_msg = status.message if status is not None else ''
+    self.status_msg = (status.message or '') if status is not None else ''
 
   def is_startable(self) -> bool:
     """Returns True if the node can be started."""

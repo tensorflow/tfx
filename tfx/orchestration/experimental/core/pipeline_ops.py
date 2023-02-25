@@ -948,8 +948,13 @@ def _orchestrate_stop_initiated_pipeline(
         if node_state.is_stoppable():
           node_state.update(
               pstate.NodeState.STOPPING,
-              status_lib.Status(
-                  code=stop_reason.code, message=stop_reason.message))
+              # We don't use the pipeline level status as node status because
+              # pipeline level status may reflect the status of another failed
+              # node in the pipeline which triggered this pipeline stop
+              # operation, so imputing the pipeline level status to nodes being
+              # cancelled could be misleading.
+              status_lib.Status(code=status_lib.Code.CANCELLED),
+          )
       if node_state.state == pstate.NodeState.STOPPING:
         nodes_to_stop.append(node)
 

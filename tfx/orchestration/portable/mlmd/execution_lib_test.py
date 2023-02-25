@@ -589,7 +589,45 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
               string_value: '{\\n  "resultMessage": "error message.",\\n  "code": 1\\n}'
             }
           }
-          """, execution)
+          """,
+        execution,
+    )
+    self.assertEqual(
+        execution_result_pb2.ExecutionResult(
+            code=1, result_message='error message.'
+        ),
+        execution_lib.get_execution_result(execution),
+    )
+
+  def test_set_execution_result_clear_metadata_details_if_error(self):
+    execution = metadata_store_pb2.Execution()
+    execution_result = text_format.Parse(
+        """
+        code: 1
+        result_message: 'error message.'
+      """,
+        execution_result_pb2.ExecutionResult(),
+    )
+    execution_result.metadata_details.add().type_url = 'non_existent_type_url'
+    execution_lib.set_execution_result(execution_result, execution)
+
+    self.assertProtoEquals(
+        """
+          custom_properties {
+            key: '__execution_result__'
+            value {
+              string_value: '{\\n  "resultMessage": "error message.",\\n  "code": 1\\n}'
+            }
+          }
+          """,
+        execution,
+    )
+    self.assertEqual(
+        execution_result_pb2.ExecutionResult(
+            code=1, result_message='error message.'
+        ),
+        execution_lib.get_execution_result(execution),
+    )
 
   def test_sort_executions_newest_to_oldest(self):
     executions = [

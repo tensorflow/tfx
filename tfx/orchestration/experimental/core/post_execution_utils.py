@@ -63,6 +63,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
         node_uid=task.node_uid,
         execution_id=task.execution_id,
         new_state=execution_state,
+        error_code=status.code,
         error_msg=status.message,
         execution_result=execution_result)
     pipeline_state.record_state_change_time()
@@ -79,7 +80,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
             status_lib.Status(
                 # We should not reuse "execution_result.code" because it may be
                 # CANCELLED, in which case we should still fail the execution.
-                code=status_lib.Code.ABORTED,
+                code=status_lib.Code.UNKNOWN,
                 message=executor_output.execution_result.result_message),
             executor_output.execution_result)
         return
@@ -149,6 +150,7 @@ def publish_execution_results(
         node_uid=node_uid,
         execution_id=execution_info.execution_id,
         new_state=execution_state,
+        error_code=executor_output.execution_result.code,
         error_msg=executor_output.execution_result.result_message,
         execution_result=executor_output.execution_result)
     return
@@ -171,8 +173,9 @@ def _update_execution_state_in_mlmd(
     node_uid: task_lib.NodeUid,
     execution_id: int,
     new_state: proto.Execution.State,
+    error_code: int,
     error_msg: str,
-    execution_result: Optional[execution_result_pb2.ExecutionResult] = None
+    execution_result: Optional[execution_result_pb2.ExecutionResult] = None,
 ) -> None:
   """Updates the execution state and sets execution_result if provided."""
   with mlmd_state.mlmd_execution_atomic_op(
@@ -181,6 +184,10 @@ def _update_execution_state_in_mlmd(
       on_commit=event_observer.make_notify_execution_state_change_fn(
           node_uid)) as execution:
     execution.last_known_state = new_state
+    data_types_utils.set_metadata_value(
+        execution.custom_properties[constants.EXECUTION_ERROR_CODE_KEY],
+        error_code,
+    )
     if error_msg:
       data_types_utils.set_metadata_value(
           execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],

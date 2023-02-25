@@ -18,9 +18,7 @@ import textwrap
 from typing import Callable, Dict, List, Mapping, Optional, Set
 
 from absl import logging
-from tfx.orchestration import data_types_utils
 from tfx.orchestration import node_proto_view
-from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -154,9 +152,7 @@ class _Generator:
               # be used together with ALL_UPSTREAM_NODES_SUCCEEDED since it will
               # fail the pipeline if any node fails.
               if self._fail_fast:
-                finalize_pipeline_task = self._abort_task(
-                    'Pipeline failed fast due to node failures: ' +
-                    _status_dict_to_error_message(failed_nodes_dict))
+                finalize_pipeline_task = self._abort_task(failed_nodes_dict)
             update_node_state_tasks.append(task)
           elif isinstance(task, task_lib.ExecNodeTask):
             exec_node_tasks.append(task)
@@ -185,9 +181,7 @@ class _Generator:
         # If there are no runnable nodes and not all nodes are completed,
         # we can abort the pipeline.
         if unrunnable_descendant_ids:
-          finalize_pipeline_task = self._abort_task(
-              'Pipeline could not make progress due to node failures: ' +
-              _status_dict_to_error_message(failed_nodes_dict))
+          finalize_pipeline_task = self._abort_task(failed_nodes_dict)
         # If all nodes are completed and not all terminal nodes are successful,
         # the pipeline should be marked failed.
         elif terminal_node_ids & failed_nodes_dict.keys():
@@ -196,9 +190,7 @@ class _Generator:
               for k, v in failed_nodes_dict.items()
               if k in terminal_node_ids
           }
-          finalize_pipeline_task = self._abort_task(
-              'Pipeline failed due to terminal node failures: ' +
-              _status_dict_to_error_message(failed_terminal_nodes))
+          finalize_pipeline_task = self._abort_task(failed_terminal_nodes)
 
     result = update_node_state_tasks
     if finalize_pipeline_task:
@@ -237,7 +229,12 @@ class _Generator:
         # and output directories.
         error_msg = f'service job failed; node uid: {node_uid}'
         result.append(
-            self._update_node_state_to_failed_task(node_uid, error_msg))
+            self._update_node_state_to_failed_task(
+                node_uid,
+                error_code=status_lib.Code.UNKNOWN,
+                error_msg=error_msg,
+            )
+        )
       elif service_status == service_jobs.ServiceStatus.SUCCESS:
         logging.info('Service node successful: %s', node_uid)
         result.append(
@@ -255,7 +252,11 @@ class _Generator:
     service_status = self._ensure_node_services_if_mixed(node.node_info.id)
     if service_status == service_jobs.ServiceStatus.FAILED:
       error_msg = f'associated service job failed; node uid: {node_uid}'
-      result.append(self._update_node_state_to_failed_task(node_uid, error_msg))
+      result.append(
+          self._update_node_state_to_failed_task(
+              node_uid, error_code=status_lib.Code.UNKNOWN, error_msg=error_msg
+          )
+      )
       return result
 
     # If a task for the node is already tracked by the task queue, it need
@@ -294,7 +295,11 @@ class _Generator:
                      'executions found in the latest execution set.')
         result.append(
             self._update_node_state_to_failed_task(
-                node_uid=node_uid, error_msg=error_msg))
+                node_uid,
+                error_code=status_lib.Code.INTERNAL,
+                error_msg=error_msg,
+            )
+        )
       elif (node.execution_options.max_execution_retries >=
             task_gen_utils.get_num_of_failures_from_failed_execution(
                 node_executions, failed_executions[0])):
@@ -306,14 +311,15 @@ class _Generator:
         result.extend(
             self._generate_tasks_from_existing_execution(retry_execution, node))
       else:
-        error_msg = failed_executions[0].custom_properties.get(
-            constants.EXECUTION_ERROR_MSG_KEY)
-        error_msg = data_types_utils.get_metadata_value(
-            error_msg) if error_msg else ''
-        error_msg = f'node {node_uid} failed; error: {error_msg}.'
         result.append(
-            self._update_node_state_to_failed_task(
-                node_uid=node_uid, error_msg=error_msg))
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.FAILED,
+                status=task_gen_utils.interpret_status_from_failed_execution(
+                    failed_executions[0]
+                ),
+            )
+        )
       return result
 
     # Restarts canceled node, if the node state is STARTING.
@@ -350,15 +356,19 @@ class _Generator:
 
     raise RuntimeError('Task generation process should not reach this point.')
 
-  def _update_node_state_to_failed_task(self, node_uid: task_lib.NodeUid,
-                                        error_msg: str) -> task_lib.Task:
+  def _update_node_state_to_failed_task(
+      self,
+      node_uid: task_lib.NodeUid,
+      error_code: int,
+      error_msg: str,
+  ) -> task_lib.Task:
     """Generates fail tasks for a node."""
     error_msg = textwrap.shorten(error_msg, width=512)
     return task_lib.UpdateNodeStateTask(
         node_uid=node_uid,
         state=pstate.NodeState.FAILED,
-        status=status_lib.Status(
-            code=status_lib.Code.ABORTED, message=error_msg))
+        status=status_lib.Status(code=error_code, message=error_msg),
+    )
 
   def _generate_tasks_from_existing_execution(
       self, execution: metadata_store_pb2.Execution,
@@ -392,7 +402,11 @@ class _Generator:
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
                    f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')
-      result.append(self._update_node_state_to_failed_task(node_uid, error_msg))
+      result.append(
+          self._update_node_state_to_failed_task(
+              node_uid, error_code=e.grpc_code_value, error_msg=error_msg
+          )
+      )
       return result
 
     if not resolved_info.input_and_params:
@@ -497,13 +511,21 @@ class _Generator:
           pipeline_pb2.NodeExecutionOptions.TriggerStrategy.Name(
               node.execution_options.strategy))
 
-  def _abort_task(self, error_msg: str) -> task_lib.FinalizePipelineTask:
+  def _abort_task(
+      self, failed_nodes_dict: Mapping[str, status_lib.Status]
+  ) -> task_lib.FinalizePipelineTask:
     """Returns task to abort pipeline execution."""
-    logging.error(error_msg)
+    logging.error(
+        'Pipeline failed due to node failures. Failed nodes:\n%s',
+        '\n'.join(
+            f'node_id: {node_id}, status: {status}'
+            for node_id, status in failed_nodes_dict.items()
+        ),
+    )
     return task_lib.FinalizePipelineTask(
         pipeline_uid=self._pipeline_uid,
-        status=status_lib.Status(
-            code=status_lib.Code.ABORTED, message=error_msg))
+        status=next(iter(failed_nodes_dict.values())),
+    )
 
 
 def _skipped_node_ids(pipeline: pipeline_pb2.Pipeline) -> Set[str]:
@@ -573,8 +595,3 @@ def _unrunnable_descendants(node_by_id: Mapping[str,
       queue.extend(node_by_id[q_node_id].downstream_nodes)
       result.add(q_node_id)
   return result
-
-
-def _status_dict_to_error_message(failed_nodes_dict: Dict[str,
-                                                          status_lib.Status]):
-  return ', '.join(failed_nodes_dict.keys())

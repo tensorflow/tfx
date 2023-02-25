@@ -21,6 +21,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx import version
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils as otu
@@ -28,8 +29,10 @@ from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.experimental.core.testing import test_dynamic_exec_properties_pipeline
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils as tu
 
 from ml_metadata.proto import metadata_store_pb2
@@ -650,6 +653,57 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
       # Should return empty input since the input is no trigger.
       self.assertEmpty(unprocessed_inputs)
+
+  def test_interpret_status_from_failed_execution(self):
+    execution = metadata_store_pb2.Execution(
+        last_known_state=metadata_store_pb2.Execution.COMPLETE
+    )
+    with self.assertRaisesRegex(
+        ValueError, 'Must be called.*last_known_state = FAILED.'
+    ):
+      task_gen_utils.interpret_status_from_failed_execution(execution)
+
+    execution = metadata_store_pb2.Execution(
+        last_known_state=metadata_store_pb2.Execution.FAILED
+    )
+    self.assertEqual(
+        status_lib.Status(code=status_lib.Code.UNKNOWN),
+        task_gen_utils.interpret_status_from_failed_execution(execution),
+    )
+
+    # Status is created using special custom properties if they exist.
+    execution.custom_properties[
+        constants.EXECUTION_ERROR_MSG_KEY
+    ].string_value = 'permission denied'
+    self.assertEqual(
+        status_lib.Status(
+            code=status_lib.Code.UNKNOWN, message='permission denied'
+        ),
+        task_gen_utils.interpret_status_from_failed_execution(execution),
+    )
+    execution.custom_properties[
+        constants.EXECUTION_ERROR_CODE_KEY
+    ].int_value = status_lib.Code.PERMISSION_DENIED
+    self.assertEqual(
+        status_lib.Status(
+            code=status_lib.Code.PERMISSION_DENIED, message='permission denied'
+        ),
+        task_gen_utils.interpret_status_from_failed_execution(execution),
+    )
+
+    # ExecutionResult, if available, has the higher precedence in determining
+    # Status as that indicates the most proximate cause.
+    execution_result = execution_result_pb2.ExecutionResult(
+        code=status_lib.Code.DEADLINE_EXCEEDED,
+        result_message='deadline exceeded',
+    )
+    execution_lib.set_execution_result(execution_result, execution)
+    self.assertEqual(
+        status_lib.Status(
+            code=status_lib.Code.DEADLINE_EXCEEDED, message='deadline exceeded'
+        ),
+        task_gen_utils.interpret_status_from_failed_execution(execution),
+    )
 
 
 if __name__ == '__main__':

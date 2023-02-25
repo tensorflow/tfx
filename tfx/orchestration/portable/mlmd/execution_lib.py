@@ -14,6 +14,7 @@
 """Portable libraries for execution related APIs."""
 
 import collections
+import copy
 import itertools
 import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
@@ -605,5 +606,50 @@ def set_execution_result(execution_result: execution_result_pb2.ExecutionResult,
         json_format.MessageToJson(execution_result))
   except TypeError:
     logging.exception(
-        'Skipped setting execution_result as custom property of the '
-        'execution due to error')
+        'Unable to set execution_result as custom property of the execution '
+        'due to error, will attempt again by clearing `metadata_details`...'
+    )
+    try:
+      execution_result = copy.deepcopy(execution_result)
+      execution_result.ClearField('metadata_details')
+      execution.custom_properties[_EXECUTION_RESULT].string_value = (
+          json_format.MessageToJson(execution_result)
+      )
+    except TypeError:
+      logging.exception(
+          'Skipped setting execution_result as custom property of the '
+          'execution due to error'
+      )
+
+
+def get_execution_result(
+    execution: metadata_store_pb2.Execution, ignore_parse_errors=False
+) -> Optional[execution_result_pb2.ExecutionResult]:
+  """Gets execution result stored as custom property of execution if it exists.
+
+  The custom property should have been set using `set_execution_result`. If
+  ignore_parse_errors=True, JSON parsing errors will lead to returning `None`.
+
+  Args:
+    execution: The execution from which to read execution result.
+    ignore_parse_errors: If True, JSON parsing errors are ignored and a None is
+      returned.
+
+  Returns:
+    An `ExecutionResult` object if one exists.
+  """
+  value = execution.custom_properties.get(_EXECUTION_RESULT)
+  if not value:
+    return None
+  execution_result = execution_result_pb2.ExecutionResult()
+  try:
+    json_format.Parse(value.string_value, execution_result)
+  except json_format.ParseError:
+    logging.exception(
+        'Error parsing json object, %s',
+        'ignoring' if ignore_parse_errors else 're-raising',
+    )
+    if ignore_parse_errors:
+      return None
+    raise
+  return execution_result

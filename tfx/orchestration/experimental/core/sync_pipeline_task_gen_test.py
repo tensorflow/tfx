@@ -502,8 +502,11 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertIsInstance(update_node_state_task, task_lib.UpdateNodeStateTask)
     self.assertEqual('my_example_gen', update_node_state_task.node_uid.node_id)
     self.assertEqual(pstate.NodeState.FAILED, update_node_state_task.state)
+    self.assertEqual(
+        status_lib.Code.UNKNOWN, update_node_state_task.status.code
+    )
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
-    self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
+    self.assertEqual(status_lib.Code.UNKNOWN, finalize_task.status.code)
     self.assertRegex(finalize_task.status.message, 'my_example_gen')
 
   def test_node_success(self):
@@ -569,8 +572,15 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         # Fail stats-gen execution.
         stats_gen_exec.last_known_state = metadata_store_pb2.Execution.FAILED
         data_types_utils.set_metadata_value(
+            stats_gen_exec.custom_properties[
+                constants.EXECUTION_ERROR_CODE_KEY
+            ],
+            status_lib.Code.UNAVAILABLE,
+        )
+        data_types_utils.set_metadata_value(
             stats_gen_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
-            'foobar error')
+            'foobar error',
+        )
 
     # Test generation of FinalizePipelineTask.
     [update_node_state_task, finalize_task] = self._generate_and_test(
@@ -584,11 +594,14 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual('my_statistics_gen',
                      update_node_state_task.node_uid.node_id)
     self.assertEqual(pstate.NodeState.FAILED, update_node_state_task.state)
+    self.assertEqual(
+        status_lib.Code.UNAVAILABLE, update_node_state_task.status.code
+    )
     self.assertRegexMatch(update_node_state_task.status.message,
                           ['foobar error'])
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
-    self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
-    self.assertRegexMatch(finalize_task.status.message, ['my_statistics_gen'])
+    self.assertEqual(status_lib.Code.UNAVAILABLE, finalize_task.status.code)
+    self.assertRegexMatch(finalize_task.status.message, ['foobar error'])
 
   @parameterized.parameters(False, True)
   def test_task_generation_when_node_stopped(self, stop_stats_gen):
@@ -840,14 +853,21 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         # Fail stats-gen execution.
         ev_exec.last_known_state = metadata_store_pb2.Execution.FAILED
         data_types_utils.set_metadata_value(
+            ev_exec.custom_properties[constants.EXECUTION_ERROR_CODE_KEY],
+            status_lib.Code.PERMISSION_DENIED,
+        )
+        data_types_utils.set_metadata_value(
             ev_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
-            'example-validator error')
+            'example-validator error',
+        )
 
     if fail_fast:
       # Pipeline run should immediately fail because example-validator failed.
       [finalize_task] = self._generate(False, True, fail_fast=fail_fast)
       self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
-      self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
+      self.assertEqual(
+          status_lib.Code.PERMISSION_DENIED, finalize_task.status.code
+      )
     else:
       # Trainer and downstream nodes can execute as transform has finished.
       # example-validator failure does not impact them as it is not upstream.
@@ -857,7 +877,9 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
       self._run_next(False, expect_nodes=[self._chore_b], fail_fast=fail_fast)
       [finalize_task] = self._generate(False, True, fail_fast=fail_fast)
       self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
-      self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
+      self.assertEqual(
+          status_lib.Code.PERMISSION_DENIED, finalize_task.status.code
+      )
 
   @parameterized.parameters(
       ('chore_a',
@@ -939,7 +961,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     # Fail the pipeline since StatsGen can not retry anymore.
     [finalize_task] = self._generate(False, True, fail_fast=True)
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
-    self.assertEqual(status_lib.Code.ABORTED, finalize_task.status.code)
+    self.assertEqual(status_lib.Code.UNKNOWN, finalize_task.status.code)
 
 
 if __name__ == '__main__':

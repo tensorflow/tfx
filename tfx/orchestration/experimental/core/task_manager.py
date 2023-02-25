@@ -276,15 +276,23 @@ class TaskManager:
             task.execution_id,
             result,
         )
-        self._fail_execution(task.execution_id, str(e))
+        self._fail_execution(task.execution_id, status_lib.Code.UNKNOWN, str(e))
     with self._tm_lock:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)
 
-  def _fail_execution(self, execution_id: int, error_msg: str) -> None:
+  def _fail_execution(
+      self, execution_id: int, error_code: int, error_msg: str
+  ) -> None:
+    """Marks an execution as failed."""
     with mlmd_state.mlmd_execution_atomic_op(
         self._mlmd_handle, execution_id
     ) as execution:
+      if error_code:
+        data_types_utils.set_metadata_value(
+            execution.custom_properties[constants.EXECUTION_ERROR_CODE_KEY],
+            error_code,
+        )
       if error_msg:
         data_types_utils.set_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
