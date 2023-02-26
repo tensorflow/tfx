@@ -29,11 +29,14 @@ jobs:
         days-before-stale: 30
         days-before-close: 5
         
+        #comment on PR if stale for more then 14 days. 
+        close-pr-message: This PR was closed due to lack of activity after being marked stale for past 30 days.
+        
         # comment on issues if not active for more then 14 days.
-        stale-issue-message: 'This issue has been automatically marked as stale because it has no recent activity. It will be closed if no further activity occurs. Thank you.'
+        stale-issue-message: 'This issue has been marked stale because it has no recent activity since 14 days. It will be closed if no further activity occurs. Thank you.'
         
         #comment on issues if stale for more then 14 days. 
-        close-issue-message: "Closing as stale. Please reopen if you'd like to work on this further"
+        close-issue-message: 'This issue was closed due to lack of activity after being marked stale for past 14 days.'
               
         # reason for closed the issue default value is not_planned 
         close-issue-reason: completed
@@ -43,9 +46,12 @@ jobs:
         
         # Number of days of inactivity before an issue Request becomes stale
         days-before-issue-stale: 14
-         
+                
         #Check for label to stale or close the issue/PR
         any-of-labels: 'stat:awaiting response'
          
-        #override stale to stalled for issue
-        stale-issue-label: 'Stalled'
+        #stale label for PRs
+        stale-pr-label: 'stale'
+
+        #stale label for issues
+        stale-issue-label: 'stale'
