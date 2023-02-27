@@ -32,6 +32,8 @@ from tfx.utils import json_utils
 SPAN_PROPERTY = Property(type=PropertyType.INT)
 VERSION_PROPERTY = Property(type=PropertyType.INT)
 SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
+FILE_FORMAT_PROPERTY = Property(type=PropertyType.STRING)
+URI_PROPERTY = Property(type=PropertyType.STRING)
 # (DEPRECATED. Do not use.) Value for a string-typed artifact.
 STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
 
@@ -107,6 +109,8 @@ class Examples(_TfxArtifact):
       'span': SPAN_PROPERTY,
       'version': VERSION_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
+      'file_format': FILE_FORMAT_PROPERTY,
+      'uri': URI_PROPERTY,
   }
 
 
