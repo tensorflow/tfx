@@ -188,7 +188,7 @@ class LatestPolicyModel(
 ):
   """LatestPolicyModel operator."""
 
-  # The policy to select the the model by. See Policy enum for valid options.
+  # The policy to select the model by. See Policy enum for valid options.
   # TODO(b/270621886): Restore to Policy Enum type.
   policy = resolver_op.Property(type=int)
 
