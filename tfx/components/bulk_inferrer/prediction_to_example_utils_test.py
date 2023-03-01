@@ -268,6 +268,15 @@ class PredictionToExampleUtilsTest(tf.test.TestCase, parameterized.TestCase):
              string_val: "prediction"
            }
          }
+         outputs {
+           key: "output_ints"
+           value {
+             dtype: DT_INT64
+             tensor_shape { dim { size: 1 } dim { size: 2 }}
+             int64_val: 2
+             int64_val: 3
+           }
+         }
        }
      }
     """ % input_key, prediction_log_pb2.PredictionLog())
@@ -289,6 +298,10 @@ class PredictionToExampleUtilsTest(tf.test.TestCase, parameterized.TestCase):
               output_key: 'output_bytes'
               output_column: 'predict_bytes'
             }
+            output_columns {
+              output_key: 'output_ints'
+              output_column: 'predict_ints'
+            }
           }
         }
     """, bulk_inferrer_pb2.OutputExampleSpec())
@@ -306,6 +319,10 @@ class PredictionToExampleUtilsTest(tf.test.TestCase, parameterized.TestCase):
             feature: {
               key: "predict_bytes"
               value: { bytes_list: { value: "prediction" } }
+            }
+            feature: {
+              key: "predict_ints"
+              value: { int64_list: { value: 2 value: 3 } }
             }
           }
     """, tf.train.Example())

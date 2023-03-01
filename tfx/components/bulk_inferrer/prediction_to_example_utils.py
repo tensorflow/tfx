@@ -170,13 +170,15 @@ def _add_columns(example: tf.train.Example,
   for col, value in features:
     assert col not in feature_map, ('column name %s already exists in example: '
                                     '%s') % (col, example)
-    # Note: we only consider two types, bytes and float for now.
+    # Note: we only consider three types, bytes, int64 and float for now.
     if isinstance(value[0], (str, bytes)):
       if isinstance(value[0], str):
         bytes_value = [v.encode('utf-8') for v in value]
       else:
         bytes_value = value
       feature_map[col].bytes_list.value[:] = bytes_value
+    elif isinstance(value[0], int):
+      feature_map[col].int64_list.value[:] = value
     else:
       feature_map[col].float_list.value[:] = value
   return example
