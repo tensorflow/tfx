@@ -630,9 +630,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         self.assertEqual(unprocessed_inputs[0], input_and_param)
 
   def test_get_unprocessed_inputs_no_trigger(self):
-    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
-
-    # There is 1 unprocessed_input, but set the input as NO_TRIGGER.
+    # Set the example_gen to transform node as NO_TRIGGER.
     input_trigger = (
         self._transform.execution_options.async_trigger.input_triggers[
             'examples'
@@ -640,19 +638,20 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     )
     input_trigger.no_trigger = True
 
-    with self._mlmd_connection_manager as mlmd_connection_manager:
-      resolved_info = task_gen_utils.generate_resolved_info(
-          mlmd_connection_manager, self._transform
-      )
-      unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-          mlmd_connection_manager.primary_mlmd_handle,
-          [],
-          resolved_info,
-          self._transform,
-      )
+    # ExampleGen generates the first output.
+    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
+    resolved_info = task_gen_utils.generate_resolved_info(
+        self._mlmd_connection_manager, self._transform
+    )
+    unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+        self._mlmd_connection,
+        [],
+        resolved_info,
+        self._transform,
+    )
 
-      # Should return empty input since the input is no trigger.
-      self.assertEmpty(unprocessed_inputs)
+    # Should return one unprocessed input, and trigger transform once.
+    self.assertLen(unprocessed_inputs, 1)
 
   def test_interpret_status_from_failed_execution(self):
     execution = metadata_store_pb2.Execution(

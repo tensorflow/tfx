@@ -623,8 +623,6 @@ def get_unprocessed_inputs(
         for k, v in resolved_input_ids_by_key.items()
         if not k.startswith('_') and k not in ignore_keys
     }
-    if not resolved_input_ids_by_key:
-      continue
 
     for processed in processed_inputs:
       if processed == resolved_input_ids_by_key:
