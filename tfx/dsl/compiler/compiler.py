@@ -528,10 +528,10 @@ def _set_node_parameters(node: pipeline_pb2.PipelineNode,
     else:
       try:
         data_types_utils.set_parameter_value(parameter_value, value)
-      except ValueError:
+      except ValueError as e:
         raise ValueError(
             "Component {} got unsupported parameter {} with type {}.".format(
-                tfx_node.id, key, type(value))) from ValueError
+                tfx_node.id, key, type(value))) from e
 
 
 def _find_runtime_upstream_node_ids(
