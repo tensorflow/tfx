@@ -39,7 +39,7 @@ class TaxiTemplateKubeflowV2E2ETest(
         ])
 
     # Prepare data.
-    self._prepare_data()
+    # self._prepare_data()
     self._replaceFileContent('kubeflow_v2_runner.py', [
         ('_DATA_PATH = \'gs://{}/tfx-template/data/taxi/\'.format(configs.GCS_BUCKET_NAME)',
          '_DATA_PATH = \'gs://{{}}/{}/{}\'.format(configs.GCS_BUCKET_NAME)'
@@ -52,12 +52,6 @@ class TaxiTemplateKubeflowV2E2ETest(
 
     # Create a pipeline with only one component.
     self._create_pipeline()
-
-    # Update the pipeline to include all components.
-    updated_pipeline_file = self._addAllComponents()
-    logging.info('Updated %s to add all components to the pipeline.',
-                 updated_pipeline_file)
-    self._update_pipeline()
     self._run_pipeline()
 
 

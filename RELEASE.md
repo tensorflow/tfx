@@ -57,6 +57,7 @@
 ## Bug Fixes and Other Changes
 
 *   ExampleValidator and DistributionValidator now support custom validations.
+*   KubeflowV2DagRunner support JSON-able input parameters.
 
 ## Dependency Updates
 | Package Name | Version Constraints | Previously (in `v1.11.0`) | Comments |
