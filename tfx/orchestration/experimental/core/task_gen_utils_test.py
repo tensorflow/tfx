@@ -290,32 +290,22 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       dict(
           testcase_name='per_execution_idx_latest',
           execution_info_groups=[[
-              dict(external_execution_index=0, execution_timestamp=1000),
-              dict(external_execution_index=1, execution_timestamp=1000)
-          ], [dict(external_execution_index=0, execution_timestamp=1000)
-             ], [dict(external_execution_index=0, execution_timestamp=1000)]],
-          expected_returned_execution_indices=[3, 1],
-          execution_set_size=2),
+              dict(external_execution_index=0),
+              dict(external_execution_index=1)
+          ], [dict(external_execution_index=0)
+             ], [dict(external_execution_index=0)]],
+          expected_returned_execution_indices=[3, 1]),
       dict(
           testcase_name='newer_timestamp',
           execution_info_groups=[[
-              dict(external_execution_index=0, execution_timestamp=1000),
-              dict(external_execution_index=1, execution_timestamp=1000)
-          ], [dict(external_execution_index=0, execution_timestamp=2000),
-              dict(external_execution_index=1, execution_timestamp=2000)]],
-          expected_returned_execution_indices=[2, 3],
-          execution_set_size=2),
-      dict(
-          testcase_name='no_custom_properties',
-          execution_info_groups=[[
-              dict(external_execution_index=None, execution_timestamp=None),
-          ], [dict(external_execution_index=None, execution_timestamp=None)]],
-          expected_returned_execution_indices=[1],
-          execution_set_size=None),
+              dict(external_execution_index=0),
+              dict(external_execution_index=1)
+          ], [dict(external_execution_index=0),
+              dict(external_execution_index=1)]],
+          expected_returned_execution_indices=[2, 3])
   )
   def test_get_latest_execution_set(self, execution_info_groups,
-                                    expected_returned_execution_indices,
-                                    execution_set_size):
+                                    expected_returned_execution_indices):
     execution_type = metadata_store_pb2.ExecutionType(name='my_ex_type')
 
     with self._mlmd_connection as m:
@@ -331,21 +321,12 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         for idx, execution_info in enumerate(execution_info_group):
           input_and_param = input_and_params[idx]
           external_execution_index = execution_info['external_execution_index']
-          execution_timestamp = execution_info['execution_timestamp']
           execution = execution_lib.prepare_execution(
               m,
               execution_type,
               metadata_store_pb2.Execution.NEW,
               input_and_param.exec_properties,
               execution_name=str(uuid.uuid4()))
-          if execution_set_size is not None:
-            execution.custom_properties[
-                task_gen_utils
-                ._EXECUTION_SET_SIZE].int_value = execution_set_size
-          if execution_timestamp is not None:
-            execution.custom_properties[
-                task_gen_utils
-                ._EXECUTION_TIMESTAMP].int_value = execution_timestamp
           if external_execution_index is not None:
             execution.custom_properties[
                 task_gen_utils
@@ -414,39 +395,35 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     failed_execution = metadata_store_pb2.Execution(
         last_known_state=metadata_store_pb2.Execution.FAILED)
     failed_execution.custom_properties[
-        task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
-    failed_execution.custom_properties[
         task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
 
     e1 = metadata_store_pb2.Execution(
         last_known_state=metadata_store_pb2.Execution.FAILED)
-    e1.custom_properties[task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
     e1.custom_properties[task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 0
+
     e2 = metadata_store_pb2.Execution(
         last_known_state=metadata_store_pb2.Execution.FAILED)
-    e2.custom_properties[task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
-    e2.custom_properties[
-        task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+    e2.custom_properties[task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+
     e3 = metadata_store_pb2.Execution(
         last_known_state=metadata_store_pb2.Execution.RUNNING)
-    e3.custom_properties[task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
-    e3.custom_properties[
-        task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+    e3.custom_properties[task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+
     e4 = metadata_store_pb2.Execution(
         last_known_state=metadata_store_pb2.Execution.FAILED)
-    e4.custom_properties[task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
-    e4.custom_properties[
-        task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+    e4.custom_properties[task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+
     e5 = metadata_store_pb2.Execution(
         last_known_state=metadata_store_pb2.Execution.FAILED)
-    e5.custom_properties[task_gen_utils._EXECUTION_TIMESTAMP].int_value = 2000
-    e5.custom_properties[
-        task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+    e5.custom_properties[task_gen_utils._EXTERNAL_EXECUTION_INDEX].int_value = 1
+
     executions = [e1, e2, e3, e4, e5]
     self.assertEqual(
-        2,
+        3,  # e2, e4 and e5 are failed
         task_gen_utils.get_num_of_failures_from_failed_execution(
-            executions, failed_execution))
+            executions, failed_execution
+        ),
+    )
 
   def test_register_execution_from_existing_execution(self):
     with self._mlmd_connection as m:
@@ -471,11 +448,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           execution_name=str(uuid.uuid4()))
       failed_execution.custom_properties[
           task_gen_utils
-          ._EXECUTION_SET_SIZE].int_value = 2
-      failed_execution.custom_properties[
-          task_gen_utils._EXECUTION_TIMESTAMP].int_value = 1000
-      failed_execution.custom_properties[
-          task_gen_utils
           ._EXTERNAL_EXECUTION_INDEX].int_value = 1
       failed_execution.custom_properties['should_not_be_copied'].int_value = 1
       failed_execution = execution_lib.put_execution(
@@ -494,15 +466,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertEqual(
           retry_execution.last_known_state, metadata_store_pb2.Execution.NEW
       )
-      self.assertEqual(
-          retry_execution.custom_properties[task_gen_utils._EXECUTION_SET_SIZE],
-          failed_execution.custom_properties[
-              task_gen_utils._EXECUTION_SET_SIZE])
-      self.assertEqual(
-          retry_execution.custom_properties[
-              task_gen_utils._EXECUTION_TIMESTAMP],
-          failed_execution.custom_properties[
-              task_gen_utils._EXECUTION_TIMESTAMP])
       self.assertEqual(
           retry_execution.custom_properties[
               task_gen_utils._EXTERNAL_EXECUTION_INDEX],
