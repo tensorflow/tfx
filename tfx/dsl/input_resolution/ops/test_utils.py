@@ -18,14 +18,25 @@ from unittest import mock
 from absl.testing import parameterized
 
 from tfx import types
+from tfx.dsl.compiler import compiler_context
+from tfx.dsl.compiler import node_inputs_compiler
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_driver
+from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import executor_spec
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
+from tfx.orchestration import pipeline
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact as tfx_artifact
 from tfx.types import artifact_utils
+from tfx.types import channel as channel_types
+from tfx.types import component_spec
 from tfx.utils import test_case_utils
 from tfx.utils import typing_utils
 
 import ml_metadata as mlmd
+from ml_metadata.proto import metadata_store_pb2
 
 
 class DummyArtifact(types.Artifact):
@@ -78,6 +89,83 @@ class ModelPush(DummyArtifact):
   TYPE_NAME = ops_utils.MODEL_PUSH_TYPE_NAME
 
 
+class FakeSpec(component_spec.ComponentSpec):
+  """FakeComponent component spec."""
+
+  PARAMETERS = {}
+  INPUTS = {
+      'x': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      ops_utils.MODEL_KEY: component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      ops_utils.MODEL_BLESSSING_KEY: component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      ops_utils.MODEL_INFRA_BLESSING_KEY: component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      ops_utils.MODEL_PUSH_KEY: component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      ops_utils.EXAMPLES_KEY: component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+  }
+  OUTPUTS = {}
+
+
+class FakeComponent(base_component.BaseComponent):
+  """FakeComponent that lets user overwrite input/output/exec_properties."""
+
+  SPEC_CLASS = FakeSpec
+
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.EmptyExecutor)
+
+  DRIVER_CLASS = base_driver.BaseDriver
+
+  def __init__(self, id: str, inputs=None, exec_properties=None):  # pylint: disable=redefined-builtin
+    super().__init__(spec=FakeSpec())
+    self.with_id(id)
+
+    # We override the inputs, exec_properties, and outputs.
+    self._inputs = inputs or {}
+    self._exec_properties = exec_properties or {}
+    self._outputs = {}
+
+  def output(self, key: str, artifact_type=DummyArtifact):
+    if key not in self._outputs:
+      self._outputs[key] = channel_types.OutputChannel(artifact_type, self, key)
+    return self._outputs[key]
+
+  @property
+  def inputs(self) -> ...:
+    return self._inputs
+
+  @property
+  def exec_properties(self) -> ...:
+    return self._exec_properties
+
+  @property
+  def outputs(self) -> ...:
+    return self._outputs
+
+
+def compile_inputs(
+    inputs: Dict[str, channel_types.BaseChannel]
+) -> pipeline_pb2.PipelineNode:
+  """Returns a compiled PipelineNode from the FakeComponent inputs dict."""
+  node = FakeComponent('FakeComponent', inputs=inputs)
+  p = pipeline.Pipeline(pipeline_name='pipeline', components=[node])
+  ctx = compiler_context.PipelineContext(p)
+  node_inputs = pipeline_pb2.NodeInputs()
+
+  # Compile the NodeInputs and wrap in a PipelineNode.
+  node_inputs_compiler.compile_node_inputs(ctx, node, node_inputs)
+  return pipeline_pb2.PipelineNode(inputs=node_inputs)
+
+
 class ResolverTestCase(
     test_case_utils.MlmdMixins,
     test_case_utils.TfxTest,
@@ -109,7 +197,7 @@ class ResolverTestCase(
   def create_examples(
       self,
       spans_and_versions: Sequence[Tuple[int, int]],
-      contexts: Sequence[resolver_op.Context] = (),
+      contexts: Sequence[metadata_store_pb2.Context] = (),
   ) -> List[types.Artifact]:
     """Build Examples artifacts and add an ExampleGen execution to MLMD."""
     examples = []
@@ -132,7 +220,7 @@ class ResolverTestCase(
       model: types.Artifact,
       examples: List[types.Artifact],
       transform_graph: Optional[types.Artifact] = None,
-      contexts: Sequence[resolver_op.Context] = (),
+      contexts: Sequence[metadata_store_pb2.Context] = (),
   ):
     """Add an Execution to MLMD where a Trainer trains on the examples."""
     inputs = {'examples': self.unwrap_tfx_artifacts(examples)}
@@ -150,6 +238,7 @@ class ResolverTestCase(
       model: types.Artifact,
       blessed: bool = True,
       baseline_model: Optional[types.Artifact] = None,
+      contexts: Sequence[metadata_store_pb2.Context] = (),
   ) -> types.Artifact:
     """Add an Execution to MLMD where the Evaluator blesses the model."""
     model_blessing = self.prepare_tfx_artifact(
@@ -164,12 +253,16 @@ class ResolverTestCase(
         'Evaluator',
         inputs=inputs,
         outputs={'blessing': self.unwrap_tfx_artifacts([model_blessing])},
+        contexts=contexts,
     )
 
     return model_blessing
 
   def infra_validator_bless_model(
-      self, model: types.Artifact, blessed: bool = True
+      self,
+      model: types.Artifact,
+      blessed: bool = True,
+      contexts: Sequence[metadata_store_pb2.Context] = (),
   ) -> types.Artifact:
     """Add an Execution to MLMD where the InfraValidator blesses the model."""
     if blessed:
@@ -184,17 +277,23 @@ class ResolverTestCase(
         'InfraValidator',
         inputs={'model': self.unwrap_tfx_artifacts([model])},
         outputs={'result': self.unwrap_tfx_artifacts([model_infra_blessing])},
+        contexts=contexts,
     )
 
     return model_infra_blessing
 
-  def push_model(self, model: types.Artifact):
+  def push_model(
+      self,
+      model: types.Artifact,
+      contexts: Sequence[metadata_store_pb2.Context] = (),
+  ):
     """Add an Execution to MLMD where the Pusher pushes the model."""
     model_push = self.prepare_tfx_artifact(ModelPush)
     self.put_execution(
         'ServomaticPusher',
         inputs={'model': self.unwrap_tfx_artifacts([model])},
         outputs={'model_push': self.unwrap_tfx_artifacts([model_push])},
+        contexts=contexts,
     )
     return model_push
 
