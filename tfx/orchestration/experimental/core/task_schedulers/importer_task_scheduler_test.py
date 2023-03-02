@@ -125,16 +125,9 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
 
       [execution
       ] = m.store.get_executions_by_id([self._importer_task.execution_id])
-      del execution.custom_properties['__execution_timestamp__']
       self.assertProtoPartiallyEquals(
           """
           last_known_state: COMPLETE
-          custom_properties {
-            key: "__execution_set_size__"
-            value {
-              int_value: 1
-            }
-          }
           custom_properties {
             key: "__external_execution_index__"
             value {
