@@ -519,7 +519,7 @@ class UnionChannel(BaseChannel):
     super().__init__(type=channels[0].type)
 
     for channel in self.channels:
-      if not isinstance(channel, Channel) or channel.type != self.type:
+      if channel.type != self.type:
         raise TypeError(
             'Unioned channels must have the same type. Expected %s (got %s).' %
             (self.type, channel.type))
