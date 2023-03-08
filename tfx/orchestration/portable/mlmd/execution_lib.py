@@ -37,7 +37,9 @@ from ml_metadata.proto import metadata_store_pb2
 
 ArtifactState = types.artifact.ArtifactState
 
+# LINT.IfChange(execution_result)
 _EXECUTION_RESULT = '__execution_result__'
+# LINT.ThenChange()
 _PROPERTY_SCHEMA_PREFIX = '__schema__'
 _PROPERTY_SCHEMA_SUFFIX = '__'
 
