@@ -198,4 +198,3 @@ class BeamComponentParameter(_PipelineTypeGeneric):
 
 class OutputDict(TypedDict):
   """Component return type annotation."""
-  pass
