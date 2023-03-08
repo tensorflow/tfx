@@ -29,11 +29,6 @@ from tfx.dsl.component.experimental import json_compat
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 
-if sys.version_info >= (3, 8):
-  from typing import _TypedDictMeta
-else:
-  from typing_extensions import _TypedDictMeta
-
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
   _BeamPipeline = beam.Pipeline
@@ -68,8 +63,7 @@ _OPTIONAL_PRIMITIVE_MAP = dict((Optional[t], t) for t in _PRIMITIVE_TO_ARTIFACT)
 def _get_return_type_annotations(typehints: Dict[str, Any]) -> Optional[Dict]:
   """Returns annotations of expected return types."""
   return_annotations = typehints.get('return')
-  if (isinstance(return_annotations, _TypedDictMeta) and
-          getattr(return_annotations, "__annotations__")):
+  if hasattr(return_annotations, "__annotations__"):
     return return_annotations.__annotations__
   elif isinstance(return_annotations, Dict):
     return return_annotations
