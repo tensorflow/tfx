@@ -13,7 +13,3 @@ Cython<1
 
 # TODO(b/265052215): Remove pinned version after resolving the issue.
 cachelib<0.10.0
-
-# TODO(b/270910185): Remove this restriction after the TF 2.12 RC1 is
-# released.
-wrapt<1.15.0
