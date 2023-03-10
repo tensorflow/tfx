@@ -336,18 +336,25 @@ class LatestPolicyModel(
     # a child artifact of type child_artifact_type. Note we perform batch
     # queries to reduce the number round trips to the database.
 
-    # Get all Executions in MLMD associated with the Model artifacts.
-    model_artifact_ids = sorted(set(m.id for m in models))
-    execution_ids = set()
     # There could be multiple events with the same execution ID but different
     # artifact IDs (e.g. model and baseline_model passed to an Evaluator), so we
     # keep the values of model_artifact_ids_by_execution_id as sets.
-    model_artifact_ids = set(m.id for m in models)
+    model_artifact_ids = sorted(set(m.id for m in models))
     model_artifact_ids_by_execution_id = collections.defaultdict(set)
+
+    # Pusher takes uses the key "model_export" to take in the Model artifact,
+    # but all other components use the key "model".
+    if self.policy == Policy.LATEST_PUSHED:
+      event_input_key = ops_utils.MODEL_EXPORT_KEY
+    else:
+      event_input_key = ops_utils.MODEL_KEY
+
+    # Get all Executions in MLMD associated with the Model artifacts.
+    execution_ids = set()
     for event in self.context.store.get_events_by_artifact_ids(
         model_artifact_ids
     ):
-      if event_lib.is_valid_input_event(event, ops_utils.MODEL_KEY):
+      if event_lib.is_valid_input_event(event, event_input_key):
         model_artifact_ids_by_execution_id[event.execution_id].add(
             event.artifact_id
         )

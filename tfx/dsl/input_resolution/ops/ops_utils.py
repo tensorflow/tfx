@@ -31,6 +31,7 @@ SPAN_AND_VERSION_PROPERTIES = {**SPAN_PROPERTY, **VERSION_PROPERTY}
 EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
 MODEL_BLESSSING_KEY = 'model_blessing'
+MODEL_EXPORT_KEY = 'model_export'
 MODEL_INFRA_BLESSING_KEY = 'model_infra_blessing'
 MODEL_PUSH_KEY = 'model_push'
 

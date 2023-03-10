@@ -291,7 +291,7 @@ class ResolverTestCase(
     model_push = self.prepare_tfx_artifact(ModelPush)
     self.put_execution(
         'ServomaticPusher',
-        inputs={'model': self.unwrap_tfx_artifacts([model])},
+        inputs={'model_export': self.unwrap_tfx_artifacts([model])},
         outputs={'model_push': self.unwrap_tfx_artifacts([model_push])},
         contexts=contexts,
     )
