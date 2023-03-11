@@ -190,10 +190,10 @@
           },
           "parameters": {
             "infer_feature_shape": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             },
             "exclude_splits": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           }
         },
@@ -227,16 +227,16 @@
         "inputDefinitions": {
           "parameters": {
             "module_file": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "train_args": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "custom_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "eval_args": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           },
           "artifacts": {
@@ -299,13 +299,13 @@
           },
           "parameters": {
             "example_splits": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "eval_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "fairness_indicator_thresholds": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           }
         }
@@ -327,7 +327,7 @@
         "inputDefinitions": {
           "parameters": {
             "exclude_splits": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           },
           "artifacts": {
@@ -429,16 +429,16 @@
           },
           "parameters": {
             "module_file": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "disable_statistics": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             },
             "custom_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "force_tf_compat_v1": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             }
           }
         },
@@ -470,10 +470,10 @@
           },
           "parameters": {
             "push_destination": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "custom_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           }
         }
@@ -492,19 +492,19 @@
         "inputDefinitions": {
           "parameters": {
             "input_base": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "input_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "output_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "output_data_format": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             },
             "output_file_format": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             }
           }
         }
@@ -523,7 +523,7 @@
         "inputDefinitions": {
           "parameters": {
             "exclude_splits": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           },
           "artifacts": {
@@ -554,10 +554,10 @@
         "inputDefinitions": {
           "parameters": {
             "source_uri": {
-              "type": "STRING"
+              "parameterType": "STRUCT"
             },
             "resolver_class": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           }
         }
