@@ -21,7 +21,6 @@ Internal use only. No backwards compatibility guarantees.
 
 import enum
 import inspect
-import sys
 import types
 from typing import Any, Dict, Optional, Tuple, Type, Union
 from tfx.dsl.component.experimental import annotations
