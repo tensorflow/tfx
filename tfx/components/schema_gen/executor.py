@@ -25,7 +25,8 @@ from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
-from tfx_bs.tfxio import tensor_representation_util
+from tfx_bs.tfxio.tensor_representation_util import (InferTensorRepresentationsFromSchema, 
+  SetTensorRepresentationsInSchema)
 
 
 # Default file name for generated schema file.
@@ -91,9 +92,11 @@ class Executor(base_executor.BaseExecutor):
             output_dict[standard_component_specs.SCHEMA_KEY]),
         DEFAULT_FILE_NAME)
 
-    # Add tensor representations to handle SequenceExamples downstream. Still need correct Payload Format.
-    tensor_representations = tensor_representation_util.InferTensorRepresentationsFromSchema(schema)
-    tensor_representation_util.SetTensorRepresentationsInSchema(schema, tensor_representations)
+    # Add tensor representations to handle SequenceExamples downstream.
+    # Still need correct Payload Format.
+    tensor_representations = InferTensorRepresentationsFromSchema(schema)
+    SetTensorRepresentationsInSchema(schema, tensor_representations)
+    
 
     io_utils.write_pbtxt_file(output_uri, schema)
     logging.info('Schema written to %s.', output_uri)
