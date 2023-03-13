@@ -391,6 +391,10 @@ nodes {
                     key: "split_names"
                     value: STRING
                   }
+                  properties {
+                    key: "stats_dashboard_link"
+                    value: STRING
+                  }
                   base_type: STATISTICS
                 }
               }

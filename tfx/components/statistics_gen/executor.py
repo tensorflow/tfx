@@ -17,6 +17,7 @@ from typing import Any, Dict, List
 
 from absl import logging
 import tensorflow_data_validation as tfdv
+from tensorflow_data_validation.google.utils import dashboard_util
 from tensorflow_data_validation.statistics import stats_options as options
 from tfx import types
 from tfx.components.statistics_gen import stats_artifact_utils
@@ -96,6 +97,9 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         output_dict[standard_component_specs.STATISTICS_KEY])
     statistics_artifact.split_names = artifact_utils.encode_split_names(
         split_names)
+
+    statistics_artifact.stats_dashboard_link = (
+        dashboard_util.generate_stats_dashboard_link())
 
     stats_options = options.StatsOptions()
     stats_options_json = exec_properties.get(

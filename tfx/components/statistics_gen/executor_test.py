@@ -93,6 +93,7 @@ class ExecutorTest(parameterized.TestCase):
     # Create output dict.
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
+    stats.stats_dashboard_link = ''
     output_dict = {
         standard_component_specs.STATISTICS_KEY: [stats],
     }
@@ -167,6 +168,7 @@ class ExecutorTest(parameterized.TestCase):
     # Create output dict.
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
+    stats.stats_dashboard_link = ''
     output_dict = {
         standard_component_specs.STATISTICS_KEY: [stats],
     }
@@ -213,6 +215,7 @@ class ExecutorTest(parameterized.TestCase):
     # Create output dict.
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
+    stats.stats_dashboard_link = ''
     output_dict = {
         standard_component_specs.STATISTICS_KEY: [stats],
     }
@@ -247,6 +250,7 @@ class ExecutorTest(parameterized.TestCase):
     # Create output dict.
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
+    stats.stats_dashboard_link = ''
     output_dict = {
         standard_component_specs.STATISTICS_KEY: [stats],
     }

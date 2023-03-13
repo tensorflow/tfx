@@ -34,6 +34,7 @@ VERSION_PROPERTY = Property(type=PropertyType.INT)
 SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
 # (DEPRECATED. Do not use.) Value for a string-typed artifact.
 STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
+STATS_DASHBOARD_LINK_PROPERTY = Property(type=PropertyType.STRING)
 
 
 class _TfxArtifact(Artifact):
@@ -124,6 +125,7 @@ class ExampleStatistics(_TfxArtifact):
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
+      'stats_dashboard_link': STATS_DASHBOARD_LINK_PROPERTY
   }
 
 
