@@ -180,14 +180,18 @@ def filter_artifacts_by_span(
     artifacts_by_span.setdefault(artifact.span, []).append(artifact)
 
   result = []
-  version_and_id = lambda a: (a.version, a.id)
+  version_time_and_id = lambda a: (  # pylint: disable=g-long-lambda
+      a.version,
+      a.mlmd_artifact.create_time_since_epoch,
+      a.id,
+  )
   for span in sorted(spans):
     if keep_all_versions:
       # span_descending only applies to sorting by span, but version should
       # always be sorted in ascending order.
-      result.extend(sorted(artifacts_by_span[span], key=version_and_id))
+      result.extend(sorted(artifacts_by_span[span], key=version_time_and_id))
     else:
       # Latest version is defined as the largest version. Ties broken by id.
-      result.append(max(artifacts_by_span[span], key=version_and_id))
+      result.append(max(artifacts_by_span[span], key=version_time_and_id))
 
   return result

@@ -67,7 +67,14 @@ class StaticSpanRange(
       self.end_span = max(valid_artifacts, key=lambda a: a.span).span
 
     # Sort the artifacts by span and then by version, in ascending order.
-    valid_artifacts.sort(key=lambda a: (a.span, a.version))  # pytype: disable=attribute-error
+    valid_artifacts.sort(
+        key=lambda a: (  # pylint: disable=g-long-lambda
+            a.span,
+            a.version,
+            a.mlmd_artifact.create_time_since_epoch,
+            a.id,
+        )
+    )  # pytype: disable=attribute-error
 
     # Only consider artifacts with spans are in [start_span, end_span]
     # inclusive.

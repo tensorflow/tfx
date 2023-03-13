@@ -103,7 +103,9 @@ def training_range(store: Any, model: types.Artifact) -> List[types.Artifact]:
 
   # Return the sorted Examples.
   artifacts = artifact_utils.deserialize_artifacts(examples_type, mlmd_examples)
-  return sorted(artifacts, key=lambda a: a.id)
+  return sorted(
+      artifacts, key=lambda a: (a.mlmd_artifact.create_time_since_epoch, a.id)
+  )
 
 
 class TrainingRange(
