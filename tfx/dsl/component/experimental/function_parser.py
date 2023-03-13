@@ -20,7 +20,6 @@ Internal use only. No backwards compatibility guarantees.
 # overrides after Python 2 support is removed from TFX.
 
 import inspect
-import sys
 import types
 from typing import Any, Dict, Optional, Tuple, Type, Union, get_args, get_origin
 
