@@ -13,4 +13,5 @@
 # limitations under the License.
 """TFX types module."""
 
+from tfx.types.channel import BaseChannel
 from tfx.v1.types import standard_artifacts

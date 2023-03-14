@@ -181,7 +181,7 @@ class ModelBlessing(_TfxArtifact):
   ```python
   # Run pusher if evaluator has blessed the model.
   with conditional.Cond(evaluator.outputs['blessing'].future()
-                      [0].custom_property('blessed') == 1):
+                        [0].custom_property('blessed') == 1):
     pusher = Pusher(...)
   ```
 

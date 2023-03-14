@@ -531,8 +531,7 @@ class UnionChannel(BaseChannel):
     return set()
 
 
-@deprecation_utils.deprecated(
-    None, 'Please use `tfx.types.channel_utils.union()` instead.')
+@deprecation_utils.deprecated(None, 'Please use `tfx.dsl.union()` instead.')
 def union(input_channels: Iterable[BaseChannel]) -> UnionChannel:
   """Convenient method to combine multiple input channels into union channel."""
   return UnionChannel(input_channels)
