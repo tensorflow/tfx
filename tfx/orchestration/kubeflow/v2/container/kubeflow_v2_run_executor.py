@@ -61,7 +61,7 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
       args.json_serialized_invocation_args,
       executor_input,
       ignore_unknown_fields=True)
-
+  print(f'#### executor_input {executor_input}')
   inputs_dict = executor_input.inputs.artifacts
   outputs_dict = executor_input.outputs.artifacts
   inputs_parameter = executor_input.inputs.parameters

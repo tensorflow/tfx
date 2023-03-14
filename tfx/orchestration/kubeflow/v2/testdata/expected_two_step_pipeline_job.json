@@ -140,7 +140,7 @@
           },
           "parameters": {
             "exclude_splits": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           }
         },
@@ -150,16 +150,16 @@
         "inputDefinitions": {
           "parameters": {
             "output_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "input_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "output_data_format": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             },
             "output_file_format": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             }
           }
         },
