@@ -28,7 +28,6 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.experimental.conditionals import conditional
 from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types.experimental import simple_artifacts
@@ -223,8 +222,9 @@ def create_pipeline_components(
       baseline_model=model_resolver.outputs['model'],
       eval_config=eval_config)
 
-  with conditional.Cond(evaluator.outputs['blessing'].future()
-                        [0].custom_property('blessed') == 1):
+  with tfx.dsl.Cond(
+      evaluator.outputs['blessing'].future()[0].custom_property('blessed') == 1
+  ):
     pusher = tfx.components.Pusher(
         model=trainer.outputs['model'],
         push_destination=tfx.proto.PushDestination(

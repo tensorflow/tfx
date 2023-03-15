@@ -6,6 +6,8 @@
 
 ### For Pipeline Authors
 
+*   Conditional can be used from `tfx.dsl.Cond` (Given `from tfx import v1 as
+    tfx`).
 *   `placeholder.Placeholder.placeholders_involved()` was replaced with
     `placeholder.Placeholder.traverse()`.
 *   `placeholder.Predicate.dependent_channels()` was replaced with
