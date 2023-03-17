@@ -539,18 +539,21 @@ def get_unprocessed_inputs(
 
   # Gets the processed inputs.
   processed_inputs: List[Dict[str, Tuple[int, ...]]] = []
+  events = metadata_handle.store.get_events_by_execution_ids(
+      [e.id for e in executions]
+  )
   for execution in executions:
-    events = metadata_handle.store.get_events_by_execution_ids([execution.id])
     input_events = [
         e
         for e in events
         if e.type == metadata_store_pb2.Event.INPUT
         and event_lib.is_valid_input_event(e)
+        and e.execution_id == execution.id
     ]
     ids_by_key = event_lib.reconstruct_artifact_id_multimap(input_events)
     # Filters out the keys starting with '_' and the keys should be ingored.
     ids_by_key = {
-        k: v
+        k: tuple(sorted(v))
         for k, v in ids_by_key.items()
         if not k.startswith('_') and k not in ignore_keys
     }
@@ -593,7 +596,7 @@ def get_unprocessed_inputs(
 
     # Filters out the keys starting with '_' and the keys should be ingored.
     resolved_input_ids_by_key = {
-        k: v
+        k: tuple(sorted(v))
         for k, v in resolved_input_ids_by_key.items()
         if not k.startswith('_') and k not in ignore_keys
     }
