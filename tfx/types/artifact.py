@@ -649,8 +649,18 @@ class Artifact(json_utils.Jsonable):
     self._cached_modifiable_custom_properties[key] = value
 
   @doc_controls.do_not_doc_in_subclasses
+  def has_property(self, key: str) -> bool:
+    return (
+        key in self._artifact.properties
+        or key in self._cached_modifiable_properties
+    )
+
+  @doc_controls.do_not_doc_in_subclasses
   def has_custom_property(self, key: str) -> bool:
-    return key in self._artifact.custom_properties
+    return (
+        key in self._artifact.custom_properties
+        or key in self._cached_modifiable_custom_properties
+    )
 
   @doc_controls.do_not_doc_in_subclasses
   def get_string_custom_property(self, key: str) -> str:

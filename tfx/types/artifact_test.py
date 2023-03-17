@@ -203,9 +203,11 @@ class ArtifactTest(tf.test.TestCase):
                                 "unknown property 'split_names'"):
       instance.split_names = ''
 
+    self.assertFalse(instance.has_custom_property('int_key'))
     instance.set_int_custom_property('int_key', 20)
     self.assertEqual(
         20, instance.mlmd_artifact.custom_properties['int_key'].int_value)
+    self.assertTrue(instance.has_custom_property('int_key'))
 
     instance.set_string_custom_property('string_key', 'string_value')
     self.assertEqual(
@@ -339,6 +341,8 @@ class ArtifactTest(tf.test.TestCase):
     my_artifact.jsonvalue_float = 3.14
     my_artifact.jsonvalue_list = ['a1', '2', 3, {'4': 5.0}]
     my_artifact.jsonvalue_null = None
+    self.assertFalse(my_artifact.has_custom_property('customjson1'))
+    self.assertFalse(my_artifact.has_custom_property('customjson2'))
     my_artifact.set_json_value_custom_property('customjson1', {})
     my_artifact.set_json_value_custom_property('customjson2', ['a', 'b', 3])
     my_artifact.set_json_value_custom_property('customjson3', 'xyz')
@@ -359,6 +363,8 @@ class ArtifactTest(tf.test.TestCase):
         my_artifact.get_json_value_custom_property('customjson3'), 'xyz')
     self.assertEqual(
         my_artifact.get_json_value_custom_property('customjson4'), 3.14)
+    self.assertTrue(my_artifact.has_custom_property('customjson1'))
+    self.assertTrue(my_artifact.has_custom_property('customjson2'))
 
     # Test string and proto serialization.
     self.assertEqual(
@@ -879,6 +885,8 @@ class ArtifactTest(tf.test.TestCase):
   def testArtifactProtoValue(self):
     # Construct artifact.
     my_artifact = _MyArtifact2()
+    self.assertFalse(my_artifact.has_property('proto1'))
+    self.assertFalse(my_artifact.has_custom_property('customproto2'))
     my_artifact.proto1 = None
     my_artifact.proto2 = struct_pb2.Value(string_value='aaa')
     my_artifact.set_proto_custom_property('customproto1', None)
@@ -894,6 +902,8 @@ class ArtifactTest(tf.test.TestCase):
     self.assertProtoEquals(
         my_artifact.get_json_value_custom_property('customproto2'),
         struct_pb2.Value(string_value='bbb'))
+    self.assertTrue(my_artifact.has_property('proto1'))
+    self.assertTrue(my_artifact.has_custom_property('customproto2'))
 
     # Test string and proto serialization.
     self.assertEqual(
@@ -1109,6 +1119,7 @@ class ArtifactTest(tf.test.TestCase):
     my_artifact = _MyArtifact()
     self.assertEqual(0, my_artifact.int1)
     self.assertEqual(0, my_artifact.int2)
+    self.assertFalse(my_artifact.has_property('int1'))
     my_artifact.int1 = 111
     my_artifact.int2 = 222
     self.assertEqual('', my_artifact.string1)
@@ -1117,6 +1128,7 @@ class ArtifactTest(tf.test.TestCase):
     my_artifact.string2 = '222'
     self.assertEqual(my_artifact.int1, 111)
     self.assertEqual(my_artifact.int2, 222)
+    self.assertTrue(my_artifact.has_property('int1'))
     self.assertEqual(my_artifact.string1, '111')
     self.assertEqual(my_artifact.string2, '222')
     self.assertEqual(my_artifact.get_string_custom_property('invalid'), '')
@@ -1289,7 +1301,6 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(tfx_artifact.mlmd_artifact.state,
                      metadata_store_pb2.Artifact.State.UNKNOWN)
     self.assertEqual(tfx_artifact.state, 'foobar')
-
 
 if __name__ == '__main__':
   tf.test.main()
