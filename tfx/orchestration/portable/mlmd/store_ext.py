@@ -15,19 +15,19 @@
 
 All public functions should accepts the first parameter of MetadataStore.
 """
-from typing import Optional, List, Sequence, Union
+from typing import Optional, List, Sequence, Union, Callable
 
+from tfx.dsl.compiler import compiler_utils
+from tfx.dsl.compiler import constants
+from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import filter_query_builder as q
 
 import ml_metadata as mlmd
-from ml_metadata.proto import metadata_store_pb2
 
 
-_Metadata = Union[
-    metadata_store_pb2.Artifact,
-    metadata_store_pb2.Execution,
-    metadata_store_pb2.Context,
-]
+_Metadata = Union[mlmd.proto.Artifact, mlmd.proto.Execution, mlmd.proto.Context]
+_ArtifactState = mlmd.proto.Artifact.State
+_ArtifactPredicate = Callable[[mlmd.proto.Artifact], bool]
 
 
 def _ids(values: Sequence[_Metadata]) -> Sequence[int]:
@@ -43,11 +43,12 @@ def get_successful_node_executions(
     *,
     pipeline_id: str,
     node_id: str,
-) -> List[metadata_store_pb2.Execution]:
+) -> List[mlmd.proto.Execution]:
   """Gets all successful node executions."""
+  node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
   node_executions_query = q.And([
-      'contexts_0.type = "node"',
-      f'contexts_0.name = "{pipeline_id}.{node_id}"',
+      f'contexts_0.type = "{constants.NODE_CONTEXT_TYPE_NAME}"',
+      f'contexts_0.name = "{node_context_name}"',
       q.Or([
           'last_known_state = COMPLETE',
           'last_known_state = CACHED',
@@ -60,34 +61,25 @@ def get_output_artifacts_from_execution_ids(
     store: mlmd.MetadataStore,
     *,
     execution_ids: Sequence[int],
-    artifact_filter: Optional[str] = None,
-) -> List[metadata_store_pb2.Artifact]:
+    artifact_filter: Optional[_ArtifactPredicate] = None,
+) -> List[mlmd.proto.Artifact]:
   """Gets artifacts associated with OUTPUT events from execution IDs.
 
   Args:
     store: A MetadataStore object.
     execution_ids: A list of Execution IDs.
-    artifact_filter: Optional MLMD filter query to apply for the artifact query,
-      e.g. "state = LIVE".
+    artifact_filter: Optional artifact predicate to apply.
 
   Returns:
-    A list of artifacts.
+    A list of output artifacts of the given executions.
   """
-  artifact_query = q.And([
-      q.Or([
-          'events_0.type = OUTPUT',
-          'events_0.type = INTERNAL_OUTPUT',
-          'events_0.type = DECLARED_OUTPUT',
-      ]),
-      q.Or(
-          [
-              f'events_0.execution_id = {execution_id}'
-              for execution_id in execution_ids
-          ]
-      ),
-      *_maybe_clause(artifact_filter),
-  ])
-  return store.get_artifacts(list_options=artifact_query.list_options())
+  events = store.get_events_by_execution_ids(execution_ids)
+  output_events = [e for e in events if event_lib.is_valid_output_event(e)]
+  artifact_ids = {e.artifact_id for e in output_events}
+  result = store.get_artifacts_by_id(artifact_ids)
+  if artifact_filter is not None:
+    result = [a for a in result if artifact_filter(a)]
+  return result
 
 
 def get_live_output_artifacts_of_node(
@@ -95,7 +87,7 @@ def get_live_output_artifacts_of_node(
     *,
     pipeline_id: str,
     node_id: str,
-) -> List[metadata_store_pb2.Artifact]:
+) -> List[mlmd.proto.Artifact]:
   """Get LIVE output artifacts of the given node.
 
   This is a 2-hop query with 2 MLMD API calls:
@@ -124,5 +116,5 @@ def get_live_output_artifacts_of_node(
   return get_output_artifacts_from_execution_ids(
       store,
       execution_ids=_ids(node_executions),
-      artifact_filter='state = LIVE',
+      artifact_filter=lambda a: a.state == mlmd.proto.Artifact.LIVE,
   )

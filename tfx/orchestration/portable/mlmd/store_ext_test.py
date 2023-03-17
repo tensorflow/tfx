@@ -21,7 +21,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 def _ids(values):
-  return [v.id for v in values]
+  return sorted(v.id for v in values)
 
 
 class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
@@ -43,7 +43,7 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
     result = store_ext.get_successful_node_executions(
         self.store, pipeline_id='my-pipeline', node_id='my-node'
     )
-    self.assertCountEqual(_ids(result), _ids([e1, e2]))
+    self.assertEqual(_ids(result), _ids([e1, e2]))
 
     with self.subTest('Bad pipeline_id'):
       result = store_ext.get_successful_node_executions(
@@ -83,15 +83,15 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
         self.store,
         execution_ids=_ids([e1, e2, e3, e4]),
     )
-    self.assertCountEqual(_ids(result), _ids([y1, y2, y3, y4]))
+    self.assertEqual(_ids(result), _ids([y1, y2, y3, y4]))
 
     with self.subTest('With artifact filter'):
       result = store_ext.get_output_artifacts_from_execution_ids(
           self.store,
           execution_ids=_ids([e1, e2, e3, e4]),
-          artifact_filter='state = LIVE',
+          artifact_filter=lambda a: a.state == metadata_store_pb2.Artifact.LIVE,
       )
-      self.assertCountEqual(_ids(result), _ids([y2, y3, y4]))
+      self.assertEqual(_ids(result), _ids([y2, y3, y4]))
 
   def testGetLiveOutputArtifactsOfNode(self):
     c = self.put_context('node', 'my-pipeline.my-node')
@@ -109,7 +109,7 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
     result = store_ext.get_live_output_artifacts_of_node(
         self.store, pipeline_id='my-pipeline', node_id='my-node'
     )
-    self.assertCountEqual(_ids(result), _ids([y2]))
+    self.assertEqual(_ids(result), _ids([y2]))
 
 
 if __name__ == '__main__':
