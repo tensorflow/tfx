@@ -105,6 +105,7 @@ class BaseChannel(abc.ABC):
           f'tfx.Artifact (got {type}).')
     self._artifact_type = type
     self._input_trigger = None
+    self._original_channel = None
 
   @property
   def type(self):  # pylint: disable=redefined-builtin
@@ -143,6 +144,9 @@ class BaseChannel(abc.ABC):
 
   def _with_input_trigger(self, input_trigger: _InputTrigger):
     """Creates shallow-copied channel with new annotations."""
+    # Save a copy of the original object.
+    self._original_channel = self
+
     result = copy.copy(self)
     result._input_trigger = input_trigger  # pylint: disable=protected-access
     return result
@@ -159,8 +163,6 @@ class BaseChannel(abc.ABC):
     return placeholder.ChannelWrappedPlaceholder(self)
 
   def __eq__(self, other):
-    if not isinstance(other, BaseChannel):
-      return NotImplemented
     return self is other
 
   def __hash__(self):
@@ -267,8 +269,14 @@ class Channel(json_utils.Jsonable, BaseChannel):
             artifacts: [{}]
             additional_properties: {}
             additional_custom_properties: {}
-        )""").format(self.type_name, artifacts_str, self.additional_properties,
-                     self.additional_custom_properties)
+            _input_trigger: {}
+        )""").format(
+        self.type_name,
+        artifacts_str,
+        self.additional_properties,
+        self.additional_custom_properties,
+        self._input_trigger,
+    )
 
   def _validate_additional_properties(self, value: Any) -> None:
     if not _is_property_dict(value):
@@ -455,7 +463,9 @@ class OutputChannel(Channel):
         f'producer_component_id={self.producer_component_id}, '
         f'output_key={self.output_key}, '
         f'additional_properties={self.additional_properties}, '
-        f'additional_custom_properties={self.additional_custom_properties})')
+        f'additional_custom_properties={self.additional_custom_properties}, '
+        f'_input_trigger={self._input_trigger}'
+    )
 
   def get_data_dependent_node_ids(self) -> Set[str]:
     return {self.producer_component_id}
