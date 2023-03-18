@@ -122,7 +122,9 @@ class _Generator:
 
       # If this is a pure service node, there is no ExecNodeTask to generate
       # but we ensure node services and check service status.
-      service_status = self._ensure_node_services_if_pure(node_id)
+      service_status = self._ensure_node_services_if_pure(
+          node_id, node_state.backfill_token
+      )
       if service_status is not None:
         if service_status != service_jobs.ServiceStatus.RUNNING:
           error_msg = f'associated service job failed; node uid: {node_uid}'
@@ -434,12 +436,14 @@ class _Generator:
     return result
 
   def _ensure_node_services_if_pure(
-      self, node_id: str) -> Optional[service_jobs.ServiceStatus]:
+      self, node_id: str, backfill_token: str
+  ) -> Optional[service_jobs.ServiceStatus]:
     """Calls `ensure_node_services` and returns status if given node is pure service node."""
     if self._service_job_manager.is_pure_service_node(self._pipeline_state,
                                                       node_id):
       return self._service_job_manager.ensure_node_services(
-          self._pipeline_state, node_id)
+          self._pipeline_state, node_id, backfill_token
+      )
     return None
 
   def _ensure_node_services_if_mixed(

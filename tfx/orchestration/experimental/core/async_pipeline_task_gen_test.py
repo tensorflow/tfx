@@ -79,7 +79,9 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         _is_mixed_service_node)
     self._mock_service_job_manager.stop_node_services.return_value = True
 
-    def _default_ensure_node_services(unused_pipeline_state, node_id):
+    def _default_ensure_node_services(
+        unused_pipeline_state, node_id, unused_backfill_token=''
+    ):
       self.assertIn(
           node_id,
           (self._example_gen.node_info.id, self._transform.node_info.id))
@@ -178,8 +180,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
 
     self._mock_service_job_manager.ensure_node_services.assert_has_calls([
-        mock.call(mock.ANY, self._example_gen.node_info.id),
-        mock.call(mock.ANY, self._transform.node_info.id)
+        mock.call(mock.ANY, self._example_gen.node_info.id, ''),
+        mock.call(mock.ANY, self._transform.node_info.id),
     ])
 
     # No new effects if generate called again.
@@ -337,8 +339,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
 
     self._mock_service_job_manager.ensure_node_services.assert_has_calls([
-        mock.call(mock.ANY, self._example_gen.node_info.id),
-        mock.call(mock.ANY, self._transform.node_info.id)
+        mock.call(mock.ANY, self._example_gen.node_info.id, ''),
+        mock.call(mock.ANY, self._transform.node_info.id),
     ])
 
     # Mark one of the Transform executions complete.
@@ -448,7 +450,9 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
   def test_service_job_failed(self):
     """Tests task generation when example-gen service job fails."""
 
-    def _ensure_node_services(unused_pipeline_state, node_id):
+    def _ensure_node_services(
+        unused_pipeline_state, node_id, unused_backfill_token=''
+    ):
       if node_id == 'my_example_gen':
         return service_jobs.ServiceStatus.FAILED
 
@@ -466,7 +470,9 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
   def test_mix_service_job_failed(self):
     """Tests task generation when my_transform mix service job fails."""
 
-    def _ensure_node_services(unused_pipeline_state, node_id):
+    def _ensure_node_services(
+        unused_pipeline_state, node_id, unused_backfill_token=''
+    ):
       if node_id == 'my_example_gen':
         return service_jobs.ServiceStatus.RUNNING
       if node_id == 'my_transform':
@@ -510,7 +516,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
 
     self._mock_service_job_manager.ensure_node_services.assert_has_calls([
-        mock.call(mock.ANY, self._example_gen.node_info.id),
+        mock.call(mock.ANY, self._example_gen.node_info.id, ''),
         mock.call(mock.ANY, self._transform.node_info.id),
     ])
 
@@ -742,6 +748,45 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     )
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.STOPPED, update_transform_task.state)
+
+  def test_backfill_pure_service_node(self):
+    test_utils.get_or_create_pipeline_state(
+        self._mlmd_connection, self._pipeline
+    )
+    # Put ExampleGen in backfill mode.
+    with pstate.PipelineState.load(
+        self._mlmd_connection,
+        task_lib.PipelineUid.from_pipeline(self._pipeline),
+    ) as pipeline_state:
+      example_gen_node = task_lib.NodeUid.from_node(
+          self._pipeline, node_proto_view.get_view(self._example_gen)
+      )
+      with pipeline_state.node_state_update_context(
+          example_gen_node
+      ) as node_state:
+        node_state.update(
+            pstate.NodeState.STARTING,
+            backfill_token='backfill-20230227-180505-123456',
+        )
+    # Generate once.
+    [update_example_gen_task] = self._generate_and_test(
+        use_task_queue=False,
+        num_initial_executions=0,
+        num_tasks_generated=1,
+        num_new_executions=0,
+        num_active_executions=0,
+        expected_exec_nodes=[],
+    )
+
+    self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+    self._mock_service_job_manager.ensure_node_services.assert_has_calls([
+        mock.call(
+            mock.ANY,
+            self._example_gen.node_info.id,
+            'backfill-20230227-180505-123456',
+        ),
+    ])
 
 
 if __name__ == '__main__':

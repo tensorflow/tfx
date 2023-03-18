@@ -37,8 +37,12 @@ class ServiceJobManager(abc.ABC):
   """
 
   @abc.abstractmethod
-  def ensure_node_services(self, pipeline_state: pstate.PipelineState,
-                           node_id: str) -> ServiceStatus:
+  def ensure_node_services(
+      self,
+      pipeline_state: pstate.PipelineState,
+      node_id: str,
+      backfill_token: str = '',
+  ) -> ServiceStatus:
     """Ensures necessary service jobs are started and healthy for the node.
 
     `ensure_node_services` will be called in the orchestration loop periodically
@@ -53,6 +57,8 @@ class ServiceJobManager(abc.ABC):
     Args:
       pipeline_state: A `PipelineState` object for an active pipeline.
       node_id: Id of the node to ensure services.
+      backfill_token: Backfill token, if applicable. Should only be non-empty if
+        `is_pure_service_node` return `True` for the node.
 
     Returns:
       Status of the service job(s) for the node.
@@ -104,8 +110,12 @@ class ServiceJobManager(abc.ABC):
 class DummyServiceJobManager(ServiceJobManager):
   """A service job manager for environments without service jobs support."""
 
-  def ensure_node_services(self, pipeline_state: pstate.PipelineState,
-                           node_id: str) -> ServiceStatus:
+  def ensure_node_services(
+      self,
+      pipeline_state: pstate.PipelineState,
+      node_id: str,
+      backfill_token: str = '',
+  ) -> ServiceStatus:
     del pipeline_state, node_id
     raise NotImplementedError('Service jobs not supported.')
 
@@ -131,11 +141,15 @@ class ServiceJobManagerCleanupWrapper(ServiceJobManager):
   def __init__(self, service_job_manager: ServiceJobManager):
     self._service_job_manager = service_job_manager
 
-  def ensure_node_services(self, pipeline_state: pstate.PipelineState,
-                           node_id: str) -> ServiceStatus:
+  def ensure_node_services(
+      self,
+      pipeline_state: pstate.PipelineState,
+      node_id: str,
+      backfill_token: str = '',
+  ) -> ServiceStatus:
     try:
       service_status = self._service_job_manager.ensure_node_services(
-          pipeline_state, node_id)
+          pipeline_state, node_id, backfill_token)
     except Exception:  # pylint: disable=broad-except
       logging.exception(
           'Exception raised by underlying `ServiceJobManager` instance.')

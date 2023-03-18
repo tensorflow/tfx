@@ -341,7 +341,7 @@ def initiate_node_backfill(
               f'{node_uid.pipeline_uid.pipeline_id} is not ASYNC'
           ),
       )
-
+    # TODO(b/266133586): remove error on ExampleGen backfill.
     if env.get_env().is_pure_service_node(
         pipeline_state.pipeline, node_uid.node_id
     ):
