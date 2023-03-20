@@ -33,7 +33,7 @@ class _ClauseList(collections.UserList):
     if not self:
       return ''
     elif len(self) == 1:
-      return self[0]
+      return str(self[0])
     else:
       return f' {self.separator} '.join(f'({clause})' for clause in self)
 
