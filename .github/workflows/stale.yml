@@ -1,8 +1,20 @@
-name: Mark and close stale pull requests
+# This workflow alerts and then closes the stale issues/PRs after specific time
+# You can adjust the behavior by modifying this file.
+# For more information, see:
+# https://github.com/actions/stale
+
+
+name: Mark and close stale PRs/issues
 
 on:
   schedule:
   - cron: "30 1 * * *"
+  
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
   stale:
@@ -10,9 +22,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/stale@v3.0.8
+    - uses: actions/stale@v7
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         stale-pr-message: 'This PR is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days'
         days-before-stale: 30
         days-before-close: 5
+        
+        #comment on PR if stale for more then 30 days. 
+        close-pr-message: This PR was closed due to lack of activity after being marked stale for past 30 days.
+        
+        # comment on issues if not active for more then 14 days.
+        stale-issue-message: 'This issue has been marked stale because it has no recent activity since 14 days. It will be closed if no further activity occurs. Thank you.'
+        
+        #comment on issues if stale for more then 14 days. 
+        close-issue-message: 'This issue was closed due to lack of activity after being marked stale for past 14 days.'
+              
+        # reason for closed the issue default value is not_planned 
+        close-issue-reason: completed
+        
+        # Number of days of inactivity before a stale issue is closed
+        days-before-issue-close: 14
+        
+        # Number of days of inactivity before an issue Request becomes stale
+        days-before-issue-stale: 14
+                
+        #Check for label to stale or close the issue/PR
+        any-of-labels: 'stat:awaiting response'
+         
+        #stale label for PRs
+        stale-pr-label: 'stale'
+
+        #stale label for issues
+        stale-issue-label: 'stale'
