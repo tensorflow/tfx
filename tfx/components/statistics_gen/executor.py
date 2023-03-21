@@ -18,6 +18,7 @@ from typing import Any, Dict, List
 from absl import logging
 import tensorflow_data_validation as tfdv
 from tensorflow_data_validation.statistics import stats_options as options
+from tensorflow_data_validation.utils import dashboard_util
 from tfx import types
 from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.components.util import tfxio_utils
@@ -32,6 +33,7 @@ from tfx.utils import json_utils
 DEFAULT_FILE_NAME = 'FeatureStats.pb'
 
 _TELEMETRY_DESCRIPTORS = ['StatisticsGen']
+STATS_DASHBOARD_LINK = 'stats_dashboard_link'
 
 
 class Executor(base_beam_executor.BaseBeamExecutor):
@@ -96,6 +98,15 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         output_dict[standard_component_specs.STATISTICS_KEY])
     statistics_artifact.split_names = artifact_utils.encode_split_names(
         split_names)
+
+    try:
+      statistics_artifact.set_string_custom_property(
+          STATS_DASHBOARD_LINK, dashboard_util.generate_stats_dashboard_link()
+      )
+    except Exception as e:  # pylint: disable=broad-except
+      # log on failures to not bring down Statsgen jobs
+      logging.error('Failed to generate stats dashboard link because %s', e)
+      statistics_artifact.set_string_custom_property(STATS_DASHBOARD_LINK, '')
 
     stats_options = options.StatsOptions()
     stats_options_json = exec_properties.get(
