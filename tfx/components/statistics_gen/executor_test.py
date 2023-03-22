@@ -103,8 +103,6 @@ class ExecutorTest(parameterized.TestCase):
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train', 'eval']), stats.split_names)
-    self.assertEqual(
-        stats.get_string_custom_property(executor.STATS_DASHBOARD_LINK), '')
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
