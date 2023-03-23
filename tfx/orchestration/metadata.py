@@ -15,15 +15,19 @@
 
 import collections
 import copy
+import functools
 import hashlib
+import inspect
 import itertools
 import os
 import random
 import time
+import traceback
 import types
 from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
 import absl
+from absl import logging
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration.portable.mlmd import event_lib
@@ -79,6 +83,15 @@ ConnectionConfigType = Union[
     metadata_store_pb2.ConnectionConfig,
     metadata_store_pb2.MetadataStoreClientConfig]
 # pyformat: enable
+
+
+def _get_stack(skip: int = 0, limit: int = 0) -> List[str]:
+  result = traceback.format_stack()
+  if skip > 0:
+    result = result[: -(skip + 1)]
+  if limit > 0:
+    result = result[-limit:]
+  return result
 
 
 def sqlite_metadata_connection_config(
@@ -144,6 +157,7 @@ class Metadata:
     for _ in range(_MAX_INIT_RETRY):
       try:
         self._store = mlmd.MetadataStore(self._connection_config)
+        self._patch_store(self._store)
       except RuntimeError as err:
         # MetadataStore could raise Aborted error if multiple concurrent
         # connections try to execute initialization DDL in database.
@@ -158,6 +172,47 @@ class Metadata:
     raise RuntimeError(
         'Failed to establish connection to Metadata storage with error: %s' %
         connection_error)
+
+  def _patch_store(self, store: mlmd.MetadataStore) -> None:
+    """Monkeypatches MetadataStore to inject TFX logic."""
+
+    def check_list_options(method):
+      """Checks if passed list_options is okay."""
+      assert getattr(store, method.__name__) == method
+      signature = inspect.signature(method)
+      assert 'list_options' in signature.parameters
+
+      @functools.wraps(method)
+      def wrapped(*args, **kwargs):
+        bound_args = signature.bind(*args, **kwargs)
+        list_options: Optional[mlmd.ListOptions] = bound_args.arguments.get(
+            'list_options'
+        )
+        if (
+            list_options is not None
+            and list_options.filter_query
+            and 'contexts_' in list_options.filter_query
+            and not list_options.is_asc
+        ):
+          logging.log_every_n_seconds(
+              logging.WARNING,
+              (
+                  'ListOptions with 1-hop context filter_query and is_asc ='
+                  ' false has a performance issue b/274559409. Stack trace:\n%s'
+              ),
+              60,  # n_seconds
+              ''.join(_get_stack(skip=1, limit=1)),
+          )
+        return method(*args, **kwargs)
+
+      setattr(store, method.__name__, wrapped)
+
+    # Some tests mock the MetadataStore object and the patch doesn't work.
+    try:
+      check_list_options(store.get_artifacts)
+      check_list_options(store.get_executions)
+    except Exception:  # pylint: disable=broad-except
+      pass
 
   def __exit__(self,
                exc_type: Optional[Type[Exception]] = None,
