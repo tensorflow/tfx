@@ -34,6 +34,7 @@ from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import proto_utils
 from tfx.utils import status as status_lib
@@ -264,22 +265,31 @@ def get_executions(
   if not node.contexts.contexts:
     return []
   # Get all the contexts associated with the node.
-  contexts = []
+  filter_query = q.And([])
   for i, context_spec in enumerate(node.contexts.contexts):
     context_type = context_spec.type.name
     context_name = data_types_utils.get_value(context_spec.name)
-    contexts.append(
-        f"(contexts_{i}.type = '{context_type}' AND contexts_{i}.name ="
-        f" '{context_name}')"
+    filter_query.append(
+        q.And([
+            f"contexts_{i}.type = '{context_type}'",
+            f"contexts_{i}.name = '{context_name}'",
+        ])
     )
-  filter_query = ' AND '.join(contexts)
   if only_active:
-    active_state_filter_query = (
-        '(last_known_state = NEW OR last_known_state = RUNNING)'
+    filter_query.append(
+        q.Or(['last_known_state = NEW', 'last_known_state = RUNNING'])
     )
-    filter_query = ' AND '.join([filter_query, active_state_filter_query])
   return metadata_handler.store.get_executions(
-      list_options=mlmd.ListOptions(filter_query=filter_query))
+      list_options=mlmd.ListOptions(
+          # TODO(b/274559409): Decide whether to keep explicit order or not.
+          # Due to implementation detail, `is_asc = false` (default) with filter
+          # query has very bad time complexity, thus enforcing `is_asc = true`
+          # here.
+          order_by=mlmd.OrderByField.ID,
+          is_asc=True,
+          filter_query=str(filter_query),
+      )
+  )
 
 
 def get_latest_executions_set(

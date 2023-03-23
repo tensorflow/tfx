@@ -54,7 +54,13 @@ def get_successful_node_executions(
           'last_known_state = CACHED',
       ]),
   ])
-  return store.get_executions(list_options=node_executions_query.list_options())
+  return store.get_executions(
+      list_options=mlmd.ListOptions(
+          filter_query=str(node_executions_query),
+          order_by=mlmd.OrderByField.ID,
+          is_asc=True,
+      )
+  )
 
 
 def get_output_artifacts_from_execution_ids(
