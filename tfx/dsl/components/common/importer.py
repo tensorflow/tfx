@@ -126,16 +126,25 @@ def _prepare_artifact(
       candidate_artifact = output_artifact_class(mlmd_artifact_type)
       candidate_artifact.set_mlmd_artifact(candidate_mlmd_artifact)
       for key, value in properties.items():
-        if getattr(candidate_artifact, key) != value:
+        if (
+            not candidate_artifact.has_property(key)
+            or getattr(candidate_artifact, key) != value
+        ):
           is_candidate = False
           break
       for key, value in custom_properties.items():
         if isinstance(value, int):
-          if candidate_artifact.get_int_custom_property(key) != value:
+          if (
+              not candidate_artifact.has_custom_property(key)
+              or candidate_artifact.get_int_custom_property(key) != value
+          ):
             is_candidate = False
             break
         elif isinstance(value, (str, bytes)):
-          if candidate_artifact.get_string_custom_property(key) != value:
+          if (
+              not candidate_artifact.has_custom_property(key)
+              or candidate_artifact.get_string_custom_property(key) != value
+          ):
             is_candidate = False
             break
       if is_candidate:

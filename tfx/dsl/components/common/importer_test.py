@@ -113,6 +113,37 @@ class ImporterTest(tf.test.TestCase):
       self.assertNotEqual(result[importer.IMPORT_RESULT_KEY][0].id,
                           existing_artifact.id)
 
+  def testGenerateOutputDict_DoesntReuseArtifactIfPropertiesAreUpdated(self):
+    config = metadata_store_pb2.ConnectionConfig()
+    config.fake_database.SetInParent()
+    mlmd = self.enter_context(metadata.Metadata(connection_config=config))
+
+    source_uri = 'artifact1_uri'
+    existing_artifact = standard_artifacts.Examples()
+    existing_artifact.uri = source_uri
+    existing_artifact.is_external = True
+    artifact_type = metadata_store_pb2.ArtifactType(
+        name=existing_artifact.TYPE_NAME
+    )
+    mlmd.publish_artifacts([existing_artifact])
+
+    result = importer.generate_output_dict(
+        metadata_handler=mlmd,
+        uri=source_uri,
+        properties={'span': 0},
+        custom_properties={},
+        reimport=False,
+        output_artifact_class=types.Artifact(artifact_type).type,
+        mlmd_artifact_type=artifact_type,
+        output_key=importer.IMPORT_RESULT_KEY,
+    )
+
+    self.assertLen(result[importer.IMPORT_RESULT_KEY], 1)
+    generated_artifact = result[importer.IMPORT_RESULT_KEY][0]
+    self.assertNotEqual(generated_artifact.id, existing_artifact.id)
+    self.assertTrue(generated_artifact.has_property('span'))
+    self.assertEqual(generated_artifact.span, 0)
+
   def testImporterDefinitionWithSingleUri(self):
     impt = importer.Importer(
         source_uri='m/y/u/r/i',
