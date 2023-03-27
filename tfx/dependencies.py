@@ -168,7 +168,7 @@ def make_extra_packages_tfjs():
 def make_extra_packages_tflite_support():
   # Required for tfx/examples/cifar10
   return [
-      'flatbuffers>=1.12,<3',
+      'flatbuffers>=1.12',
       'tflite-support>=0.4.2,<0.4.3',
   ]
 
