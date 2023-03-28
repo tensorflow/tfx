@@ -27,6 +27,7 @@ except ImportError as e:
 
 from tfx.v1 import dsl
 from tfx.v1 import proto
+from tfx.v1 import testing
 from tfx.v1 import types
 from tfx.v1 import utils
 
