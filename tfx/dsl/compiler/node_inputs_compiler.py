@@ -263,6 +263,15 @@ def _compile_input_spec(
     if channel.output_key:
       input_graph_ref.key = channel.output_key
 
+  elif isinstance(channel, channel_utils.ChannelForTesting):
+    channel = cast(channel_utils.ChannelForTesting, channel)
+    # Access result.inputs[input_key] to create an empty `InputSpec`. If the
+    # testing channel does not point to static artifact IDs, empty `InputSpec`
+    # is enough for testing.
+    input_spec = result.inputs[input_key]
+    if channel.artifact_ids:
+      input_spec.static_inputs.artifact_ids.extend(channel.artifact_ids)
+
   else:
     raise NotImplementedError(
         f'Node {tfx_node.id} got unsupported channel type {channel!r} for '

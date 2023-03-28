@@ -13,7 +13,7 @@
 # limitations under the License.
 """TFX Channel utilities."""
 
-from typing import Callable, cast, Dict, Iterable, Iterator, List, Type, Optional, Set
+from typing import Callable, cast, Dict, Iterable, Iterator, List, Type, Optional, Set, Sequence
 
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.proto.orchestration import placeholder_pb2
@@ -24,8 +24,13 @@ from tfx.types import channel
 class ChannelForTesting(channel.BaseChannel):
   """Dummy channel for testing."""
 
-  def __init__(self, artifact_type: Type[artifact.Artifact]):  # pylint: disable=useless-parent-delegation
+  def __init__(
+      self,
+      artifact_type: Type[artifact.Artifact],
+      artifact_ids: Sequence[int] = (),
+  ):
     super().__init__(artifact_type)
+    self.artifact_ids = artifact_ids
 
   def __hash__(self):
     return hash(self.type)
