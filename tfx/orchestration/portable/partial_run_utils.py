@@ -16,6 +16,7 @@
 import collections
 import enum
 from typing import Collection, List, Mapping, Optional, Set, Tuple
+import uuid
 
 from absl import logging
 from tfx.dsl.compiler import compiler_utils
@@ -27,6 +28,7 @@ from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 
 from ml_metadata.proto import metadata_store_pb2
+
 
 _default_snapshot_settings = pipeline_pb2.SnapshotSettings()
 _default_snapshot_settings.latest_pipeline_run_strategy.SetInParent()
@@ -513,7 +515,7 @@ def _reuse_pipeline_run_artifacts(metadata_handler: metadata.Metadata,
           # Raise error only if failed to reuse artifacts required.
           raise
         err_str = str(err)
-        if 'No previous successful execution' in err_str or 'node context' in err_str:
+        if 'No previous successful exe' in err_str or 'node context' in err_str:
           # This is mostly due to no previous execution of the node, so the
           # error is safe to suppress.
           logging.info(err_str)
@@ -693,41 +695,62 @@ class _ArtifactRecycler:
       result.append(context)
     return result
 
-  def _cache_and_publish(self,
-                         existing_execution: metadata_store_pb2.Execution):
-    """Updates MLMD."""
+  def _cache_and_publish(
+      self, existing_executions: List[metadata_store_pb2.Execution]
+  ):
+    """Creates and publishes cache executions."""
+    if not existing_executions:
+      return
+
     cached_execution_contexts = self._get_cached_execution_contexts(
-        existing_execution)
+        existing_executions[-1]
+    )
     # Check if there are any previous attempts to cache and publish.
     prev_cache_executions = (
         execution_lib.get_executions_associated_with_all_contexts(
             self._mlmd, contexts=cached_execution_contexts))
+
     if not prev_cache_executions:
-      new_execution = execution_publish_utils.register_execution(
-          self._mlmd,
-          execution_type=metadata_store_pb2.ExecutionType(
-              id=existing_execution.type_id),
-          contexts=cached_execution_contexts)
+      prepare_new_executions = []
+      for e in existing_executions:
+        prepare_new_executions.append(
+            execution_lib.prepare_execution(
+                metadata_handler=self._mlmd,
+                execution_type=metadata_store_pb2.ExecutionType(id=e.type_id),
+                state=metadata_store_pb2.Execution.RUNNING,
+                execution_name=str(uuid.uuid4()),
+            )
+        )
+
+      new_executions = execution_lib.put_executions(
+          self._mlmd, prepare_new_executions, cached_execution_contexts
+      )
     else:
-      if len(prev_cache_executions) > 1:
-        logging.warning(
-            'More than one previous cache executions seen when attempting '
-            'reuse_node_outputs: %s', prev_cache_executions)
+      new_executions = [
+          e
+          for e in prev_cache_executions
+          if e.last_known_state != metadata_store_pb2.Execution.CACHED
+      ]
 
-      if (prev_cache_executions[-1].last_known_state ==
-          metadata_store_pb2.Execution.CACHED):
-        return
-      else:
-        new_execution = prev_cache_executions[-1]
+    if not new_executions:
+      return
+    if len(new_executions) != len(existing_executions):
+      raise RuntimeError(
+          'The number of new executions is not the same as the number of'
+          ' existing executions.'
+      )
 
-    output_artifacts = execution_lib.get_output_artifacts(
-        self._mlmd, existing_execution.id)
-
-    execution_publish_utils.publish_cached_execution(
+    new_execution_ids = [execution.id for execution in new_executions]
+    output_artifacts_maps = [
+        execution_lib.get_output_artifacts(self._mlmd, e.id)
+        for e in existing_executions
+    ]
+    execution_publish_utils.publish_cached_executions(
         self._mlmd,
         contexts=cached_execution_contexts,
-        execution_id=new_execution.id,
-        output_artifacts=output_artifacts)
+        execution_ids=new_execution_ids,
+        output_artifacts_maps=output_artifacts_maps,
+    )
 
   def put_parent_context(self, base_run_id: str):
     """Puts a ParentContext edge in MLMD.
@@ -746,5 +769,4 @@ class _ArtifactRecycler:
   def reuse_node_outputs(self, node_id: str, base_run_id: str):
     """Makes the outputs of `node_id` available to new_pipeline_run_id."""
     previous_executions = self._get_successful_executions(node_id, base_run_id)
-    for previous_execution in previous_executions:
-      self._cache_and_publish(previous_execution)
+    self._cache_and_publish(previous_executions)

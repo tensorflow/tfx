@@ -169,11 +169,12 @@ def fake_cached_execution(mlmd_connection, cache_context, component):
     contexts = context_lib.prepare_contexts(m, component.contexts)
     execution = execution_publish_utils.register_execution(
         m, component.node_info.type, contexts)
-    execution_publish_utils.publish_cached_execution(
+    execution_publish_utils.publish_cached_executions(
         m,
         contexts=contexts,
-        execution_id=execution.id,
-        output_artifacts=cached_outputs)
+        execution_ids=[execution.id],
+        output_artifacts_maps=[cached_outputs],
+    )
 
 
 def fake_cached_example_gen_run(mlmd_connection: metadata.Metadata,
@@ -191,11 +192,12 @@ def fake_cached_example_gen_run(mlmd_connection: metadata.Metadata,
     contexts = context_lib.prepare_contexts(m, example_gen.contexts)
     execution = execution_publish_utils.register_execution(
         m, example_gen.node_info.type, contexts)
-    execution_publish_utils.publish_cached_execution(
+    execution_publish_utils.publish_cached_executions(
         m,
         contexts=contexts,
-        execution_id=execution.id,
-        output_artifacts=cached_outputs)
+        execution_ids=[execution.id],
+        output_artifacts_maps=[cached_outputs],
+    )
 
 
 def get_node(pipeline, node_id):

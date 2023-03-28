@@ -384,11 +384,12 @@ class Launcher:
             metadata_handler=m, cache_context=cache_context)
         if cached_outputs is not None:
           # Publishes cache result
-          execution_publish_utils.publish_cached_execution(
+          execution_publish_utils.publish_cached_executions(
               metadata_handler=m,
               contexts=contexts,
-              execution_id=execution.id,
-              output_artifacts=cached_outputs)
+              execution_ids=[execution.id],
+              output_artifacts_maps=[cached_outputs],
+          )
           logging.info('A cached execution %d is used.', execution.id)
           return _ExecutionPreparationResult(
               execution_info=self._build_execution_info(

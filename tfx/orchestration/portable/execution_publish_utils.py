@@ -30,30 +30,33 @@ from ml_metadata.proto import metadata_store_pb2
 _RESOLVED_AT_RUNTIME = outputs_utils.RESOLVED_AT_RUNTIME
 
 
-def publish_cached_execution(
+def publish_cached_executions(
     metadata_handler: metadata.Metadata,
     contexts: Sequence[metadata_store_pb2.Context],
-    execution_id: int,
-    output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
+    execution_ids: Sequence[int],
+    output_artifacts_maps: Optional[
+        Sequence[typing_utils.ArtifactMultiMap]
+    ] = None,
 ) -> None:
   """Marks an existing execution as using cached outputs from a previous execution.
 
   Args:
     metadata_handler: A handler to access MLMD.
     contexts: MLMD contexts to associated with the execution.
-    execution_id: The id of the execution.
-    output_artifacts: Output artifacts of the execution. Each artifact will be
-      linked with the execution through an event with type OUTPUT.
+    execution_ids: The ids of the executions.
+    output_artifacts_maps: A list of output artifacts of the executions. Each
+      artifact will be linked with the execution through an event of type OUTPUT
   """
-  [execution] = metadata_handler.store.get_executions_by_id([execution_id])
-  execution.last_known_state = metadata_store_pb2.Execution.CACHED
+  executions = metadata_handler.store.get_executions_by_id(execution_ids)
+  for execution in executions:
+    execution.last_known_state = metadata_store_pb2.Execution.CACHED
 
-  execution_lib.put_execution(
+  execution_lib.put_executions(
       metadata_handler,
-      execution,
+      executions,
       contexts,
-      input_artifacts=None,
-      output_artifacts=output_artifacts)
+      output_artifacts_maps=output_artifacts_maps,
+  )
 
 
 def _set_execution_result_if_not_empty(

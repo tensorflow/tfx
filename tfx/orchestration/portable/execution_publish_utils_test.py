@@ -116,11 +116,12 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       execution_id = execution_publish_utils.register_execution(
           m, self._execution_type, contexts).id
       output_example = standard_artifacts.Examples()
-      execution_publish_utils.publish_cached_execution(
+      execution_publish_utils.publish_cached_executions(
           m,
           contexts,
-          execution_id,
-          output_artifacts={'examples': [output_example]})
+          [execution_id],
+          output_artifacts_maps=[{'examples': [output_example]}],
+      )
       self.assertEqual(
           output_example.get_string_custom_property(
               artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY),

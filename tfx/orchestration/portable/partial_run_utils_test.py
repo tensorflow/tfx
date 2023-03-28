@@ -1410,9 +1410,9 @@ class PartialRunTest(absltest.TestCase):
     # Simulate success in registering cache execution, but failure when
     # publishing -- e.g., job was pre-empted.
     with mock.patch.object(
-        execution_publish_utils, 'publish_cached_execution',
-        autospec=True) as mock_publish_cached_execution:
-      mock_publish_cached_execution.side_effect = ConnectionResetError()
+        execution_publish_utils, 'publish_cached_executions', autospec=True
+    ) as mock_publish_cached_executions:
+      mock_publish_cached_executions.side_effect = ConnectionResetError()
       try:
         with metadata.Metadata(self.metadata_config) as m:
           partial_run_utils.snapshot(m, pipeline_pb_run_2)

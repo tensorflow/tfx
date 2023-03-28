@@ -114,11 +114,12 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
       # 5. Publish the output artifacts. If artifacts are reimported, the
       # execution is published as CACHED. Otherwise it is published as COMPLETE.
       if _is_artifact_reimported(output_artifacts, output_key):
-        execution_publish_utils.publish_cached_execution(
+        execution_publish_utils.publish_cached_executions(
             metadata_handler=m,
             contexts=contexts,
-            execution_id=execution.id,
-            output_artifacts=output_artifacts)
+            execution_ids=[execution.id],
+            output_artifacts_maps=[output_artifacts],
+        )
 
       else:
         execution_publish_utils.publish_succeeded_execution(
