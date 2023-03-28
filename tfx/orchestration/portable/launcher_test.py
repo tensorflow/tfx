@@ -447,9 +447,13 @@ class LauncherTest(test_case_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'type_id', 'uri', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'uri',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
@@ -499,9 +503,13 @@ class LauncherTest(test_case_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'type_id', 'uri', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'uri',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
@@ -626,9 +634,13 @@ class LauncherTest(test_case_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'type_id', 'uri', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'uri',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
@@ -672,9 +684,13 @@ class LauncherTest(test_case_utils.TfxTest):
           state: LIVE""",
           artifacts[1],
           ignored_fields=[
-              'type_id', 'uri', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'uri',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
@@ -796,9 +812,13 @@ class LauncherTest(test_case_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'type_id', 'uri', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'uri',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
       self.assertProtoPartiallyEquals(
           """
@@ -917,9 +937,13 @@ class LauncherTest(test_case_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'type_id', 'uri', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'uri',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
 
   def testLauncher_with_CustomDriver_ExistingSpan(self):
     LauncherTest.fakeExampleGenOutput(self._mlmd_connection, self._example_gen,
@@ -971,9 +995,13 @@ class LauncherTest(test_case_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'type_id', 'uri', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'uri',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
 
   def testLauncher_importer_node(self):
     mock_import_node_handler_class = mock.create_autospec(

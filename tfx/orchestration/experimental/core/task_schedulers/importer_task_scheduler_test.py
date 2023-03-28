@@ -119,9 +119,13 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'id', 'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'id',
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
 
       [execution
       ] = m.store.get_executions_by_id([self._importer_task.execution_id])

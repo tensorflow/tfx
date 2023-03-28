@@ -241,8 +241,11 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
         output_model.mlmd_artifact,
         self._mlmd_handle.store.get_artifacts_by_id([output_model.id])[0],
         ignored_fields=[
-            'create_time_since_epoch', 'last_update_time_since_epoch'
-        ])
+            'type',
+            'create_time_since_epoch',
+            'last_update_time_since_epoch',
+        ],
+    )
     self.assertEqual(
         output_model.get_string_custom_property(
             artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY),
@@ -673,10 +676,16 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
         output_model.mlmd_artifact,
         actual_output_artifact,
         ignored_fields=[
-            'create_time_since_epoch', 'last_update_time_since_epoch'
-        ])
+            'type',
+            'create_time_since_epoch',
+            'last_update_time_since_epoch',
+        ],
+    )
     self.assertEqual(actual_output_artifact.state,
                      metadata_store_pb2.Artifact.PENDING)
+    self.assertEqual(
+        actual_output_artifact.type, _DEFAULT_ARTIFACT_TYPE.TYPE_NAME
+    )
 
     # Verifies edges between artifacts and execution.
     [input_event] = (

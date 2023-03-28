@@ -214,9 +214,12 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           }}""",
           artifact,
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       [pre_registration_event, publish_event] = (
           m.store.get_events_by_execution_ids([execution.id]))
       self.assertProtoPartiallyEquals(
@@ -406,9 +409,13 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           """,
           execution,
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch', 'name'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+              'name',
+          ],
+      )
       artifacts = m.store.get_artifacts()
       self.assertLen(artifacts, 2)
       self.assertProtoPartiallyEquals(
@@ -430,9 +437,12 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           }}""",
           artifacts[0],
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       self.assertProtoPartiallyEquals(
           f"""
           id: 2
@@ -452,9 +462,12 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           }}""",
           artifacts[1],
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       events = m.store.get_events_by_execution_ids([execution.id])
       self.assertLen(events, 2)
       self.assertProtoPartiallyEquals(

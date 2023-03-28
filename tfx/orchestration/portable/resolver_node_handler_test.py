@@ -112,9 +112,12 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           }}""",
           resolved_inputs[0]['models'][0].mlmd_artifact,
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
 
       self.assertProtoPartiallyEquals(

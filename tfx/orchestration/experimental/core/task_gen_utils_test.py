@@ -239,12 +239,16 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             }}
           }}
           state: LIVE""",
-          resolved_info.input_and_params[0].input_artifacts['examples']
-          [0].mlmd_artifact,
+          resolved_info.input_and_params[0]
+          .input_artifacts['examples'][0]
+          .mlmd_artifact,
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
 
   def test_generate_resolved_info_with_dynamic_exec_prop(self):
     dynamic_exec_properties_pipeline = (

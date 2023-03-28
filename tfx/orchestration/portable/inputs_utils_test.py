@@ -78,9 +78,11 @@ class _TestMixin(test_case_utils.TfxTest):
         expected.mlmd_artifact,
         actual.mlmd_artifact,
         ignored_fields=[
+            'type',
             'create_time_since_epoch',
             'last_update_time_since_epoch',
-        ])
+        ],
+    )
 
   def assertArtifactMapEqual(self, expected, actual):
     self.assertIsInstance(expected, collections.abc.Mapping)

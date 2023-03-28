@@ -98,6 +98,7 @@ class MetadataTest(tf.test.TestCase):
       [artifact] = m.store.get_artifacts()
       # Skip verifying time sensitive fields.
       artifact.ClearField('type_id')
+      artifact.ClearField('type')
       artifact.ClearField('create_time_since_epoch')
       artifact.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -646,6 +647,7 @@ class MetadataTest(tf.test.TestCase):
       cached_output_artifact = cached_output_artifacts['output'][
           0].mlmd_artifact
       # Skip verifying time sensitive fields.
+      cached_output_artifact.ClearField('type')
       cached_output_artifact.ClearField('create_time_since_epoch')
       cached_output_artifact.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(cached_output_artifact,
@@ -680,6 +682,7 @@ class MetadataTest(tf.test.TestCase):
       cached_output_artifact = cached_output_artifacts['output'][
           0].mlmd_artifact
       # Skip verifying time sensitive fields.
+      cached_output_artifact.ClearField('type')
       cached_output_artifact.ClearField('create_time_since_epoch')
       cached_output_artifact.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(cached_output_artifact,

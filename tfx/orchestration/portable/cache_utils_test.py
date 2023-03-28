@@ -227,20 +227,29 @@ class CacheUtilsTest(test_case_utils.TfxTest):
           cached_output[output_models_key][0].mlmd_artifact,
           output_artifacts[output_models_key][0].mlmd_artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       self.assertProtoPartiallyEquals(
           cached_output[output_models_key][1].mlmd_artifact,
           output_artifacts[output_models_key][1].mlmd_artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       self.assertProtoPartiallyEquals(
           cached_output[output_examples_key][0].mlmd_artifact,
           output_artifacts[output_examples_key][0].mlmd_artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
 
       # There should again be no cached outputs if the artifacts cannot be
       # verified as still existing
