@@ -2,6 +2,9 @@
 
 ## Major Features and Improvements
 
+*  Supported setting the container image at a component level for Kubeflow V2
+   Dag Runner.
+
 ## Breaking Changes
 
 ### For Pipeline Authors

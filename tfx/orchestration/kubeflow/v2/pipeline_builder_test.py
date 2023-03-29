@@ -42,6 +42,23 @@ class PipelineBuilderTest(tf.test.TestCase):
                                             pipeline_pb2.PipelineSpec()),
         actual_pipeline_spec)
 
+  def testBuildTwoStepPipelineWithMultipleImages(self):
+    images = {
+        pipeline_builder.DEFAULT_IMAGE_PATH_KEY: 'gcr.io/my-tfx:latest',
+        'BigQueryExampleGen': 'gcr.io/big-query:1.0.0',
+    }
+    my_builder = pipeline_builder.PipelineBuilder(
+        tfx_pipeline=test_utils.two_step_pipeline(), default_image=images
+    )
+    actual_pipeline_spec = my_builder.build()
+    self.assertProtoEquals(
+        test_utils.get_proto_from_test_data(
+            'expected_two_step_pipeline_with_multiple_images.pbtxt',
+            pipeline_pb2.PipelineSpec(),
+        ),
+        actual_pipeline_spec,
+    )
+
   def testBuildRuntimeConfig(self):
     my_builder = pipeline_builder.RuntimeConfigBuilder(
         pipeline_info=test_utils.two_step_pipeline().pipeline_info,
