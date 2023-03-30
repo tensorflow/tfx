@@ -941,6 +941,7 @@ class PipelineView:
            mlmd_handle: metadata.Metadata,
            pipeline_id: str,
            pipeline_run_id: Optional[str] = None,
+           non_active_only: Optional[bool] = False,
            **kwargs) -> 'PipelineView':
     """Loads pipeline view from MLMD.
 
@@ -948,6 +949,7 @@ class PipelineView:
       mlmd_handle: A handle to the MLMD db.
       pipeline_id: Id of the pipeline state to load.
       pipeline_run_id: Run id of the pipeline for the synchronous pipeline.
+      non_active_only: Whether to only load from a non-active pipeline.
       **kwargs: Extra option to pass into mlmd store functions.
 
     Returns:
@@ -959,7 +961,12 @@ class PipelineView:
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_id, **kwargs)
     executions = mlmd_handle.store.get_executions_by_context(
-        context.id, **kwargs)
+        context.id, **kwargs
+    )
+    if non_active_only:
+      executions = [
+          e for e in executions if not execution_lib.is_execution_active(e)
+      ]
 
     if pipeline_run_id is None and executions:
       execution = _get_latest_execution(executions)
@@ -969,9 +976,13 @@ class PipelineView:
       if execution.custom_properties[
           _PIPELINE_RUN_ID].string_value == pipeline_run_id:
         return cls(pipeline_id, context, execution)
+    non_active_msg = 'non active ' if non_active_only else ''
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND,
-        message=f'No pipeline with run_id {pipeline_run_id} found.')
+        message=(
+            f'No {non_active_msg}pipeline with run_id {pipeline_run_id} found.'
+        ),
+    )
 
   @property
   def pipeline(self) -> pipeline_pb2.Pipeline:

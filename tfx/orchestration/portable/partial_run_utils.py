@@ -132,7 +132,8 @@ def mark_pipeline(
 
 
 def snapshot(mlmd_handle: metadata.Metadata,
-             pipeline: pipeline_pb2.Pipeline) -> None:
+             pipeline: pipeline_pb2.Pipeline,
+             base_run_id: Optional[str] = None) -> None:
   """Performs a snapshot.
 
   This operation modifies the MLMD state, so that the dependencies of
@@ -142,6 +143,7 @@ def snapshot(mlmd_handle: metadata.Metadata,
   Args:
     mlmd_handle: A handle to the MLMD db.
     pipeline: The marked pipeline IR.
+    base_run_id: The base pipeline run ID to reuse artifacts from.
 
   Raises:
     ValueError: If pipeline_node has a snashot_settings field set, but the
@@ -155,15 +157,16 @@ def snapshot(mlmd_handle: metadata.Metadata,
 
   snapshot_settings = pipeline.runtime_spec.snapshot_settings
   logging.info('snapshot_settings: %s', snapshot_settings)
-  if snapshot_settings.HasField('base_pipeline_run_strategy'):
-    base_run_id = snapshot_settings.base_pipeline_run_strategy.base_run_id
-    logging.info('Using base_pipeline_run_strategy with base_run_id=%s',
-                 base_run_id)
-  elif snapshot_settings.HasField('latest_pipeline_run_strategy'):
-    base_run_id = None
-    logging.info('Using latest_pipeline_run_strategy.')
-  else:
-    raise ValueError('artifact_reuse_strategy not set in SnapshotSettings.')
+  if not base_run_id:
+    if snapshot_settings.HasField('base_pipeline_run_strategy'):
+      base_run_id = snapshot_settings.base_pipeline_run_strategy.base_run_id
+      logging.info(
+          'Using base_pipeline_run_strategy with base_run_id=%s', base_run_id
+      )
+    elif snapshot_settings.HasField('latest_pipeline_run_strategy'):
+      logging.info('Using latest_pipeline_run_strategy.')
+    else:
+      raise ValueError('artifact_reuse_strategy not set in SnapshotSettings.')
   logging.info('Preparing to reuse artifacts.')
   _reuse_pipeline_run_artifacts(mlmd_handle, pipeline, base_run_id=base_run_id)
   logging.info('Artifact reuse complete.')

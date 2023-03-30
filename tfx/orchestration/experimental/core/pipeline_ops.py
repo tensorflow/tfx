@@ -138,17 +138,6 @@ def initiate_pipeline_start(
       )
     snapshot_settings = partial_run_option.snapshot_settings
     which_strategy = snapshot_settings.WhichOneof('artifact_reuse_strategy')
-    if (
-        env.get_env().concurrent_pipeline_runs_enabled()
-        and which_strategy != 'base_pipeline_run_strategy'
-    ):
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INVALID_ARGUMENT,
-          message=(
-              'Partial pipeline run must use base_pipeline_run_strategy '
-              'when concurrent pipeilne runs are enabled.'
-          ),
-      )
     if which_strategy is None:
       logging.info(
           'No artifact_reuse_strategy specified for the partial pipeline run, '
@@ -178,7 +167,10 @@ def initiate_pipeline_start(
       )
   if pipeline.runtime_spec.HasField('snapshot_settings'):
     try:
-      partial_run_utils.snapshot(mlmd_handle, pipeline)
+      base_run_id = (
+          reused_pipeline_view.pipeline_run_id if reused_pipeline_view else None
+      )
+      partial_run_utils.snapshot(mlmd_handle, pipeline, base_run_id)
     except ValueError as e:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT, message=str(e)
@@ -648,7 +640,7 @@ def _wait_for_node_inactivation(
 
 
 def _get_previously_skipped_nodes(
-    reused_pipeline_view: pstate.PipelineView,
+    reused_pipeline_view: Optional[pstate.PipelineView],
 ) -> List[str]:
   """Returns id of nodes skipped in previous pipeline run due to conditional."""
   reused_pipeline_node_states = (
@@ -683,7 +675,10 @@ def _load_reused_pipeline_view(
     base_run_id = snapshot_settings.base_pipeline_run_strategy.base_run_id
   try:
     reused_pipeline_view = pstate.PipelineView.load(
-        mlmd_handle, pipeline_uid.pipeline_id, base_run_id
+        mlmd_handle=mlmd_handle,
+        pipeline_id=pipeline_uid.pipeline_id,
+        pipeline_run_id=base_run_id,
+        non_active_only=env.get_env().concurrent_pipeline_runs_enabled()
     )
   except status_lib.StatusNotOkError as e:
     if e.code == status_lib.Code.NOT_FOUND:

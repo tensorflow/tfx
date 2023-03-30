@@ -711,6 +711,8 @@ class PipelineStateTest(test_utils.TfxTest):
           execution_mode=pipeline_pb2.Pipeline.SYNC,
           pipeline_run_id='001',
           pipeline_nodes=['Trainer'])
+      with self.assertRaises(status_lib.StatusNotOkError):
+        pstate.PipelineView.load(m, pipeline.pipeline_info.id)
       with pstate.PipelineState.new(m, pipeline, {
           'foo': 1,
           'bar': 'baz'
@@ -750,9 +752,13 @@ class PipelineStateTest(test_utils.TfxTest):
       view1 = pstate.PipelineView.load(m, pipeline.pipeline_info.id, '001')
       view2 = pstate.PipelineView.load(m, pipeline.pipeline_info.id, '002')
       latest_view = pstate.PipelineView.load(m, pipeline.pipeline_info.id)
+      latest_non_active_view = pstate.PipelineView.load(
+          m, pipeline.pipeline_info.id, non_active_only=True
+      )
       self.assertProtoEquals(pipeline, view1.pipeline)
       self.assertProtoEquals(pipeline2, view2.pipeline)
       self.assertProtoEquals(pipeline2, latest_view.pipeline)
+      self.assertProtoEquals(pipeline, latest_non_active_view.pipeline)
 
   @mock.patch.object(pstate, 'time')
   def test_pipeline_view_get_pipeline_run_state(self, mock_time):
