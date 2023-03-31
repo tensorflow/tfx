@@ -505,6 +505,7 @@ class Metadata:
     execution = metadata_store_pb2.Execution()
     execution.type_id = self._prepare_execution_type(
         component_info.component_type, exec_properties)
+    execution.type = component_info.component_type
     self._update_execution_proto(
         execution=execution,
         pipeline_info=pipeline_info,

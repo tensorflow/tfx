@@ -200,6 +200,7 @@ class MetadataTest(tf.test.TestCase):
       [execution] = m.store.get_executions_by_context(contexts[0].id)
       # Skip verifying time sensitive fields.
       execution.ClearField('type_id')
+      execution.ClearField('type')
       execution.ClearField('create_time_since_epoch')
       execution.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -305,6 +306,7 @@ class MetadataTest(tf.test.TestCase):
       ] = m.store.get_executions_by_id([execution_one.id, execution_two.id])
       # Skip verifying time sensitive fields.
       execution_one.ClearField('type_id')
+      execution_one.ClearField('type')
       execution_one.ClearField('create_time_since_epoch')
       execution_one.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -349,6 +351,7 @@ class MetadataTest(tf.test.TestCase):
         }""", execution_one)
       # Skip verifying time sensitive fields.
       execution_two.ClearField('type_id')
+      execution_two.ClearField('type')
       execution_two.ClearField('create_time_since_epoch')
       execution_two.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -448,6 +451,7 @@ class MetadataTest(tf.test.TestCase):
            [execution_one.id, execution_two.id, execution_three.id])
       # Skip verifying time sensitive fields.
       execution_one.ClearField('type_id')
+      execution_one.ClearField('type')
       execution_one.ClearField('create_time_since_epoch')
       execution_one.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -498,6 +502,7 @@ class MetadataTest(tf.test.TestCase):
         }""", execution_one)
       # Skip verifying time sensitive fields.
       execution_two.ClearField('type_id')
+      execution_two.ClearField('type')
       execution_two.ClearField('create_time_since_epoch')
       execution_two.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -542,6 +547,7 @@ class MetadataTest(tf.test.TestCase):
         }""", execution_two)
       # Skip verifying time sensitive fields.
       execution_three.ClearField('type_id')
+      execution_three.ClearField('type')
       execution_three.ClearField('create_time_since_epoch')
       execution_three.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(

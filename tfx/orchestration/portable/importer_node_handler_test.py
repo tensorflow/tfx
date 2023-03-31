@@ -133,9 +133,13 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch', 'name'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+              'name',
+          ],
+      )
 
     execution_info = handler.run(
         mlmd_connection=self._mlmd_connection,
@@ -207,9 +211,13 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch', 'name'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+              'name',
+          ],
+      )
 
   def testLauncher_importer_mode_reimport_disabled(self):
     self._importer.parameters.parameters['reimport'].field_value.int_value = 0
@@ -285,9 +293,13 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch', 'name'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+              'name',
+          ],
+      )
 
     # Run the 2nd execution. Since the reimport is disabled, no new schema
     # is imported and the corresponding execution is published as CACHED.
@@ -325,9 +337,13 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch', 'name'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+              'name',
+          ],
+      )
 
 
 if __name__ == '__main__':

@@ -363,8 +363,11 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             expected_execution,
             actual_execution,
             ignored_fields=[
-                'create_time_since_epoch', 'last_update_time_since_epoch'
-            ])
+                'type',
+                'create_time_since_epoch',
+                'last_update_time_since_epoch',
+            ],
+        )
 
   def test_register_executions(self):
     with self._mlmd_connection as m:
