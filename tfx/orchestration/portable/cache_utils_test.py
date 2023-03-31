@@ -81,8 +81,11 @@ class CacheUtilsTest(test_case_utils.TfxTest):
           cache_context,
           context_from_mlmd,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
 
   def testGetCacheContextTwiceSameArgs(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
