@@ -33,6 +33,7 @@ from tfx.utils import proto_utils
 from tfx.utils import typing_utils
 
 from google.protobuf import json_format
+import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
 ArtifactState = types.artifact.ArtifactState
@@ -372,22 +373,44 @@ def put_executions(
         artifacts.append(artifact)
         artifact_event_edges.append((idx, len(artifacts) - 1, event))
 
-  execution_ids, artifact_ids, context_ids = (
-      metadata_handler.store.put_lineage_subgraph(
-          executions,
-          artifacts,
-          contexts,
-          artifact_event_edges,
-          reuse_context_if_already_exist=True,
-          reuse_artifact_if_already_exist_by_external_id=True))
-
-  for execution, execution_id in zip(executions, execution_ids):
-    execution.id = execution_id
-  for artifact, artifact_id in zip(artifacts, artifact_ids):
-    artifact.id = artifact_id
-  for context, context_id in zip(contexts, context_ids):
-    context.id = context_id
-  return executions
+  try:
+    execution_ids, artifact_ids, context_ids = (
+        metadata_handler.store.put_lineage_subgraph(
+            executions,
+            artifacts,
+            contexts,
+            artifact_event_edges,
+            reuse_context_if_already_exist=True,
+            reuse_artifact_if_already_exist_by_external_id=True,
+        )
+    )
+    for execution, execution_id in zip(executions, execution_ids):
+      execution.id = execution_id
+    for artifact, artifact_id in zip(artifacts, artifact_ids):
+      artifact.id = artifact_id
+    for context, context_id in zip(contexts, context_ids):
+      context.id = context_id
+    return executions
+  except mlmd.errors.UnimplementedError:
+    logging.warning(
+        'PutLineageSubgraph API do not exist. Falling back to PutExecution.'
+    )
+    result = []
+    for execution, input_artifacts, output_artifacts in itertools.zip_longest(
+        executions, input_artifacts_maps or [], output_artifacts_maps or []
+    ):
+      result.append(
+          put_execution(
+              metadata_handler=metadata_handler,
+              execution=execution,
+              contexts=contexts,
+              input_artifacts=input_artifacts,
+              output_artifacts=output_artifacts,
+              input_event_type=input_event_type,
+              output_event_type=output_event_type,
+          )
+      )
+    return result
 
 
 def _artifact_maps_contain_same_uris(
