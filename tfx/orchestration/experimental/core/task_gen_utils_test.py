@@ -82,7 +82,8 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
   def test_get_executions(self):
     with self._mlmd_connection as m:
       for node in [n.pipeline_node for n in self._pipeline.nodes]:
-        self.assertEmpty(task_gen_utils.get_executions(m, node))
+        self.assertEmpty(
+            task_gen_utils.get_executions(m, node.contexts.contexts))
 
     # Create executions for the same nodes under different pipeline contexts.
     self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
@@ -107,22 +108,29 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
     with self._mlmd_connection as m:
       self.assertCountEqual(all_eg_execs[0:2],
-                            task_gen_utils.get_executions(m, self._example_gen))
+                            task_gen_utils.get_executions(
+                                m, self._example_gen.contexts.contexts))
       self.assertCountEqual(all_transform_execs[0:1],
-                            task_gen_utils.get_executions(m, self._transform))
-      self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
+                            task_gen_utils.get_executions(
+                                m, self._transform.contexts.contexts))
+      self.assertEmpty(task_gen_utils.get_executions(
+          m, self._trainer.contexts.contexts))
     self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
     with self._mlmd_connection as m:
       self.assertCountEqual(all_eg_execs[2:],
-                            task_gen_utils.get_executions(m, self._example_gen))
+                            task_gen_utils.get_executions(
+                                m, self._example_gen.contexts.contexts))
       self.assertCountEqual(all_transform_execs[1:],
-                            task_gen_utils.get_executions(m, self._transform))
-      self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
+                            task_gen_utils.get_executions(
+                                m, self._transform.contexts.contexts))
+      self.assertEmpty(task_gen_utils.get_executions(
+          m, self._trainer.contexts.contexts))
 
   def test_get_executions_only_active(self):
     with self._mlmd_connection as m:
       for node in [n.pipeline_node for n in self._pipeline.nodes]:
-        self.assertEmpty(task_gen_utils.get_executions(m, node))
+        self.assertEmpty(task_gen_utils.get_executions(
+            m, node.contexts.contexts))
 
     # Create executions for the same nodes under different pipeline contexts.
     self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
@@ -158,25 +166,32 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     with self._mlmd_connection as m:
       self.assertCountEqual(
           active_eg_execs[0:2],
-          task_gen_utils.get_executions(m, self._example_gen, only_active=True))
+          task_gen_utils.get_executions(
+              m, self._example_gen.contexts.contexts, only_active=True))
       self.assertEmpty(
-          task_gen_utils.get_executions(m, self._transform, only_active=True))
+          task_gen_utils.get_executions(
+              m, self._transform.contexts.contexts, only_active=True))
       self.assertEmpty(
-          task_gen_utils.get_executions(m, self._trainer, only_active=True))
+          task_gen_utils.get_executions(
+              m, self._trainer.contexts.contexts, only_active=True))
     self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
     with self._mlmd_connection as m:
       self.assertCountEqual(
           active_eg_execs[2:],
-          task_gen_utils.get_executions(m, self._example_gen, only_active=True))
+          task_gen_utils.get_executions(
+              m, self._example_gen.contexts.contexts, only_active=True))
       self.assertEmpty(
-          task_gen_utils.get_executions(m, self._transform, only_active=True))
+          task_gen_utils.get_executions(
+              m, self._transform.contexts.contexts, only_active=True))
       self.assertEmpty(
-          task_gen_utils.get_executions(m, self._trainer, only_active=True))
+          task_gen_utils.get_executions(
+              m, self._trainer.contexts.contexts, only_active=True))
 
   def test_generate_task_from_active_execution(self):
     with self._mlmd_connection as m:
       # No tasks generated without running execution.
-      executions = task_gen_utils.get_executions(m, self._trainer)
+      executions = task_gen_utils.get_executions(
+          m, self._trainer.contexts.contexts)
       self.assertIsNone(
           task_gen_utils.generate_cancel_task_from_running_execution(
               m, self._pipeline, self._trainer, executions,
@@ -192,7 +207,8 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       m.store.put_executions([execution])
 
       # Check that task can be generated.
-      executions = task_gen_utils.get_executions(m, self._trainer)
+      executions = task_gen_utils.get_executions(
+          m, self._trainer.contexts.contexts)
       task = task_gen_utils.generate_cancel_task_from_running_execution(
           m, self._pipeline, self._trainer, executions,
           task_lib.NodeCancelType.CANCEL_EXEC)
@@ -203,7 +219,8 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       execution = m.store.get_executions()[0]
       execution.last_known_state = metadata_store_pb2.Execution.COMPLETE
       m.store.put_executions([execution])
-      executions = task_gen_utils.get_executions(m, self._trainer)
+      executions = task_gen_utils.get_executions(
+          m, self._trainer.contexts.contexts)
       self.assertIsNone(
           task_gen_utils.generate_cancel_task_from_running_execution(
               m, self._pipeline, self._trainer, executions,

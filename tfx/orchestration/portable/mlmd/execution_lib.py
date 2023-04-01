@@ -23,6 +23,7 @@ from absl import logging
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import common_utils
@@ -511,13 +512,8 @@ def get_executions_associated_with_all_contexts(
   Returns:
     A list of executions associated with all given contexts.
   """
-  executions_dict = None
-  for context in contexts:
-    executions = metadata_handler.store.get_executions_by_context(context.id)
-    if executions_dict is None:
-      executions_dict = {e.id: e for e in executions}
-    else:
-      executions_dict = {e.id: e for e in executions if e.id in executions_dict}
+  executions = task_gen_utils.get_executions(metadata_handler, contexts)
+  executions_dict = {e.id: e for e in executions}
   return list(executions_dict.values()) if executions_dict else []
 
 

@@ -244,29 +244,27 @@ def generate_resolved_info(
 
 def get_executions(
     metadata_handler: metadata.Metadata,
-    node: node_proto_view.NodeProtoView,
+    contexts: Iterable[metadata_store_pb2.Context],
     only_active: bool = False,
 ) -> List[metadata_store_pb2.Execution]:
-  """Returns all executions for the given pipeline node.
+  """Returns all executions for the given contexts.
 
-  This finds all executions having the same set of contexts as the pipeline
-  node.
+  This finds all executions for the given list of contexts.
 
   Args:
     metadata_handler: A handler to access MLMD db.
-    node: The pipeline node for which to obtain executions.
+    contexts: Contexts for which to obtain executions.
     only_active: If set to true, only active executions are returned. Otherwise,
       all executions are returned. Active executions mean executions with NEW or
       RUNNING last_known_state.
 
   Returns:
-    List of executions for the given node in MLMD db.
+    List of executions for the given contexts in MLMD db.
   """
-  if not node.contexts.contexts:
+  if not contexts:
     return []
-  # Get all the contexts associated with the node.
   filter_query = q.And([])
-  for i, context_spec in enumerate(node.contexts.contexts):
+  for i, context_spec in enumerate(contexts):
     context_type = context_spec.type.name
     context_name = data_types_utils.get_value(context_spec.name)
     filter_query.append(

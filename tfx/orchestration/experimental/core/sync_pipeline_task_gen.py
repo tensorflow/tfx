@@ -265,7 +265,8 @@ class _Generator:
         task_lib.exec_node_task_id_from_node(self._pipeline, node)):
       return result
 
-    node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
+    node_executions = task_gen_utils.get_executions(
+        self._mlmd_handle, node.contexts.contexts)
     latest_executions_set = task_gen_utils.get_latest_executions_set(
         node_executions)
 

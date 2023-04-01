@@ -1131,7 +1131,8 @@ def get_all_node_executions(
 ) -> Dict[str, List[metadata_store_pb2.Execution]]:
   """Returns all executions of all pipeline nodes if present."""
   return {
-      node.node_info.id: task_gen_utils.get_executions(mlmd_handle, node)
+      node.node_info.id: task_gen_utils.get_executions(
+          mlmd_handle, node.contexts.contexts)
       for node in get_all_nodes(pipeline)
   }
 

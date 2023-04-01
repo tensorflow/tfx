@@ -194,7 +194,8 @@ class _Generator:
     # generates a task from it.
     # TODO(b/275231956) Too many executions may have performance issue, it is
     # better to limit the number of executions.
-    executions = task_gen_utils.get_executions(metadata_handler, node)
+    executions = task_gen_utils.get_executions(
+        metadata_handler, node.contexts.contexts)
     oldest_active_execution = task_gen_utils.get_oldest_active_execution(
         executions)
     if oldest_active_execution:

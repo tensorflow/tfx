@@ -511,7 +511,8 @@ def resume_manual_node(
           ),
       )
 
-  executions = task_gen_utils.get_executions(mlmd_handle, node)
+  executions = task_gen_utils.get_executions(
+      mlmd_handle, node.contexts.contexts)
   active_executions = [
       e for e in executions if execution_lib.is_execution_active(e)
   ]
@@ -1043,7 +1044,7 @@ def _cancel_node(
             'Canceling active executions for pure service node: %s', node_uid
         )
         active_executions = task_gen_utils.get_executions(
-            mlmd_handle, node, only_active=True
+            mlmd_handle, node.contexts.contexts, only_active=True
         )
         _cancel_executions(active_executions, mlmd_handle, node_uid)
       return True
@@ -1383,7 +1384,8 @@ def _orchestrate_active_pipeline(
         )
         node = _filter_by_node_id(node_infos, node_id).node
         active_executions = task_gen_utils.get_executions(
-            mlmd_connection_manager.primary_mlmd_handle, node, only_active=True
+            mlmd_connection_manager.primary_mlmd_handle,
+            node.contexts.contexts, only_active=True
         )
         _cancel_executions(
             active_executions,
@@ -1480,7 +1482,8 @@ def _maybe_enqueue_cancellation_task(
     `True` if a cancellation task was enqueued. `False` if node is already
     stopped or no cancellation was required.
   """
-  executions = task_gen_utils.get_executions(mlmd_handle, node)
+  executions = task_gen_utils.get_executions(
+      mlmd_handle, node.contexts.contexts)
   pipeline = pipeline_state.pipeline
   node_uid = task_lib.NodeUid.from_node(pipeline, node)
 

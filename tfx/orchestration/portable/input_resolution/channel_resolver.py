@@ -18,6 +18,7 @@ from typing import List, Optional, Sequence, Tuple
 from absl import logging
 from tfx import types
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
+from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -26,26 +27,6 @@ from tfx.types import artifact_utils
 import ml_metadata as mlmd
 from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
-
-
-# TODO(b/233044350): Move to a general metadata utility.
-def _get_executions_by_all_contexts(
-    store: mlmd.MetadataStore,
-    contexts: Sequence[metadata_store_pb2.Context],
-) -> List[metadata_store_pb2.Execution]:
-  """Get executions bound with ALL given contexts."""
-  if not contexts:
-    return []
-  executions_by_id = {}
-  valid_ids = None
-  for context in contexts:
-    executions = store.get_executions_by_context(context.id)
-    if valid_ids is None:
-      valid_ids = {a.id for a in executions}
-    else:
-      valid_ids.intersection_update({a.id for a in executions})
-    executions_by_id.update({a.id: a for a in executions})
-  return [executions_by_id[i] for i in valid_ids]
 
 
 def _get_context_from_context_query(
@@ -115,7 +96,6 @@ def _filter_by_artifact_query(
   )
 
 
-# TODO(b/234806996): Migrate to MLMD filter query.
 def resolve_single_channel(
     handle_like: mlmd_cm.HandleLike,
     channel: pipeline_pb2.InputSpec.Channel,
@@ -131,7 +111,7 @@ def resolve_single_channel(
       return []
     else:
       contexts.append(maybe_context)
-  executions = _get_executions_by_all_contexts(store, contexts)
+  executions = task_gen_utils.get_executions(store, contexts)
   if not executions:
     return []
   artifacts = _get_output_artifacts(store, executions, channel.output_key)
