@@ -39,6 +39,8 @@
 
 ## Documentation Updates
 
+*  Added page for TFX-Addons
+
 # Version 1.12.0
 
 ## Major Features and Improvements

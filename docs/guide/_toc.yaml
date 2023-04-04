@@ -4,6 +4,8 @@ toc:
 
 - heading: "What's New"
   style: divider
+- title: "TFX-Addons"
+  path: /tfx/addons
 - title: "TFX Cloud Solutions"
   path: /tfx/guide/solutions.md
 - title: "Using Keras with TFX"

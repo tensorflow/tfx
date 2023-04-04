@@ -17,6 +17,10 @@ upper_tabs:
     - name: "Guide"
       contents:
       - include: /tfx/guide/_toc.yaml
+    - name: "TFX-Addons"
+      contents:
+      - title: TFX-Addons
+        path: /tfx/addons
     - name: API
       skip_translation: true
       contents:
