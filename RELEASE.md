@@ -36,6 +36,8 @@
 | Package Name | Version Constraints | Previously (in `v1.12.0`) | Comments |
 | -- | -- | -- | -- |
 | `click` | `>=7,<9` | `>=7,<8` | |
+| `protobuf` | `>=3.13,<4` | `>=3.20.3,<5` | |
+| `tensorflow` | `~=2.12.0` | `>=1.15.5,<2` or `~=2.11.0` | |
 
 ## Documentation Updates
 

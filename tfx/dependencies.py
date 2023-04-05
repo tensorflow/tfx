@@ -60,7 +60,7 @@ def make_pipeline_sdk_required_install_packages():
           git_master='@git+https://github.com/google/ml-metadata@master'),
       'packaging>=20,<21',
       'portpicker>=1.3.1,<2',
-      'protobuf>=3.13,<4',
+      'protobuf>=3.20.3,<5',
       'docker>=4.1,<5',
       'google-apitools>=0.5,<1',
       'google-api-python-client>=1.8,<2',
@@ -98,7 +98,7 @@ def make_required_install_packages():
       # Pip might stuck in a TF 1.15 dependency although there is a working
       # dependency set with TF 2.x without the sync.
       # pylint: disable=line-too-long
-      'tensorflow' + select_constraint('>=2.11.0,<2.12'),
+      'tensorflow' + select_constraint('>=2.12.0,<2.13'),
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.13',
       'tensorflow-data-validation' + select_constraint(
