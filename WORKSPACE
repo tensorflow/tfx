@@ -63,4 +63,4 @@ tfx_workspace()
 
 # Specify the minimum required bazel version.
 load("@bazel_skylib//lib:versions.bzl", "versions")
-versions.check("0.24.1")
+versions.check("5.3.0")
