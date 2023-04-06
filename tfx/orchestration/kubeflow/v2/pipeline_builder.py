@@ -175,9 +175,12 @@ class PipelineBuilder:
         if self._exit_handler and component.id == utils.TFX_DAG_NAME:
           component.with_id(component.id + _generate_component_name_suffix())
           logging.warning(
-              '_tfx_dag is system reserved name for pipeline with'
-              'exit handler, added suffix to your component name: %s',
-              component.id)
+              (
+                  'tfx-dag is system reserved name for pipeline with exit'
+                  ' handler, added suffix to your component name: %s'
+              ),
+              component.id,
+          )
         # Here the topological order of components is required.
         # If a channel redirection is needed, redirect mapping is expected to be
         # available because the upstream node (which is the cause for
