@@ -20,8 +20,12 @@ from tfx.utils import test_case_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
-def _ids(values):
+def _sorted_ids(values):
   return sorted(v.id for v in values)
+
+
+def _ids(values):
+  return [v.id for v in values]
 
 
 class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
@@ -81,17 +85,17 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
 
     result = store_ext.get_output_artifacts_from_execution_ids(
         self.store,
-        execution_ids=_ids([e1, e2, e3, e4]),
+        execution_ids=_sorted_ids([e1, e2, e3, e4]),
     )
-    self.assertEqual(_ids(result), _ids([y1, y2, y3, y4]))
+    self.assertEqual(_sorted_ids(result), _sorted_ids([y1, y2, y3, y4]))
 
     with self.subTest('With artifact filter'):
       result = store_ext.get_output_artifacts_from_execution_ids(
           self.store,
-          execution_ids=_ids([e1, e2, e3, e4]),
+          execution_ids=_sorted_ids([e1, e2, e3, e4]),
           artifact_filter=lambda a: a.state == metadata_store_pb2.Artifact.LIVE,
       )
-      self.assertEqual(_ids(result), _ids([y2, y3, y4]))
+      self.assertEqual(_sorted_ids(result), _sorted_ids([y2, y3, y4]))
 
   def testGetLiveOutputArtifactsOfNode(self):
     c = self.put_context('node', 'my-pipeline.my-node')
@@ -109,7 +113,41 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
     result = store_ext.get_live_output_artifacts_of_node(
         self.store, pipeline_id='my-pipeline', node_id='my-node'
     )
-    self.assertEqual(_ids(result), _ids([y2]))
+    self.assertEqual(_sorted_ids(result), _sorted_ids([y2]))
+
+  def testGetLiveOutputArtifactsOfNodeByOutputKey(self):
+    c = self.put_context('node', 'my-pipeline.my-node')
+    x1 = self.put_artifact('X')
+    x2 = self.put_artifact('X')
+    x3 = self.put_artifact('X')
+    y1 = self.put_artifact('Y')
+    y2 = self.put_artifact('Y', state='DELETED')
+    y3 = self.put_artifact('Y')
+    y4 = self.put_artifact('Y')
+    y5 = self.put_artifact('Y')
+    z1 = self.put_artifact('Z')
+    z2 = self.put_artifact('Z')
+    z3 = self.put_artifact('Z', state='ABANDONED')
+
+    self.put_execution(
+        'E', inputs={'x': [x1]}, outputs={'y': [y1], 'z': [z1]}, contexts=[c]
+    )
+    self.put_execution(
+        'E',
+        inputs={'x': [x2]},
+        outputs={'y': [y2, y3, y4], 'z': [z2]},
+        contexts=[c],
+    )
+    self.put_execution(
+        'E', inputs={'x': [x3]}, outputs={'y': [y5], 'z': [z3]}, contexts=[c]
+    )
+
+    result = store_ext.get_live_output_artifacts_of_node_by_output_key(
+        self.store, pipeline_id='my-pipeline', node_id='my-node'
+    )
+    self.assertDictEqual(
+        result, {'y': [[y5], [y3, y4], [y1]], 'z': [[], [z2], [z1]]}
+    )
 
 
 if __name__ == '__main__':
