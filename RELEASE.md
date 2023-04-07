@@ -21,6 +21,7 @@
     `channel_utils.encode_placeholder_with_channels(Placeholder, ...)`.
 
 *   `placeholder.Predicate.from_comparison()` removed (was deprecated)
+*   `hq.LocalFlock` now accepts `hq.LocalJobSpec` to start jobs.
 
 ### For Component Authors
 
