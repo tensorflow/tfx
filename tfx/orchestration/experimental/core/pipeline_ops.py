@@ -83,7 +83,7 @@ def _to_status_not_ok_error(fn):
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.UNKNOWN,
           message=f'`{fn.__name__}` error: {str(e)}',
-      )
+      ) from e
 
   return _wrapper
 
