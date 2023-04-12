@@ -49,6 +49,12 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
     )
     self.assertEqual(_ids(result), _ids([e1, e2]))
 
+    with self.subTest('With execution limit'):
+      result = store_ext.get_successful_node_executions(
+          self.store, pipeline_id='my-pipeline', node_id='my-node', limit=1
+      )
+      self.assertEqual(_ids(result), _ids([e1]))
+
     with self.subTest('Bad pipeline_id'):
       result = store_ext.get_successful_node_executions(
           self.store, pipeline_id='not-exist', node_id='my-node'
@@ -148,6 +154,14 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
     self.assertDictEqual(
         result, {'y': [[y5], [y3, y4], [y1]], 'z': [[], [z2], [z1]]}
     )
+    with self.subTest('With execution limit'):
+      result = store_ext.get_live_output_artifacts_of_node_by_output_key(
+          self.store,
+          pipeline_id='my-pipeline',
+          node_id='my-node',
+          execution_limit=2,
+      )
+      self.assertDictEqual(result, {'y': [[y5], [y3, y4]], 'z': [[], [z2]]})
 
 
 if __name__ == '__main__':
