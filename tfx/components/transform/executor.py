@@ -228,6 +228,10 @@ class _Dataset:
   def index(self, val):
     self._index = val
 
+  @dataset_key.setter
+  def dataset_key(self, val):
+    self._dataset_key = val
+
   @standardized.setter
   def standardized(self, val):
     self._standardized = val
@@ -294,6 +298,44 @@ def _FilterInternalColumn(
     filtered_columns.pop(internal_column_index)
     filtered_schema = record_batch.schema.remove(internal_column_index)
     return pa.RecordBatch.from_arrays(filtered_columns, schema=filtered_schema)
+
+
+def _GetCacheableDatasetsCount(num_analyzers: int, stats_enabled: bool) -> int:
+  """Returns the number of datasests which should be cached based on heuristic.
+
+  We allow pipelines with a small amount of analyzers (0-50) to cache many
+  datasets, and restrict it further as the number of analyzers increases, so
+  that a pipeline which has hundreds of analyzers can only cache a few datasets.
+  If a pipeline does not enable statistics generation then we estimate that it
+  can cache double the amount of datasets since it will have a smaller graph
+  representation. See go/tft-incremental-cache-design.
+
+  Args:
+    num_analyzers: The number of cacheable analyzers in the TFT pipeline.
+    stats_enabled: Whether or not pre/post transform statistics are enabled in
+      this pipeline.
+
+  Returns:
+    The number of datasets that this pipeline should compute cache for.
+  """
+  result = 0
+  if num_analyzers <= 10:
+    result = 100
+  elif num_analyzers <= 50:
+    result = 50
+  elif num_analyzers <= 100:
+    result = 10
+  elif num_analyzers <= 150:
+    result = 6
+  elif num_analyzers <= 200:
+    result = 4
+  elif num_analyzers <= 300:
+    result = 2
+  else:
+    result = 1
+  if not stats_enabled:
+    result = result * 2
+  return result
 
 
 class Executor(base_beam_executor.BaseBeamExecutor):
@@ -599,7 +641,8 @@ class TransformProcessor:
       analyze_columns_count: int, transform_columns_count: int,
       analyze_paths_count: int, analyzer_cache_enabled: bool,
       disable_statistics: bool, materialize: bool,
-      estimated_stage_count_with_cache: int):
+      estimated_stage_count_with_cache: int,
+      cached_datasets: int):
     """A beam PTransform to increment counters of column usage."""
 
     def _MakeAndIncrementCounters(unused_element):
@@ -630,6 +673,9 @@ class TransformProcessor:
           tft_beam.common.METRICS_NAMESPACE,
           'estimated_stage_count_with_cache').update(
               estimated_stage_count_with_cache)
+      beam.metrics.Metrics.counter(
+          tft_beam.common.METRICS_NAMESPACE, 'cached_datasets'
+          ).inc(cached_datasets)
       return beam.pvalue.PDone(pipeline)
 
     return (
@@ -870,7 +916,9 @@ class TransformProcessor:
                  typespecs: Mapping[str, tf.TypeSpec],
                  preprocessing_fn: Any,
                  cache_source: beam.PTransform,
-                 force_tf_compat_v1: bool):
+                 force_tf_compat_v1: bool,
+                 enable_incremental_cache: bool,
+                 is_stats_enabled: bool):
       # pyformat: enable
       self._input_cache_dir = input_cache_dir
       self._output_cache_dir = output_cache_dir
@@ -879,6 +927,8 @@ class TransformProcessor:
       self._preprocessing_fn = preprocessing_fn
       self._cache_source = cache_source
       self._force_tf_compat_v1 = force_tf_compat_v1
+      self._enable_incremental_cache = enable_incremental_cache
+      self._is_stats_enabled = is_stats_enabled
 
     # TODO(zoy): Remove this method once beam no longer pickles PTransforms,
     # once https://issues.apache.org/jira/browse/BEAM-3812 is resolved.
@@ -904,13 +954,14 @@ class TransformProcessor:
           tft_beam.analysis_graph_builder.get_analysis_cache_entry_keys(
               self._preprocessing_fn, self._feature_spec_or_typespec,
               dataset_keys_list, self._force_tf_compat_v1))
-      # We estimate the number of stages in the pipeline to be roughly:
-      # analyzers * analysis_paths * 10.
+      # Without incremental cache, we estimate the number of stages in the
+      # pipeline to be roughly: analyzers * analysis_paths * 10.
       # TODO(b/37788560): Remove this restriction when a greater number of
       # stages can be handled efficiently.
       estimated_stage_count = (
           len(cache_entry_keys) * len(dataset_keys_list) * 10)
-      if estimated_stage_count > _MAX_ESTIMATED_STAGES_COUNT:
+      if (not self._enable_incremental_cache and
+          estimated_stage_count > _MAX_ESTIMATED_STAGES_COUNT):
         logging.warning(
             'Disabling cache because otherwise the number of stages might be '
             'too high (%d analyzers, %d analysis paths)', len(cache_entry_keys),
@@ -919,6 +970,11 @@ class TransformProcessor:
         # cache.
         return ({d.dataset_key: d for d in self._analyze_data_list}, None,
                 estimated_stage_count)
+
+      cacheable_datasets = _GetCacheableDatasetsCount(
+          len(cache_entry_keys), self._is_stats_enabled)
+      if not self._enable_incremental_cache:
+        cacheable_datasets = len(dataset_keys_list)
 
       if self._input_cache_dir is not None:
         logging.info('Reading the following analysis cache entry keys: %s',
@@ -947,14 +1003,45 @@ class TransformProcessor:
                 self._preprocessing_fn, self._feature_spec_or_typespec,
                 dataset_keys_list, input_cache, self._force_tf_compat_v1))
 
+      cached_datasets_count = 0
       new_analyze_data_dict = {}
-      for dataset in self._analyze_data_list:
+      # Processing in reverse order assuming that later datasets are more likely
+      # to be processed again in a future iteration.
+      for dataset in self._analyze_data_list[::-1]:
         if dataset.dataset_key in filtered_analysis_dataset_keys:
-          new_analyze_data_dict[dataset.dataset_key] = dataset
+          # Otherwise the caller will have to make sure the data is read.
+          if cached_datasets_count < cacheable_datasets:
+            new_analyze_data_dict[dataset.dataset_key] = dataset
+            cached_datasets_count += 1
         else:
           new_analyze_data_dict[dataset.dataset_key] = None
 
       return (new_analyze_data_dict, input_cache, estimated_stage_count)
+
+  def _JoinUncachedDatasets(
+      self,
+      analyze_data_list: List[_Dataset],
+      optimized_analyze_data_dict: Dict[analyzer_cache.DatasetKey, _Dataset],
+      input_schema: schema_pb2.Schema,
+      analyze_input_columns: List[str],
+  ):
+    """Joins together datasets that do not particiapte in cache."""
+    original_dataset_count = len(analyze_data_list)
+    flatten_datasets = []
+    filtered_analyze_data_list = []
+    for dataset in analyze_data_list:
+      if dataset.dataset_key not in optimized_analyze_data_dict:
+        flatten_datasets.append(dataset)
+      else:
+        filtered_analyze_data_list.append(dataset)
+    if flatten_datasets:
+      analyze_data_list = filtered_analyze_data_list
+      for dataset in self._MakeProcessJointlyDatasetList(
+          flatten_datasets, input_schema, analyze_input_columns):
+        optimized_analyze_data_dict[dataset.dataset_key] = dataset
+        analyze_data_list.append(dataset)
+    assert len(analyze_data_list) <= original_dataset_count
+    return analyze_data_list, optimized_analyze_data_dict
 
   def Transform(self, inputs: Mapping[str, Any], outputs: Mapping[str, Any],
                 status_file: Optional[str] = None) -> None:
@@ -1143,7 +1230,6 @@ class TransformProcessor:
                       per_set_stats_output_paths, materialization_format,
                       len(analyze_data_paths), stats_output_paths,
                       make_beam_pipeline_fn)
-  # TODO(b/122478841): Writes status to status file.
 
   # pylint: disable=expression-not-assigned, no-value-for-parameter
   def _RunBeamImpl(
@@ -1239,11 +1325,18 @@ class TransformProcessor:
              | 'OptimizeRun' >> self._OptimizeRun(
                  input_cache_dir, output_cache_dir, analyze_data_list,
                  unprojected_typespecs, preprocessing_fn,
-                 self._GetCacheSource(), force_tf_compat_v1))
+                 self._GetCacheSource(), force_tf_compat_v1,
+                 self._EnableIncrementalCache(), not disable_statistics))
+
+        analyze_data_list, new_analyze_data_dict = self._JoinUncachedDatasets(
+            analyze_data_list, new_analyze_data_dict,
+            input_dataset_metadata.schema, analyze_input_columns
+        )
 
         _ = (
             pipeline
-            | 'IncrementPipelineMetrics' >> self._IncrementPipelineMetrics(
+            | 'IncrementPipelineMetrics'
+            >> self._IncrementPipelineMetrics(
                 total_columns_count=len(unprojected_typespecs),
                 analyze_columns_count=analyze_columns_count,
                 transform_columns_count=len(transform_input_columns),
@@ -1252,7 +1345,12 @@ class TransformProcessor:
                 disable_statistics=disable_statistics,
                 materialize=materialization_format is not None,
                 estimated_stage_count_with_cache=(
-                    estimated_stage_count_with_cache)))
+                    estimated_stage_count_with_cache
+                ),
+                cached_datasets=sum(
+                    key.is_cached for key in new_analyze_data_dict),
+            )
+        )
 
         if input_cache:
           logging.debug('Analyzing data with cache.')
@@ -1276,7 +1374,8 @@ class TransformProcessor:
           ]
 
         for dataset in analyze_data_list:
-          infix = 'AnalysisIndex{}'.format(dataset.index)
+          is_joint = '' if dataset.dataset_key.is_cached else 'Joint'
+          infix = f'{is_joint}AnalysisIndex{dataset.index}'
           dataset.standardized = (
               pipeline
               | 'TFXIOReadAndDecode[{}]'.format(infix) >>
@@ -1560,6 +1659,34 @@ class TransformProcessor:
 
     return _Status.OK()
 
+  def _MakeProcessJointlyDatasetList(
+      self, datasets: Sequence[_Dataset],
+      input_schema: schema_pb2.Schema,
+      analyze_input_columns: List[str]) -> List[_Dataset]:
+    """Merges datasets to be processed jointly."""
+    file_patterns = []
+    file_formats = []
+    data_format = None
+    data_view_uri = None
+    # Explicitly setting stats and materialize paths to None.
+    stats_output_paths = None
+    materialize_output_paths = None
+    for dataset in datasets:
+      file_patterns.append(dataset.file_pattern)
+      file_formats.append(dataset.file_format)
+      data_format = dataset.data_format
+      data_view_uri = dataset.data_view_uri
+    can_process_jointly = True
+    result = self._MakeDatasetList(
+        file_patterns, file_formats, data_format, data_view_uri,
+        can_process_jointly, stats_output_paths, materialize_output_paths)
+    for dataset in result:
+      # Only non-cacheable datasets ever get joined.
+      dataset.dataset_key = dataset.dataset_key.non_cacheable()
+      dataset.tfxio = self._CreateTFXIO(dataset, input_schema)
+      dataset.tfxio = dataset.tfxio.Project(analyze_input_columns)
+    return result
+
   # TODO(b/114444977): Remove the unused can_process_jointly argument.
   def _MakeDatasetList(
       self,
@@ -1727,4 +1854,9 @@ class TransformProcessor:
   # TODO(b/215448985): Remove this once sharded stats are written by default.
   @staticmethod
   def _TFDVWriteShardedOutput():
+    return False
+
+  # TODO(b/270338794): Remove this once incremental cache is enabled by default.
+  @classmethod
+  def _EnableIncrementalCache(cls):
     return False
