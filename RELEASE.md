@@ -21,7 +21,6 @@
     `channel_utils.encode_placeholder_with_channels(Placeholder, ...)`.
 
 *   `placeholder.Predicate.from_comparison()` removed (was deprecated)
-*   enable `external_pipeline_artifact_query` for querying artifact within one pipeline
 
 ### For Component Authors
 
