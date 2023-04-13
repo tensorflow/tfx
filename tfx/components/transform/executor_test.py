@@ -16,7 +16,6 @@
 import copy
 import json
 import os
-import re
 import tempfile
 from unittest import mock
 
@@ -50,7 +49,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
   _TEMP_ARTIFACTS_DIR = tempfile.mkdtemp()
   _SOURCE_DATA_DIR = os.path.join(
       os.path.dirname(os.path.dirname(__file__)), 'testdata')
-  _ARTIFACT_URI_TEMPLATE = os.path.join(_TEMP_ARTIFACTS_DIR, 'example_gen{}')
+  _ARTIFACT1_URI = os.path.join(_TEMP_ARTIFACTS_DIR, 'example_gen1')
+  _ARTIFACT2_URI = os.path.join(_TEMP_ARTIFACTS_DIR, 'example_gen2')
 
   _SOURCE_EXAMPLE_DIR = 'csv_example_gen'
 
@@ -101,33 +101,29 @@ class ExecutorTest(tft_unit.TransformTestCase):
     source_example_dir = os.path.join(cls._SOURCE_DATA_DIR,
                                       cls._SOURCE_EXAMPLE_DIR)
 
-    io_utils.copy_dir(source_example_dir, cls._ARTIFACT_URI_TEMPLATE.format(1))
-    artifact_2_uri = cls._ARTIFACT_URI_TEMPLATE.format(2)
-    io_utils.copy_dir(source_example_dir, artifact_2_uri)
+    io_utils.copy_dir(source_example_dir, cls._ARTIFACT1_URI)
+    io_utils.copy_dir(source_example_dir, cls._ARTIFACT2_URI)
 
     # Duplicate the number of train and eval records such that
     # second artifact has twice as many as first.
-    artifact2_pattern = os.path.join(artifact_2_uri, '*', '*')
+    artifact2_pattern = os.path.join(cls._ARTIFACT2_URI, '*', '*')
     artifact2_files = fileio.glob(artifact2_pattern)
     for filepath in artifact2_files:
       directory, filename = os.path.split(filepath)
       io_utils.copy_file(filepath, os.path.join(directory, 'dup_' + filename))
 
-  def _set_up_input_artifacts(self, num_examples=2):
+  def _set_up_input_artifacts(self):
     example1 = standard_artifacts.Examples()
-    example1.uri = self._ARTIFACT_URI_TEMPLATE.format(1)
+    example1.uri = self._ARTIFACT1_URI
     example1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     if self._FILE_FORMAT is not None:
       example1.set_string_custom_property('file_format', self._FILE_FORMAT)
     example1.set_string_custom_property(
         key='payload_format',
         value=example_gen_pb2.PayloadFormat.Name(self._PAYLOAD_FORMAT))
-    artifacts = [example1]
-    for idx in range(num_examples - 1):
-      artifacts.append(copy.deepcopy(example1))
-      artifacts[-1].uri = self._ARTIFACT_URI_TEMPLATE.format(idx + 2)
-      io_utils.copy_dir(artifacts[0].uri, artifacts[-1].uri)
-    self._example_artifacts = artifacts
+    example2 = copy.deepcopy(example1)
+    example2.uri = self._ARTIFACT2_URI
+    self._example_artifacts = [example1, example2]
 
   def _get_output_data_dir(self, sub_dir=None):
     test_dir = self._testMethodName
@@ -685,65 +681,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                 self._exec_properties)
     self._verify_transform_outputs(store_cache=False)
     self.assertFalse(fileio.exists(self._updated_analyzer_cache_artifact.uri))
-
-  @tft_unit.mock.patch.object(
-      executor, '_GetCacheableDatasetsCount', autospec=True, return_value=1)
-  @tft_unit.mock.patch.object(
-      executor.TransformProcessor, '_EnableIncrementalCache',
-      autospec=True, return_value=True)
-  def test_do_with_partial_cache(self, *_):
-    self._exec_properties[standard_component_specs.MODULE_FILE_KEY] = (
-        self._module_file
-    )
-    self._set_up_input_artifacts(num_examples=10)
-    self._input_dict[standard_component_specs.EXAMPLES_KEY] = (
-        self._example_artifacts
-    )
-    self._exec_properties[standard_component_specs.DISABLE_STATISTICS_KEY] = (
-        True
-    )
-    del self._output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY]
-    self._transform_executor.Do(
-        self._input_dict, self._output_dict, self._exec_properties
-    )
-    self.assertTrue(fileio.exists(self._updated_analyzer_cache_artifact.uri))
-    # Only the latest dataset should get cached.
-    self.assertLen(
-        cache_uris := fileio.listdir(self._updated_analyzer_cache_artifact.uri),
-        1,
-    )
-    self.assertIn('example_gen9', cache_uris[0])
-
-    output_data_dir = self._get_output_data_dir('2nd_run')
-
-    self._make_base_do_params(self._SOURCE_DATA_DIR, output_data_dir)
-
-    self._exec_properties[standard_component_specs.MODULE_FILE_KEY] = (
-        self._module_file
-    )
-    self._set_up_input_artifacts(num_examples=10)
-    self._input_dict[standard_component_specs.EXAMPLES_KEY] = (
-        self._example_artifacts
-    )
-    self._exec_properties[standard_component_specs.DISABLE_STATISTICS_KEY] = (
-        True
-    )
-    del self._output_dict[standard_component_specs.TRANSFORMED_EXAMPLES_KEY]
-
-    analyzer_cache_artifact = standard_artifacts.TransformCache()
-    analyzer_cache_artifact.uri = self._updated_analyzer_cache_artifact.uri
-    self._input_dict[standard_component_specs.ANALYZER_CACHE_KEY] = [
-        analyzer_cache_artifact
-    ]
-    self._transform_executor.Do(
-        self._input_dict, self._output_dict, self._exec_properties
-    )
-    self.assertTrue(fileio.exists(analyzer_cache_artifact.uri))
-    # Only the latest uncached dataset should get cached, plus previous cache.
-    self.assertLen(cache_uris := fileio.listdir(analyzer_cache_artifact.uri), 2)
-    cache_uris_spans = sum(
-        [re.findall(r'.*example_gen(\d*).*', uri) for uri in cache_uris], [])
-    self.assertCountEqual(cache_uris_spans, ('8', '9'))
 
 
 if __name__ == '__main__':
