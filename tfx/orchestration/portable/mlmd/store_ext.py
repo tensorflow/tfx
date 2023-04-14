@@ -44,8 +44,10 @@ def get_successful_node_executions(
     *,
     pipeline_id: str,
     node_id: str,
+    pipeline_run_id: Optional[str] = None,
     order_by: mlmd.OrderByField = mlmd.OrderByField.ID,
     is_asc: bool = True,
+    limit: Optional[int] = None,
 ) -> List[mlmd.proto.Execution]:
   """Gets all successful node executions."""
   node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
@@ -57,11 +59,19 @@ def get_successful_node_executions(
           'last_known_state = CACHED',
       ]),
   ])
+  if pipeline_run_id:
+    node_executions_query.append(
+        q.And([
+            f'contexts_1.type = "{constants.PIPELINE_RUN_CONTEXT_TYPE_NAME}"',
+            f'contexts_1.name = "{pipeline_run_id}"',
+        ])
+    )
   return store.get_executions(
       list_options=mlmd.ListOptions(
           filter_query=str(node_executions_query),
           order_by=order_by,
           is_asc=is_asc,
+          limit=limit,
       )
   )
 
@@ -130,7 +140,12 @@ def get_live_output_artifacts_of_node(
 
 
 def get_live_output_artifacts_of_node_by_output_key(
-    store: mlmd.MetadataStore, *, pipeline_id: str, node_id: str
+    store: mlmd.MetadataStore,
+    *,
+    pipeline_id: str,
+    node_id: str,
+    pipeline_run_id: Optional[str] = None,
+    execution_limit: Optional[int] = None,
 ) -> Dict[str, List[List[mlmd.proto.Artifact]]]:
   """Get LIVE output artifacts of the given node grouped by output key.
 
@@ -144,22 +159,36 @@ def get_live_output_artifacts_of_node_by_output_key(
   5. If no LIVE output artifacts found for one execution, an empty list will be
   returned.
 
+  The value of execution_limit must be None or non-negative.
+  1. If None or 0, live output artifacts from all executions will be returned.
+  2. If the node has fewer executions than execution_limit, live output
+     artifacts from all executions will be returned.
+  3. If the node has more or equal executions than execution_limit, only live
+     output artifacts from the execution_limit latest executions will be
+     returned.
+
   Args:
     store: A MetadataStore object.
     pipeline_id: A pipeline ID.
     node_id: A node ID.
+    pipeline_run_id: The pipeline run ID that the node belongs to. Only
+      artifacts from the specified pipeline run are returned if specified.
+    execution_limit: Maximum number of latest executions from which live output
+      artifacts will be returned.
 
   Returns:
     A mapping from output key to all output artifacts from the given node.
   """
-  node_executions_ordered_by_desc_creation_time = (
-      get_successful_node_executions(
-          store,
-          pipeline_id=pipeline_id,
-          node_id=node_id,
-          order_by=mlmd.OrderByField.CREATE_TIME,
-          is_asc=False,
-      )
+  node_executions_ordered_by_desc_creation_time = get_successful_node_executions(
+      store,
+      pipeline_id=pipeline_id,
+      node_id=node_id,
+      pipeline_run_id=pipeline_run_id,
+      order_by=mlmd.OrderByField.CREATE_TIME,
+      # TODO(b/276893037): revisit MLMD performance degradation caused by
+      # is_asc=False in b/274559409.
+      is_asc=False,
+      limit=execution_limit,
   )
   if not node_executions_ordered_by_desc_creation_time:
     return {}
