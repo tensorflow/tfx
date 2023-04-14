@@ -45,7 +45,11 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
       output_config: Optional[Union[example_gen_pb2.Output,
                                     data_types.RuntimeParameter]] = None,
       range_config: Optional[Union[range_config_pb2.RangeConfig,
-                                   data_types.RuntimeParameter]] = None):
+                                   data_types.RuntimeParameter]] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
+      custom_config: Optional[Union[example_gen_pb2.CustomConfig,
+                                    data_types.RuntimeParameter]] = None,
+    ):
     """Constructs a BigQueryExampleGen component.
 
     Args:
@@ -63,6 +67,11 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
         as Output proto message.
       range_config: An optional range_config_pb2.RangeConfig instance,
         specifying the range of span values to consider.
+      custom_executor_spec: Optional custom executor spec overriding the default
+        executor spec specified in the component attribute.
+      custom_config: An
+        [example_gen_pb2.CustomConfig](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
+        instance, providing custom configuration for ExampleGen.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set.
@@ -73,4 +82,7 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
     super().__init__(
         input_config=input_config,
         output_config=output_config,
-        range_config=range_config)
+        custom_config=custom_config,
+        range_config=range_config,
+        custom_executor_spec=custom_executor_spec,
+    )

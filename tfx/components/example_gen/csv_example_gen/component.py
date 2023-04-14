@@ -71,7 +71,11 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
                                     data_types.RuntimeParameter]] = None,
       range_config: Optional[Union[placeholder.Placeholder,
                                    range_config_pb2.RangeConfig,
-                                   data_types.RuntimeParameter]] = None):
+                                   data_types.RuntimeParameter]] = None,
+      custom_config: Optional[Union[example_gen_pb2.CustomConfig,
+                                    data_types.RuntimeParameter]] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None
+    ):
     """Construct a CsvExampleGen component.
 
     Args:
@@ -85,9 +89,16 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
       range_config: An optional range_config_pb2.RangeConfig instance,
         specifying the range of span values to consider. If unset, driver will
         default to searching for latest span with no restrictions.
+      custom_config: An optional example_gen_pb2.CustomConfig instance,
+        providing custom configuration for executor.
+      custom_executor_spec: Optional custom executor spec overriding the default
+        executor spec specified in the component attribute.
     """
     super().__init__(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        range_config=range_config)
+        range_config=range_config,
+        custom_config=custom_config,
+        custom_executor_spec=custom_executor_spec,
+    )
