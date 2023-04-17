@@ -15,6 +15,7 @@
 
 from typing import List, Type
 
+from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import compiler_context
@@ -30,6 +31,7 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
+from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 
@@ -113,7 +115,7 @@ def dummy_dict_list():
   return DummyDictList()
 
 
-class NodeInputsCompilerTest(tf.test.TestCase):
+class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
   pipeline_name = 'dummy-pipeline'
 
   def _prepare_pipeline(
@@ -433,6 +435,46 @@ class NodeInputsCompilerTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       r5 = pipeline_pb2.NodeInputs()
       node_inputs_compiler.compile_node_inputs(ctx, c5, r5)
+
+  @parameterized.product(
+      explicit_x=[True, False],
+      explicit_y=[True, False],
+      dynamic_z=[True, False],
+  )
+  def testMainInputsShouldNotBeHidden(self, explicit_x, explicit_y, dynamic_z):
+    p = DummyNode('Producer')
+    inputs = {
+        'union': channel_utils.union([
+            p.output('x', standard_artifacts.Integer),
+            p.output('y', standard_artifacts.Integer),
+            p.output('z', standard_artifacts.Integer),
+        ])
+    }
+    exec_properties = {}
+    if explicit_x:
+      inputs['x'] = p.output('x')
+    if explicit_y:
+      inputs['y'] = p.output('y')
+    if dynamic_z:
+      exec_properties['z'] = p.output('z').future().value
+    c = DummyNode('Consumer', inputs=inputs, exec_properties=exec_properties)
+    pipe = self._prepare_pipeline([p, c])
+    ctx = compiler_context.PipelineContext(pipe)
+
+    result = pipeline_pb2.NodeInputs()
+    node_inputs_compiler.compile_node_inputs(ctx, c, result)
+    self.assertEqual(result.inputs['union'].hidden, False)
+    if explicit_x:
+      self.assertIn('x', result.inputs)
+      self.assertEqual(result.inputs['x'].hidden, False)
+    else:
+      self.assertNotIn('x', result.inputs)
+    if explicit_y:
+      self.assertIn('y', result.inputs)
+      self.assertEqual(result.inputs['y'].hidden, False)
+    else:
+      self.assertNotIn('y', result.inputs)
+    self.assertEqual(result.inputs['_Producer.z'].hidden, not dynamic_z)
 
 
 if __name__ == '__main__':

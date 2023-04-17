@@ -162,16 +162,23 @@ def _compile_input_spec(
     tfx_node: A `BaseNode` instance from pipeline DSL.
     input_key: An input key that the compiled `InputSpec` would be stored with.
     channel: A `BaseChannel` instance to compile.
-    hidden: If true, this sets `InputSpec.hidden = True`. If the channel is
-        already compiled, then it has no effect.
+    hidden: If true, this sets `InputSpec.hidden = True`. If the same channel
+      instances have been called multiple times with different `hidden` value,
+      then `hidden` will be `False`. In other words, if the channel is ever
+      compiled with `hidden=False`, it will ignore other `hidden=True`.
     min_count: Minimum number of artifacts that should be resolved for this
-        input key. If min_count is not met during the input resolution, it is
-        considered as an error.
+      input key. If min_count is not met during the input resolution, it is
+      considered as an error.
     result: A `NodeInputs` proto to which the compiled result would be written.
   """
   if input_key in result.inputs:
     # Already compiled. This can happen during compiling another input channel
     # from the same resolver function output.
+    if not hidden:
+      # Overwrite hidden = False even for already compiled channel, this is
+      # because we don't know the input should truely be hidden until the
+      # channel turns out not to be.
+      result.inputs[input_key].hidden = False
     return
 
   if channel in pipeline_ctx.channels:
