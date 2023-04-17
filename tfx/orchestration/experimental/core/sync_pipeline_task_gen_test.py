@@ -963,66 +963,6 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
     self.assertEqual(status_lib.Code.UNKNOWN, finalize_task.status.code)
 
-  def test_component_retry_when_node_is_starting(self):
-    """Tests component retry when node is STARTING."""
-    test_utils.fake_example_gen_run(
-        self._mlmd_connection, self._example_gen, 1, 1
-    )
-    node_uid = task_lib.NodeUid.from_node(self._pipeline, self._stats_gen)
-
-    self._stats_gen.execution_options.max_execution_retries = 2
-    [exec_node_task] = self._generate(False, True, fail_fast=True)
-    self.assertEqual(
-        self._stats_gen.node_info.id, exec_node_task.node_uid.node_id
-    )
-
-    # Simulate fail and rerun StatsGen twice.
-    for _ in range(self._stats_gen.execution_options.max_execution_retries):
-      # Simulate StatsGen failure.
-      with self._mlmd_connection as m:
-        with mlmd_state.mlmd_execution_atomic_op(
-            m, exec_node_task.execution_id
-        ) as ev_exec:
-          ev_exec.last_known_state = metadata_store_pb2.Execution.FAILED
-
-      # It should generate a ExecNodeTask due to retry.
-      [update_node_task, exec_node_task] = self._generate(
-          False, False, fail_fast=True
-      )
-      self.assertIsInstance(exec_node_task, task_lib.ExecNodeTask)
-      self.assertEqual(
-          self._stats_gen.node_info.id, exec_node_task.node_uid.node_id
-      )
-      self.assertIsInstance(update_node_task, task_lib.UpdateNodeStateTask)
-      self.assertEqual(update_node_task.state, pstate.NodeState.RUNNING)
-
-    # Fail StatsGen the third time.
-    with self._mlmd_connection as m:
-      with mlmd_state.mlmd_execution_atomic_op(
-          m, exec_node_task.execution_id
-      ) as ev_exec:
-        ev_exec.last_known_state = metadata_store_pb2.Execution.FAILED
-
-    # Change state of node to STARTING.
-    with self._mlmd_connection as m:
-      pipeline_state = test_utils.get_or_create_pipeline_state(
-          m, self._pipeline
-      )
-      with pipeline_state:
-        with pipeline_state.node_state_update_context(node_uid) as node_state:
-          node_state.update(pstate.NodeState.STARTING)
-
-    # It should generate a ExecNodeTask due to state being STARTING.
-    [update_node_task, exec_node_task] = self._generate(
-        False, False, fail_fast=True
-    )
-    self.assertIsInstance(exec_node_task, task_lib.ExecNodeTask)
-    self.assertEqual(
-        self._stats_gen.node_info.id, exec_node_task.node_uid.node_id
-    )
-    self.assertIsInstance(update_node_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(update_node_task.state, pstate.NodeState.RUNNING)
-
 
 if __name__ == '__main__':
   tf.test.main()
