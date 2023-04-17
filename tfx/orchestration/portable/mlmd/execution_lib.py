@@ -629,7 +629,7 @@ def set_execution_result(execution_result: execution_result_pb2.ExecutionResult,
   try:
     execution.custom_properties[_EXECUTION_RESULT].string_value = (
         json_format.MessageToJson(execution_result))
-  except TypeError:
+  except (TypeError, KeyError):
     logging.exception(
         'Unable to set execution_result as custom property of the execution '
         'due to error, will attempt again by clearing `metadata_details`...'
@@ -640,7 +640,7 @@ def set_execution_result(execution_result: execution_result_pb2.ExecutionResult,
       execution.custom_properties[_EXECUTION_RESULT].string_value = (
           json_format.MessageToJson(execution_result)
       )
-    except TypeError:
+    except (TypeError, KeyError):
       logging.exception(
           'Skipped setting execution_result as custom property of the '
           'execution due to error'
