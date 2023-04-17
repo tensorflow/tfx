@@ -130,7 +130,7 @@ class Artifact(json_utils.Jsonable):
   # Example usage:
   #
   # TYPE_NAME = 'MyTypeName'
-  TYPE_NAME = None
+  TYPE_NAME: str = None
 
   # The system artifact class used to annotate the artifact type. It is a
   # subclass of SystemArtifact.
