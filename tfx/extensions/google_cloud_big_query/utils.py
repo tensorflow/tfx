@@ -20,31 +20,8 @@ Internal utilities, no backwards compatibility guarantees.
 from typing import Any, Dict, List
 
 import apache_beam as beam
-from apache_beam.io.gcp import bigquery
 from apache_beam.options import value_provider
 import tensorflow as tf
-from tfx.utils import telemetry_utils
-
-
-@beam.ptransform_fn
-@beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(beam.typehints.Dict[str, Any])
-def ReadFromBigQuery(pipeline: beam.Pipeline,  # pylint: disable=invalid-name
-                     query: str) -> beam.pvalue.PCollection:
-  """Read data from BigQuery.
-
-  Args:
-    pipeline: Beam pipeline.
-    query: A BigQuery sql string.
-
-  Returns:
-    PCollection of dict.
-  """
-  return (pipeline
-          | 'ReadFromBigQuery' >> bigquery.ReadFromBigQuery(
-              query=query,
-              use_standard_sql=True,
-              bigquery_job_labels=telemetry_utils.make_labels_dict()))
 
 
 def row_to_example(  # pylint: disable=invalid-name

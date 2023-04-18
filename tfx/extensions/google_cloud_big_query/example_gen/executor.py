@@ -13,15 +13,18 @@
 # limitations under the License.
 """Generic TFX BigQueryExampleGen executor."""
 
+import json
 from typing import Any, Dict, Optional
 
 import apache_beam as beam
+from apache_beam.io.gcp import bigquery as beam_bigquery
 
 from google.cloud import bigquery
 import tensorflow as tf
 
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.extensions.google_cloud_big_query import utils
+from tfx.utils import telemetry_utils
 
 
 class _BigQueryConverter:
@@ -65,9 +68,18 @@ def _BigQueryToExample(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
   """
   project = utils.parse_gcp_project(exec_properties['_beam_pipeline_args'])
   converter = _BigQueryConverter(split_pattern, project)
+  bq_kwargs = json.loads(exec_properties['custom_config'])
+
+  # if not bq_kwargs:
+  #   bq_kwargs={'dummy':None}
 
   return (pipeline
-          | 'QueryTable' >> utils.ReadFromBigQuery(query=split_pattern)
+          | 'QueryTable' >> beam_bigquery.ReadFromBigQuery(
+    query=split_pattern,
+    use_standard_sql=True,
+    bigquery_job_labels=telemetry_utils.make_labels_dict(),
+    **bq_kwargs
+    )
           | 'ToTFExample' >> beam.Map(converter.RowToExample))
 
 
