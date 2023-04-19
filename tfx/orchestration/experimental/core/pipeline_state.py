@@ -968,7 +968,7 @@ class PipelineView:
           e for e in executions if not execution_lib.is_execution_active(e)
       ]
 
-    if pipeline_run_id is None and executions:
+    if not pipeline_run_id and executions:
       execution = _get_latest_execution(executions)
       return cls(pipeline_id, context, execution)
 
