@@ -213,27 +213,23 @@ def _compile_input_spec(
       ctx.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
       ctx.name.field_value.string_value = channel.pipeline_run_id
 
-    # TODO(b/265337852) Change project_name to pipeline_name.
-    pipeline_asset_name = (
-        channel.project_name if channel.project_name else channel.pipeline_name
-    )
     if pipeline_ctx.pipeline.platform_config:
       project_config = (
           pipeline_ctx.pipeline.platform_config.project_platform_config
       )
       if (
           channel.owner != project_config.owner
-          or pipeline_asset_name != project_config.project_name
+          or channel.pipeline_name != project_config.project_name
       ):
         config = metadata_pb2.MLMDServiceConfig(
             owner=channel.owner,
-            name=pipeline_asset_name,
+            name=channel.pipeline_name,
         )
         result_input_channel.metadata_connection_config.Pack(config)
     else:
       config = metadata_pb2.MLMDServiceConfig(
           owner=channel.owner,
-          name=pipeline_asset_name,
+          name=channel.pipeline_name,
       )
       result_input_channel.metadata_connection_config.Pack(config)
 
