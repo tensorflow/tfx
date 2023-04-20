@@ -57,18 +57,24 @@ class LatestPipelineRunOutputsTest(
 
       # Creates the first pipeline run and artifact.
       input_artifact_1 = self.put_artifact('Example')
+      garbage_collected_artifact = self.put_artifact(
+          'Example', state=metadata_store_pb2.Artifact.State.DELETED
+      )
       pipeline_run_ctx_1 = self.put_context('pipeline_run', 'run-001')
       self.put_execution(
           'ExampleGen',
           inputs={},
-          outputs={'examples': [input_artifact_1]},
+          # Although here the ExampleGen outputs a DELETED artifact, in reality
+          # the artifact would be marked as LIVE first and then later marked
+          # as DELETED when it is garbage collected.
+          outputs={'examples': [input_artifact_1, garbage_collected_artifact]},
           contexts=[node_context, pipeline_run_ctx_1],
           output_event_type=metadata_store_pb2.Event.OUTPUT,
       )
       self.put_execution(
           'pipeline-name_end',
           inputs={},
-          outputs={'examples': [input_artifact_1]},
+          outputs={'examples': [input_artifact_1, garbage_collected_artifact]},
           contexts=[end_node_context, pipeline_run_ctx_1],
           output_event_type=metadata_store_pb2.Event.INTERNAL_OUTPUT,
       )
