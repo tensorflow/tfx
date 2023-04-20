@@ -198,8 +198,8 @@ def encode_split_names(splits: List[str]) -> str:
       # a property for all artifacts.
       raise ValueError(
           'Split names are expected to be alphanumeric (allowing dashes and '
-          f'underscores, provided they are not the first character); got {repr(split)} '
-          'instead.')
+          'underscores, provided they are not the first character); got '
+          f'{repr(split)} instead.')
     rewritten_splits.append(split)
   return json.dumps(rewritten_splits)
 
