@@ -130,7 +130,7 @@ class Artifact(json_utils.Jsonable):
   # Example usage:
   #
   # TYPE_NAME = 'MyTypeName'
-  TYPE_NAME = None
+  TYPE_NAME: Optional[str] = None
 
   # The system artifact class used to annotate the artifact type. It is a
   # subclass of SystemArtifact.
@@ -140,7 +140,7 @@ class Artifact(json_utils.Jsonable):
   # Example usage:
   #
   # TYPE_ANNOTATION = system_artifacts.Dataset
-  TYPE_ANNOTATION: Type[SystemArtifact] = None
+  TYPE_ANNOTATION: Optional[Type[SystemArtifact]] = None
 
   # Optional dictionary of property name strings as keys and `Property`
   # objects as values, used to specify the artifact type's properties.
@@ -158,7 +158,7 @@ class Artifact(json_utils.Jsonable):
   #
   # Subsequently, these properties can be stored and accessed as
   # `myartifact.span` and `myartifact.split_name`, respectively.
-  PROPERTIES = None
+  PROPERTIES: Optional[Dict[str, Property]] = None
 
   # Initialization flag to support setattr / getattr behavior.
   _initialized = False
