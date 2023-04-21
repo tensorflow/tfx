@@ -195,7 +195,9 @@ def implicit_channel_key(channel: types.BaseChannel):
   if isinstance(channel, channel_types.PipelineInputChannel):
     channel = cast(channel_types.PipelineInputChannel, channel)
     return f"_{channel.pipeline.id}.{channel.output_key}"
-  elif isinstance(channel, types.Channel):
+  elif isinstance(channel, types.Channel) or isinstance(
+      channel, channel_types.ExternalPipelineChannel
+  ):
     if channel.producer_component_id and channel.output_key:
       return f"_{channel.producer_component_id}.{channel.output_key}"
     raise ValueError(
