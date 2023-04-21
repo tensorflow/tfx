@@ -178,12 +178,14 @@ class ResolverTestCase(
       artifact: Any,  # If set to types.Artifact, pytype throws spurious errors.
       properties: Optional[Dict[str, Union[int, str]]] = None,
       custom_properties: Optional[Dict[str, Union[int, str]]] = None,
+      state: metadata_store_pb2.Artifact.State = metadata_store_pb2.Artifact.State.LIVE,
   ) -> types.Artifact:
     """Adds a single artifact to MLMD and returns the TFleX Artifact object."""
     mlmd_artifact = self.put_artifact(
         artifact.TYPE_NAME,
         properties=properties,
         custom_properties=custom_properties,
+        state=state,
     )
     artifact_type = self.store.get_artifact_type(artifact.TYPE_NAME)
     return artifact_utils.deserialize_artifact(artifact_type, mlmd_artifact)

@@ -22,6 +22,8 @@ from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.types import artifact_utils
 
+from ml_metadata.proto import metadata_store_pb2
+
 
 def _validate_input_list(
     input_list: Sequence[types.Artifact],
@@ -77,12 +79,16 @@ def training_range(store: Any, model: types.Artifact) -> List[types.Artifact]:
     if event_lib.is_valid_input_event(event):
       parent_artifact_ids.add(event.artifact_id)
 
-  # Get the type ids of the parent artifacts.
+  # Get the type ids of the parent artifacts and only keep ones marked as LIVE.
   type_ids = set()
-  artifact_by_artifact_id = {}
+  live_artifacts = []
   for artifact in store.get_artifacts_by_id(parent_artifact_ids):
+    # Only consider Examples artifacts that are marked LIVE. This excludes
+    # garbage collected artifacts (which are marked as DELETED).
+    if artifact.state != metadata_store_pb2.Artifact.State.LIVE:
+      continue
     type_ids.add(artifact.type_id)
-    artifact_by_artifact_id[artifact.id] = artifact
+    live_artifacts.append(artifact)
 
   # Find the ArtifactType associated with Examples.
   for artifact_type in store.get_artifact_types_by_id(type_ids):
@@ -93,9 +99,11 @@ def training_range(store: Any, model: types.Artifact) -> List[types.Artifact]:
     return []
 
   mlmd_examples = []
-  for artifact_id in parent_artifact_ids:
-    artifact = artifact_by_artifact_id[artifact_id]
-    if artifact.type_id == examples_type.id:
+  for artifact in live_artifacts:
+    if (
+        artifact.type_id == examples_type.id
+        and artifact.state == metadata_store_pb2.Artifact.State.LIVE
+    ):
       mlmd_examples.append(artifact)
 
   if not mlmd_examples:

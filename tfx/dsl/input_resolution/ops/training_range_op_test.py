@@ -23,6 +23,8 @@ from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 
+from ml_metadata.proto import metadata_store_pb2
+
 
 class TrainingRangeOpTest(
     test_utils.ResolverTestCase,
@@ -36,13 +38,21 @@ class TrainingRangeOpTest(
         store=self.store,
     )
 
-  def _build_examples(self, n: int) -> List[types.Artifact]:
-    return [
-        self.prepare_tfx_artifact(
-            test_utils.Examples, properties={'span': i, 'version': 1}
-        )
-        for i in range(n)
-    ]
+  def _build_examples(
+      self,
+      n: int,
+      state: metadata_store_pb2.Artifact.State = metadata_store_pb2.Artifact.State.LIVE,
+  ) -> List[types.Artifact]:
+    artifacts = []
+    for i in range(n):
+      artifacts.append(
+          self.prepare_tfx_artifact(
+              test_utils.Examples,
+              properties={'span': i, 'version': 1},
+              state=state,
+          )
+      )
+    return artifacts
 
   def setUp(self):
     super().setUp()
@@ -167,6 +177,20 @@ class TrainingRangeOpTest(
 
     actual = self._training_range([self.model])
     self.assertArtifactListEqual(actual, self.examples[:5])
+
+  def testTrainingRangeOp_GarbageCollectedExamples(self):
+    garbage_collected_examples = self._build_examples(
+        5, state=metadata_store_pb2.Artifact.State.DELETED
+    )
+    all_examples = garbage_collected_examples + self.examples
+
+    # Although it appears we are training on both LIVE and DELETED, in reality
+    # the artifacts would be marked as DELETED after the training execution is
+    # added in MLMD.
+    self.train_on_examples(self.model, all_examples, self.transform_graph)
+
+    actual = self._training_range([self.model])
+    self.assertArtifactListEqual(actual, self.examples)
 
 
 if __name__ == '__main__':
