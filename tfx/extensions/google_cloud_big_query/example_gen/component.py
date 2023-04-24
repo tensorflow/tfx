@@ -49,7 +49,7 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                     data_types.RuntimeParameter]] = None,
-    ):
+  ):
     """Constructs a BigQueryExampleGen component.
 
     Args:

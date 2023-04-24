@@ -67,7 +67,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
       output_file_format: Optional[int] = example_gen_pb2.FORMAT_TFRECORDS_GZIP,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-    ):
+  ):
     """Construct a QueryBasedExampleGen component.
 
     Args:
