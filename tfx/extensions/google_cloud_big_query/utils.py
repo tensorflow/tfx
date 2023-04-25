@@ -31,7 +31,7 @@ from tfx.utils import telemetry_utils
 @beam.typehints.with_output_types(beam.typehints.Dict[str, Any])
 def ReadFromBigQuery(pipeline: beam.Pipeline,  # pylint: disable=invalid-name
                      query: str,
-                     big_query_custom_configs: dict) -> beam.pvalue.PCollection:
+                     big_query_custom_configs: Optional[Dict[str, Any]]) -> beam.pvalue.PCollection:
   """Read data from BigQuery.
   Args:
     pipeline: Beam pipeline.
