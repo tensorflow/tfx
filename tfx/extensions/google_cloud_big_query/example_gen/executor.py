@@ -17,8 +17,6 @@ import json
 from typing import Any, Dict, Optional
 
 import apache_beam as beam
-from apache_beam.io.gcp import bigquery as beam_bigquery
-
 from google.cloud import bigquery
 import tensorflow as tf
 
@@ -71,11 +69,9 @@ def _BigQueryToExample(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
   big_query_custom_configs = json.loads(exec_properties['custom_config'])
 
   return (pipeline
-          | 'QueryTable' >> beam_bigquery.ReadFromBigQuery(
+          | 'QueryTable' >> utils.ReadFromBigQuery(
     query=split_pattern,
-    use_standard_sql=True,
-    bigquery_job_labels=telemetry_utils.make_labels_dict(),
-    **big_query_custom_configs
+    big_query_custom_configs=big_query_custom_configs
     )
           | 'ToTFExample' >> beam.Map(converter.RowToExample))
 
