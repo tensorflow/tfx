@@ -17,7 +17,7 @@
 Internal utilities, no backwards compatibility guarantees.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import apache_beam as beam
 from apache_beam.io.gcp import bigquery

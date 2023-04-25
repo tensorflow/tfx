@@ -22,7 +22,6 @@ import tensorflow as tf
 
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.extensions.google_cloud_big_query import utils
-from tfx.utils import telemetry_utils
 
 
 class _BigQueryConverter:
