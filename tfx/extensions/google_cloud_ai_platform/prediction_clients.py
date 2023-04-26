@@ -377,7 +377,7 @@ class CAIPTfxPredictionClient(AbstractPredictionClient):
 class VertexPredictionClient(AbstractPredictionClient):
   """Class for interacting with Vertex Prediction service."""
 
-  def deploy_model(self,
+  def deploy_model(self,  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
                    serving_path: str,
                    model_version_name: str,
                    ai_platform_serving_args: Dict[str, Any],
