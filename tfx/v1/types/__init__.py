@@ -13,5 +13,9 @@
 # limitations under the License.
 """TFX types module."""
 
+# Base types are meant for type hinting only. Abstrain from directly inheriting
+# base types for your own classes.
+from tfx.dsl.components.base.base_node import BaseNode
 from tfx.types.channel import BaseChannel
+
 from tfx.v1.types import standard_artifacts
