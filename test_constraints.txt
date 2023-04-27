@@ -13,3 +13,6 @@ Cython<1
 
 # TODO(b/265052215): Remove pinned version after resolving the issue.
 cachelib<0.10.0
+
+# TODO(b/276661457): Remove blinker version after resolving the issue.
+blinker<1.6.0
