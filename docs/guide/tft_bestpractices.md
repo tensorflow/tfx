@@ -22,7 +22,7 @@ and the TensorFlow
 [Keras](https://www.tensorflow.org/guide/keras/overview) API.
 
 The second document,
-[Data preprocessing with Google Cloud](../tutorials/transform/data-preprocessing-with-cloud),
+[Data preprocessing with Google Cloud](../tutorials/transform/data_preprocessing_with_cloud),
 provides a step-by-step tutorial for how to implement a `tf.Transform`
 pipeline.
 
