@@ -159,6 +159,6 @@ A run is a single execution of a pipeline.
 
 An Orchestrator is a system where you can execute pipeline runs. TFX supports
 orchestrators such as: [Apache Airflow](airflow.md),
-[Apache Beam](beam_orchestrator.md), and [Kubeflow Pipelines](kubeflow.md). TFX
+[Apache Beam](beam.md), and [Kubeflow Pipelines](kubeflow.md). TFX
 also uses the term *DagRunner* to refer to an implementation that supports an
 orchestrator.
