@@ -14,7 +14,7 @@
 """Tests for tfx.dsl.components.base.decorators."""
 
 import os
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 import apache_beam as beam
 import tensorflow as tf
@@ -36,6 +36,7 @@ from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
+from tfx.types.channel_utils import union
 from tfx.types.system_executions import SystemExecution
 
 _TestBeamPipelineArgs = ['--my_testing_beam_pipeline_args=foo']
@@ -343,6 +344,17 @@ def _json_compat_parameters(
   assert c == {'foo': [True, False], 'bar': [True, False]}
   assert d == [{'foo': 1.0}, {'bar': 2.0}]
   assert e == ['foo', 'bar']
+
+
+@component
+def _list_of_artifacts(
+    one_examples: InputArtifact[List[standard_artifacts.Examples]],
+    two_examples: InputArtifact[List[standard_artifacts.Examples]],
+):
+  assert len(one_examples) == 1
+  assert isinstance(one_examples[0], standard_artifacts.Examples)
+  assert len(two_examples) == 2
+  assert all(isinstance(e, standard_artifacts.Examples) for e in two_examples)
 
 
 class ComponentDecoratorTest(tf.test.TestCase):
@@ -703,6 +715,38 @@ class ComponentDecoratorTest(tf.test.TestCase):
   def testPyComponentTestCallIsTheFuncBeingDecorated(self):
     self.assertEqual(_decorated_no_op.test_call, _no_op)
     self.assertEqual(_decorated_with_arg_no_op.test_call, _no_op)
+
+  def testListOfArtifacts(self):
+    """Test execution withl list of artifact inputs and outputs."""
+    # pylint: disable=no-value-for-parameter
+    instance_1 = _injector_2().with_id('instance_1')
+    instance_2 = _injector_2().with_id('instance_2')
+    instance_3 = _injector_2().with_id('instance_3')
+
+    list_artifacts_instance = _list_of_artifacts(
+        one_examples=instance_1.outputs['examples'],
+        two_examples=union(
+            [instance_1.outputs['examples'], instance_2.outputs['examples']]
+        ),
+    )
+    # pylint: enable=no-value-for-parameter
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path
+    )
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[
+            instance_1,
+            instance_2,
+            instance_3,
+            list_artifacts_instance,
+        ],
+    )
+
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
 
 if __name__ == '__main__':

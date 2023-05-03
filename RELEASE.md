@@ -40,6 +40,7 @@
 
 *   `placeholder.Predicate.from_comparison()` removed (was deprecated)
 *   enable `external_pipeline_artifact_query` for querying artifact within one pipeline
+*   Support `InputArtifact[List[Artifact]]` annotation in Python function custom component
 
 ### For Component Authors
 

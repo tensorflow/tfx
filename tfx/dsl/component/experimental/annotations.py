@@ -17,10 +17,11 @@ Experimental. No backwards compatibility guarantees.
 """
 
 import inspect
-from typing import Any, Type, Union, Dict, List
+from typing import Any, Dict, List, Type, Union, get_args, get_origin
 
 from tfx.dsl.component.experimental import json_compat
 from tfx.types import artifact
+
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
   _BeamPipeline = beam.Pipeline
@@ -29,11 +30,34 @@ except ModuleNotFoundError:
   _BeamPipeline = Any
 
 
+def _check_valid_input_artifact_params(params):
+  """Check if the annotation params is an Artifact or a List[Artifact]."""
+  # If the typehint is List[Artifact], unwrap it.
+  if params is list or get_origin(params) is list:
+    generic_arg = get_args(params)
+    if generic_arg is not None and len(generic_arg) == 1:
+      params = generic_arg[0]
+    else:
+      return False
+  if (
+      inspect.isclass(params)
+      and issubclass(params, artifact.Artifact)
+      and hasattr(params, 'TYPE_NAME')
+  ):
+    return True
+  else:
+    return False
+
+
 class _ArtifactGenericMeta(type):
   """Metaclass for _ArtifactGeneric, to enable class indexing."""
 
-  def __getitem__(cls: Type['_ArtifactGeneric'],
-                  params: Type[artifact.Artifact]):
+  def __getitem__(
+      cls: Type['_ArtifactGeneric'],
+      params: Union[
+          Type[artifact.Artifact], Type[List[artifact.Artifact]]
+      ],
+  ):
     """Metaclass method allowing indexing class (`_ArtifactGeneric[T]`)."""
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 
@@ -43,13 +67,17 @@ class _ArtifactGeneric(metaclass=_ArtifactGenericMeta):
 
   def __init__(  # pylint: disable=invalid-name
       self,
-      artifact_type: Type[artifact.Artifact],
-      _init_via_getitem=False):
+      artifact_type: Union[
+          Type[artifact.Artifact], Type[List[artifact.Artifact]]
+      ],
+      _init_via_getitem=False,
+  ):
     if not _init_via_getitem:
       class_name = self.__class__.__name__
       raise ValueError(
-          ('%s should be instantiated via the syntax `%s[T]`, where T is a '
-           'subclass of tfx.types.Artifact.') % (class_name, class_name))
+          '%s should be instantiated via the syntax `%s[T]`, where T is a '
+          'subclass of tfx.types.Artifact.' % (class_name, class_name)
+      )
     self.type = artifact_type
 
   @classmethod
@@ -170,7 +198,21 @@ class _PipelineTypeGeneric(
 
 class InputArtifact(_ArtifactGeneric):
   """Input artifact object type annotation."""
-  pass
+
+  @classmethod
+  def _generic_getitem(cls, params):
+    """Return the result of `_ArtifactGeneric[T]` for a given type T."""
+    # Check that the given parameter is a concrete (i.e. non-abstract) subclass
+    # of `tfx.types.Artifact`, or a List of `tfx.types.Artifact`.
+    if _check_valid_input_artifact_params(params):
+      return cls(params, _init_via_getitem=True)
+    else:
+      class_name = cls.__name__
+      raise ValueError(
+          ('Generic type `%s[T]` expects the single parameter T to be a '
+           'concrete subclass of `tfx.types.Artifact` or a List of '
+           '`tfx.types.Artifact` (got %r instead).') %
+          (class_name, params))
 
 
 class OutputArtifact(_ArtifactGeneric):

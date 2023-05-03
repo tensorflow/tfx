@@ -16,10 +16,14 @@
 Internal use only. No backwards compatibility guarantees.
 """
 
-from typing import Any, Type, Union
+from typing import Any, Type, Union, get_args, get_origin
 
 _JSON_COMPATIBLE_PRIMITIVES = frozenset(
     [int, float, str, bool, type(None), Any])
+
+
+def _convert_typing_to_builtin(t: Any):
+  return get_origin(t) or t
 
 
 def is_json_compatible(
@@ -41,7 +45,7 @@ def is_json_compatible(
     True if typehint is a JSON-compatible type.
   """
   def check(typehint: Any, not_primitive: bool = True) -> bool:
-    origin = getattr(typehint, '__origin__', typehint)
+    origin = _convert_typing_to_builtin(typehint)
     args = getattr(typehint, '__args__', None)
     if origin is dict or origin is list or origin is Union:
 
@@ -93,10 +97,10 @@ def check_strict_json_compat(
     if check_instance:
       in_obj, in_type = in_type, type(in_type)
 
-    in_args = getattr(in_type, '__args__', ())
-    in_origin = getattr(in_type, '__origin__', in_type)
-    expect_args = getattr(expect_type, '__args__', ())
-    expect_origin = getattr(expect_type, '__origin__', expect_type)
+    in_args = get_args(in_type)
+    in_origin = _convert_typing_to_builtin(in_type)
+    expect_args = get_args(expect_type)
+    expect_origin = _convert_typing_to_builtin(expect_type)
 
     if in_origin is Union:
       return all(_check(arg, expect_type) for arg in in_args)
