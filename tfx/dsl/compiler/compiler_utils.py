@@ -147,17 +147,23 @@ def get_data_dependent_node_ids(node: base_node.BaseNode) -> Set[str]:
   return result
 
 
-def _component_has_task_dependency(node: base_node.BaseNode) -> bool:
-  """Whether the given node has non-data-dependency."""
+def _find_component_task_dependency(node: base_node.BaseNode) -> List[str]:
+  """Find nodes the given node depends on with task dependency."""
   all_deps = {node.id for node in node.upstream_nodes}
   data_deps = get_data_dependent_node_ids(node)
-  return bool(all_deps - data_deps)
+  return list(all_deps - data_deps)
 
 
-def has_task_dependency(tfx_pipeline: pipeline.Pipeline) -> bool:
-  """Checks if a pipeline contains task dependency."""
-  return any(_component_has_task_dependency(node)
-             for node in tfx_pipeline.components)
+def find_task_dependency(
+    tfx_pipeline: pipeline.Pipeline,
+) -> Dict[str, List[str]]:
+  """Find all task dependencies in a pipeline."""
+  result = {}
+  for node in tfx_pipeline.components:
+    deps = _find_component_task_dependency(node)
+    if deps:
+      result[node.id] = deps
+  return result
 
 
 def pipeline_begin_node_type_name(p: pipeline.Pipeline) -> str:

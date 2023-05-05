@@ -128,14 +128,14 @@ class CompilerUtilsTest(tf.test.TestCase):
     with self.assertRaisesRegex(RuntimeError, "Caching is a feature only"):
       compiler_utils.resolve_execution_mode(p)
 
-  def testHasTaskDependency(self):
+  def testFindTaskDependency(self):
     example_gen = CsvExampleGen(input_base="data_path")
     statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
     p1 = pipeline.Pipeline(
         pipeline_name="fake_name",
         pipeline_root="fake_root",
         components=[example_gen, statistics_gen])
-    self.assertFalse(compiler_utils.has_task_dependency(p1))
+    self.assertEmpty(compiler_utils.find_task_dependency(p1))
 
     a = EmptyComponent(name="a").with_id("a")
     statistics_gen.add_downstream_node(a)
@@ -143,7 +143,10 @@ class CompilerUtilsTest(tf.test.TestCase):
         pipeline_name="fake_name",
         pipeline_root="fake_root",
         components=[example_gen, statistics_gen, a])
-    self.assertTrue(compiler_utils.has_task_dependency(p2))
+    self.assertEqual(
+        compiler_utils.find_task_dependency(p2),
+        {"a": ["StatisticsGen"]}
+    )
 
   def testNodeContextName(self):
     self.assertEqual(
