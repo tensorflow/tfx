@@ -930,10 +930,14 @@ class PipelineView:
       with the given pipeline uid exists in MLMD.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_id, **kwargs)
-    list_options = mlmd.ListOptions(
-        order_by=mlmd.OrderByField.CREATE_TIME, is_asc=True)
+    # TODO(b/279798582):
+    # Uncomment the following when the slow sorting MLMD query is fixed.
+    # list_options = mlmd.ListOptions(
+    #    order_by=mlmd.OrderByField.CREATE_TIME, is_asc=True)
     executions = mlmd_handle.store.get_executions_by_context(
-        context.id, list_options=list_options, **kwargs)
+        context.id, list_options=None, **kwargs
+    )
+    executions = sorted(executions, key=lambda x: x.create_time_since_epoch)
     return [cls(pipeline_id, context, execution) for execution in executions]
 
   @classmethod
