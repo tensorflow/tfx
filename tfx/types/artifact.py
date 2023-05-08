@@ -812,6 +812,8 @@ def _ArtifactType(  # pylint: disable=invalid-name
         properties[name] = Property(PropertyType.FLOAT)
       elif property_type == metadata_store_pb2.PropertyType.PROTO:
         properties[name] = Property(PropertyType.PROTO)
+      elif property_type == metadata_store_pb2.PropertyType.STRUCT:
+        properties[name] = Property(PropertyType.JSON_VALUE)
       elif property_type == metadata_store_pb2.PropertyType.STRING:
         properties[name] = Property(PropertyType.STRING)
       else:
