@@ -63,3 +63,9 @@ jobs:
 
         #stale label for issues
         stale-issue-label: 'stale'
+    - uses: actions/checkout@v3
+    - uses: actions/github-script@v6
+      with:
+        script: |
+          const script = require('./\.github/workflows/scripts/staleCSAT.js')
+          script({github, context})
