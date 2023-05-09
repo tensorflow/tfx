@@ -43,6 +43,8 @@ def ReadFromBigQuery(  # pylint: disable=invalid-name
   Returns:
     PCollection of dict.
   """
+  if big_query_custom_config is None:
+    big_query_custom_config = {}
   return pipeline | 'ReadFromBigQuery' >> bigquery.ReadFromBigQuery(
       query=query,
       use_standard_sql=True,
