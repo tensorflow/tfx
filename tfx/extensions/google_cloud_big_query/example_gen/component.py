@@ -40,12 +40,20 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
   def __init__(
       self,
       query: Optional[str] = None,
-      input_config: Optional[Union[example_gen_pb2.Input,
-                                   data_types.RuntimeParameter]] = None,
-      output_config: Optional[Union[example_gen_pb2.Output,
-                                    data_types.RuntimeParameter]] = None,
-      range_config: Optional[Union[range_config_pb2.RangeConfig,
-                                   data_types.RuntimeParameter]] = None):
+      input_config: Optional[
+          Union[example_gen_pb2.Input, data_types.RuntimeParameter]
+      ] = None,
+      output_config: Optional[
+          Union[example_gen_pb2.Output, data_types.RuntimeParameter]
+      ] = None,
+      range_config: Optional[
+          Union[range_config_pb2.RangeConfig, data_types.RuntimeParameter]
+      ] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
+      custom_config: Optional[
+          Union[example_gen_pb2.CustomConfig, data_types.RuntimeParameter]
+      ] = None,
+  ):
     """Constructs a BigQueryExampleGen component.
 
     Args:
@@ -58,11 +66,16 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
         same field names as Input proto message.
       output_config: An example_gen_pb2.Output instance, providing output
         configuration. If unset, default splits will be 'train' and 'eval' with
-        size 2:1. If any field is provided as a RuntimeParameter,
-        input_config should be constructed as a dict with the same field names
-        as Output proto message.
+        size 2:1. If any field is provided as a RuntimeParameter, input_config
+        should be constructed as a dict with the same field names as Output
+        proto message.
       range_config: An optional range_config_pb2.RangeConfig instance,
         specifying the range of span values to consider.
+      custom_executor_spec: Optional custom executor spec overriding the default
+        executor spec specified in the component attribute.
+      custom_config: An
+        [example_gen_pb2.CustomConfig](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
+        instance, providing custom configuration for ExampleGen.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set.
@@ -73,4 +86,7 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
     super().__init__(
         input_config=input_config,
         output_config=output_config,
-        range_config=range_config)
+        custom_config=custom_config,
+        range_config=range_config,
+        custom_executor_spec=custom_executor_spec,
+    )

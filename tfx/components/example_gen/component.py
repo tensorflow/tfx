@@ -58,14 +58,18 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
   def __init__(
       self,
       input_config: Union[example_gen_pb2.Input, data_types.RuntimeParameter],
-      output_config: Optional[Union[example_gen_pb2.Output,
-                                    data_types.RuntimeParameter]] = None,
-      custom_config: Optional[Union[example_gen_pb2.CustomConfig,
-                                    data_types.RuntimeParameter]] = None,
-      range_config: Optional[Union[range_config_pb2.RangeConfig,
-                                   data_types.RuntimeParameter]] = None,
+      output_config: Optional[
+          Union[example_gen_pb2.Output, data_types.RuntimeParameter]
+      ] = None,
+      custom_config: Optional[
+          Union[example_gen_pb2.CustomConfig, data_types.RuntimeParameter]
+      ] = None,
+      range_config: Optional[
+          Union[range_config_pb2.RangeConfig, data_types.RuntimeParameter]
+      ] = None,
       output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
       output_file_format: Optional[int] = example_gen_pb2.FORMAT_TFRECORDS_GZIP,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
   ):
     """Construct a QueryBasedExampleGen component.
 
@@ -84,8 +88,10 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
         specifying the range of span values to consider.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
-      output_file_format: File format of generated data in output artifact,
-          one of example_gen_pb2.FileFormat enum.
+      output_file_format: File format of generated data in output artifact, one
+        of example_gen_pb2.FileFormat enum.
+      custom_executor_spec: Optional custom executor spec overriding the default
+        executor spec specified in the component attribute.
 
     Raises:
       ValueError: The output_data_format, output_file_format value
@@ -110,7 +116,7 @@ class QueryBasedExampleGen(base_beam_component.BaseBeamComponent):
         output_file_format=output_file_format,
         custom_config=custom_config,
         examples=example_artifacts)
-    super().__init__(spec=spec)
+    super().__init__(spec=spec, custom_executor_spec=custom_executor_spec)
 
 
 class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
