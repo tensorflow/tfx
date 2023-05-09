@@ -36,7 +36,7 @@ component.
 
 To setup the evaluator the following information is needed:
 
-*   Metrics to configure (only reqired if additional metrics are being added
+*   Metrics to configure (only required if additional metrics are being added
     outside of those saved with the model). See
     [Tensorflow Model Analysis Metrics](https://github.com/tensorflow/model-analysis/blob/master/g3doc/metrics.md)
     for more information.
@@ -120,7 +120,7 @@ The evaluator produces an
 (and optionally a
 [ValidationResult](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/ValidationResult)
 if validation was used) that can be loaded using [TFMA](tfma.md). The following
-is an exmmple of how to load the results into a Jupyter notebook:
+is an example of how to load the results into a Jupyter notebook:
 
 ```
 import tensorflow_model_analysis as tfma
