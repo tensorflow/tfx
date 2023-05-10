@@ -964,8 +964,18 @@ class PipelineView:
       with the given pipeline uid exists in MLMD.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_id, **kwargs)
+    # b/281478984: This optimization is done for requests with pipeline run id
+    # by specifying which pipeline run is queried.
+    list_options = None
+    if pipeline_run_id:
+      list_options = mlmd.ListOptions(
+          filter_query=(
+              'custom_properties.pipeline_run_id.string_value ='
+              f' "{pipeline_run_id}"'
+          )
+      )
     executions = mlmd_handle.store.get_executions_by_context(
-        context.id, **kwargs
+        context.id, list_options=list_options, **kwargs
     )
     if non_active_only:
       executions = [
