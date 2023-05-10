@@ -930,14 +930,10 @@ class PipelineView:
       with the given pipeline uid exists in MLMD.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_id, **kwargs)
-    # TODO(b/279798582):
-    # Uncomment the following when the slow sorting MLMD query is fixed.
-    # list_options = mlmd.ListOptions(
-    #    order_by=mlmd.OrderByField.CREATE_TIME, is_asc=True)
+    list_options = mlmd.ListOptions(
+        order_by=mlmd.OrderByField.CREATE_TIME, is_asc=True)
     executions = mlmd_handle.store.get_executions_by_context(
-        context.id, list_options=None, **kwargs
-    )
-    executions = sorted(executions, key=lambda x: x.create_time_since_epoch)
+        context.id, list_options=list_options, **kwargs)
     return [cls(pipeline_id, context, execution) for execution in executions]
 
   @classmethod
@@ -964,18 +960,8 @@ class PipelineView:
       with the given pipeline uid exists in MLMD.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_id, **kwargs)
-    # b/281478984: This optimization is done for requests with pipeline run id
-    # by specifying which pipeline run is queried.
-    list_options = None
-    if pipeline_run_id:
-      list_options = mlmd.ListOptions(
-          filter_query=(
-              'custom_properties.pipeline_run_id.string_value ='
-              f' "{pipeline_run_id}"'
-          )
-      )
     executions = mlmd_handle.store.get_executions_by_context(
-        context.id, list_options=list_options, **kwargs
+        context.id, **kwargs
     )
     if non_active_only:
       executions = [

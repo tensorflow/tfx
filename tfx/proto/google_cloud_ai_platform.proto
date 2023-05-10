@@ -1,0 +1,49 @@
+// Copyright 2019 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.configs;
+
+// Serialized message to construct api_core.retry.Retry Python class.
+// https://github.com/googleapis/python-api-core/blob/6acb3a95462f644037d4cf5f3c4d6a8a6149caa8/google/api_core/retry.py#L222.
+message Retry {
+  message Predicate {
+    // When the API call's exception type is contained in here, then it retries.
+    repeated string exception_types = 1;
+  }
+
+  // The RPC-exception conditions description to retry.
+  // If not specified, it will retry when the exception has one of the following
+  // types: "InternalServerError", "TooManyRequests", "ServiceUnavailable",
+  // "ConnectionError", "ChunkedEncodingError", "TransportError".
+  Predicate predicate = 1;
+
+  // The minimum amount of time to delay in seconds. Must be greater than 0.
+  // If not specified, the default value is 1.0.
+  double initial = 2;
+
+  // The maximum amount of time to delay in seconds.
+  // If not specified, the default value is 60.0.
+  double maximum = 3;
+
+  // The multiplier applied to the delay.
+  // If not specified, the default value is 2.0.
+  double multiplier = 4;
+
+  // How long to keep retrying in seconds. The last sleep period is shortened as
+  // necessary, so that the last retry runs at ``deadline`` (and not
+  // considerably beyond it).
+  // If not specified, the default value is 60.0 * 2.0.
+  double deadline = 5;
+}
