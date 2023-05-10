@@ -38,6 +38,10 @@ landing_page:
 
   - heading: "Getting started tutorials"
     classname: devsite-landing-row-100
+    description: >
+      <p><strong>NOTE:</strong>TFX is currently experiencing issues with Colab. We advice users to use 
+      previous version of Python while using Colab. To do that, while runtime is connected, use key combination
+      (Ctrl + Shift + P) and type "Use fallback runtime version". By selecting this option your Colab will use Python 3.9.16.</p>
     items:
     - classname: tfo-landing-page-card
       description: >
