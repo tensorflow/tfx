@@ -81,6 +81,45 @@ UNIX_EPOCH_DATE_UTC = datetime.datetime(  # pylint: disable=g-tzinfo-datetime
     tzinfo=datetime.timezone.utc)
 
 _DEFAULT_ENCODING = 'utf-8'
+_SINGLE_VALUE_TYPES = (int, str, float)
+
+
+def value_to_feature(pyval, key) -> feature_pb2.Feature:
+  if pyval is None:
+    return feature_pb2.Feature()
+  elif isinstance(pyval, int):
+    return feature_pb2.Feature(
+        int64_list=feature_pb2.Int64List(value=[pyval]))
+  elif isinstance(pyval, float):
+    return feature_pb2.Feature(
+        float_list=feature_pb2.FloatList(value=[pyval]))
+  elif isinstance(pyval, str):
+    return feature_pb2.Feature(
+        bytes_list=feature_pb2.BytesList(
+            value=[pyval.encode(_DEFAULT_ENCODING)]))
+  else:
+    raise RuntimeError(f"""Column type `value of {type(pyval)}` 
+                        is not supported.
+                        \nProblematic key is {key}""")
+  
+
+def list_to_feature(pyval, key) -> feature_pb2.Feature:
+  if not pyval: 
+    return feature_pb2.Feature()
+  elif isinstance(pyval[0], int):
+    return feature_pb2.Feature(
+        int64_list=feature_pb2.Int64List(value=pyval))
+  elif isinstance(pyval[0], float):
+    return feature_pb2.Feature(
+        float_list=feature_pb2.FloatList(value=pyval))
+  elif isinstance(pyval[0], str):
+    return feature_pb2.Feature(
+        bytes_list=feature_pb2.BytesList(
+            value=[v.encode(_DEFAULT_ENCODING) for v in pyval]))
+  else:
+    raise RuntimeError(f"""Column type `list of {type(pyval[0])}` 
+                        is not supported.
+                        \nProblematic key is {key}""")
 
 
 def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
@@ -101,36 +140,15 @@ def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
     if isinstance(pyval, bytes):
       pyval = pyval.decode(_DEFAULT_ENCODING)
 
-    if pyval is None:
-      feature[key] = feature_pb2.Feature()
-    elif isinstance(pyval, int):
-      feature[key] = feature_pb2.Feature(
-          int64_list=feature_pb2.Int64List(value=[pyval]))
-    elif isinstance(pyval, float):
-      feature[key] = feature_pb2.Feature(
-          float_list=feature_pb2.FloatList(value=[pyval]))
-    elif isinstance(pyval, str):
-      feature[key] = feature_pb2.Feature(
-          bytes_list=feature_pb2.BytesList(
-              value=[pyval.encode(_DEFAULT_ENCODING)]))
+    if isinstance(pyval, _SINGLE_VALUE_TYPES):
+      feature[key] = value_to_feature(pyval)
+    
     elif isinstance(pyval, list):
-      if not pyval:
-        feature[key] = feature_pb2.Feature()
-      elif isinstance(pyval[0], int):
-        feature[key] = feature_pb2.Feature(
-            int64_list=feature_pb2.Int64List(value=pyval))
-      elif isinstance(pyval[0], float):
-        feature[key] = feature_pb2.Feature(
-            float_list=feature_pb2.FloatList(value=pyval))
-      elif isinstance(pyval[0], str):
-        feature[key] = feature_pb2.Feature(
-            bytes_list=feature_pb2.BytesList(
-                value=[v.encode(_DEFAULT_ENCODING) for v in pyval]))
-      else:
-        raise RuntimeError('Column type `list of {}` is not supported.'.format(
-            type(value[0])))
+      feature[key] = list_to_feature
+
     else:
-      raise RuntimeError('Column type {} is not supported.'.format(type(value)))
+      raise RuntimeError(f'Key {key} with Column type {type(value)} is not supported.')
+    
   return example_pb2.Example(features=feature_pb2.Features(feature=feature))
 
 
