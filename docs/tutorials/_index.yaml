@@ -15,6 +15,18 @@ landing_page:
     heading: "TensorFlow in Production tutorials"
     items:
     - description: >
+        <aside class="caution">
+        <strong>Caution:</strong> TFX is currently experiencing issues with Python 3.10 in Colab.
+        Use Python 3.9.16 while using Colab to workaround this issue. To do that, follow
+        these steps:
+        <ol>
+        <li>Start a tutorial in Colab and connect to the runtime with the "Connect" button on the
+        right</li>
+        <li>Type <code>Ctrl/Cmd + Shift + P</code> to bring up the command palette</li>
+        <li>Select or type "Use fallback runtime version"</li>
+        </ol>
+        By selecting this option your Colab will use Python 3.9.16.
+        </aside>
         <p>
         The best way to learn TensorFlow Extended (TFX) is to learn by doing.
         These tutorials are focused examples of the key parts of TFX. They
