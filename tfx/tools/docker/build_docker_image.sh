@@ -54,7 +54,7 @@ else
   BASE_IMAGE=${DLVM_REPO}/tf2-gpu.${arr_version[0]}-${arr_version[1]}
 
   # Check the availability of the DLVM image.
-  if gcloud container images list --repository=${DLVM_REPO} | grep "${BASE_IMAGE}" ; then
+  if gcloud container images list --repository=${DLVM_REPO} | grep -x "${BASE_IMAGE}" ; then
     # TF shouldn't be re-installed so we pin TF version in Pip install.
     installed_tf_version=$(_get_tf_version_of_image "${BASE_IMAGE}")
     if [[ "${installed_tf_version}" =~ rc ]]; then
