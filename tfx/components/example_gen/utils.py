@@ -144,7 +144,7 @@ def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
       feature[key] = value_to_feature(pyval)
     
     elif isinstance(pyval, list):
-      feature[key] = list_to_feature
+      feature[key] = list_to_feature(pyval)
 
     else:
       raise RuntimeError(f'Key {key} with Column type {type(value)} is not supported.')
