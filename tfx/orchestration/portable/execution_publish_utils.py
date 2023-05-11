@@ -59,9 +59,10 @@ def publish_cached_executions(
   )
 
 
-def _set_execution_result_if_not_empty(
+def set_execution_result_if_not_empty(
     executor_output: Optional[execution_result_pb2.ExecutorOutput],
-    execution: metadata_store_pb2.Execution) -> None:
+    execution: metadata_store_pb2.Execution,
+) -> None:
   """Sets execution result as a custom property of the execution."""
   if executor_output and (executor_output.execution_result.result_message or
                           executor_output.execution_result.metadata_details or
@@ -121,7 +122,7 @@ def publish_succeeded_execution(
   if executor_output:
     for key, value in executor_output.execution_properties.items():
       execution.custom_properties[key].CopyFrom(value)
-  _set_execution_result_if_not_empty(executor_output, execution)
+  set_execution_result_if_not_empty(executor_output, execution)
 
   execution_lib.put_execution(
       metadata_handler,
@@ -148,7 +149,7 @@ def publish_failed_execution(
   """
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.FAILED
-  _set_execution_result_if_not_empty(executor_output, execution)
+  set_execution_result_if_not_empty(executor_output, execution)
 
   execution_lib.put_execution(metadata_handler, execution, contexts)
 
