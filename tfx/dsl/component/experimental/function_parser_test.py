@@ -328,34 +328,6 @@ class FunctionParserTest(tf.test.TestCase):
     self.assertDictEqual(return_json_typehints,
                          {'optional_json': Optional[Dict[str, List[bool]]]})
 
-  def testListOfInputArtifacts(self):
-    def func(
-        examples_list: InputArtifact[List[standard_artifacts.Examples]],
-    ):
-      del examples_list
-    (
-        inputs,
-        outputs,
-        parameters,
-        arg_formats,
-        arg_defaults,
-        returned_values,
-        json_typehints,
-        return_json_typehints,
-    ) = parse_typehint_component_function(func)
-    self.assertDictEqual(
-        inputs,
-        {'examples_list': standard_artifacts.Examples})
-    self.assertEmpty(outputs)
-    self.assertEmpty(parameters)
-    self.assertDictEqual(
-        arg_formats,
-        {'examples_list': ArgFormats.LIST_INPUT_ARTIFACTS})
-    self.assertEmpty(arg_defaults)
-    self.assertEmpty(returned_values)
-    self.assertEmpty(json_typehints)
-    self.assertEmpty(return_json_typehints)
-
   def testFunctionParseErrors(self):
     # Non-function arguments.
     with self.assertRaisesRegex(

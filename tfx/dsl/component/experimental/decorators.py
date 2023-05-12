@@ -65,8 +65,6 @@ def _extract_func_args(
         raise ValueError(
             ('Expected input %r to %s to be a singleton ValueArtifact channel '
              '(got %s instead).') % (name, obj, input_list))
-    elif arg_format == function_parser.ArgFormats.LIST_INPUT_ARTIFACTS:
-      result[name] = input_dict.get(name, [])
     elif arg_format == function_parser.ArgFormats.OUTPUT_ARTIFACT:
       output_list = output_dict.get(name, [])
       if len(output_list) == 1:

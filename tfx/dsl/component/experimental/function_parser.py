@@ -22,7 +22,7 @@ Internal use only. No backwards compatibility guarantees.
 import enum
 import inspect
 import types
-from typing import Any, Dict, Optional, Tuple, Type, Union, get_args, get_origin
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 from tfx.dsl.component.experimental import annotations
 from tfx.dsl.component.experimental import json_compat
@@ -43,7 +43,6 @@ class ArgFormats(enum.Enum):
   ARTIFACT_VALUE = 3
   PARAMETER = 4
   BEAM_PARAMETER = 5
-  LIST_INPUT_ARTIFACTS = 6
 
 
 _PRIMITIVE_TO_ARTIFACT = {
@@ -168,78 +167,61 @@ def _parse_signature(
     if isinstance(arg_typehint, annotations.InputArtifact):
       if arg_defaults.get(arg, None) is not None:
         raise ValueError(
-            'If an input artifact is declared as an optional argument, '
-            'its default value must be `None` (got default value %r for '
-            'input argument %r of %r instead).' % (arg_defaults[arg], arg, func)
-        )
-      artifact_type = arg_typehint.type
-      # If the typehint is InputArtifact[List[Artifact]]], unwrap it.
-      if artifact_type is list or get_origin(artifact_type) is list:
-        artifact_type = get_args(artifact_type)[0]
-        arg_formats[arg] = ArgFormats.LIST_INPUT_ARTIFACTS
-      else:
-        arg_formats[arg] = ArgFormats.INPUT_ARTIFACT
-      inputs[arg] = artifact_type
+            ('If an input artifact is declared as an optional argument, '
+             'its default value must be `None` (got default value %r for '
+             'input argument %r of %r instead).') %
+            (arg_defaults[arg], arg, func))
+      arg_formats[arg] = ArgFormats.INPUT_ARTIFACT
+      inputs[arg] = arg_typehint.type
     elif isinstance(arg_typehint, annotations.OutputArtifact):
       if arg in arg_defaults:
         raise ValueError(
-            'Output artifact of component function cannot be declared as '
-            'optional (error for argument %r of %r).' % (arg, func)
-        )
+            ('Output artifact of component function cannot be declared as '
+             'optional (error for argument %r of %r).') % (arg, func))
       arg_formats[arg] = ArgFormats.OUTPUT_ARTIFACT
       outputs[arg] = arg_typehint.type
     elif isinstance(arg_typehint, annotations.Parameter):
       if arg in arg_defaults:
-        if not (
-            arg_defaults[arg] is None
-            or isinstance(arg_defaults[arg], arg_typehint.type)
-        ):
-          raise ValueError(
+        if not (arg_defaults[arg] is None or
+                isinstance(arg_defaults[arg], arg_typehint.type)):
+          raise ValueError((
               'The default value for optional parameter %r on function %r must '
               'be an instance of its declared type %r or `None` (got %r '
-              'instead)' % (arg, func, arg_typehint.type, arg_defaults[arg])
-          )
+              'instead)') % (arg, func, arg_typehint.type, arg_defaults[arg]))
       arg_formats[arg] = ArgFormats.PARAMETER
       parameters[arg] = arg_typehint.type
     elif isinstance(arg_typehint, annotations.BeamComponentParameter):
       if arg in arg_defaults and arg_defaults[arg] is not None:
-        raise ValueError(
-            'The default value for BeamComponentParameter must be None.'
-        )
+        raise ValueError('The default value for BeamComponentParameter must '
+                         'be None.')
       arg_formats[arg] = ArgFormats.BEAM_PARAMETER
       parameters[arg] = arg_typehint.type
     elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
       if arg in arg_defaults:
-        if not (
-            arg_defaults[arg] is None
-            or isinstance(arg_defaults[arg], arg_typehint)
-        ):
+        if not (arg_defaults[arg] is None or
+                isinstance(arg_defaults[arg], arg_typehint)):
           raise ValueError(
-              'The default value for optional input value %r on function %r '
-              'must be an instance of its declared type %r or `None` (got %r '
-              'instead)' % (arg, func, arg_typehint, arg_defaults[arg])
-          )
+              ('The default value for optional input value %r on function %r '
+               'must be an instance of its declared type %r or `None` (got %r '
+               'instead)') % (arg, func, arg_typehint, arg_defaults[arg]))
       arg_formats[arg] = ArgFormats.ARTIFACT_VALUE
       inputs[arg] = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
     elif json_compat.is_json_compatible(arg_typehint):
       json_typehints[arg] = arg_typehint
       arg_formats[arg] = ArgFormats.ARTIFACT_VALUE
       inputs[arg] = standard_artifacts.JsonValue
-    elif inspect.isclass(arg_typehint) and issubclass(
-        arg_typehint, artifact.Artifact
-    ):
-      raise ValueError(
+    elif (inspect.isclass(arg_typehint) and
+          issubclass(arg_typehint, artifact.Artifact)):
+      raise ValueError((
           'Invalid type hint annotation for argument %r on function %r. '
           'Argument with an artifact class typehint annotation should indicate '
           'whether it is used as an input or output artifact by using the '
           '`InputArtifact[ArtifactType]` or `OutputArtifact[ArtifactType]` '
-          'typehint annotations.' % (arg, func)
-      )
+          'typehint annotations.') % (arg, func))
     else:
       raise ValueError(
-          'Unknown type hint annotation for argument %r on function %r'
-          % (arg, func)
-      )
+          'Unknown type hint annotation for argument %r on function %r' %
+          (arg, func))
 
   if 'return' in typehints and typehints['return'] not in (None, type(None)):
     for arg, arg_typehint in typehints['return'].kwargs.items():
@@ -254,29 +236,20 @@ def _parse_signature(
         outputs[arg] = standard_artifacts.JsonValue
         return_json_typehints[arg] = arg_typehint
         # check if Optional
-        returned_outputs[arg] = get_origin(arg_typehint) is Union and type(
-            None
-        ) in get_args(arg_typehint)
+        origin = getattr(arg_typehint, '__origin__', None)
+        args = getattr(arg_typehint, '__args__', None)
+        returned_outputs[arg] = origin is Union and type(None) in args
       else:
         raise ValueError(
-            'Unknown type hint annotation %r for returned output %r on '
-            'function %r' % (arg_typehint, arg, func)
-        )
+            ('Unknown type hint annotation %r for returned output %r on '
+             'function %r') % (arg_typehint, arg, func))
 
-  return (
-      inputs,
-      outputs,
-      parameters,
-      arg_formats,
-      arg_defaults,
-      returned_outputs,
-      json_typehints,
-      return_json_typehints,
-  )
+  return (inputs, outputs, parameters, arg_formats, arg_defaults,
+          returned_outputs, json_typehints, return_json_typehints)
 
 
 def parse_typehint_component_function(
-    func: types.FunctionType,
+    func: types.FunctionType
 ) -> Tuple[
     Dict[str, Type[artifact.Artifact]],
     Dict[str, Type[artifact.Artifact]],

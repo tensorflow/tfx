@@ -18,6 +18,7 @@ from tfx.proto import distribution_validator_pb2
 from tfx.proto import evaluator_pb2
 from tfx.proto import example_diff_pb2
 from tfx.proto import example_gen_pb2
+from tfx.proto import google_cloud_ai_platform_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import range_config_pb2
@@ -186,6 +187,9 @@ For example TF Serving only accepts an integer version that is monotonically inc
 Filesystem.__doc__ = """
 File system based destination definition.
 """
+
+Retry = google_cloud_ai_platform_pb2.Retry
+del google_cloud_ai_platform_pb2
 
 RangeConfig = range_config_pb2.RangeConfig
 RollingRange = range_config_pb2.RollingRange

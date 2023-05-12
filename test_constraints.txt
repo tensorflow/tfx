@@ -13,7 +13,3 @@ Cython<1
 
 # TODO(b/265052215): Remove pinned version after resolving the issue.
 cachelib<0.10.0
-
-# TODO(b/281467874): Remove this after upgrading OpenSSL version in our test
-# environment.
-urllib3<2
