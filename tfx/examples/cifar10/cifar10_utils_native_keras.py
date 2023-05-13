@@ -20,6 +20,7 @@ This module file will be used in Transform and generic Trainer.
 import os
 from typing import List
 import absl
+import flatbuffers
 import tensorflow as tf
 import tensorflow_transform as tft
 
@@ -31,7 +32,6 @@ from tfx.components.trainer.rewriting import rewriter_factory
 from tfx.dsl.io import fileio
 from tfx_bsl.tfxio import dataset_options
 
-import flatbuffers
 from tflite_support import metadata_schema_py_generated as _metadata_fb
 from tflite_support import metadata as _metadata
 
