@@ -43,7 +43,7 @@ from tensorflow_serving.apis import prediction_log_pb2
 for name in ['tensorflow_text', 'tensorflow_recommenders']:
   try:
     importlib.import_module(name)
-  except (ImportError, tf.errors.NotFoundError):
+  except ImportError:
     logging.info('%s is not available.', name)
 
 
