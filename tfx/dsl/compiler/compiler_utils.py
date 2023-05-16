@@ -200,7 +200,7 @@ def implicit_channel_key(channel: types.BaseChannel):
       return f"_{channel.producer_component_id}.{channel.output_key}"
     raise ValueError(
         "Cannot create implicit input key for Channel that has no"
-        "producer_component_id and output_key.")
+        "producer_component_id and output_key...")
   else:
     raise ValueError("Unsupported channel type for implicit channel key.")
 
