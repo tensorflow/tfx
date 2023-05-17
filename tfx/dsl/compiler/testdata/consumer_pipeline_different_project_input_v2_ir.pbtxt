@@ -50,7 +50,7 @@ nodes {
     }
     inputs {
       inputs {
-        key: "_generated_examples_2"
+        key: "_producer-component-id.output-key.owner.producer-pipeline.pipeline-run-id"
         value {
           channels {
             context_queries {
@@ -129,7 +129,7 @@ nodes {
             value {
               output_data_type: ARTIFACT_LIST
               input_node {
-                input_key: "_generated_examples_2"
+                input_key: "_producer-component-id.output-key.owner.producer-pipeline.pipeline-run-id"
               }
             }
           }

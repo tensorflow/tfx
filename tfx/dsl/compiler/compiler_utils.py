@@ -200,7 +200,24 @@ def implicit_channel_key(channel: types.BaseChannel):
       return f"_{channel.producer_component_id}.{channel.output_key}"
     raise ValueError(
         "Cannot create implicit input key for Channel that has no"
-        "producer_component_id and output_key.")
+        "producer_component_id and output_key."
+    )
+  elif isinstance(channel, channel_types.ExternalPipelineChannel):
+    if (
+        channel.owner
+        and channel.pipeline_name
+        and channel.producer_component_id
+        and channel.output_key
+    ):
+      implicit_key = f"_{channel.producer_component_id}.{channel.output_key}.{channel.owner}.{channel.pipeline_name}"
+      if channel.pipeline_run_id:
+        return implicit_key + "." + channel.pipeline_run_id
+      else:
+        return implicit_key
+    raise ValueError(
+        "Cannot create implicit input key for Channel that has no"
+        "ower, pipeline_name, producer_component_id and output_key."
+    )
   else:
     raise ValueError("Unsupported channel type for implicit channel key.")
 

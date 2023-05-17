@@ -32,6 +32,7 @@ from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
 from tfx.types.channel import Channel
+from tfx.types.channel_utils import external_pipeline_artifact_query
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -157,6 +158,18 @@ class CompilerUtilsTest(tf.test.TestCase):
         output_key="model")
     self.assertEqual("_trainer.model",
                      compiler_utils.implicit_channel_key(model))
+
+    external_pipeline_channel = external_pipeline_artifact_query(
+        artifact_type=standard_artifacts.Model,
+        owner="owner",
+        pipeline_name="pipeline_name",
+        producer_component_id="trainer",
+        output_key="model",
+    )
+    self.assertEqual(
+        "_trainer.model.owner.pipeline_name",
+        compiler_utils.implicit_channel_key(external_pipeline_channel),
+    )
 
   def testBuildChannelToKeyFn(self):
     model = types.Channel(
