@@ -16,6 +16,7 @@
 import tensorflow as tf
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import test_utils
+from tfx.utils import status as status_lib
 
 
 class _TestEnv(env.Env):
@@ -33,6 +34,12 @@ class _TestEnv(env.Env):
     raise NotImplementedError()
 
   def is_pure_service_node(self, pipeline_state, node_id) -> bool:
+    raise NotImplementedError()
+
+  def health_status(self) -> status_lib.Status:
+    raise NotImplementedError()
+
+  def set_health_status(self, status: status_lib.Status) -> None:
     raise NotImplementedError()
 
 
