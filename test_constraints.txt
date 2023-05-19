@@ -17,7 +17,3 @@ cachelib<0.10.0
 # TODO(b/281467874): Remove this after upgrading OpenSSL version in our test
 # environment.
 urllib3<2
-
-# TODO(b/282919055): Remove this after apache-airflow fixes issue on
-# `airflow db init` failure.
-alembic<1.11.0
