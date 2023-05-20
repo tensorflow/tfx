@@ -36,3 +36,4 @@ Float = standard_artifacts.Float
 Integer = standard_artifacts.Integer
 String = standard_artifacts.String
 Boolean = standard_artifacts.Boolean
+JsonValue = standard_artifacts.JsonValue
