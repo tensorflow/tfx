@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package tfx.orchestration;
 
+option java_multiple_files = true;
+
 // Indicates the run state of a TFleX pipeline or a node.
 message RunState {
   // Next Id: 9
