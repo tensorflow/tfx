@@ -78,7 +78,7 @@ def make_required_install_packages():
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
       'apache-beam[gcp]>=2.40,<3',
-      'attrs>=19.3.0,<22',
+      'attrs>=19.3.0,<24',
       'click>=7,<9',
       # TODO(b/245393802): Remove pinned version when pip can find depenencies
       # without this. `google-api-core` is needed for many google cloud

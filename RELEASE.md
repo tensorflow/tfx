@@ -16,6 +16,33 @@
 
 ## Documentation Updates
 
+# Version 1.13.1
+
+## Major Features and Improvements
+
+*  Support python 3.10
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Dependency Updates
+| Package Name | Version Constraints | Previously (in `v1.12.0`) | Comments |
+| -- | -- | -- | -- |
+| `attrs` | `19.3.0,<22` | `19.3.0,<24` | |
+
+## Documentation Updates
+
 # Version 1.13.0
 
 ## Major Features and Improvements
