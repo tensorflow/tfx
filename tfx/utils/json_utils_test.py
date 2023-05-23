@@ -14,6 +14,7 @@
 """Tests for tfx.utils.json_utils."""
 
 import tensorflow as tf
+from tfx.dsl.placeholder import placeholder
 from tfx.proto import trainer_pb2
 from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
@@ -123,6 +124,23 @@ class JsonUtilsTest(tf.test.TestCase):
 
     actual_obj = json_utils.loads(json_text)
     self.assertEqual(_DefaultJsonableObject, actual_obj)
+
+  def testDumpsPlaceholder(self):
+    json_text = json_utils.dumps(placeholder.input('test'))
+    self.assertIn('"__class__": "ArtifactPlaceholder"', json_text)
+    self.assertIn('"__module__": "tfx.dsl.placeholder.placeholder"', json_text)
+
+    actual_obj = json_utils.loads(json_text)
+    self.assertIsInstance(actual_obj, placeholder.ArtifactPlaceholder)
+
+  def testLoadsMovedPlaceholder(self):
+    json_text = (
+        '{"__class__": "ArtifactPlaceholderOLD", "__module__": '
+        '"tfx.dsl.justfortesting", "__tfx_object_type__": "jsonable",'
+        '"_key": "test", "_operators": [], "_type": 0}'
+    )
+    actual_obj = json_utils.loads(json_text)
+    self.assertIsInstance(actual_obj, placeholder.ArtifactPlaceholder)
 
 
 if __name__ == '__main__':

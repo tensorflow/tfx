@@ -1652,12 +1652,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         node_state = pipeline_state.get_node_state(trainer_node_uid)
         self.assertEqual(pstate.NodeState.FAILED, node_state.state)
 
-  def test_error_translated_to_StatusNotOkError(self):
-    @pipeline_ops._pipeline_op(lock=False)
+  def test_to_status_not_ok_error_decorator(self):
+    @pipeline_ops._to_status_not_ok_error
     def fn1():
       raise RuntimeError('test error 1')
 
-    @pipeline_ops._pipeline_op(lock=False)
+    @pipeline_ops._to_status_not_ok_error
     def fn2():
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.ALREADY_EXISTS, message='test error 2'
@@ -2581,32 +2581,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(
             status_lib.Code.ALREADY_EXISTS, exception_context.exception.code
         )
-
-  def test_check_health_status(self):
-    @pipeline_ops._pipeline_op()
-    def _fn():
-      pass
-
-    # No error should be raised when healthy.
-    _fn()
-
-    class _TestEnv(env._DefaultEnv):
-      """Unhealthy env for the test."""
-
-      def health_status(self) -> status_lib.Status:
-        return status_lib.Status(
-            code=status_lib.Code.INTERNAL, message='unhealthy'
-        )
-
-    with _TestEnv():
-      # Error raised when unhealthy.
-      with self.assertRaisesRegex(
-          status_lib.StatusNotOkError, 'unhealthy'
-      ) as exception_context:
-        _fn()
-      self.assertEqual(
-          status_lib.Code.INTERNAL, exception_context.exception.code
-      )
 
 
 if __name__ == '__main__':

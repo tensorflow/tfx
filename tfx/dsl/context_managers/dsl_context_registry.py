@@ -153,8 +153,7 @@ class DslContextRegistry:
     Raises:
       ValueError: If the node is unknown to the registry.
     Returns:
-      List of DslContexts that wraps the node, ordered by outer-most to
-      inner-most, possibly empty list.
+      List of DslContexts that wraps the node, possibly empty list.
     """
     # This is O(N^2), but not performance critical.
     if node not in self._all_nodes:

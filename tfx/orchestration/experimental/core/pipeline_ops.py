@@ -13,7 +13,6 @@
 # limitations under the License.
 """Pipeline-level operations."""
 
-import contextlib
 import copy
 import datetime
 import functools
@@ -59,44 +58,38 @@ _PIPELINE_OPS_LOCK = threading.RLock()
 _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS = 1.0
 
 
-def _pipeline_op(lock: bool = True):
-  """Decorator factory for pipeline ops."""
+def _pipeline_ops_lock(fn):
+  """Decorator to run `fn` within `_PIPELINE_OPS_LOCK` context."""
 
-  def _decorator(fn):
-    """Decorator for pipeline ops."""
+  @functools.wraps(fn)
+  def _wrapper(*args, **kwargs):
+    with _PIPELINE_OPS_LOCK:
+      return fn(*args, **kwargs)
 
-    @functools.wraps(fn)
-    def _wrapper(*args, **kwargs):
-      with contextlib.ExitStack() as stack:
-        if lock:
-          stack.enter_context(_PIPELINE_OPS_LOCK)
-
-        health_status = env.get_env().health_status()
-        if health_status.code != status_lib.Code.OK:
-          raise status_lib.StatusNotOkError(
-              code=health_status.code,
-              message=(
-                  'Operation cannot be completed because the Orchestrator is'
-                  f' unhealthy. Error: {health_status.message}'
-              ),
-          )
-
-        try:
-          return fn(*args, **kwargs)
-        except Exception as e:  # pylint: disable=broad-except
-          logging.exception('Error raised by `%s`:', fn.__name__)
-          if isinstance(e, status_lib.StatusNotOkError):
-            raise
-          raise status_lib.StatusNotOkError(
-              code=status_lib.Code.UNKNOWN,
-              message=f'`{fn.__name__}` error: {str(e)}',
-          ) from e
-
-    return _wrapper
-  return _decorator
+  return _wrapper
 
 
-@_pipeline_op()
+def _to_status_not_ok_error(fn):
+  """Decorator to catch exceptions and re-raise a `status_lib.StatusNotOkError`."""
+
+  @functools.wraps(fn)
+  def _wrapper(*args, **kwargs):
+    try:
+      return fn(*args, **kwargs)
+    except Exception as e:  # pylint: disable=broad-except
+      logging.exception('Error raised by `%s`:', fn.__name__)
+      if isinstance(e, status_lib.StatusNotOkError):
+        raise
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.UNKNOWN,
+          message=f'`{fn.__name__}` error: {str(e)}',
+      ) from e
+
+  return _wrapper
+
+
+@_to_status_not_ok_error
+@_pipeline_ops_lock
 def initiate_pipeline_start(
     mlmd_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
@@ -192,7 +185,7 @@ def initiate_pipeline_start(
   )
 
 
-@_pipeline_op(lock=False)
+@_to_status_not_ok_error
 def stop_pipelines(
     mlmd_handle: metadata.Metadata,
     pipeline_uids: List[task_lib.PipelineUid],
@@ -268,7 +261,7 @@ def stop_pipelines(
   )
 
 
-@_pipeline_op(lock=False)
+@_to_status_not_ok_error
 def stop_pipeline(
     mlmd_handle: metadata.Metadata,
     pipeline_uid: task_lib.PipelineUid,
@@ -282,7 +275,8 @@ def stop_pipeline(
   )
 
 
-@_pipeline_op()
+@_to_status_not_ok_error
+@_pipeline_ops_lock
 def initiate_node_start(
     mlmd_handle: metadata.Metadata, node_uid: task_lib.NodeUid
 ) -> pstate.PipelineState:
@@ -308,7 +302,8 @@ def initiate_node_start(
   return pipeline_state
 
 
-@_pipeline_op()
+@_to_status_not_ok_error
+@_pipeline_ops_lock
 def initiate_node_backfill(
     mlmd_handle: metadata.Metadata, node_uid: task_lib.NodeUid
 ) -> None:
@@ -400,7 +395,7 @@ def _check_nodes_exist(
     )
 
 
-@_pipeline_op(lock=False)
+@_to_status_not_ok_error
 def stop_node(
     mlmd_handle: metadata.Metadata,
     node_uid: task_lib.NodeUid,
@@ -442,7 +437,8 @@ def stop_node(
   )
 
 
-@_pipeline_op()
+@_to_status_not_ok_error
+@_pipeline_ops_lock
 def skip_nodes(
     mlmd_handle: metadata.Metadata, node_uids: Sequence[task_lib.NodeUid]
 ) -> None:
@@ -479,7 +475,8 @@ def skip_nodes(
           )
 
 
-@_pipeline_op()
+@_to_status_not_ok_error
+@_pipeline_ops_lock
 def resume_manual_node(
     mlmd_handle: metadata.Metadata, node_uid: task_lib.NodeUid
 ) -> None:
@@ -543,7 +540,8 @@ def resume_manual_node(
     )
 
 
-@_pipeline_op()
+@_to_status_not_ok_error
+@_pipeline_ops_lock
 def _initiate_pipeline_update(
     mlmd_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
@@ -556,7 +554,7 @@ def _initiate_pipeline_update(
   return pipeline_state
 
 
-@_pipeline_op(lock=False)
+@_to_status_not_ok_error
 def update_pipeline(
     mlmd_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
@@ -713,7 +711,8 @@ def _load_reused_pipeline_view(
   return reused_pipeline_view
 
 
-@_pipeline_op()
+@_to_status_not_ok_error
+@_pipeline_ops_lock
 def resume_pipeline(
     mlmd_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
@@ -859,7 +858,8 @@ def _wait_for_predicate(
   )
 
 
-@_pipeline_op()
+@_to_status_not_ok_error
+@_pipeline_ops_lock
 def orchestrate(
     mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     task_queue: tq.TaskQueue,

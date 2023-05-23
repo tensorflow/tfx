@@ -18,7 +18,6 @@ from typing import Optional
 
 from tfx.orchestration.experimental.core import orchestration_options
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.utils import status as status_lib
 
 _ENV = None
 
@@ -59,14 +58,6 @@ class Env(abc.ABC):
   ) -> bool:
     """Returns whether the given node is a pure service node."""
 
-  @abc.abstractmethod
-  def health_status(self) -> status_lib.Status:
-    """Returns the orchestrator's overall health status."""
-
-  @abc.abstractmethod
-  def set_health_status(self, status: status_lib.Status) -> None:
-    """Sets orchestrator's overall health status."""
-
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -90,12 +81,6 @@ class _DefaultEnv(Env):
       self, pipeline: pipeline_pb2.Pipeline, node_id: str
   ) -> bool:
     return False
-
-  def health_status(self) -> status_lib.Status:
-    return status_lib.Status(code=status_lib.Code.OK)
-
-  def set_health_status(self, status: status_lib.Status) -> None:
-    pass
 
 
 _ENV = _DefaultEnv()

@@ -16,13 +16,26 @@
 import importlib
 import inspect
 import json
-from typing import Any, Dict, Type, Union, Mapping, Sequence
+from typing import Any, Dict, Mapping, Sequence, Tuple, Type, Union
 
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import proto_utils
 
 from google.protobuf import message
+
+# A module and class key, see _MODULE_KEY and _CLASS_KEY below.
+_ModuleClassKey = Tuple[str, str]
+
+# This map keeps track of moved classes that still need to be deserializable.
+# Each key is an old module+class key tuple that maps to the new module+class
+# key tuple where the class can be found today.
+_FORWARDING_MAP: Dict[_ModuleClassKey, _ModuleClassKey] = {
+    ('tfx.dsl.justfortesting', 'ArtifactPlaceholderOLD'): (
+        'tfx.dsl.placeholder.placeholder',
+        'ArtifactPlaceholder',
+    ),
+}
 
 # This is the special key to indicate the serialized object type.
 # Depending on which, the utility knows how to deserialize it back to its
@@ -34,6 +47,14 @@ _PROTO_VALUE_KEY = '__proto_value__'
 
 RUNTIME_PARAMETER_PATTERN = (r'({\\*"__class__\\*": \\*"RuntimeParameter\\*", '
                              r'.*?})')
+
+
+def _extract_class(d: Dict[str, Any]):
+  """Returns the class referred to by the given JSON object's special keys."""
+  key = (d.pop(_MODULE_KEY), d.pop(_CLASS_KEY))
+  key = _FORWARDING_MAP.get(key, key)
+  module_name, class_name = key
+  return getattr(importlib.import_module(module_name), class_name)
 
 
 class _ObjectType:
@@ -156,11 +177,6 @@ class _DefaultDecoder(json.JSONDecoder):
       return dict_data
 
     object_type = dict_data.pop(_TFX_OBJECT_TYPE_KEY)
-
-    def _extract_class(d):
-      module_name = d.pop(_MODULE_KEY)
-      class_name = d.pop(_CLASS_KEY)
-      return getattr(importlib.import_module(module_name), class_name)
 
     if object_type == _ObjectType.JSONABLE:
       jsonable_class_type = _extract_class(dict_data)
