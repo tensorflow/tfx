@@ -19,9 +19,8 @@ import dataclasses
 import inspect
 import json
 import textwrap
-from typing import Any, cast, Dict, Iterable, List, Optional, Type, Union, Set, Sequence
+from typing import Any, Dict, Generic, Iterable, List, Optional, Sequence, Set, Type, TypeVar, Union, cast
 from absl import logging
-
 from tfx.dsl.placeholder import placeholder
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
@@ -37,6 +36,8 @@ Property = Union[int, float, str, message.Message]
 ExecPropertyTypes = Union[int, float, str, bool, message.Message, List[Any],
                           Dict[Any, Any]]
 _EXEC_PROPERTY_CLASSES = (int, float, str, bool, message.Message, list, dict)
+
+_AT = TypeVar('_AT', bound=Artifact)
 
 
 def _is_artifact_type(value: Any):
@@ -67,7 +68,7 @@ class TriggerByProperty:
 _InputTrigger = Union[NoTrigger, TriggerByProperty]
 
 
-class BaseChannel(abc.ABC):
+class BaseChannel(abc.ABC, Generic[_AT]):
   """An abstraction for component (BaseNode) artifact inputs.
 
   `BaseChannel` is often interchangeably used with the term 'channel' (not
@@ -98,7 +99,7 @@ class BaseChannel(abc.ABC):
     type: The artifact type class that the Channel takes.
   """
 
-  def __init__(self, type: Type[Artifact]):  # pylint: disable=redefined-builtin
+  def __init__(self, type: Type[_AT]):  # pylint: disable=redefined-builtin
     if not _is_artifact_type(type):
       raise ValueError(
           'Argument "type" of BaseChannel constructor must be a subclass of '
@@ -108,15 +109,15 @@ class BaseChannel(abc.ABC):
     self._original_channel = None
 
   @property
-  def type(self):  # pylint: disable=redefined-builtin
+  def type(self) -> Type[_AT]:  # pylint: disable=redefined-builtin
     return self._artifact_type
 
   @type.setter
-  def type(self, value: Type[Artifact]):  # pylint: disable=redefined-builtin
+  def type(self, value: Type[_AT]):  # pylint: disable=redefined-builtin
     self._set_type(value)
 
   @doc_controls.do_not_generate_docs
-  def _set_type(self, value: Type[Artifact]):
+  def _set_type(self, value: Type[_AT]):
     raise NotImplementedError('Cannot change artifact type.')
 
   @abc.abstractmethod
