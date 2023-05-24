@@ -84,26 +84,7 @@ _DEFAULT_ENCODING = 'utf-8'
 _SINGLE_VALUE_TYPES = (int, str, float)
 
 
-def value_to_feature(pyval, key) -> feature_pb2.Feature:
-  if pyval is None:
-    return feature_pb2.Feature()
-  elif isinstance(pyval, int):
-    return feature_pb2.Feature(
-        int64_list=feature_pb2.Int64List(value=[pyval]))
-  elif isinstance(pyval, float):
-    return feature_pb2.Feature(
-        float_list=feature_pb2.FloatList(value=[pyval]))
-  elif isinstance(pyval, str):
-    return feature_pb2.Feature(
-        bytes_list=feature_pb2.BytesList(
-            value=[pyval.encode(_DEFAULT_ENCODING)]))
-  else:
-    raise RuntimeError(f"""Column type `value of {type(pyval)}` 
-                        is not supported.
-                        \nProblematic key is {key}""")
-  
-
-def list_to_feature(pyval, key) -> feature_pb2.Feature:
+def pyval_to_feature(pyval:list, key:str) -> feature_pb2.Feature:
   if not pyval: 
     return feature_pb2.Feature()
   elif isinstance(pyval[0], int):
@@ -117,9 +98,9 @@ def list_to_feature(pyval, key) -> feature_pb2.Feature:
         bytes_list=feature_pb2.BytesList(
             value=[v.encode(_DEFAULT_ENCODING) for v in pyval]))
   else:
-    raise RuntimeError(f"""Column type `list of {type(pyval[0])}` 
-                        is not supported.
-                        \nProblematic key is {key}""")
+    raise RuntimeError("""Column type `{}` is not supported.
+                        \nProblematic key is {}
+                        """.format(type(pyval[0]), key))
 
 
 def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
@@ -141,10 +122,10 @@ def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
       pyval = pyval.decode(_DEFAULT_ENCODING)
 
     if isinstance(pyval, _SINGLE_VALUE_TYPES):
-      feature[key] = value_to_feature(pyval)
+      feature[key] = pyval_to_feature([pyval], key)
     
     elif isinstance(pyval, list):
-      feature[key] = list_to_feature(pyval)
+      feature[key] = pyval_to_feature(pyval, key)
 
     else:
       raise RuntimeError(f'Key {key} with Column type {type(value)} is not supported.')
