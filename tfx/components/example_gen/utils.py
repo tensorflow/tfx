@@ -128,7 +128,8 @@ def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
       feature[key] = pyval_to_feature(pyval, key)
 
     else:
-      raise RuntimeError(f'Key {key} with Column type {type(value)} is not supported.')
+      raise RuntimeError("""Key {} with Column type {} 
+                         is not supported.""".format(key, type(value)))
     
   return example_pb2.Example(features=feature_pb2.Features(feature=feature))
 
