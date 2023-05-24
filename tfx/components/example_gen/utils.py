@@ -98,7 +98,7 @@ def pyval_to_feature(pyval:list, key:str) -> feature_pb2.Feature:
         bytes_list=feature_pb2.BytesList(
             value=[v.encode(_DEFAULT_ENCODING) for v in pyval]))
   else:
-    raise RuntimeError("""Column type `{}` is not supported.
+    raise RuntimeError("""Value type `{}` is not supported.
                         \nProblematic key is {}
                         """.format(type(pyval[0]), key))
 
