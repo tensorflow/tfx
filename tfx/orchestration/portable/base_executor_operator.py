@@ -56,7 +56,7 @@ class BaseExecutorOperator(abc.ABC):
   def run_executor(
       self,
       execution_info: data_types.ExecutionInfo,
-  ) -> execution_result_pb2.ExecutorOutput:
+  ) -> Optional[execution_result_pb2.ExecutorOutput]:
     """Invokes the executor with inputs provided by the Launcher.
 
     Args:

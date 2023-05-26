@@ -23,16 +23,14 @@ from absl import flags
 from absl import logging
 from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
-from tfx.orchestration.portable import beam_executor_operator
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import python_driver_operator
-from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.python_execution_binary import python_execution_binary_utils
 from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import executable_spec_pb2
-from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import import_utils
 
+from tfx.orchestration.python_execution_binary import python_executor_operator_dispatcher
 from google.protobuf import text_format
 
 FLAGS = flags.FLAGS
@@ -65,19 +63,6 @@ def _import_class_path(
     python_class_executor_spec = cast(
         executable_spec_pb2.PythonClassExecutableSpec, executable_spec)
     import_utils.import_class_by_path(python_class_executor_spec.class_path)
-
-
-def _run_executor(
-    executable_spec: Union[executable_spec_pb2.PythonClassExecutableSpec,
-                           executable_spec_pb2.BeamExecutableSpec],
-    execution_info: data_types.ExecutionInfo,
-) -> execution_result_pb2.ExecutorOutput:
-  """Run python or Beam executor operator."""
-  if isinstance(executable_spec, executable_spec_pb2.BeamExecutableSpec):
-    operator = beam_executor_operator.BeamExecutorOperator(executable_spec)
-  else:
-    operator = python_executor_operator.PythonExecutorOperator(executable_spec)
-  return operator.run_executor(execution_info)
 
 
 def _run_driver(
@@ -123,8 +108,9 @@ def main(_):
     run_result = _run_driver(deserialized_executable_spec,
                              mlmd_connection_config, execution_info)
   else:
-    run_result = _run_executor(
-        deserialized_executable_spec, execution_info)
+    run_result = python_executor_operator_dispatcher.run_executor(
+        deserialized_executable_spec, execution_info
+    )
 
   if run_result:
     with fileio.open(execution_info.execution_output_uri, 'wb') as f:
