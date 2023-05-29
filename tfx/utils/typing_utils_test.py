@@ -13,8 +13,9 @@
 # limitations under the License.
 """Tests for tfx.utils.typing_utils."""
 
+import sys
 import typing
-from typing import Any, List
+from typing import Any, List, Literal, TypedDict
 import unittest
 
 import tensorflow as tf
@@ -74,13 +75,17 @@ class TypingUtilsTest(tf.test.TestCase):
     no([self._model()])
     no([{'model': self._model()}])
 
-  def test_is_compatible(self):
-
-    def yes(value: Any, tp: Any):
+  def assertIsCompatible(self, value: Any, tp: Any):
+    with self.subTest(f'{value} is compatible with {tp}'):
       self.assertTrue(typing_utils.is_compatible(value, tp))
 
-    def no(value: Any, tp: Any):
+  def assertIsNotCompatible(self, value: Any, tp: Any):
+    with self.subTest(f'{value} is NOT compatible with {tp}'):
       self.assertFalse(typing_utils.is_compatible(value, tp))
+
+  def test_is_compatible(self):
+    yes = self.assertIsCompatible
+    no = self.assertIsNotCompatible
 
     # Any
     yes(0, typing.Any)
@@ -183,12 +188,59 @@ class TypingUtilsTest(tf.test.TestCase):
     yes(None, typing.Optional[typing.Dict[str, int]])
 
     # Literal
-    literal = typing_extensions.Literal['a', 'b', 'c']
+    literal = Literal['a', 'b', 'c']
     yes('a', literal)
     yes('b', literal)
     yes('c', literal)
     no('d', literal)
     no(0, literal)
+
+  def test_is_compatible_typed_dict_total(self):
+    class Total(TypedDict, total=True):
+      x: int
+      y: float
+      z: str
+
+    self.assertIsCompatible({'x': 1, 'y': 0.4, 'z': 'foo'}, Total)
+    self.assertIsNotCompatible({'x': '1', 'y': 0.4, 'z': 'foo'}, Total)
+    self.assertIsNotCompatible({'x': 1, 'z': 'foo'}, Total)
+    self.assertIsNotCompatible(
+        {'w': False, 'x': 1, 'y': 0.4, 'z': 'foo'}, Total
+    )
+
+  def test_is_compatible_typed_dict_not_total(self):
+    class NotTotal(TypedDict, total=False):
+      x: int
+      y: float
+      z: str
+
+    self.assertIsCompatible({'x': 1, 'y': 0.4, 'z': 'foo'}, NotTotal)
+    self.assertIsNotCompatible({'x': '1', 'y': 0.4, 'z': 'foo'}, NotTotal)
+    self.assertIsCompatible({'x': 1, 'z': 'foo'}, NotTotal)
+    self.assertIsCompatible({}, NotTotal)
+    self.assertIsNotCompatible({'w': False}, NotTotal)
+
+  def test_is_compatible_typed_dict_nested(self):
+    class Inner(TypedDict):
+      x: int
+
+    class Outer(TypedDict):
+      x: Inner  # pytype: disable=invalid-annotation
+
+    self.assertIsCompatible({'x': {'x': 42}}, Outer)
+    self.assertIsNotCompatible({'x': {}}, Outer)
+    self.assertIsNotCompatible({'x': 42}, Outer)
+
+  def test_is_compatible_typed_dict_partial(self):
+    class Partial(TypedDict):
+      x: int
+      y: typing_extensions.NotRequired[int]  # pytype: disable=invalid-annotation
+
+    self.assertIsCompatible({'x': 1, 'y': 2}, Partial)
+    if sys.version_info >= (3, 11, 0):
+      self.assertIsCompatible({'x': 1}, Partial)
+    self.assertIsNotCompatible({}, Partial)
+    self.assertIsNotCompatible({'z': 3}, Partial)
 
   # pytype: disable=not-supported-yet
   # NOTE: Sadly, these typing_extensions.assert_type() don't work today, i.e.

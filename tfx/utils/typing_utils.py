@@ -13,15 +13,18 @@
 # limitations under the License.
 """Utility for frequently used types and its typecheck."""
 
-import collections
 import collections.abc
 import inspect
 import typing
-from typing import Any, Dict, List, Mapping, MutableMapping, MutableSequence, Type, TypeVar, Sequence
+from typing import Any, Dict, Iterable, List, Literal, Mapping, MutableMapping, MutableSequence, Sequence, Type, TypeVar, TypedDict, get_args, get_origin
 
 import tfx.types
-import typing_extensions
-from typing_extensions import TypeGuard  # Can be removed once we have Py 3.10+
+from typing_extensions import (  # pylint: disable=g-multiple-import
+    Annotated,  # New in python 3.9
+    NotRequired,  # New in python 3.11  # pytype: disable=not-supported-yet
+    Required,  # New in python 3.11  # pytype: disable=not-supported-yet
+    TypeGuard,  # New in python 3.10
+)
 
 _KT = TypeVar('_KT')
 _VT = TypeVar('_VT')
@@ -44,6 +47,30 @@ ArtifactMutableMultiMap = MutableMultiMap[str, tfx.types.Artifact]
 ArtifactMultiDict = Dict[str, List[tfx.types.Artifact]]
 
 _T = TypeVar('_T')
+_TTypedDict = TypeVar('_TTypedDict', bound=TypedDict)
+
+
+def _get_typed_dict_required_keys(tp: TypedDict) -> Iterable[str]:
+  if hasattr(tp, '__required_keys__'):
+    return tp.__required_keys__
+  if tp.__total__:
+    return tp.__annotations__.keys()
+  else:
+    return []
+
+
+def _is_typed_dict_compatible(
+    value: Any, tp: _TTypedDict
+) -> TypeGuard[_TTypedDict]:
+  """Checks if the value is compatible with the given TypedDict."""
+  # pytype: disable=attribute-error
+  return (
+      isinstance(value, dict)
+      and all(k in value for k in _get_typed_dict_required_keys(tp))
+      and all(k in tp.__annotations__ for k in value)
+      and all(is_compatible(v, tp.__annotations__[k]) for k, v in value.items())
+  )
+  # pytype: enable=attribute-error
 
 
 def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
@@ -59,10 +86,12 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
   Returns:
     Whether the `value` is compatible with the type `tp`.
   """
-  maybe_origin = typing_extensions.get_origin(tp)
-  maybe_args = typing_extensions.get_args(tp)
+  maybe_origin = get_origin(tp)
+  maybe_args = get_args(tp)
   if inspect.isclass(tp):
     if not maybe_args:
+      if issubclass(tp, dict) and hasattr(tp, '__annotations__'):
+        return _is_typed_dict_compatible(value, tp)
       return isinstance(value, tp)
   if tp is Any:
     return True
@@ -81,9 +110,9 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
       subtype = maybe_args[0]
       if subtype is Any:
         return inspect.isclass(value)
-      elif typing_extensions.get_origin(subtype) is typing.Union:
+      elif get_origin(subtype) is typing.Union:
         # Convert Type[Union[x, y, ...]] to Union[Type[x], Type[y], ...].
-        subtypes = [typing.Type[a] for a in typing_extensions.get_args(subtype)]
+        subtypes = [typing.Type[a] for a in get_args(subtype)]
         return any(is_compatible(value, t) for t in subtypes)
       elif inspect.isclass(subtype):
         return inspect.isclass(value) and issubclass(value, subtype)
@@ -94,7 +123,8 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
         frozenset,
         collections.abc.Iterable,
         collections.abc.Sequence,
-        collections.abc.MutableSequence):
+        collections.abc.MutableSequence,
+    ):
       if not isinstance(value, maybe_origin):
         return False
       if not maybe_args:
@@ -115,7 +145,8 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
     elif maybe_origin in (
         dict,
         collections.abc.Mapping,
-        collections.abc.MutableMapping):
+        collections.abc.MutableMapping,
+    ):
       if not isinstance(value, maybe_origin):
         return False
       if not maybe_args:  # Unsubscripted Dict.
@@ -126,9 +157,16 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
           is_compatible(k, kt) and is_compatible(v, vt)
           for k, v in value.items())
     # Literal[T]
-    elif maybe_origin is typing_extensions.Literal:
+    elif maybe_origin is Literal:
       assert maybe_args
       return value in maybe_args
+    elif maybe_origin is Annotated:
+      assert maybe_args
+      return is_compatible(value, maybe_args[0])
+    # Required[T] and NotRequired[T]
+    elif maybe_origin in (Required, NotRequired):
+      assert len(maybe_args) == 1
+      return is_compatible(value, maybe_args[0])
     else:
       raise NotImplementedError(
           f'Type {tp} with unsupported origin type {maybe_origin}.')
