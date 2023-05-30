@@ -401,9 +401,9 @@ class ComponentDecoratorTest(tf.test.TestCase):
   def testDefinitionInClosureFails(self):
     with self.assertRaisesRegex(
         ValueError,
-        'The @component decorator can only be applied to a function defined at '
-        'the module level'):
-
+        'The decorator can only be applied to a function defined at '
+        'the module level',
+    ):
       @component
       def my_component():  # pylint: disable=unused-variable
         return None
