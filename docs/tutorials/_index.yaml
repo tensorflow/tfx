@@ -16,24 +16,39 @@ landing_page:
     items:
     - description: >
         <aside class="caution">
-        <strong>Caution:</strong> TFX is currently experiencing issues with Python 3.10 in Colab.
-        Use Python 3.9.16 while using Colab to workaround this issue. To do that, follow
-        these steps:
+        <p><strong>Caution:</strong> TFX is currently experiencing issues with Python 3.10 in
+        Colab.</p>
+        <p>To run the tutorials, <strong>modify the notebook as follows:</strong></p>
         <ol>
-        <li>Start a tutorial in Colab and connect to the runtime with the "Connect" button on the
-        right</li>
-        <li>Type <code>Ctrl/Cmd + Shift + P</code> to bring up the command palette</li>
-        <li>Select or type "Use fallback runtime version"</li>
+        <li>Add a new code cell at the top of the notebook.</li>
+        <li><strong>Enter this code in the cell:</strong><br />
+        <code>
+        %%shell<br />
+        update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 3<br />
+        curl -O https://bootstrap.pypa.io/get-pip.py<br />
+        python get-pip.py
+        </code></li>
+        <li><strong>Replace the code in the cell which installs TFX with this code:</strong><br />
+        <code>
+        # 1) TFX relies on an old version of google-api-core so we let google-auth float<br />
+        # for the install. We grep it out below:<br />
+        !grep -v google-auth /etc/requirements.core.in > requirements.txt<br />
+        <br />
+        # 2) httplib2 should be included in /etc/requirements.core.in but it's not for<br />
+        # reasons. We ensure it's included:<br />
+        !grep httplib2 /etc/requirements.user.in >> requirements.txt<br />
+        <br />
+        # 3) google.colab package is not available as a wheel. We symlink that in so<br />
+        # it's on the sys.path of Python 3.8:<br />
+        !mkdir /usr/local/lib/python3.8/dist-packages/google<br />
+        !ln -s /usr/local/lib/python3.10/dist-packages/google/colab
+        /usr/local/lib/python3.8/dist-packages/google/colab<br />
+        <br />
+        # Now with those pre-requisites out of the way:<br />
+        !pip install tfx==1.13.0 -r requirements.txt
+        </code>
         </ol>
-        By selecting this option your Colab will use Python 3.9.16.
         </aside>
-        <p>
-        The best way to learn TensorFlow Extended (TFX) is to learn by doing.
-        These tutorials are focused examples of the key parts of TFX. They
-        include beginner tutorials to get started, and more advanced tutorials
-        for when you really want to dive into more advanced parts of TFX.
-        </p>
-
   - classname:
       devsite-landing-row-100
     heading: "TFX 1.0"
