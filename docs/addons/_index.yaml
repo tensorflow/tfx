@@ -105,6 +105,17 @@ landing_page:
       buttons:
       - label: "MLMD Client"
         path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/mlmd_client
+    - heading: "Model Card Generator"
+      description: >
+        <p>The ModelCardGenerator takes
+        <a target='#' href='https://www.tensorflow.org/tfx/guide/statsgen'>dataset statistics</a>,
+        <a target='#' href='https://www.tensorflow.org/tfx/guide/evaluator'>model evaluation</a>,
+        and a <a target='#' href='https://www.tensorflow.org/tfx/guide/pusher'>pushed model</a>
+        to automatically populate parts of a model card.</p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/model_card_generator
+      buttons:
+      - label: "Model Card Generator"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/model_card_generator
     - heading: "Pandas Transform Component"
       description: >
         <p>Use <a target='#' href='https://pandas.pydata.org/'>Pandas dataframes</a>
