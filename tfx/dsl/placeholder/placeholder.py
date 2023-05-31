@@ -22,7 +22,6 @@ from typing import Any, Iterator, List, Optional, Sequence, Type, TypeVar, Union
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
-from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
 from google.protobuf import message
@@ -35,7 +34,7 @@ types = Any  # tfx.types imports channel.py, which in turn imports this module.
 _ValueLikeType = Union[int, float, str, 'Placeholder']
 
 
-class _PlaceholderOperator(json_utils.Jsonable, abc.ABC):
+class _PlaceholderOperator(abc.ABC):
   """An Operator performs an operation on a Placeholder.
 
   It knows how to encode itself into a proto.
@@ -338,7 +337,7 @@ class _Base64EncodeOperator(_PlaceholderOperator):
 _T = TypeVar('_T')
 
 
-class Placeholder(json_utils.Jsonable):
+class Placeholder:
   """A Placeholder represents not-yet-available values at the component authoring time.
   """
 

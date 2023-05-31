@@ -21,7 +21,6 @@ import tensorflow as tf
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import standard_component_specs
-from tfx.utils import json_utils
 
 from google.protobuf import message
 from google.protobuf import text_format
@@ -905,11 +904,6 @@ class PlaceholderTest(tf.test.TestCase):
           }
         }
     """)
-
-  def testJsonSerializable(self):
-    json_text = json_utils.dumps(ph.input('model').uri)
-    python_instance = json_utils.loads(json_text)
-    self.assertEqual(ph.input('model').uri.encode(), python_instance.encode())
 
   def testTraverse(self):
     p = ('google/' + ph.runtime_info('platform_config').user + '/' +

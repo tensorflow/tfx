@@ -4,6 +4,8 @@
 
 ## Breaking Changes
 
+*   `Placeholder` (and `_PlaceholderOperator`) are no longer `Jsonable`.
+
 ### For Pipeline Authors
 
 ### For Component Authors
@@ -37,7 +39,6 @@
     `channel_utils.get_dependent_channels(Placeholder)`.
 *   `placeholder.Predicate.encode_with_keys(...)` was replaced with
     `channel_utils.encode_placeholder_with_channels(Placeholder, ...)`.
-
 *   `placeholder.Predicate.from_comparison()` removed (was deprecated)
 *   enable `external_pipeline_artifact_query` for querying artifact within one pipeline
 *   Support `InputArtifact[List[Artifact]]` annotation in Python function custom component
