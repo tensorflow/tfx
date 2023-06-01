@@ -20,6 +20,7 @@ import random
 from typing import Any, Dict, List, Optional, Union
 
 from absl import logging
+from google.api_core import retry as retries
 from google.cloud.aiplatform import gapic
 from google.cloud.aiplatform_v1.types.custom_job import CustomJob
 from google.cloud.aiplatform_v1.types.job_state import JobState
@@ -423,7 +424,10 @@ class VertexJobClient(AbstractJobClient):
 
   def get_job(self) -> CustomJob:
     """Gets the long-running job."""
-    return self._client.get_custom_job(name=self._job_name)
+    return self._client.get_custom_job(
+        name=self._job_name,
+        retry=retries.Retry(),  # Use default Retry on getting the custom job
+    )
 
   def get_job_state(self, response) -> JobState:
     """Gets the state of the long-running job.
