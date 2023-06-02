@@ -135,9 +135,9 @@ class _Generator:
         if node_state.is_failure():
           failed_nodes_dict[node_id] = node_state.status
           continue
-        if not self._trigger_strategy_satisfied(node, successful_node_ids,
-                                                failed_nodes_dict):
-          continue
+        # if not self._trigger_strategy_satisfied(node, successful_node_ids,
+        #                                         failed_nodes_dict):
+        #   continue
         tasks = self._generate_tasks_for_node(node)
         for task in tasks:
           if isinstance(task, task_lib.UpdateNodeStateTask):
@@ -404,7 +404,10 @@ class _Generator:
 
     try:
       resolved_info = task_gen_utils.generate_resolved_info(
-          self._mlmd_connection_manager, node)
+          self._mlmd_connection_manager,
+          node,
+          skip_errors=[exceptions.InsufficientInputError],
+      )
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
                    f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')
@@ -416,9 +419,9 @@ class _Generator:
       return result
 
     if not resolved_info.input_and_params:
-      result.append(
-          task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=pstate.NodeState.SKIPPED))
+      # result.append(
+      #     task_lib.UpdateNodeStateTask(
+      #         node_uid=node_uid, state=pstate.NodeState.SKIPPED))
       return result
 
     # Copys artifact types of the external artifacts to local db, in idempotent
