@@ -542,6 +542,9 @@ message NodeExecutionOptions {
     ALL_UPSTREAM_NODES_SUCCEEDED = 1;
     // Specifies that all upstream nodes are in any final state.
     ALL_UPSTREAM_NODES_COMPLETED = 2;
+    // Don't need to wait for completion of upstream nodes. The node will get
+    // started once some inputs are available.
+    SKIP_UPSTREAM_NODES_COMPLETED = 2;
   }
   // The trigger strategy of this node.
   // Unset or set to default value of TRIGGER_STATEGY_UNDEFINED behaves the

@@ -504,7 +504,12 @@ class _Generator:
       failed_nodes_dict: Dict[str, status_lib.Status]) -> bool:
     """Returns `True` if the node's Trigger Strategy is satisfied."""
     if node.execution_options.strategy == (
-        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED):
+        pipeline_pb2.NodeExecutionOptions.SKIP_UPSTREAM_NODES_COMPLETED
+    ):
+      return True
+    elif node.execution_options.strategy == (
+        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED
+    ):
       return self._upstream_nodes_completed(node, successful_node_ids,
                                             failed_nodes_dict)
     elif node.execution_options.strategy in (
