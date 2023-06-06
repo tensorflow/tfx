@@ -198,11 +198,8 @@ def make_extra_packages_flax():
   # Required for the experimental tfx/examples using Flax, e.g.,
   # tfx/examples/penguin.
   return [
-      # TODO(b/285472418): If Jax rollouts a new release to patch the current
-      # python 3.8 incompatibility issue, then jax and jaxlib should be fixed by
-      # "jax<1" and "jaxlib<1".
-      'jax<0.4.11',
-      'jaxlib<0.4.11',
+      'jax<1',
+      'jaxlib<1',
       'flax<1',
       'optax<1',
   ]
