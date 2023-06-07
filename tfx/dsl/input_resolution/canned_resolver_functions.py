@@ -13,8 +13,9 @@
 # limitations under the License.
 """Module for public facing, canned resolver functions."""
 
-from typing import Sequence, Optional
+from typing import Optional, Sequence
 
+from absl import logging
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution.ops import ops
 
@@ -131,8 +132,19 @@ def static_range(artifacts,
     # spans will be considered.
     if start_span_number >= 0 and end_span_number >= 0:
       min_spans = end_span_number - start_span_number + 1
+      logging.warning(
+          'min_spans for static_range(...) was not set and is being set to '
+          'end_span_number - start_span_number + 1 = %s - %s + 1 = %s.',
+          end_span_number,
+          start_span_number,
+          min_spans,
+      )
     else:
       min_spans = -1
+      logging.warning(
+          'min_spans for static_range(...) was not set and is being set to -1, '
+          'meaning static_range(...) will never throw a SkipSignal.'
+      )
 
   return ops.SkipIfLessThanNSpans(resolved_artifacts, n=min_spans)
 
@@ -158,7 +170,7 @@ def rolling_range(artifacts,
   4. Exclude the spans of exclude_span_numbers. Note that this exclusion
      happens last for backward compatibility. This can result in having less
      than num_spans spans, meaning the consumer component would be skipped due
-     to lack of inputs. To avoid this, you would have to increase min_spans.
+     to lack of inputs. To avoid this, you would have to decrease min_spans.
 
   Pythonically, this range is equivalent to:
   sorted_spans[:-skip_num_recent_spans][-num_spans:]
@@ -238,6 +250,13 @@ def rolling_range(artifacts,
         resolved_artifacts, denylist=exclude_span_numbers)
 
   if min_spans is None:
+    logging.warning(
+        'min_spans for rolling_range(...) was not set, so it is defaulting to '
+        'num_spans = %s. If skip_num_recent_spans is set, this may delay '
+        'the component triggering on the first run until sufficient Examples '
+        'artifacts are available.',
+        num_spans,
+    )
     min_spans = num_spans
 
   return ops.SkipIfLessThanNSpans(resolved_artifacts, n=min_spans)
