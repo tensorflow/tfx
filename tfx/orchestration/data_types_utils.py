@@ -329,7 +329,7 @@ def set_parameter_value(
     parameter_value.field_value.CopyFrom(value.field_value)
   elif isinstance(value, bool):
     parameter_value.schema.value_type.boolean_type.SetInParent()
-    parameter_value.field_value.string_value = json_utils.dumps(value)
+    parameter_value.field_value.bool_value = value
   elif isinstance(value, (list, tuple, dict, message.Message)):
     parameter_value.field_value.string_value = get_value_and_set_type(
         value, parameter_value.schema.value_type)
