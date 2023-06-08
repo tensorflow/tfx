@@ -18,20 +18,19 @@ Experimental: no backwards compatibility guarantees.
 
 import copy
 import functools
-import sys
 import types
 from typing import Any, Dict, List, Optional, Type
 
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
 from tfx.dsl.component.experimental import json_compat
+from tfx.dsl.component.experimental import utils
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.types import channel
-from tfx.types import component_spec
 from tfx.types import system_executions
 
 try:
@@ -54,7 +53,7 @@ def _extract_func_args(
   """Extracts function arguments for the decorated function."""
   result = {}
   for name, arg_format in arg_formats.items():
-    if arg_format == function_parser.ArgFormats.INPUT_ARTIFACT:
+    if arg_format == utils.ArgFormats.INPUT_ARTIFACT:
       input_list = input_dict.get(name, [])
       if len(input_list) == 1:
         result[name] = input_list[0]
@@ -65,9 +64,9 @@ def _extract_func_args(
         raise ValueError(
             ('Expected input %r to %s to be a singleton ValueArtifact channel '
              '(got %s instead).') % (name, obj, input_list))
-    elif arg_format == function_parser.ArgFormats.LIST_INPUT_ARTIFACTS:
+    elif arg_format == utils.ArgFormats.LIST_INPUT_ARTIFACTS:
       result[name] = input_dict.get(name, [])
-    elif arg_format == function_parser.ArgFormats.OUTPUT_ARTIFACT:
+    elif arg_format == utils.ArgFormats.OUTPUT_ARTIFACT:
       output_list = output_dict.get(name, [])
       if len(output_list) == 1:
         result[name] = output_list[0]
@@ -75,7 +74,7 @@ def _extract_func_args(
         raise ValueError(
             ('Expected output %r to %s to be a singleton ValueArtifact channel '
              '(got %s instead).') % (name, obj, output_list))
-    elif arg_format == function_parser.ArgFormats.ARTIFACT_VALUE:
+    elif arg_format == utils.ArgFormats.ARTIFACT_VALUE:
       input_list = input_dict.get(name, [])
       if len(input_list) == 1:
         result[name] = input_list[0].value
@@ -86,7 +85,7 @@ def _extract_func_args(
         raise ValueError(
             ('Expected input %r to %s to be a singleton ValueArtifact channel '
              '(got %s instead).') % (name, obj, input_list))
-    elif arg_format == function_parser.ArgFormats.PARAMETER:
+    elif arg_format == utils.ArgFormats.PARAMETER:
       if name in exec_properties:
         result[name] = exec_properties[name]
       elif name in arg_defaults:
@@ -96,7 +95,7 @@ def _extract_func_args(
         raise ValueError(
             ('Expected non-optional parameter %r of %s to be provided, but no '
              'value was passed.') % (name, obj))
-    elif arg_format == function_parser.ArgFormats.BEAM_PARAMETER:
+    elif arg_format == utils.ArgFormats.BEAM_PARAMETER:
       result[name] = beam_pipeline
       if name in arg_defaults and arg_defaults[name] is not None:
         raise ValueError('beam Pipeline parameter does not allow default ',
@@ -202,7 +201,7 @@ class _FunctionExecutor(base_executor.BaseExecutor):
   # allow pytype to properly type check these properties.
 
   # Describes the format of each argument passed to the component function, as
-  # a dictionary from name to a `function_parser.ArgFormats` enum value.
+  # a dictionary from name to a `utils.ArgFormats` enum value.
   _ARG_FORMATS = {}
   # Map from names of optional arguments to their default argument values.
   _ARG_DEFAULTS = {}
@@ -425,17 +424,7 @@ def component(
     return functools.partial(
         component, component_annotation=component_annotation, use_beam=use_beam)
 
-  # Defining a component within a nested class or function closure causes
-  # problems because in this case, the generated component classes can't be
-  # referenced via their qualified module path.
-  #
-  # See https://www.python.org/dev/peps/pep-3155/ for details about the special
-  # '<locals>' namespace marker.
-  if '<locals>' in func.__qualname__.split('.'):
-    raise ValueError(
-        'The @component decorator can only be applied to a function defined '
-        'at the module level. It cannot be used to construct a component for a '
-        'function defined in a nested class or function closure.')
+  utils.assert_is_top_level_func(func)
 
   (inputs, outputs, parameters, arg_formats, arg_defaults, returned_values,
    json_typehints, return_json_typehints) = (
@@ -446,63 +435,26 @@ def component(
                      'BeamComponentParameter[beam.Pipeline] with '
                      'default value None when use_beam=True.')
 
-  spec_inputs = {}
-  spec_outputs = {}
-  spec_parameters = {}
-  for key, artifact_type in inputs.items():
-    spec_inputs[key] = component_spec.ChannelParameter(
-        type=artifact_type, optional=(key in arg_defaults))
-    if key in json_typehints:
-      setattr(spec_inputs[key], '_JSON_COMPAT_TYPEHINT', json_typehints[key])
-  for key, artifact_type in outputs.items():
-    assert key not in arg_defaults, 'Optional outputs are not supported.'
-    spec_outputs[key] = component_spec.ChannelParameter(type=artifact_type)
-    if key in return_json_typehints:
-      setattr(spec_outputs[key], '_JSON_COMPAT_TYPEHINT',
-              return_json_typehints[key])
-  for key, primitive_type in parameters.items():
-    spec_parameters[key] = component_spec.ExecutionParameter(
-        type=primitive_type, optional=(key in arg_defaults))
-  component_spec_class = type(
-      '%s_Spec' % func.__name__, (tfx_types.ComponentSpec,), {
-          'INPUTS': spec_inputs,
-          'OUTPUTS': spec_outputs,
-          'PARAMETERS': spec_parameters,
-          'TYPE_ANNOTATION': component_annotation,
-      })
-
-  executor_class = type(
-      '%s_Executor' % func.__name__,
-      (_FunctionBeamExecutor if use_beam else _FunctionExecutor,),
-      {
-          '_ARG_FORMATS': arg_formats,
-          '_ARG_DEFAULTS': arg_defaults,
-          # The function needs to be marked with `staticmethod` so that later
-          # references of `self._FUNCTION` do not result in a bound method (i.e.
-          # one with `self` as its first parameter).
-          '_FUNCTION': staticmethod(func),  # pytype: disable=not-callable
-          '_RETURNED_VALUES': returned_values,
-          '_RETURN_JSON_COMPAT_TYPEHINT': return_json_typehints,
-          '__module__': func.__module__,
-      })
-
-  # Expose the generated executor class in the same module as the decorated
-  # function. This is needed so that the executor class can be accessed at the
-  # proper module path. One place this is needed is in the Dill pickler used by
-  # Apache Beam serialization.
-  module = sys.modules[func.__module__]
-  setattr(module, '%s_Executor' % func.__name__, executor_class)
-
-  executor_spec_class = (
-      executor_spec.BeamExecutorSpec
-      if use_beam else executor_spec.ExecutorClassSpec)
-  executor_spec_instance = executor_spec_class(executor_class=executor_class)
-
-  return type(
-      func.__name__, (_SimpleBeamComponent if use_beam else _SimpleComponent,),
-      {
-          'SPEC_CLASS': component_spec_class,
-          'EXECUTOR_SPEC': executor_spec_instance,
-          '__module__': func.__module__,
-          'test_call': staticmethod(func),  # pytype: disable=not-callable
-      })
+  return utils.create_component_class(
+      func=func,
+      arg_defaults=arg_defaults,
+      arg_formats=arg_formats,
+      base_executor_class=(
+          _FunctionBeamExecutor if use_beam else _FunctionExecutor
+      ),
+      executor_spec_class=(
+          executor_spec.BeamExecutorSpec
+          if use_beam
+          else executor_spec.ExecutorClassSpec
+      ),
+      base_component_class=(
+          _SimpleBeamComponent if use_beam else _SimpleComponent
+      ),
+      inputs=inputs,
+      outputs=outputs,
+      parameters=parameters,
+      type_annotation=component_annotation,
+      json_compatible_inputs=json_typehints,
+      json_compatible_outputs=return_json_typehints,
+      return_values_optionality=returned_values,
+  )

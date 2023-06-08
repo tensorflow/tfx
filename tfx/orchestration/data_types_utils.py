@@ -71,7 +71,7 @@ def build_artifact_struct_dict(
 
 def build_value_dict(
     metadata_value_dict: Mapping[str, metadata_store_pb2.Value]
-) -> Dict[str, types.ExecPropertyTypes]:
+) -> Dict[str, types.Property]:
   """Converts MLMD value dict into plain value dict."""
   result = {}
   for k, v in metadata_value_dict.items():
