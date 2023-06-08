@@ -18,6 +18,39 @@
 
 ## Documentation Updates
 
+# Version 1.13.1
+
+## Major Features and Improvements
+
+*  N/A
+
+## Breaking Changes
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*  N/A
+
+## Dependency Updates
+| Package Name | Version Constraints | Previously (in `v1.13.0`) | Comments |
+| -- | -- | -- | -- |
+| `tensorflow-hub` | `>=0.9.0,<0.14` | `>=0.9.0,<0.13` | |
+
+## Documentation Updates
+
+*  N/A
+
 # Version 1.13.0
 
 ## Major Features and Improvements
