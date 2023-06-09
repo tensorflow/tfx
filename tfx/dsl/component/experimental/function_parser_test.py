@@ -22,8 +22,8 @@ from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
-from tfx.dsl.component.experimental.function_parser import ArgFormats
 from tfx.dsl.component.experimental.function_parser import parse_typehint_component_function
+from tfx.dsl.component.experimental.utils import ArgFormats
 from tfx.types import standard_artifacts
 
 
@@ -511,9 +511,9 @@ class FunctionParserTest(tf.test.TestCase):
     # Optional parameter's default value does not match declared type.
     with self.assertRaisesRegex(
         ValueError,
-        'The default value for optional parameter .* on function .* must be an '
-        'instance of its declared type .* or `None`'):
-
+        'The default value for optional parameter .* on function must be an '
+        'instance of its declared type .* or `None`',
+    ):
       def func_n(a: int,
                  b: int,
                  num_iterations: Parameter[int] = 'abc') -> OutputDict(c=float):

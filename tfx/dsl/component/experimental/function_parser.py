@@ -19,13 +19,13 @@ Internal use only. No backwards compatibility guarantees.
 # TODO(ccy): Remove pytype "disable=attribute-error" and "disable=module-attr"
 # overrides after Python 2 support is removed from TFX.
 
-import enum
 import inspect
 import types
 from typing import Any, Dict, Optional, Tuple, Type, Union, get_args, get_origin
 
 from tfx.dsl.component.experimental import annotations
 from tfx.dsl.component.experimental import json_compat
+from tfx.dsl.component.experimental import utils
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 
@@ -35,15 +35,6 @@ try:
 except ModuleNotFoundError:
   beam = None
   _BeamPipeline = Any
-
-
-class ArgFormats(enum.Enum):
-  INPUT_ARTIFACT = 1
-  OUTPUT_ARTIFACT = 2
-  ARTIFACT_VALUE = 3
-  PARAMETER = 4
-  BEAM_PARAMETER = 5
-  LIST_INPUT_ARTIFACTS = 6
 
 
 _PRIMITIVE_TO_ARTIFACT = {
@@ -65,15 +56,13 @@ def _validate_signature(
     func: types.FunctionType,
     argspec: inspect.FullArgSpec,  # pytype: disable=module-attr
     typehints: Dict[str, Any],
-    subject_message: str) -> None:
+    subject_message: str,
+) -> None:
   """Validates signature of a typehint-annotated component executor function."""
-  args, varargs, keywords = argspec.args, argspec.varargs, argspec.varkw
-  if varargs or keywords:
-    raise ValueError('%s does not support *args or **kwargs arguments.' %
-                     subject_message)
+  utils.assert_no_varargs_varkw(argspec, subject_message)
 
   # Validate argument type hints.
-  for arg in args:
+  for arg in argspec.args:
     if isinstance(arg, list):
       # Note: this feature was removed in Python 3:
       # https://www.python.org/dev/peps/pep-3113/.
@@ -106,16 +95,17 @@ def _validate_signature(
 def _parse_signature(
     func: types.FunctionType,
     argspec: inspect.FullArgSpec,  # pytype: disable=module-attr
-    typehints: Dict[str, Any]
+    typehints: Dict[str, Any],
 ) -> Tuple[
     Dict[str, Type[artifact.Artifact]],
     Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[Union[int, float, str, bytes, _BeamPipeline]]],
     Dict[str, Any],
-    Dict[str, ArgFormats],
+    Dict[str, Any],
+    Dict[str, utils.ArgFormats],
     Dict[str, bool],
     Dict[str, Any],
-    Dict[str, Any]]:
+    Dict[str, Any],
+]:
   """Parses signature of a typehint-annotated component executor function.
 
   Args:
@@ -131,11 +121,13 @@ def _parse_signature(
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
     parameters: A dictionary mapping each parameter name to its primitive type
-      (one of `int`, `float`, `Text`, `bytes` and `beam.Pipeline`).
+      (one of `int`, `float`, `str`, `bool`, `beam.Pipeline` or any json
+      compatible types). Json compatibility is determined by
+      `tfx.dsl.component.experimental.json_compat.is_json_compatible`.
     arg_formats: Dictionary representing the input arguments of the given
       component executor function. Each entry's key is the argument's string
       name; each entry's value is the format of the argument to be passed into
-      the function (given by a value of the `ArgFormats` enum).
+      the function (given by a value of the `utils.ArgFormats` enum).
     arg_defaults: Dictionary mapping names of optional arguments to default
       values.
     returned_outputs: A dictionary mapping output names that are declared as
@@ -147,10 +139,7 @@ def _parse_signature(
       a json compatible type to the annotation.
   """
   # Extract optional arguments as dict from name to its declared optional value.
-  arg_defaults = {}
-  if argspec.defaults:
-    arg_defaults = dict(
-        zip(argspec.args[-len(argspec.defaults):], argspec.defaults))
+  arg_defaults = utils.extract_arg_defaults(argspec)
 
   # Parse function arguments.
   inputs = {}
@@ -176,9 +165,9 @@ def _parse_signature(
       # If the typehint is InputArtifact[List[Artifact]]], unwrap it.
       if artifact_type is list or get_origin(artifact_type) is list:
         artifact_type = get_args(artifact_type)[0]
-        arg_formats[arg] = ArgFormats.LIST_INPUT_ARTIFACTS
+        arg_formats[arg] = utils.ArgFormats.LIST_INPUT_ARTIFACTS
       else:
-        arg_formats[arg] = ArgFormats.INPUT_ARTIFACT
+        arg_formats[arg] = utils.ArgFormats.INPUT_ARTIFACT
       inputs[arg] = artifact_type
     elif isinstance(arg_typehint, annotations.OutputArtifact):
       if arg in arg_defaults:
@@ -186,27 +175,22 @@ def _parse_signature(
             'Output artifact of component function cannot be declared as '
             'optional (error for argument %r of %r).' % (arg, func)
         )
-      arg_formats[arg] = ArgFormats.OUTPUT_ARTIFACT
+      arg_formats[arg] = utils.ArgFormats.OUTPUT_ARTIFACT
       outputs[arg] = arg_typehint.type
     elif isinstance(arg_typehint, annotations.Parameter):
-      if arg in arg_defaults:
-        if not (
-            arg_defaults[arg] is None
-            or isinstance(arg_defaults[arg], arg_typehint.type)
-        ):
-          raise ValueError(
-              'The default value for optional parameter %r on function %r must '
-              'be an instance of its declared type %r or `None` (got %r '
-              'instead)' % (arg, func, arg_typehint.type, arg_defaults[arg])
-          )
-      arg_formats[arg] = ArgFormats.PARAMETER
-      parameters[arg] = arg_typehint.type
+      utils.parse_parameter_arg(
+          arg,
+          arg_defaults,
+          arg_typehint,
+          parameters,
+          arg_formats,
+      )
     elif isinstance(arg_typehint, annotations.BeamComponentParameter):
       if arg in arg_defaults and arg_defaults[arg] is not None:
         raise ValueError(
             'The default value for BeamComponentParameter must be None.'
         )
-      arg_formats[arg] = ArgFormats.BEAM_PARAMETER
+      arg_formats[arg] = utils.ArgFormats.BEAM_PARAMETER
       parameters[arg] = arg_typehint.type
     elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
       if arg in arg_defaults:
@@ -219,11 +203,11 @@ def _parse_signature(
               'must be an instance of its declared type %r or `None` (got %r '
               'instead)' % (arg, func, arg_typehint, arg_defaults[arg])
           )
-      arg_formats[arg] = ArgFormats.ARTIFACT_VALUE
+      arg_formats[arg] = utils.ArgFormats.ARTIFACT_VALUE
       inputs[arg] = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
     elif json_compat.is_json_compatible(arg_typehint):
       json_typehints[arg] = arg_typehint
-      arg_formats[arg] = ArgFormats.ARTIFACT_VALUE
+      arg_formats[arg] = utils.ArgFormats.ARTIFACT_VALUE
       inputs[arg] = standard_artifacts.JsonValue
     elif inspect.isclass(arg_typehint) and issubclass(
         arg_typehint, artifact.Artifact
@@ -280,12 +264,13 @@ def parse_typehint_component_function(
 ) -> Tuple[
     Dict[str, Type[artifact.Artifact]],
     Dict[str, Type[artifact.Artifact]],
-    Dict[str, Type[Union[int, float, str, bytes]]],
     Dict[str, Any],
-    Dict[str, ArgFormats],
+    Dict[str, utils.ArgFormats],
+    Dict[str, Any],
     Dict[str, bool],
     Dict[str, Any],
-    Dict[str, Any]]:
+    Dict[str, Any],
+]:
   """Parses the given component executor function.
 
   This method parses a typehinted-annotated Python function that is intended to
@@ -303,11 +288,13 @@ def parse_typehint_component_function(
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
     parameters: A dictionary mapping each parameter name to its primitive type
-      (one of `int`, `float`, `Text`, `bytes` and `beam.Pipeline`).
+      (one of `int`, `float`, `str`, `bool`, `beam.Pipeline` or any json
+      compatible types). Json compatibility is determined by
+      `tfx.dsl.component.experimental.json_compat.is_json_compatible`.
     arg_formats: Dictionary representing the input arguments of the given
       component executor function. Each entry's key is the argument's string
       name; each entry's value is the format of the argument to be passed into
-      the function (given by a value of the `ArgFormats` enum).
+      the function (given by a value of the `utils.ArgFormats` enum).
     arg_defaults: Dictionary mapping names of optional arguments to default
       values.
     returned_outputs: A dictionary mapping output names that are declared as
@@ -318,11 +305,7 @@ def parse_typehint_component_function(
     return_json_typehints: A dictionary mapping output names that are declared
       as json compatible types to the annotation.
   """
-  # Check input argument type.
-  if not isinstance(func, types.FunctionType):
-    raise ValueError(
-        'Expected a typehint-annotated Python function (got %r instead).' %
-        (func,))
+  utils.assert_is_functype(func)
 
   # Inspect the component executor function.
   typehints = func.__annotations__  # pytype: disable=attribute-error
