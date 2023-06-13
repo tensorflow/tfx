@@ -84,6 +84,18 @@ def remove_output_dirs(
         fileio.remove(artifact.uri)
 
 
+def clear_dir(dir_path: str) -> None:
+  for filename in fileio.listdir(dir_path):
+    file_path = os.path.join(dir_path, filename)
+    try:
+      if fileio.isdir(file_path):
+        fileio.rmtree(file_path)
+      else:
+        fileio.remove(file_path)
+    except Exception as e:
+      raise RuntimeError(f'Failed to delete {file_path}') from e
+
+
 def clear_output_dirs(
     output_dict: Mapping[str, Sequence[types.Artifact]]) -> None:
   """Clear dirs of output artifacts' URI."""
@@ -97,28 +109,12 @@ def clear_output_dirs(
       # the output directory.
       if not fileio.isdir(artifact.uri):
         continue
-      child_paths = [
-          os.path.join(artifact.uri, filename)
-          for filename in fileio.listdir(artifact.uri)
-      ]
-      for path in child_paths:
-        if fileio.isdir(path):
-          fileio.rmtree(path)
-        else:
-          fileio.remove(path)
+      clear_dir(artifact.uri)
 
 
 def remove_stateful_working_dir(stateful_working_dir: str) -> None:
   """Remove stateful_working_dir."""
-  # Clean up stateful working dir
-  # Note that:
-  # stateful_working_dir = os.path.join(
-  #    self._node_dir,
-  #    _SYSTEM,
-  #    _STATEFUL_WORKING_DIR, <-- we want to clean from this level down.
-  #    dir_suffix)
-  stateful_working_dir = os.path.abspath(
-      os.path.join(stateful_working_dir, os.pardir))
+  stateful_working_dir = os.path.abspath(stateful_working_dir)
   try:
     fileio.rmtree(stateful_working_dir)
   except fileio.NotFoundError:
@@ -202,18 +198,11 @@ class OutputsResolver:
     fileio.makedirs(driver_output_dir)
     return os.path.join(driver_output_dir, _DRIVER_OUTPUT_FILE)
 
-  def get_stateful_working_directory(self,
-                                     execution_id: Optional[int] = None) -> str:
+  def get_stateful_working_directory(self, clear_content: bool = True) -> str:
     """Generates stateful working directory given (optional) execution id.
 
     Args:
-      execution_id: An optional execution id which will be used as part of the
-        stateful working dir path if provided. The stateful working dir path
-        will be <node_dir>/.system/stateful_working_dir/<execution_id>. If
-        execution_id is not provided, for backward compatibility purposes,
-        <pipeline_run_id> is used instead of <execution_id> but an error is
-        raised if the execution_mode is not SYNC (since ASYNC pipelines have no
-        pipeline_run_id).
+      clear_content: Whether to clear the content of the `stateful_working_dir`.
 
     Returns:
       Path to stateful working directory.
@@ -222,8 +211,7 @@ class OutputsResolver:
       ValueError: If execution_id is not provided and execution_mode of the
         pipeline is not SYNC.
     """
-    return get_stateful_working_directory(self._node_dir, self._execution_mode,
-                                          self._pipeline_run_id, execution_id)
+    return get_stateful_working_directory(self._node_dir, clear_content)
 
   def make_tmp_dir(self, execution_id: int) -> str:
     """Generates a temporary directory."""
@@ -296,56 +284,31 @@ def generate_output_artifacts(
 
 
 def get_stateful_working_directory(node_dir: str,
-                                   execution_mode: pipeline_pb2.Pipeline
-                                   .ExecutionMode = pipeline_pb2.Pipeline.SYNC,
-                                   pipeline_run_id: str = '',
-                                   execution_id: Optional[int] = None) -> str:
+                                   clear_content: bool = True) -> str:
   """Generates stateful working directory.
-
+  
   Args:
     node_dir: The root directory of the node.
-    execution_mode: Execution mode of the pipeline.
-    pipeline_run_id: Optional pipeline_run_id, only available if execution mode
-      is SYNC.
-    execution_id: An optional execution id which will be used as part of the
-      stateful working dir path if provided. The stateful working dir path will
-      be <node_dir>/.system/stateful_working_dir/<execution_id>. If execution_id
-      is not provided, for backward compatibility purposes, <pipeline_run_id> is
-      used instead of <execution_id> but an error is raised if the
-      execution_mode is not SYNC (since ASYNC pipelines have no
-      pipeline_run_id).
+    clear_content: Whether to clear the content of the `stateful_working_dir`.
 
   Returns:
     Path to stateful working directory.
-
+  
   Raises:
-    ValueError: If execution_id is not provided and execution_mode of the
-      pipeline is not SYNC.
+    RuntimeError: If failed to make the stateful_working_dir or failed to clear
+      the content.
   """
-  if (execution_id is None and execution_mode != pipeline_pb2.Pipeline.SYNC):
-    raise ValueError(
-        'Cannot create stateful working dir if execution id is `None` and '
-        'the execution mode of the pipeline is not `SYNC`.')
-
-  if execution_id is None:
-    dir_suffix = pipeline_run_id
-  else:
-    dir_suffix = str(execution_id)
-
-  # TODO(b/150979622): We should introduce an id that is not changed across
-  # retries of the same component run to provide better isolation between
-  # "retry" and "new execution". When it is available, introduce it into
-  # stateful working directory.
   # NOTE: If this directory structure is changed, please update
   # the remove_stateful_working_dir function in this file accordingly.
-  stateful_working_dir = os.path.join(node_dir, _SYSTEM, _STATEFUL_WORKING_DIR,
-                                      dir_suffix)
-  try:
-    fileio.makedirs(stateful_working_dir)
-  except Exception:  # pylint: disable=broad-except
-    logging.exception('Failed to make stateful working dir: %s',
-                      stateful_working_dir)
-    raise
+  stateful_working_dir = os.path.join(node_dir, _SYSTEM, _STATEFUL_WORKING_DIR)
+  if not fileio.exists(stateful_working_dir):
+    try:
+      fileio.makedirs(stateful_working_dir)
+    except Exception as e:  # pylint: disable=broad-except
+      raise RuntimeError('Failed to make stateful working dir: '
+                         f'{stateful_working_dir}') from e
+  elif clear_content:
+    clear_dir(stateful_working_dir)
   return stateful_working_dir
 
 

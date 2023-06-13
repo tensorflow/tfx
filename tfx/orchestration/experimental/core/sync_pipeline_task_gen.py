@@ -315,7 +315,9 @@ class _Generator:
             )
         )
         result.extend(
-            self._generate_tasks_from_existing_execution(retry_execution, node))
+            self._generate_tasks_from_existing_execution(
+                retry_execution,
+                node, clear_stateful_working_dir=False))
       else:
         result.append(
             task_lib.UpdateNodeStateTask(
@@ -378,7 +380,8 @@ class _Generator:
 
   def _generate_tasks_from_existing_execution(
       self, execution: metadata_store_pb2.Execution,
-      node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
+      node: node_proto_view.NodeProtoView,
+      clear_stateful_working_dir: bool = True) -> List[task_lib.Task]:
     """Generates tasks for a node from its existing execution."""
     tasks = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
@@ -390,8 +393,10 @@ class _Generator:
         task_lib.UpdateNodeStateTask(
             node_uid=node_uid, state=pstate.NodeState.RUNNING))
     tasks.append(
-        task_gen_utils.generate_task_from_execution(self._mlmd_handle,
-                                                    self._pipeline, node, e))
+        task_gen_utils.generate_task_from_execution(
+            self._mlmd_handle,
+            self._pipeline, node, e,
+            clear_stateful_working_dir=clear_stateful_working_dir))
     return tasks
 
   def _generate_tasks_from_resolved_inputs(
@@ -464,7 +469,7 @@ class _Generator:
             executor_output_uri=outputs_resolver.get_executor_output_uri(
                 execution.id),
             stateful_working_dir=outputs_resolver
-            .get_stateful_working_directory(execution.id),
+            .get_stateful_working_directory(),
             tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
             pipeline=self._pipeline))
     return result

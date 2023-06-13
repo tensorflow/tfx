@@ -18,6 +18,7 @@ import copy
 import datetime
 import functools
 import itertools
+import os
 import random
 import threading
 import time
@@ -41,6 +42,7 @@ from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -48,6 +50,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
+
 
 # A coarse grained lock is used to ensure serialization of pipeline operations
 # since there isn't a suitable MLMD transaction API.
@@ -1405,6 +1408,14 @@ def _orchestrate_active_pipeline(
             task.node_uid
         ) as node_state:
           node_state.update(task.state, task.status, task.backfill_token)
+        # Clear the stateful working dir when the node state is updated.
+        pipeline_root = (
+            pipeline.runtime_spec.pipeline_root.field_value.string_value
+        )
+        node_dir = os.path.join(pipeline_root, task.node_uid.node_id)
+        outputs_utils.get_stateful_working_directory(
+            node_dir, clear_content=True
+        )
 
     tasks = [
         t for t in tasks if not isinstance(t, task_lib.UpdateNodeStateTask)

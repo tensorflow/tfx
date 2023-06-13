@@ -47,8 +47,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
       execution_result: Optional[execution_result_pb2.ExecutionResult] = None
   ) -> None:
     assert status.code != status_lib.Code.OK
-    _remove_temporary_task_dirs(
-        stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
+    _remove_temporary_task_dirs(tmp_dir=task.tmp_dir)
     if status.code == status_lib.Code.CANCELLED:
       logging.info('Cancelling execution (id: %s); task id: %s; status: %s',
                    task.execution_id, task.task_id, status)
@@ -84,8 +83,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
                 message=executor_output.execution_result.result_message),
             executor_output.execution_result)
         return
-    _remove_temporary_task_dirs(
-        stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
+    _remove_temporary_task_dirs(tmp_dir=task.tmp_dir)
     # TODO(b/262040844): Instead of directly using the context manager here, we
     # should consider creating and using wrapper functions.
     with mlmd_state.evict_from_cache(task.execution_id):
@@ -100,8 +98,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
                                                        task.get_node())
   elif isinstance(result.output, ts.ImporterNodeOutput):
     output_artifacts = result.output.output_artifacts
-    _remove_temporary_task_dirs(
-        stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
+    _remove_temporary_task_dirs(tmp_dir=task.tmp_dir)
     # TODO(b/262040844): Instead of directly using the context manager here, we
     # should consider creating and using wrapper functions.
     with mlmd_state.evict_from_cache(task.execution_id):
@@ -137,9 +134,7 @@ def publish_execution_results(
       execution_state = proto.Execution.CANCELED
     else:
       execution_state = proto.Execution.FAILED
-    _remove_temporary_task_dirs(
-        stateful_working_dir=execution_info.stateful_working_dir,
-        tmp_dir=execution_info.tmp_dir)
+    _remove_temporary_task_dirs(tmp_dir=execution_info.tmp_dir)
     node_uid = task_lib.NodeUid(
         pipeline_uid=task_lib.PipelineUid.from_pipeline_id_and_run_id(
             pipeline_id=execution_info.pipeline_info.id,
@@ -154,9 +149,7 @@ def publish_execution_results(
         error_msg=executor_output.execution_result.result_message,
         execution_result=executor_output.execution_result)
     return
-  _remove_temporary_task_dirs(
-      stateful_working_dir=execution_info.stateful_working_dir,
-      tmp_dir=execution_info.tmp_dir)
+  _remove_temporary_task_dirs(tmp_dir=execution_info.tmp_dir)
   # TODO(b/262040844): Instead of directly using the context manager here, we
   # should consider creating and using wrapper functions.
   with mlmd_state.evict_from_cache(execution_info.execution_id):
@@ -196,15 +189,8 @@ def _update_execution_state_in_mlmd(
       execution_lib.set_execution_result(execution_result, execution)
 
 
-def _remove_temporary_task_dirs(stateful_working_dir: str = '',
-                                tmp_dir: str = '') -> None:
+def _remove_temporary_task_dirs(tmp_dir: str = '') -> None:
   """Removes temporary directories created for the task."""
-  if stateful_working_dir:
-    try:
-      fileio.rmtree(stateful_working_dir)
-    except fileio.NotFoundError:
-      logging.warning('stateful_working_dir %s not found, ignoring.',
-                      stateful_working_dir)
   if tmp_dir:
     try:
       fileio.rmtree(tmp_dir)

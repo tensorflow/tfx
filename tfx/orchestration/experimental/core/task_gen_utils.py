@@ -66,7 +66,8 @@ def generate_task_from_execution(
     pipeline: pipeline_pb2.Pipeline,
     node: node_proto_view.NodeProtoView,
     execution: metadata_store_pb2.Execution,
-    cancel_type: Optional[task_lib.NodeCancelType] = None) -> task_lib.Task:
+    cancel_type: Optional[task_lib.NodeCancelType] = None,
+    clear_stateful_working_dir: bool = True) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   if not execution_lib.is_execution_active(execution):
     raise RuntimeError(f'Execution is not active: {execution}.')
@@ -88,12 +89,15 @@ def generate_task_from_execution(
       input_artifacts=input_artifacts,
       output_artifacts=output_artifacts,
       executor_output_uri=outputs_resolver.get_executor_output_uri(
-          execution.id),
+          execution.id
+      ),
       stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-          execution.id),
+          clear_content=clear_stateful_working_dir
+      ),
       tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
       pipeline=pipeline,
-      cancel_type=cancel_type)
+      cancel_type=cancel_type,
+  )
 
 
 def generate_cancel_task_from_running_execution(
