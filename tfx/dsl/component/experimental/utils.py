@@ -27,6 +27,17 @@ from tfx.types import component_spec
 from tfx.types import system_executions
 
 
+_PYTHON_EXECUTOR_BINARY_ATTR = '_python_executor_binary'
+
+
+def maybe_get_python_executor_binary(
+    component: base_component.BaseComponent,
+) -> Any:
+  if hasattr(component, _PYTHON_EXECUTOR_BINARY_ATTR):
+    return getattr(component, _PYTHON_EXECUTOR_BINARY_ATTR)
+  return None
+
+
 class ArgFormats(enum.Enum):
   INPUT_ARTIFACT = 1
   OUTPUT_ARTIFACT = 2
@@ -293,6 +304,7 @@ def create_component_class(
     json_compatible_inputs: Optional[Dict[str, Any]] = None,
     json_compatible_outputs: Optional[Dict[str, Any]] = None,
     return_values_optionality: Optional[Dict[str, bool]] = None,
+    python_executor_binary: Any = None,
 ) -> Type[base_component.BaseComponent]:
   """Creates the component class for the func-generated component.
 
@@ -319,6 +331,7 @@ def create_component_class(
       `tfx.dsl.component.experimental.json_compat.is_json_compatible`.
     return_values_optionality: A dict from output names that are primitive type
       values returned from the user function to whether they are `Optional`.
+    python_executor_binary: A python_executor_binary override.
 
   Returns:
     a subclass of `base_component_class`.
@@ -345,13 +358,17 @@ def create_component_class(
       json_compatible_outputs,
   )
 
+  class_attrs = {
+      'SPEC_CLASS': component_spec_class,
+      'EXECUTOR_SPEC': executor_spec_instance,
+      '__module__': func.__module__,
+      'test_call': staticmethod(func),  # pytype: disable=not-callable
+  }
+  if python_executor_binary is not None:
+    class_attrs[_PYTHON_EXECUTOR_BINARY_ATTR] = python_executor_binary
+
   return type(
       func.__name__,
       (base_component_class,),
-      {
-          'SPEC_CLASS': component_spec_class,
-          'EXECUTOR_SPEC': executor_spec_instance,
-          '__module__': func.__module__,
-          'test_call': staticmethod(func),  # pytype: disable=not-callable
-      },
+      class_attrs,
   )
