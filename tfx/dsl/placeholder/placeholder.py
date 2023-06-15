@@ -439,6 +439,18 @@ class ArtifactPlaceholder(Placeholder):
   """
 
   @property
+  def is_input(self) -> bool:
+    return self._type == placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT
+
+  @property
+  def is_output(self) -> bool:
+    return self._type == placeholder_pb2.Placeholder.Type.OUTPUT_ARTIFACT
+
+  @property
+  def key(self) -> str:
+    return self._key
+
+  @property
   def uri(self: _T) -> _T:
     return self._clone_and_use_operators(
         [*self._optional_index_operator(),
