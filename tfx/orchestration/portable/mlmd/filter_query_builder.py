@@ -29,13 +29,21 @@ class _ClauseList(collections.UserList):
   separator = None
   list_options = list_options
 
+  def _flatten(self):
+    for clause in self:
+      if isinstance(clause, type(self)):
+        yield from clause._flatten()  # pylint: disable=protected-access
+      else:
+        yield clause
+
   def __str__(self) -> str:
-    if not self:
+    clauses = list(self._flatten())
+    if not clauses:
       return ''
-    elif len(self) == 1:
-      return str(self[0])
+    elif len(clauses) == 1:
+      return str(clauses[0])
     else:
-      return f' {self.separator} '.join(f'({clause})' for clause in self)
+      return f' {self.separator} '.join(f'({clause})' for clause in clauses)
 
 
 class And(_ClauseList):
