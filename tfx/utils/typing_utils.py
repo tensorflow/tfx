@@ -13,16 +13,11 @@
 # limitations under the License.
 """Utility for frequently used types and its typecheck."""
 
-import collections.abc
-import inspect
-import typing
-from typing import Any, Dict, Iterable, List, Literal, Mapping, MutableMapping, MutableSequence, Sequence, Type, TypeVar, TypedDict, get_args, get_origin
+from typing import Any, Dict, List, Mapping, MutableMapping, MutableSequence, Sequence, TypeVar
 
 import tfx.types
+from tfx.utils import pure_typing_utils
 from typing_extensions import (  # pylint: disable=g-multiple-import
-    Annotated,  # New in python 3.9
-    NotRequired,  # New in python 3.11  # pytype: disable=not-supported-yet
-    Required,  # New in python 3.11  # pytype: disable=not-supported-yet
     TypeGuard,  # New in python 3.10
 )
 
@@ -46,132 +41,8 @@ ArtifactMutableMultiMap = MutableMultiMap[str, tfx.types.Artifact]
 # ArtifactMultiMap or ArtifactMutableMultiMap.
 ArtifactMultiDict = Dict[str, List[tfx.types.Artifact]]
 
-_T = TypeVar('_T')
-_TTypedDict = TypeVar('_TTypedDict', bound=TypedDict)
-
-
-def _get_typed_dict_required_keys(tp: TypedDict) -> Iterable[str]:
-  if hasattr(tp, '__required_keys__'):
-    return tp.__required_keys__
-  if tp.__total__:
-    return tp.__annotations__.keys()
-  else:
-    return []
-
-
-def _is_typed_dict_compatible(
-    value: Any, tp: _TTypedDict
-) -> TypeGuard[_TTypedDict]:
-  """Checks if the value is compatible with the given TypedDict."""
-  # pytype: disable=attribute-error
-  return (
-      isinstance(value, dict)
-      and all(k in value for k in _get_typed_dict_required_keys(tp))
-      and all(k in tp.__annotations__ for k in value)
-      and all(is_compatible(v, tp.__annotations__[k]) for k, v in value.items())
-  )
-  # pytype: enable=attribute-error
-
-
-def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
-  """Whether the value is compatible with the type.
-
-  Similar to builtin.isinstance(), but accepts more advanced subscripted type
-  hints.
-
-  Args:
-    value: The value under test.
-    tp: The type to check acceptability.
-
-  Returns:
-    Whether the `value` is compatible with the type `tp`.
-  """
-  maybe_origin = get_origin(tp)
-  maybe_args = get_args(tp)
-  if inspect.isclass(tp):
-    if not maybe_args:
-      if issubclass(tp, dict) and hasattr(tp, '__annotations__'):
-        return _is_typed_dict_compatible(value, tp)
-      return isinstance(value, tp)
-  if tp is Any:
-    return True
-  if tp in (None, type(None)):
-    return value is None
-  if maybe_origin is not None:
-    # Union[T]
-    if maybe_origin is typing.Union:
-      assert maybe_args, f'{tp} should be subscripted.'
-      return any(is_compatible(value, arg) for arg in maybe_args)
-    # Type[T]
-    elif maybe_origin is type:
-      if not maybe_args:
-        return inspect.isclass(value)
-      assert len(maybe_args) == 1
-      subtype = maybe_args[0]
-      if subtype is Any:
-        return inspect.isclass(value)
-      elif get_origin(subtype) is typing.Union:
-        # Convert Type[Union[x, y, ...]] to Union[Type[x], Type[y], ...].
-        subtypes = [typing.Type[a] for a in get_args(subtype)]
-        return any(is_compatible(value, t) for t in subtypes)
-      elif inspect.isclass(subtype):
-        return inspect.isclass(value) and issubclass(value, subtype)
-    # List[T], Set[T], FrozenSet[T], Iterable[T], Sequence[T], MutableSeuence[T]
-    elif maybe_origin in (
-        list,
-        set,
-        frozenset,
-        collections.abc.Iterable,
-        collections.abc.Sequence,
-        collections.abc.MutableSequence,
-    ):
-      if not isinstance(value, maybe_origin):
-        return False
-      if not maybe_args:
-        return True
-      assert len(maybe_args) == 1
-      return all(is_compatible(v, maybe_args[0]) for v in value)
-    # Tuple[T]
-    elif maybe_origin is tuple:
-      if not isinstance(value, tuple):
-        return False
-      if not maybe_args:
-        return True
-      if len(maybe_args) == 2 and maybe_args[-1] is Ellipsis:
-        return all(is_compatible(v, maybe_args[0]) for v in value)
-      return len(maybe_args) == len(value) and all(
-          is_compatible(v, arg) for v, arg in zip(value, maybe_args))
-    # Dict[K, V], Mapping[K, V], MutableMapping[K, V]
-    elif maybe_origin in (
-        dict,
-        collections.abc.Mapping,
-        collections.abc.MutableMapping,
-    ):
-      if not isinstance(value, maybe_origin):
-        return False
-      if not maybe_args:  # Unsubscripted Dict.
-        return True
-      assert len(maybe_args) == 2
-      kt, vt = maybe_args
-      return all(
-          is_compatible(k, kt) and is_compatible(v, vt)
-          for k, v in value.items())
-    # Literal[T]
-    elif maybe_origin is Literal:
-      assert maybe_args
-      return value in maybe_args
-    elif maybe_origin is Annotated:
-      assert maybe_args
-      return is_compatible(value, maybe_args[0])
-    # Required[T] and NotRequired[T]
-    elif maybe_origin in (Required, NotRequired):
-      assert len(maybe_args) == 1
-      return is_compatible(value, maybe_args[0])
-    else:
-      raise NotImplementedError(
-          f'Type {tp} with unsupported origin type {maybe_origin}.')
-  raise NotImplementedError(f'Unsupported type {tp}.')
-
+# Keep for backward compatibility.
+is_compatible = pure_typing_utils.is_compatible
 
 _TArtifact = TypeVar('_TArtifact', bound=tfx.types.Artifact)
 
