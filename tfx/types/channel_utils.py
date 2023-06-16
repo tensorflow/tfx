@@ -11,7 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX Channel utilities."""
+"""TFX Channel utilities.
+
+DO NOT USE THIS MODULE DIRECTLY. This module is a private module, and all public
+symbols are already available from one of followings:
+
+- `tfx.v1.types.BaseChannel`
+- `tfx.v1.testing.Channel`
+- `tfx.v1.dsl.union`
+- `tfx.v1.dsl.experimental.artifact_query`
+- `tfx.v1.dsl.experimental.external_pipeline_artifact_query`
+
+Consider other symbols as private.
+"""
 
 from typing import Callable, cast, Dict, Iterable, Iterator, List, Type, Optional, Set, Sequence
 

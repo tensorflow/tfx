@@ -13,6 +13,9 @@
 # limitations under the License.
 """A set of standard TFX Artifact types.
 
+DO NOT USE THIS MODULE DIRECTLY. This module is a private module, and you should
+use the redirected public module `tfx.v1.types.standard_artifacts`.
+
 Note: the artifact definitions here are expected to change.
 """
 
