@@ -545,6 +545,13 @@ class _ArtifactRecycler:
     self._pipeline_run_type_id = self._mlmd.store.get_context_type(
         constants.PIPELINE_RUN_CONTEXT_TYPE_NAME).id
 
+    self._node_context_by_name = {
+        ctx.name: ctx
+        for ctx in self._mlmd.store.get_contexts_by_type(
+            constants.NODE_CONTEXT_TYPE_NAME
+        )
+    }
+
     # Query and store all pipeline run contexts. This has multiple advantages:
     # - No need to worry about other pipeline runs that may be taking place
     #   concurrently and changing MLMD state.
@@ -634,12 +641,10 @@ class _ArtifactRecycler:
   def _get_node_context(self, node_id: str) -> metadata_store_pb2.Context:
     node_context_name = compiler_utils.node_context_name(
         self._pipeline_name, node_id)
-    result = self._mlmd.store.get_context_by_type_and_name(
-        type_name=constants.NODE_CONTEXT_TYPE_NAME,
-        context_name=node_context_name)
-    if result is None:
+    node_context = self._node_context_by_name.get(node_context_name)
+    if node_context is None:
       raise LookupError(f'node context {node_context_name} not found in MLMD.')
-    return result
+    return node_context
 
   def _get_successful_executions(
       self, node_id: str, run_id: str) -> List[metadata_store_pb2.Execution]:
@@ -689,6 +694,8 @@ class _ArtifactRecycler:
       The list of Contexts to be associated with the new cached Execution.
     """
     result = []
+    # TODO(b/265353452) Remove this function, it is not necessary, we can use
+    # the cached node and pipeline contexts.
     for context in self._mlmd.store.get_contexts_by_execution(
         existing_execution.id):
       if context.type_id == self._pipeline_run_type_id:
