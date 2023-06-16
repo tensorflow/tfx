@@ -17,17 +17,19 @@ import json
 import textwrap
 from unittest import mock
 
-
-import absl
+from absl import logging
 import tensorflow as tf
 from tfx.types import artifact
+from tfx.types import system_artifacts
 from tfx.types import value_artifact
-from tfx.types.system_artifacts import Dataset
 from tfx.utils import json_utils
 
 from google.protobuf import struct_pb2
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
+
+
+Dataset = system_artifacts.Dataset
 
 
 class _MyArtifact(artifact.Artifact):
@@ -1169,7 +1171,7 @@ class ArtifactTest(tf.test.TestCase):
     serialized = original.to_json_dict()
 
     rehydrated = artifact.Artifact.from_json_dict(serialized)
-    absl.logging.warning.assert_not_called()
+    logging.warning.assert_not_called()
     self.assertIs(rehydrated.__class__, _MyArtifact)
     self.assertEqual(rehydrated.int1, 111)
     self.assertEqual(rehydrated.int2, 222)
@@ -1195,7 +1197,7 @@ class ArtifactTest(tf.test.TestCase):
     serialized['__artifact_class_name__'] = 'MissingClassName'
 
     rehydrated = artifact.Artifact.from_json_dict(serialized)
-    absl.logging.warning.assert_called_once()
+    logging.warning.assert_called_once()
     self.assertIs(rehydrated.__class__, artifact.Artifact)
     self.assertEqual(rehydrated.int1, 111)
     self.assertEqual(rehydrated.int2, 222)

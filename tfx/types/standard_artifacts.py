@@ -19,7 +19,7 @@ Note: the artifact definitions here are expected to change.
 import decimal
 import math
 
-import absl
+from absl import logging
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
@@ -314,8 +314,8 @@ class Float(ValueArtifact):
       raise TypeError('Expecting float but got value %s of type %s' %
                       (str(value), type(value)))
     if math.isinf(value) or math.isnan(value):
-      absl.logging.warning(
-          '! The number "%s" may be unsupported by non-python components.' %
+      logging.warning(
+          '! The number "%s" may be unsupported by non-python components.',
           value)
     str_value = str(value)
     # Special encoding for infinities and NaN to increase comatibility with
@@ -341,9 +341,9 @@ class Float(ValueArtifact):
     is_exact = (decimal.Decimal(serialized_string) ==
                 decimal.Decimal(reserialized_string))
     if not is_exact:
-      absl.logging.warning(
-          'The number "%s" has lost precision when converted to float "%s"' %
-          (serialized_value, reserialized_string))
+      logging.warning(
+          'The number "%s" has lost precision when converted to float "%s"',
+          serialized_value, reserialized_string)
 
     return result
 
