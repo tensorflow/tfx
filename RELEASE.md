@@ -15,6 +15,10 @@
 ## Bug Fixes and Other Changes
 
 ## Dependency Updates
+| Package Name | Version Constraints | Previously (in `v1.13.0`) | Comments |
+| -- | -- | -- | -- |
+| `pyarrow` | `>=10,<11` | `>=6,<7` | |
+| `apache-beam` | `>=2.40,<3` | `>=2.47,<3` | |
 
 ## Documentation Updates
 
