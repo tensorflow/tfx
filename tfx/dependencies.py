@@ -119,6 +119,7 @@ def make_required_install_packages():
           default='>=1.13.0,<1.14.0',
           nightly='>=1.14.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
+      'cuda>=11.8',
   ]
 
 
