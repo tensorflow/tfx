@@ -261,6 +261,17 @@ class TypingUtilsTest(tf.test.TestCase):
 
   # pytype: enable=not-supported-yet
 
+  def test_str_is_not_compatible_with_iterable_str(self):
+    self.assertIsNotCompatible('abc', typing.Iterable[str])
+    self.assertIsCompatible(['abc'], typing.Iterable[str])
+    self.assertIsNotCompatible('abc', typing.Sequence[str])
+    self.assertIsNotCompatible('abc', typing.Collection[str])
+    self.assertIsNotCompatible('abc', typing.Container[str])
+    # Should explicitly allow union of str or Iterable[Any].
+    # https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables
+    self.assertIsCompatible('abc', typing.Union[typing.Iterable[str], str])
+    self.assertIsCompatible('abc', typing.Iterable[Any])
+
 
 if __name__ == '__main__':
   tf.test.main()

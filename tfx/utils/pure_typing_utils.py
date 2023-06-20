@@ -103,12 +103,21 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
         collections.abc.Iterable,
         collections.abc.Sequence,
         collections.abc.MutableSequence,
+        collections.abc.Collection,
+        collections.abc.Container,
     ):
       if not isinstance(value, maybe_origin):
         return False
       if not maybe_args:
         return True
       assert len(maybe_args) == 1
+      if maybe_args[0] is str and isinstance(value, str):
+        # `str` is technically Iterable[str], etc., but it's mostly not intended
+        # for type checking and fail to catch a bug. Therefore we don't regard
+        # str as Iterable[str], etc. This is also consistent with pytype
+        # behavior:
+        # https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables
+        return False
       return all(is_compatible(v, maybe_args[0]) for v in value)
     # Tuple[T]
     elif maybe_origin is tuple:
