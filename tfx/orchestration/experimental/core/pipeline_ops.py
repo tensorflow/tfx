@@ -274,7 +274,7 @@ def stop_pipeline(
     pipeline_uid: task_lib.PipelineUid,
     timeout_secs: Optional[float] = None,
 ) -> None:
-  """Stops a a single pipeline. Convenience wrapper around stop_pipelines."""
+  """Stops a single pipeline. Convenience wrapper around stop_pipelines."""
   return stop_pipelines(
       mlmd_handle=mlmd_handle,
       pipeline_uids=[pipeline_uid],
