@@ -14,6 +14,7 @@
 """Tests for tfx.dsl.compiler.placeholder_utils."""
 
 import base64
+import itertools
 import re
 
 from absl.testing import parameterized
@@ -201,7 +202,11 @@ pipeline_node {
 """
 
 
-class PlaceholderUtilsTest(tf.test.TestCase):
+def _ph_type_to_str(ph_type: placeholder_pb2.Placeholder.Type) -> str:
+  return placeholder_pb2.Placeholder.Type.Name(ph_type)
+
+
+class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -1082,6 +1087,146 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     self.assertEqual(
         placeholder_utils.debug_str(another_pb),
         "exec_property(\"serving_spec\").tensorflow_serving.serialize(TEXT_FORMAT)"
+    )
+
+  def testGetAllTypesInPlaceholderExpressionFails(self):
+    self.assertRaises(
+        ValueError,
+        lambda: placeholder_utils.get_all_types_in_placeholder_expression(  # pylint: disable=g-long-lambda
+            placeholder_pb2.PlaceholderExpression()
+        ),
+    )
+
+  @parameterized.named_parameters(
+      (f"{op}-{_ph_type_to_str(ph_type)}", op, ph_type)  # pylint: disable=g-complex-comprehension
+      for op, ph_type in itertools.product(
+          placeholder_utils.get_unary_operator_names(),
+          placeholder_pb2.Placeholder.Type.values(),
+      )
+  )
+  def testGetTypeOfUnaryOperators(self, op, ph_type):
+    placeholder_expression = text_format.Parse(
+        f"""
+          operator {{
+            {op} {{
+              expression {{
+              placeholder {{
+                type: {ph_type}
+                key: "foo"
+              }}
+            }}
+          }}
+        }}
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    actual_types = placeholder_utils.get_all_types_in_placeholder_expression(
+        placeholder_expression
+    )
+    self.assertSetEqual(actual_types, {ph_type})
+
+  @parameterized.named_parameters(
+      (  # pylint: disable=g-complex-comprehension
+          f"{op}-{_ph_type_to_str(lhs_type)}-{_ph_type_to_str(rhs_type)}",
+          op,
+          lhs_type,
+          rhs_type,
+      )
+      for op, (lhs_type, rhs_type) in itertools.product(
+          placeholder_utils.get_binary_operator_names(),
+          itertools.combinations_with_replacement(
+              placeholder_pb2.Placeholder.Type.values(), 2
+          ),
+      )
+  )
+  def testGetTypesOfBinaryOperators(self, op, lhs_type, rhs_type):
+    placeholder_expression = text_format.Parse(
+        f"""
+          operator {{
+            {op} {{
+              lhs {{
+                placeholder {{
+                  type: {lhs_type}
+                  key: "foo"
+                }}
+              }}
+              rhs {{
+                placeholder {{
+                  type: {rhs_type}
+                  key: "bar"
+                }}
+              }}
+            }}
+          }}
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    actual_types = placeholder_utils.get_all_types_in_placeholder_expression(
+        placeholder_expression
+    )
+    self.assertSetEqual(actual_types, {lhs_type, rhs_type})
+
+  @parameterized.named_parameters(
+      (  # pylint: disable=g-complex-comprehension
+          f"{op}-{'-'.join(_ph_type_to_str(ph_type) for ph_type in types)}",
+          op,
+          types,
+      )
+      for op, types in itertools.product(
+          placeholder_utils.get_nary_operator_names(),
+          itertools.combinations_with_replacement(
+              placeholder_pb2.Placeholder.Type.values(),
+              len(placeholder_pb2.Placeholder.Type.values()),
+          ),
+      )
+  )
+  def testGetTypesOfNaryperators(self, op, ph_types):
+    expressions = " ".join(
+        f"expressions: {{placeholder: {{type: {ph_type} key: 'baz'}}}}"
+        for ph_type in ph_types
+    )
+    placeholder_expression = text_format.Parse(
+        f"""
+          operator {{
+            {op} {{
+              {expressions}
+            }}
+          }}
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    actual_types = placeholder_utils.get_all_types_in_placeholder_expression(
+        placeholder_expression
+    )
+    self.assertSetEqual(actual_types, set(ph_types))
+
+  def testGetsOperatorsFromProtoReflection(self):
+    self.assertSetEqual(
+        placeholder_utils.get_unary_operator_names(),
+        {
+            "artifact_uri_op",
+            "artifact_value_op",
+            "index_op",
+            "proto_op",
+            "base64_encode_op",
+            "unary_logical_op",
+            "artifact_property_op",
+            "list_serialization_op",
+        },
+    )
+    self.assertSetEqual(
+        placeholder_utils.get_binary_operator_names(),
+        {
+            "binary_logical_op",
+            "compare_op",
+        },
+    )
+    self.assertSetEqual(
+        placeholder_utils.get_nary_operator_names(),
+        {
+            "concat_op",
+            "list_concat_op",
+        },
     )
 
 

@@ -15,9 +15,10 @@
 
 import base64
 import enum
+import functools
 import os
 import re
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Set, Union
 
 from absl import logging
 import attr
@@ -631,3 +632,72 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
     return "Unknown placeholder operator"
 
   return "Unknown placeholder expression"
+
+
+@functools.lru_cache(maxsize=1)
+def _get_all_operators() -> Dict[str, Set[str]]:
+  """Returns fields contained within operator_type messages, by field name."""
+  return {
+      op: set(f.name for f in desc.message_type.fields)
+      for op, desc in placeholder_pb2.PlaceholderExpressionOperator.DESCRIPTOR.fields_by_name.items()
+  }
+
+
+@functools.lru_cache(maxsize=1)
+def get_unary_operator_names() -> Set[str]:
+  """Returns all unary placeholder operators."""
+  return {
+      op
+      for op, fields in _get_all_operators().items()
+      if "expression" in fields
+  }
+
+
+@functools.lru_cache(maxsize=1)
+def get_binary_operator_names() -> Set[str]:
+  """Returns all binary placeholder operators."""
+  return {op for op, fields in _get_all_operators().items() if "lhs" in fields}
+
+
+@functools.lru_cache(maxsize=1)
+def get_nary_operator_names() -> Set[str]:
+  """Returns all n-ary placeholder operators."""
+  return {
+      op
+      for op, fields in _get_all_operators().items()
+      if "expressions" in fields
+  }
+
+
+def get_all_types_in_placeholder_expression(
+    placeholder: placeholder_pb2.PlaceholderExpression,
+) -> Set["placeholder_pb2.Placeholder.Type"]:
+  """Returns all Placeholder.Type contained in a PlaceholderExpression."""
+  if placeholder.HasField("placeholder"):
+    return {placeholder.placeholder.type}
+
+  if placeholder.HasField("value"):
+    return set()
+
+  if placeholder.HasField("operator"):
+    operator_name = placeholder.operator.WhichOneof("operator_type")
+    operator_pb = getattr(placeholder.operator, operator_name)
+
+    # Unary operators.
+    if operator_name in get_unary_operator_names():
+      return get_all_types_in_placeholder_expression(operator_pb.expression)
+
+    # Binary operators.
+    if operator_name in get_binary_operator_names():
+      return get_all_types_in_placeholder_expression(
+          operator_pb.lhs
+      ) | get_all_types_in_placeholder_expression(operator_pb.rhs)
+
+    # N-ary operators.
+    if operator_name in get_nary_operator_names():
+      types = set()
+      for expression in operator_pb.expressions:
+        types |= get_all_types_in_placeholder_expression(expression)
+      return types
+
+  raise ValueError(f"Unrecognized placeholder expression: {placeholder}")
