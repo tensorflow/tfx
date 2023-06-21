@@ -16,14 +16,13 @@
 import copy
 from unittest import mock
 
-
 from absl import logging
 import tensorflow as tf
 from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types import system_artifacts
-from tfx.types.value_artifact import ValueArtifact
+from tfx.types import value_artifact
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -143,7 +142,7 @@ class ArtifactUtilsTest(tf.test.TestCase):
             system_artifacts.Dataset).__name__)
     artifact_instance = artifact_class()
     self.assertIsInstance(artifact_instance, standard_artifacts.String)
-    self.assertIsInstance(artifact_instance, ValueArtifact)
+    self.assertIsInstance(artifact_instance, value_artifact.ValueArtifact)
 
   @mock.patch.object(logging, 'warning', autospec=True)
   def testArtifactTypeRoundTripUnknownArtifactClass(self, mock_warning):

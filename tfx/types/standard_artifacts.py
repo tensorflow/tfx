@@ -21,16 +21,23 @@ Note: the artifact definitions here are expected to change.
 
 import decimal
 import math
+from typing import Sequence
 
 from absl import logging
-from tfx.types.artifact import Artifact
-from tfx.types.artifact import Property
-from tfx.types.artifact import PropertyType
-from tfx.types.system_artifacts import Dataset
-from tfx.types.system_artifacts import Model as SystemModel
-from tfx.types.system_artifacts import Statistics
-from tfx.types.value_artifact import ValueArtifact
+from tfx.types import artifact
+from tfx.types import standard_artifact_utils
+from tfx.types import system_artifacts
+from tfx.types import value_artifact
 from tfx.utils import json_utils
+from tfx.utils import pure_typing_utils
+
+Artifact = artifact.Artifact
+Property = artifact.Property
+PropertyType = artifact.PropertyType
+Dataset = system_artifacts.Dataset
+SystemModel = system_artifacts.Model
+Statistics = system_artifacts.Statistics
+ValueArtifact = value_artifact.ValueArtifact
 
 SPAN_PROPERTY = Property(type=PropertyType.INT)
 VERSION_PROPERTY = Property(type=PropertyType.INT)
@@ -87,8 +94,7 @@ class Examples(_TfxArtifact):
   * Properties:
      - `span`: Integer to distinguish group of Examples.
      - `version`: Integer to represent updated data.
-     - `split_names`: JSON string of the list of split names. For example,
-        '["train", "test"]'. Empty string means artifact has no split.
+     - `splits`: A list of split names. For example, ["train", "test"].
 
   * File structure:
      - `{uri}/`
@@ -112,22 +118,74 @@ class Examples(_TfxArtifact):
       'split_names': SPLIT_NAMES_PROPERTY,
   }
 
+  @property
+  def splits(self) -> Sequence[str]:
+    return standard_artifact_utils.decode_split_names(self.split_names)
 
-class ExampleAnomalies(_TfxArtifact):
+  @splits.setter
+  def splits(self, splits: Sequence[str]) -> None:
+    if not pure_typing_utils.is_compatible(splits, Sequence[str]):
+      raise TypeError(f'splits should be Sequence[str] but got {splits}')
+    self.split_names = standard_artifact_utils.encode_split_names(list(splits))
+
+  def path(self, *, split: str) -> str:
+    """Path to the artifact URI's split subdirectory.
+
+    This method DOES NOT create a directory path it returns; caller must make
+    a directory of the returned path value before writing.
+
+    Args:
+      split: A name of the split, e.g. `"train"`, `"validation"`, `"test"`.
+
+    Raises:
+      ValueError: if the `split` is not in the `self.splits`.
+
+    Returns:
+      A path to `{self.uri}/Split-{split}`.
+    """
+    if split not in self.splits:
+      raise ValueError(
+          f'Split {split} not found in {self.splits=}. Did you forget to update'
+          ' Examples.splits first?'
+      )
+    return standard_artifact_utils.get_split_uris([self], split)[0]
+
+
+class ExampleAnomalies(_TfxArtifact):  # pylint: disable=missing-class-docstring
   TYPE_NAME = 'ExampleAnomalies'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
   }
 
+  @property
+  def splits(self) -> Sequence[str]:
+    return standard_artifact_utils.decode_split_names(self.split_names)
 
-class ExampleStatistics(_TfxArtifact):
+  @splits.setter
+  def splits(self, splits: Sequence[str]) -> None:
+    if not pure_typing_utils.is_compatible(splits, Sequence[str]):
+      raise TypeError(f'splits should be Sequence[str] but got {splits}')
+    self.split_names = standard_artifact_utils.encode_split_names(list(splits))
+
+
+class ExampleStatistics(_TfxArtifact):  # pylint: disable=missing-class-docstring
   TYPE_NAME = 'ExampleStatistics'
   TYPE_ANNOTATION = Statistics
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
   }
+
+  @property
+  def splits(self) -> Sequence[str]:
+    return standard_artifact_utils.decode_split_names(self.split_names)
+
+  @splits.setter
+  def splits(self, splits: Sequence[str]) -> None:
+    if not pure_typing_utils.is_compatible(splits, Sequence[str]):
+      raise TypeError(f'splits should be Sequence[str] but got {splits}')
+    self.split_names = standard_artifact_utils.encode_split_names(list(splits))
 
 
 class ExamplesDiff(_TfxArtifact):

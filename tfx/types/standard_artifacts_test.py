@@ -166,6 +166,43 @@ class StandardArtifactsTest(tf.test.TestCase):
     self.assertTrue(math.isinf(decoded_negative_infinity))
     self.assertTrue(math.isnan(decoded_nan))
 
+  def testExamples(self):
+    with self.subTest('Initial state'):
+      examples = standard_artifacts.Examples()
+      self.assertEqual(examples.split_names, '')
+      self.assertEmpty(examples.splits)
+
+    with self.subTest('Empty splits'):
+      examples = standard_artifacts.Examples()
+      examples.splits = []
+      self.assertEqual(examples.split_names, '[]')
+      self.assertEmpty(examples.splits)
+
+    with self.subTest('Single split'):
+      examples = standard_artifacts.Examples()
+      examples.splits = ['train']
+      self.assertEqual(examples.split_names, '["train"]')
+
+    with self.subTest('Multiple splits'):
+      examples = standard_artifacts.Examples()
+      examples.splits = ['train', 'validation', 'test']
+      self.assertEqual(examples.split_names, '["train", "validation", "test"]')
+
+    with self.subTest('Invalid splits'):
+      examples = standard_artifacts.Examples()
+      with self.assertRaises(ValueError):
+        examples.splits = ['train', '_validation']  # Should not start with _.
+      with self.assertRaises(TypeError):
+        examples.splits = '["train", "validation"]'  # Should be Sequence[str]
+
+    with self.subTest('Split path'):
+      examples = standard_artifacts.Examples()
+      examples.uri = '/test'
+      examples.splits = ['train']
+      self.assertEqual(examples.path(split='train'), '/test/Split-train')
+      with self.assertRaises(ValueError):
+        examples.path(split='non-existing')
+
 
 if __name__ == '__main__':
   tf.test.main()
