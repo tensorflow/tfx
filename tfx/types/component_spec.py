@@ -199,9 +199,9 @@ class ComponentSpec(json_utils.Jsonable):
     self.exec_properties = {}
 
     # First, check that the arguments are set.
-    for arg_name, arg in itertools.chain(self.PARAMETERS.items(),
-                                         self.INPUTS.items(),
-                                         self.OUTPUTS.items()):
+    for arg_name, arg in itertools.chain(
+        self.PARAMETERS.items(), self.INPUTS.items()
+    ):
       if arg_name not in unparsed_args:
         if arg.optional:
           continue
@@ -215,6 +215,20 @@ class ComponentSpec(json_utils.Jsonable):
       if arg.optional and value is None:
         continue
       arg.type_check(arg_name, value)
+
+    # Output channels may not present in raw_args, and we create `OutputChannel`
+    # for missing output keys on `bind_node()`.
+    for arg_name, channel_param in self.OUTPUTS.items():
+      if arg_name in raw_args:
+        unparsed_args.remove(arg_name)
+        channel_param.type_check(arg_name, raw_args[arg_name])
+
+    if unparsed_args:
+      raise TypeError(
+          f'{self.__class__.__qualname__} got unexpected keyword arguments:'
+          f' {list(unparsed_args)}. Valid argument names:'
+          f' {list(itertools.chain(self.INPUTS, self.OUTPUTS, self.PARAMETERS))}'
+      )
 
     # Populate the appropriate dictionary for each parameter type.
     for arg_name, arg in self.PARAMETERS.items():
@@ -240,16 +254,35 @@ class ComponentSpec(json_utils.Jsonable):
 
       self.exec_properties[arg_name] = value
 
-    for arg_dict, param_dict in ((self.INPUTS, inputs), (self.OUTPUTS,
-                                                         outputs)):
-      for arg_name, arg in arg_dict.items():
-        if arg.optional and not raw_args.get(arg_name):
-          continue
-        value = raw_args[arg_name]
-        param_dict[arg_name] = value
+    for arg_name, arg in self.INPUTS.items():
+      if arg.optional and not raw_args.get(arg_name):
+        continue
+      inputs[arg_name] = raw_args[arg_name]
+
+    # Output channels may not present in raw_args, and we create `OutputChannel`
+    # for missing output keys on `bind_node()`.
+    for arg_name in self.OUTPUTS:
+      if arg_name in raw_args:
+        outputs[arg_name] = raw_args[arg_name]
 
     self.inputs = inputs
-    self.outputs = outputs
+    self._outputs = outputs
+
+  # Return type is a `Dict` instead of `Mapping` for backward compatibility.
+  @property
+  def outputs(self) -> Dict[str, channel.OutputChannel]:
+    required_output_keys = {
+        k
+        for k, channel_param in self.OUTPUTS.items()
+        if not channel_param.optional
+    }
+    if set(self._outputs) < required_output_keys or any(
+        not isinstance(x, channel.OutputChannel) for x in self._outputs.values()
+    ):
+      raise RuntimeError(
+          'Cannot get `spec.outputs` before calling `spec.bind_node()`'
+      )
+    return self._outputs
 
   @classmethod
   def is_optional_input(cls, key: str) -> bool:
@@ -285,10 +318,21 @@ class ComponentSpec(json_utils.Jsonable):
         'exec_properties': self.exec_properties,
     }
 
-  def migrate_output_channels(self, producer_component: _BaseNode):
-    for key, channel_ in list(self.outputs.items()):
-      if not isinstance(channel_, channel.OutputChannel):
-        self.outputs[key] = channel_.as_output_channel(producer_component, key)
+  # `BaseNode` instance is needed to create an `OutputChannel` for
+  # `ComponentSpec.outputs`. Ideally the node could be passed as the `__init__`
+  # argument, but due to backward compatibility we pass it lazily from
+  # `BaseComponent.__init__`.
+  def bind_node(self, node: _BaseNode):
+    for key, channel_param in self.OUTPUTS.items():
+      if key in self._outputs:
+        if not isinstance(self._outputs[key], channel.OutputChannel):
+          self._outputs[key] = self._outputs[key].as_output_channel(node, key)
+      elif not channel_param.optional:
+        self._outputs[key] = channel.OutputChannel(
+            artifact_type=channel_param.type,
+            producer_component=node,
+            output_key=key,
+        )
 
 
 class ExecutionParameter:

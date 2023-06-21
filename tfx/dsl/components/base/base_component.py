@@ -96,10 +96,10 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
                        f'not copyable.') from e
 
     driver_class = self.__class__.DRIVER_CLASS
+    spec.bind_node(self)
     # Set self.spec before super.__init__() where node registration happens.
     # This enable node input checking on node context registration.
     self._validate_spec(spec)
-    spec.migrate_output_channels(self)
     self.spec = spec
     super().__init__(
         executor_spec=executor_spec_obj,
