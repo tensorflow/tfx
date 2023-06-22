@@ -592,6 +592,7 @@ class VertexPredictionClient(AbstractPredictionClient):
               'Deleting model {} from AI Platform failed.'.format(
                   model_version_name)) from e
 
+  # pytype: disable=bad-return-type
   def _get_endpoint(
       self, ai_platform_serving_args: Dict[str, Any]) -> aiplatform.Endpoint:
     """Gets an endpoint from Google Cloud AI Platform if endpoint exists.
@@ -619,6 +620,7 @@ class VertexPredictionClient(AbstractPredictionClient):
       raise RuntimeError('Error getting endpoint {}'.format(endpoint_name))
 
     return endpoint
+  # pytype: enable=bad-return-type
 
 
 def get_prediction_client(
