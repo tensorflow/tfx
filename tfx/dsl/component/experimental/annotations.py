@@ -19,7 +19,7 @@ Experimental. No backwards compatibility guarantees.
 import inspect
 import sys
 
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Type, Union, get_args, get_origin
 
 from tfx.dsl.component.experimental import json_compat
 from tfx.types import artifact

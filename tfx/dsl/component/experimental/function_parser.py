@@ -55,10 +55,10 @@ _OPTIONAL_PRIMITIVE_MAP = dict((Optional[t], t) for t in _PRIMITIVE_TO_ARTIFACT)
 def _get_return_type_annotations(typehints: Dict[str, Any]) -> Optional[Dict]:
   """Returns annotations of expected return types."""
   return_annotations = typehints.get('return')
-  if hasattr(return_annotations, "__annotations__"):
+  if hasattr(return_annotations, '__annotations__'):
     return return_annotations.__annotations__
-  elif isinstance(return_annotations, annotations.OutputDict):
-    return return_annotations.kwargs
+  elif isinstance(return_annotations, Dict):
+    return return_annotations
   else:
     return None
 
