@@ -57,8 +57,8 @@ def _get_return_type_annotations(typehints: Dict[str, Any]) -> Optional[Dict]:
   return_annotations = typehints.get('return')
   if hasattr(return_annotations, "__annotations__"):
     return return_annotations.__annotations__
-  elif isinstance(return_annotations, Dict):
-    return return_annotations
+  elif isinstance(return_annotations, annotations.OutputDict):
+    return return_annotations.kwargs
   else:
     return None
 

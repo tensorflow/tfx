@@ -103,8 +103,9 @@ def _injector_1(
 
 @component
 def _injector_1_with_typed_dict(
-        foo: Parameter[int], bar: Parameter[str]) -> TypedDict(
-            "InjectorOutput", a=int, b=int, c=str, d=bytes):
+  foo: Parameter[int], bar: Parameter[str]) -> TypedDict(
+    "InjectorOutput",
+    {'a': int, 'b': int, 'c': str, 'd': bytes}):
   assert foo == 9
   assert bar == 'secret'
   return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
