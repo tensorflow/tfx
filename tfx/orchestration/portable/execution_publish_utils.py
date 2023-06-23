@@ -33,7 +33,7 @@ _RESOLVED_AT_RUNTIME = outputs_utils.RESOLVED_AT_RUNTIME
 def publish_cached_executions(
     metadata_handler: metadata.Metadata,
     contexts: Sequence[metadata_store_pb2.Context],
-    execution_ids: Sequence[int],
+    executions: Sequence[metadata_store_pb2.Execution],
     output_artifacts_maps: Optional[
         Sequence[typing_utils.ArtifactMultiMap]
     ] = None,
@@ -43,11 +43,10 @@ def publish_cached_executions(
   Args:
     metadata_handler: A handler to access MLMD.
     contexts: MLMD contexts to associated with the execution.
-    execution_ids: The ids of the executions.
+    executions: Executions that will be published as CACHED executions.
     output_artifacts_maps: A list of output artifacts of the executions. Each
       artifact will be linked with the execution through an event of type OUTPUT
   """
-  executions = metadata_handler.store.get_executions_by_id(execution_ids)
   for execution in executions:
     execution.last_known_state = metadata_store_pb2.Execution.CACHED
 

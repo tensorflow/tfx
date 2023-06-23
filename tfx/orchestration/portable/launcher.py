@@ -387,7 +387,7 @@ class Launcher:
           execution_publish_utils.publish_cached_executions(
               metadata_handler=m,
               contexts=contexts,
-              execution_ids=[execution.id],
+              executions=[execution],
               output_artifacts_maps=[cached_outputs],
           )
           logging.info('A cached execution %d is used.', execution.id)

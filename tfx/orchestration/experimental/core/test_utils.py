@@ -172,7 +172,7 @@ def fake_cached_execution(mlmd_connection, cache_context, component):
     execution_publish_utils.publish_cached_executions(
         m,
         contexts=contexts,
-        execution_ids=[execution.id],
+        executions=[execution],
         output_artifacts_maps=[cached_outputs],
     )
 
@@ -195,7 +195,7 @@ def fake_cached_example_gen_run(mlmd_connection: metadata.Metadata,
     execution_publish_utils.publish_cached_executions(
         m,
         contexts=contexts,
-        execution_ids=[execution.id],
+        executions=[execution],
         output_artifacts_maps=[cached_outputs],
     )
 

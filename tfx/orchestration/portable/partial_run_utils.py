@@ -714,9 +714,9 @@ class _ArtifactRecycler:
             self._mlmd, contexts=cached_execution_contexts))
 
     if not prev_cache_executions:
-      prepare_new_executions = []
+      new_executions = []
       for e in existing_executions:
-        prepare_new_executions.append(
+        new_executions.append(
             execution_lib.prepare_execution(
                 metadata_handler=self._mlmd,
                 execution_type=metadata_store_pb2.ExecutionType(id=e.type_id),
@@ -724,10 +724,6 @@ class _ArtifactRecycler:
                 execution_name=str(uuid.uuid4()),
             )
         )
-
-      new_executions = execution_lib.put_executions(
-          self._mlmd, prepare_new_executions, cached_execution_contexts
-      )
     else:
       new_executions = [
           e
@@ -743,7 +739,6 @@ class _ArtifactRecycler:
           ' existing executions.'
       )
 
-    new_execution_ids = [execution.id for execution in new_executions]
     output_artifacts_maps = [
         execution_lib.get_output_artifacts(self._mlmd, e.id)
         for e in existing_executions
@@ -751,7 +746,7 @@ class _ArtifactRecycler:
     execution_publish_utils.publish_cached_executions(
         self._mlmd,
         contexts=cached_execution_contexts,
-        execution_ids=new_execution_ids,
+        executions=new_executions,
         output_artifacts_maps=output_artifacts_maps,
     )
 
