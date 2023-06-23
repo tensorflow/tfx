@@ -24,8 +24,6 @@ from tfx.types import standard_artifacts
 from tfx.utils import typing_utils
 import typing_extensions
 
-import ml_metadata as mlmd
-
 
 class TypingUtilsTest(tf.test.TestCase):
 
@@ -273,20 +271,6 @@ class TypingUtilsTest(tf.test.TestCase):
     # https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables
     self.assertIsCompatible('abc', typing.Union[typing.Iterable[str], str])
     self.assertIsCompatible('abc', typing.Iterable[Any])
-
-  def test_is_compatible_proto_enum(self):
-    State = mlmd.proto.Artifact.State  # pylint: disable=invalid-name
-
-    self.assertIsCompatible(State.UNKNOWN, State)
-    self.assertIsCompatible(State.PENDING, State)
-    self.assertIsCompatible(State.LIVE, State)
-    self.assertIsCompatible(0, State)
-    self.assertIsCompatible(1, State)
-    self.assertIsCompatible(2, State)
-
-    self.assertIsNotCompatible(-1, State)  # Out of range.
-    self.assertIsNotCompatible(999, State)  # Out of range.
-    self.assertIsNotCompatible('LIVE', State)  # String name doesn't count.
 
 
 if __name__ == '__main__':

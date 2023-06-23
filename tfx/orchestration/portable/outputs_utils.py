@@ -46,6 +46,7 @@ _VALUE_ARTIFACT_FILE_NAME = 'value'
 # LINT.IfChange
 RESOLVED_AT_RUNTIME = '{resolved_at_runtime}'
 # LINT.ThenChange(<Internal source code>)
+_ORCHESTRATOR_GENERATED_BCL_DIR = 'orchestrator_generated_bcl'
 
 
 def make_output_dirs(
@@ -400,3 +401,28 @@ def populate_exec_properties(
           'supported, going to drop it', type(value), key)
       continue
     executor_output.execution_properties[key].CopyFrom(v)
+
+
+def get_orchestrator_generated_bcl_dir(node_dir: str) -> str:
+  """Generates a root directory to hold orchestrator generated BCLs for the given node.
+
+  Args:
+    node_dir: The root directory of the node.
+
+  Returns:
+    Path to orchestrator generated bcl root dir, which has the format
+    `<node_dir>/.system/orchestrator_generated_bcl`
+  """
+  orchestrator_generated_bcl_dir = os.path.join(
+      node_dir, _SYSTEM, _ORCHESTRATOR_GENERATED_BCL_DIR
+  )
+  if not fileio.exists(orchestrator_generated_bcl_dir):
+    try:
+      fileio.makedirs(orchestrator_generated_bcl_dir)
+    except Exception:  # pylint: disable=broad-except
+      logging.exception(
+          'Failed to make orchestrator generated bcl dir: %s',
+          orchestrator_generated_bcl_dir,
+      )
+      raise
+  return orchestrator_generated_bcl_dir
