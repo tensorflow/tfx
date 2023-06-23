@@ -25,6 +25,8 @@ from typing_extensions import (  # pylint: disable=g-multiple-import
     TypeGuard,  # New in python 3.10
 )
 
+from google.protobuf.internal import enum_type_wrapper
+
 _T = TypeVar('_T')
 _TTypedDict = TypeVar('_TTypedDict', bound=TypedDict)
 
@@ -76,6 +78,8 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
     return True
   if tp in (None, type(None)):
     return value is None
+  if isinstance(tp, enum_type_wrapper.EnumTypeWrapper):
+    return value in tp.values()
   if maybe_origin is not None:
     # Union[T]
     if maybe_origin is typing.Union:
