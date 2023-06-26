@@ -640,8 +640,7 @@ class _ArtifactRecycler:
 
   def _get_node_context(self, node_id: str) -> metadata_store_pb2.Context:
     node_context_name = compiler_utils.node_context_name(
-        self._pipeline_name, node_id
-    )
+        self._pipeline_name, node_id)
     node_context = self._node_context_by_name.get(node_context_name)
     if node_context is None:
       raise LookupError(f'node context {node_context_name} not found in MLMD.')
@@ -679,23 +678,44 @@ class _ArtifactRecycler:
     return execution_lib.sort_executions_newest_to_oldest(
         prev_successful_executions)
 
-  def _cache_and_publish(
+  def _get_cached_execution_contexts(
       self,
-      existing_executions: List[metadata_store_pb2.Execution],
-      node_id: str,
+      existing_execution: metadata_store_pb2.Execution,
+  ) -> List[metadata_store_pb2.Context]:
+    """Gets the list of Contexts to be associated with the new cached Execution.
+
+    Copies all the Contexts associated with the existing execution, except for
+    the pipeline run context, which is updated with new pipeline run id.
+
+    Args:
+      existing_execution: The existing execution to copy from.
+
+    Returns:
+      The list of Contexts to be associated with the new cached Execution.
+    """
+    result = []
+    # TODO(b/265353452) Remove this function, it is not necessary, we can use
+    # the cached node and pipeline contexts.
+    for context in self._mlmd.store.get_contexts_by_execution(
+        existing_execution.id):
+      if context.type_id == self._pipeline_run_type_id:
+        # Replace with new pipeline run context.
+        context = self._get_pipeline_run_context(
+            self._new_run_id, register_if_not_found=True)
+      result.append(context)
+    return result
+
+  def _cache_and_publish(
+      self, existing_executions: List[metadata_store_pb2.Execution]
   ):
     """Creates and publishes cache executions."""
     if not existing_executions:
       return
 
+    cached_execution_contexts = self._get_cached_execution_contexts(
+        existing_executions[-1]
+    )
     # Check if there are any previous attempts to cache and publish.
-    cached_execution_contexts = [
-        self._pipeline_context,
-        self._get_node_context(node_id),
-        self._get_pipeline_run_context(
-            self._new_run_id, register_if_not_found=True
-        ),
-    ]
     prev_cache_executions = (
         execution_lib.get_executions_associated_with_all_contexts(
             self._mlmd, contexts=cached_execution_contexts))
@@ -754,4 +774,4 @@ class _ArtifactRecycler:
   def reuse_node_outputs(self, node_id: str, base_run_id: str):
     """Makes the outputs of `node_id` available to new_pipeline_run_id."""
     previous_executions = self._get_successful_executions(node_id, base_run_id)
-    self._cache_and_publish(previous_executions, node_id)
+    self._cache_and_publish(previous_executions)
