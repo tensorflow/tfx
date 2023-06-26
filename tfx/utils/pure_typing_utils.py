@@ -16,7 +16,7 @@
 import collections.abc
 import inspect
 import typing
-from typing import Any, Iterable, Literal, Type, TypeVar, TypedDict
+from typing import Any, Iterable, Literal, Mapping, Type, TypeVar, TypedDict
 
 from typing_extensions import (  # pylint: disable=g-multiple-import
     Annotated,  # New in python 3.9
@@ -31,11 +31,22 @@ _T = TypeVar('_T')
 _TTypedDict = TypeVar('_TTypedDict', bound=TypedDict)
 
 
+# This is intentionally not public as it aims for the annotations resolver only
+# for `is_compatible`.
+def _get_annotations(value: Any) -> Mapping[str, Any]:
+  # In python 3.10+ we have `inspect.get_annotations` which is very similar to
+  # `typing.get_type_hints`, but does not perform stringized type evaluation and
+  # ignores annotation inheritance by default. (Check each code docstring for
+  # subtle behavior diff.) The intended behavior for is_compatible is more close
+  # to `typing.get_type_hints`, so we use this.
+  return typing.get_type_hints(value)
+
+
 def _get_typed_dict_required_keys(tp: TypedDict) -> Iterable[str]:
   if hasattr(tp, '__required_keys__'):
     return tp.__required_keys__
   if tp.__total__:
-    return tp.__annotations__.keys()
+    return _get_annotations(tp).keys()
   else:
     return []
 
@@ -48,8 +59,10 @@ def _is_typed_dict_compatible(
   return (
       isinstance(value, dict)
       and all(k in value for k in _get_typed_dict_required_keys(tp))
-      and all(k in tp.__annotations__ for k in value)
-      and all(is_compatible(v, tp.__annotations__[k]) for k, v in value.items())
+      and all(k in _get_annotations(tp) for k in value)
+      and all(
+          is_compatible(v, _get_annotations(tp)[k]) for k, v in value.items()
+      )
   )
   # pytype: enable=attribute-error
 
