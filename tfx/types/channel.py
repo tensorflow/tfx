@@ -642,7 +642,7 @@ class PipelineInputChannel(BaseChannel):
     self._pipeline = pipeline
 
   def get_data_dependent_node_ids(self) -> Set[str]:
-    return {self._pipeline.id}
+    return {self.pipeline.id}
 
 
 class ExternalPipelineChannel(BaseChannel):
