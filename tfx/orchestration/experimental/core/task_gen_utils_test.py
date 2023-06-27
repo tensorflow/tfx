@@ -674,6 +674,59 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         task_gen_utils.interpret_status_from_failed_execution(execution),
     )
 
+  def test_get_oldest_active_execution(self):
+    executions = [
+        metadata_store_pb2.Execution(
+            id=1,
+            create_time_since_epoch=1001,
+            last_known_state=metadata_store_pb2.Execution.COMPLETE,
+        ),
+        metadata_store_pb2.Execution(
+            id=2,
+            create_time_since_epoch=1002,
+            last_known_state=metadata_store_pb2.Execution.RUNNING,
+        ),
+        metadata_store_pb2.Execution(
+            id=3,
+            create_time_since_epoch=1003,
+            last_known_state=metadata_store_pb2.Execution.NEW,
+        ),
+    ]
+
+    oldest = task_gen_utils.get_oldest_active_execution(executions)
+    assert oldest is not None
+    self.assertEqual(
+        oldest.last_known_state, metadata_store_pb2.Execution.RUNNING
+    )
+    self.assertEqual(oldest.create_time_since_epoch, 1002)
+    self.assertEqual(oldest.id, 2)
+
+  def test_get_oldest_active_execution_no_executions(self):
+    oldest = task_gen_utils.get_oldest_active_execution([])
+    self.assertIsNone(oldest)
+
+  def test_get_oldest_active_execution_no_active_executions(self):
+    executions = [
+        metadata_store_pb2.Execution(
+            id=1,
+            create_time_since_epoch=1001,
+            last_known_state=metadata_store_pb2.Execution.COMPLETE,
+        ),
+        metadata_store_pb2.Execution(
+            id=2,
+            create_time_since_epoch=1002,
+            last_known_state=metadata_store_pb2.Execution.COMPLETE,
+        ),
+        metadata_store_pb2.Execution(
+            id=3,
+            create_time_since_epoch=1003,
+            last_known_state=metadata_store_pb2.Execution.FAILED,
+        ),
+    ]
+
+    oldest = task_gen_utils.get_oldest_active_execution(executions)
+    self.assertIsNone(oldest)
+
 
 if __name__ == '__main__':
   tf.test.main()
