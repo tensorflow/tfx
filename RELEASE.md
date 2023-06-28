@@ -19,6 +19,7 @@
 | -- | -- | -- | -- |
 | `pyarrow` | `>=10,<11` | `>=6,<7` | |
 | `apache-beam` | `>=2.40,<3` | `>=2.47,<3` | |
+| `tensorflow-hub` | Dependency was dropped | `>=0.9.0,<0.14` |
 
 ## Documentation Updates
 

@@ -100,7 +100,6 @@ def make_required_install_packages():
       # pylint: disable=line-too-long
       'tensorflow' + select_constraint('>=2.12.0,<2.13'),
       # pylint: enable=line-too-long
-      'tensorflow-hub>=0.9.0,<0.14',
       'tensorflow-data-validation' + select_constraint(
           default='>=1.13.0,<1.14.0',
           nightly='>=1.14.0.dev',
