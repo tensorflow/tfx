@@ -553,6 +553,17 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           pipeline_runtime_spec=self._pipeline_runtime_spec
       ).generate_output_artifacts(1)
 
+  def testGetOrchestratorGeneratedBclDir(self):
+    expected_bcl_dir = os.path.join(
+        self.tmp_dir, 'test_node/.system/orchestrator_generated_bcl'
+    )
+    self.assertFalse(fileio.exists(expected_bcl_dir))
+    actual_bcl_dir = outputs_utils.get_orchestrator_generated_bcl_dir(
+        self._pipeline_runtime_spec, _PIPELINE_NODE.node_info.id
+    )
+    self.assertEqual(actual_bcl_dir, expected_bcl_dir)
+    self.assertTrue(fileio.exists(actual_bcl_dir))
+
 
 if __name__ == '__main__':
   tf.test.main()
