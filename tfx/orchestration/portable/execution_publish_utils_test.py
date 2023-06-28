@@ -117,13 +117,13 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
   def testPublishCachedExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       contexts = self._generate_contexts(m)
-      execution = execution_publish_utils.register_execution(
-          m, self._execution_type, contexts)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts).id
       output_example = standard_artifacts.Examples()
       execution_publish_utils.publish_cached_executions(
           m,
           contexts,
-          [execution],
+          [execution_id],
           output_artifacts_maps=[{'examples': [output_example]}],
       )
       self.assertEqual(

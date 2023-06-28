@@ -117,7 +117,7 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
         execution_publish_utils.publish_cached_executions(
             metadata_handler=m,
             contexts=contexts,
-            executions=[execution],
+            execution_ids=[execution.id],
             output_artifacts_maps=[output_artifacts],
         )
 
