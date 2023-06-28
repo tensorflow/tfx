@@ -503,6 +503,9 @@ def _reuse_pipeline_run_artifacts(metadata_handler: metadata.Metadata,
       metadata_handler,
       pipeline_name=marked_pipeline.pipeline_info.id,
       new_run_id=validated_new_run_id)
+  if artifact_recycler.has_cached_executions():
+    return
+
   if not base_run_id:
     base_run_id = artifact_recycler.get_latest_pipeline_run_id()
     logging.info(
@@ -573,6 +576,15 @@ class _ArtifactRecycler:
           for run_ctx in self._mlmd.store.get_contexts_by_type(
               constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
       }
+
+    pipeline_run_context = self._get_pipeline_run_context(
+        self._new_run_id, register_if_not_found=True
+    )
+    self._prev_cached_executions = (
+        execution_lib.get_executions_associated_with_all_contexts(
+            self._mlmd, contexts=[pipeline_run_context]
+        )
+    )
 
   def _get_pipeline_context(self) -> metadata_store_pb2.Context:
     result = self._mlmd.store.get_context_by_type_and_name(
@@ -696,36 +708,16 @@ class _ArtifactRecycler:
             self._new_run_id, register_if_not_found=True
         ),
     ]
-    prev_cache_executions = (
-        execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd, contexts=cached_execution_contexts))
-
-    if not prev_cache_executions:
-      new_executions = []
-      for e in existing_executions:
-        new_executions.append(
-            execution_lib.prepare_execution(
-                metadata_handler=self._mlmd,
-                execution_type=metadata_store_pb2.ExecutionType(id=e.type_id),
-                state=metadata_store_pb2.Execution.RUNNING,
-                execution_name=str(uuid.uuid4()),
-            )
-        )
-    else:
-      new_executions = [
-          e
-          for e in prev_cache_executions
-          if e.last_known_state != metadata_store_pb2.Execution.CACHED
-      ]
-
-    if not new_executions:
-      return
-    if len(new_executions) != len(existing_executions):
-      raise RuntimeError(
-          'The number of new executions is not the same as the number of'
-          ' existing executions.'
+    new_executions = []
+    for e in existing_executions:
+      new_executions.append(
+          execution_lib.prepare_execution(
+              metadata_handler=self._mlmd,
+              execution_type=metadata_store_pb2.ExecutionType(id=e.type_id),
+              state=metadata_store_pb2.Execution.RUNNING,
+              execution_name=str(uuid.uuid4()),
+          )
       )
-
     output_artifacts_maps = [
         execution_lib.get_output_artifacts(self._mlmd, e.id)
         for e in existing_executions
@@ -755,3 +747,6 @@ class _ArtifactRecycler:
     """Makes the outputs of `node_id` available to new_pipeline_run_id."""
     previous_executions = self._get_successful_executions(node_id, base_run_id)
     self._cache_and_publish(previous_executions, node_id)
+
+  def has_cached_executions(self) -> bool:
+    return self._prev_cached_executions
