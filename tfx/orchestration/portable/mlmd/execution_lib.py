@@ -17,6 +17,7 @@ import collections
 import copy
 import itertools
 import re
+import time
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from absl import logging
@@ -28,6 +29,7 @@ from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import filter_query_builder as q
+from tfx.utils import telemetry_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import proto_utils
@@ -36,6 +38,7 @@ from tfx.utils import typing_utils
 from google.protobuf import json_format
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
+
 
 ArtifactState = types.artifact.ArtifactState
 
@@ -162,6 +165,7 @@ def prepare_execution(
   Returns:
     A metadata_store_pb2.Execution message.
   """
+  start_time = time.time()
   execution = metadata_store_pb2.Execution()
   execution.last_known_state = state
   execution.type_id = common_utils.register_type_if_not_exist(
@@ -181,14 +185,20 @@ def prepare_execution(
       # parsing in later stages.
       data_types_utils.set_metadata_value(
           execution.custom_properties[get_schema_key(k)],
-          proto_utils.proto_to_json(value.schema))
+          proto_utils.proto_to_json(value.schema),
+      )
 
-    if (execution_type.properties.get(k) ==
-        data_types_utils.get_metadata_value_type(v)):
+    if execution_type.properties.get(
+        k
+    ) == data_types_utils.get_metadata_value_type(v):
       execution.properties[k].CopyFrom(value.field_value)
     else:
       execution.custom_properties[k].CopyFrom(value.field_value)
   logging.debug('Prepared EXECUTION:\n %s', execution)
+
+  telemetry_utils.noop_telemetry(
+      module='execution_lib', method='prepare_execution', start_time=start_time
+  )
   return execution
 
 
@@ -213,6 +223,7 @@ def _create_artifact_and_event_pairs(
   Returns:
     A list of [Artifact, Event] tuples
   """
+  start_time = time.time()
   if not artifact_dict:
     return []
 
@@ -221,29 +232,40 @@ def _create_artifact_and_event_pairs(
   for key, artifact_list in artifact_dict.items():
     artifact_type = None
     for index, artifact in enumerate(artifact_list):
-      if (artifact.mlmd_artifact.HasField('id') and
-          artifact.id in artifact_event_map):
+      if (
+          artifact.mlmd_artifact.HasField('id')
+          and artifact.id in artifact_event_map
+      ):
         event_lib.add_event_path(
-            artifact_event_map[artifact.id][1], key=key, index=index)
+            artifact_event_map[artifact.id][1], key=key, index=index
+        )
       else:
         # TODO(b/153904840): If artifact id is present, skip putting the
         # artifact into the pair when MLMD API is ready.
         event = event_lib.generate_event(
-            event_type=event_type, key=key, index=index)
+            event_type=event_type, key=key, index=index
+        )
         # Reuses already registered type in the same list whenever possible as
         # the artifacts in the same list share the same artifact type.
         if artifact_type:
-          assert artifact_type.name == artifact.artifact_type.name, (
-              'Artifacts under the same key should share the same artifact '
-              'type.')
+          assert (
+              artifact_type.name == artifact.artifact_type.name
+          ), 'Artifacts under the same key should share the same artifact type.'
         artifact_type = common_utils.register_type_if_not_exist(
-            metadata_handler, artifact.artifact_type)
+            metadata_handler, artifact.artifact_type
+        )
         artifact.set_mlmd_artifact_type(artifact_type)
         if artifact.mlmd_artifact.HasField('id'):
           artifact_event_map[artifact.id] = (artifact.mlmd_artifact, event)
         else:
           result.append((artifact.mlmd_artifact, event))
   result.extend(list(artifact_event_map.values()))
+
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='_create_artifact_and_event_pairs',
+      start_time=start_time
+  )
   return result
 
 
@@ -281,6 +303,7 @@ def put_execution(
   Returns:
     An MLMD execution that is written to MLMD, with id pupulated.
   """
+  start_time = time.time()
   artifact_and_events = []
   if input_artifacts:
     artifact_and_events.extend(
@@ -309,6 +332,11 @@ def put_execution(
   for context, c_id in zip(contexts, contexts_ids):
     context.id = c_id
 
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='put_execution',
+      start_time=start_time
+  )
   return execution
 
 
@@ -346,6 +374,7 @@ def put_executions(
   Returns:
     A list of MLMD executions that are written to MLMD, with id pupulated.
   """
+  start_time = time.time()
   if input_artifacts_maps and len(executions) != len(input_artifacts_maps):
     raise ValueError(
         f'The number of executions {len(executions)} should be the same as '
@@ -391,6 +420,10 @@ def put_executions(
       artifact.id = artifact_id
     for context, context_id in zip(contexts, context_ids):
       context.id = context_id
+    telemetry_utils.noop_telemetry(
+        module='execution_lib', method='put_executions', start_time=start_time
+    )
+
     return executions
   except mlmd.errors.UnimplementedError:
     logging.warning(
@@ -407,16 +440,18 @@ def put_executions(
               contexts=contexts,
               input_artifacts=input_artifacts,
               output_artifacts=output_artifacts,
-              input_event_type=input_event_type,
-              output_event_type=output_event_type,
           )
       )
+
+    telemetry_utils.noop_telemetry(
+        module='execution_lib', method='put_executions', start_time=start_time
+    )
     return result
 
 
 def _artifact_maps_contain_same_uris(
-    left: typing_utils.ArtifactMultiMap,
-    right: typing_utils.ArtifactMultiMap) -> bool:
+    left: typing_utils.ArtifactMultiMap, right: typing_utils.ArtifactMultiMap
+) -> bool:
   """Returns true if the artifact maps contain exactly the same URIs."""
   if left.keys() != right.keys():
     return False
@@ -459,6 +494,7 @@ def register_pending_output_artifacts(
     was called once before for the same execution but with a different output
     artifact dict.
   """
+  start_time = time.time()
   [execution] = metadata_handle.store.get_executions_by_id([execution_id])
   if not is_execution_running(execution):
     raise ValueError('Cannot register output artifacts on inactive '
@@ -496,12 +532,19 @@ def register_pending_output_artifacts(
         execution,
         contexts,
         output_artifacts=output_artifacts,
-        output_event_type=metadata_store_pb2.Event.PENDING_OUTPUT)
+        output_event_type=metadata_store_pb2.Event.PENDING_OUTPUT
+    )
+
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='register_pending_output_artifacts',
+      start_time=start_time,
+  )
 
 
 def get_executions_associated_with_all_contexts(
     metadata_handler: metadata.Metadata,
-    contexts: Iterable[metadata_store_pb2.Context]
+    contexts: Iterable[metadata_store_pb2.Context],
 ) -> List[metadata_store_pb2.Execution]:
   """Returns executions that are associated with all given contexts.
 
@@ -512,6 +555,7 @@ def get_executions_associated_with_all_contexts(
   Returns:
     A list of executions associated with all given contexts.
   """
+  start_time = time.time()
   execution_query = q.And(
       [
           'contexts_%s.id = %s' % (i, context.id)
@@ -520,6 +564,11 @@ def get_executions_associated_with_all_contexts(
   )
   executions = metadata_handler.store.get_executions(
       list_options=execution_query.list_options()
+  )
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='get_executions_associated_with_all_contexts',
+      start_time=start_time
   )
   return executions
 
@@ -536,16 +585,23 @@ def get_artifact_ids_by_event_type_for_execution_id(
   Returns:
     A `dict` mapping event type to `set` of artifact ids.
   """
+  start_time = time.time()
   events = metadata_handler.store.get_events_by_execution_ids([execution_id])
   result = collections.defaultdict(set)
   for event in events:
     result[event.type].add(event.artifact_id)
+
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='get_artifact_ids_by_event_type_for_execution_id',
+      start_time=start_time,
+  )
   return result
 
 
 def get_input_artifacts(
-    metadata_handle: metadata.Metadata,
-    execution_id: int) -> typing_utils.ArtifactMultiDict:
+    metadata_handle: metadata.Metadata, execution_id: int
+) -> typing_utils.ArtifactMultiDict:
   """Gets input artifacts of the execution.
 
   Each execution is associated with a single input artifacts multimap, where the
@@ -560,16 +616,26 @@ def get_input_artifacts(
   Returns:
     A reconstructed input artifacts multimap.
   """
+  start_time = time.time()
   events = metadata_handle.store.get_events_by_execution_ids([execution_id])
   input_events = [e for e in events if event_lib.is_valid_input_event(e)]
   artifacts = artifact_lib.get_artifacts_by_ids(
-      metadata_handle, [e.artifact_id for e in input_events])
-  return event_lib.reconstruct_artifact_multimap(artifacts, input_events)
+      metadata_handle, [e.artifact_id for e in input_events]
+  )
+  artifact_map = event_lib.reconstruct_artifact_multimap(
+      artifacts, input_events
+  )
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='get_input_artifacts',
+      start_time=start_time
+  )
+  return artifact_map
 
 
 def get_output_artifacts(
-    metadata_handle: metadata.Metadata,
-    execution_id: int) -> typing_utils.ArtifactMultiDict:
+    metadata_handle: metadata.Metadata, execution_id: int
+) -> typing_utils.ArtifactMultiDict:
   """Gets output artifacts of the execution.
 
   Each execution is associated with a single output artifacts multimap, where
@@ -584,16 +650,26 @@ def get_output_artifacts(
   Returns:
     A reconstructed output artifacts multimap.
   """
+  start_time = time.time()
   events = metadata_handle.store.get_events_by_execution_ids([execution_id])
   output_events = [e for e in events if event_lib.is_valid_output_event(e)]
   artifacts = artifact_lib.get_artifacts_by_ids(
-      metadata_handle, [e.artifact_id for e in output_events])
-  return event_lib.reconstruct_artifact_multimap(artifacts, output_events)
+      metadata_handle, [e.artifact_id for e in output_events]
+  )
+  output_events = event_lib.reconstruct_artifact_multimap(
+      artifacts, output_events
+  )
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='get_output_artifacts',
+      start_time=start_time
+  )
+  return output_events
 
 
 def get_pending_output_artifacts(
-    metadata_handle: metadata.Metadata,
-    execution_id: int) -> typing_utils.ArtifactMultiDict:
+    metadata_handle: metadata.Metadata, execution_id: int
+) -> typing_utils.ArtifactMultiDict:
   """Gets pending output artifacts of the execution.
 
   Each execution is associated with a single pending output artifacts multimap,
@@ -608,18 +684,30 @@ def get_pending_output_artifacts(
   Returns:
     A reconstructed pending output artifacts multimap.
   """
+  start_time = time.time()
   events = metadata_handle.store.get_events_by_execution_ids([execution_id])
   pending_output_events = [
       e for e in events if e.type == metadata_store_pb2.Event.PENDING_OUTPUT
   ]
   artifacts = artifact_lib.get_artifacts_by_ids(
-      metadata_handle, [e.artifact_id for e in pending_output_events])
-  return event_lib.reconstruct_artifact_multimap(artifacts,
-                                                 pending_output_events)
+      metadata_handle, [e.artifact_id for e in pending_output_events]
+  )
+  artifact_map = event_lib.reconstruct_artifact_multimap(
+      artifacts, pending_output_events
+  )
+
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='get_pending_output_artifacts',
+      start_time=start_time
+  )
+  return artifact_map
 
 
-def set_execution_result(execution_result: execution_result_pb2.ExecutionResult,
-                         execution: metadata_store_pb2.Execution):
+def set_execution_result(
+    execution_result: execution_result_pb2.ExecutionResult,
+    execution: metadata_store_pb2.Execution,
+):
   """Sets execution result as a custom property of execution.
 
   Args:
@@ -627,6 +715,7 @@ def set_execution_result(execution_result: execution_result_pb2.ExecutionResult,
       executor.
     execution: The execution to set to.
   """
+  start_time = time.time()
   # TODO(b/161832842): Switch to PROTO value type to circumvent TypeError which
   # may be raised when converting embedded `Any` protos.
   try:
@@ -648,6 +737,11 @@ def set_execution_result(execution_result: execution_result_pb2.ExecutionResult,
           'Skipped setting execution_result as custom property of the '
           'execution due to error'
       )
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='set_execution_result',
+      start_time=start_time,
+  )
 
 
 def get_execution_result(
@@ -666,6 +760,7 @@ def get_execution_result(
   Returns:
     An `ExecutionResult` object if one exists.
   """
+  start_time = time.time()
   value = execution.custom_properties.get(_EXECUTION_RESULT)
   if not value:
     return None
@@ -680,4 +775,9 @@ def get_execution_result(
     if ignore_parse_errors:
       return None
     raise
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='get_execution_result',
+      start_time=start_time,
+  )
   return execution_result
