@@ -27,6 +27,7 @@ from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
+from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import proto_utils
@@ -511,14 +512,16 @@ def get_executions_associated_with_all_contexts(
   Returns:
     A list of executions associated with all given contexts.
   """
-  executions_dict = None
-  for context in contexts:
-    executions = metadata_handler.store.get_executions_by_context(context.id)
-    if executions_dict is None:
-      executions_dict = {e.id: e for e in executions}
-    else:
-      executions_dict = {e.id: e for e in executions if e.id in executions_dict}
-  return list(executions_dict.values()) if executions_dict else []
+  execution_query = q.And(
+      [
+          'contexts_%s.id = %s' % (i, context.id)
+          for i, context in enumerate(contexts)
+      ]
+  )
+  executions = metadata_handler.store.get_executions(
+      list_options=execution_query.list_options()
+  )
+  return executions
 
 
 def get_artifact_ids_by_event_type_for_execution_id(
