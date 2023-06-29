@@ -665,8 +665,9 @@ class _ArtifactRecycler:
     base_run_context = self._get_pipeline_run_context(run_id)
     all_associated_executions = (
         execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd,
-            contexts=[node_context, base_run_context, self._pipeline_context]))
+            self._mlmd, contexts=[node_context, base_run_context]
+        )
+    )
     prev_successful_executions = [
         e for e in all_associated_executions
         if execution_lib.is_execution_successful(e)
@@ -689,16 +690,20 @@ class _ArtifactRecycler:
       return
 
     # Check if there are any previous attempts to cache and publish.
+    node_context = self._get_node_context(node_id)
+    pipeline_run_context = self._get_pipeline_run_context(
+        self._new_run_id, register_if_not_found=True
+    )
     cached_execution_contexts = [
         self._pipeline_context,
-        self._get_node_context(node_id),
-        self._get_pipeline_run_context(
-            self._new_run_id, register_if_not_found=True
-        ),
+        node_context,
+        pipeline_run_context,
     ]
     prev_cache_executions = (
         execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd, contexts=cached_execution_contexts))
+            self._mlmd, contexts=[node_context, pipeline_run_context]
+        )
+    )
 
     if not prev_cache_executions:
       new_executions = []
