@@ -41,6 +41,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import json_utils
@@ -571,8 +572,9 @@ class PipelineState:
       than 1 active execution exists for given pipeline uid.
     """
     start_time = time.time()
-    context = _get_orchestrator_context(mlmd_handle, pipeline_uid.pipeline_id)
-    uids_and_states = cls._load_from_context(mlmd_handle, context, pipeline_uid)
+    uids_and_states = cls._load_orchestrator_executions(
+        mlmd_handle, pipeline_uid
+    )
     if not uids_and_states:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
@@ -606,20 +608,20 @@ class PipelineState:
       pipeline are found with the same pipeline uid.
     """
     start_time = time.time()
-    contexts = get_orchestrator_contexts(mlmd_handle)
     active_pipeline_uids = set()
     result = []
-    for context in contexts:
-      uids_and_states = cls._load_from_context(mlmd_handle, context)
-      for pipeline_uid, pipeline_state in uids_and_states:
-        if pipeline_uid in active_pipeline_uids:
-          raise status_lib.StatusNotOkError(
-              code=status_lib.Code.INTERNAL,
-              message=(
-                  f'Found more than 1 active pipeline for pipeline uid: {pipeline_uid}'
-              ))
-        active_pipeline_uids.add(pipeline_uid)
-        result.append(pipeline_state)
+    uids_and_states = cls._load_orchestrator_executions(mlmd_handle)
+    for pipeline_uid, pipeline_state in uids_and_states:
+      if pipeline_uid in active_pipeline_uids:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.INTERNAL,
+            message=(
+                'Found more than 1 active pipeline for pipeline uid:'
+                f' {pipeline_uid}'
+            ),
+        )
+      active_pipeline_uids.add(pipeline_uid)
+      result.append(pipeline_state)
 
     telemetry_utils.noop_telemetry(
         start_time=start_time,
@@ -628,40 +630,44 @@ class PipelineState:
     return result
 
   @classmethod
-  def _load_from_context(
+  def _load_orchestrator_executions(
       cls,
       mlmd_handle: metadata.Metadata,
-      context: metadata_store_pb2.Context,
-      matching_pipeline_uid: Optional[task_lib.PipelineUid] = None
+      matching_pipeline_uid: Optional[task_lib.PipelineUid] = None,
   ) -> List[Tuple[task_lib.PipelineUid, 'PipelineState']]:
     """Loads active pipeline states associated with given orchestrator context.
 
     Args:
       mlmd_handle: A handle to the MLMD db.
-      context: Orchestrator context.
       matching_pipeline_uid: If provided, returns only pipeline with matching
         pipeline_uid.
 
     Returns:
       List of active pipeline states.
     """
-    pipeline_id = pipeline_id_from_orchestrator_context(context)
-    active_executions = mlmd_handle.store.get_executions_by_context(
-        context.id,
-        list_options=mlmd.ListOptions(
-            filter_query='last_known_state = NEW OR last_known_state = RUNNING'
-        ),
+    execution_query = q.And([
+        f'type = "{_ORCHESTRATOR_RESERVED_ID}"',
+        q.Or([
+            'last_known_state = NEW',
+            'last_known_state = RUNNING',
+        ]),
+    ])
+    active_executions = mlmd_handle.store.get_executions(
+        list_options=execution_query.list_options()
     )
     assert all(execution_lib.is_execution_active(e) for e in active_executions)
+
     result = []
     for execution in active_executions:
+      pipeline = _get_pipeline_from_orchestrator_execution(execution)
       pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(
-          pipeline_id,
+          pipeline.pipeline_info.id,
           _get_metadata_value(
-              execution.custom_properties.get(_PIPELINE_RUN_ID)))
+              execution.custom_properties.get(_PIPELINE_RUN_ID)
+          ),
+      )
       if matching_pipeline_uid and pipeline_uid != matching_pipeline_uid:
         continue
-      pipeline = _get_pipeline_from_orchestrator_execution(execution)
       result.append(
           (pipeline_uid, PipelineState(mlmd_handle, pipeline, execution.id)))
     return result
