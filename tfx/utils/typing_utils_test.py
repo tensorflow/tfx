@@ -236,7 +236,7 @@ class TypingUtilsTest(tf.test.TestCase):
   def test_is_compatible_typed_dict_partial(self):
     class Partial(TypedDict):
       x: int
-      y: typing_extensions.NotRequired[int]  # pytype: disable=invalid-annotation
+      y: typing_extensions.NotRequired[int]  # type: ignore
 
     self.assertIsCompatible({'x': 1, 'y': 2}, Partial)
     if sys.version_info >= (3, 11, 0):
