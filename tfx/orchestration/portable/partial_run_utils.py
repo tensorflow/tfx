@@ -663,22 +663,31 @@ class _ArtifactRecycler:
     """
     node_context = self._get_node_context(node_id)
     base_run_context = self._get_pipeline_run_context(run_id)
-    all_associated_executions = (
+    new_run_context = self._get_pipeline_run_context(
+        self._new_run_id, register_if_not_found=True
+    )
+
+    # Check if there are any previous attempts to cache and publish.
+    prev_cache_executions = (
         execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd, contexts=[node_context, base_run_context]
+            self._mlmd, contexts=[node_context, new_run_context]
         )
     )
+    if prev_cache_executions:
+      return []
+
+    prev_executions = execution_lib.get_executions_associated_with_all_contexts(
+        self._mlmd, contexts=[node_context, base_run_context]
+    )
     prev_successful_executions = [
-        e for e in all_associated_executions
-        if execution_lib.is_execution_successful(e)
+        e for e in prev_executions if execution_lib.is_execution_successful(e)
     ]
     if not prev_successful_executions:
       raise LookupError(
           f'No previous successful executions found for node_id {node_id} in '
           f'pipeline_run {run_id}')
 
-    return execution_lib.sort_executions_newest_to_oldest(
-        prev_successful_executions)
+    return prev_successful_executions
 
   def _cache_and_publish(
       self,
@@ -689,7 +698,6 @@ class _ArtifactRecycler:
     if not existing_executions:
       return
 
-    # Check if there are any previous attempts to cache and publish.
     node_context = self._get_node_context(node_id)
     pipeline_run_context = self._get_pipeline_run_context(
         self._new_run_id, register_if_not_found=True
@@ -699,36 +707,16 @@ class _ArtifactRecycler:
         node_context,
         pipeline_run_context,
     ]
-    prev_cache_executions = (
-        execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd, contexts=[node_context, pipeline_run_context]
-        )
-    )
 
-    if not prev_cache_executions:
-      new_executions = []
-      for e in existing_executions:
-        new_executions.append(
-            execution_lib.prepare_execution(
-                metadata_handler=self._mlmd,
-                execution_type=metadata_store_pb2.ExecutionType(id=e.type_id),
-                state=metadata_store_pb2.Execution.RUNNING,
-                execution_name=str(uuid.uuid4()),
-            )
-        )
-    else:
-      new_executions = [
-          e
-          for e in prev_cache_executions
-          if e.last_known_state != metadata_store_pb2.Execution.CACHED
-      ]
-
-    if not new_executions:
-      return
-    if len(new_executions) != len(existing_executions):
-      raise RuntimeError(
-          'The number of new executions is not the same as the number of'
-          ' existing executions.'
+    new_executions = []
+    for e in existing_executions:
+      new_executions.append(
+          execution_lib.prepare_execution(
+              metadata_handler=self._mlmd,
+              execution_type=metadata_store_pb2.ExecutionType(id=e.type_id),
+              state=metadata_store_pb2.Execution.RUNNING,
+              execution_name=str(uuid.uuid4()),
+          )
       )
 
     output_artifacts_maps = [
