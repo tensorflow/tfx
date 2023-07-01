@@ -96,10 +96,13 @@ class ComponentSpec(json_utils.Jsonable):
     - PARAMETERS (as a dict of string keys and ExecutionParameter values),
     - INPUTS (as a dict of string keys and ChannelParameter values),
     - OUTPUTS (also a dict of string keys and ChannelParameter values) and
-    - TYPE_ANNOTATION (as a subclass of SystemExecution from
-    third_party/py/tfx/types/system_executions.py, can be None).
+    - TYPE_ANNOTATION (execution annotations from
+    tfx.v1.dsl.standard_annotations)
 
   Here is an example of how a ComponentSpec may be defined:
+
+  ```python
+  from tfx import v1 as tfx
 
   class MyCustomComponentSpec(ComponentSpec):
     PARAMETERS = {
@@ -111,7 +114,8 @@ class ComponentSpec(json_utils.Jsonable):
     OUTPUTS = {
         'output_examples': ChannelParameter(type=standard_artifacts.Examples),
     }
-    TYPE_ANNOTATION = system_executions.Train
+    TYPE_ANNOTATION = tfx.dsl.standard_annotations.Train
+  ```
 
   To create an instance of a subclass, call it directly with any execution
   parameters / inputs / outputs as kwargs.  For example:
@@ -125,8 +129,8 @@ class ComponentSpec(json_utils.Jsonable):
     PARAMETERS: a dict of string keys and ExecutionParameter values.
     INPUTS: a dict of string keys and ChannelParameter values.
     OUTPUTS: a dict of string keys and ChannelParameter values.
-    TYPE_ANNOTATION: a subclass of SystemExecution used to annotate the
-      component.
+    TYPE_ANNOTATION: an execution annotations from
+      tfx.v1.dsl.standard_annotations.
   """
 
   PARAMETERS: Mapping[str, 'ExecutionParameter']

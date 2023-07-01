@@ -107,20 +107,23 @@ class ValueArtifact(Artifact):
 
     Example usage:
 
-    from tfx.types.system_artifacts import Model
-    ...
-    tfx.Binary(
-      name=component_name,
-      mpm_or_target=...,
-      flags=...,
-      outputs={
-          'experiment_id': standard_artifacts.String.annotate_as(Model)
-      })
+    ```python
+    from tfx import v1 as tfx
+    OutputArtifact = tfx.dsl.components.OutputArtifact
+    String = tfx.types.standard_artifacts.String
+    Model = tfx.dsl.standard_annotations.Model
+
+    @tfx.dsl.components.component
+    def MyTrainer(
+        model: OutputArtifact[String.annotate_as(Model)]
+    ):
+      ...
+    ```
 
     Args:
-      type_annotation: the system artifact class used to annotate the value
-        artifact type. It is a subclass of SystemArtifact. The subclasses are
-        defined in third_party/py/tfx/types/system_artifacts.py.
+      type_annotation: the standard annotations used to annotate the value
+        artifact type. The possible values are in
+        `tfx.v1.dsl.standard_annotations`.
 
     Returns:
       A subclass of the method caller class (e.g., standard_artifacts.String,
