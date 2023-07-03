@@ -219,7 +219,7 @@ def make_extra_packages_examples():
       'tensorflow-text>=1.15.1,<3',
       # Required for tfx/examples/penguin/experimental
       # LINT.IfChange
-      'scikit-learn>=0.23,<0.24',
+      'scikit-learn>=1.0,<2',
       # LINT.ThenChange(
       #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
       # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py

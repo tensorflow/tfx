@@ -15,10 +15,6 @@
 ## Bug Fixes and Other Changes
 
 ## Dependency Updates
-| Package Name | Version Constraints | Previously (in `v1.13.0`) | Comments |
-| -- | -- | -- | -- |
-| `pyarrow` | `>=10,<11` | `>=6,<7` | |
-| `apache-beam` | `>=2.40,<3` | `>=2.47,<3` | |
 
 ## Documentation Updates
 
@@ -50,6 +46,9 @@
 | Package Name | Version Constraints | Previously (in `v1.13.0`) | Comments |
 | -- | -- | -- | -- |
 | `tensorflow-hub` | `>=0.9.0,<0.14` | `>=0.9.0,<0.13` | |
+| `pyarrow` | `>=10,<11` | `>=6,<7` | |
+| `apache-beam` | `>=2.40,<3` | `>=2.47,<3` | |
+| `scikit-learn` | `>=1.0,<2` | `>=0.23,<0.24` | |
 
 ## Documentation Updates
 
