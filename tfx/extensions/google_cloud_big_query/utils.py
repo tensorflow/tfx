@@ -55,7 +55,7 @@ def ReadFromBigQuery(  # pylint: disable=invalid-name
 
 def row_to_example(  # pylint: disable=invalid-name
     field_to_type: Dict[str, str],
-    field_name_to_data: Dict[str, Any]) -> tf.train.Example:
+    field_name_to_data: Dict[str, Any]) -> tf.train.SequenceExample:
   """Convert bigquery result row to tf example.
 
   Args:
@@ -96,7 +96,19 @@ def row_to_example(  # pylint: disable=invalid-name
           'BigQuery column "{}" has non-supported type {}.'.format(key,
                                                                    data_type))
 
-  return tf.train.Example(features=tf.train.Features(feature=feature))
+    sequence_features = {
+      k:v for k,v in feature.items() 
+      if isinstance(v, tf.train.FeatureList)
+    }
+    context_features = {
+      k:v for k,v in feature.items() 
+      if k not in sequence_features.keys()
+    }
+
+    return tf.train.SequenceExample(
+      context=tf.train.Features(feature=context_features), 
+      feature_lists=tf.train.FeatureLists(feature_list=sequence_features)
+    )
 
 
 def parse_gcp_project(beam_pipeline_args: List[str]) -> str:

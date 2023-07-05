@@ -26,7 +26,7 @@ from tfx.types import standard_component_specs
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(tf.train.Example)
+@beam.typehints.with_output_types(tf.train.SequenceExample)
 def _ParquetToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
     split_pattern: str) -> beam.pvalue.PCollection:

@@ -103,7 +103,7 @@ def pyval_to_feature(pyval: List[Any]) -> feature_pb2.Feature:
   )
 
 
-def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
+def dict_to_example(instance: Dict[str, Any]) -> example_pb2.SequenceExample:
   """Converts dict to tf example."""
   feature = {}
   for key, value in instance.items():
@@ -128,8 +128,21 @@ def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
       feature[key] = pyval_to_feature(pyval)
     else:
       raise RuntimeError(f'Value type {type(value[0])} is not supported.')
+    
+  sequence_features = {
+    k:v for k,v in feature.items() 
+    if isinstance(v, feature_pb2.FeatureList)
+  }
 
-  return example_pb2.Example(features=feature_pb2.Features(feature=feature))
+  context_features = {
+    k:v for k,v in feature.items() 
+    if k not in sequence_features.keys()
+  }
+
+  return example_pb2.SequenceExample(
+    context=feature_pb2.Features(feature=context_features), 
+    feature_lists=feature_pb2.FeatureLists(feature_list=sequence_features)
+  )
 
 
 def generate_output_split_names(

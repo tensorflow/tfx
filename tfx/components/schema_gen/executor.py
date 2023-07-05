@@ -26,6 +26,11 @@ from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 
+from tfx_bsl.tfxio.tensor_representaiton_util import (
+  InferTensorRepresentationsFromSchema, 
+  SetTensorRepresentationsInSchema
+)
+
 
 # Default file name for generated schema file.
 DEFAULT_FILE_NAME = 'schema.pbtxt'
@@ -89,5 +94,10 @@ class Executor(base_executor.BaseExecutor):
         artifact_utils.get_single_uri(
             output_dict[standard_component_specs.SCHEMA_KEY]),
         DEFAULT_FILE_NAME)
+    
+    # Add tensor representations to handle SequenceExamples downstream.
+    tensor_representations = InferTensorRepresentationsFromSchema(schema)
+    SetTensorRepresentationsInSchema(schema, tensor_representations)
+
     io_utils.write_pbtxt_file(output_uri, schema)
     logging.info('Schema written to %s.', output_uri)

@@ -49,7 +49,7 @@ def _bytes_handler(cell: csv_decoder.CSVCell) -> tf.train.Feature:
 
 @beam.typehints.with_input_types(List[csv_decoder.CSVCell],
                                  List[csv_decoder.ColumnInfo])
-@beam.typehints.with_output_types(tf.train.Example)
+@beam.typehints.with_output_types(tf.train.SequenceExample)
 class _ParsedCsvToTfExample(beam.DoFn):
   """A beam.DoFn to convert a parsed CSV line to a tf.Example."""
 
@@ -89,8 +89,21 @@ class _ParsedCsvToTfExample(beam.DoFn):
                                                    self._column_handlers):
       feature[column_name] = (
           handler_fn(csv_cell) if handler_fn else tf.train.Feature())
+      
+    sequence_features = {
+      k:v for k,v in feature.items() 
+      if isinstance(v, tf.train.FeatureList)
+    }
 
-    yield tf.train.Example(features=tf.train.Features(feature=feature))
+    context_features = {
+      k:v for k,v in feature.items() 
+      if k not in sequence_features.keys()
+    }
+
+    yield tf.train.SequenceExample(
+      context=tf.train.Features(feature=context_features), 
+      feature_lists=tf.train.FeatureLists(feature_list=sequence_features)
+    )
 
 
 class _CsvLineBuffer:

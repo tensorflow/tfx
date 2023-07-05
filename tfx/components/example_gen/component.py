@@ -159,7 +159,7 @@ class FileBasedExampleGen(base_beam_component.BaseBeamComponent):
                                     data_types.RuntimeParameter]] = None,
       range_config: Optional[Union[range_config_pb2.RangeConfig,
                                    data_types.RuntimeParameter]] = None,
-      output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
+      output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_SEQUENCE_EXAMPLE,
       output_file_format: Optional[int] = example_gen_pb2.FORMAT_TFRECORDS_GZIP,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a FileBasedExampleGen component.

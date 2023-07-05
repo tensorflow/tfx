@@ -48,7 +48,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
                                     data_types.RuntimeParameter]] = None,
       range_config: Optional[Union[range_config_pb2.RangeConfig,
                                    data_types.RuntimeParameter]] = None,
-      payload_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE):
+      payload_format: Optional[int] = example_gen_pb2.FORMAT_TF_SEQUENCE_EXAMPLE):
     """Construct an ImportExampleGen component.
 
     Args:
