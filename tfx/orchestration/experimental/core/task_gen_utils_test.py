@@ -818,7 +818,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         task_gen_utils.interpret_status_from_failed_execution(execution),
     )
 
-  def test_get_oldest_active_execution(self):
+  def test_get_oldest_active_execution_without_external_execution_index(self):
     executions = [
         metadata_store_pb2.Execution(
             id=1,
@@ -844,6 +844,62 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     )
     self.assertEqual(oldest.create_time_since_epoch, 1002)
     self.assertEqual(oldest.id, 2)
+
+  def test_get_oldest_active_execution_with_external_execution_index(self):
+    executions = [
+        metadata_store_pb2.Execution(
+            id=1,
+            create_time_since_epoch=1001,
+            last_known_state=metadata_store_pb2.Execution.COMPLETE,
+            custom_properties={
+                '__external_execution_index__': metadata_store_pb2.Value(
+                    int_value=0,
+                )
+            },
+        ),
+        metadata_store_pb2.Execution(
+            id=2,
+            create_time_since_epoch=1002,
+            last_known_state=metadata_store_pb2.Execution.RUNNING,
+            custom_properties={
+                '__external_execution_index__': metadata_store_pb2.Value(
+                    int_value=0,
+                )
+            },
+        ),
+        metadata_store_pb2.Execution(
+            id=3,
+            create_time_since_epoch=1002,
+            last_known_state=metadata_store_pb2.Execution.RUNNING,
+            custom_properties={
+                '__external_execution_index__': metadata_store_pb2.Value(
+                    int_value=1,
+                )
+            },
+        ),
+        metadata_store_pb2.Execution(
+            id=4,
+            create_time_since_epoch=1003,
+            last_known_state=metadata_store_pb2.Execution.NEW,
+            custom_properties={
+                '__external_execution_index__': metadata_store_pb2.Value(
+                    int_value=0,
+                )
+            },
+        ),
+    ]
+
+    oldest = task_gen_utils.get_oldest_active_execution(executions)
+    self.assertIsNotNone(oldest)
+    self.assertEqual(
+        oldest.last_known_state, metadata_store_pb2.Execution.RUNNING
+    )
+    self.assertEqual(oldest.create_time_since_epoch, 1002)
+    self.assertEqual(oldest.id, 2)
+    self.assertEqual(
+        oldest.custom_properties['__external_execution_index__'].int_value,
+        0,
+    )
 
   def test_get_oldest_active_execution_no_executions(self):
     oldest = task_gen_utils.get_oldest_active_execution([])
