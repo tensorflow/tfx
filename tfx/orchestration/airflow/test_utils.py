@@ -49,6 +49,7 @@ def create_mysql_container(container_name: str) -> int:
       detach=True)
   container.reload()  # required to get auto-assigned ports
   port = int(container.ports[_MYSQL_PORT][0]['HostPort'])
+  logging.info('port: %s', str(port))
 
   for _ in range(_MYSQL_POLLING_MAX_ATTEMPTS):
     logging.info('Waiting for mysqld container...')
@@ -69,14 +70,32 @@ def create_mysql_container(container_name: str) -> int:
             'SELECT 1;',
         ],
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
+    logging.info('stdout: %s', check_available.stdout)
+    logging.info('stderr: %s', check_available.stderr)
     if check_available.returncode == 0:
       break
   else:
     logging.error('Logs from mysql container:\n%s', container.logs())
+    container = client.containers.run(
+        'mysql:5.7',
+        name=container_name,
+        command="SHOW VARIABLES LIKE 'skip_networking'",
+    )
+    logging.error('Logs from mysql container 2:\n%s', container.logs())
+    container = client.containers.run(
+        'mysql:5.7',
+        name=container_name,
+        command="SHOW VARIABLES LIKE 'bind-address'",
+    )
+    logging.error('Logs from mysql container 3:\n%s', container.logs())
+
     raise RuntimeError(
-        'MySql could not started in %d seconds' %
-        (_MYSQL_POLLING_INTERVAL_SEC * _MYSQL_POLLING_MAX_ATTEMPTS))
+        'MySql could not started in %d seconds'
+        % (_MYSQL_POLLING_INTERVAL_SEC * _MYSQL_POLLING_MAX_ATTEMPTS)
+    )
 
   create_db_sql = """
       CREATE USER 'tfx'@'%' IDENTIFIED BY '';
