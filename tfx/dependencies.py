@@ -126,6 +126,7 @@ def make_extra_packages_airflow():
   """Prepare extra packages needed for Apache Airflow orchestrator."""
   return [
       'apache-airflow[mysql]>=1.10.14,<3',
+      'mysqlclient<2.2.0',
   ]
 
 
