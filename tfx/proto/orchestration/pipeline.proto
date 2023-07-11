@@ -641,6 +641,9 @@ message PipelineRuntimeSpec {
   // A unique id to identify a pipeline run. This will not be set during
   // compilation time but is required for synchronous pipeline execution.
   Value pipeline_run_id = 2;
+  // The id of the pipeline run for the top-level pipeline in this execution. If
+  // The top level-pipeline is ASYNC then this will be empty.
+  string top_level_pipeline_run_id = 3;
   // Used for partial runs.
   SnapshotSettings snapshot_settings = 8;
 }
