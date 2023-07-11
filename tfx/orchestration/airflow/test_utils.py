@@ -53,6 +53,10 @@ def create_mysql_container(container_name: str) -> int:
   for _ in range(_MYSQL_POLLING_MAX_ATTEMPTS):
     logging.info('Waiting for mysqld container...')
     time.sleep(_MYSQL_POLLING_INTERVAL_SEC)
+    command = '/sbin/ip route|awk \'/default/ { print $3 }\''
+    address = subprocess.check_output(
+        command, shell=True).decode('utf-8').strip()
+
     # MySQL availability should be checked with a network access to distinguish
     # a temporary server with a real mysql. See
     # https://github.com/docker-library/mysql/blob/bc6e37a2bed792b1c4fc6ab1ec3ce316e6a5f061/5.7/docker-entrypoint.sh#L360-L362
@@ -62,7 +66,8 @@ def create_mysql_container(container_name: str) -> int:
             '-uroot',
             '-proot',
             '-h',
-            '127.0.0.1',
+            # '127.0.0.1',
+            address,
             '-P',
             str(port),
             '-e',
