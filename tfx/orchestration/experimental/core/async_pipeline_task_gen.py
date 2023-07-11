@@ -26,6 +26,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
+from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -367,18 +368,33 @@ class _Generator:
     if not unprocessed_inputs:
       return result
 
+    # TODO(b/266014070): Register executions atomically.
+    #
+    # Right now, for normal operation, this behaviour is still correct,
+    # because if the orchestrator is interrupted in the middle, in the next
+    # iteration, the can still resolve inputs again and register the rest of
+    # executions.
+    #
+    # However, for backfills, this behaviour is incorrect, since if
+    # the orchestrator is interrupted, we will not resolve inputs again the
+    # next iteration, so the executions that weren't registered will never be
+    # registered.
+    new_executions = []
     for input_and_param in unprocessed_inputs:
+      exec_properties = input_and_param.exec_properties
       if backfill_token:
-        input_and_param.exec_properties[_BACKFILL_TOKEN] = backfill_token
-
-    new_executions = task_gen_utils.register_executions(
-        metadata_handler,
-        node.node_info.type,
-        resolved_info.contexts,
-        unprocessed_inputs,
-    )
-    for e in new_executions:
-      event_observer.make_notify_execution_state_change_fn(node_uid)(None, e)
+        exec_properties[_BACKFILL_TOKEN] = backfill_token
+      execution = execution_publish_utils.register_execution(
+          metadata_handler=metadata_handler,
+          execution_type=node.node_info.type,
+          contexts=resolved_info.contexts,
+          input_artifacts=input_and_param.input_artifacts,
+          exec_properties=exec_properties,
+          last_known_state=metadata_store_pb2.Execution.NEW,
+      )
+      new_executions.append(execution)
+      event_observer.make_notify_execution_state_change_fn(node_uid)(None,
+                                                                     execution)
 
     # Selects the first artifacts and create a exec task.
     input_and_param = unprocessed_inputs[0]
