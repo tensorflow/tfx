@@ -114,8 +114,13 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
         self._mysql_container_name)
     self.addCleanup(airflow_test_utils.delete_mysql_container,
                     self._mysql_container_name)
+
+    command = '/sbin/ip route|awk \'/default/ { print $3 }\''
+    address = subprocess.check_output(
+        command, shell=True).decode('utf-8').strip()
+
     os.environ['AIRFLOW__CORE__SQL_ALCHEMY_CONN'] = (
-        'mysql://tfx@127.0.0.1:%d/airflow' % db_port)
+        'mysql://tfx@%s:%d/airflow' % (address, db_port))
 
     # Set a couple of important environment variables. See
     # https://airflow.apache.org/howto/set-config.html for details.
