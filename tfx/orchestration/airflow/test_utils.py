@@ -48,6 +48,8 @@ def create_mysql_container(container_name: str) -> int:
       ports={_MYSQL_PORT: None},
       detach=True)
   container.reload()  # required to get auto-assigned ports
+  ip_address = str(container.attrs['NetworkSettings']['IPAddress'])
+  logging.info('IP address: %s', ip_address)
   port = int(container.ports[_MYSQL_PORT][0]['HostPort'])
 
   for _ in range(_MYSQL_POLLING_MAX_ATTEMPTS):
@@ -62,7 +64,7 @@ def create_mysql_container(container_name: str) -> int:
             '-uroot',
             '-proot',
             '-h',
-            '127.0.0.1',
+            ip_address,
             '-P',
             str(port),
             '-e',
@@ -75,8 +77,9 @@ def create_mysql_container(container_name: str) -> int:
   else:
     logging.error('Logs from mysql container:\n%s', container.logs())
     raise RuntimeError(
-        'MySql could not started in %d seconds' %
-        (_MYSQL_POLLING_INTERVAL_SEC * _MYSQL_POLLING_MAX_ATTEMPTS))
+        'MySql could not started in %d seconds'
+        % (_MYSQL_POLLING_INTERVAL_SEC * _MYSQL_POLLING_MAX_ATTEMPTS)
+    )
 
   create_db_sql = """
       CREATE USER 'tfx'@'%' IDENTIFIED BY '';
