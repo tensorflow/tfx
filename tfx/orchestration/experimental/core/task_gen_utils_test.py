@@ -111,6 +111,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertCountEqual(all_transform_execs[0:1],
                             task_gen_utils.get_executions(m, self._transform))
       self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
+
     self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
     with self._mlmd_connection as m:
       self.assertCountEqual(all_eg_execs[2:],
@@ -118,6 +119,46 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertCountEqual(all_transform_execs[1:],
                             task_gen_utils.get_executions(m, self._transform))
       self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
+
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
+    with self._mlmd_connection as m:
+      self.assertLen(
+          task_gen_utils.get_executions(m, self._example_gen, limit=1), 1
+      )
+      self.assertLen(
+          task_gen_utils.get_executions(m, self._example_gen, limit=2), 2
+      )
+
+      all_eg_execs = sorted(
+          m.store.get_executions_by_type(self._example_gen.node_info.type.name),
+          key=lambda e: e.create_time_since_epoch,
+      )
+      last_2_executions = task_gen_utils.get_executions(
+          m, self._example_gen, limit=2
+      )
+      self.assertEqual(all_eg_execs[-1].id, last_2_executions[0].id)
+      self.assertEqual(all_eg_execs[-2].id, last_2_executions[1].id)
+
+    # Fake a FAILED execution. Then, there should be 2 COMPLETED executions and
+    # 1 FAILED execution.
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection,
+        self._example_gen,
+        metadata_store_pb2.Execution.State.FAILED,
+    )
+    self.assertLen(task_gen_utils.get_executions(m, self._example_gen), 3)
+    succeeded_executions = task_gen_utils.get_executions(
+        m, self._example_gen, only_successful=True
+    )
+    self.assertLen(succeeded_executions, 2)
+    self.assertEqual(
+        metadata_store_pb2.Execution.State.COMPLETE,
+        succeeded_executions[0].last_known_state,
+    )
+    self.assertEqual(
+        metadata_store_pb2.Execution.State.COMPLETE,
+        succeeded_executions[1].last_known_state,
+    )
 
   def test_get_executions_only_active(self):
     with self._mlmd_connection as m:
@@ -372,7 +413,9 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       for channel in input_spec.channels:
         for context_query in channel.context_queries:
           if context_query.type.name == 'pipeline_run':
-            context_query.name.field_value.string_value = 'test_run_dynamic_prop'
+            context_query.name.field_value.string_value = (
+                'test_run_dynamic_prop'
+            )
 
     otu.fake_upstream_node_run(self._mlmd_connection, self._upstream_node,
                                self.create_tempfile().full_path)
