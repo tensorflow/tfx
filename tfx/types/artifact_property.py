@@ -34,6 +34,8 @@ class PropertyType(enum.Enum):
   JSON_VALUE = 4
   # Protocol buffer.
   PROTO = 5
+  # Boolean value.
+  BOOLEAN = 6
 
 
 class Property:
@@ -44,6 +46,7 @@ class Property:
       PropertyType.STRING: metadata_store_pb2.STRING,
       PropertyType.JSON_VALUE: metadata_store_pb2.STRUCT,
       PropertyType.PROTO: metadata_store_pb2.PROTO,
+      PropertyType.BOOLEAN: metadata_store_pb2.BOOLEAN,
   }
 
   def __init__(self, type):  # pylint: disable=redefined-builtin
