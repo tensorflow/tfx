@@ -194,6 +194,10 @@ class _Generator:
     # TODO(b/275231956) Too many executions may have performance issue, it is
     # better to limit the number of executions.
     executions = task_gen_utils.get_executions(metadata_handler, node)
+    sorted_executions = execution_lib.sort_executions_newest_to_oldest(
+        executions
+    )
+    newest_execution = sorted_executions[0] if sorted_executions else None
     oldest_active_execution = task_gen_utils.get_oldest_active_execution(
         executions)
     if oldest_active_execution:
@@ -270,18 +274,16 @@ class _Generator:
           )
       )
 
-    if backfill_token:
+    if backfill_token and newest_execution:
       # If we are backfilling, we only want to do input resolution once,
       # and register the executions once. To check if we've already registered
       # the executions, we check for the existence of executions with the
       # backfill token. Note that this can be incorrect in rare cases until
       # b/266014070 is resolved.
-      backfill_executions = [
-          e
-          for e in executions
-          if e.custom_properties[_BACKFILL_TOKEN].string_value == backfill_token
-      ]
-      if backfill_executions:
+      if (
+          newest_execution.custom_properties[_BACKFILL_TOKEN].string_value
+          == backfill_token
+      ):
         logging.info(
             'Backfill of node %s is complete. Setting node to STOPPED state',
             node.node_info.id,
