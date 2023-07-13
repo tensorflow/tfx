@@ -246,7 +246,6 @@ def get_executions(
     metadata_handler: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
     only_active: bool = False,
-    backfill_token: str = '',
 ) -> List[metadata_store_pb2.Execution]:
   """Returns all executions for the given pipeline node.
 
@@ -259,9 +258,6 @@ def get_executions(
     only_active: If set to true, only active executions are returned. Otherwise,
       all executions are returned. Active executions mean executions with NEW or
       RUNNING last_known_state.
-    backfill_token: If non-empty, only executions with custom property
-      `__backfill_token__` set to the value are returned. Should only be set
-      when backfilling in ASYNC mode.
 
   Returns:
     List of executions for the given node in MLMD db.
@@ -282,13 +278,6 @@ def get_executions(
   if only_active:
     filter_query.append(
         q.Or(['last_known_state = NEW', 'last_known_state = RUNNING'])
-    )
-  if backfill_token:
-    filter_query.append(
-        (
-            'custom_properties.__backfill_token__.string_value ='
-            f" '{backfill_token}'"
-        ),
     )
   return metadata_handler.store.get_executions(
       list_options=mlmd.ListOptions(

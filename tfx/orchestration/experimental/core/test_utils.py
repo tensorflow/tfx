@@ -14,7 +14,7 @@
 """Test utilities."""
 
 import os
-from typing import Dict, Optional
+from typing import Optional
 import uuid
 
 from absl.testing.absltest import mock
@@ -89,12 +89,8 @@ def fake_example_gen_run(mlmd_connection,
                                             is_external)
 
 
-def fake_example_gen_execution_with_state(
-    mlmd_connection: metadata.Metadata,
-    example_gen: pipeline_pb2.PipelineNode,
-    last_known_state: metadata_store_pb2.Execution.State,
-    exec_properties: Optional[Dict[str, types.ExecPropertyTypes]] = None,
-) -> metadata_store_pb2.Execution:
+def fake_example_gen_execution_with_state(mlmd_connection, example_gen,
+                                          last_known_state):
   """Writes fake example_gen execution to MLMD."""
   with mlmd_connection as m:
     contexts = context_lib.prepare_contexts(m, example_gen.contexts)
@@ -102,9 +98,7 @@ def fake_example_gen_execution_with_state(
         m,
         example_gen.node_info.type,
         contexts,
-        last_known_state=last_known_state,
-        exec_properties=exec_properties,
-    )
+        last_known_state=last_known_state)
     return execution
 
 

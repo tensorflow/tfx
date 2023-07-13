@@ -750,7 +750,6 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     self.assertEqual(pstate.NodeState.STOPPED, update_transform_task.state)
 
   def test_backfill_pure_service_node(self):
-    backfill_token = 'backfill-20230227-180505-123456'
     test_utils.get_or_create_pipeline_state(
         self._mlmd_connection, self._pipeline
     )
@@ -767,10 +766,10 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
       ) as node_state:
         node_state.update(
             pstate.NodeState.STARTING,
-            backfill_token=backfill_token,
+            backfill_token='backfill-20230227-180505-123456',
         )
-    # Generate a RUNNING task for ExampleGen backfill.
-    [running_example_gen_task] = self._generate_and_test(
+    # Generate once.
+    [update_example_gen_task] = self._generate_and_test(
         use_task_queue=False,
         num_initial_executions=0,
         num_tasks_generated=1,
@@ -779,55 +778,15 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         expected_exec_nodes=[],
     )
 
-    self.assertIsInstance(
-        running_example_gen_task, task_lib.UpdateNodeStateTask
-    )
-    self.assertEqual(running_example_gen_task.state, pstate.NodeState.RUNNING)
-    self.assertEqual(running_example_gen_task.backfill_token, backfill_token)
+    self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
     self._mock_service_job_manager.ensure_node_services.assert_has_calls([
         mock.call(
             mock.ANY,
             self._example_gen.node_info.id,
-            backfill_token,
+            'backfill-20230227-180505-123456',
         ),
     ])
-
-    # Mark ExampleGen backfill service job as COMPLETED.
-    def _backfill_completes(
-        unused_pipeline_state, node_id, unused_backfill_token=''
-    ):
-      if node_id == self._example_gen.node_info.id:
-        return service_jobs.ServiceStatus.SUCCESS
-
-    self._mock_service_job_manager.reset_mock()
-    self._mock_service_job_manager.ensure_node_services.side_effect = (
-        _backfill_completes
-    )
-
-    # Generate a STOPPED task after ExampleGen backfill completes.
-    [stopped_example_gen_task] = self._generate_and_test(
-        use_task_queue=False,
-        num_initial_executions=0,
-        num_tasks_generated=1,
-        num_new_executions=0,
-        num_active_executions=0,
-        expected_exec_nodes=[],
-    )
-    self.assertIsInstance(
-        stopped_example_gen_task, task_lib.UpdateNodeStateTask
-    )
-    self.assertEqual(stopped_example_gen_task.state, pstate.NodeState.STOPPED)
-    self.assertEqual(stopped_example_gen_task.backfill_token, '')
-    self._mock_service_job_manager.ensure_node_services.assert_has_calls([
-        mock.call(
-            mock.ANY,
-            self._example_gen.node_info.id,
-            backfill_token,
-        ),
-    ])
-    self._mock_service_job_manager.stop_node_services.assert_called_once_with(
-        mock.ANY, self._example_gen.node_info.id
-    )
 
 
 if __name__ == '__main__':

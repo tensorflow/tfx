@@ -18,7 +18,6 @@ from typing import Callable, List, Optional
 from absl import logging
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
-from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -34,6 +33,9 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
+
+# Custom property name for backfill token
+_BACKFILL_TOKEN = '__backfill_token__'
 
 
 class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
@@ -123,47 +125,18 @@ class _Generator:
           node_id, node_state.backfill_token
       )
       if service_status is not None:
-        if (
-            node_state.backfill_token
-            and service_status == service_jobs.ServiceStatus.SUCCESS
-        ):
-          # Transitions ExampleGen node to STOPPED state and service job to
-          # STATE_STOPPED when backfill completes.
-          logging.info(
-              'Stopping ExampleGen: %s ; Backfill with token: %s completed',
-              node_id,
-              node_state.backfill_token,
-          )
-          result.append(
-              task_lib.UpdateNodeStateTask(
-                  node_uid=node_uid,
-                  state=pstate.NodeState.STOPPED,
-                  backfill_token='',
-              )
-          )
-          # The service job already completes with success but we still need to
-          # update the in-memory state.
-          self._service_job_manager.stop_node_services(
-              self._pipeline_state, node_id
-          )
-        elif service_status != service_jobs.ServiceStatus.RUNNING:
+        if service_status != service_jobs.ServiceStatus.RUNNING:
           error_msg = f'associated service job failed; node uid: {node_uid}'
           result.append(
               task_lib.UpdateNodeStateTask(
                   node_uid=node_uid,
                   state=pstate.NodeState.FAILED,
                   status=status_lib.Status(
-                      code=status_lib.Code.UNKNOWN, message=error_msg
-                  ),
-                  backfill_token='',
-              )
-          )
+                      code=status_lib.Code.UNKNOWN, message=error_msg)))
         elif node_state.state != pstate.NodeState.RUNNING:
           result.append(
               task_lib.UpdateNodeStateTask(
-                  node_uid=node_uid,
-                  state=pstate.NodeState.RUNNING,
-                  backfill_token=node_state.backfill_token,
+                  node_uid=node_uid, state=pstate.NodeState.RUNNING
               )
           )
         continue
@@ -231,7 +204,7 @@ class _Generator:
       if backfill_token:
         if (
             oldest_active_execution.custom_properties[
-                constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
+                _BACKFILL_TOKEN
             ].string_value
             != backfill_token
         ):
@@ -308,9 +281,7 @@ class _Generator:
       # backfill token. Note that this can be incorrect in rare cases until
       # b/266014070 is resolved.
       if (
-          newest_execution.custom_properties[
-              constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
-          ].string_value
+          newest_execution.custom_properties[_BACKFILL_TOKEN].string_value
           == backfill_token
       ):
         logging.info(
@@ -400,9 +371,7 @@ class _Generator:
 
     for input_and_param in unprocessed_inputs:
       if backfill_token:
-        input_and_param.exec_properties[
-            constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
-        ] = backfill_token
+        input_and_param.exec_properties[_BACKFILL_TOKEN] = backfill_token
 
     new_executions = task_gen_utils.register_executions(
         metadata_handler,
