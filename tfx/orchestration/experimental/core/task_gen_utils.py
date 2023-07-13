@@ -246,6 +246,8 @@ def get_executions(
     metadata_handler: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
     only_active: bool = False,
+    only_successful: bool = False,
+    limit: Optional[int] = None,
     backfill_token: str = '',
 ) -> List[metadata_store_pb2.Execution]:
   """Returns all executions for the given pipeline node.
@@ -259,6 +261,10 @@ def get_executions(
     only_active: If set to true, only active executions are returned. Otherwise,
       all executions are returned. Active executions mean executions with NEW or
       RUNNING last_known_state.
+    only_successful: If set to true, only successful executions are returned.
+      Otherwise, all executions are returned. successful executions mean
+      executions with COMPLETE or CACHED last_known_state.
+    limit: limit the number of executions return by the function.
     backfill_token: If non-empty, only executions with custom property
       `__backfill_token__` set to the value are returned. Should only be set
       when backfilling in ASYNC mode.
@@ -279,10 +285,25 @@ def get_executions(
             f"contexts_{i}.name = '{context_name}'",
         ])
     )
-  if only_active:
+
+  if only_active and only_successful:
+    filter_query.append(
+        q.Or([
+            'last_known_state = NEW',
+            'last_known_state = RUNNING',
+            'last_known_state = COMPLETE',
+            'last_known_state = CACHED',
+        ])
+    )
+  elif only_active:
     filter_query.append(
         q.Or(['last_known_state = NEW', 'last_known_state = RUNNING'])
     )
+  elif only_successful:
+    filter_query.append(
+        q.Or(['last_known_state = COMPLETE', 'last_known_state = CACHED'])
+    )
+
   if backfill_token:
     filter_query.append(
         (
@@ -292,13 +313,10 @@ def get_executions(
     )
   return metadata_handler.store.get_executions(
       list_options=mlmd.ListOptions(
-          # TODO(b/274559409): Decide whether to keep explicit order or not.
-          # Due to implementation detail, `is_asc = false` (default) with filter
-          # query has very bad time complexity, thus enforcing `is_asc = true`
-          # here.
-          order_by=mlmd.OrderByField.ID,
-          is_asc=True,
+          order_by=mlmd.OrderByField.CREATE_TIME,
+          is_asc=False,
           filter_query=str(filter_query),
+          limit=limit,
       )
   )
 
