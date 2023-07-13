@@ -104,13 +104,6 @@ def make_beam_labels_args() -> List[str]:
   return result
 
 
-def noop_telemetry(*args, **kwargs) -> None:
-  """This function is a no-op in OSS."""
-  del args
-  del kwargs
-  return None
-
-
 class TFXHttpRequest(http.HttpRequest):
   """HttpRequest builder that sets a customized useragent header for TFX.
 

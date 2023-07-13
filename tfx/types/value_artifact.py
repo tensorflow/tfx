@@ -69,6 +69,7 @@ class ValueArtifact(Artifact):
     else:
       self.set_int_custom_property(_IS_NULL_KEY, 0)
       serialized_value = self.encode(value)
+    self.set_string_custom_property('value', str(value))
     with fileio.open(self.uri, 'wb') as f:
       f.write(serialized_value)
 
