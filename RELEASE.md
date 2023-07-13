@@ -2,29 +2,11 @@
 
 ## Major Features and Improvements
 
-## Breaking Changes
-
-*   `Placeholder` (and `_PlaceholderOperator`) are no longer `Jsonable`.
-
-### For Pipeline Authors
-
-### For Component Authors
-
-## Deprecations
-
-## Bug Fixes and Other Changes
-
-## Dependency Updates
-
-## Documentation Updates
-
-# Version 1.13.1
-
-## Major Features and Improvements
-
 *  N/A
 
 ## Breaking Changes
+
+*   `Placeholder` (and `_PlaceholderOperator`) are no longer `Jsonable`.
 
 ### For Pipeline Authors
 
@@ -49,6 +31,8 @@
 | `pyarrow` | `>=10,<11` | `>=6,<7` | |
 | `apache-beam` | `>=2.40,<3` | `>=2.47,<3` | |
 | `scikit-learn` | `>=1.0,<2` | `>=0.23,<0.24` | |
+| `google-api-core` | `<2` | `<1.33` | |
+| `google-cloud-aiplatform` | `>=1.6.2,<2` | `>=1.6.2,<1.18` | |
 
 ## Documentation Updates
 

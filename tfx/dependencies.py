@@ -80,13 +80,8 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.47,<3',
       'attrs>=19.3.0,<22',
       'click>=7,<9',
-      # TODO(b/245393802): Remove pinned version when pip can find depenencies
-      # without this. `google-api-core` is needed for many google cloud
-      # packages. `google-api-core==1.33.0` and
-      # `google-cloud-aiplatform==1.18.0` requires
-      # `protobuf>=3.20.1` while `tensorflow` requires `protobuf<3.20`.
-      'google-api-core<1.33',
-      'google-cloud-aiplatform>=1.6.2,<1.18',
+      'google-api-core<2',
+      'google-cloud-aiplatform>=1.6.2,<2',
       'google-cloud-bigquery>=2.26.0,<3',
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2',
@@ -101,24 +96,33 @@ def make_required_install_packages():
       'tensorflow' + select_constraint('>=2.12.0,<2.13'),
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.9.0,<0.14',
-      'tensorflow-data-validation' + select_constraint(
+      'tensorflow-data-validation'
+      + select_constraint(
           default='>=1.13.0,<1.14.0',
           nightly='>=1.14.0.dev',
-          git_master='@git+https://github.com/tensorflow/data-validation@master'
+          git_master=(
+              '@git+https://github.com/tensorflow/data-validation@master'
+          ),
       ),
-      'tensorflow-model-analysis' + select_constraint(
+      'tensorflow-model-analysis'
+      + select_constraint(
           default='>=0.44.0,<0.45.0',
           nightly='>=0.45.0.dev',
-          git_master='@git+https://github.com/tensorflow/model-analysis@master'),
+          git_master='@git+https://github.com/tensorflow/model-analysis@master',
+      ),
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3',
-      'tensorflow-transform' + select_constraint(
+      'tensorflow-transform'
+      + select_constraint(
           default='>=1.13.0,<1.14.0',
           nightly='>=1.14.0.dev',
-          git_master='@git+https://github.com/tensorflow/transform@master'),
-      'tfx-bsl' + select_constraint(
+          git_master='@git+https://github.com/tensorflow/transform@master',
+      ),
+      'tfx-bsl'
+      + select_constraint(
           default='>=1.13.0,<1.14.0',
           nightly='>=1.14.0.dev',
-          git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
+          git_master='@git+https://github.com/tensorflow/tfx-bsl@master',
+      ),
   ]
 
 
