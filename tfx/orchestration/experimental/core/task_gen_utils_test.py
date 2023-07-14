@@ -652,7 +652,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             contexts=[context], input_and_params=[]
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [], resolved_info, self._transform
+            m, None, resolved_info, self._transform
         )
         self.assertEmpty(unprocessed_inputs)
 
@@ -666,7 +666,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             input_and_params=[input_and_param],
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [], resolved_info, self._transform
+            m, None, resolved_info, self._transform
         )
         self.assertLen(unprocessed_inputs, 1)
         self.assertEqual(unprocessed_inputs[0], input_and_param)
@@ -693,7 +693,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             input_and_params=[input_and_param],
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [execution], resolved_info, self._transform
+            m, execution, resolved_info, self._transform
         )
         self.assertEmpty(unprocessed_inputs)
 
@@ -706,10 +706,74 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             input_and_params=[input_and_param],
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [execution], resolved_info, self._transform
+            m, execution, resolved_info, self._transform
         )
         self.assertLen(unprocessed_inputs, 1)
         self.assertEqual(unprocessed_inputs[0], input_and_param)
+
+      # Simulate that artifact_3 is generated, and it is processed by
+      # last_execution
+      artifact_pb_3 = metadata_store_pb2.Artifact(type_id=artifact_type.id)
+      artifact_pb_3.id = m.store.put_artifacts([artifact_pb_3])[0]
+      [artifact_3] = artifact_utils.deserialize_artifacts(
+          artifact_type, [artifact_pb_3]
+      )
+      last_execution = execution_lib.prepare_execution(
+          m,
+          execution_type=metadata_store_pb2.ExecutionType(name='my_ex_type'),
+          state=metadata_store_pb2.Execution.COMPLETE,
+      )
+      last_execution = execution_lib.put_execution(
+          m,
+          last_execution,
+          [context],
+          input_artifacts={'examples': [artifact_3]},
+      )
+      with self.subTest(name='ResolvedArtifactsNewArtifacts'):
+        input_and_param_1 = task_gen_utils.InputAndParam(
+            input_artifacts={'examples': [artifact_1, artifact_2]}
+        )
+        input_and_param_2 = task_gen_utils.InputAndParam(
+            input_artifacts={'examples': [artifact_3]}
+        )
+        resolved_info = task_gen_utils.ResolvedInfo(
+            contexts=[context],
+            input_and_params=[input_and_param_1, input_and_param_2],
+        )
+        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+            m, last_execution, resolved_info, self._transform
+        )
+        self.assertEmpty(unprocessed_inputs)
+
+      # Simulate that artifact_4 is generated, but it is unprocessed.
+      artifact_pb_4 = metadata_store_pb2.Artifact(type_id=artifact_type.id)
+      artifact_pb_4.id = m.store.put_artifacts([artifact_pb_4])[0]
+      [artifact_4] = artifact_utils.deserialize_artifacts(
+          artifact_type, [artifact_pb_4]
+      )
+      with self.subTest(name='ResolvedArtifactsNewArtifacts'):
+        input_and_param_1 = task_gen_utils.InputAndParam(
+            input_artifacts={'examples': [artifact_1, artifact_2]}
+        )
+        input_and_param_2 = task_gen_utils.InputAndParam(
+            input_artifacts={'examples': [artifact_3]}
+        )
+        input_and_param_3 = task_gen_utils.InputAndParam(
+            input_artifacts={'examples': [artifact_4]}
+        )
+        resolved_info = task_gen_utils.ResolvedInfo(
+            contexts=[context],
+            input_and_params=[
+                input_and_param_1,
+                input_and_param_2,
+                input_and_param_3,
+            ],
+        )
+        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+            m, last_execution, resolved_info, self._transform
+        )
+        self.assertLen(unprocessed_inputs, 1)
+        self.assertEqual(unprocessed_inputs[0], input_and_param_3)
 
   def test_get_unprocessed_inputs_no_trigger(self):
     # Set the example_gen to transform node as NO_TRIGGER.
@@ -727,7 +791,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     )
     unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
         self._mlmd_connection,
-        [],
+        None,
         resolved_info,
         self._transform,
     )

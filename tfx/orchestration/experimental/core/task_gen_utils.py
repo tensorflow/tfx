@@ -16,7 +16,7 @@
 import collections
 import itertools
 import textwrap
-from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple, Type
+from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence, Type
 import uuid
 
 from absl import logging
@@ -588,7 +588,7 @@ def update_external_artifact_type(local_mlmd_handle: metadata.Metadata,
 
 def get_unprocessed_inputs(
     metadata_handle: metadata.Metadata,
-    executions: Sequence[metadata_store_pb2.Execution],
+    last_successful_executions: metadata_store_pb2.Execution,
     resolved_info: ResolvedInfo,
     node: node_proto_view.NodeProtoView,
 ) -> List[InputAndParam]:
@@ -596,7 +596,7 @@ def get_unprocessed_inputs(
 
   Args:
     metadata_handle: A handle to access local MLMD db.
-    executions: A list of executions
+    last_successful_executions: The last successful execution
     resolved_info: Resolved input of a node. It may contain processed and
       unprocessed input.
     node: The pipeline node of the input.
@@ -604,6 +604,9 @@ def get_unprocessed_inputs(
   Returns:
     A list of InputAndParam that have not been processed.
   """
+  if not last_successful_executions:
+    return resolved_info.input_and_params
+
   # Finds out the keys that should be ignored.
   input_triggers = node.execution_options.async_trigger.input_triggers
   ignore_keys = set(
@@ -611,26 +614,24 @@ def get_unprocessed_inputs(
   )
 
   # Gets the processed inputs.
-  processed_inputs: List[Dict[str, Tuple[int, ...]]] = []
   events = metadata_handle.store.get_events_by_execution_ids(
-      [e.id for e in executions]
+      [last_successful_executions.id]
   )
-  for execution in executions:
-    input_events = [
-        e
-        for e in events
-        if e.type == metadata_store_pb2.Event.INPUT
-        and event_lib.is_valid_input_event(e)
-        and e.execution_id == execution.id
-    ]
-    ids_by_key = event_lib.reconstruct_artifact_id_multimap(input_events)
-    # Filters out the keys starting with '_' and the keys should be ingored.
-    ids_by_key = {
-        k: tuple(sorted(v))
-        for k, v in ids_by_key.items()
-        if not k.startswith('_') and k not in ignore_keys
-    }
-    processed_inputs.append(ids_by_key)
+  input_events = [
+      e
+      for e in events
+      if e.type == metadata_store_pb2.Event.INPUT
+      and event_lib.is_valid_input_event(e)
+  ]
+  last_processed_input = event_lib.reconstruct_artifact_id_multimap(
+      input_events
+  )
+  # Filters out the keys starting with '_' and the keys should be ingored.
+  last_processed_input = {
+      k: tuple(sorted(v))
+      for k, v in last_processed_input.items()
+      if not k.startswith('_') and k not in ignore_keys
+  }
 
   # Some input artifacts are from external pipelines, so we need to find out the
   # external_id to id mapping in the local db.
@@ -653,9 +654,20 @@ def get_unprocessed_inputs(
       logging.exception('Error when getting artifacts by external ids: %s', e)
       return []
 
+  # Order the resolved inputs by timestamp.
+  ordered_resolved_inputs = collections.OrderedDict()
+  for input_and_param in resolved_info.input_and_params:
+    max_timestampe = 0
+    for artifacts in input_and_param.input_artifacts.values():
+      for a in artifacts:
+        max_timestampe = max(
+            max_timestampe, a.mlmd_artifact.create_time_since_epoch
+        )
+    ordered_resolved_inputs[max_timestampe] = input_and_param
+
   # Finds out the unprocessed inputs.
   unprocessed_inputs = []
-  for input_and_param in resolved_info.input_and_params:
+  for _, input_and_param in reversed(ordered_resolved_inputs.items()):
     resolved_input_ids_by_key = collections.defaultdict(list)
     for key, artifacts in input_and_param.input_artifacts.items():
       for a in artifacts:
@@ -674,9 +686,8 @@ def get_unprocessed_inputs(
         if not k.startswith('_') and k not in ignore_keys
     }
 
-    for processed in processed_inputs:
-      if processed == resolved_input_ids_by_key:
-        break
+    if last_processed_input == resolved_input_ids_by_key:
+      break
     else:
       unprocessed_inputs.append(input_and_param)
 

@@ -29,7 +29,6 @@ from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
-from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
@@ -216,18 +215,15 @@ class _Generator:
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
-    # Gets the oldest active execution. If the oldest active execution exists,
-    # generates a task from it.
-    # TODO(b/275231956) Too many executions may have performance issue, it is
-    # better to limit the number of executions.
-    executions = task_gen_utils.get_executions(metadata_handler, node)
-    sorted_executions = execution_lib.sort_executions_newest_to_oldest(
-        executions
+    # Gets the active executions. If the active executions exist, generates a
+    # task from the oldest active execution.
+    active_executions = task_gen_utils.get_executions(
+        metadata_handler, node, only_active=True
     )
-    newest_execution = sorted_executions[0] if sorted_executions else None
-    oldest_active_execution = task_gen_utils.get_oldest_active_execution(
-        executions)
-    if oldest_active_execution:
+    if active_executions:
+      oldest_active_execution = task_gen_utils.get_oldest_active_execution(
+          active_executions
+      )
       if backfill_token:
         if (
             oldest_active_execution.custom_properties[
@@ -301,14 +297,19 @@ class _Generator:
           )
       )
 
-    if backfill_token and newest_execution:
+    if backfill_token and (
+        last_execution := task_gen_utils.get_executions(
+            metadata_handler, node, limit=1
+        )
+    ):
+      last_execution = last_execution[0]
       # If we are backfilling, we only want to do input resolution once,
       # and register the executions once. To check if we've already registered
       # the executions, we check for the existence of executions with the
       # backfill token. Note that this can be incorrect in rare cases until
       # b/266014070 is resolved.
       if (
-          newest_execution.custom_properties[
+          last_execution.custom_properties[
               constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
           ].string_value
           == backfill_token
@@ -386,14 +387,17 @@ class _Generator:
 
     if backfill_token:
       # For backfills, ignore all previous executions.
-      successful_executions = []
+      last_successful_execution = None
     else:
-      successful_executions = [
-          e for e in executions if execution_lib.is_execution_successful(e)
-      ]
+      last_successful_executions = task_gen_utils.get_executions(
+          metadata_handler, node, only_successful=True, limit=1
+      )
+      last_successful_execution = (
+          last_successful_executions[0] if last_successful_executions else None
+      )
 
     unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-        metadata_handler, successful_executions, resolved_info, node
+        metadata_handler, last_successful_execution, resolved_info, node
     )
     if not unprocessed_inputs:
       return result
