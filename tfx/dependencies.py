@@ -86,7 +86,7 @@ def make_required_install_packages():
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2',
       'kubernetes>=10.0.1,<13',
-      'numpy>=1.16,<2',
+      'numpy>=1.22,<2',
       'pyarrow>=10,<11',
       'pyyaml>=3.12,<6',
       # Keep the TF version same as TFT to help Pip version resolution.
