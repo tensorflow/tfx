@@ -59,7 +59,7 @@ class PenguinPipelineLocalInfravalEndToEndTest(
     # local docker runner.
     self._infra_validator_host_ip_address = (
         subprocess.check_output(
-            "/sbin/ip route | awk '/default/ { print $3 }'",
+            ['/sbin/ip', 'route', '|', 'awk', '/default/ { print $3 }'],
             shell=True,
         )
         .decode('utf-8')
