@@ -14,7 +14,9 @@
 
 ### For Component Authors
 
-*   N/A
+* Replace "tf_estimator" with "tfma_eval" as the identifier for tfma
+  EvalSavedModel. "tf_estimator" is now serves as the identifier for the normal
+  estimator model with any signature (by default 'serving').
 
 ## Deprecations
 
