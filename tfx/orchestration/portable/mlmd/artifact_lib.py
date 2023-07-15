@@ -40,16 +40,15 @@ def get_artifacts_by_ids(
     ValueError if one or more of the artifact IDs does not exist in MLMD.
   """
   start_time = time.time()
-  mlmd_artifacts, artifact_types = (
-      metadata_handler.store.get_artifacts_and_types_by_artifact_ids(
-          artifact_ids
-      )
-  )
+  mlmd_artifacts = metadata_handler.store.get_artifacts_by_id(artifact_ids)
   if len(artifact_ids) != len(mlmd_artifacts):
     raise ValueError(
         f'Could not find all MLMD artifacts for ids: {artifact_ids}')
 
-  # Create a map keyed by artifact type id.
+  # Fetch artifact types and create a map keyed by artifact type id.
+  artifact_type_ids = set(a.type_id for a in mlmd_artifacts)
+  artifact_types = metadata_handler.store.get_artifact_types_by_id(
+      artifact_type_ids)
   artifact_types_by_id = {a.id: a for a in artifact_types}
 
   # Set `type` field in the artifact proto which is not filled by MLMD.
