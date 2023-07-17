@@ -40,6 +40,7 @@ let CONSTANT_VALUES = {
       SATISFACTION_PARAM: 'entry.85265664=',
       ISSUEID_PARAM: '&entry.2137816233=',
       MSG: 'Are you satisfied with the resolution of your issue?',
+      DISABLEMSG: 'Are you satisfied with the resolution of your issue (Closed)?'
     }
   }
 

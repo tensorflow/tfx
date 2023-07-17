@@ -22,7 +22,6 @@ import uuid
 from absl import logging
 import attr
 from tfx import types
-from tfx.dsl.compiler import constants as context_constants
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
@@ -277,23 +276,7 @@ def get_executions(
     return []
   # Get all the contexts associated with the node.
   filter_query = q.And([])
-
-  # "node" context or "pipeline_run" context is a strict sub-context of a
-  # "pipeline" context thus we can remove "pipeline" context from the filter
-  # query to improve performance.
-  filter_contexts = node.contexts.contexts
-  context_types = {context.type.name for context in filter_contexts}
-
-  if (
-      context_constants.PIPELINE_RUN_CONTEXT_TYPE_NAME in context_types
-      or context_constants.NODE_CONTEXT_TYPE_NAME in context_types
-  ):
-    context_types.discard(context_constants.PIPELINE_CONTEXT_TYPE_NAME)
-    filter_contexts = [
-        q for q in filter_contexts if q.type.name in context_types
-    ]
-
-  for i, context_spec in enumerate(filter_contexts):
+  for i, context_spec in enumerate(node.contexts.contexts):
     context_type = context_spec.type.name
     context_name = data_types_utils.get_value(context_spec.name)
     filter_query.append(
@@ -425,26 +408,9 @@ def get_oldest_active_execution(
   if not active_executions:
     return None
 
-  # TODO(b/291772909): Simpliy the sort logic after orchestrator will only see
-  # active executions with _EXTERNAL_EXECUTION_INDEX.
-  if all(
-      [
-          e.custom_properties.get(_EXTERNAL_EXECUTION_INDEX)
-          for e in active_executions
-      ]
-  ):
-    sorted_active_executions = sorted(
-        active_executions,
-        key=lambda e: (  # pylint: disable=g-long-lambda
-            e.create_time_since_epoch,
-            e.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value,
-        ),
-    )
-  else:
-    sorted_active_executions = sorted(
-        active_executions, key=lambda e: e.create_time_since_epoch
-    )
-  return sorted_active_executions[0]
+  sorted_executions = execution_lib.sort_executions_newest_to_oldest(
+      active_executions)
+  return sorted_executions[-1] if sorted_executions else None
 
 
 # TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
