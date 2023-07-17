@@ -100,6 +100,7 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
     super().setUp()
+    #
     # setup airflow_home in a temp directory, config and init db.
     self._airflow_home = self.tmp_dir
     self.enter_context(

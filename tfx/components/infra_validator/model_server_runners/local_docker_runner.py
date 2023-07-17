@@ -14,8 +14,9 @@
 """Module for LocalDockerModelServerRunner."""
 
 import os
+import subprocess
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from absl import logging
 import docker
@@ -39,7 +40,7 @@ def _make_docker_client(config: infra_validator_pb2.LocalDockerConfig):
   return docker.DockerClient(**params)
 
 
-def _find_host_port(ports: Dict[str, Any], container_port: int) -> str:
+def _find_host(ports: Dict[str, Any], container_port: int) -> Tuple[str, str]:
   """Find host port from container port mappings.
 
   `ports` is a nested dictionary of the following structure:
@@ -65,10 +66,15 @@ def _find_host_port(ports: Dict[str, Any], container_port: int) -> str:
   Raises:
     ValueError: No corresponding host port was found.
   """
+  command = '/sbin/ip route|awk \'/default/ { print $3 }\''
+  ip_address = subprocess.check_output(
+      command, shell=True).decode('utf-8').strip()
+  logging.info('Container IP address: %s', ip_address)
+
   mappings = ports.get('{}/tcp'.format(container_port), [])
   for mapping in mappings:
     if mapping['HostIp'] == '0.0.0.0':
-      return mapping['HostPort']
+      return ip_address, mapping['HostPort']
   else:
     raise ValueError(
         'No HostPort found for ContainerPort={} (all port mappings: {})'
@@ -146,9 +152,11 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
         continue
       # The container is running :)
       if status == 'running':
-        host_port = _find_host_port(self._container.ports,
-                                    self._serving_binary.container_port)
-        self._endpoint = 'localhost:{}'.format(host_port)
+        ip_address, host_port = _find_host(
+            self._container.ports,
+            self._serving_binary.container_port)
+
+        self._endpoint = '{}:{}'.format(ip_address, host_port)
         return
       # Docker status is one of {'created', 'restarting', 'running', 'removing',
       # 'paused', 'exited', or 'dead'}. Status other than 'created' and
