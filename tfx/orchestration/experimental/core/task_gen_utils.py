@@ -425,9 +425,26 @@ def get_oldest_active_execution(
   if not active_executions:
     return None
 
-  sorted_executions = execution_lib.sort_executions_newest_to_oldest(
-      active_executions)
-  return sorted_executions[-1] if sorted_executions else None
+  # TODO(b/291772909): Simpliy the sort logic after orchestrator will only see
+  # active executions with _EXTERNAL_EXECUTION_INDEX.
+  if all(
+      [
+          e.custom_properties.get(_EXTERNAL_EXECUTION_INDEX)
+          for e in active_executions
+      ]
+  ):
+    sorted_active_executions = sorted(
+        active_executions,
+        key=lambda e: (  # pylint: disable=g-long-lambda
+            e.create_time_since_epoch,
+            e.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value,
+        ),
+    )
+  else:
+    sorted_active_executions = sorted(
+        active_executions, key=lambda e: e.create_time_since_epoch
+    )
+  return sorted_active_executions[0]
 
 
 # TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
