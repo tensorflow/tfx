@@ -88,6 +88,7 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
       'pyarrow>=10,<11',
+      'cython<3',
       'pyyaml>=3.12,<6',
       # Keep the TF version same as TFT to help Pip version resolution.
       # Pip might stuck in a TF 1.15 dependency although there is a working
