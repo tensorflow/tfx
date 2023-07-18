@@ -57,7 +57,7 @@ RUN cd ${TFX_DIR}/src; \
     fi;
 
 # We need to name this step for the next COPY --from command.
-FROM apache/beam_python3.7_sdk:${BEAM_VERSION} as beam-worker
+FROM apache/beam_python3.8_sdk:${BEAM_VERSION} as beam-worker
 
 # Build stage to extend DLVM image.
 FROM ${BASE_IMAGE} as install
