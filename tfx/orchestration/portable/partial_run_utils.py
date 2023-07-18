@@ -25,6 +25,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.proto.orchestration import pipeline_pb2
 
 from ml_metadata.proto import metadata_store_pb2
@@ -647,7 +648,7 @@ class _ArtifactRecycler:
       raise LookupError(f'node context {node_context_name} not found in MLMD.')
     return node_context
 
-  def _get_successful_executions(
+  def _get_executions_to_cache(
       self, node_id: str, run_id: str) -> List[metadata_store_pb2.Execution]:
     """Gets all successful Executions of a given node in a given pipeline run.
 
@@ -660,24 +661,67 @@ class _ArtifactRecycler:
 
     Raises:
       LookupError: If no successful Execution was found.
+      RuntimeError: The number of cache executions is not the same as the number
+      of existing executions.
     """
     node_context = self._get_node_context(node_id)
     base_run_context = self._get_pipeline_run_context(run_id)
-    all_associated_executions = (
-        execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd, contexts=[node_context, base_run_context]
-        )
+    new_run_context = self._get_pipeline_run_context(
+        self._new_run_id, register_if_not_found=True
     )
-    prev_successful_executions = [
-        e for e in all_associated_executions
-        if execution_lib.is_execution_successful(e)
+
+    execution_query = q.And([
+        'contexts_1.id = %s' % node_context.id,
+        q.Or([
+            'contexts_2.id = %s' % base_run_context.id,
+            'contexts_3.id = %s' % new_run_context.id,
+        ]),
+    ])
+    executions = self._mlmd.store.get_executions(
+        list_options=execution_query.list_options()
+    )
+
+    complete_executions = [
+        e
+        for e in executions
+        if e.last_known_state == metadata_store_pb2.Execution.COMPLETE
     ]
-    if not prev_successful_executions:
+    cache_executions = collections.defaultdict(list)
+    for e in executions:
+      if e.last_known_state == metadata_store_pb2.Execution.CACHED:
+        cache_executions[e.create_time_since_epoch].append(e)
+
+    if not complete_executions and not cache_executions:
       raise LookupError(
           f'No previous successful executions found for node_id {node_id} in '
           f'pipeline_run {run_id}')
 
-    return prev_successful_executions
+    prev_successful_executions = []
+    prev_cache_executions = []
+    if complete_executions:
+      prev_successful_executions = complete_executions
+      prev_cache_executions = (
+          list(cache_executions.values())[0] if cache_executions else []
+      )
+    elif len(cache_executions) == 1:
+      prev_successful_executions = list(cache_executions.values())[0]
+      prev_cache_executions = []
+    elif len(cache_executions) == 2:
+      timestamps = sorted(cache_executions.keys())
+      prev_successful_executions = cache_executions[timestamps[0]]
+      prev_cache_executions = cache_executions[timestamps[1]]
+
+    if (
+        prev_successful_executions
+        and prev_cache_executions
+        and (len(prev_successful_executions) != len(prev_cache_executions))
+    ):
+      raise RuntimeError(
+          'The number of cache executions is not the same as the number of'
+          ' complete executions.'
+      )
+
+    return prev_successful_executions if not prev_cache_executions else []
 
   def _cache_and_publish(
       self,
@@ -698,36 +742,16 @@ class _ArtifactRecycler:
         node_context,
         pipeline_run_context,
     ]
-    prev_cache_executions = (
-        execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd, contexts=[node_context, pipeline_run_context]
-        )
-    )
 
-    if not prev_cache_executions:
-      new_executions = []
-      for e in existing_executions:
-        new_executions.append(
-            execution_lib.prepare_execution(
-                metadata_handler=self._mlmd,
-                execution_type=metadata_store_pb2.ExecutionType(id=e.type_id),
-                state=metadata_store_pb2.Execution.RUNNING,
-                execution_name=str(uuid.uuid4()),
-            )
-        )
-    else:
-      new_executions = [
-          e
-          for e in prev_cache_executions
-          if e.last_known_state != metadata_store_pb2.Execution.CACHED
-      ]
-
-    if not new_executions:
-      return
-    if len(new_executions) != len(existing_executions):
-      raise RuntimeError(
-          'The number of new executions is not the same as the number of'
-          ' existing executions.'
+    new_executions = []
+    for e in existing_executions:
+      new_executions.append(
+          execution_lib.prepare_execution(
+              metadata_handler=self._mlmd,
+              execution_type=metadata_store_pb2.ExecutionType(id=e.type_id),
+              state=metadata_store_pb2.Execution.RUNNING,
+              execution_name=str(uuid.uuid4()),
+          )
       )
 
     output_artifacts_maps = [
@@ -757,5 +781,6 @@ class _ArtifactRecycler:
 
   def reuse_node_outputs(self, node_id: str, base_run_id: str):
     """Makes the outputs of `node_id` available to new_pipeline_run_id."""
-    previous_executions = self._get_successful_executions(node_id, base_run_id)
-    self._cache_and_publish(previous_executions, node_id)
+    executions_to_cache = self._get_executions_to_cache(node_id, base_run_id)
+    if executions_to_cache:
+      self._cache_and_publish(executions_to_cache, node_id)
