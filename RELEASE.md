@@ -14,9 +14,7 @@
 
 ### For Component Authors
 
-* Replace "tf_estimator" with "tfma_eval" as the identifier for tfma
-  EvalSavedModel. "tf_estimator" is now serves as the identifier for the normal
-  estimator model with any signature (by default 'serving').
+*   N/A
 
 ## Deprecations
 
@@ -35,7 +33,6 @@
 | `scikit-learn` | `>=1.0,<2` | `>=0.23,<0.24` | |
 | `google-api-core` | `<2` | `<1.33` | |
 | `google-cloud-aiplatform` | `>=1.6.2,<2` | `>=1.6.2,<1.18` | |
-| `tflite-support` | `>=0.4.3,<0.4.5` | `>=0.4.2,<0.4.3` | |
 
 ## Documentation Updates
 

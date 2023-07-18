@@ -19,6 +19,7 @@ from typing import Any, Dict, List
 from absl import logging
 import apache_beam as beam
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis import constants as tfma_constants
 # Need to import the following module so that the fairness indicator post-export
 # metric is registered.
 import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=unused-import
@@ -173,14 +174,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           model_artifact = artifact_utils.get_single_instance(
               input_dict[standard_component_specs.MODEL_KEY])
         # TODO(b/171992041): tfma.get_model_type replaced by tfma.utils.
-        if (
-            (
-                hasattr(tfma, 'utils')
-                and tfma.utils.get_model_type(model_spec) == tfma.TFMA_EVAL
-            )
-            or hasattr(tfma, 'get_model_type')
-            and tfma.get_model_type(model_spec) == tfma.TFMA_EVAL
-        ):
+        if ((hasattr(tfma, 'utils') and
+             tfma.utils.get_model_type(model_spec) == tfma.TF_ESTIMATOR) or
+            hasattr(tfma, 'get_model_type') and
+            tfma.get_model_type(model_spec) == tfma.TF_ESTIMATOR):
           model_path = path_utils.eval_model_path(
               model_artifact.uri,
               path_utils.is_old_model_artifact(model_artifact))
@@ -251,8 +248,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
               examples=input_dict[standard_component_specs.EXAMPLES_KEY],
               telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
               schema=schema,
-              raw_record_column_name=tfma.constants.ARROW_INPUT_COLUMN,
-          )
+              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
           # TODO(b/161935932): refactor after TFXIO supports multiple patterns.
           for split in example_splits:
             split_uris = artifact_utils.get_split_uris(
