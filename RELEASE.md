@@ -2,7 +2,7 @@
 
 ## Major Features and Improvements
 
-*  N/A
+*  Added python 3.10 support.
 
 ## Breaking Changes
 
@@ -35,6 +35,7 @@
 | `scikit-learn` | `>=1.0,<2` | `>=0.23,<0.24` | |
 | `google-api-core` | `<2` | `<1.33` | |
 | `google-cloud-aiplatform` | `>=1.6.2,<2` | `>=1.6.2,<1.18` | |
+| `tflite-support` | `>=0.4.3,<0.4.5` | `>=0.4.2,<0.4.3` | |
 
 ## Documentation Updates
 

@@ -88,7 +88,7 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
       'pyarrow>=10,<11',
-      'pyyaml>=3.12,<6',
+      'pyyaml>=3.12,!=5.4.0,!=5.4.1,<6',
       # Keep the TF version same as TFT to help Pip version resolution.
       # Pip might stuck in a TF 1.15 dependency although there is a working
       # dependency set with TF 2.x without the sync.
@@ -173,7 +173,7 @@ def make_extra_packages_tflite_support():
   # Required for tfx/examples/cifar10
   return [
       'flatbuffers>=1.12',
-      'tflite-support>=0.4.2,<0.4.3',
+      'tflite-support>=0.4.3,<0.4.5',
   ]
 
 
