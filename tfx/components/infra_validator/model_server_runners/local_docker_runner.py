@@ -148,12 +148,7 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
       if status == 'running':
         host_port = _find_host_port(self._container.ports,
                                     self._serving_binary.container_port)
-        host_ip_address = (
-            self._serving_spec.local_docker.host_ip_address
-            if self._serving_spec.local_docker.host_ip_address
-            else 'localhost'
-        )
-        self._endpoint = f'{host_ip_address}:{host_port}'
+        self._endpoint = 'localhost:{}'.format(host_port)
         return
       # Docker status is one of {'created', 'restarting', 'running', 'removing',
       # 'paused', 'exited', or 'dead'}. Status other than 'created' and

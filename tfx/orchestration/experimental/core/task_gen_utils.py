@@ -22,7 +22,6 @@ import uuid
 from absl import logging
 import attr
 from tfx import types
-from tfx.dsl.compiler import constants as context_constants
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
@@ -277,23 +276,7 @@ def get_executions(
     return []
   # Get all the contexts associated with the node.
   filter_query = q.And([])
-
-  # "node" context or "pipeline_run" context is a strict sub-context of a
-  # "pipeline" context thus we can remove "pipeline" context from the filter
-  # query to improve performance.
-  filter_contexts = node.contexts.contexts
-  context_types = {context.type.name for context in filter_contexts}
-
-  if (
-      context_constants.PIPELINE_RUN_CONTEXT_TYPE_NAME in context_types
-      or context_constants.NODE_CONTEXT_TYPE_NAME in context_types
-  ):
-    context_types.discard(context_constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
-    filter_contexts = [
-        q for q in filter_contexts if q.type.name in context_types
-    ]
-
-  for i, context_spec in enumerate(filter_contexts):
+  for i, context_spec in enumerate(node.contexts.contexts):
     context_type = context_spec.type.name
     context_name = data_types_utils.get_value(context_spec.name)
     filter_query.append(

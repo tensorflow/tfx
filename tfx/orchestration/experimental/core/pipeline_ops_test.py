@@ -200,6 +200,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         pipeline_state_run1.initiate_stop(
             status_lib.Status(code=status_lib.Code.ABORTED)
         )
+
       # Only Trainer is marked to run since ExampleGen succeeded in previous
       # run.
       expected_pipeline = copy.deepcopy(pipeline)
@@ -2606,70 +2607,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(
           status_lib.Code.INTERNAL, exception_context.exception.code
       )
-
-  def test_delete_pipeline_run(self):
-    pipeline = test_sync_pipeline.create_pipeline()
-    runtime_parameter_utils.substitute_runtime_parameter(
-        pipeline,
-        {
-            constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'test-pipeline-run',
-        },
-    )
-
-    with self._mlmd_connection_manager as mlmd_connection_manager:
-      m = mlmd_connection_manager.primary_mlmd_handle
-      example_gen = pipeline.nodes[0].pipeline_node
-
-      # Initiate a pipeline run.
-      pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
-
-      # Fake that the example_gen is RUNNING.
-      example_gen_execution = test_utils.fake_example_gen_execution_with_state(
-          m,
-          example_gen,
-          metadata_store_pb2.Execution.State.RUNNING,
-      )
-
-      # Fake that the example_gen is COMPLETED with output artifacts.
-      contexts = context_lib.prepare_contexts(m, example_gen.contexts)
-      execution_publish_utils.publish_succeeded_execution(
-          m,
-          execution_id=example_gen_execution.id,
-          contexts=contexts,
-          output_artifacts={'Examples': [standard_artifacts.Examples()]},
-      )
-
-      # Check that artifacts have state of LIVE, artifacts path
-      # successfully deleted and pipeline execution does not have
-      # custom_properties of deleted.
-      artifacts = m.store.get_artifacts()
-      physical_address = artifacts[0].uri
-      self.assertLen(artifacts, 1)
-      self.assertEqual(
-          artifacts[0].state, metadata_store_pb2.Artifact.State.LIVE
-      )
-      with pipeline_state:
-        self.assertIsNone(
-            pipeline_state.execution.custom_properties.get('deleted')
-        )
-
-      # Run the function to be tested.
-      pipeline_ops.delete_pipeline_run(
-          m, pipeline_id='my_pipeline', pipeline_run_id='test-pipeline-run'
-      )
-
-      # Make sure that that artifacts have state of DELETED, and pipeline
-      # execution has custom_properties of deleted.
-      artifacts = m.store.get_artifacts()
-      self.assertLen(artifacts, 1)
-      self.assertEqual(
-          artifacts[0].state, metadata_store_pb2.Artifact.State.DELETED
-      )
-      self.assertFalse(os.path.exists(physical_address))
-      with pipeline_state:
-        self.assertTrue(
-            pipeline_state.execution.custom_properties.get('deleted')
-        )
 
 
 if __name__ == '__main__':
