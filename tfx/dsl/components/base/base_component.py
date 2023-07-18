@@ -141,8 +141,6 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
            'got %s instead.') %
           (self.__class__, self.__class__.SPEC_CLASS, spec))
 
-  # TODO(b/170682320): This function is not widely available until we migrate
-  # the entire stack to IR-based.
   @doc_controls.do_not_doc_in_subclasses
   def with_platform_config(self, config: message.Message) -> 'BaseComponent':
     """Attaches a proto-form platform config to a component.
