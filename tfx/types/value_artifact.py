@@ -83,6 +83,7 @@ class ValueArtifact(Artifact):
   def value(self, value):
     self._modified = True
     self._value = value
+    self._has_value = True
     self.write(value)
 
   # Note: behavior of decode() method should not be changed to provide
