@@ -15,7 +15,7 @@
 
 import collections
 import enum
-from typing import Collection, List, Mapping, Optional, Set, Tuple
+from typing import Collection, Mapping, Optional, Set, Tuple
 import uuid
 
 from absl import logging
@@ -24,9 +24,12 @@ from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
+from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact_utils
 
+from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -648,7 +651,8 @@ class _ArtifactRecycler:
     return node_context
 
   def _get_successful_executions(
-      self, node_id: str, run_id: str) -> List[metadata_store_pb2.Execution]:
+      self, node_id: str, run_id: str
+  ) -> metadata_store_pb2.LineageGraph:
     """Gets all successful Executions of a given node in a given pipeline run.
 
     Args:
@@ -663,29 +667,46 @@ class _ArtifactRecycler:
     """
     node_context = self._get_node_context(node_id)
     base_run_context = self._get_pipeline_run_context(run_id)
-    all_associated_executions = (
-        execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd, contexts=[node_context, base_run_context]
-        )
-    )
-    prev_successful_executions = [
-        e for e in all_associated_executions
-        if execution_lib.is_execution_successful(e)
-    ]
+
+    try:
+      subgraph = self._mlmd.store.get_lineage_subgraph(
+          query_options=metadata_store_pb2.LineageSubgraphQueryOptions(
+              starting_executions=metadata_store_pb2.LineageSubgraphQueryOptions.StartingNodes(
+                  filter_query=(
+                      f'contexts_1.id = {node_context.id} AND contexts_2.id ='
+                      f' {base_run_context.id}'
+                  ),
+              ),
+              max_num_hops=1,
+          ),
+          verbose=True,
+      )
+    except errors.NotFoundError:
+      subgraph = None
+
+    if not subgraph:
+      prev_successful_executions = []
+    else:
+      prev_successful_executions = [
+          e
+          for e in subgraph.executions
+          if execution_lib.is_execution_successful(e)
+      ]
+
     if not prev_successful_executions:
       raise LookupError(
           f'No previous successful executions found for node_id {node_id} in '
           f'pipeline_run {run_id}')
 
-    return prev_successful_executions
+    return subgraph
 
   def _cache_and_publish(
       self,
-      existing_executions: List[metadata_store_pb2.Execution],
+      subgraph: Optional[metadata_store_pb2.LineageGraph],
       node_id: str,
   ):
     """Creates and publishes cache executions."""
-    if not existing_executions:
+    if not subgraph:
       return
 
     # Check if there are any previous attempts to cache and publish.
@@ -706,7 +727,7 @@ class _ArtifactRecycler:
 
     if not prev_cache_executions:
       new_executions = []
-      for e in existing_executions:
+      for e in subgraph.executions:
         new_executions.append(
             execution_lib.prepare_execution(
                 metadata_handler=self._mlmd,
@@ -724,16 +745,38 @@ class _ArtifactRecycler:
 
     if not new_executions:
       return
-    if len(new_executions) != len(existing_executions):
+    if len(new_executions) != len(subgraph.executions):
       raise RuntimeError(
           'The number of new executions is not the same as the number of'
           ' existing executions.'
       )
 
-    output_artifacts_maps = [
-        execution_lib.get_output_artifacts(self._mlmd, e.id)
-        for e in existing_executions
-    ]
+    artifact_types = self._mlmd.store.get_artifact_types_by_id(
+        set(a.type_id for a in subgraph.artifacts)
+    )
+    artifact_types_by_id = {a.id: a for a in artifact_types}
+    output_artifacts_maps = []
+    for execution in subgraph.executions:
+      output_events = [
+          e
+          for e in subgraph.events
+          if event_lib.is_valid_output_event(e)
+          and e.execution_id == execution.id
+      ]
+      artifact_ids = [e.artifact_id for e in output_events]
+      artifacts = [a for a in subgraph.artifacts if a.id in artifact_ids]
+      deserialized_artifacts = [
+          artifact_utils.deserialize_artifact(
+              artifact_types_by_id[artifact.type_id], artifact
+          )
+          for artifact in artifacts
+      ]
+      output_artifacts_maps.append(
+          event_lib.reconstruct_artifact_multimap(
+              deserialized_artifacts, output_events
+          )
+      )
+
     execution_publish_utils.publish_cached_executions(
         self._mlmd,
         contexts=cached_execution_contexts,
