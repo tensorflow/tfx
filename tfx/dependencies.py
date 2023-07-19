@@ -88,7 +88,9 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
       'pyarrow>=10,<11',
-      'pyyaml>=3.12,<6',
+      # TODO(b/291837844): Pinned pyyaml to 5.3.1.
+      # Unpin once the issue with installation is resolved.
+      'pyyaml>=3.12,<6,!=5.4.0,!=5.4.1',
       # Keep the TF version same as TFT to help Pip version resolution.
       # Pip might stuck in a TF 1.15 dependency although there is a working
       # dependency set with TF 2.x without the sync.

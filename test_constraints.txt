@@ -17,3 +17,6 @@ cachelib<0.10.0
 # TODO(b/281467874): Remove this after upgrading OpenSSL version in our test
 # environment.
 urllib3<2
+
+# TODO(b/291837844): Remove this after upgrading PyYaml to >=6.0.1.
+pyyaml==5.3.1
