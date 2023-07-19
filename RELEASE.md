@@ -2,7 +2,7 @@
 
 ## Major Features and Improvements
 
-*  N/A
+*  Added python 3.10 support.
 
 ## Breaking Changes
 
