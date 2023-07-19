@@ -677,7 +677,8 @@ class _ArtifactRecycler:
           f'No previous successful executions found for node_id {node_id} in '
           f'pipeline_run {run_id}')
 
-    return prev_successful_executions
+    return execution_lib.sort_executions_newest_to_oldest(
+        prev_successful_executions)
 
   def _cache_and_publish(
       self,

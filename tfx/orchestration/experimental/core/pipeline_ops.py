@@ -19,7 +19,6 @@ import datetime
 import functools
 import itertools
 import random
-import shutil
 import threading
 import time
 from typing import Callable, List, Mapping, Optional, Sequence
@@ -49,7 +48,6 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
-
 
 # A coarse grained lock is used to ensure serialization of pipeline operations
 # since there isn't a suitable MLMD transaction API.
@@ -95,7 +93,6 @@ def _pipeline_op(lock: bool = True):
           ) from e
 
     return _wrapper
-
   return _decorator
 
 
@@ -559,83 +556,6 @@ def _initiate_pipeline_update(
   return pipeline_state
 
 
-@_pipeline_op()
-def delete_pipeline_run(
-    mlmd_handle: metadata.Metadata, pipeline_id: str, pipeline_run_id: str
-) -> None:
-  """Deletes a pipeline run.
-
-  Mark the pipeline run execution custom_priority['deleted'] to true and
-  pipeline run output artifacts as DELETED.
-
-  Args:
-    mlmd_handle: A handle to the MLMD db.
-    pipeline_id: id of the pipeline which has the pipeline run.
-    pipeline_run_id: id of the pipeline run will be deleted.
-
-  Raises:
-     status_lib.StatusNotOkError: Failure to delete a pipeline run.
-  """
-  try:
-    pipeline_view = pstate.PipelineView.load(
-        mlmd_handle, pipeline_id, pipeline_run_id
-    )
-    if (
-        pipeline_view.pipeline_execution_mode
-        == pipeline_pb2.Pipeline.ExecutionMode.ASYNC
-    ):
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.FAILED_PRECONDITION,
-          message='delete pipeline run does not support ASYNC pipeline',
-      )
-    if (
-        pipeline_view.execution.last_known_state
-        == mlmd_state.metadata_store_pb2.Execution.State.RUNNING
-    ):
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.FAILED_PRECONDITION,
-          message=(
-              "Tflex doesn't allow deleting the active running pipeline run,"
-              ' please stop the pipeline run first.'
-          ),
-      )
-    # mark executions as deleted using atomic op to avoid race condition.
-    with mlmd_state.mlmd_execution_atomic_op(
-        mlmd_handle=mlmd_handle,
-        execution_id=pipeline_view.execution.id,
-    ) as execution:
-      if not execution:
-        raise status_lib.StatusNotOkError(
-            code=status_lib.Code.NOT_FOUND,
-            message=(
-                'Execution with given execution_id not found: '
-                f'{pipeline_view.execution.id}'
-            ),
-        )
-      execution.custom_properties['deleted'].CopyFrom(
-          mlmd_state.metadata_store_pb2.Value(bool_value=True)
-      )
-
-      # TODO(fangyuancai):consider using atomic operation when modify artifacts.
-      artifacts = []
-      artifacts_dict = pstate.get_all_node_artifacts(
-          pipeline_view.pipeline, mlmd_handle
-      )
-      for _, node_artifacts in artifacts_dict.items():
-        for _, execution_artifacts in node_artifacts.items():
-          for _, artifact_list in execution_artifacts.items():
-            artifacts.extend(artifact_list)
-      for artifact in artifacts:
-        if artifact.uri:
-          shutil.rmtree(artifact.uri)
-        artifact.state = mlmd_state.metadata_store_pb2.Artifact.State.DELETED
-    mlmd_handle.store.put_artifacts(artifacts)
-  except LookupError as e:
-    raise status_lib.StatusNotOkError(
-        code=status_lib.Code.NOT_FOUND, message=str(e)
-    )
-
-
 @_pipeline_op(lock=False)
 def update_pipeline(
     mlmd_handle: metadata.Metadata,
@@ -760,7 +680,7 @@ def _load_reused_pipeline_view(
         mlmd_handle=mlmd_handle,
         pipeline_id=pipeline_uid.pipeline_id,
         pipeline_run_id=base_run_id,
-        non_active_only=env.get_env().concurrent_pipeline_runs_enabled(),
+        non_active_only=env.get_env().concurrent_pipeline_runs_enabled()
     )
   except status_lib.StatusNotOkError as e:
     if e.code == status_lib.Code.NOT_FOUND:

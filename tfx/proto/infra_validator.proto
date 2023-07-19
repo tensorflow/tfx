@@ -92,8 +92,6 @@ message LocalDockerConfig {
   // Optional docker client timeout seconds. Default to the constant defined in
   // docker-py library.
   int32 client_timeout_seconds = 3;
-  // Optional host ip address. If not specified, then uses "localhost".
-  string host_ip_address = 4;
 }
 
 // Kubernetes configuration. We currently only support the use case when infra
