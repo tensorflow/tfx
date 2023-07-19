@@ -89,10 +89,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
     otu.fake_component_output(self._mlmd_connection, self._transform)
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
-    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
-    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
-    otu.fake_component_output(self._mlmd_connection, self._transform)
 
     # Get all executions across all pipeline contexts.
     with self._mlmd_connection as m:
@@ -112,16 +108,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
                             task_gen_utils.get_executions(m, self._transform))
       self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
 
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
-    with self._mlmd_connection as m:
-      self.assertCountEqual(all_eg_execs[2:],
-                            task_gen_utils.get_executions(m, self._example_gen))
-      self.assertCountEqual(all_transform_execs[1:],
-                            task_gen_utils.get_executions(m, self._transform))
-      self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
-
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
-    with self._mlmd_connection as m:
       self.assertLen(
           task_gen_utils.get_executions(m, self._example_gen, limit=1), 1
       )
@@ -139,26 +125,26 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertEqual(all_eg_execs[-1].id, last_2_executions[0].id)
       self.assertEqual(all_eg_execs[-2].id, last_2_executions[1].id)
 
-    # Fake a FAILED execution. Then, there should be 2 COMPLETED executions and
-    # 1 FAILED execution.
-    otu.fake_example_gen_execution_with_state(
-        self._mlmd_connection,
-        self._example_gen,
-        metadata_store_pb2.Execution.State.FAILED,
-    )
-    self.assertLen(task_gen_utils.get_executions(m, self._example_gen), 3)
-    succeeded_executions = task_gen_utils.get_executions(
-        m, self._example_gen, only_successful=True
-    )
-    self.assertLen(succeeded_executions, 2)
-    self.assertEqual(
-        metadata_store_pb2.Execution.State.COMPLETE,
-        succeeded_executions[0].last_known_state,
-    )
-    self.assertEqual(
-        metadata_store_pb2.Execution.State.COMPLETE,
-        succeeded_executions[1].last_known_state,
-    )
+      # Fake a FAILED execution. Then, there should be 2 COMPLETED executions
+      # and 1 FAILED execution.
+      otu.fake_example_gen_execution_with_state(
+          self._mlmd_connection,
+          self._example_gen,
+          metadata_store_pb2.Execution.State.FAILED,
+      )
+      self.assertLen(task_gen_utils.get_executions(m, self._example_gen), 3)
+      succeeded_executions = task_gen_utils.get_executions(
+          m, self._example_gen, only_successful=True
+      )
+      self.assertLen(succeeded_executions, 2)
+      self.assertEqual(
+          metadata_store_pb2.Execution.State.COMPLETE,
+          succeeded_executions[0].last_known_state,
+      )
+      self.assertEqual(
+          metadata_store_pb2.Execution.State.COMPLETE,
+          succeeded_executions[1].last_known_state,
+      )
 
   def test_get_executions_only_active(self):
     with self._mlmd_connection as m:
@@ -167,14 +153,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
     # Create executions for the same nodes under different pipeline contexts.
     self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
-    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
-                                              self._example_gen, State.NEW)
-    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
-                                              self._example_gen, State.RUNNING)
-    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
-                                              self._example_gen, State.COMPLETE)
-    otu.fake_component_output(self._mlmd_connection, self._transform)
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
     otu.fake_example_gen_execution_with_state(self._mlmd_connection,
                                               self._example_gen, State.NEW)
     otu.fake_example_gen_execution_with_state(self._mlmd_connection,
@@ -194,20 +172,10 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           execution.last_known_state == State.NEW
       ]
 
-    # Check that correct executions are returned for each node in each pipeline.
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
-    with self._mlmd_connection as m:
+      # Check that correct executions are returned for each node in each
+      # pipeline.
       self.assertCountEqual(
           active_eg_execs[0:2],
-          task_gen_utils.get_executions(m, self._example_gen, only_active=True))
-      self.assertEmpty(
-          task_gen_utils.get_executions(m, self._transform, only_active=True))
-      self.assertEmpty(
-          task_gen_utils.get_executions(m, self._trainer, only_active=True))
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
-    with self._mlmd_connection as m:
-      self.assertCountEqual(
-          active_eg_execs[2:],
           task_gen_utils.get_executions(m, self._example_gen, only_active=True))
       self.assertEmpty(
           task_gen_utils.get_executions(m, self._transform, only_active=True))

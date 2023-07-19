@@ -288,7 +288,7 @@ def get_executions(
       context_constants.PIPELINE_RUN_CONTEXT_TYPE_NAME in context_types
       or context_constants.NODE_CONTEXT_TYPE_NAME in context_types
   ):
-    context_types.discard(context_constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
+    context_types.discard(context_constants.PIPELINE_CONTEXT_TYPE_NAME)
     filter_contexts = [
         q for q in filter_contexts if q.type.name in context_types
     ]
