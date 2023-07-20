@@ -14,6 +14,7 @@
 """Builds the container image using files in the current directory."""
 
 import os
+import subprocess
 from typing import Any, Dict, Iterable, Optional
 
 import click
@@ -91,5 +92,9 @@ def build(target_image: str,
       repository=target_image, stream=True, decode=True)
   _print_docker_log_stream(log_stream, 'status', newline=True)
 
+  command = '/sbin/ip route|awk \'/default/ { print $3 }\''
+  ip_address = subprocess.check_output(
+      command, shell=True).decode('utf-8').strip()
+  target_image = target_image.replace('localhost', ip_address)
   image_id = docker_client.images.get_registry_data(target_image).id
   return f'{_get_image_repo(target_image)}@{image_id}'
