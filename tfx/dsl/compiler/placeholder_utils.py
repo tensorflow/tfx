@@ -32,8 +32,6 @@ from tfx.types import value_artifact
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
-from google.protobuf.internal import containers
-from google.protobuf.pyext import _message
 from google.protobuf import json_format
 from google.protobuf import message
 from google.protobuf import text_format
@@ -431,11 +429,19 @@ class _ExpressionResolver:
       return value
 
     # Return repeated fields as list.
-    if isinstance(
-        value,
-        (_message.RepeatedCompositeContainer, _message.RepeatedScalarContainer,
-         containers.RepeatedCompositeFieldContainer,
-         containers.RepeatedScalarFieldContainer)):
+    # TODO(b/292040530): It was originally done with
+    # if isinstance(value,(_message.RepeatedCompositeContainer,
+    #    _message.RepeatedScalarContainer,
+    #     containers.RepeatedCompositeFieldContainer,
+    #     containers.RepeatedScalarFieldContainer))
+    # however, it was not supported on an environment that Protoc
+    # (google.protobuf.pyext._message) is not installed but only a pure Python
+    # Protobuf presents. (ex. OSS macos Python 3.10) This is a new workaround
+    # for pure Python users.
+    if type(value).__name__ in (
+        "RepeatedCompositeContainer",
+        "RepeatedScalarContainer",
+    ):
       return list(value)
 
     if not isinstance(value, message.Message):
