@@ -24,7 +24,7 @@
 
 ## Bug Fixes and Other Changes
 
-*  Apply latest TFX image vulnerability resolutions (base OS and software updates)
+*  N/A
 
 ## Dependency Updates
 | Package Name | Version Constraints | Previously (in `v1.13.0`) | Comments |
