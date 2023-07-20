@@ -341,17 +341,6 @@ def initiate_node_backfill(
               f'{node_uid.pipeline_uid.pipeline_id} is not ASYNC'
           ),
       )
-    # TODO(b/266133586): remove error on ExampleGen backfill.
-    if env.get_env().is_pure_service_node(
-        pipeline_state.pipeline, node_uid.node_id
-    ):
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INVALID_ARGUMENT,
-          message=(
-              f'Cannot backfill pure service nodes, but node {node_uid} is a '
-              'pure service node.'
-          ),
-      )
 
     with pipeline_state.node_state_update_context(node_uid) as node_state:
       if node_state.backfill_token:

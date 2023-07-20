@@ -759,27 +759,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
     pipeline = test_async_pipeline.create_pipeline()
 
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-    example_gen_node_uid = task_lib.NodeUid(
-        node_id='my_example_gen', pipeline_uid=pipeline_uid
-    )
     trainer_node_uid = task_lib.NodeUid(
         node_id='my_trainer', pipeline_uid=pipeline_uid
     )
 
-    class _TestEnv(env._DefaultEnv):
-
-      def is_pure_service_node(self, pipeline_state, node_id):
-        return node_id == 'my_example_gen'
-
-    with _TestEnv(), self._mlmd_connection as m:
-      pipeline_state = pstate.PipelineState.new(m, pipeline)
-
-      # Check - can't backfill a pure service node
-      with self.assertRaisesRegex(
-          status_lib.StatusNotOkError,
-          'Cannot backfill pure service nodes',
-      ):
-        pipeline_ops.initiate_node_backfill(m, example_gen_node_uid)
+    with self._mlmd_connection as m:
+      pstate.PipelineState.new(m, pipeline)
 
       # Check - can't backfill a RUNNING node
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
