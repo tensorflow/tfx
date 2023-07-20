@@ -138,8 +138,8 @@ def make_extra_packages_airflow():
 def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
-      'kfp>=1.8.14,<2',
-      'kfp-pipeline-spec>=0.1.10,<0.2',
+      'kfp>=2,<3',
+      'kfp-pipeline-spec>=0.2.2,<0.2.3',
   ]
 
 
