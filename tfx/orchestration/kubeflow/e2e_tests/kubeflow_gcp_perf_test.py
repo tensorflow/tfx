@@ -75,7 +75,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
   # The location of test user module file.
   # It is retrieved from inside the container subject to testing.
   # This location depends on install path of TFX in the docker image.
-  _MODULE_FILE = '/usr/local/lib/python3.8/dist-packages/tfx/examples/penguin/penguin_utils_cloud_tuner.py'
+  _MODULE_FILE = '/opt/conda/lib/python3.10/site-packages/tfx/examples/penguin/penguin_utils_cloud_tuner.py'
 
   # Parameterize worker type/count for easily ramping up the pipeline scale.
   _WORKER_COUNT = data_types.RuntimeParameter(
@@ -109,7 +109,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
   # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
   #                    scaling bottleneck.
   # TODO(b/171733562): Remove `use_runner_v2` once it is the default for
-  #.                   Dataflow.
+  #                    Dataflow.
   _BEAM_PIPELINE_ARGS = [
       '--runner=DataflowRunner',
       '--project=' + _GCP_PROJECT_ID,
