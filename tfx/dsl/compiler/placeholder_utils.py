@@ -441,6 +441,8 @@ class _ExpressionResolver:
     if type(value).__name__ in (
         "RepeatedCompositeContainer",
         "RepeatedScalarContainer",
+        "RepeatedCompositeFieldContainer",
+        "RepeatedScalarFieldContainer",
     ):
       return list(value)
 
