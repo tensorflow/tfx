@@ -32,6 +32,7 @@ from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.utils import telemetry_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact_utils
 from tfx.utils import proto_utils
 from tfx.utils import typing_utils
 
@@ -651,20 +652,45 @@ def get_output_artifacts(
     A reconstructed output artifacts multimap.
   """
   start_time = time.time()
-  events = metadata_handle.store.get_events_by_execution_ids([execution_id])
-  output_events = [e for e in events if event_lib.is_valid_output_event(e)]
-  artifacts = artifact_lib.get_artifacts_by_ids(
-      metadata_handle, [e.artifact_id for e in output_events]
+  logging.error('Guowei checkpoint 1')
+  subgraph = metadata_handle.store.get_lineage_subgraph(
+      query_options=metadata_store_pb2.LineageSubgraphQueryOptions(
+          starting_executions=metadata_store_pb2.LineageSubgraphQueryOptions.StartingNodes(
+              filter_query=f'id = {execution_id}',
+          ),
+          max_num_hops=1,
+      ),
+      verbose=True,
   )
-  output_events = event_lib.reconstruct_artifact_multimap(
-      artifacts, output_events
+  logging.error('Guowei checkpoint 2')
+  artifact_types = subgraph.artifact_types
+  logging.error('Guowei checkpoint 3')
+
+  artifact_types_by_id = {a.id: a for a in artifact_types}
+
+  output_events = [
+      e
+      for e in subgraph.events
+      if event_lib.is_valid_output_event(e) and e.execution_id == execution_id
+  ]
+  artifact_ids = [e.artifact_id for e in output_events]
+  artifacts = [a for a in subgraph.artifacts if a.id in artifact_ids]
+  deserialized_artifacts = [
+      artifact_utils.deserialize_artifact(
+          artifact_types_by_id[artifact.type_id], artifact
+      )
+      for artifact in artifacts
+  ]
+  output_artifacts_maps = event_lib.reconstruct_artifact_multimap(
+      deserialized_artifacts, output_events
   )
+
   telemetry_utils.noop_telemetry(
       module='execution_lib',
       method='get_output_artifacts',
       start_time=start_time
   )
-  return output_events
+  return output_artifacts_maps
 
 
 def get_pending_output_artifacts(
