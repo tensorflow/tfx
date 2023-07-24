@@ -66,7 +66,6 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
         error_code=status.code,
         error_msg=status.message,
         execution_result=execution_result)
-    pipeline_state.record_state_change_time()
 
   if result.status.code != status_lib.Code.OK:
     _update_state(result.status)
@@ -194,6 +193,7 @@ def _update_execution_state_in_mlmd(
           error_msg)
     if execution_result:
       execution_lib.set_execution_result(execution_result, execution)
+  pipeline_state.record_state_change_time()
 
 
 def _remove_temporary_task_dirs(stateful_working_dir: str = '',
