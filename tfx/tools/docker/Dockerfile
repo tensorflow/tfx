@@ -69,10 +69,6 @@ ARG ADDITIONAL_PACKAGES
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
-# TODO(b/264498526): Use the original python verion in DLVM.
-ENV PATH="/usr/bin:${PATH}"
-RUN ln -s /usr/bin/python3.8 /usr/bin/python
-
 ARG APT_COMMAND="apt-get -o Acquire::Retries=3 -y"
 
 # Needed to install python 3.8
@@ -84,9 +80,10 @@ RUN ${APT_COMMAND} update && \
   ${APT_COMMAND} install \
   build-essential \
   python3.8 \
-  python3.8-dev
+  python3.8-dev \
+  python3.8-distutils
 
-# We will fix the python version 3.8
+# TODO(b/264498526): Use the original python verion in DLVM.
 ENV PATH="/usr/bin:${PATH}"
 RUN ln -s /usr/bin/python3.8 /usr/bin/python
 
