@@ -27,19 +27,24 @@ class PenguinPipelineKubeflowV2Test(base_test_case.BaseKubeflowV2Test):
 
   def setUp(self):
     super().setUp()
-    penguin_examples_dir = os.path.join(self._REPO_BASE, 'tfx', 'examples',
-                                        'penguin')
+    penguin_examples_dir = os.path.join(
+        self._REPO_BASE, 'tfx', 'examples', 'penguin'
+    )
     penguin_test_data_root = os.path.join(penguin_examples_dir, 'data')
-    penguin_test_schema_file = os.path.join(penguin_examples_dir, 'schema',
-                                            'user_provided', 'schema.pbtxt')
-    self._penguin_module_file = os.path.join(penguin_examples_dir,
-                                             'penguin_utils_cloud_tuner.py')
+    penguin_test_schema_file = os.path.join(
+        penguin_examples_dir, 'schema', 'user_provided', 'schema.pbtxt'
+    )
+    self._penguin_module_file = os.path.join(
+        penguin_examples_dir, 'penguin_utils_cloud_tuner.py'
+    )
     self._penguin_data_root = os.path.join(self._test_data_dir, 'data')
-    self._penguin_schema_file = os.path.join(self._test_data_dir,
-                                             'schema.pbtxt')
+    self._penguin_schema_file = os.path.join(
+        self._test_data_dir, 'schema.pbtxt'
+    )
     io_utils.copy_dir(penguin_test_data_root, self._penguin_data_root)
     io_utils.copy_file(
-        penguin_test_schema_file, self._penguin_schema_file, overwrite=True)
+        penguin_test_schema_file, self._penguin_schema_file, overwrite=True
+    )
 
   def testEndToEndPipelineRun(self):
     """E2E test for pipeline with runtime parameter."""
@@ -52,27 +57,31 @@ class PenguinPipelineKubeflowV2Test(base_test_case.BaseKubeflowV2Test):
         enable_tuning=False,
         enable_cache=True,
         user_provided_schema_path=self._penguin_schema_file,
-        ai_platform_training_args=penguin_pipeline_kubeflow
-        ._ai_platform_training_args,
-        ai_platform_serving_args=penguin_pipeline_kubeflow
-        ._ai_platform_serving_args,
-        beam_pipeline_args=penguin_pipeline_kubeflow
-        ._beam_pipeline_args_by_runner['DirectRunner'],
+        ai_platform_training_args=penguin_pipeline_kubeflow._ai_platform_training_args,
+        ai_platform_serving_args=penguin_pipeline_kubeflow._ai_platform_serving_args,
+        beam_pipeline_args=penguin_pipeline_kubeflow._beam_pipeline_args_by_runner[
+            'DirectRunner'
+        ],
         use_cloud_component=False,
         use_aip=False,
         use_vertex=False,
-        serving_model_dir=self._serving_model_dir)
+        serving_model_dir=self._serving_model_dir,
+    )
+
+    print(
+        'Anuar checkpoint -'
+        ' penguin_pipeline_kubeflow_e2e_test.pytestEndToEndPipelineRun'
+    )
+    print(os.environ.get('METADATA_GRPC_SERVICE_HOST', default='none'))
+    print(os.environ.get('METADATA_GRPC_SERVICE_PORT', default='none'))
 
     self._run_pipeline(
         pipeline=kubeflow_pipeline,
         parameter_values={
-            'train-args': {
-                'num_steps': 100
-            },
-            'eval-args': {
-                'num_steps': 50
-            }
-        })
+            'train-args': {'num_steps': 100},
+            'eval-args': {'num_steps': 50},
+        },
+    )
     self.assertTrue(fileio.exists(self._serving_model_dir))
 
 
@@ -80,20 +89,25 @@ class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):
     super().setUp()
-    penguin_examples_dir = os.path.join(self._REPO_BASE, 'tfx', 'examples',
-                                        'penguin')
+    penguin_examples_dir = os.path.join(
+        self._REPO_BASE, 'tfx', 'examples', 'penguin'
+    )
     penguin_test_data_root = os.path.join(penguin_examples_dir, 'data')
-    penguin_test_schema_file = os.path.join(penguin_examples_dir, 'schema',
-                                            'user_provided', 'schema.pbtxt')
-    self._penguin_module_file = os.path.join(penguin_examples_dir,
-                                             'penguin_utils_cloud_tuner.py')
+    penguin_test_schema_file = os.path.join(
+        penguin_examples_dir, 'schema', 'user_provided', 'schema.pbtxt'
+    )
+    self._penguin_module_file = os.path.join(
+        penguin_examples_dir, 'penguin_utils_cloud_tuner.py'
+    )
     self._penguin_data_root = os.path.join(self._test_data_dir, 'data')
-    self._penguin_schema_file = os.path.join(self._test_data_dir,
-                                             'schema.pbtxt')
+    self._penguin_schema_file = os.path.join(
+        self._test_data_dir, 'schema.pbtxt'
+    )
 
     io_utils.copy_dir(penguin_test_data_root, self._penguin_data_root)
     io_utils.copy_file(
-        penguin_test_schema_file, self._penguin_schema_file, overwrite=True)
+        penguin_test_schema_file, self._penguin_schema_file, overwrite=True
+    )
 
   def testEndToEndPipelineRun(self):
     """End-to-end test for pipeline with RuntimeParameter."""
@@ -106,23 +120,24 @@ class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
         enable_tuning=False,
         enable_cache=True,
         user_provided_schema_path=self._penguin_schema_file,
-        ai_platform_training_args=penguin_pipeline_kubeflow
-        ._ai_platform_training_args,
-        ai_platform_serving_args=penguin_pipeline_kubeflow
-        ._ai_platform_serving_args,
-        beam_pipeline_args=penguin_pipeline_kubeflow
-        ._beam_pipeline_args_by_runner['DirectRunner'],
+        ai_platform_training_args=penguin_pipeline_kubeflow._ai_platform_training_args,
+        ai_platform_serving_args=penguin_pipeline_kubeflow._ai_platform_serving_args,
+        beam_pipeline_args=penguin_pipeline_kubeflow._beam_pipeline_args_by_runner[
+            'DirectRunner'
+        ],
         use_cloud_component=False,
         use_aip=False,
         use_vertex=False,
-        serving_model_dir=self._serving_model_dir)
+        serving_model_dir=self._serving_model_dir,
+    )
 
     parameters = {
         'train-args': '{"num_steps": 100}',
         'eval-args': '{"num_steps": 50}',
     }
     self._compile_and_run_pipeline(
-        pipeline=kubeflow_pipeline, parameters=parameters)
+        pipeline=kubeflow_pipeline, parameters=parameters
+    )
     self.assertTrue(fileio.exists(self._serving_model_dir))
 
 
