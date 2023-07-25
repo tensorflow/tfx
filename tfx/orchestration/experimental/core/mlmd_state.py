@@ -16,14 +16,21 @@
 import collections
 import contextlib
 import copy
+import sys
 import threading
 import typing
 from typing import Callable, Iterator, MutableMapping, Optional
 
+from absl import logging
 import cachetools
 from tfx.orchestration import metadata
 
+import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
+
+
+_ORCHESTRATOR_RESERVED_ID = '__ORCHESTRATOR__'
+_CACHE_MAX_SIZE = 1024
 
 
 class _LocksManager:
@@ -64,12 +71,14 @@ class _ExecutionCache:
   """Read-through / write-through cache for MLMD executions."""
 
   def __init__(self):
-    self._cache: MutableMapping[
-        int, metadata_store_pb2.Execution] = cachetools.LRUCache(maxsize=1024)
+    self._cache: MutableMapping[int, metadata_store_pb2.Execution] = (
+        cachetools.LRUCache(maxsize=_CACHE_MAX_SIZE)
+    )
     self._lock = threading.Lock()
 
-  def get_execution(self, mlmd_handle: metadata.Metadata,
-                    execution_id: int) -> metadata_store_pb2.Execution:
+  def get_execution(
+      self, mlmd_handle: metadata.Metadata, execution_id: int
+  ) -> metadata_store_pb2.Execution:
     """Gets execution either from cache or, upon cache miss, from MLMD."""
     with self._lock:
       execution = self._cache.get(execution_id)
@@ -104,8 +113,100 @@ class _ExecutionCache:
       self._cache.clear()
 
 
+class _LiveOrchestratorContextsCache:
+  """Read-through / write-through cache for MLMD live orchestrator contexts.
+
+  Caches the key value pairs of live orchestrator context ID : context name.
+  """
+
+  def __init__(self):
+    self._cache: MutableMapping[int, str] = cachetools.LRUCache(
+        maxsize=_CACHE_MAX_SIZE
+    )
+    self.synced = False
+    self._lock = threading.Lock()
+
+  def get(self, mlmd_handle: metadata.Metadata) -> MutableMapping[int, str]:
+    """get live __ORCHESTRATOR__ cache."""
+    with self._lock:
+      if self.synced:
+        return self._cache
+    return self.sync(mlmd_handle)
+
+  def sync(self, mlmd_handle: metadata.Metadata) -> MutableMapping[int, str]:
+    """sync to MLMD to reserve the active executions and contexts."""
+    with self._lock:
+      contexts = mlmd_handle.store.get_contexts_by_type(
+          _ORCHESTRATOR_RESERVED_ID
+      )
+      for context in contexts:
+        self._cache[context.id] = context.name
+      if sys.getsizeof(self._cache) < _CACHE_MAX_SIZE:
+        self.synced = True
+        return self._cache
+      else:
+        self.synced = False
+        warning_str = (
+            'Too many pipelines, cache is not opt in to avoid intensive'
+            'memory usage, orchestrator performance might be'
+            'slowing down. Please restrict one pipeline under your project if'
+            'using legacy API.'
+        )
+        logging.warning(warning_str)
+        raise RuntimeError(warning_str)
+
+  def clear(self) -> None:
+    with self._lock:
+      self._cache.clear()
+      self.synced = False
+
+
+class _ContextToExecutionsCache:
+  """Cache from context to live executions.
+
+  Cache live executions associated with orchestrator contexts.
+  """
+
+  def __init__(self):
+    self._cache: MutableMapping[int, list[metadata_store_pb2.Execution]] = (
+        cachetools.LRUCache(maxsize=_CACHE_MAX_SIZE)
+    )
+    self._lock = threading.Lock()
+
+  def get_active_executions(
+      self, mlmd_handle: metadata.Metadata, context_id: int
+  ) -> list[metadata_store_pb2.Execution]:
+    """Cache from context to live executions."""
+    with self._lock:
+      if context_id in self._cache:
+        return self._cache[context_id]
+    return self.sync_execution(mlmd_handle, context_id)
+
+  def clear(self) -> None:
+    with self._lock:
+      self._cache.clear()
+
+  def sync_execution(
+      self, mlmd_handle: metadata.Metadata, context_id: int
+  ) -> list[metadata_store_pb2.Execution]:
+    """Cache from context to live executions."""
+    with self._lock:
+      active_executions = mlmd_handle.store.get_executions_by_context(
+          context_id,
+          list_options=mlmd.ListOptions(
+              filter_query=(
+                  'last_known_state = NEW OR last_known_state = RUNNING'
+              )
+          ),
+      )
+      self._cache[context_id] = active_executions
+      return active_executions
+
+
 _execution_cache = _ExecutionCache()
 _execution_id_locks = _LocksManager()
+live_orchestrator_contexts_cache = _LiveOrchestratorContextsCache()
+context_to_executions_cache = _ContextToExecutionsCache()
 
 
 @contextlib.contextmanager
