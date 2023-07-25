@@ -227,25 +227,6 @@ class PipelineStateTest(test_utils.TfxTest):
           task_lib.PipelineUid.from_pipeline(pipeline),
           pipeline_state.pipeline_uid)
 
-  def load_pipeline_state_by_run(self):
-    with self._mlmd_connection as m:
-      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
-      pstate.PipelineState.new(m, pipeline)
-
-      mlmd_contexts = pstate.get_orchestrator_contexts(m)
-      self.assertLen(mlmd_contexts, 1)
-
-      mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
-      self.assertLen(mlmd_executions, 1)
-      with pstate.PipelineState.load_run(
-          m,
-          pipeline_id=pipeline.pipeline_info.id,
-          run_id=pipeline.runtime_spec.pipeline_run_id.field_value.string_value,
-      ) as pipeline_state:
-        self.assertProtoPartiallyEquals(
-            mlmd_executions[0], pipeline_state._execution
-        )
-
   @mock.patch.object(pstate, 'get_all_node_executions')
   @mock.patch.object(execution_lib, 'get_output_artifacts')
   def test_get_all_node_artifacts(self, mock_get_output_artifacts,
@@ -371,24 +352,6 @@ class PipelineStateTest(test_utils.TfxTest):
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
         self.assertEqual(status, pipeline_state.stop_initiated_reason())
-
-  def test_pipeline_resume_initiation(self):
-    with self._mlmd_connection as m:
-      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
-      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
-        self.assertIsNone(pipeline_state.stop_initiated_reason())
-        status = status_lib.Status(
-            code=status_lib.Code.CANCELLED, message='foo bar'
-        )
-        pipeline_state.initiate_stop(status)
-        self.assertEqual(status, pipeline_state.stop_initiated_reason())
-        pipeline_state.initiate_resume()
-
-      # Reload from MLMD and verify.
-      with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)
-      ) as pipeline_state:
-        self.assertIsNone(pipeline_state.stop_initiated_reason())
 
   def test_update_initiation_and_apply(self):
     with self._mlmd_connection as m:

@@ -24,7 +24,6 @@ import threading
 import time
 from typing import Callable, List, Mapping, Optional, Sequence
 
-from absl import flags
 from absl import logging
 import attr
 from tfx import types
@@ -51,14 +50,6 @@ from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
 
-_ENABLE_INPLACE_RESUME = flags.DEFINE_bool(
-    'tflex_enable_inplace_resume',
-    default=False,
-    help=(
-        'If the resumed pipelines should use the same pipeline run id instead'
-        ' of starting a new partial run.'
-    ),
-)
 
 # A coarse grained lock is used to ensure serialization of pipeline operations
 # since there isn't a suitable MLMD transaction API.
@@ -294,8 +285,6 @@ def stop_pipeline(
   )
 
 
-# TODO(b/285976181): Support retrying individual pipelines nodes from a stopped
-# pipeline.
 @_pipeline_op()
 def initiate_node_start(
     mlmd_handle: metadata.Metadata, node_uid: task_lib.NodeUid
@@ -797,8 +786,7 @@ def _load_reused_pipeline_view(
 def resume_pipeline(
     mlmd_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
-    pipeline_id: str,
-    run_id: Optional[str] = None,
+    reuse_pipeline_uid: task_lib.PipelineUid,
 ) -> pstate.PipelineState:
   """Resumes a pipeline run from previously failed nodes.
 
@@ -807,8 +795,7 @@ def resume_pipeline(
   Args:
     mlmd_handle: A handle to the MLMD db.
     pipeline: IR of the pipeline to resume.
-    pipeline_id: The id (name) of the pipeline to resume.
-    run_id: the run_id of the pipeline run to resume.
+    reuse_pipeline_uid: UID of the old pipeline to reused when resuming.
 
   Returns:
     The `PipelineState` object upon success.
@@ -820,9 +807,7 @@ def resume_pipeline(
       is not found for resuming. With code 'INVALID_ARGUMENT' if concurrent
       pipeline runs are enabled but pipeline run id is missing.
   """
-  reuse_pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(
-      pipeline_id, run_id
-  )
+
   logging.info(
       'Received request to resume pipeline; pipeline uid: %s',
       task_lib.PipelineUid.from_pipeline(pipeline),
@@ -864,83 +849,47 @@ def resume_pipeline(
         code=status_lib.Code.NOT_FOUND,
         message='Pipeline failed to resume. No previous pipeline run found.',
     )
-  if _ENABLE_INPLACE_RESUME.value:
-    if run_id is None:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INVALID_ARGUMENT,
-          message=(
-              'Inplace resume requires run_id to be provided but it was not.'
-          ),
-      )
-    # TODO(b/200206549): Add support to grab nodes from subpipelines.
-    nodes_to_start = [
-        node_id
-        for node_id, state in latest_pipeline_view.get_node_states_dict().items()
-        if state.is_startable()
-    ]
 
-    logging.info(
-        'The following nodes will be attempted to be started: %s',
-        nodes_to_start,
+  # Get succeeded nodes in latest pipeline run.
+  previously_succeeded_nodes = []
+  for node, node_state in latest_pipeline_view.get_node_states_dict().items():
+    if node_state.is_success():
+      previously_succeeded_nodes.append(node)
+  pipeline_nodes = [
+      node.node_info.id for node in pstate.get_all_nodes(pipeline)
+  ]
+
+  # Mark nodes using partial pipeline run lib.
+  # Nodes marked as SKIPPED (due to conditional) do not have an execution
+  # registered in MLMD, so we skip their snapshotting step.
+  try:
+    pipeline = partial_run_utils.mark_pipeline(
+        pipeline,
+        from_nodes=pipeline_nodes,
+        to_nodes=pipeline_nodes,
+        skip_nodes=previously_succeeded_nodes,
+        skip_snapshot_nodes=_get_previously_skipped_nodes(latest_pipeline_view),
+        snapshot_settings=partial_run_utils.latest_pipeline_snapshot_settings(),
     )
-    with pstate.PipelineState.load_run(
-        mlmd_handle, pipeline_id=pipeline_id, run_id=run_id
-    ) as pipeline_state:
-      for node in nodes_to_start:
-        node_uid = task_lib.NodeUid(
-            pipeline_uid=reuse_pipeline_uid, node_id=node
-        )
-        with pipeline_state.node_state_update_context(node_uid) as node_state:
-          node_state.update(pstate.NodeState.STARTING)
-      pipeline_state.set_pipeline_execution_state(
-          metadata_store_pb2.Execution.State.NEW
-      )
-      pipeline_state.initiate_resume()
-
-    return pipeline_state
-  else:
-    # Get succeeded nodes in latest pipeline run.
-    previously_succeeded_nodes = []
-    for node, node_state in latest_pipeline_view.get_node_states_dict().items():
-      if node_state.is_success():
-        previously_succeeded_nodes.append(node)
-    pipeline_nodes = [
-        node.node_info.id for node in pstate.get_all_nodes(pipeline)
-    ]
-
-    # Mark nodes using partial pipeline run lib.
-    # Nodes marked as SKIPPED (due to conditional) do not have an execution
-    # registered in MLMD, so we skip their snapshotting step.
+  except ValueError as e:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INVALID_ARGUMENT, message=str(e)
+    )
+  if pipeline.runtime_spec.HasField('snapshot_settings'):
     try:
-      pipeline = partial_run_utils.mark_pipeline(
-          pipeline,
-          from_nodes=pipeline_nodes,
-          to_nodes=pipeline_nodes,
-          skip_nodes=previously_succeeded_nodes,
-          skip_snapshot_nodes=_get_previously_skipped_nodes(
-              latest_pipeline_view
-          ),
-          snapshot_settings=partial_run_utils.latest_pipeline_snapshot_settings(),
-      )
+      partial_run_utils.snapshot(mlmd_handle, pipeline)
     except ValueError as e:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT, message=str(e)
       )
-    if pipeline.runtime_spec.HasField('snapshot_settings'):
-      try:
-        partial_run_utils.snapshot(mlmd_handle, pipeline)
-      except ValueError as e:
-        raise status_lib.StatusNotOkError(
-            code=status_lib.Code.INVALID_ARGUMENT, message=str(e)
-        )
-      except LookupError as e:
-        raise status_lib.StatusNotOkError(
-            code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
-        )
+    except LookupError as e:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
+      )
 
-    return pstate.PipelineState.new(
-        mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view
-    )
+  return pstate.PipelineState.new(
+      mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view
+  )
 
 
 def _wait_for_predicate(

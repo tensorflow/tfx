@@ -628,55 +628,11 @@ class PipelineState:
     return result
 
   @classmethod
-  def load_run(
-      cls,
-      mlmd_handle: metadata.Metadata,
-      pipeline_id: str,
-      run_id: str,
-  ) -> 'PipelineState':
-    """Loads pipeline state for a specific run from MLMD.
-
-    Args:
-      mlmd_handle: A handle to the MLMD db.
-      pipeline_id: Id of the pipeline state to load.
-      run_id: The run_id of the pipeline to load.
-
-    Returns:
-      A `PipelineState` object.
-
-    Raises:
-      status_lib.StatusNotOkError: With code=NOT_FOUND if no active pipeline
-      with the given pipeline uid exists in MLMD. With code=INTERNAL if more
-      than 1 active execution exists for given pipeline uid.
-    """
-    context = _get_orchestrator_context(mlmd_handle, pipeline_id)
-    query = f'custom_properties.pipeline_run_id.string_value = "{run_id}"'
-    executions = mlmd_handle.store.get_executions_by_context(
-        context.id,
-        list_options=mlmd.ListOptions(filter_query=query),
-    )
-
-    if len(executions) != 1:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INTERNAL,
-          message=(
-              f'Expected 1 but found {len(executions)} pipelines '
-              f'for pipeline id: {pipeline_id} with run_id {run_id}'
-          ),
-      )
-
-    return cls(
-        mlmd_handle,
-        _get_pipeline_from_orchestrator_execution(executions[0]),
-        executions[0].id,
-    )
-
-  @classmethod
   def _load_from_context(
       cls,
       mlmd_handle: metadata.Metadata,
       context: metadata_store_pb2.Context,
-      matching_pipeline_uid: Optional[task_lib.PipelineUid] = None,
+      matching_pipeline_uid: Optional[task_lib.PipelineUid] = None
   ) -> List[Tuple[task_lib.PipelineUid, 'PipelineState']]:
     """Loads active pipeline states associated with given orchestrator context.
 
@@ -743,12 +699,6 @@ class PipelineState:
       data_types_utils.set_metadata_value(
           self._execution.custom_properties[_PIPELINE_STATUS_MSG],
           status.message)
-
-  def initiate_resume(self) -> None:
-    self._check_context()
-    self.remove_property(_STOP_INITIATED)
-    self.remove_property(_PIPELINE_STATUS_CODE)
-    self.remove_property(_PIPELINE_STATUS_MSG)
 
   def initiate_update(
       self,
