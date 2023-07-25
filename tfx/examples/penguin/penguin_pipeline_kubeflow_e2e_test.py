@@ -14,6 +14,7 @@
 """E2E tests for tfx.examples.penguin.penguin_pipeline_kubeflow."""
 
 import os
+from absl import logging
 
 import tensorflow as tf
 from tfx.dsl.io import fileio
@@ -62,6 +63,13 @@ class PenguinPipelineKubeflowV2Test(base_test_case.BaseKubeflowV2Test):
         use_aip=False,
         use_vertex=False,
         serving_model_dir=self._serving_model_dir)
+
+    logging.info(
+        'Anuar checkpoint -'
+        ' penguin_pipeline_kubeflow_e2e_test.pytestEndToEndPipelineRun'
+    )
+    logging.info(os.environ.get('METADATA_GRPC_SERVICE_HOST', default='none'))
+    logging.info(os.environ.get('METADATA_GRPC_SERVICE_PORT', default='none'))
 
     self._run_pipeline(
         pipeline=kubeflow_pipeline,
