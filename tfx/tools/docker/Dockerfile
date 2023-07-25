@@ -69,23 +69,18 @@ ARG ADDITIONAL_PACKAGES
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
-ARG APT_COMMAND="apt-get -o Acquire::Retries=3 -y"
+# TODO(b/264498526): Remove after DLVM upgrades its python version.
+ENV PATH="/usr/bin:${PATH}"
+RUN ln -s /usr/bin/python3.8 /usr/bin/python
 
-# Needed to install python 3.8
-RUN add-apt-repository ppa:deadsnakes/ppa -y
+ARG APT_COMMAND="apt-get -o Acquire::Retries=3 -y"
 
 RUN ${APT_COMMAND} update && ${APT_COMMAND} upgrade
 
 RUN ${APT_COMMAND} update && \
   ${APT_COMMAND} install \
   build-essential \
-  python3.8 \
-  python3.8-dev \
-  python3.8-distutils
-
-# TODO(b/264498526): Use the original python verion in DLVM.
-ENV PATH="/usr/bin:${PATH}"
-RUN ln -s /usr/bin/python3.8 /usr/bin/python
+  python3.8-dev
 
 # Copy from image matching installed version of 'apache-beam'.
 COPY --from=beam-worker /opt/apache/beam /opt/apache/beam
