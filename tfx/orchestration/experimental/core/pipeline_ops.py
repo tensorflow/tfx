@@ -35,6 +35,7 @@ from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
+from tfx.orchestration.experimental.core import pipeline_state_cache
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen
 from tfx.orchestration.experimental.core import task as task_lib
@@ -957,6 +958,9 @@ def orchestrate(
   )
   if not pipeline_states:
     logging.info('No active pipelines to run.')
+    with pipeline_state_cache.pipeline_cache_update_lock:
+      pipeline_state_cache.live_pipeline_cache.update_check_signal(False)
+      logging.info('No active pipeline, updated pipeline state cache.')
     return False
 
   active_pipeline_states = []

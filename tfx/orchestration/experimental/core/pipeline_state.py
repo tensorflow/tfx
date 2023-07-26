@@ -36,6 +36,7 @@ from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import orchestration_options
+from tfx.orchestration.experimental.core import pipeline_state_cache
 from tfx.utils import telemetry_utils
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
@@ -535,7 +536,12 @@ class PipelineState:
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value,
       )
       _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
-    execution = execution_lib.put_execution(mlmd_handle, execution, [context])
+
+    with pipeline_state_cache.pipeline_cache_update_lock:
+      execution = execution_lib.put_execution(mlmd_handle, execution, [context])
+      pipeline_state_cache.live_pipeline_cache.update_check_signal(True)
+      logging.info('Start pipeline, update pipeline state cache.')
+
     pipeline_state = cls(
         mlmd_handle=mlmd_handle, pipeline=pipeline, execution_id=execution.id
     )
