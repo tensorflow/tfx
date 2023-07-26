@@ -317,43 +317,6 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
           self._mlmd_handle, contexts)
       self.assertCountEqual([execution3.id], [e.id for e in executions])
 
-  def testGetArtifactIdsForExecutionIdGroupedByEventType(self):
-    # Register an input and output artifacts in MLMD.
-    input_example = standard_artifacts.Examples()
-    input_example.uri = 'example'
-    input_example.type_id = common_utils.register_type_if_not_exist(
-        self._mlmd_handle, input_example.artifact_type).id
-    output_model = standard_artifacts.Model()
-    output_model.uri = 'model'
-    output_model.type_id = common_utils.register_type_if_not_exist(
-        self._mlmd_handle, output_model.artifact_type).id
-    [input_example.id, output_model.id] = self._mlmd_handle.store.put_artifacts(
-        [input_example.mlmd_artifact, output_model.mlmd_artifact])
-    execution = execution_lib.prepare_execution(
-        self._mlmd_handle,
-        metadata_store_pb2.ExecutionType(name='my_execution_type'),
-        exec_properties={
-            'p1': 1,
-            'p2': '2'
-        },
-        state=metadata_store_pb2.Execution.COMPLETE)
-    contexts = self._generate_contexts(self._mlmd_handle)
-    execution = execution_lib.put_execution(
-        self._mlmd_handle,
-        execution,
-        contexts,
-        input_artifacts={'example': [input_example]},
-        output_artifacts={'model': [output_model]})
-
-    artifact_ids_by_event_type = (
-        execution_lib.get_artifact_ids_by_event_type_for_execution_id(
-            self._mlmd_handle, execution.id))
-    self.assertDictEqual(
-        {
-            metadata_store_pb2.Event.INPUT: set([input_example.id]),
-            metadata_store_pb2.Event.OUTPUT: set([output_model.id]),
-        }, artifact_ids_by_event_type)
-
   def testPutExecutions(self):
     # Prepares input artifacts.
     input_example_1 = standard_artifacts.Examples()

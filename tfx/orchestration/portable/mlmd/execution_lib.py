@@ -13,12 +13,11 @@
 # limitations under the License.
 """Portable libraries for execution related APIs."""
 
-import collections
 import copy
 import itertools
 import re
 import time
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from absl import logging
 from tfx import types
@@ -571,32 +570,6 @@ def get_executions_associated_with_all_contexts(
       start_time=start_time
   )
   return executions
-
-
-def get_artifact_ids_by_event_type_for_execution_id(
-    metadata_handler: metadata.Metadata,
-    execution_id: int) -> Dict['metadata_store_pb2.Event.Type', Set[int]]:
-  """Returns artifact ids corresponding to the execution id grouped by event type.
-
-  Args:
-    metadata_handler: A handler to access MLMD.
-    execution_id: Id of the execution for which to get artifact ids.
-
-  Returns:
-    A `dict` mapping event type to `set` of artifact ids.
-  """
-  start_time = time.time()
-  events = metadata_handler.store.get_events_by_execution_ids([execution_id])
-  result = collections.defaultdict(set)
-  for event in events:
-    result[event.type].add(event.artifact_id)
-
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='get_artifact_ids_by_event_type_for_execution_id',
-      start_time=start_time,
-  )
-  return result
 
 
 def get_input_artifacts(
