@@ -13,6 +13,7 @@
 # limitations under the License.
 """Placeholders represent not-yet-available values at the component authoring time.
 """
+from __future__ import annotations
 
 import abc
 import copy
