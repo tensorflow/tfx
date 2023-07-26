@@ -467,7 +467,7 @@ def _reuse_artifact_required(
       execution_options.skip.reuse_artifacts_mode == _REUSE_ARTIFACT_REQUIRED)
 
 
-def _reuse_pipeline_run_artifacts(metadata_handler: metadata.Metadata,
+def _reuse_pipeline_run_artifacts(metadata_handle: metadata.Metadata,
                                   marked_pipeline: pipeline_pb2.Pipeline,
                                   base_run_id: Optional[str] = None,
                                   new_run_id: Optional[str] = None):
@@ -481,7 +481,7 @@ def _reuse_pipeline_run_artifacts(metadata_handler: metadata.Metadata,
   `pipeline`) as the child context.
 
   Args:
-    metadata_handler: A handler to access MLMD store.
+    metadata_handle: A handle to access MLMD store.
     marked_pipeline: The output of mark_pipeline function.
     base_run_id: The pipeline_run_id where the output artifacts were produced.
       Defaults to the latest previous pipeline run to use as base_run_id.
@@ -500,7 +500,7 @@ def _reuse_pipeline_run_artifacts(metadata_handler: metadata.Metadata,
   """
   validated_new_run_id = _get_validated_new_run_id(marked_pipeline, new_run_id)
   artifact_recycler = _ArtifactRecycler(
-      metadata_handler,
+      metadata_handle,
       pipeline_name=marked_pipeline.pipeline_info.id,
       new_run_id=validated_new_run_id)
   if not base_run_id:
@@ -536,9 +536,9 @@ class _ArtifactRecycler:
   pipeline run.
   """
 
-  def __init__(self, metadata_handler: metadata.Metadata, pipeline_name: str,
+  def __init__(self, metadata_handle: metadata.Metadata, pipeline_name: str,
                new_run_id: str):
-    self._mlmd = metadata_handler
+    self._mlmd = metadata_handle
     self._pipeline_name = pipeline_name
     self._pipeline_context = self._get_pipeline_context()
     self._new_run_id = new_run_id
@@ -709,7 +709,7 @@ class _ArtifactRecycler:
       for e in existing_executions:
         new_executions.append(
             execution_lib.prepare_execution(
-                metadata_handler=self._mlmd,
+                metadata_handle=self._mlmd,
                 execution_type=metadata_store_pb2.ExecutionType(id=e.type_id),
                 state=metadata_store_pb2.Execution.RUNNING,
                 execution_name=str(uuid.uuid4()),

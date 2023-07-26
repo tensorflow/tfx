@@ -197,7 +197,7 @@ class _Generator:
 
   def _generate_tasks_for_node(
       self,
-      metadata_handler: metadata.Metadata,
+      metadata_handle: metadata.Metadata,
       node: node_proto_view.NodeProtoView,
       backfill_token: str,
   ) -> List[task_lib.Task]:
@@ -206,7 +206,7 @@ class _Generator:
     If a node execution is not feasible, `None` is returned.
 
     Args:
-      metadata_handler: A handler to access MLMD db.
+      metadata_handle: A handle to access MLMD db.
       node: The pipeline node for which to generate a task.
       backfill_token: Backfill token, if applicable.
 
@@ -220,7 +220,7 @@ class _Generator:
     # generates a task from it.
     # TODO(b/275231956) Too many executions may have performance issue, it is
     # better to limit the number of executions.
-    executions = task_gen_utils.get_executions(metadata_handler, node)
+    executions = task_gen_utils.get_executions(metadata_handle, node)
     sorted_executions = execution_lib.sort_executions_newest_to_oldest(
         executions
     )
@@ -393,7 +393,7 @@ class _Generator:
       ]
 
     unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-        metadata_handler, successful_executions, resolved_info, node
+        metadata_handle, successful_executions, resolved_info, node
     )
     if not unprocessed_inputs:
       return result
@@ -405,7 +405,7 @@ class _Generator:
         ] = backfill_token
 
     new_executions = task_gen_utils.register_executions(
-        metadata_handler,
+        metadata_handle,
         node.node_info.type,
         resolved_info.contexts,
         unprocessed_inputs,
