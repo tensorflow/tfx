@@ -38,6 +38,7 @@
 | `tflite-support` | `>=0.4.3,<0.4.5` | `>=0.4.2,<0.4.3` | |
 | `pyyaml` | `==5.3.1`| `>=3.12,<6` | Issue with installation of PyYaml 5.4.1. (https://github.com/yaml/pyyaml/issues/724) |
 | `tensorflow` | `>=2.13,<2.14` | `>=2.12,<2.13` | |
+| `orbax` | `<1,!=0.1.8` | N/A | |
 
 ## Documentation Updates
 
