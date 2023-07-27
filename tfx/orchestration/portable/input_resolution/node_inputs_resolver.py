@@ -366,7 +366,7 @@ def _resolve_mixed_inputs(
             identifier(artifact): artifact for artifact in input_dict[sub_key]
         })
       artifacts = list(artifacts_by_id.values())
-      result.append((partition, artifacts))
+    result.append((partition, artifacts))
 
   resolved[input_key] = result
 
@@ -487,8 +487,8 @@ def resolve(
       if not input_spec.hidden
   ]
   result = [
-      artifact_map
-      for _, artifact_map in _join_artifacts(resolved, visible_keys)
+      artifact_map for composite_key, artifact_map
+      in _join_artifacts(resolved, visible_keys)
   ]
 
   if node_inputs.conditionals:
