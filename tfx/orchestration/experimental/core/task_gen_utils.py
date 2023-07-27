@@ -250,6 +250,7 @@ def get_executions(
     only_successful: bool = False,
     limit: Optional[int] = None,
     backfill_token: str = '',
+    additional_filters: Optional[List[str]] = None,
 ) -> List[metadata_store_pb2.Execution]:
   """Returns all executions for the given pipeline node.
 
@@ -269,6 +270,7 @@ def get_executions(
     backfill_token: If non-empty, only executions with custom property
       `__backfill_token__` set to the value are returned. Should only be set
       when backfilling in ASYNC mode.
+    additional_filters: Additional filters to select executions.
 
   Returns:
     List of executions for the given node in MLMD db.
@@ -328,6 +330,10 @@ def get_executions(
             f" '{backfill_token}'"
         ),
     )
+
+  if additional_filters:
+    filter_query.extend(additional_filters)
+
   return metadata_handler.store.get_executions(
       list_options=mlmd.ListOptions(
           order_by=mlmd.OrderByField.CREATE_TIME,
@@ -604,6 +610,9 @@ def get_unprocessed_inputs(
   Returns:
     A list of InputAndParam that have not been processed.
   """
+  if not resolved_info.input_and_params:
+    return []
+
   # Finds out the keys that should be ignored.
   input_triggers = node.execution_options.async_trigger.input_triggers
   ignore_keys = set(
@@ -656,6 +665,8 @@ def get_unprocessed_inputs(
   # Finds out the unprocessed inputs.
   unprocessed_inputs = []
   for input_and_param in resolved_info.input_and_params:
+    if not input_and_param.input_artifacts:
+      continue
     resolved_input_ids_by_key = collections.defaultdict(list)
     for key, artifacts in input_and_param.input_artifacts.items():
       for a in artifacts:

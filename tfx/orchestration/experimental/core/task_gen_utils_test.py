@@ -261,8 +261,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
         ):
           active_backfill_eg_execs.append(execution)
-
-    with self._mlmd_connection as m:
       self.assertCountEqual(
           active_backfill_eg_execs[0:2],
           task_gen_utils.get_executions(
@@ -272,7 +270,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
               backfill_token=backfill_token_1,
           ),
       )
-    with self._mlmd_connection as m:
       self.assertCountEqual(
           active_backfill_eg_execs[2:],
           task_gen_utils.get_executions(
@@ -280,6 +277,52 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
               self._example_gen,
               only_active=True,
               backfill_token=backfill_token_2,
+          ),
+      )
+
+  def test_get_executions_additional_filter(self):
+    with self._mlmd_connection as m:
+      for node in [n.pipeline_node for n in self._pipeline.nodes]:
+        self.assertEmpty(task_gen_utils.get_executions(m, node))
+
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
+
+    # Create three COMPLETE executions.
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection, self._example_gen, State.COMPLETE
+    )
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection, self._example_gen, State.COMPLETE
+    )
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection, self._example_gen, State.COMPLETE
+    )
+
+    # Get all ExampleGen executions across all pipeline contexts.
+    with self._mlmd_connection as m:
+      all_eg_execs = sorted(
+          m.store.get_executions_by_type(self._example_gen.node_info.type.name),
+          key=lambda e: e.create_time_since_epoch,
+      )
+
+      # Check that correct executions are returned.
+      self.assertCountEqual(
+          all_eg_execs[1:],
+          task_gen_utils.get_executions(
+              m,
+              self._example_gen,
+              additional_filters=[
+                  'create_time_since_epoch >='
+                  f' {all_eg_execs[1].create_time_since_epoch}'
+              ],
+          ),
+      )
+      self.assertCountEqual(
+          all_eg_execs,
+          task_gen_utils.get_executions(
+              m,
+              self._example_gen,
+              additional_filters=['create_time_since_epoch >= 0'],
           ),
       )
 
