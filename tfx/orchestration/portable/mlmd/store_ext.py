@@ -179,16 +179,16 @@ def get_live_output_artifacts_of_node_by_output_key(
   Returns:
     A mapping from output key to all output artifacts from the given node.
   """
-  node_executions_ordered_by_desc_creation_time = get_successful_node_executions(
-      store,
-      pipeline_id=pipeline_id,
-      node_id=node_id,
-      pipeline_run_id=pipeline_run_id,
-      order_by=mlmd.OrderByField.CREATE_TIME,
-      # TODO(b/276893037): revisit MLMD performance degradation caused by
-      # is_asc=False in b/274559409.
-      is_asc=False,
-      limit=execution_limit,
+  node_executions_ordered_by_desc_creation_time = (
+      get_successful_node_executions(
+          store,
+          pipeline_id=pipeline_id,
+          node_id=node_id,
+          pipeline_run_id=pipeline_run_id,
+          order_by=mlmd.OrderByField.CREATE_TIME,
+          is_asc=False,
+          limit=execution_limit,
+      )
   )
   if not node_executions_ordered_by_desc_creation_time:
     return {}
