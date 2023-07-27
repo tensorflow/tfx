@@ -208,6 +208,13 @@ def make_extra_packages_flax():
       'jaxlib<1',
       'flax<1',
       'optax<1',
+      # TODO(b/291837844): Do not install orbax 0.1.8.
+      # orbax is installed when instaiing flax==0.6.8, and the recent version of
+      # it (orbax 0.1.8) has an issue on pip install.
+      # More recent version of flax (0.7.0) doesn't depend on thr orbax, but it
+      # cannot be used because it requires pyyaml>=5.4.1.
+      # Unpin once the issue with installation is resolved.
+      'orbax<1,!=0.1.8'
   ]
 
 
