@@ -28,6 +28,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import node_proto_view
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact as tfx_artifact
 from tfx.types import artifact_utils
 from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import proto_utils
@@ -246,6 +247,13 @@ def _generate_output_artifact(
   """Generates each output artifact given output_spec."""
   artifact = artifact_utils.deserialize_artifact(output_spec.artifact_spec.type)
   _attach_artifact_properties(output_spec.artifact_spec, artifact)
+
+  if output_spec.artifact_spec.is_intermediate_artifact:
+    # Mark the artifact state as REFERENCE to distinguish it from PUBLISHED
+    # (LIVE in MLMD) intermediate artifacts emitted during a component's
+    # execution. At the end  of the component's execution, its state will remain
+    # REFERENCE instead of changing to PUBLISHED.
+    artifact.state = tfx_artifact.ArtifactState.REFERENCE
 
   return artifact
 

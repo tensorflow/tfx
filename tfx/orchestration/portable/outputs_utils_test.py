@@ -21,6 +21,7 @@ from tfx.dsl.io import fileio
 from tfx.orchestration.portable import outputs_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact as tfx_artifact
 from tfx.types import standard_artifacts
 from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import test_case_utils
@@ -563,6 +564,45 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     )
     self.assertEqual(actual_bcl_dir, expected_bcl_dir)
     self.assertTrue(fileio.exists(actual_bcl_dir))
+
+  def testIntermediateArtifactState(self):
+    pipeline_node = text_format.Parse(
+        """
+    node_info {
+      id: "test_node"
+    }
+    outputs {
+      outputs {
+        key: "checkpoint_model"
+        value {
+          artifact_spec {
+            type {
+              id: 1
+              name: "CheckpointModel"
+            }
+            is_intermediate_artifact: True
+          }
+        }
+      }
+  }                                                
+  """,
+        pipeline_pb2.PipelineNode(),
+    )
+
+    outputs_resolver = outputs_utils.OutputsResolver(
+        pipeline_node=pipeline_node,
+        pipeline_info=_PIPELINE_INFO,
+        pipeline_runtime_spec=self._pipeline_runtime_spec,
+    )
+    artifacts = outputs_resolver.generate_output_artifacts(1)
+
+    self.assertLen(artifacts, 1)
+    self.assertIn('checkpoint_model', artifacts)
+    self.assertLen(artifacts['checkpoint_model'], 1)
+    self.assertEqual(
+        artifacts['checkpoint_model'][0].state,
+        tfx_artifact.ArtifactState.REFERENCE,
+    )
 
 
 if __name__ == '__main__':

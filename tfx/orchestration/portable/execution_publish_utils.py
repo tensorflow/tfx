@@ -112,9 +112,11 @@ def publish_succeeded_execution(
   output_artifacts_to_publish = merge_utils.merge_updated_output_artifacts(
       output_artifacts, unpacked_output_artifacts)
 
-  # Marks output artifacts as PUBLISHED (i.e. LIVE in MLMD).
   for artifact in itertools.chain(*output_artifacts_to_publish.values()):
-    artifact.state = types.artifact.ArtifactState.PUBLISHED
+    # Mark output artifact as PUBLISHED (LIVE in MLMD) if it was not in state
+    # REFERENCE.
+    if artifact.state != types.artifact.ArtifactState.REFERENCE:
+      artifact.state = types.artifact.ArtifactState.PUBLISHED
 
   [execution] = metadata_handler.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.COMPLETE

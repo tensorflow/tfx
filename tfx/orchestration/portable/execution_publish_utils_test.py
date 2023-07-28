@@ -24,6 +24,7 @@ from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact as tfx_artifact
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
@@ -797,6 +798,58 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertCountEqual(
           [c.id for c in contexts],
           [c.id for c in m.store.get_contexts_by_artifact(output_example.id)])
+
+  def testPublishSuccessfulExecutionKeepsReferenceArtifact(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = self._generate_contexts(m)
+      execution_id = execution_publish_utils.register_execution(
+          m, self._execution_type, contexts
+      ).id
+      output_key = 'checkpoint_model'
+      artifact = standard_artifacts.Model()
+      artifact.uri = '/base_uri'
+      artifact.state = tfx_artifact.ArtifactState.REFERENCE
+      executor_output = execution_result_pb2.ExecutorOutput()
+      execution_publish_utils.publish_succeeded_execution(
+          m, execution_id, contexts, {output_key: [artifact]}, executor_output
+      )
+
+      [execution] = m.store.get_executions()
+      self.assertProtoPartiallyEquals(
+          """
+          id: 1
+          last_known_state: COMPLETE
+          """,
+          execution,
+          ignored_fields=[
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+              'name',
+          ],
+      )
+
+      # Check that the artifact state is still REFERENCE and not PENDING.
+      [artifact] = m.store.get_artifacts()
+      self.assertProtoPartiallyEquals(
+          f"""
+          id: 1
+          state: REFERENCE
+          uri: '/base_uri'
+          custom_properties {{
+            key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
+            value {{string_value: "{version.__version__}"}}
+          }}""",
+          artifact,
+          ignored_fields=[
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
+
 
 if __name__ == '__main__':
   tf.test.main()
