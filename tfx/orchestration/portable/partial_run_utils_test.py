@@ -740,12 +740,14 @@ class PartialRunTest(absltest.TestCase):
 
     with metadata.Metadata(self.metadata_config) as m:
       artifact_recyler = partial_run_utils._ArtifactRecycler(
-          m, pipeline_name='test_pipeline', new_run_id='')
+          m, pipeline_name='test_pipeline', new_run_id='new_run_id'
+      )
       self.assertEqual('test_pipeline_run_2',
                        artifact_recyler.get_latest_pipeline_run_id())
 
       artifact_recyler = partial_run_utils._ArtifactRecycler(
-          m, pipeline_name='second_pipeline', new_run_id='')
+          m, pipeline_name='second_pipeline', new_run_id='new_run_id'
+      )
       self.assertEqual('second_pipeline_run_1',
                        artifact_recyler.get_latest_pipeline_run_id())
 
