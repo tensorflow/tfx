@@ -331,8 +331,8 @@ def latest_pipeline_run_outputs(pipeline, output_keys: Sequence[str] = ()):
         latest_pipeline_run_outputs(producer_pipeline),
         output_keys=['examples', 'schema'])
     trainer = TFTrainer(
-        examples=pipeline_inputs.inputs['examples'],
-        schema=pipeline_inputs.inputs['schema'])
+        examples=consumer_pipeline_inputs.inputs['examples'],
+        schema=consumer_pipeline_inputs.inputs['schema'])
     consumer_pipeline = Pipeline(
         inputs=consumer_pipeline_inputs,
         components=[trainer],
