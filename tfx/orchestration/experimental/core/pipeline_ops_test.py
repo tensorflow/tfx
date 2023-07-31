@@ -24,6 +24,7 @@ from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import constants
+from tfx.dsl.io import fileio
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import env
@@ -2795,7 +2796,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(
           artifacts[0].state, metadata_store_pb2.Artifact.State.DELETED
       )
-      self.assertFalse(os.path.exists(physical_address))
+      self.assertFalse(fileio.exists(physical_address))
       with pipeline_state:
         self.assertTrue(
             pipeline_state.execution.custom_properties.get('deleted')

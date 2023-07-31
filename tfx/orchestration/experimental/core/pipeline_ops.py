@@ -19,7 +19,6 @@ import datetime
 import functools
 import itertools
 import random
-import shutil
 import threading
 import time
 from typing import Callable, List, Mapping, Optional, Sequence
@@ -28,6 +27,7 @@ from absl import flags
 from absl import logging
 import attr
 from tfx import types
+from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
@@ -47,6 +47,7 @@ from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import io_utils
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -626,8 +627,8 @@ def delete_pipeline_run(
           for _, artifact_list in execution_artifacts.items():
             artifacts.extend(artifact_list)
       for artifact in artifacts:
-        if artifact.uri:
-          shutil.rmtree(artifact.uri)
+        if artifact.uri and fileio.exists(artifact.uri):
+          io_utils.delete_dir(artifact.uri)
         artifact.state = mlmd_state.metadata_store_pb2.Artifact.State.DELETED
     mlmd_handle.store.put_artifacts(artifacts)
   except LookupError as e:
