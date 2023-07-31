@@ -28,6 +28,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import node_proto_view
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact as tfx_artifact
 from tfx.types import artifact_utils
 from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import proto_utils
@@ -46,6 +47,7 @@ _VALUE_ARTIFACT_FILE_NAME = 'value'
 # LINT.IfChange
 RESOLVED_AT_RUNTIME = '{resolved_at_runtime}'
 # LINT.ThenChange(<Internal source code>)
+_ORCHESTRATOR_GENERATED_BCL_DIR = 'orchestrator_generated_bcl'
 
 
 def make_output_dirs(
@@ -159,6 +161,15 @@ def _attach_artifact_properties(spec: pipeline_pb2.OutputSpec.ArtifactSpec,
       raise RuntimeError(f'Unexpected value_type: {value_type}')
 
 
+def _get_node_dir(
+    pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec, node_id: str
+) -> str:
+  """Gets node dir for the given pipeline node."""
+  return os.path.join(
+      pipeline_runtime_spec.pipeline_root.field_value.string_value, node_id
+  )
+
+
 class OutputsResolver:
   """This class has methods to handle launcher output related logic."""
 
@@ -176,8 +187,9 @@ class OutputsResolver:
     self._pipeline_run_id = (
         pipeline_runtime_spec.pipeline_run_id.field_value.string_value)
     self._execution_mode = execution_mode
-    self._node_dir = os.path.join(self._pipeline_root,
-                                  pipeline_node.node_info.id)
+    self._node_dir = _get_node_dir(
+        pipeline_runtime_spec, pipeline_node.node_info.id
+    )
 
   def generate_output_artifacts(
       self, execution_id: int) -> Dict[str, List[types.Artifact]]:
@@ -235,6 +247,13 @@ def _generate_output_artifact(
   """Generates each output artifact given output_spec."""
   artifact = artifact_utils.deserialize_artifact(output_spec.artifact_spec.type)
   _attach_artifact_properties(output_spec.artifact_spec, artifact)
+
+  if output_spec.artifact_spec.is_intermediate_artifact:
+    # Mark the artifact state as REFERENCE to distinguish it from PUBLISHED
+    # (LIVE in MLMD) intermediate artifacts emitted during a component's
+    # execution. At the end  of the component's execution, its state will remain
+    # REFERENCE instead of changing to PUBLISHED.
+    artifact.state = tfx_artifact.ArtifactState.REFERENCE
 
   return artifact
 
@@ -400,3 +419,32 @@ def populate_exec_properties(
           'supported, going to drop it', type(value), key)
       continue
     executor_output.execution_properties[key].CopyFrom(v)
+
+
+def get_orchestrator_generated_bcl_dir(
+    pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec, node_id: str
+) -> str:
+  """Generates a root directory to hold orchestrator generated BCLs for the given node.
+
+  Args:
+    pipeline_runtime_spec: pipeline runtime specifications.
+    node_id: unique id of the node within the pipeline.
+
+  Returns:
+    Path to orchestrator generated bcl root dir, which has the format
+    `<node_dir>/.system/orchestrator_generated_bcl`
+  """
+  node_dir = _get_node_dir(pipeline_runtime_spec, node_id)
+  orchestrator_generated_bcl_dir = os.path.join(
+      node_dir, _SYSTEM, _ORCHESTRATOR_GENERATED_BCL_DIR
+  )
+  if not fileio.exists(orchestrator_generated_bcl_dir):
+    try:
+      fileio.makedirs(orchestrator_generated_bcl_dir)
+    except Exception:  # pylint: disable=broad-except
+      logging.exception(
+          'Failed to make orchestrator generated bcl dir: %s',
+          orchestrator_generated_bcl_dir,
+      )
+      raise
+  return orchestrator_generated_bcl_dir

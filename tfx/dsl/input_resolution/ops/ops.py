@@ -19,6 +19,7 @@ from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import all_spans_op
 from tfx.dsl.input_resolution.ops import consecutive_spans_op
+from tfx.dsl.input_resolution.ops import equal_property_values_op
 from tfx.dsl.input_resolution.ops import exclude_spans_op
 from tfx.dsl.input_resolution.ops import group_by_lineage_op
 from tfx.dsl.input_resolution.ops import latest_create_time_op
@@ -61,6 +62,7 @@ def _register_op(cls: _ResolverOpType) -> None:
 # go/keep-sorted start
 AllSpans = all_spans_op.AllSpans
 ConsecutiveSpans = consecutive_spans_op.ConsecutiveSpans
+EqualPropertyValues = equal_property_values_op.EqualPropertyValues
 ExcludeSpans = exclude_spans_op.ExcludeSpans
 GroupByDisjointLineage = group_by_lineage_op.GroupByDisjointLineage
 GroupByPivot = group_by_lineage_op.GroupByPivot
@@ -81,6 +83,7 @@ Unnest = unnest_op.Unnest
 # go/keep-sorted start
 _register_op(AllSpans)
 _register_op(ConsecutiveSpans)
+_register_op(EqualPropertyValues)
 _register_op(ExcludeSpans)
 _register_op(GroupByDisjointLineage)
 _register_op(GroupByPivot)

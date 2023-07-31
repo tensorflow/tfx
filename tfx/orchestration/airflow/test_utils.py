@@ -15,6 +15,7 @@
 
 import subprocess
 import time
+from typing import Tuple
 
 from absl import logging
 import docker
@@ -24,8 +25,8 @@ _MYSQL_POLLING_MAX_ATTEMPTS = 60
 _MYSQL_PORT = '3306/tcp'
 
 
-def create_mysql_container(container_name: str) -> int:
-  """Create a mysql docker container and returns port to it.
+def create_mysql_container(container_name: str) -> Tuple[str, int]:
+  """Create a mysql docker container and returns a tuple of ip address and port to it.
 
   A created mysql will have 'airflow' database and 'tfx' user without password.
 
@@ -33,7 +34,7 @@ def create_mysql_container(container_name: str) -> int:
       container_name: A name of the new container.
 
   Returns:
-      The new port number.
+      The ip address and new port number.
 
   Raises:
       RuntimeError: When mysql couldn't respond in pre-defined time limit or
@@ -50,6 +51,14 @@ def create_mysql_container(container_name: str) -> int:
   container.reload()  # required to get auto-assigned ports
   port = int(container.ports[_MYSQL_PORT][0]['HostPort'])
 
+  # From go/kokoro-native-docker-migration, the Ubuntu 20.04 version has an
+  # issue with connecting to the localhost. The container IP address is manually
+  # fetched with the suggested command on the doc.
+  command = '/sbin/ip route|awk \'/default/ { print $3 }\''
+  ip_address = subprocess.check_output(
+      command, shell=True).decode('utf-8').strip()
+  logging.info('Container IP address: %s', ip_address)
+
   for _ in range(_MYSQL_POLLING_MAX_ATTEMPTS):
     logging.info('Waiting for mysqld container...')
     time.sleep(_MYSQL_POLLING_INTERVAL_SEC)
@@ -62,21 +71,24 @@ def create_mysql_container(container_name: str) -> int:
             '-uroot',
             '-proot',
             '-h',
-            '127.0.0.1',
+            ip_address,
             '-P',
             str(port),
             '-e',
             'SELECT 1;',
         ],
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
     if check_available.returncode == 0:
       break
   else:
     logging.error('Logs from mysql container:\n%s', container.logs())
     raise RuntimeError(
-        'MySql could not started in %d seconds' %
-        (_MYSQL_POLLING_INTERVAL_SEC * _MYSQL_POLLING_MAX_ATTEMPTS))
+        'MySql could not started in %d seconds'
+        % (_MYSQL_POLLING_INTERVAL_SEC * _MYSQL_POLLING_MAX_ATTEMPTS)
+    )
 
   create_db_sql = """
       CREATE USER 'tfx'@'%' IDENTIFIED BY '';
@@ -93,7 +105,7 @@ def create_mysql_container(container_name: str) -> int:
     raise RuntimeError('Failed to run initialization SQLs: {}'.format(output))
 
   client.close()
-  return port
+  return ip_address, port
 
 
 def delete_mysql_container(container_name: str):

@@ -380,6 +380,11 @@ class Pipeline(base_node.BaseNode):
             f'{component.type}. Try setting a different node_id using '
             '`.with_id()`.'
         )
+      if component.id == self.id:
+        raise RuntimeError(
+            f'node id {component.id} is the same as its enclosing pipeline id.'
+            'Try setting a different node_id using `.with_id()`.'
+        )
       node_by_id[component.id] = component
 
     # Connects nodes based on producer map.

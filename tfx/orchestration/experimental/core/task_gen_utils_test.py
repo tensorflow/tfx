@@ -89,10 +89,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
     otu.fake_component_output(self._mlmd_connection, self._transform)
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
-    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
-    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
-    otu.fake_component_output(self._mlmd_connection, self._transform)
 
     # Get all executions across all pipeline contexts.
     with self._mlmd_connection as m:
@@ -111,13 +107,44 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertCountEqual(all_transform_execs[0:1],
                             task_gen_utils.get_executions(m, self._transform))
       self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
-    with self._mlmd_connection as m:
-      self.assertCountEqual(all_eg_execs[2:],
-                            task_gen_utils.get_executions(m, self._example_gen))
-      self.assertCountEqual(all_transform_execs[1:],
-                            task_gen_utils.get_executions(m, self._transform))
-      self.assertEmpty(task_gen_utils.get_executions(m, self._trainer))
+
+      self.assertLen(
+          task_gen_utils.get_executions(m, self._example_gen, limit=1), 1
+      )
+      self.assertLen(
+          task_gen_utils.get_executions(m, self._example_gen, limit=2), 2
+      )
+
+      all_eg_execs = sorted(
+          m.store.get_executions_by_type(self._example_gen.node_info.type.name),
+          key=lambda e: e.create_time_since_epoch,
+      )
+      last_2_executions = task_gen_utils.get_executions(
+          m, self._example_gen, limit=2
+      )
+      self.assertEqual(all_eg_execs[-1].id, last_2_executions[0].id)
+      self.assertEqual(all_eg_execs[-2].id, last_2_executions[1].id)
+
+      # Fake a FAILED execution. Then, there should be 2 COMPLETED executions
+      # and 1 FAILED execution.
+      otu.fake_example_gen_execution_with_state(
+          self._mlmd_connection,
+          self._example_gen,
+          metadata_store_pb2.Execution.State.FAILED,
+      )
+      self.assertLen(task_gen_utils.get_executions(m, self._example_gen), 3)
+      succeeded_executions = task_gen_utils.get_executions(
+          m, self._example_gen, only_successful=True
+      )
+      self.assertLen(succeeded_executions, 2)
+      self.assertEqual(
+          metadata_store_pb2.Execution.State.COMPLETE,
+          succeeded_executions[0].last_known_state,
+      )
+      self.assertEqual(
+          metadata_store_pb2.Execution.State.COMPLETE,
+          succeeded_executions[1].last_known_state,
+      )
 
   def test_get_executions_only_active(self):
     with self._mlmd_connection as m:
@@ -126,14 +153,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
     # Create executions for the same nodes under different pipeline contexts.
     self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
-    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
-                                              self._example_gen, State.NEW)
-    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
-                                              self._example_gen, State.RUNNING)
-    otu.fake_example_gen_execution_with_state(self._mlmd_connection,
-                                              self._example_gen, State.COMPLETE)
-    otu.fake_component_output(self._mlmd_connection, self._transform)
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
     otu.fake_example_gen_execution_with_state(self._mlmd_connection,
                                               self._example_gen, State.NEW)
     otu.fake_example_gen_execution_with_state(self._mlmd_connection,
@@ -153,9 +172,8 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           execution.last_known_state == State.NEW
       ]
 
-    # Check that correct executions are returned for each node in each pipeline.
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
-    with self._mlmd_connection as m:
+      # Check that correct executions are returned for each node in each
+      # pipeline.
       self.assertCountEqual(
           active_eg_execs[0:2],
           task_gen_utils.get_executions(m, self._example_gen, only_active=True))
@@ -163,15 +181,150 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           task_gen_utils.get_executions(m, self._transform, only_active=True))
       self.assertEmpty(
           task_gen_utils.get_executions(m, self._trainer, only_active=True))
-    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline2')
+
+  def test_get_executions_only_active_with_backfill_token(self):
     with self._mlmd_connection as m:
+      for node in [n.pipeline_node for n in self._pipeline.nodes]:
+        self.assertEmpty(task_gen_utils.get_executions(m, node))
+
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
+    # Create executions. Executions are created with ascending id.
+    backfill_token_1 = 'backfill-20230711'
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection,
+        self._example_gen,
+        State.NEW,
+        exec_properties={
+            constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY: backfill_token_1
+        },
+    )
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection,
+        self._example_gen,
+        State.RUNNING,
+        exec_properties={
+            constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY: backfill_token_1
+        },
+    )
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection,
+        self._example_gen,
+        State.COMPLETE,
+        exec_properties={
+            constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY: backfill_token_1
+        },
+    )
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection,
+        self._example_gen,
+        State.NEW,
+    )
+
+    backfill_token_2 = 'backfill-20230712'
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection,
+        self._example_gen,
+        State.NEW,
+        exec_properties={
+            constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY: backfill_token_2
+        },
+    )
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection,
+        self._example_gen,
+        State.RUNNING,
+        exec_properties={
+            constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY: backfill_token_2
+        },
+    )
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection,
+        self._example_gen,
+        State.COMPLETE,
+        exec_properties={
+            constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY: backfill_token_2
+        },
+    )
+
+    # Get all ExampleGen executions across all pipeline contexts.
+    with self._mlmd_connection as m:
+      all_eg_execs = sorted(
+          m.store.get_executions_by_type(self._example_gen.node_info.type.name),
+          key=lambda e: e.id,
+      )
+      active_backfill_eg_execs = []
+      for execution in all_eg_execs:
+        if (
+            execution.last_known_state == State.RUNNING
+            or execution.last_known_state == State.NEW
+        ) and execution.custom_properties.get(
+            constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
+        ):
+          active_backfill_eg_execs.append(execution)
       self.assertCountEqual(
-          active_eg_execs[2:],
-          task_gen_utils.get_executions(m, self._example_gen, only_active=True))
-      self.assertEmpty(
-          task_gen_utils.get_executions(m, self._transform, only_active=True))
-      self.assertEmpty(
-          task_gen_utils.get_executions(m, self._trainer, only_active=True))
+          active_backfill_eg_execs[0:2],
+          task_gen_utils.get_executions(
+              m,
+              self._example_gen,
+              only_active=True,
+              backfill_token=backfill_token_1,
+          ),
+      )
+      self.assertCountEqual(
+          active_backfill_eg_execs[2:],
+          task_gen_utils.get_executions(
+              m,
+              self._example_gen,
+              only_active=True,
+              backfill_token=backfill_token_2,
+          ),
+      )
+
+  def test_get_executions_additional_filter(self):
+    with self._mlmd_connection as m:
+      for node in [n.pipeline_node for n in self._pipeline.nodes]:
+        self.assertEmpty(task_gen_utils.get_executions(m, node))
+
+    self._set_pipeline_context(self._pipeline, 'pipeline', 'my_pipeline1')
+
+    # Create three COMPLETE executions.
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection, self._example_gen, State.COMPLETE
+    )
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection, self._example_gen, State.COMPLETE
+    )
+    otu.fake_example_gen_execution_with_state(
+        self._mlmd_connection, self._example_gen, State.COMPLETE
+    )
+
+    # Get all ExampleGen executions across all pipeline contexts.
+    with self._mlmd_connection as m:
+      all_eg_execs = sorted(
+          m.store.get_executions_by_type(self._example_gen.node_info.type.name),
+          key=lambda e: e.create_time_since_epoch,
+      )
+
+      # Check that correct executions are returned.
+      self.assertCountEqual(
+          all_eg_execs[1:],
+          task_gen_utils.get_executions(
+              m,
+              self._example_gen,
+              additional_filters=[
+                  'create_time_since_epoch >='
+                  f' {all_eg_execs[1].create_time_since_epoch}'
+              ],
+          ),
+      )
+      self.assertCountEqual(
+          all_eg_execs,
+          task_gen_utils.get_executions(
+              m,
+              self._example_gen,
+              additional_filters=['create_time_since_epoch >= 0'],
+          ),
+      )
 
   def test_generate_task_from_active_execution(self):
     with self._mlmd_connection as m:
@@ -271,7 +424,9 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       for channel in input_spec.channels:
         for context_query in channel.context_queries:
           if context_query.type.name == 'pipeline_run':
-            context_query.name.field_value.string_value = 'test_run_dynamic_prop'
+            context_query.name.field_value.string_value = (
+                'test_run_dynamic_prop'
+            )
 
     otu.fake_upstream_node_run(self._mlmd_connection, self._upstream_node,
                                self.create_tempfile().full_path)
@@ -674,7 +829,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         task_gen_utils.interpret_status_from_failed_execution(execution),
     )
 
-  def test_get_oldest_active_execution(self):
+  def test_get_oldest_active_execution_without_external_execution_index(self):
     executions = [
         metadata_store_pb2.Execution(
             id=1,
@@ -700,6 +855,62 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     )
     self.assertEqual(oldest.create_time_since_epoch, 1002)
     self.assertEqual(oldest.id, 2)
+
+  def test_get_oldest_active_execution_with_external_execution_index(self):
+    executions = [
+        metadata_store_pb2.Execution(
+            id=1,
+            create_time_since_epoch=1001,
+            last_known_state=metadata_store_pb2.Execution.COMPLETE,
+            custom_properties={
+                '__external_execution_index__': metadata_store_pb2.Value(
+                    int_value=0,
+                )
+            },
+        ),
+        metadata_store_pb2.Execution(
+            id=2,
+            create_time_since_epoch=1002,
+            last_known_state=metadata_store_pb2.Execution.RUNNING,
+            custom_properties={
+                '__external_execution_index__': metadata_store_pb2.Value(
+                    int_value=0,
+                )
+            },
+        ),
+        metadata_store_pb2.Execution(
+            id=3,
+            create_time_since_epoch=1002,
+            last_known_state=metadata_store_pb2.Execution.RUNNING,
+            custom_properties={
+                '__external_execution_index__': metadata_store_pb2.Value(
+                    int_value=1,
+                )
+            },
+        ),
+        metadata_store_pb2.Execution(
+            id=4,
+            create_time_since_epoch=1003,
+            last_known_state=metadata_store_pb2.Execution.NEW,
+            custom_properties={
+                '__external_execution_index__': metadata_store_pb2.Value(
+                    int_value=0,
+                )
+            },
+        ),
+    ]
+
+    oldest = task_gen_utils.get_oldest_active_execution(executions)
+    self.assertIsNotNone(oldest)
+    self.assertEqual(
+        oldest.last_known_state, metadata_store_pb2.Execution.RUNNING
+    )
+    self.assertEqual(oldest.create_time_since_epoch, 1002)
+    self.assertEqual(oldest.id, 2)
+    self.assertEqual(
+        oldest.custom_properties['__external_execution_index__'].int_value,
+        0,
+    )
 
   def test_get_oldest_active_execution_no_executions(self):
     oldest = task_gen_utils.get_oldest_active_execution([])

@@ -325,21 +325,19 @@ def component(
 
   This is example usage of component definition using this decorator:
 
-      from tfx.dsl.components.base.annotations import OutputDict
-      from tfx.dsl.components.base.annotations import
-      InputArtifact
-      from tfx.dsl.components.base.annotations import
-      OutputArtifact
-      from tfx.dsl.components.base.annotations import
-      Parameter
-      from tfx.dsl.components.base.decorators import component
-      from tfx.types import standard_artifacts
-      from tfx.types import system_executions
+      from tfx import v1 as tfx
 
-      @component(component_annotation=system_executions.Train)
+      InputArtifact = tfx.dsl.components.InputArtifact
+      OutputArtifact = tfx.dsl.components.OutputArtifact
+      Parameter = tfx.dsl.components.Parameter
+      OutputDict = tfx.dsl.components.OutputDict
+      Examples = tfx.types.standard_artifacts.Examples
+      Model = tfx.types.standard_artifacts.Model
+
+      @component(component_annotation=tfx.dsl.standard_annotations.Train)
       def MyTrainerComponent(
-          training_data: InputArtifact[standard_artifacts.Examples],
-          model: OutputArtifact[standard_artifacts.Model],
+          training_data: InputArtifact[Examples],
+          model: OutputArtifact[Model],
           dropout_hyperparameter: float,
           num_iterations: Parameter[int] = 10
           ) -> OutputDict(loss=float, accuracy=float):

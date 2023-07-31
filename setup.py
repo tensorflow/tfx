@@ -334,6 +334,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
@@ -355,7 +356,7 @@ setup(
         'develop': _DevelopCommand,
         'gen_proto': _GenProtoCommand,
     },
-    python_requires='>=3.8,<3.10',
+    python_requires='>=3.8,<3.11',
     packages=packages,
     include_package_data=True,
     description=description,
@@ -365,4 +366,5 @@ setup(
     url='https://www.tensorflow.org/tfx',
     download_url='https://github.com/tensorflow/tfx/tags',
     requires=[],
-    entry_points=entry_points)
+    entry_points=entry_points,
+)

@@ -642,6 +642,8 @@ class PipelineInputChannel(BaseChannel):
     self._pipeline = pipeline
 
   def get_data_dependent_node_ids(self) -> Set[str]:
+    if self._pipeline is None:
+      raise ValueError('Pipeline is not available.')
     return {self._pipeline.id}
 
 

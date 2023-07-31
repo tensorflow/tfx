@@ -110,12 +110,14 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
                       self._airflow_home)
 
     self._mysql_container_name = 'airflow_' + test_utils.generate_random_id()
-    db_port = airflow_test_utils.create_mysql_container(
-        self._mysql_container_name)
+    ip_address, db_port = airflow_test_utils.create_mysql_container(
+        self._mysql_container_name
+    )
     self.addCleanup(airflow_test_utils.delete_mysql_container,
                     self._mysql_container_name)
     os.environ['AIRFLOW__CORE__SQL_ALCHEMY_CONN'] = (
-        'mysql://tfx@127.0.0.1:%d/airflow' % db_port)
+        'mysql://tfx@%s:%d/airflow' % (ip_address, db_port)
+    )
 
     # Set a couple of important environment variables. See
     # https://airflow.apache.org/howto/set-config.html for details.
@@ -209,8 +211,10 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
                             _TASK_POLLING_INTERVAL_SEC)
           time.sleep(_TASK_POLLING_INTERVAL_SEC)
         else:
-          self.fail('No pending tasks in %s finished within %d secs' %
-                    (pending_tasks, _MAX_TASK_STATE_CHANGE_SEC))
+          self.fail(
+              'No pending tasks in %s finished within %d secs'
+              % (pending_tasks, _MAX_TASK_STATE_CHANGE_SEC)
+          )
 
 
 if __name__ == '__main__':

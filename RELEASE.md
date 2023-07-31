@@ -2,41 +2,21 @@
 
 ## Major Features and Improvements
 
+*  Added python 3.10 support.
+
 ## Breaking Changes
 
 *   `Placeholder` (and `_PlaceholderOperator`) are no longer `Jsonable`.
 
 ### For Pipeline Authors
 
-### For Component Authors
-
-## Deprecations
-
-## Bug Fixes and Other Changes
-
-## Dependency Updates
-| Package Name | Version Constraints | Previously (in `v1.13.0`) | Comments |
-| -- | -- | -- | -- |
-| `pyarrow` | `>=10,<11` | `>=6,<7` | |
-| `apache-beam` | `>=2.40,<3` | `>=2.47,<3` | |
-
-## Documentation Updates
-
-# Version 1.13.1
-
-## Major Features and Improvements
-
-*  N/A
-
-## Breaking Changes
-
-### For Pipeline Authors
-
 *   N/A
 
 ### For Component Authors
 
-*   N/A
+* Replace "tf_estimator" with "tfma_eval" as the identifier for tfma
+  EvalSavedModel. "tf_estimator" is now serves as the identifier for the normal
+  estimator model with any signature (by default 'serving').
 
 ## Deprecations
 
@@ -44,12 +24,20 @@
 
 ## Bug Fixes and Other Changes
 
-*  N/A
+*  Apply latest TFX image vulnerability resolutions (base OS and software updates)
 
 ## Dependency Updates
 | Package Name | Version Constraints | Previously (in `v1.13.0`) | Comments |
 | -- | -- | -- | -- |
 | `tensorflow-hub` | `>=0.9.0,<0.14` | `>=0.9.0,<0.13` | |
+| `pyarrow` | `>=10,<11` | `>=6,<7` | |
+| `apache-beam` | `>=2.40,<3` | `>=2.47,<3` | |
+| `scikit-learn` | `>=1.0,<2` | `>=0.23,<0.24` | |
+| `google-api-core` | `<2` | `<1.33` | |
+| `google-cloud-aiplatform` | `>=1.6.2,<2` | `>=1.6.2,<1.18` | |
+| `tflite-support` | `>=0.4.3,<0.4.5` | `>=0.4.2,<0.4.3` | |
+| `pyyaml` | `==5.3.1`| `>=3.12,<6` | Issue with installation of PyYaml 5.4.1. (https://github.com/yaml/pyyaml/issues/724) |
+| `tensorflow` | `>=2.13,<2.14` | `>=2.12,<2.13` | |
 
 ## Documentation Updates
 

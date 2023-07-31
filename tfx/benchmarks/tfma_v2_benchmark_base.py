@@ -21,7 +21,6 @@ import apache_beam as beam
 import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import example_weights_extractor
@@ -30,16 +29,18 @@ from tensorflow_model_analysis.extractors import labels_extractor
 from tensorflow_model_analysis.extractors import legacy_input_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
-from tensorflow_model_analysis.metrics import metric_specs as metric_specs_util
-from tensorflow_model_analysis.metrics import metric_types
-from tensorflow_model_analysis.utils import model_util
-from tensorflow_model_analysis.utils import util
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
 from tfx_bsl.coders import example_coder
 from tfx_bsl.tfxio import record_based_tfxio
 from tfx_bsl.tfxio import test_util
+
+constants = tfma.constants
+metric_specs_util = tfma.metrics.metric_specs
+metric_types = tfma.metrics.metric_types
+model_util = tfma.utils.model_util
+util = tfma.utils.util
 
 # Maximum number of examples within a record batch.
 _BATCH_SIZE = 1000
@@ -331,14 +332,12 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     extracts = [self._extract_features_and_labels(e) for e in extracts]
 
     prediction_do_fn = model_util.ModelSignaturesDoFn(
-        eval_config=self._eval_config,
+        model_specs=self._eval_config.model_specs,
         eval_shared_models=self._eval_shared_models,
-        signature_names={
-            constants.PREDICTIONS_KEY: {
-                name: [None] for name in self._eval_shared_models
-            }
-        },
-        prefer_dict_outputs=False)
+        output_keypath=[constants.PREDICTIONS_KEY],
+        signature_names={name: [None] for name in self._eval_shared_models},
+        prefer_dict_outputs=False,
+    )
     prediction_do_fn.setup()
 
     start = time.time()
@@ -376,14 +375,12 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     extracts = [self._extract_features_and_labels(e) for e in extracts]
 
     prediction_do_fn = model_util.ModelSignaturesDoFn(
-        eval_config=self._eval_config,
+        model_specs=self._eval_config.model_specs,
         eval_shared_models=self._eval_shared_models,
-        signature_names={
-            constants.PREDICTIONS_KEY: {
-                name: [None] for name in self._eval_shared_models
-            }
-        },
-        prefer_dict_outputs=False)
+        output_keypath=[constants.PREDICTIONS_KEY],
+        signature_names={name: [None] for name in self._eval_shared_models},
+        prefer_dict_outputs=False,
+    )
     prediction_do_fn.setup()
 
     # Have to predict first

@@ -18,6 +18,7 @@ from typing import Callable, List, Optional
 from absl import logging
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -26,7 +27,6 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
-from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -34,9 +34,6 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
-
-# Custom property name for backfill token
-_BACKFILL_TOKEN = '__backfill_token__'
 
 
 class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
@@ -126,18 +123,47 @@ class _Generator:
           node_id, node_state.backfill_token
       )
       if service_status is not None:
-        if service_status != service_jobs.ServiceStatus.RUNNING:
+        if (
+            node_state.backfill_token
+            and service_status == service_jobs.ServiceStatus.SUCCESS
+        ):
+          # Transitions ExampleGen node to STOPPED state and service job to
+          # STATE_STOPPED when backfill completes.
+          logging.info(
+              'Stopping ExampleGen: %s ; Backfill with token: %s completed',
+              node_id,
+              node_state.backfill_token,
+          )
+          result.append(
+              task_lib.UpdateNodeStateTask(
+                  node_uid=node_uid,
+                  state=pstate.NodeState.STOPPED,
+                  backfill_token='',
+              )
+          )
+          # The service job already completes with success but we still need to
+          # update the in-memory state.
+          self._service_job_manager.stop_node_services(
+              self._pipeline_state, node_id
+          )
+        elif service_status != service_jobs.ServiceStatus.RUNNING:
           error_msg = f'associated service job failed; node uid: {node_uid}'
           result.append(
               task_lib.UpdateNodeStateTask(
                   node_uid=node_uid,
                   state=pstate.NodeState.FAILED,
                   status=status_lib.Status(
-                      code=status_lib.Code.UNKNOWN, message=error_msg)))
+                      code=status_lib.Code.UNKNOWN, message=error_msg
+                  ),
+                  backfill_token='',
+              )
+          )
         elif node_state.state != pstate.NodeState.RUNNING:
           result.append(
               task_lib.UpdateNodeStateTask(
-                  node_uid=node_uid, state=pstate.NodeState.RUNNING
+                  node_uid=node_uid,
+                  state=pstate.NodeState.RUNNING,
+                  backfill_token=node_state.backfill_token,
               )
           )
         continue
@@ -195,13 +221,17 @@ class _Generator:
     # TODO(b/275231956) Too many executions may have performance issue, it is
     # better to limit the number of executions.
     executions = task_gen_utils.get_executions(metadata_handler, node)
+    sorted_executions = execution_lib.sort_executions_newest_to_oldest(
+        executions
+    )
+    newest_execution = sorted_executions[0] if sorted_executions else None
     oldest_active_execution = task_gen_utils.get_oldest_active_execution(
         executions)
     if oldest_active_execution:
       if backfill_token:
         if (
             oldest_active_execution.custom_properties[
-                _BACKFILL_TOKEN
+                constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
             ].string_value
             != backfill_token
         ):
@@ -271,18 +301,18 @@ class _Generator:
           )
       )
 
-    if backfill_token:
+    if backfill_token and newest_execution:
       # If we are backfilling, we only want to do input resolution once,
       # and register the executions once. To check if we've already registered
       # the executions, we check for the existence of executions with the
       # backfill token. Note that this can be incorrect in rare cases until
       # b/266014070 is resolved.
-      backfill_executions = [
-          e
-          for e in executions
-          if e.custom_properties[_BACKFILL_TOKEN].string_value == backfill_token
-      ]
-      if backfill_executions:
+      if (
+          newest_execution.custom_properties[
+              constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
+          ].string_value
+          == backfill_token
+      ):
         logging.info(
             'Backfill of node %s is complete. Setting node to STOPPED state',
             node.node_info.id,
@@ -368,33 +398,20 @@ class _Generator:
     if not unprocessed_inputs:
       return result
 
-    # TODO(b/266014070): Register executions atomically.
-    #
-    # Right now, for normal operation, this behaviour is still correct,
-    # because if the orchestrator is interrupted in the middle, in the next
-    # iteration, the can still resolve inputs again and register the rest of
-    # executions.
-    #
-    # However, for backfills, this behaviour is incorrect, since if
-    # the orchestrator is interrupted, we will not resolve inputs again the
-    # next iteration, so the executions that weren't registered will never be
-    # registered.
-    new_executions = []
     for input_and_param in unprocessed_inputs:
-      exec_properties = input_and_param.exec_properties
       if backfill_token:
-        exec_properties[_BACKFILL_TOKEN] = backfill_token
-      execution = execution_publish_utils.register_execution(
-          metadata_handler=metadata_handler,
-          execution_type=node.node_info.type,
-          contexts=resolved_info.contexts,
-          input_artifacts=input_and_param.input_artifacts,
-          exec_properties=exec_properties,
-          last_known_state=metadata_store_pb2.Execution.NEW,
-      )
-      new_executions.append(execution)
-      event_observer.make_notify_execution_state_change_fn(node_uid)(None,
-                                                                     execution)
+        input_and_param.exec_properties[
+            constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
+        ] = backfill_token
+
+    new_executions = task_gen_utils.register_executions(
+        metadata_handler,
+        node.node_info.type,
+        resolved_info.contexts,
+        unprocessed_inputs,
+    )
+    for e in new_executions:
+      event_observer.make_notify_execution_state_change_fn(node_uid)(None, e)
 
     # Selects the first artifacts and create a exec task.
     input_and_param = unprocessed_inputs[0]

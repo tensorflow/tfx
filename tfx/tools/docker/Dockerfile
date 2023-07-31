@@ -57,7 +57,7 @@ RUN cd ${TFX_DIR}/src; \
     fi;
 
 # We need to name this step for the next COPY --from command.
-FROM apache/beam_python3.7_sdk:${BEAM_VERSION} as beam-worker
+FROM apache/beam_python3.8_sdk:${BEAM_VERSION} as beam-worker
 
 # Build stage to extend DLVM image.
 FROM ${BASE_IMAGE} as install
@@ -69,18 +69,23 @@ ARG ADDITIONAL_PACKAGES
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
-# TODO(b/264498526): Remove after DLVM upgrades its python version.
-ENV PATH="/usr/bin:${PATH}"
-RUN ln -s /usr/bin/python3.8 /usr/bin/python
-
 ARG APT_COMMAND="apt-get -o Acquire::Retries=3 -y"
+
+# Needed to install python 3.8
+RUN add-apt-repository ppa:deadsnakes/ppa -y
 
 RUN ${APT_COMMAND} update && ${APT_COMMAND} upgrade
 
 RUN ${APT_COMMAND} update && \
   ${APT_COMMAND} install \
   build-essential \
-  python3.8-dev
+  python3.8 \
+  python3.8-dev \
+  python3.8-distutils
+
+# TODO(b/264498526): Use the original python verion in DLVM.
+ENV PATH="/usr/bin:${PATH}"
+RUN ln -s /usr/bin/python3.8 /usr/bin/python
 
 # Copy from image matching installed version of 'apache-beam'.
 COPY --from=beam-worker /opt/apache/beam /opt/apache/beam

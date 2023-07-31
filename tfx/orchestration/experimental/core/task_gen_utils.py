@@ -22,6 +22,7 @@ import uuid
 from absl import logging
 import attr
 from tfx import types
+from tfx.dsl.compiler import constants as context_constants
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
@@ -246,6 +247,10 @@ def get_executions(
     metadata_handler: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
     only_active: bool = False,
+    only_successful: bool = False,
+    limit: Optional[int] = None,
+    backfill_token: str = '',
+    additional_filters: Optional[List[str]] = None,
 ) -> List[metadata_store_pb2.Execution]:
   """Returns all executions for the given pipeline node.
 
@@ -258,6 +263,14 @@ def get_executions(
     only_active: If set to true, only active executions are returned. Otherwise,
       all executions are returned. Active executions mean executions with NEW or
       RUNNING last_known_state.
+    only_successful: If set to true, only successful executions are returned.
+      Otherwise, all executions are returned. successful executions mean
+      executions with COMPLETE or CACHED last_known_state.
+    limit: limit the number of executions return by the function.
+    backfill_token: If non-empty, only executions with custom property
+      `__backfill_token__` set to the value are returned. Should only be set
+      when backfilling in ASYNC mode.
+    additional_filters: Additional filters to select executions.
 
   Returns:
     List of executions for the given node in MLMD db.
@@ -266,7 +279,23 @@ def get_executions(
     return []
   # Get all the contexts associated with the node.
   filter_query = q.And([])
-  for i, context_spec in enumerate(node.contexts.contexts):
+
+  # "node" context or "pipeline_run" context is a strict sub-context of a
+  # "pipeline" context thus we can remove "pipeline" context from the filter
+  # query to improve performance.
+  filter_contexts = node.contexts.contexts
+  context_types = {context.type.name for context in filter_contexts}
+
+  if (
+      context_constants.PIPELINE_RUN_CONTEXT_TYPE_NAME in context_types
+      or context_constants.NODE_CONTEXT_TYPE_NAME in context_types
+  ):
+    context_types.discard(context_constants.PIPELINE_CONTEXT_TYPE_NAME)
+    filter_contexts = [
+        q for q in filter_contexts if q.type.name in context_types
+    ]
+
+  for i, context_spec in enumerate(filter_contexts):
     context_type = context_spec.type.name
     context_name = data_types_utils.get_value(context_spec.name)
     filter_query.append(
@@ -275,19 +304,42 @@ def get_executions(
             f"contexts_{i}.name = '{context_name}'",
         ])
     )
-  if only_active:
+
+  if only_active and only_successful:
+    filter_query.append(
+        q.Or([
+            'last_known_state = NEW',
+            'last_known_state = RUNNING',
+            'last_known_state = COMPLETE',
+            'last_known_state = CACHED',
+        ])
+    )
+  elif only_active:
     filter_query.append(
         q.Or(['last_known_state = NEW', 'last_known_state = RUNNING'])
     )
+  elif only_successful:
+    filter_query.append(
+        q.Or(['last_known_state = COMPLETE', 'last_known_state = CACHED'])
+    )
+
+  if backfill_token:
+    filter_query.append(
+        (
+            'custom_properties.__backfill_token__.string_value ='
+            f" '{backfill_token}'"
+        ),
+    )
+
+  if additional_filters:
+    filter_query.extend(additional_filters)
+
   return metadata_handler.store.get_executions(
       list_options=mlmd.ListOptions(
-          # TODO(b/274559409): Decide whether to keep explicit order or not.
-          # Due to implementation detail, `is_asc = false` (default) with filter
-          # query has very bad time complexity, thus enforcing `is_asc = true`
-          # here.
-          order_by=mlmd.OrderByField.ID,
-          is_asc=True,
+          order_by=mlmd.OrderByField.CREATE_TIME,
+          is_asc=False,
           filter_query=str(filter_query),
+          limit=limit,
       )
   )
 
@@ -379,9 +431,26 @@ def get_oldest_active_execution(
   if not active_executions:
     return None
 
-  sorted_executions = execution_lib.sort_executions_newest_to_oldest(
-      active_executions)
-  return sorted_executions[-1] if sorted_executions else None
+  # TODO(b/291772909): Simpliy the sort logic after orchestrator will only see
+  # active executions with _EXTERNAL_EXECUTION_INDEX.
+  if all(
+      [
+          e.custom_properties.get(_EXTERNAL_EXECUTION_INDEX)
+          for e in active_executions
+      ]
+  ):
+    sorted_active_executions = sorted(
+        active_executions,
+        key=lambda e: (  # pylint: disable=g-long-lambda
+            e.create_time_since_epoch,
+            e.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value,
+        ),
+    )
+  else:
+    sorted_active_executions = sorted(
+        active_executions, key=lambda e: e.create_time_since_epoch
+    )
+  return sorted_active_executions[0]
 
 
 # TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
@@ -541,6 +610,9 @@ def get_unprocessed_inputs(
   Returns:
     A list of InputAndParam that have not been processed.
   """
+  if not resolved_info.input_and_params:
+    return []
+
   # Finds out the keys that should be ignored.
   input_triggers = node.execution_options.async_trigger.input_triggers
   ignore_keys = set(
@@ -593,6 +665,8 @@ def get_unprocessed_inputs(
   # Finds out the unprocessed inputs.
   unprocessed_inputs = []
   for input_and_param in resolved_info.input_and_params:
+    if not input_and_param.input_artifacts:
+      continue
     resolved_input_ids_by_key = collections.defaultdict(list)
     for key, artifacts in input_and_param.input_artifacts.items():
       for a in artifacts:

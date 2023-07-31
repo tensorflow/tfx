@@ -56,12 +56,19 @@ _beam_pipeline_args = [
 ]
 
 
-def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
-                     module_file: str, accuracy_threshold: float,
-                     serving_model_dir: str, metadata_path: str,
-                     user_provided_schema_path: str,
-                     beam_pipeline_args: List[str],
-                     make_warmup: bool) -> tfx.dsl.Pipeline:
+def _create_pipeline(
+    pipeline_name: str,
+    pipeline_root: str,
+    data_root: str,
+    module_file: str,
+    accuracy_threshold: float,
+    serving_model_dir: str,
+    metadata_path: str,
+    user_provided_schema_path: str,
+    beam_pipeline_args: List[str],
+    infra_validator_host_ip_address: str,
+    make_warmup: bool,
+) -> tfx.dsl.Pipeline:
   """Implements the penguin pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = tfx.components.CsvExampleGen(
@@ -142,12 +149,17 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
       serving_spec=tfx.proto.ServingSpec(
           # TODO(b/244254788): Roll back to the 'latest' tag.
           tensorflow_serving=tfx.proto.TensorFlowServing(tags=['2.8.2']),
-          local_docker=tfx.proto.LocalDockerConfig()),
+          local_docker=tfx.proto.LocalDockerConfig(
+              host_ip_address=infra_validator_host_ip_address
+          ),
+      ),
       request_spec=tfx.proto.RequestSpec(
           tensorflow_serving=tfx.proto.TensorFlowServingRequestSpec(),
           # If this flag is set, InfraValidator will produce a model with
           # warmup requests (in its outputs['blessing']).
-          make_warmup=make_warmup))
+          make_warmup=make_warmup,
+      ),
+  )
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
@@ -209,4 +221,7 @@ if __name__ == '__main__':
           metadata_path=_metadata_path,
           user_provided_schema_path=_user_provided_schema,
           beam_pipeline_args=_beam_pipeline_args,
-          make_warmup=True))
+          infra_validator_host_ip_address='localhost',
+          make_warmup=True,
+      )
+  )

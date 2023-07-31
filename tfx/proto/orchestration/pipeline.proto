@@ -427,6 +427,11 @@ message OutputSpec {
     // Predefined URI(s) that will explicitly control Artifact.uri for the ㅤ
     // external artifacts produced by this output channel. ㅤ
     repeated string external_artifact_uris = 4;
+    // If the artifact is an intermediate artifact. If true, then the first
+    // output artifact created by the orchestrator at the start of the
+    // component execution will be given state REFERENCE. Artifacts emitted
+    // during component execution will be given state LIVE.
+    bool is_intermediate_artifact = 5;
   }
   ArtifactSpec artifact_spec = 1;
 
@@ -641,6 +646,9 @@ message PipelineRuntimeSpec {
   // A unique id to identify a pipeline run. This will not be set during
   // compilation time but is required for synchronous pipeline execution.
   Value pipeline_run_id = 2;
+  // The id of the pipeline run for the top-level pipeline in this execution. If
+  // The top level-pipeline is ASYNC then this will be empty.
+  string top_level_pipeline_run_id = 3;
   // Used for partial runs.
   SnapshotSettings snapshot_settings = 8;
 }

@@ -136,14 +136,14 @@ class Artifact(json_utils.Jsonable):
   # TYPE_NAME = 'MyTypeName'
   TYPE_NAME: Optional[str] = None
 
-  # The system artifact class used to annotate the artifact type. It is a
-  # subclass of SystemArtifact.
-  # These subclasses (system artifact classses) are defined in
-  # third_party/py/tfx/types/system_artifacts.py.
+  # An MLMD type annotations from tfx.v1.dsl.standard_annotations.
   #
   # Example usage:
   #
-  # TYPE_ANNOTATION = system_artifacts.Dataset
+  # ```python
+  # from tfx import v1 as tfx
+  # TYPE_ANNOTATION = tfx.dsl.standard_annotations.Dataset
+  # ````
   TYPE_ANNOTATION: Optional[Type[SystemArtifact]] = None
 
   # Optional dictionary of property name strings as keys and `Property`
