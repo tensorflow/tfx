@@ -14,6 +14,7 @@
 """TaskGenerator implementation for sync pipelines."""
 
 import collections
+import concurrent.futures
 import textwrap
 from typing import Callable, Dict, List, Mapping, Optional, Set
 
@@ -121,29 +122,39 @@ class _Generator:
     failed_nodes_dict: Dict[str, status_lib.Status] = {}
     finalize_pipeline_task = None
     for layer_nodes in layers:
-      for node in layer_nodes:
-        node_id = node.node_info.id
-        node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
-        node_state = self._node_states_dict[node_uid]
-        if node_state.is_success() or (node_state.is_failure(
-        ) and node.execution_options.node_success_optional):
-          successful_node_ids.add(node_id)
-          continue
-        if node_state.is_failure():
-          failed_nodes_dict[node_id] = node_state.status
-          continue
-        if not self._trigger_strategy_satisfied(node, successful_node_ids,
-                                                failed_nodes_dict):
-          continue
-        tasks = self._generate_tasks_for_node(node)
+      futures = []
+      with concurrent.futures.ThreadPoolExecutor() as executor:
+        for node in layer_nodes:
+          node_id = node.node_info.id
+          node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+          node_state = self._node_states_dict[node_uid]
+          if node_state.is_success() or (
+              node_state.is_failure()
+              and node.execution_options.node_success_optional
+          ):
+            successful_node_ids.add(node_id)
+            continue
+          if node_state.is_failure():
+            failed_nodes_dict[node_id] = node_state.status
+            continue
+          if not self._trigger_strategy_satisfied(
+              node, successful_node_ids, failed_nodes_dict
+          ):
+            continue
+          futures.append(
+              (executor.submit(self._generate_tasks_for_node, node=node), node)
+          )
+
+      for future, node in futures:
+        tasks = future.result()
         for task in tasks:
           if isinstance(task, task_lib.UpdateNodeStateTask):
             if pstate.is_node_state_success(
                 task.state) or (pstate.is_node_state_failure(task.state) and
                                 node.execution_options.node_success_optional):
-              successful_node_ids.add(node_id)
+              successful_node_ids.add(node.node_info.id)
             elif pstate.is_node_state_failure(task.state):
-              failed_nodes_dict[node_id] = task.status
+              failed_nodes_dict[node.node_info.id] = task.status
               # While the pipeline can still proceed depending on the trigger
               # strategy of descending nodes, the fail fast option should only
               # be used together with ALL_UPSTREAM_NODES_SUCCEEDED since it will
@@ -154,11 +165,11 @@ class _Generator:
           elif isinstance(task, task_lib.ExecNodeTask):
             exec_node_tasks.append(task)
 
+          if finalize_pipeline_task:
+            break
+
         if finalize_pipeline_task:
           break
-
-      if finalize_pipeline_task:
-        break
 
     if not self._fail_fast and failed_nodes_dict:
       assert not finalize_pipeline_task
