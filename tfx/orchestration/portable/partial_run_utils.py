@@ -562,11 +562,13 @@ class _ArtifactRecycler:
         self._get_pipeline_context()
     )
     self._new_run_id: Final[str] = new_run_id
-    context_lib.register_context_if_not_exists(
-        self._mlmd,
-        context_type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
-        context_name=self._new_run_id,
-        parent_contexts=[self._pipeline_context],
+    self._new_pipeline_run_context: Final[metadata_store_pb2.Context] = (
+        context_lib.register_context_if_not_exists(
+            self._mlmd,
+            context_type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
+            context_name=self._new_run_id,
+            parent_contexts=[self._pipeline_context],
+        )
     )
 
     self._node_context_by_name: Final[Dict[str, metadata_store_pb2.Context]] = {
@@ -705,15 +707,14 @@ class _ArtifactRecycler:
 
     # Check if there are any previous attempts to cache and publish.
     node_context = self._get_node_context(node_id)
-    pipeline_run_context = self._get_pipeline_run_context(self._new_run_id)
     cached_execution_contexts = [
         self._pipeline_context,
         node_context,
-        pipeline_run_context,
+        self._new_pipeline_run_context,
     ]
     prev_cache_executions = (
         execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd, contexts=[node_context, pipeline_run_context]
+            self._mlmd, contexts=[node_context, self._new_pipeline_run_context]
         )
     )
 
@@ -763,9 +764,11 @@ class _ArtifactRecycler:
         instance was created with.
     """
     base_run_context = self._get_pipeline_run_context(base_run_id)
-    new_run_context = self._get_pipeline_run_context(self._new_run_id)
     context_lib.put_parent_context_if_not_exists(
-        self._mlmd, parent_id=base_run_context.id, child_id=new_run_context.id)
+        self._mlmd,
+        parent_id=base_run_context.id,
+        child_id=self._new_pipeline_run_context.id,
+    )
 
   def reuse_node_outputs(self, node_id: str, base_run_id: str):
     """Makes the outputs of `node_id` available to new_pipeline_run_id."""
