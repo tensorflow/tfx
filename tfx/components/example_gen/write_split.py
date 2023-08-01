@@ -77,13 +77,19 @@ def WriteSplit(
                   schema,
                   file_name_suffix='.parquet',
                   codec='snappy'))
-
+    
+    num_shards = exec_properties['custom_config'].get('num_shards', 0)
+    
+  else:
+    num_shards = 0 
+    
   return (example_split
           | 'MaybeSerialize' >> beam.ParDo(MaybeSerialize())
           # TODO(jyzhao): make shuffle optional.
           | 'Shuffle' >> beam.transforms.Reshuffle()
           | 'Write' >> beam.io.WriteToTFRecord(
               os.path.join(output_split_path, DEFAULT_FILE_NAME),
+              num_shards=num_shards,
               file_name_suffix='.gz'))
 
 
