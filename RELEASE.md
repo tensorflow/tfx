@@ -7,6 +7,7 @@
 ## Breaking Changes
 
 *   `Placeholder` (and `_PlaceholderOperator`) are no longer `Jsonable`.
+*   Optimize MLMD register type to one call in most time instead of two calls.
 
 ### For Pipeline Authors
 
