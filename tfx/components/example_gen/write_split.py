@@ -78,8 +78,10 @@ def WriteSplit(
                   file_name_suffix='.parquet',
                   codec='snappy'))
     
-    num_shards = exec_properties['custom_config'].get('num_shards', 0)
-    
+    custom_config = exec_properties.get('custom_config')
+    num_shards = custom_config.get('num_shards', 0) if custom_config else 0
+    # num_shards = executive_properties['custom_config'].get('num_shards', 0)
+
   else:
     num_shards = 0 
     
