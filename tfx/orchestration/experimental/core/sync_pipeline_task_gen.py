@@ -106,10 +106,7 @@ class _Generator:
     self._pipeline_state = pipeline_state
     with self._pipeline_state:
       self._node_states_dict = self._pipeline_state.get_node_states_dict()
-    self._pipeline_uid = self._pipeline_state.pipeline_uid
     self._pipeline = pipeline
-    self._pipeline_run_id = (
-        pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
     self._fail_fast = fail_fast
@@ -199,7 +196,7 @@ class _Generator:
       # If all terminal nodes are successful, the pipeline can be finalized.
       result.append(
           task_lib.FinalizePipelineTask(
-              pipeline_uid=self._pipeline_uid,
+              pipeline_uid=self._pipeline_state.pipeline_uid,
               status=status_lib.Status(code=status_lib.Code.OK)))
     else:
       result.extend(exec_node_tasks)
@@ -529,7 +526,7 @@ class _Generator:
         ),
     )
     return task_lib.FinalizePipelineTask(
-        pipeline_uid=self._pipeline_uid,
+        pipeline_uid=self._pipeline_state.pipeline_uid,
         status=next(iter(failed_nodes_dict.values())),
     )
 
