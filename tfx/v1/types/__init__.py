@@ -17,5 +17,5 @@
 # base types for your own classes.
 from tfx.dsl.components.base.base_node import BaseNode
 from tfx.types.channel import BaseChannel
-
+from tfx.types.channel import OutputChannel
 from tfx.v1.types import standard_artifacts
