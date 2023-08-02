@@ -36,6 +36,7 @@ from tfx.utils import typing_utils
 
 from google.protobuf import json_format
 import ml_metadata as mlmd
+from ml_metadata.google.services.client.cross_db import reference_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -226,17 +227,29 @@ def _create_artifact_and_event_pairs(
   if not artifact_dict:
     return []
 
+  def get_id(artifact: types.Artifact) -> Any:
+    """Get id for unique event generation per (execution, artifact)."""
+    if artifact.mlmd_artifact.HasField('id'):
+      return artifact.mlmd_artifact.id
+    # If artifact is resolved from external pipeline, it may not have a local
+    # corresponding artifact entry thus lack an artifact ID, but there should be
+    # a unique local artifact for the same external artifact, so we use this as
+    # a fallback identifier of the artifact.
+    if reference_utils.has_artifact_reference(artifact.mlmd_artifact):
+      # Invoke get_artifact_reference to check if the Guri format is correct.
+      _ = reference_utils.get_artifact_reference(artifact.mlmd_artifact)
+      return artifact.mlmd_artifact.external_id
+    return None
+
   result = []
   artifact_event_map = dict()
   for key, artifact_list in artifact_dict.items():
     artifact_type = None
     for index, artifact in enumerate(artifact_list):
-      if (
-          artifact.mlmd_artifact.HasField('id')
-          and artifact.id in artifact_event_map
-      ):
+      artifact_id = get_id(artifact)
+      if artifact_id and artifact_id in artifact_event_map:
         event_lib.add_event_path(
-            artifact_event_map[artifact.id][1], key=key, index=index
+            artifact_event_map[artifact_id][1], key=key, index=index
         )
       else:
         # TODO(b/153904840): If artifact id is present, skip putting the
@@ -254,8 +267,8 @@ def _create_artifact_and_event_pairs(
             metadata_handler, artifact.artifact_type
         )
         artifact.set_mlmd_artifact_type(artifact_type)
-        if artifact.mlmd_artifact.HasField('id'):
-          artifact_event_map[artifact.id] = (artifact.mlmd_artifact, event)
+        if artifact_id:
+          artifact_event_map[artifact_id] = (artifact.mlmd_artifact, event)
         else:
           result.append((artifact.mlmd_artifact, event))
   result.extend(list(artifact_event_map.values()))
