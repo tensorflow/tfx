@@ -742,14 +742,18 @@ class PartialRunTest(absltest.TestCase):
       artifact_recyler = partial_run_utils._ArtifactRecycler(
           m, pipeline_name='test_pipeline', new_run_id='new_run_id'
       )
-      self.assertEqual('test_pipeline_run_2',
-                       artifact_recyler.get_latest_pipeline_run_id())
+      self.assertEqual(
+          'test_pipeline_run_2',
+          artifact_recyler._get_base_pipeline_run_context().name,
+      )
 
       artifact_recyler = partial_run_utils._ArtifactRecycler(
           m, pipeline_name='second_pipeline', new_run_id='new_run_id'
       )
-      self.assertEqual('second_pipeline_run_1',
-                       artifact_recyler.get_latest_pipeline_run_id())
+      self.assertEqual(
+          'second_pipeline_run_1',
+          artifact_recyler._get_base_pipeline_run_context().name,
+      )
 
   def testSnapshot_removeFirstNode(self):
     """Tests that partial run with the first node removed works."""
@@ -1349,7 +1353,7 @@ class PartialRunTest(absltest.TestCase):
         from_nodes=[add_num_v2.id],
         snapshot_settings=snapshot_settings)
     with self.assertRaisesRegex(LookupError,
-                                'node context .* not found in MLMD.'):
+                                'pipeline_run_id .* not found in MLMD.'):
       beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
 
   def testNoPreviousSuccessfulExecution_lookupError(self):
