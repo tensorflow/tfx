@@ -17,9 +17,3 @@ cachelib<0.10.0
 # TODO(b/281467874): Remove this after upgrading OpenSSL version in our test
 # environment.
 urllib3<2
-
-# TODO(b/291837844): Remove this after upgrading PyYaml to >=6.0.1.
-pyyaml==5.3.1
-
-# TODO(b/292011737): Remove this after orbax release a new version after 0.1.8.
-orbax!=0.1.8

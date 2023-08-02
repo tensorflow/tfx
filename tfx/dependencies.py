@@ -90,7 +90,7 @@ def make_required_install_packages():
       'pyarrow>=10,<11',
       # TODO(b/291837844): Pinned pyyaml to 5.3.1.
       # Unpin once the issue with installation is resolved.
-      'pyyaml>=3.12,<6,!=5.4.0,!=5.4.1',
+      'pyyaml>=6,<7',
       # Keep the TF version same as TFT to help Pip version resolution.
       # Pip might stuck in a TF 1.15 dependency although there is a working
       # dependency set with TF 2.x without the sync.
@@ -167,7 +167,7 @@ def make_extra_packages_docker_image():
 def make_extra_packages_tfjs():
   # Packages needed for tfjs.
   return [
-      'tensorflowjs>=3.6.0,<4',
+      'tensorflowjs>=4.5,<5',
   ]
 
 
