@@ -205,6 +205,7 @@ class _Generator:
   def _generate_tasks_for_node(
       self, node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates list of tasks for the given node."""
+    logging.info('Generating task for node %s', node.node_info.id)
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
     node_id = node.node_info.id
     result = []
