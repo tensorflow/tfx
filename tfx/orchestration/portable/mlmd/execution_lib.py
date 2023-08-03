@@ -230,12 +230,6 @@ def _create_artifact_and_event_pairs(
     """Get id for unique event generation per (execution, artifact)."""
     if artifact.mlmd_artifact.HasField('id'):
       return artifact.mlmd_artifact.id
-    # If artifact is resolved from external pipeline, it may not have a local
-    # corresponding artifact entry thus lack an artifact ID, but there should be
-    # a unique local artifact for the same external artifact, so we use this as
-    # a fallback identifier of the artifact.
-    if artifact.mlmd_artifact.external_id:
-      return artifact.mlmd_artifact.external_id
     return None
 
   result = []
