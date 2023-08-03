@@ -251,6 +251,8 @@ class _ProtoOperator(_PlaceholderOperator):
     return self._proto_field_path is not None
 
   def append_field_path(self, extra_path: str):
+    if self._proto_field_path is None:
+      raise ValueError('Proto field path not initialized.')
     self._proto_field_path.append(extra_path)
 
   def encode(
@@ -447,7 +449,7 @@ class ArtifactPlaceholder(Placeholder):
     return self._type == placeholder_pb2.Placeholder.Type.OUTPUT_ARTIFACT
 
   @property
-  def key(self) -> str:
+  def key(self) -> Optional[str]:
     return self._key
 
   @property

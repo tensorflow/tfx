@@ -69,23 +69,23 @@ class BaseExecutor(abc.ABC):
       return os.path.join(self._tmp_dir, str(self._unique_id), '')
 
     @property
-    def executor_output_uri(self) -> str:
+    def executor_output_uri(self) -> Optional[str]:
       return self._executor_output_uri
 
     @property
-    def stateful_working_dir(self) -> str:
+    def stateful_working_dir(self) -> Optional[str]:
       return self._stateful_working_dir
 
     @property
-    def pipeline_node(self) -> pipeline_pb2.PipelineNode:
+    def pipeline_node(self) -> Optional[pipeline_pb2.PipelineNode]:
       return self._pipeline_node
 
     @property
-    def pipeline_info(self) -> pipeline_pb2.PipelineInfo:
+    def pipeline_info(self) -> Optional[pipeline_pb2.PipelineInfo]:
       return self._pipeline_info
 
     @property
-    def pipeline_run_id(self) -> str:
+    def pipeline_run_id(self) -> Optional[str]:
       return self._pipeline_run_id
 
   @abc.abstractmethod
