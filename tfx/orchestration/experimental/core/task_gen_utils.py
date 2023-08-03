@@ -665,8 +665,6 @@ def get_unprocessed_inputs(
   # Finds out the unprocessed inputs.
   unprocessed_inputs = []
   for input_and_param in resolved_info.input_and_params:
-    if not input_and_param.input_artifacts:
-      continue
     resolved_input_ids_by_key = collections.defaultdict(list)
     for key, artifacts in input_and_param.input_artifacts.items():
       for a in artifacts:
