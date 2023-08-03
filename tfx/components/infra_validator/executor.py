@@ -329,7 +329,7 @@ class Executor(base_executor.BaseExecutor):
             model_name=serving_spec.model_name,
             version=int(time.time()))
         io_utils.copy_dir(src=model_path, dst=temp_model_path)
-        self._AddCleanup(io_utils.delete_dir, self._context.get_tmp_path())
+        self._AddCleanup(io_utils.delete_dir, self._get_tmp_dir())
         return temp_model_path
 
     return model_path
