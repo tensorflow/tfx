@@ -382,6 +382,25 @@ class _PipelineIRCodec:
     except json.JSONDecodeError:
       return _base64_decode_pipeline(value)
 
+# Signal to record whether there are active pipelines, this is an optimization
+# to avoid generating too many RPC calls getting contexts/executions during
+# idle time. Everytime when the pipeline state is updated to active (eg. start,
+# resume a pipeline), this variable must be toggled to True. Default as True as
+# well to make sure latest executions and contexts are checked when
+# orchestrator starts or gets preempted.
+_active_pipelines_exist = True
+# Lock to serialize the functions changing the _active_pipeline_exist status.
+_active_pipelines_lock = threading.Lock()
+
+
+def _synchronized(f):
+  @functools.wraps(f)
+  def wrapper(*args, **kwargs):
+    with _active_pipelines_lock:
+      return f(*args, **kwargs)
+
+  return wrapper
+
 
 class PipelineState:
   """Context manager class for dealing with pipeline state.
@@ -424,6 +443,7 @@ class PipelineState:
     self._on_commit_callbacks: List[Callable[[], None]] = []
 
   @classmethod
+  @_synchronized
   def new(
       cls,
       mlmd_handle: metadata.Metadata,
@@ -535,6 +555,13 @@ class PipelineState:
           pipeline.runtime_spec.pipeline_run_id.field_value.string_value,
       )
       _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
+
+    # update _active_pipelines_exist to be True so orchestrator will keep
+    # fetching the latest contexts and execution when orchestrating the pipeline
+    # run.
+    global _active_pipelines_exist
+    _active_pipelines_exist = True
+    logging.info('Pipeline start, set active_pipelines_exist=True.')
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
     pipeline_state = cls(
         mlmd_handle=mlmd_handle, pipeline=pipeline, execution_id=execution.id
@@ -591,6 +618,7 @@ class PipelineState:
     return uids_and_states[0][1]
 
   @classmethod
+  @_synchronized
   def load_all_active(cls,
                       mlmd_handle: metadata.Metadata) -> List['PipelineState']:
     """Loads all active pipeline states.
@@ -606,20 +634,29 @@ class PipelineState:
       pipeline are found with the same pipeline uid.
     """
     start_time = time.time()
-    contexts = get_orchestrator_contexts(mlmd_handle)
-    active_pipeline_uids = set()
     result = []
-    for context in contexts:
-      uids_and_states = cls._load_from_context(mlmd_handle, context)
-      for pipeline_uid, pipeline_state in uids_and_states:
-        if pipeline_uid in active_pipeline_uids:
-          raise status_lib.StatusNotOkError(
-              code=status_lib.Code.INTERNAL,
-              message=(
-                  f'Found more than 1 active pipeline for pipeline uid: {pipeline_uid}'
-              ))
-        active_pipeline_uids.add(pipeline_uid)
-        result.append(pipeline_state)
+    global _active_pipelines_exist
+    if _active_pipelines_exist:
+      logging.info('Checking active pipelines.')
+      contexts = get_orchestrator_contexts(mlmd_handle)
+      active_pipeline_uids = set()
+      for context in contexts:
+        uids_and_states = cls._load_from_context(mlmd_handle, context)
+        for pipeline_uid, pipeline_state in uids_and_states:
+          if pipeline_uid in active_pipeline_uids:
+            raise status_lib.StatusNotOkError(
+                code=status_lib.Code.INTERNAL,
+                message=(
+                    'Found more than 1 active pipeline for pipeline uid:'
+                    f' {pipeline_uid}'
+                ),
+            )
+          active_pipeline_uids.add(pipeline_uid)
+          result.append(pipeline_state)
+
+    if not result:
+      _active_pipelines_exist = False
+      logging.info('No active pipelines, set _active_pipelines_exist=False.')
 
     telemetry_utils.noop_telemetry(
         start_time=start_time,
@@ -744,7 +781,10 @@ class PipelineState:
           self._execution.custom_properties[_PIPELINE_STATUS_MSG],
           status.message)
 
+  @_synchronized
   def initiate_resume(self) -> None:
+    global _active_pipelines_exist
+    _active_pipelines_exist = True
     self._check_context()
     self.remove_property(_STOP_INITIATED)
     self.remove_property(_PIPELINE_STATUS_CODE)

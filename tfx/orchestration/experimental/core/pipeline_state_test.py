@@ -34,24 +34,31 @@ from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import status as status_lib
 
 import ml_metadata as mlmd
+from ml_metadata.google.tfx import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 
 
-def _test_pipeline(pipeline_id,
-                   execution_mode: pipeline_pb2.Pipeline.ExecutionMode = (
-                       pipeline_pb2.Pipeline.ASYNC),
-                   param=1,
-                   pipeline_nodes: List[str] = None,
-                   pipeline_run_id: str = 'run0'):
+def _test_pipeline(
+    pipeline_id,
+    execution_mode: pipeline_pb2.Pipeline.ExecutionMode = (
+        pipeline_pb2.Pipeline.ASYNC
+    ),
+    param=1,
+    pipeline_nodes: List[str] = None,
+    pipeline_run_id: str = 'run0',
+):
   pipeline = pipeline_pb2.Pipeline()
   pipeline.pipeline_info.id = pipeline_id
   pipeline.execution_mode = execution_mode
   for node in pipeline_nodes:
     pipeline.nodes.add().pipeline_node.node_info.id = node
   pipeline.nodes[0].pipeline_node.parameters.parameters[
-      'param'].field_value.int_value = param
+      'param'
+  ].field_value.int_value = param
   if execution_mode == pipeline_pb2.Pipeline.SYNC:
-    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = pipeline_run_id
+    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = (
+        pipeline_run_id
+    )
   return pipeline
 
 
@@ -112,7 +119,8 @@ class NodeStateTest(test_utils.TfxTest):
 
   def test_node_state_json(self):
     node_state = pstate.NodeState.from_json_dict(
-        {'state': pstate.NodeState.STARTING})
+        {'state': pstate.NodeState.STARTING}
+    )
     self.assertTrue(hasattr(node_state, 'state'))
     self.assertTrue(hasattr(node_state, 'last_updated_time'))
 
@@ -123,7 +131,8 @@ class PipelineIRCodecTest(test_utils.TfxTest):
     super().setUp()
     self._pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self.id())
+        self.id(),
+    )
 
   class _TestEnv(env._DefaultEnv):
 
@@ -141,29 +150,40 @@ class PipelineIRCodecTest(test_utils.TfxTest):
     with self._TestEnv(None, None):
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
-    self.assertEqual(pipeline, pstate._base64_decode_pipeline(pipeline_encoded),
-                     'Expected pipeline IR to be base64 encoded.')
-    self.assertEqual(pipeline,
-                     pstate._PipelineIRCodec.get().decode(pipeline_encoded))
+    self.assertEqual(
+        pipeline,
+        pstate._base64_decode_pipeline(pipeline_encoded),
+        'Expected pipeline IR to be base64 encoded.',
+    )
+    self.assertEqual(
+        pipeline, pstate._PipelineIRCodec.get().decode(pipeline_encoded)
+    )
 
   def test_encode_decode_with_base_dir(self):
     with self._TestEnv(self._pipeline_root, None):
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
-    self.assertEqual(pipeline, pstate._base64_decode_pipeline(pipeline_encoded),
-                     'Expected pipeline IR to be base64 encoded.')
-    self.assertEqual(pipeline,
-                     pstate._PipelineIRCodec.get().decode(pipeline_encoded))
+    self.assertEqual(
+        pipeline,
+        pstate._base64_decode_pipeline(pipeline_encoded),
+        'Expected pipeline IR to be base64 encoded.',
+    )
+    self.assertEqual(
+        pipeline, pstate._PipelineIRCodec.get().decode(pipeline_encoded)
+    )
 
   def test_encode_decode_exceeds_max_len(self):
     with self._TestEnv(self._pipeline_root, 0):
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
-    self.assertEqual(pipeline,
-                     pstate._PipelineIRCodec.get().decode(pipeline_encoded))
-    self.assertEqual(pstate._PipelineIRCodec._PIPELINE_IR_URL_KEY,
-                     next(iter(json.loads(pipeline_encoded).keys())),
-                     'Expected pipeline IR URL to be stored as json.')
+    self.assertEqual(
+        pipeline, pstate._PipelineIRCodec.get().decode(pipeline_encoded)
+    )
+    self.assertEqual(
+        pstate._PipelineIRCodec._PIPELINE_IR_URL_KEY,
+        next(iter(json.loads(pipeline_encoded).keys())),
+        'Expected pipeline IR URL to be stored as json.',
+    )
 
 
 class PipelineStateTest(test_utils.TfxTest):
@@ -172,20 +192,24 @@ class PipelineStateTest(test_utils.TfxTest):
     super().setUp()
     pipeline_root = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self.id())
+        self.id(),
+    )
 
     # Makes sure multiple connections within a test always connect to the same
     # MLMD instance.
     metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
     self._metadata_path = metadata_path
     connection_config = metadata.sqlite_metadata_connection_config(
-        metadata_path)
+        metadata_path
+    )
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(
-        connection_config=connection_config)
+        connection_config=connection_config
+    )
 
   def test_new_pipeline_state(self):
     with self._mlmd_connection as m:
+      pstate._active_pipelines_exist = False
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       pipeline_state = pstate.PipelineState.new(m, pipeline)
 
@@ -199,13 +223,17 @@ class PipelineStateTest(test_utils.TfxTest):
             mlmd_executions[0],
             pipeline_state._execution,
             ignored_fields=[
-                'create_time_since_epoch', 'last_update_time_since_epoch'
-            ])
+                'create_time_since_epoch',
+                'last_update_time_since_epoch',
+            ],
+        )
 
       self.assertEqual(pipeline, pipeline_state.pipeline)
       self.assertEqual(
           task_lib.PipelineUid.from_pipeline(pipeline),
-          pipeline_state.pipeline_uid)
+          pipeline_state.pipeline_uid,
+      )
+      self.assertTrue(pstate._active_pipelines_exist)
 
   def test_load_pipeline_state(self):
     with self._mlmd_connection as m:
@@ -218,14 +246,100 @@ class PipelineStateTest(test_utils.TfxTest):
       mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
       self.assertLen(mlmd_executions, 1)
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
-        self.assertProtoPartiallyEquals(mlmd_executions[0],
-                                        pipeline_state._execution)
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      ) as pipeline_state:
+        self.assertProtoPartiallyEquals(
+            mlmd_executions[0], pipeline_state._execution
+        )
 
       self.assertEqual(pipeline, pipeline_state.pipeline)
       self.assertEqual(
           task_lib.PipelineUid.from_pipeline(pipeline),
-          pipeline_state.pipeline_uid)
+          pipeline_state.pipeline_uid,
+      )
+
+  def test_load_all_active_pipeline_state_flag_false(self):
+    # no MLMD calls when there _active_pipelines_exist is False.
+    mock_store = mock.create_autospec(metadata_store.MetadataStore)
+    self._mlmd_connection._store = mock_store
+    _ = self.enter_context(
+        mock.patch.object(metadata_store, 'MetadataStore', autospec=True)
+    )
+
+    pstate._active_pipelines_exist = False
+    pipeline_states = pstate.PipelineState.load_all_active(
+        self._mlmd_connection
+    )
+    self.assertEmpty(pipeline_states)
+    mock_store.get_executions_by_context.assert_not_called()
+    mock_store.get_contexts_by_type.assert_not_called()
+    self.assertFalse(pstate._active_pipelines_exist)
+
+  def test_load_all_active_pipeline_state_active_pipelines(self):
+    def _generate_mock_pipeline_ir_str()->str:
+      with self._mlmd_connection as m:
+        pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
+        pstate.PipelineState.new(m, pipeline)
+
+        mlmd_contexts = pstate.get_orchestrator_contexts(m)
+        self.assertLen(mlmd_contexts, 1)
+
+        mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
+        return mlmd_executions[0].properties['pipeline_ir'].string_value
+
+    mock_ir = _generate_mock_pipeline_ir_str()
+    pstate._active_pipelines_exist = True
+    mock_store = mock.create_autospec(metadata_store.MetadataStore)
+    self._mlmd_connection._store = mock_store
+    _ = self.enter_context(
+        mock.patch.object(metadata_store, 'MetadataStore', autospec=True)
+    )
+    mock_execution = metadata_store_pb2.Execution(
+        id=1,
+        type_id=10,
+        type='__ORCHESTRATOR__',
+        last_known_state=metadata_store_pb2.Execution.State.RUNNING,
+    )
+    ir_str = metadata_store_pb2.Value(
+        string_value=(
+            mock_ir
+        )
+    )
+    mock_execution.properties['pipeline_ir'].CopyFrom(ir_str)
+    mock_store.get_executions_by_context.return_value = [mock_execution]
+    mock_store.get_contexts_by_type.return_value = [
+        metadata_store_pb2.Context(
+            id=1, type_id=11, name='pipeline1', type='__ORCHESTRATOR__'
+        )
+    ]
+    pipeline_states = pstate.PipelineState.load_all_active(
+        self._mlmd_connection
+    )
+    self.assertLen(pipeline_states, 1)
+    mock_store.get_contexts_by_type.assert_called_once()
+    mock_store.get_executions_by_context.assert_called_once()
+    self.assertTrue(pstate._active_pipelines_exist)
+
+  def test_load_all_active_pipeline_state_no_active_pipelines(self):
+    pstate._active_pipelines_exist = True
+    mock_store = mock.create_autospec(metadata_store.MetadataStore)
+    self._mlmd_connection._store = mock_store
+    _ = self.enter_context(
+        mock.patch.object(metadata_store, 'MetadataStore', autospec=True)
+    )
+    mock_store.get_executions_by_context.return_value = []
+    mock_store.get_contexts_by_type.return_value = [
+        metadata_store_pb2.Context(
+            id=1, type_id=11, name='pipeline1', type='__ORCHESTRATOR__'
+        )
+    ]
+    pipeline_states = pstate.PipelineState.load_all_active(
+        self._mlmd_connection
+    )
+    self.assertEmpty(pipeline_states, 0)
+    mock_store.get_contexts_by_type.assert_called_once()
+    mock_store.get_executions_by_context.assert_called_once()
+    self.assertFalse(pstate._active_pipelines_exist)
 
   def load_pipeline_state_by_run(self):
     with self._mlmd_connection as m:
@@ -248,8 +362,9 @@ class PipelineStateTest(test_utils.TfxTest):
 
   @mock.patch.object(pstate, 'get_all_node_executions')
   @mock.patch.object(execution_lib, 'get_output_artifacts')
-  def test_get_all_node_artifacts(self, mock_get_output_artifacts,
-                                  mock_get_all_pipeline_executions):
+  def test_get_all_node_artifacts(
+      self, mock_get_output_artifacts, mock_get_all_pipeline_executions
+  ):
     artifact = metadata_store_pb2.Artifact(id=1)
     artifact_obj = mock.Mock()
     artifact_obj.mlmd_artifact = artifact
@@ -264,11 +379,11 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertEqual(
           {
               pipeline.nodes[0].pipeline_node.node_info.id: {
-                  1: {
-                      'key': [artifact]
-                  }
+                  1: {'key': [artifact]}
               }
-          }, pstate.get_all_node_artifacts(pipeline, m))
+          },
+          pstate.get_all_node_artifacts(pipeline, m),
+      )
 
   @mock.patch.object(task_gen_utils, 'get_executions')
   def test_get_all_node_executions(self, mock_get_executions):
@@ -278,7 +393,8 @@ class PipelineStateTest(test_utils.TfxTest):
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       self.assertEqual(
           {pipeline.nodes[0].pipeline_node.node_info.id: [execution]},
-          pstate.get_all_node_executions(pipeline, m))
+          pstate.get_all_node_executions(pipeline, m),
+      )
 
   def test_new_pipeline_state_when_pipeline_already_exists(self):
     with self._mlmd_connection as m:
@@ -286,48 +402,59 @@ class PipelineStateTest(test_utils.TfxTest):
           'pipeline1',
           pipeline_nodes=['Trainer'],
           execution_mode=pipeline_pb2.Pipeline.SYNC,
-          pipeline_run_id='run0')
+          pipeline_run_id='run0',
+      )
       pipeline_state = pstate.PipelineState.new(m, pipeline)
       self.assertEqual(
           task_lib.PipelineUid(pipeline_id='pipeline1'),
-          pipeline_state.pipeline_uid)
+          pipeline_state.pipeline_uid,
+      )
 
       # New run should be prohibited even if run id is different.
       pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
         pstate.PipelineState.new(m, pipeline)
-      self.assertEqual(status_lib.Code.ALREADY_EXISTS,
-                       exception_context.exception.code)
+      self.assertEqual(
+          status_lib.Code.ALREADY_EXISTS, exception_context.exception.code
+      )
 
   def test_new_pipeline_state_when_pipeline_already_exists_concurrent_runs_enabled(
-      self):
+      self,
+  ):
     with test_utils.concurrent_pipeline_runs_enabled_env():
       with self._mlmd_connection as m:
         pipeline = _test_pipeline(
             'pipeline1',
             pipeline_nodes=['Trainer'],
             execution_mode=pipeline_pb2.Pipeline.SYNC,
-            pipeline_run_id='run0')
+            pipeline_run_id='run0',
+        )
         pipeline_state = pstate.PipelineState.new(m, pipeline)
         self.assertEqual(
             task_lib.PipelineUid(
-                pipeline_id='pipeline1', pipeline_run_id='run0'),
-            pipeline_state.pipeline_uid)
+                pipeline_id='pipeline1', pipeline_run_id='run0'
+            ),
+            pipeline_state.pipeline_uid,
+        )
 
         # New run should be allowed if run id is different.
         pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
         pipeline_state = pstate.PipelineState.new(m, pipeline)
         self.assertEqual(
             task_lib.PipelineUid(
-                pipeline_id='pipeline1', pipeline_run_id='run1'),
-            pipeline_state.pipeline_uid)
+                pipeline_id='pipeline1', pipeline_run_id='run1'
+            ),
+            pipeline_state.pipeline_uid,
+        )
 
         # New run should be prohibited if run id is same.
         with self.assertRaises(
-            status_lib.StatusNotOkError) as exception_context:
+            status_lib.StatusNotOkError
+        ) as exception_context:
           pstate.PipelineState.new(m, pipeline)
-        self.assertEqual(status_lib.Code.ALREADY_EXISTS,
-                         exception_context.exception.code)
+        self.assertEqual(
+            status_lib.Code.ALREADY_EXISTS, exception_context.exception.code
+        )
 
   def test_load_pipeline_state_when_no_active_pipeline(self):
     with self._mlmd_connection as m:
@@ -337,8 +464,9 @@ class PipelineStateTest(test_utils.TfxTest):
       # No such pipeline so NOT_FOUND error should be raised.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
         pstate.PipelineState.load(m, pipeline_uid)
-      self.assertEqual(status_lib.Code.NOT_FOUND,
-                       exception_context.exception.code)
+      self.assertEqual(
+          status_lib.Code.NOT_FOUND, exception_context.exception.code
+      )
 
       pipeline_state = pstate.PipelineState.new(m, pipeline)
 
@@ -348,14 +476,16 @@ class PipelineStateTest(test_utils.TfxTest):
       # Inactivate the pipeline.
       with pipeline_state:
         pipeline_state.set_pipeline_execution_state(
-            metadata_store_pb2.Execution.COMPLETE)
+            metadata_store_pb2.Execution.COMPLETE
+        )
 
       # No active pipeline so NOT_FOUND error should be raised.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
         with pstate.PipelineState.load(m, pipeline_uid):
           pass
-      self.assertEqual(status_lib.Code.NOT_FOUND,
-                       exception_context.exception.code)
+      self.assertEqual(
+          status_lib.Code.NOT_FOUND, exception_context.exception.code
+      )
 
   def test_pipeline_stop_initiation(self):
     with self._mlmd_connection as m:
@@ -363,17 +493,20 @@ class PipelineStateTest(test_utils.TfxTest):
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         self.assertIsNone(pipeline_state.stop_initiated_reason())
         status = status_lib.Status(
-            code=status_lib.Code.CANCELLED, message='foo bar')
+            code=status_lib.Code.CANCELLED, message='foo bar'
+        )
         pipeline_state.initiate_stop(status)
         self.assertEqual(status, pipeline_state.stop_initiated_reason())
 
       # Reload from MLMD and verify.
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      ) as pipeline_state:
         self.assertEqual(status, pipeline_state.stop_initiated_reason())
 
   def test_pipeline_resume_initiation(self):
     with self._mlmd_connection as m:
+      pstate._active_pipelines_exist = False
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         self.assertIsNone(pipeline_state.stop_initiated_reason())
@@ -384,6 +517,8 @@ class PipelineStateTest(test_utils.TfxTest):
         self.assertEqual(status, pipeline_state.stop_initiated_reason())
         pipeline_state.initiate_resume()
 
+      self.assertTrue(pstate._active_pipelines_exist)
+
       # Reload from MLMD and verify.
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)
@@ -393,21 +528,25 @@ class PipelineStateTest(test_utils.TfxTest):
   def test_update_initiation_and_apply(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
-          'pipeline1', param=1, pipeline_nodes=['Trainer'])
+          'pipeline1', param=1, pipeline_nodes=['Trainer']
+      )
       updated_pipeline = _test_pipeline(
-          'pipeline1', param=2, pipeline_nodes=['Trainer'])
+          'pipeline1', param=2, pipeline_nodes=['Trainer']
+      )
 
       # Initiate pipeline update.
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         self.assertFalse(pipeline_state.is_update_initiated())
-        pipeline_state.initiate_update(updated_pipeline,
-                                       pipeline_pb2.UpdateOptions())
+        pipeline_state.initiate_update(
+            updated_pipeline, pipeline_pb2.UpdateOptions()
+        )
         self.assertTrue(pipeline_state.is_update_initiated())
 
       # Reload from MLMD and verify update initiation followed by applying the
       # pipeline update.
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      ) as pipeline_state:
         self.assertTrue(pipeline_state.is_update_initiated())
         self.assertEqual(pipeline, pipeline_state.pipeline)
         pipeline_state.apply_pipeline_update()
@@ -418,7 +557,8 @@ class PipelineStateTest(test_utils.TfxTest):
 
       # Reload from MLMD and verify update application was correctly persisted.
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      ) as pipeline_state:
         self.assertFalse(pipeline_state.is_update_initiated())
         self.assertTrue(pipeline_state.is_active())
         self.assertEqual(updated_pipeline, pipeline_state.pipeline)
@@ -427,25 +567,35 @@ class PipelineStateTest(test_utils.TfxTest):
       updated_pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
-          pipeline_nodes=['Trainer'])
+          pipeline_nodes=['Trainer'],
+      )
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
-        with self.assertRaisesRegex(status_lib.StatusNotOkError,
-                                    'Updating execution_mode.*not supported'):
-          pipeline_state.initiate_update(updated_pipeline,
-                                         pipeline_pb2.UpdateOptions())
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      ) as pipeline_state:
+        with self.assertRaisesRegex(
+            status_lib.StatusNotOkError,
+            'Updating execution_mode.*not supported',
+        ):
+          pipeline_state.initiate_update(
+              updated_pipeline, pipeline_pb2.UpdateOptions()
+          )
 
       # Update should fail if pipeline structure changed.
       updated_pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
-          pipeline_nodes=['Trainer', 'Evaluator'])
+          pipeline_nodes=['Trainer', 'Evaluator'],
+      )
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
-        with self.assertRaisesRegex(status_lib.StatusNotOkError,
-                                    'Updating execution_mode.*not supported'):
-          pipeline_state.initiate_update(updated_pipeline,
-                                         pipeline_pb2.UpdateOptions())
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      ) as pipeline_state:
+        with self.assertRaisesRegex(
+            status_lib.StatusNotOkError,
+            'Updating execution_mode.*not supported',
+        ):
+          pipeline_state.initiate_update(
+              updated_pipeline, pipeline_pb2.UpdateOptions()
+          )
 
   @mock.patch.object(pstate, 'time')
   def test_initiate_node_start_stop(self, mock_time):
@@ -469,13 +619,15 @@ class PipelineStateTest(test_utils.TfxTest):
 
       # Reload from MLMD and verify node is started.
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      ) as pipeline_state:
         node_state = pipeline_state.get_node_state(node_uid)
         self.assertEqual(pstate.NodeState.STARTING, node_state.state)
 
         # Set node state to STOPPING.
         status = status_lib.Status(
-            code=status_lib.Code.ABORTED, message='foo bar')
+            code=status_lib.Code.ABORTED, message='foo bar'
+        )
         with pipeline_state.node_state_update_context(node_uid) as node_state:
           node_state.update(pstate.NodeState.STOPPING, status)
         node_state = pipeline_state.get_node_state(node_uid)
@@ -484,7 +636,8 @@ class PipelineStateTest(test_utils.TfxTest):
 
       # Reload from MLMD and verify node is stopped.
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      ) as pipeline_state:
         node_state = pipeline_state.get_node_state(node_uid)
         self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
         self.assertEqual(status, node_state.status)
@@ -497,7 +650,8 @@ class PipelineStateTest(test_utils.TfxTest):
 
       # Reload from MLMD and verify node is started.
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      ) as pipeline_state:
         node_state = pipeline_state.get_node_state(node_uid)
         self.assertEqual(pstate.NodeState.STARTED, node_state.state)
 
@@ -629,7 +783,8 @@ class PipelineStateTest(test_utils.TfxTest):
       pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
-          pipeline_nodes=['ExampleGen', 'Transform', 'Trainer', 'Evaluator'])
+          pipeline_nodes=['ExampleGen', 'Transform', 'Trainer', 'Evaluator'],
+      )
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
       transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
@@ -637,13 +792,16 @@ class PipelineStateTest(test_utils.TfxTest):
       evaluator_node_uid = task_lib.NodeUid(pipeline_uid, 'Evaluator')
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(
-            eg_node_uid) as node_state:
+            eg_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.COMPLETE)
         with pipeline_state.node_state_update_context(
-            transform_node_uid) as node_state:
+            transform_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.RUNNING)
         with pipeline_state.node_state_update_context(
-            trainer_node_uid) as node_state:
+            trainer_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.STARTING)
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         self.assertEqual(
@@ -700,13 +858,16 @@ class PipelineStateTest(test_utils.TfxTest):
       mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
       self.assertLen(mlmd_executions, 1)
       self.assertIsNotNone(
-          mlmd_executions[0].custom_properties.get(property_key))
+          mlmd_executions[0].custom_properties.get(property_key)
+      )
       self.assertEqual(
           mlmd_executions[0].custom_properties.get(property_key).string_value,
-          property_value)
+          property_value,
+      )
 
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(pipeline)) as pipeline_state:
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      ) as pipeline_state:
         pipeline_state.remove_property(property_key)
 
       mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
@@ -723,12 +884,12 @@ class PipelineStateTest(test_utils.TfxTest):
   def test_async_pipeline_views(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
-      with pstate.PipelineState.new(m, pipeline, {
-          'foo': 1,
-          'bar': 'baz'
-      }) as pipeline_state:
+      with pstate.PipelineState.new(
+          m, pipeline, {'foo': 1, 'bar': 'baz'}
+      ) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
-            metadata_store_pb2.Execution.COMPLETE)
+            metadata_store_pb2.Execution.COMPLETE
+        )
 
       views = pstate.PipelineView.load_all(m, pipeline.pipeline_info.id)
       self.assertLen(views, 1)
@@ -747,17 +908,19 @@ class PipelineStateTest(test_utils.TfxTest):
           'pipeline',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
           pipeline_run_id='001',
-          pipeline_nodes=['Trainer'])
+          pipeline_nodes=['Trainer'],
+      )
       with self.assertRaises(status_lib.StatusNotOkError):
         pstate.PipelineView.load(m, pipeline.pipeline_info.id)
-      with pstate.PipelineState.new(m, pipeline, {
-          'foo': 1,
-          'bar': 'baz'
-      }) as pipeline_state:
+      with pstate.PipelineState.new(
+          m, pipeline, {'foo': 1, 'bar': 'baz'}
+      ) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
-            metadata_store_pb2.Execution.COMPLETE)
+            metadata_store_pb2.Execution.COMPLETE
+        )
         pipeline_state.initiate_stop(
-            status_lib.Status(code=status_lib.Code.CANCELLED, message='msg'))
+            status_lib.Status(code=status_lib.Code.CANCELLED, message='msg')
+        )
 
       views = pstate.PipelineView.load_all(m, pipeline.pipeline_info.id)
       self.assertLen(views, 1)
@@ -765,7 +928,9 @@ class PipelineStateTest(test_utils.TfxTest):
       self.assertEqual(
           views[0].pipeline_status_code,
           run_state_pb2.RunState.StatusCodeValue(
-              value=status_lib.Code.CANCELLED))
+              value=status_lib.Code.CANCELLED
+          ),
+      )
       self.assertEqual(views[0].pipeline_status_message, 'msg')
       self.assertEqual({'foo': 1, 'bar': 'baz'}, views[0].pipeline_run_metadata)
       self.assertProtoEquals(pipeline, views[0].pipeline)
@@ -774,7 +939,8 @@ class PipelineStateTest(test_utils.TfxTest):
           'pipeline',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
           pipeline_run_id='002',
-          pipeline_nodes=['Trainer'])
+          pipeline_nodes=['Trainer'],
+      )
       pstate.PipelineState.new(m, pipeline2)
 
       views = pstate.PipelineView.load_all(m, pipeline.pipeline_info.id)
@@ -802,26 +968,31 @@ class PipelineStateTest(test_utils.TfxTest):
     mock_time.time.return_value = 5
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
-          'pipeline1', pipeline_pb2.Pipeline.SYNC, pipeline_nodes=['Trainer'])
+          'pipeline1', pipeline_pb2.Pipeline.SYNC, pipeline_nodes=['Trainer']
+      )
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
 
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
-            metadata_store_pb2.Execution.RUNNING)
+            metadata_store_pb2.Execution.RUNNING
+        )
       [view] = pstate.PipelineView.load_all(m, pipeline_uid.pipeline_id)
       self.assertProtoPartiallyEquals(
           run_state_pb2.RunState(state=run_state_pb2.RunState.RUNNING),
           view.get_pipeline_run_state(),
-          ignored_fields=['update_time'])
+          ignored_fields=['update_time'],
+      )
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
-            metadata_store_pb2.Execution.COMPLETE)
+            metadata_store_pb2.Execution.COMPLETE
+        )
       [view] = pstate.PipelineView.load_all(m, pipeline_uid.pipeline_id)
       self.assertProtoPartiallyEquals(
           run_state_pb2.RunState(state=run_state_pb2.RunState.COMPLETE),
           view.get_pipeline_run_state(),
-          ignored_fields=['update_time'])
+          ignored_fields=['update_time'],
+      )
 
   @mock.patch.object(pstate, 'time')
   def test_pipeline_view_get_node_run_states(self, mock_time):
@@ -831,8 +1002,13 @@ class PipelineStateTest(test_utils.TfxTest):
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
           pipeline_nodes=[
-              'ExampleGen', 'Transform', 'Trainer', 'Evaluator', 'Pusher'
-          ])
+              'ExampleGen',
+              'Transform',
+              'Trainer',
+              'Evaluator',
+              'Pusher',
+          ],
+      )
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
       transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
@@ -840,51 +1016,68 @@ class PipelineStateTest(test_utils.TfxTest):
       evaluator_node_uid = task_lib.NodeUid(pipeline_uid, 'Evaluator')
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(
-            eg_node_uid) as node_state:
+            eg_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.RUNNING)
         with pipeline_state.node_state_update_context(
-            transform_node_uid) as node_state:
+            transform_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.STARTING)
         with pipeline_state.node_state_update_context(
-            trainer_node_uid) as node_state:
+            trainer_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.STARTED)
         with pipeline_state.node_state_update_context(
-            evaluator_node_uid) as node_state:
+            evaluator_node_uid
+        ) as node_state:
           node_state.update(
               pstate.NodeState.FAILED,
               status_lib.Status(
-                  code=status_lib.Code.ABORTED, message='foobar error'))
+                  code=status_lib.Code.ABORTED, message='foobar error'
+              ),
+          )
 
       [view] = pstate.PipelineView.load_all(m, pipeline.pipeline_info.id)
       run_states_dict = view.get_node_run_states()
       self.assertEqual(
           run_state_pb2.RunState(
               state=run_state_pb2.RunState.RUNNING,
-              update_time=int(mock_time.time.return_value * 1000)),
-          run_states_dict['ExampleGen'])
+              update_time=int(mock_time.time.return_value * 1000),
+          ),
+          run_states_dict['ExampleGen'],
+      )
       self.assertEqual(
           run_state_pb2.RunState(
               state=run_state_pb2.RunState.UNKNOWN,
-              update_time=int(mock_time.time.return_value * 1000)),
-          run_states_dict['Transform'])
+              update_time=int(mock_time.time.return_value * 1000),
+          ),
+          run_states_dict['Transform'],
+      )
       self.assertEqual(
           run_state_pb2.RunState(
               state=run_state_pb2.RunState.READY,
-              update_time=int(mock_time.time.return_value * 1000)),
-          run_states_dict['Trainer'])
+              update_time=int(mock_time.time.return_value * 1000),
+          ),
+          run_states_dict['Trainer'],
+      )
       self.assertEqual(
           run_state_pb2.RunState(
               state=run_state_pb2.RunState.FAILED,
               status_code=run_state_pb2.RunState.StatusCodeValue(
-                  value=status_lib.Code.ABORTED),
+                  value=status_lib.Code.ABORTED
+              ),
               status_msg='foobar error',
-              update_time=int(mock_time.time.return_value * 1000)),
-          run_states_dict['Evaluator'])
+              update_time=int(mock_time.time.return_value * 1000),
+          ),
+          run_states_dict['Evaluator'],
+      )
       self.assertEqual(
           run_state_pb2.RunState(
               state=run_state_pb2.RunState.READY,
-              update_time=int(mock_time.time.return_value * 1000)),
-          run_states_dict['Pusher'])
+              update_time=int(mock_time.time.return_value * 1000),
+          ),
+          run_states_dict['Pusher'],
+      )
 
   @mock.patch.object(pstate, 'time')
   def test_pipeline_view_get_node_run_state_history(self, mock_time):
@@ -893,15 +1086,18 @@ class PipelineStateTest(test_utils.TfxTest):
       pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
-          pipeline_nodes=['ExampleGen'])
+          pipeline_nodes=['ExampleGen'],
+      )
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(
-            eg_node_uid) as node_state:
+            eg_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.RUNNING)
         with pipeline_state.node_state_update_context(
-            eg_node_uid) as node_state:
+            eg_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.COMPLETE)
 
       [view] = pstate.PipelineView.load_all(m, pipeline.pipeline_info.id)
@@ -909,26 +1105,36 @@ class PipelineStateTest(test_utils.TfxTest):
 
       self.assertEqual(
           {
-              'ExampleGen': [(run_state_pb2.RunState(
-                  state=run_state_pb2.RunState.READY,
-                  update_time=int(mock_time.time.return_value * 1000))),
-                             (run_state_pb2.RunState(
-                                 state=run_state_pb2.RunState.RUNNING,
-                                 update_time=int(
-                                     mock_time.time.return_value * 1000)))]
-          }, run_state_history)
+              'ExampleGen': [
+                  (
+                      run_state_pb2.RunState(
+                          state=run_state_pb2.RunState.READY,
+                          update_time=int(mock_time.time.return_value * 1000),
+                      )
+                  ),
+                  (
+                      run_state_pb2.RunState(
+                          state=run_state_pb2.RunState.RUNNING,
+                          update_time=int(mock_time.time.return_value * 1000),
+                      )
+                  ),
+              ]
+          },
+          run_state_history,
+      )
 
   @mock.patch.object(pstate, 'time')
   def test_node_state_for_skipped_nodes_in_partial_pipeline_run(
-      self, mock_time):
-    """Tests that nodes marked to be skipped have the right node state and previous node state.
-    """
+      self, mock_time
+  ):
+    """Tests that nodes marked to be skipped have the right node state and previous node state."""
     mock_time.time.return_value = time.time()
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
-          pipeline_nodes=['ExampleGen', 'Transform', 'Trainer'])
+          pipeline_nodes=['ExampleGen', 'Transform', 'Trainer'],
+      )
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
       transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
@@ -936,41 +1142,49 @@ class PipelineStateTest(test_utils.TfxTest):
 
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(
-            eg_node_uid) as node_state:
+            eg_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.COMPLETE)
         with pipeline_state.node_state_update_context(
-            trainer_node_uid) as node_state:
+            trainer_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.FAILED)
         with pipeline_state.node_state_update_context(
-            transform_node_uid) as node_state:
+            transform_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.FAILED)
         pipeline_state.set_pipeline_execution_state(
-            metadata_store_pb2.Execution.COMPLETE)
+            metadata_store_pb2.Execution.COMPLETE
+        )
 
-      [latest_pipeline_view
-      ] = pstate.PipelineView.load_all(m, pipeline.pipeline_info.id)
+      [latest_pipeline_view] = pstate.PipelineView.load_all(
+          m, pipeline.pipeline_info.id
+      )
 
       # Mark ExampleGen and Transform to be skipped.
       pipeline.nodes[0].pipeline_node.execution_options.skip.SetInParent()
       pipeline.nodes[1].pipeline_node.execution_options.skip.SetInParent()
       pstate.PipelineState.new(
-          m, pipeline, reused_pipeline_view=latest_pipeline_view)
+          m, pipeline, reused_pipeline_view=latest_pipeline_view
+      )
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         self.assertEqual(
             {
-                eg_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.SKIPPED_PARTIAL_RUN,
-                        last_updated_time=mock_time.time.return_value),
-                transform_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.SKIPPED_PARTIAL_RUN,
-                        last_updated_time=mock_time.time.return_value),
-                trainer_node_uid:
-                    pstate.NodeState(
-                        state=pstate.NodeState.STARTED,
-                        last_updated_time=mock_time.time.return_value),
-            }, pipeline_state.get_node_states_dict())
+                eg_node_uid: pstate.NodeState(
+                    state=pstate.NodeState.SKIPPED_PARTIAL_RUN,
+                    last_updated_time=mock_time.time.return_value,
+                ),
+                transform_node_uid: pstate.NodeState(
+                    state=pstate.NodeState.SKIPPED_PARTIAL_RUN,
+                    last_updated_time=mock_time.time.return_value,
+                ),
+                trainer_node_uid: pstate.NodeState(
+                    state=pstate.NodeState.STARTED,
+                    last_updated_time=mock_time.time.return_value,
+                ),
+            },
+            pipeline_state.get_node_states_dict(),
+        )
         self.assertEqual(
             {
                 eg_node_uid: pstate.NodeState(
@@ -1001,33 +1215,38 @@ class PipelineStateTest(test_utils.TfxTest):
 
   @mock.patch.object(pstate, 'time')
   def test_get_previous_node_run_states_for_skipped_nodes(self, mock_time):
-    """Tests that nodes marked to be skipped have the right previous run state.
-    """
+    """Tests that nodes marked to be skipped have the right previous run state."""
     mock_time.time.return_value = time.time()
     with self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
-          pipeline_nodes=['ExampleGen', 'Transform', 'Trainer', 'Pusher'])
+          pipeline_nodes=['ExampleGen', 'Transform', 'Trainer', 'Pusher'],
+      )
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       eg_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
       transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
       trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         with pipeline_state.node_state_update_context(
-            eg_node_uid) as node_state:
+            eg_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.FAILED)
         with pipeline_state.node_state_update_context(
-            transform_node_uid) as node_state:
+            transform_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.RUNNING)
         with pipeline_state.node_state_update_context(
-            trainer_node_uid) as node_state:
+            trainer_node_uid
+        ) as node_state:
           node_state.update(pstate.NodeState.STARTED)
         pipeline_state.set_pipeline_execution_state(
-            metadata_store_pb2.Execution.COMPLETE)
+            metadata_store_pb2.Execution.COMPLETE
+        )
 
-      view_run_0 = pstate.PipelineView.load(m, pipeline.pipeline_info.id,
-                                            'run0')
+      view_run_0 = pstate.PipelineView.load(
+          m, pipeline.pipeline_info.id, 'run0'
+      )
       self.assertEmpty(view_run_0.get_previous_node_run_states())
 
       # Mark ExampleGen and Transform to be skipped.
@@ -1035,33 +1254,40 @@ class PipelineStateTest(test_utils.TfxTest):
       pipeline.nodes[0].pipeline_node.execution_options.skip.SetInParent()
       pipeline.nodes[1].pipeline_node.execution_options.skip.SetInParent()
       pstate.PipelineState.new(m, pipeline, reused_pipeline_view=view_run_0)
-      view_run_1 = pstate.PipelineView.load(m, pipeline.pipeline_info.id,
-                                            'run1')
+      view_run_1 = pstate.PipelineView.load(
+          m, pipeline.pipeline_info.id, 'run1'
+      )
       self.assertEqual(
           {
-              'ExampleGen':
-                  run_state_pb2.RunState(
-                      state=run_state_pb2.RunState.FAILED,
-                      update_time=int(mock_time.time.return_value * 1000)),
-              'Transform':
-                  run_state_pb2.RunState(
-                      state=run_state_pb2.RunState.RUNNING,
-                      update_time=int(mock_time.time.return_value * 1000))
-          }, view_run_1.get_previous_node_run_states())
+              'ExampleGen': run_state_pb2.RunState(
+                  state=run_state_pb2.RunState.FAILED,
+                  update_time=int(mock_time.time.return_value * 1000),
+              ),
+              'Transform': run_state_pb2.RunState(
+                  state=run_state_pb2.RunState.RUNNING,
+                  update_time=int(mock_time.time.return_value * 1000),
+              ),
+          },
+          view_run_1.get_previous_node_run_states(),
+      )
 
     self.assertEqual(
         {
             'ExampleGen': [
                 run_state_pb2.RunState(
                     state=run_state_pb2.RunState.READY,
-                    update_time=int(mock_time.time.return_value * 1000))
+                    update_time=int(mock_time.time.return_value * 1000),
+                )
             ],
             'Transform': [
                 run_state_pb2.RunState(
                     state=run_state_pb2.RunState.READY,
-                    update_time=int(mock_time.time.return_value * 1000))
-            ]
-        }, view_run_1.get_previous_node_run_states_history())
+                    update_time=int(mock_time.time.return_value * 1000),
+                )
+            ],
+        },
+        view_run_1.get_previous_node_run_states_history(),
+    )
 
   def test_create_and_load_concurrent_pipeline_runs(self):
     with test_utils.concurrent_pipeline_runs_enabled_env():
@@ -1070,12 +1296,14 @@ class PipelineStateTest(test_utils.TfxTest):
             'pipeline1',
             pipeline_run_id='run0',
             execution_mode=pipeline_pb2.Pipeline.SYNC,
-            pipeline_nodes=['ExampleGen', 'Trainer'])
+            pipeline_nodes=['ExampleGen', 'Trainer'],
+        )
         pipeline_run1 = _test_pipeline(
             'pipeline1',
             pipeline_run_id='run1',
             execution_mode=pipeline_pb2.Pipeline.SYNC,
-            pipeline_nodes=['ExampleGen', 'Transform', 'Trainer'])
+            pipeline_nodes=['ExampleGen', 'Transform', 'Trainer'],
+        )
         pstate.PipelineState.new(m, pipeline_run0)
         pstate.PipelineState.new(m, pipeline_run1)
         mlmd_contexts = pstate.get_orchestrator_contexts(m)
@@ -1083,29 +1311,37 @@ class PipelineStateTest(test_utils.TfxTest):
         mlmd_executions = m.store.get_executions_by_context(
             mlmd_contexts[0].id,
             list_options=mlmd.ListOptions(
-                order_by=mlmd.OrderByField.ID, is_asc=True))
+                order_by=mlmd.OrderByField.ID, is_asc=True
+            ),
+        )
         self.assertLen(mlmd_executions, 2)
 
         with pstate.PipelineState.load(
-            m, task_lib.PipelineUid.from_pipeline(
-                pipeline_run0)) as pipeline_state_run0:
-          self.assertProtoPartiallyEquals(mlmd_executions[0],
-                                          pipeline_state_run0._execution)
+            m, task_lib.PipelineUid.from_pipeline(pipeline_run0)
+        ) as pipeline_state_run0:
+          self.assertProtoPartiallyEquals(
+              mlmd_executions[0], pipeline_state_run0._execution
+          )
         with pstate.PipelineState.load(
-            m, task_lib.PipelineUid.from_pipeline(
-                pipeline_run1)) as pipeline_state_run1:
-          self.assertProtoPartiallyEquals(mlmd_executions[1],
-                                          pipeline_state_run1._execution)
+            m, task_lib.PipelineUid.from_pipeline(pipeline_run1)
+        ) as pipeline_state_run1:
+          self.assertProtoPartiallyEquals(
+              mlmd_executions[1], pipeline_state_run1._execution
+          )
         self.assertEqual(pipeline_run0, pipeline_state_run0.pipeline)
         self.assertEqual(pipeline_run1, pipeline_state_run1.pipeline)
         self.assertEqual(
             task_lib.PipelineUid(
-                pipeline_id='pipeline1', pipeline_run_id='run0'),
-            pipeline_state_run0.pipeline_uid)
+                pipeline_id='pipeline1', pipeline_run_id='run0'
+            ),
+            pipeline_state_run0.pipeline_uid,
+        )
         self.assertEqual(
             task_lib.PipelineUid(
-                pipeline_id='pipeline1', pipeline_run_id='run1'),
-            pipeline_state_run1.pipeline_uid)
+                pipeline_id='pipeline1', pipeline_run_id='run1'
+            ),
+            pipeline_state_run1.pipeline_uid,
+        )
 
 
 if __name__ == '__main__':
