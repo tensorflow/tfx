@@ -5,7 +5,7 @@
 TFX is designed to be portable to multiple environments and orchestration
 frameworks. Developers can create custom orchestrators or add additional
 orchestrators in addition to the default orchestrators that are supported by
-TFX, namely [Airflow](airflow.md), [Beam](beam_orchestrator.md) and
+TFX, namely [Local](local_orchestrator.md), [Airflow](airflow.md) and
 [Kubeflow](kubeflow.md).
 
 All orchestrators must inherit from
