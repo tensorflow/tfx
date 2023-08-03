@@ -11,10 +11,10 @@ TFX, namely [Local](local_orchestrator.md), [Airflow](airflow.md) and
 All orchestrators must inherit from
 [TfxRunner](https://github.com/tensorflow/tfx/blob/master/tfx/orchestration/tfx_runner.py).
 TFX orchestrators take the logical pipeline object, which contains pipeline
-args, components, and DAG, and are responsible for scheduling components of the 
+args, components, and DAG, and are responsible for scheduling components of the
 TFX pipeline based on the dependencies defined by the DAG.
 
-For example, let's look at how to create a custom orchestrator with
+For example, let's look at how to create a custom orchestrator with 
 [ComponentLauncher](https://github.com/tensorflow/tfx/blob/master/tfx/orchestration/component_launcher.py).
 ComponentLauncher already handles driver, executor, and publisher of a single
 component. The new orchestrator just needs to schedule ComponentLaunchers based
