@@ -215,7 +215,7 @@ def generate_resolved_info(
       if isinstance(e, skip_error):
         logging.info('[%s] Input resolution skipped: %s', node.node_info.id, e)
         return result
-    raise
+    raise e
   if not resolved_input_artifacts:
     return result
 
@@ -227,7 +227,7 @@ def generate_resolved_info(
       except exceptions.InputResolutionError as e:
         logging.exception('[%s] Parameter resolution error: %s',
                           node.node_info.id, e)
-        raise
+        raise e
 
       if not dynamic_exec_properties:
         cur_exec_properties = exec_properties
