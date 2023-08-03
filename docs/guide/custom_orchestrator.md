@@ -8,7 +8,7 @@ orchestrators in addition to the default orchestrators that are supported by
 TFX, namely [Local](local_orchestrator.md), [Airflow](airflow.md) and
 [Kubeflow](kubeflow.md).
 
-All orchestrators must inherit from
+All orchestrators must inherit from 
 [TfxRunner](https://github.com/tensorflow/tfx/blob/master/tfx/orchestration/tfx_runner.py).
 TFX orchestrators take the logical pipeline object, which contains pipeline
 args, components, and DAG, and are responsible for scheduling components of the
