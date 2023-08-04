@@ -34,7 +34,6 @@ from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import status as status_lib
 
 import ml_metadata as mlmd
-from ml_metadata.google.tfx import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -260,10 +259,10 @@ class PipelineStateTest(test_utils.TfxTest):
 
   def test_load_all_active_pipeline_state_flag_false(self):
     # no MLMD calls when there _active_pipelines_exist is False.
-    mock_store = mock.create_autospec(metadata_store.MetadataStore)
+    mock_store = mock.create_autospec(mlmd.MetadataStore)
     self._mlmd_connection._store = mock_store
     _ = self.enter_context(
-        mock.patch.object(metadata_store, 'MetadataStore', autospec=True)
+        mock.patch.object(mlmd, 'MetadataStore', autospec=True)
     )
 
     pstate._active_pipelines_exist = False
@@ -279,14 +278,14 @@ class PipelineStateTest(test_utils.TfxTest):
     with self._mlmd_connection as m:
       execution_mock = self.enter_context(
           mock.patch.object(
-              metadata_store.MetadataStore,
+              mlmd.MetadataStore,
               'get_executions_by_context',
               wraps=m.store.get_executions_by_context,
           )
       )
       context_mock = self.enter_context(
           mock.patch.object(
-              metadata_store.MetadataStore,
+              mlmd.MetadataStore,
               'get_contexts_by_type',
               wraps=m.store.get_contexts_by_type,
           )
@@ -306,10 +305,10 @@ class PipelineStateTest(test_utils.TfxTest):
 
   def test_load_all_active_pipeline_state_no_active_pipelines(self):
     pstate._active_pipelines_exist = True
-    mock_store = mock.create_autospec(metadata_store.MetadataStore)
+    mock_store = mock.create_autospec(mlmd.MetadataStore)
     self._mlmd_connection._store = mock_store
     _ = self.enter_context(
-        mock.patch.object(metadata_store, 'MetadataStore', autospec=True)
+        mock.patch.object(mlmd, 'MetadataStore', autospec=True)
     )
     mock_store.get_executions_by_context.return_value = []
     mock_store.get_contexts_by_type.return_value = [
