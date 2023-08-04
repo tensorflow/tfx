@@ -276,49 +276,33 @@ class PipelineStateTest(test_utils.TfxTest):
     self.assertFalse(pstate._active_pipelines_exist)
 
   def test_load_all_active_pipeline_state_active_pipelines(self):
-    def _generate_mock_pipeline_ir_str()->str:
-      with self._mlmd_connection as m:
-        pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
-        pstate.PipelineState.new(m, pipeline)
+    with self._mlmd_connection as m:
+      execution_mock = self.enter_context(
+          mock.patch.object(
+              metadata_store.MetadataStore,
+              'get_executions_by_context',
+              wraps=m.store.get_executions_by_context,
+          )
+      )
+      context_mock = self.enter_context(
+          mock.patch.object(
+              metadata_store.MetadataStore,
+              'get_contexts_by_type',
+              wraps=m.store.get_contexts_by_type,
+          )
+      )
+      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
+      pstate.PipelineState.new(m, pipeline)
+      mlmd_contexts = pstate.get_orchestrator_contexts(m)
+      self.assertLen(mlmd_contexts, 1)
+      mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
+      self.assertLen(mlmd_executions, 1)
 
-        mlmd_contexts = pstate.get_orchestrator_contexts(m)
-        self.assertLen(mlmd_contexts, 1)
-
-        mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
-        return mlmd_executions[0].properties['pipeline_ir'].string_value
-
-    mock_ir = _generate_mock_pipeline_ir_str()
-    pstate._active_pipelines_exist = True
-    mock_store = mock.create_autospec(metadata_store.MetadataStore)
-    self._mlmd_connection._store = mock_store
-    _ = self.enter_context(
-        mock.patch.object(metadata_store, 'MetadataStore', autospec=True)
-    )
-    mock_execution = metadata_store_pb2.Execution(
-        id=1,
-        type_id=10,
-        type='__ORCHESTRATOR__',
-        last_known_state=metadata_store_pb2.Execution.State.RUNNING,
-    )
-    ir_str = metadata_store_pb2.Value(
-        string_value=(
-            mock_ir
-        )
-    )
-    mock_execution.properties['pipeline_ir'].CopyFrom(ir_str)
-    mock_store.get_executions_by_context.return_value = [mock_execution]
-    mock_store.get_contexts_by_type.return_value = [
-        metadata_store_pb2.Context(
-            id=1, type_id=11, name='pipeline1', type='__ORCHESTRATOR__'
-        )
-    ]
-    pipeline_states = pstate.PipelineState.load_all_active(
-        self._mlmd_connection
-    )
-    self.assertLen(pipeline_states, 1)
-    mock_store.get_contexts_by_type.assert_called_once()
-    mock_store.get_executions_by_context.assert_called_once()
-    self.assertTrue(pstate._active_pipelines_exist)
+      pipeline_states = pstate.PipelineState.load_all_active(m)
+      self.assertLen(pipeline_states, 1)
+      execution_mock.assert_called()
+      context_mock.assert_called()
+      self.assertTrue(pstate._active_pipelines_exist)
 
   def test_load_all_active_pipeline_state_no_active_pipelines(self):
     pstate._active_pipelines_exist = True
