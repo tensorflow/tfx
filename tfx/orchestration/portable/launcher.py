@@ -441,6 +441,8 @@ class Launcher:
       self, execution_info: data_types.ExecutionInfo
   ) -> execution_result_pb2.ExecutorOutput:
     """Executes underlying component implementation."""
+    if self._executor_operator is None:
+      raise ValueError('Executor operator is undefined.')
 
     logging.info('Going to run a new execution: %s', execution_info)
 

@@ -99,7 +99,7 @@ class PipelineInputs:
     return self._wrapped_inputs[key]
 
   @property
-  def pipeline(self) -> 'Pipeline':
+  def pipeline(self) -> Optional['Pipeline']:
     return self._pipeline
 
   @pipeline.setter

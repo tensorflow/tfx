@@ -684,6 +684,7 @@ class Metadata:
       component_run_context.id = context_ids[-1]
     except mlmd.errors.AlreadyExistsError:
       component_run_context = self.get_component_run_context(component_info)
+      assert component_run_context is not None  # AlreadyExistsError indicates.
       absl.logging.debug(
           'Component run context already exists. Reusing the context %s.',
           component_run_context.name)
@@ -716,6 +717,8 @@ class Metadata:
       exec_properties: execution properties for the execution to be published.
     """
     component_run_context = self.get_component_run_context(component_info)
+    if component_run_context is None:
+      raise ValueError('Component run context does not exist.')
     [execution] = self.store.get_executions_by_context(component_run_context.id)
     contexts = [
         component_run_context,
@@ -808,7 +811,8 @@ class Metadata:
 
     # Step 1: Finds historical executions related to the context in step 0.
     historical_executions = dict(
-        (e.id, e) for e in self._store.get_executions_by_context(context.id))
+        (e.id, e) for e in self.store.get_executions_by_context(context.id)
+    )
 
     # Step 2: Filters historical executions to find those that used all the
     # given inputs as input artifacts. The result of this step is a set of
