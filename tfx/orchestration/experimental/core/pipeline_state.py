@@ -396,6 +396,7 @@ _active_pipelines_lock = threading.Lock()
 def _synchronized(f):
   @functools.wraps(f)
   def wrapper(*args, **kwargs):
+    logging.info('QSUN')
     with _active_pipelines_lock:
       return f(*args, **kwargs)
 
