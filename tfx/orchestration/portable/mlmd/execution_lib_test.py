@@ -331,6 +331,21 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
     input_example_3.uri = 'example'
     input_example_3.type_id = common_utils.register_type_if_not_exist(
         self._mlmd_handle, input_example_3.artifact_type).id
+
+    # Two examples with the same external_id
+    input_example_4 = standard_artifacts.Examples()
+    input_example_4.uri = 'example'
+    input_example_4.type_id = common_utils.register_type_if_not_exist(
+        self._mlmd_handle, input_example_4.artifact_type
+    ).id
+    input_example_4.mlmd_artifact.external_id = 'external_id'
+    input_example_5 = standard_artifacts.Examples()
+    input_example_5.uri = 'example'
+    input_example_5.type_id = common_utils.register_type_if_not_exist(
+        self._mlmd_handle, input_example_5.artifact_type
+    ).id
+    input_example_5.mlmd_artifact.external_id = 'external_id'
+
     [input_example_1.id, input_example_2.id,
      input_example_3.id] = self._mlmd_handle.store.put_artifacts([
          input_example_1.mlmd_artifact, input_example_2.mlmd_artifact,
@@ -358,25 +373,30 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     # Run the function for test.
     [execution_1, execution_2] = execution_lib.put_executions(
-        self._mlmd_handle, [execution_1, execution_2],
+        self._mlmd_handle,
+        [execution_1, execution_2],
         contexts,
-        input_artifacts_maps=[{
-            'examples': [input_example_1, input_example_2]
-        }, {
-            'another_examples': [input_example_3]
-        }],
-        output_artifacts_maps=[{
-            'models': [output_model_1]
-        }, {
-            'another_models': [output_model_2]
-        }])
+        input_artifacts_maps=[
+            {'examples': [input_example_1, input_example_2]},
+            {
+                'another_examples': [
+                    input_example_3,
+                    input_example_4,
+                    input_example_5,
+                ]
+            },
+        ],
+        output_artifacts_maps=[
+            {'models': [output_model_1]},
+            {'another_models': [output_model_2]},
+        ],
+    )
 
     # Verifies artifacts.
     all_artifacts = self._mlmd_handle.store.get_artifacts()
-    self.assertLen(all_artifacts, 5)
+    self.assertLen(all_artifacts, 6)
     [output_model_1, output_model_2] = [
-        artifact for artifact in all_artifacts if artifact.id not in
-        [input_example_1.id, input_example_2.id, input_example_3.id]
+        artifact for artifact in all_artifacts if artifact.uri == 'model'
     ]
     for actual_output_artifact in [output_model_1, output_model_2]:
       self.assertIn(artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY,

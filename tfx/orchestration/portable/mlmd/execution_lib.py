@@ -201,6 +201,19 @@ def prepare_execution(
   return execution
 
 
+def _get_id(artifact: metadata_store_pb2.Artifact) -> Any:
+  """Get id for unique event generation per (execution, artifact)."""
+  if artifact.id:
+    return artifact.id
+  # If artifact is resolved from external pipeline, it may not have a local
+  # corresponding artifact entry thus lack an artifact ID, but there should be
+  # a unique local artifact for the same external artifact, so we use this as
+  # a fallback identifier of the artifact.
+  if artifact.external_id:
+    return artifact.external_id
+  return None
+
+
 def _create_artifact_and_event_pairs(
     metadata_handler: metadata.Metadata,
     artifact_dict: typing_utils.ArtifactMultiMap,
@@ -226,24 +239,12 @@ def _create_artifact_and_event_pairs(
   if not artifact_dict:
     return []
 
-  def get_id(artifact: types.Artifact) -> Any:
-    """Get id for unique event generation per (execution, artifact)."""
-    if artifact.mlmd_artifact.HasField('id'):
-      return artifact.mlmd_artifact.id
-    # If artifact is resolved from external pipeline, it may not have a local
-    # corresponding artifact entry thus lack an artifact ID, but there should be
-    # a unique local artifact for the same external artifact, so we use this as
-    # a fallback identifier of the artifact.
-    if artifact.mlmd_artifact.external_id:
-      return artifact.mlmd_artifact.external_id
-    return None
-
   result = []
   artifact_event_map = dict()
   for key, artifact_list in artifact_dict.items():
     artifact_type = None
     for index, artifact in enumerate(artifact_list):
-      artifact_id = get_id(artifact)
+      artifact_id = _get_id(artifact.mlmd_artifact)
       if artifact_id and artifact_id in artifact_event_map:
         event_lib.add_event_path(
             artifact_event_map[artifact_id][1], key=key, index=index
@@ -394,6 +395,7 @@ def put_executions(
         f'the number of output ArtifactMultiMap {len(output_artifacts_maps)}.')
 
   artifacts = []
+  input_artifact_idx_by_id = {}
   artifact_event_edges = []
   if input_artifacts_maps:
     for idx, input_artifacts in enumerate(input_artifacts_maps):
@@ -401,8 +403,19 @@ def put_executions(
           metadata_handler, input_artifacts, event_type=input_event_type
       )
       for artifact, event in artifact_and_event_pairs:
-        artifacts.append(artifact)
-        artifact_event_edges.append((idx, len(artifacts) - 1, event))
+        artifact_id = _get_id(artifact)
+        if not artifact_id:
+          artifacts.append(artifact)
+          artifact_event_edges.append((idx, len(artifacts) - 1, event))
+        elif artifact_id in input_artifact_idx_by_id:
+          artifact_event_edges.append(
+              (idx, input_artifact_idx_by_id[artifact_id], event)
+          )
+        else:
+          artifacts.append(artifact)
+          artifact_event_edges.append((idx, len(artifacts) - 1, event))
+          input_artifact_idx_by_id[artifact_id] = len(artifacts) - 1
+
   if output_artifacts_maps:
     for idx, output_artifacts in enumerate(output_artifacts_maps):
       outputs_utils.tag_output_artifacts_with_version(output_artifacts)
