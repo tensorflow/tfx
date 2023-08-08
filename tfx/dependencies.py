@@ -88,6 +88,7 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
       'pyarrow>=10,<11',
+      'nest-asyncio<=1.5.6',
       # TODO(b/291837844): Pinned pyyaml to 5.3.1.
       # Unpin once the issue with installation is resolved.
       'pyyaml>=6,<7',

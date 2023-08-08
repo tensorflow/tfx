@@ -27,7 +27,6 @@ from absl import flags
 from absl import logging
 import attr
 from tfx import types
-from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
@@ -627,9 +626,15 @@ def delete_pipeline_run(
           for _, artifact_list in execution_artifacts.items():
             artifacts.extend(artifact_list)
       for artifact in artifacts:
-        if artifact.uri and fileio.exists(artifact.uri):
-          io_utils.delete_dir(artifact.uri)
         artifact.state = mlmd_state.metadata_store_pb2.Artifact.State.DELETED
+        try:
+          io_utils.delete_dir(artifact.uri)
+        except Exception:  # pylint: disable=broad-exception-caught
+          logging.warning(
+              "The artifact's uri is not a directory. We will mark it as"
+              ' DELETED in MLMD but keep the path'
+          )
+
     mlmd_handle.store.put_artifacts(artifacts)
   except LookupError as e:
     raise status_lib.StatusNotOkError(

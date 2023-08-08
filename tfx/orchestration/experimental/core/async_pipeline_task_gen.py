@@ -13,6 +13,8 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
+import itertools
+import sys
 from typing import Callable, List, Optional
 
 from absl import logging
@@ -29,7 +31,6 @@ from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
-from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
@@ -217,17 +218,14 @@ class _Generator:
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
-    # Gets the oldest active execution. If the oldest active execution exists,
-    # generates a task from it.
-    # TODO(b/275231956) Too many executions may have performance issue, it is
-    # better to limit the number of executions.
-    executions = task_gen_utils.get_executions(metadata_handler, node)
-    sorted_executions = execution_lib.sort_executions_newest_to_oldest(
-        executions
+    # Gets the active executions. If the active executions exist, generates a
+    # task from the oldest active execution.
+    active_executions = task_gen_utils.get_executions(
+        metadata_handler, node, only_active=True
     )
-    newest_execution = sorted_executions[0] if sorted_executions else None
     oldest_active_execution = task_gen_utils.get_oldest_active_execution(
-        executions)
+        active_executions
+    )
     if oldest_active_execution:
       if backfill_token:
         if (
@@ -302,7 +300,12 @@ class _Generator:
           )
       )
 
-    if backfill_token and newest_execution:
+    if backfill_token and (
+        newest_executions := task_gen_utils.get_executions(
+            metadata_handler, node, limit=1
+        )
+    ):
+      newest_execution = newest_executions[0]
       # If we are backfilling, we only want to do input resolution once,
       # and register the executions once. To check if we've already registered
       # the executions, we check for the existence of executions with the
@@ -389,9 +392,35 @@ class _Generator:
       # For backfills, ignore all previous executions.
       successful_executions = []
     else:
-      successful_executions = [
-          e for e in executions if execution_lib.is_execution_successful(e)
-      ]
+      # A resolved input whose artifacts with max timestamp T cannot be an input
+      # to a execution having creation timestamp < T. So, we only need to
+      # get executions with timestamp larger than the minimum timestamp of all
+      # the resolved input.
+      min_timestamp_all_resolved_inputs = sys.maxsize
+      for input_and_param in resolved_info.input_and_params:
+        min_timestamp_one_input = min(
+            [
+                a.mlmd_artifact.create_time_since_epoch
+                for a in itertools.chain(
+                    *input_and_param.input_artifacts.values()
+                )
+            ],
+            default=0,
+        )
+        min_timestamp_all_resolved_inputs = min(
+            min_timestamp_one_input, min_timestamp_all_resolved_inputs
+        )
+      successful_executions = task_gen_utils.get_executions(
+          metadata_handler,
+          node,
+          only_successful=True,
+          additional_filters=[
+              f'create_time_since_epoch >= {min_timestamp_all_resolved_inputs}'
+          ],
+      )
+      logging.info(
+          'Fetched %d successful executions.', len(successful_executions)
+      )
 
     unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
         metadata_handler, successful_executions, resolved_info, node
