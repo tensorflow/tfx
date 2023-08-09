@@ -19,7 +19,7 @@ import textwrap
 import threading
 import traceback
 import typing
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from absl import logging
 from tfx.orchestration import data_types_utils
@@ -31,6 +31,8 @@ from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import task_scheduler as ts
+from tfx.orchestration.portable.mlmd import artifact_lib
+from tfx.types import artifact as tfx_artifact
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -281,16 +283,30 @@ class TaskManager:
             task.execution_id,
             result,
         )
-        self._fail_execution(task.execution_id, status_lib.Code.UNKNOWN, str(e))
+        self._fail_execution(
+            task.execution_id,
+            status_lib.Code.UNKNOWN,
+            str(e),
+            task.output_artifacts,
+        )
     with self._tm_lock:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)
 
-  # TODO(kmonte): Mark output artifacts as ABANDONED if we fail the execution.
   def _fail_execution(
-      self, execution_id: int, error_code: int, error_msg: str
+      self,
+      execution_id: int,
+      error_code: int,
+      error_msg: str,
+      output_artifacts: Dict[str, List[tfx_artifact.Artifact]],
   ) -> None:
     """Marks an execution as failed."""
+    logging.info('Marking artifacts as ABANDONED: %s', output_artifacts)
+    artifact_lib.update_artifacts(
+        self._mlmd_handle,
+        output_artifacts,
+        tfx_artifact.ArtifactState.ABANDONED,
+    )
     with mlmd_state.mlmd_execution_atomic_op(
         self._mlmd_handle, execution_id
     ) as execution:

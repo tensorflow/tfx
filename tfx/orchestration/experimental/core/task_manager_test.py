@@ -435,6 +435,12 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertTrue(os.path.exists(self._output_artifact_uri))
     self._task_queue.enqueue(self._task)
 
+    # Publish output artifacts to MLMD.
+    artifacts_to_publish = []
+    for artifacts in self._task.output_artifacts.values():
+      artifacts_to_publish.extend(artifacts)
+    self._mlmd_connection.publish_artifacts(artifacts_to_publish)
+
     # There should be 1 active execution in MLMD.
     with self._mlmd_connection as m:
       executions = m.store.get_executions()
@@ -637,7 +643,6 @@ class TaskManagerE2ETest(test_utils.TfxTest):
             ),
         )
     )
-
     task_manager = self._run_task_manager()
     mock_publish.assert_called_once()
     self.assertTrue(task_manager.done())
@@ -645,6 +650,15 @@ class TaskManagerE2ETest(test_utils.TfxTest):
 
     # Verify that execution is marked as failed.
     execution = self._get_execution()
+
+    with self._mlmd_connection as m:
+      artifacts = m.get_artifacts_by_uri(self._output_artifact_uri)
+      for artifact in artifacts:
+        with self.subTest(f'artifact-{artifact.id}'):
+          self.assertEqual(
+              metadata_store_pb2.Artifact.ABANDONED, artifact.state
+          )
+
     self.assertEqual(
         metadata_store_pb2.Execution.FAILED, execution.last_known_state
     )
