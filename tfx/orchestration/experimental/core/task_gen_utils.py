@@ -641,9 +641,6 @@ def get_unprocessed_inputs(
     }
     processed_inputs.append(ids_by_key)
 
-  if not processed_inputs:
-    return resolved_info.input_and_params
-
   # Some input artifacts are from external pipelines, so we need to find out the
   # external_id to id mapping in the local db.
   local_id_by_external_id: Dict[str, int] = {}

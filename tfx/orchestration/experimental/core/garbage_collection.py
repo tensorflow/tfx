@@ -35,10 +35,6 @@ _KeepOrder = (garbage_collection_policy_pb2.GarbageCollectionPolicy.
               KeepPropertyValueGroups.Grouping.KeepOrder)
 
 
-class ArtifactCleanupError(Exception):
-  """Raised when garbage collection fails."""
-
-
 def _get_output_artifacts_for_node(
     mlmd_handle: metadata.Metadata,
     node_uid: task_lib.NodeUid) -> List[metadata_store_pb2.Artifact]:
@@ -290,23 +286,17 @@ def garbage_collect_artifacts(
   Args:
     mlmd_handle: A handle to the MLMD db.
     artifacts: Artifacts that we want to erase their file contents for GC.
-
-  Raises:
-    ArtifactCleanupError: Wraps any exception in ArtifactCleanupError if thrown.
   """
   if not artifacts:
     return
-  try:
-    for artifact in artifacts:
-      logging.info('Deleting URI %s', artifact.uri)
-      if fileio.isdir(artifact.uri):
-        fileio.rmtree(artifact.uri)
-      else:
-        fileio.remove(artifact.uri)
-      artifact.state = metadata_store_pb2.Artifact.State.DELETED
-    mlmd_handle.store.put_artifacts(artifacts)
-  except Exception as e:
-    raise ArtifactCleanupError() from e
+  for artifact in artifacts:
+    logging.info('Deleting URI %s', artifact.uri)
+    if fileio.isdir(artifact.uri):
+      fileio.rmtree(artifact.uri)
+    else:
+      fileio.remove(artifact.uri)
+    artifact.state = metadata_store_pb2.Artifact.State.DELETED
+  mlmd_handle.store.put_artifacts(artifacts)
 
 
 def run_garbage_collection_for_node(
