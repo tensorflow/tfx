@@ -24,6 +24,7 @@ import tensorflow as tf
 from tfx.orchestration import data_types_utils
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import garbage_collection
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import service_jobs
@@ -215,7 +216,9 @@ class TaskManagerTest(test_utils.TfxTest):
 
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
   @mock.patch.object(tm.TaskManager, '_fail_execution')
-  def test_exceptions_are_surfaced(self, mock_fail_exec, mock_publish):
+  def test_post_execution_exceptions_are_surfaced(
+      self, mock_fail_exec, mock_publish
+  ):
     def _publish(**kwargs):
       task = kwargs['task']
       assert isinstance(task, task_lib.ExecNodeTask)
@@ -265,6 +268,71 @@ class TaskManagerTest(test_utils.TfxTest):
     ],
                                   any_order=True)
     mock_fail_exec.assert_called_once()
+
+  @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
+  @mock.patch.object(tm.TaskManager, '_fail_execution')
+  def test_garbage_collection_exceptions_are_ignored(
+      self, mock_fail_exec, mock_publish
+  ):
+    def _publish(**kwargs):
+      task = kwargs['task']
+      assert isinstance(task, task_lib.ExecNodeTask)
+      if task.node_uid.node_id == 'Transform':
+        raise garbage_collection.ArtifactCleanupError('test error 1')
+      return mock.DEFAULT
+
+    def _fail_execution(*args, **kwargs):
+      raise ValueError('test error 2')
+
+    mock_publish.side_effect = _publish
+    mock_fail_exec.side_effect = _fail_execution
+
+    collector = _Collector()
+
+    # Register a fake task scheduler.
+    ts.TaskSchedulerRegistry.register(
+        self._type_url,
+        functools.partial(
+            _FakeTaskScheduler, block_nodes={}, collector=collector
+        ),
+    )
+
+    task_queue = tq.TaskQueue()
+
+    with self._task_manager(task_queue) as task_manager:
+      transform_task = _test_exec_node_task(
+          'Transform', 'test-pipeline', pipeline=self._pipeline
+      )
+      trainer_task = _test_exec_node_task(
+          'Trainer', 'test-pipeline', pipeline=self._pipeline
+      )
+      task_queue.enqueue(transform_task)
+      task_queue.enqueue(trainer_task)
+
+    self.assertTrue(task_manager.done())
+    exception = task_manager.exception()
+    self.assertIsNone(exception)
+
+    self.assertCountEqual(
+        [transform_task, trainer_task], collector.scheduled_tasks
+    )
+    result_ok = ts.TaskSchedulerResult(
+        status=status_lib.Status(
+            code=status_lib.Code.OK, message='_FakeTaskScheduler result'
+        )
+    )
+    mock_publish.assert_has_calls(
+        [
+            mock.call(
+                mlmd_handle=mock.ANY, task=transform_task, result=result_ok
+            ),
+            mock.call(
+                mlmd_handle=mock.ANY, task=trainer_task, result=result_ok
+            ),
+        ],
+        any_order=True,
+    )
+    mock_fail_exec.assert_not_called()
 
 
 class _FakeComponentScheduler(ts.TaskScheduler):
