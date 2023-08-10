@@ -13,9 +13,13 @@
 # limitations under the License.
 """Rewriter that invokes the TFJS converter."""
 
-from tensorflowjs.converters import converter
+import subprocess
+import time
 
+from absl import logging
+from tensorflowjs.converters import converter
 from tfx.components.trainer.rewriting import rewriter
+
 
 CONVERTER_SAVED_MODEL_INPUT_FLAG = '--input_format=tf_saved_model'
 CONVERTER_SERVING_TAG_FLAG = '--saved_model_tags=serve'
@@ -23,6 +27,22 @@ CONVERTER_DEFAULT_SIGNATURE_FLAG = '--signature_name=serving_default'
 
 
 def _convert_tfjs_model(saved_model_path: str, destination_path: str):
+  """Converts a saved model to the TFJS format."""
+  timestamp = str(int(time.time()))
+  logging.info('TFJS convert timestamp %s', timestamp)
+  subprocess.check_output(
+      f'cp -r {saved_model_path} /tmp/{timestamp}', shell=True
+  )
+  subprocess.check_output(
+      'gsutil cp -r'
+      f' /tmp/{timestamp} gs://tfx-testing-bucket/test_output/wssong/{timestamp}',
+      shell=True,
+  )
+  logging.info(
+      'TFJS successfully copied saved model to'
+      ' gs://tfx-testing-bucket/test_output/wssong/%s',
+      timestamp,
+  )
   converter.convert([
       CONVERTER_SAVED_MODEL_INPUT_FLAG, CONVERTER_SERVING_TAG_FLAG,
       CONVERTER_DEFAULT_SIGNATURE_FLAG,

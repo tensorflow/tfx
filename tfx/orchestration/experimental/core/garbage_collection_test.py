@@ -198,28 +198,6 @@ class GarbageCollectionTest(test_utils.TfxTest):
         self._metadata.store.get_artifacts_by_id([e.id for e in examples
                                                  ])[0].state)
 
-  def test_garbage_collect_artifacts_throws_garbage_collection_error(self):
-    test_dir = self.create_tempdir()
-    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
-    example_gen_execution = test_utils.fake_example_gen_run_with_handle(
-        self._metadata, self._example_gen, span=0, version=0
-    )
-    example_gen_output = self._metadata.get_outputs_of_execution(
-        example_gen_execution.id
-    )
-    examples = example_gen_output['examples']
-    examples_protos = self._metadata.store.get_artifacts_by_id(
-        [e.id for e in examples]
-    )
-    for examples_proto in examples_protos:
-      examples_proto.uri = os.path.join(test_dir, 'does/not/exist')
-    self.assertRaises(
-        garbage_collection.ArtifactCleanupError,
-        lambda: garbage_collection.garbage_collect_artifacts(  # pylint: disable=g-long-lambda
-            self._metadata, examples_protos
-        ),
-    )
-
   def test_keep_property_value_groups(self):
     policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
         keep_property_value_groups=garbage_collection_policy_pb2

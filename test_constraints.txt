@@ -17,3 +17,6 @@ cachelib<0.10.0
 # TODO(b/281467874): Remove this after upgrading OpenSSL version in our test
 # environment.
 urllib3<2
+
+tensorflowjs<3.19
+flax<0.6
