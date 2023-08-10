@@ -269,7 +269,7 @@ class TaskManager:
             mlmd_handle=self._mlmd_handle, task=task, result=result
         )
       except garbage_collection.ArtifactCleanupError as e:
-        logging.warning(
+        logging.exception(
             'Garbage collection failed during post execution! %s', e
         )
       except Exception as e:  # pylint: disable=broad-except
