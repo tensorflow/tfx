@@ -13,7 +13,6 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
-import itertools
 from typing import Callable, List, Optional
 
 from absl import logging
@@ -392,11 +391,18 @@ class _Generator:
       successful_executions = []
     else:
       artifact_create_times = []
+      input_triggers = node.execution_options.async_trigger.input_triggers
+      ignore_keys = {
+          k for k, t in input_triggers.items()
+          if k.startswith('_') or t.no_trigger
+      }
       for input_and_param in resolved_info.input_and_params:
-        artifact_create_times.extend(
-            a.mlmd_artifact.create_time_since_epoch
-            for a in itertools.chain(*input_and_param.input_artifacts.values())
-        )
+        for key, artifacts in input_and_param.input_artifacts.items():
+          if key.startswith('_') or key in ignore_keys:
+            continue
+          artifact_create_times.extend(
+              a.mlmd_artifact.create_time_since_epoch for a in artifacts
+          )
 
       if artifact_create_times:
         # A resolved input whose artifacts with min timestamp T is not an input
