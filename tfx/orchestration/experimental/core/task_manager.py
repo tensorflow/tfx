@@ -25,7 +25,6 @@ from absl import logging
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
-from tfx.orchestration.experimental.core import garbage_collection
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import task as task_lib
@@ -268,10 +267,6 @@ class TaskManager:
         post_execution_utils.publish_execution_results_for_task(
             mlmd_handle=self._mlmd_handle, task=task, result=result
         )
-      except garbage_collection.ArtifactCleanupError as e:
-        logging.exception(
-            'Garbage collection failed during post execution! %s', e
-        )
       except Exception as e:  # pylint: disable=broad-except
         logging.exception(
             (
@@ -286,7 +281,6 @@ class TaskManager:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)
 
-  # TODO(kmonte): Mark output artifacts as ABANDONED if we fail the execution.
   def _fail_execution(
       self, execution_id: int, error_code: int, error_msg: str
   ) -> None:

@@ -14,6 +14,7 @@
 """TaskGenerator implementation for async pipelines."""
 
 import itertools
+import sys
 from typing import Callable, List, Optional
 
 from absl import logging
@@ -391,35 +392,32 @@ class _Generator:
       # For backfills, ignore all previous executions.
       successful_executions = []
     else:
-      artifact_create_times = []
+      # A resolved input whose artifacts with max timestamp T cannot be an input
+      # to a execution having creation timestamp < T. So, we only need to
+      # get executions with timestamp larger than the minimum timestamp of all
+      # the resolved input.
+      min_timestamp_all_resolved_inputs = sys.maxsize
       for input_and_param in resolved_info.input_and_params:
-        artifact_create_times.extend(
-            a.mlmd_artifact.create_time_since_epoch
-            for a in itertools.chain(*input_and_param.input_artifacts.values())
-        )
-
-      if artifact_create_times:
-        # A resolved input whose artifacts with min timestamp T is not an input
-        # to a execution having creation timestamp < T. So, we only need to
-        # get executions with timestamp larger than the minimum timestamp of all
-        # the artifacts in resolved inputs.
-        successful_executions = task_gen_utils.get_executions(
-            metadata_handler,
-            node,
-            only_successful=True,
-            additional_filters=[
-                f'create_time_since_epoch >= {min(artifact_create_times)}'
+        min_timestamp_one_input = min(
+            [
+                a.mlmd_artifact.create_time_since_epoch
+                for a in itertools.chain(
+                    *input_and_param.input_artifacts.values()
+                )
             ],
+            default=0,
         )
-      else:
-        # In cases that resolved_info don't have any artifacts, we only need to
-        # get the last successful execution.
-        successful_executions = task_gen_utils.get_executions(
-            metadata_handler,
-            node,
-            only_successful=True,
-            limit=1,
+        min_timestamp_all_resolved_inputs = min(
+            min_timestamp_one_input, min_timestamp_all_resolved_inputs
         )
+      successful_executions = task_gen_utils.get_executions(
+          metadata_handler,
+          node,
+          only_successful=True,
+          additional_filters=[
+              f'create_time_since_epoch >= {min_timestamp_all_resolved_inputs}'
+          ],
+      )
       logging.info(
           'Fetched %d successful executions.', len(successful_executions)
       )
