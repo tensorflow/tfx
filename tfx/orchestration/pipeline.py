@@ -15,7 +15,7 @@
 
 import copy
 import enum
-from typing import Any, Collection, Dict, List, Optional, Union, cast
+from typing import Any, Collection, Dict, Iterator, List, Optional, Tuple, Union, cast
 import warnings
 
 from tfx.dsl.compiler import constants
@@ -74,6 +74,72 @@ def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
         component.executor_spec).beam_pipeline_args = beam_pipeline_args + cast(
             executor_spec.BeamExecutorSpec,
             component.executor_spec).beam_pipeline_args
+
+
+def enumerate_implicit_dependencies(
+    components: List[base_node.BaseNode],
+    registry: dsl_context_registry.DslContextRegistry,
+    pipeline_id: Optional[str] = None,
+) -> Iterator[Tuple[base_node.BaseNode, base_node.BaseNode]]:
+  """Enumerate component dependencies arising from data deps between them.
+
+  Args:
+    components: List of components to consider.
+    registry: DslContextRegistry to use for looking up conditional predicates.
+    pipeline_id: ID of the pipeline if calling from the context of one.
+
+  Yields:
+    Pairs of the form (upstream_component, component). If a component has no
+    upstream components within `components` then it will not be present as the
+    first element of any tuple in the output.
+
+  Raises:
+    RuntimeError: When duplicate components are detected.
+  """
+  node_by_id = {}
+
+  # Fills in producer map.
+  for component in components:
+    # Checks every node has an unique id.
+    if component.id in node_by_id:
+      raise RuntimeError(
+          f'Duplicated node_id {component.id} for component type'
+          f'{component.type}. Try setting a different node_id using '
+          '`.with_id()`.'
+      )
+    if pipeline_id and component.id == pipeline_id:
+      raise RuntimeError(
+          f'node id {component.id} is the same as its enclosing pipeline id.'
+          'Try setting a different node_id using `.with_id()`.'
+      )
+    node_by_id[component.id] = component
+
+  # Deduce upstream nodes based on producer map.
+  for component in components:
+    channels = list(component.inputs.values())
+    for exec_property in component.exec_properties.values():
+      if isinstance(exec_property, ph.ChannelWrappedPlaceholder):
+        channels.append(exec_property.channel)
+    for predicate in conditional.get_predicates(component, registry):
+      channels.extend(channel_utils.get_dependent_channels(predicate))
+
+    for input_channel in channels:
+      for node_id in input_channel.get_data_dependent_node_ids():
+        if pipeline_id and node_id == pipeline_id:
+          # If a component's input channel depends on the (self) pipeline,
+          # it means that component consumes pipeline-level inputs. No need to
+          # add upstream node here. Pipeline-level inputs will be handled
+          # during compilation.
+          continue
+        upstream_node = node_by_id.get(node_id)
+        if upstream_node:
+          yield (upstream_node, component)
+        else:
+          warnings.warn(
+              f'Node {component.id} depends on the output of node {node_id}'
+              f', but {node_id} is not included in the components of '
+              'pipeline. Did you forget to add it?'
+          )
 
 
 class PipelineInputs:
@@ -369,51 +435,12 @@ class Pipeline(base_node.BaseNode):
     self._check_mutable()
 
     deduped_components = set(components)
-    node_by_id = {}
-
-    # Fills in producer map.
-    for component in deduped_components:
-      # Checks every node has an unique id.
-      if component.id in node_by_id:
-        raise RuntimeError(
-            f'Duplicated node_id {component.id} for component type'
-            f'{component.type}. Try setting a different node_id using '
-            '`.with_id()`.'
-        )
-      if component.id == self.id:
-        raise RuntimeError(
-            f'node id {component.id} is the same as its enclosing pipeline id.'
-            'Try setting a different node_id using `.with_id()`.'
-        )
-      node_by_id[component.id] = component
-
-    # Connects nodes based on producer map.
-    for component in deduped_components:
-      channels = list(component.inputs.values())
-      for exec_property in component.exec_properties.values():
-        if isinstance(exec_property, ph.ChannelWrappedPlaceholder):
-          channels.append(exec_property.channel)
-      for predicate in conditional.get_predicates(component,
-                                                  self.dsl_context_registry):
-        channels.extend(channel_utils.get_dependent_channels(predicate))
-
-      for input_channel in channels:
-        for node_id in input_channel.get_data_dependent_node_ids():
-          if node_id == self.id:
-            # If a component's input channel depends on the (self) pipeline,
-            # it means that component consumes pipeline-level inputs. No need to
-            # add upstream node here. Pipeline-level inputs will be handled
-            # during compilation.
-            continue
-          upstream_node = node_by_id.get(node_id)
-          if upstream_node:
-            component.add_upstream_node(upstream_node)
-            upstream_node.add_downstream_node(component)
-          else:
-            warnings.warn(
-                f'Node {component.id} depends on the output of node {node_id}'
-                f', but {node_id} is not included in the components of '
-                'pipeline. Did you forget to add it?')
+    for upstream_component, component in enumerate_implicit_dependencies(
+        list(deduped_components),
+        registry=self.dsl_context_registry,
+        pipeline_id=self.id,
+    ):
+      component.add_upstream_node(upstream_component)
 
     layers = topsort.topsorted_layers(
         list(deduped_components),
