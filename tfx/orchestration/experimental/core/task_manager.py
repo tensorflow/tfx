@@ -27,6 +27,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import garbage_collection
 from tfx.orchestration.experimental.core import mlmd_state
+from tfx.orchestration.experimental.core import pipeline_state
 from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue as tq
@@ -282,6 +283,7 @@ class TaskManager:
             result,
         )
         self._fail_execution(task.execution_id, status_lib.Code.UNKNOWN, str(e))
+      pipeline_state.record_state_change_time()
     with self._tm_lock:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)

@@ -24,7 +24,6 @@ from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import garbage_collection
 from tfx.orchestration.experimental.core import mlmd_state
-from tfx.orchestration.experimental.core import pipeline_state
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.portable import data_types
@@ -66,7 +65,6 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
         error_code=status.code,
         error_msg=status.message,
         execution_result=execution_result)
-    pipeline_state.record_state_change_time()
 
   if result.status.code != status_lib.Code.OK:
     _update_state(result.status)
@@ -122,8 +120,6 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
           output_artifacts=resolved_input_artifacts)
   else:
     raise TypeError(f'Unable to process task scheduler result: {result}')
-
-  pipeline_state.record_state_change_time()
 
 
 def publish_execution_results(

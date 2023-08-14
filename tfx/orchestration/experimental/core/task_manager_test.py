@@ -139,8 +139,9 @@ class TaskManagerTest(test_utils.TfxTest):
         process_all_queued_tasks_before_exit=True) as task_manager:
       yield task_manager
 
+  @mock.patch.object(pstate, 'record_state_change_time')
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
-  def test_task_handling(self, mock_publish):
+  def test_task_handling(self, mock_publish, mock_record_state_change_time):
     collector = _Collector()
 
     # Register a fake task scheduler.
@@ -213,11 +214,13 @@ class TaskManagerTest(test_utils.TfxTest):
     # It is expected that publish is not called for Pusher because it was
     # cancelled with pause=True so there must be only 3 calls.
     self.assertLen(mock_publish.mock_calls, 3)
+    self.assertLen(mock_record_state_change_time.mock_calls, 3)
 
+  @mock.patch.object(pstate, 'record_state_change_time')
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
   @mock.patch.object(tm.TaskManager, '_fail_execution')
   def test_post_execution_exceptions_are_surfaced(
-      self, mock_fail_exec, mock_publish
+      self, mock_fail_exec, mock_publish, mock_record_state_change_time
   ):
     def _publish(**kwargs):
       task = kwargs['task']
@@ -268,11 +271,14 @@ class TaskManagerTest(test_utils.TfxTest):
     ],
                                   any_order=True)
     mock_fail_exec.assert_called_once()
+    self.assertLen(mock_publish.mock_calls, 2)
+    self.assertLen(mock_record_state_change_time.mock_calls, 1)
 
+  @mock.patch.object(pstate, 'record_state_change_time')
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
   @mock.patch.object(tm.TaskManager, '_fail_execution')
   def test_garbage_collection_exceptions_are_ignored(
-      self, mock_fail_exec, mock_publish
+      self, mock_fail_exec, mock_publish, mock_record_state_change_time
   ):
     def _publish(**kwargs):
       task = kwargs['task']
@@ -333,6 +339,7 @@ class TaskManagerTest(test_utils.TfxTest):
         any_order=True,
     )
     mock_fail_exec.assert_not_called()
+    self.assertLen(mock_record_state_change_time.mock_calls, 2)
 
 
 class _FakeComponentScheduler(ts.TaskScheduler):
