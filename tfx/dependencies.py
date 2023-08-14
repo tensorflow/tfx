@@ -80,7 +80,6 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.47,<3',
       'attrs>=19.3.0,<22',
       'click>=7,<9',
-      'google-api-core<2',
       'google-cloud-aiplatform>=1.6.2,<2',
       'google-cloud-bigquery>=2.26.0,<3',
       'grpcio>=1.28.1,<2',
