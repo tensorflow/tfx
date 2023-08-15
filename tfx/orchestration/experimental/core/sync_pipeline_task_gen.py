@@ -262,6 +262,31 @@ class _Generator:
     if self._is_task_id_tracked_fn(
         task_lib.exec_node_task_id_from_node(self._pipeline, node)):
       return result
+    tasks_from_executions = self._generate_tasks_from_executions(node)
+    result.extend(tasks_from_executions)
+    if result:
+      return result
+
+    raise RuntimeError('Task generation process should not reach this point.')
+
+  def _generate_tasks_from_executions(
+      self,
+      node: node_proto_view.NodeProtoView,
+  ) -> List[task_lib.Task]:
+    """Generates tasks for a node from based on previous node executions.
+
+    Args:
+      node: The node to generate tasks for a node, and sort by
+
+    Returns:
+      A list of tasks for the node
+
+    Raises:
+      RuntimeError: if it cannot be determined which tasks should be generated.
+    """
+    node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+    node_state = self._node_states_dict[node_uid]
+    result = []
 
     node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
     latest_executions_set = task_gen_utils.get_latest_executions_set(
