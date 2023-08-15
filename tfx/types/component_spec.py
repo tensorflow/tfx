@@ -334,59 +334,60 @@ class ExecutionParameter:
 
   def type_check(self, arg_name: str, value: Any):
     """Perform type check to the parameter passed in."""
-
-    # Following helper function is needed due to the lack of subscripted
-    # type check support in Python 3.7.
-    def _type_check_helper(value: Any, declared: Type):  # pylint: disable=g-bare-generic
-      """Helper type-checking function."""
-      if isinstance(value, placeholder.Placeholder):
-        if isinstance(value, placeholder.ChannelWrappedPlaceholder):
-          return
-        placeholders_involved = list(value.traverse())
-        if (len(placeholders_involved) != 1 or not isinstance(
-            placeholders_involved[0], placeholder.RuntimeInfoPlaceholder)):
-          placeholders_involved_str = [
-              x.__class__.__name__ for x in placeholders_involved
-          ]
-          raise TypeError(
-              'Only simple RuntimeInfoPlaceholders are supported, but while '
-              'checking parameter %r, the following placeholders were '
-              'involved: %s' % (arg_name, placeholders_involved_str))
-        if not issubclass(declared, str):
-          raise TypeError(
-              'Cannot use Placeholders except for str parameter, but parameter '
-              '%r was of type %s' % (arg_name, declared))
+    if isinstance(value, placeholder.Placeholder):
+      if isinstance(value, placeholder.ChannelWrappedPlaceholder):
         return
+      placeholders_involved = list(value.traverse())
+      if len(placeholders_involved) != 1 or not isinstance(
+          placeholders_involved[0], placeholder.RuntimeInfoPlaceholder
+      ):
+        placeholders_involved_str = [
+            x.__class__.__name__ for x in placeholders_involved
+        ]
+        raise TypeError(
+            'Only simple RuntimeInfoPlaceholders are supported, but while '
+            f'checking parameter {arg_name!r}, the following placeholders were '
+            f'involved: {placeholders_involved_str}'
+        )
+      if not issubclass(self.type, str):
+        raise TypeError(
+            'Cannot use Placeholders except for str parameter, but parameter '
+            f'{arg_name!r} was of type {self.type}.'
+        )
+      return
 
-      is_runtime_param = _is_runtime_param(value)
-      value = _make_default(value)
-      if declared == Any:
-        return
-      # types.GenericAlias was added in Python 3.9, and we use string
-      # comparisons as a walkaround for Python<3.9.
-      if type(declared).__name__ in ('_GenericAlias', 'GenericAlias'):
-        if not check_strict_json_compat(value, declared):
-          raise TypeError(('Expected type %s for parameter %r '
-                           'but got %s instead.') %
-                          (str(declared), arg_name, value))
-      elif isinstance(value, dict) and issubclass(declared, message.Message):
-        # If a dict is passed in and is compared against a pb message,
-        # do the type-check by converting it to pb message.
-        proto_utils.dict_to_proto(value, declared())
-      elif (isinstance(value, str) and not isinstance(declared, tuple) and
-            issubclass(declared, message.Message)):
-        # Skip check for runtime param string proto.
-        if not is_runtime_param:
-          # If a text is passed in and is compared against a pb message,
-          # do the type-check by converting text (as json) to pb message.
-          proto_utils.json_to_proto(value, declared())
-      else:
-        if not isinstance(value, declared):
-          raise TypeError('Expected type %s for parameter %r '
-                          'but got %s instead.' %
-                          (str(declared), arg_name, value))
-
-    _type_check_helper(value, self.type)
+    is_runtime_param = _is_runtime_param(value)
+    value = _make_default(value)
+    if self.type == Any:
+      return
+    # types.GenericAlias was added in Python 3.9, and we use string
+    # comparisons as a workaround for Python<3.9.
+    if type(self.type).__name__ in ('_GenericAlias', 'GenericAlias'):
+      if not check_strict_json_compat(value, self.type):
+        raise TypeError(
+            f'Expected type {self.type!s} for parameter {arg_name!r} but got '
+            f'{value!s} instead.'
+        )
+    elif isinstance(value, dict) and issubclass(self.type, message.Message):
+      # If a dict is passed in and is compared against a pb message,
+      # do the type-check by converting it to pb message.
+      proto_utils.dict_to_proto(value, self.type())
+    elif (
+        isinstance(value, str)
+        and not isinstance(self.type, tuple)
+        and issubclass(self.type, message.Message)
+    ):
+      # Skip check for runtime param string proto.
+      if not is_runtime_param:
+        # If a text is passed in and is compared against a pb message,
+        # do the type-check by converting text (as json) to pb message.
+        proto_utils.json_to_proto(value, self.type())
+    else:
+      if not isinstance(value, self.type):
+        raise TypeError(
+            f'Expected type {self.type!s} for parameter {arg_name!r} but got '
+            f'{value!s} instead.'
+        )
 
 
 COMPATIBLE_TYPES_KEY = '_compatible_types'
