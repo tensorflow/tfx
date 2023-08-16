@@ -58,7 +58,7 @@ message PublishIntermediateArtifactRequest {
 }
 
 message PublishIntermediateArtifactResponse {
-  // The prepared intermediate artifact marked with state PENDING.
+  // The prepared intermediate artifact marked with state LIVE.
   ml_metadata.Artifact artifact = 1;
 }
 
