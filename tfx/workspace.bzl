@@ -14,6 +14,8 @@
 """TFX external dependencies that can be loaded in WORKSPACE files."""
 
 load("@org_tensorflow//tensorflow:workspace.bzl", "tf_workspace")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 def _github_archive_url(org, repo, ref):
     return "https://github.com/{0}/{1}/archive/{2}.zip".format(org, repo, ref)
@@ -74,12 +76,21 @@ def tfx_workspace():
         tf_repo_name = "org_tensorflow",
     )
 
+    http_archive(
+        name = "com_google_protobuf",
+        sha256 = "930c2c3b5ecc6c9c12615cf5ad93f1cd6e12d0aba862b572e076259970ac3a53",
+        strip_prefix = "protobuf-3.21.12",
+        urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.21.12.tar.gz"],
+    )
+
+    protobuf_deps()
+
     # Fetch MLMD repo from GitHub.
     tfx_github_archive(
         name = "com_github_google_ml_metadata",
         repo = "google/ml-metadata",
         # LINT.IfChange
-        tag = "v1.13.0",
+        tag = "v1.14.0",
         # LINT.ThenChange(//tfx/dependencies.py)
     )
 
