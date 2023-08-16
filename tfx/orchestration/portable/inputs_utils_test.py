@@ -126,7 +126,7 @@ class InputsUtilsTest(_TestMixin):
         }""", parameters)
 
     parameters = inputs_utils.resolve_parameters(parameters)
-    self.assertEqual(len(parameters), 2)
+    self.assertLen(parameters, 2)
     self.assertEqual(parameters['key_one'], 'value_one')
     self.assertEqual(parameters['key_two'], 2)
 
@@ -166,6 +166,7 @@ class InputsUtilsTest(_TestMixin):
           })
       output_example = output_artifacts['output_examples'][0]
       side_examples = output_artifacts['another_examples'][0]
+      del side_examples
 
       # Publishes second ExampleGen with one output channel with the same output
       # key as the first ExampleGen. However this is not consumed by downstream
@@ -293,7 +294,7 @@ class InputsUtilsTest(_TestMixin):
           }
     """
     parameter_schemas = inputs_utils.resolve_parameters_with_schema(parameters)
-    self.assertEqual(len(parameter_schemas), 2)
+    self.assertLen(parameter_schemas, 2)
     self.assertProtoPartiallyEquals(expected_schema,
                                     parameter_schemas['key_one'])
 
@@ -336,8 +337,7 @@ class InputsUtilsTest(_TestMixin):
         exceptions.InvalidArgument,
         msg='Failed to resolve dynamic exec property. '
         'Key: input_num. Value: input("_test_placeholder")[0].value'):
-      dynamic_parameters_res = inputs_utils.resolve_dynamic_parameters(
-          dynamic_parameters, {})
+      inputs_utils.resolve_dynamic_parameters(dynamic_parameters, {})
 
 
 if __name__ == '__main__':
