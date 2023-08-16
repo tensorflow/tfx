@@ -53,4 +53,5 @@ sh_binary(
         "//tfx/utils/testdata:bar_pb2.py",
         "//tfx/utils/testdata:foo_pb2.py",
     ],
+    deps = ["@com_google_protobuf//:well_known_types_py_pb2"],
 )
