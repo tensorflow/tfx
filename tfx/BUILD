@@ -16,3 +16,8 @@
 # therefore leaving this empty BUILD file to mark this directory as a bazel
 # package. (Bazel says "this BUILD file does not need to do anything except
 # exists".)
+package(default_visibility = ["//visibility:public"])
+
+licenses(["notice"])  # Apache 2.0
+
+exports_files(["LICENSE"])
