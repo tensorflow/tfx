@@ -579,7 +579,6 @@ class _ArtifactRecycler:
     self._base_run_context: Final[metadata_store_pb2.Context] = (
         self._get_base_pipeline_run_context(base_run_id)
     )
-    self._base_run_id: Final[str] = self._base_run_context.name
 
     self._node_context_by_name: Final[Dict[str, metadata_store_pb2.Context]] = {
         ctx.name: ctx
@@ -679,7 +678,7 @@ class _ArtifactRecycler:
     if not prev_successful_executions:
       raise LookupError(
           f'No previous successful executions found for node_id {node_id} in '
-          f'pipeline_run {self._base_run_id}'
+          f'pipeline_run {self._base_run_context.name}'
       )
 
     return prev_successful_executions
@@ -745,6 +744,14 @@ class _ArtifactRecycler:
 
   def put_parent_context(self):
     """Puts a ParentContext edge in MLMD."""
+    if not self._base_run_context or not self._new_pipeline_run_context:
+      logging.warning(
+          'base run context %s or new pipeline run context %s not found.',
+          self._base_run_context.name,
+          self._new_pipeline_run_context.name,
+      )
+      return
+
     context_lib.put_parent_context_if_not_exists(
         self._mlmd,
         parent_id=self._base_run_context.id,
