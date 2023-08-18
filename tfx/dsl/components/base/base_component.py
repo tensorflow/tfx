@@ -92,10 +92,8 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
       executor_spec_obj = executor_spec_obj.copy()
     except Exception as e:  # pylint:disable = bare-except
       # This will only happen for function based components, which is fine.
-      raise ValueError(
-          f'The executor spec {executor_spec_obj!r} of {self.__class__} class '
-          'is not copyable.'
-      ) from e
+      raise ValueError(f'The executor spec of {self.__class__} class is '
+                       f'not copyable.') from e
 
     driver_class = self.__class__.DRIVER_CLASS
     # Set self.spec before super.__init__() where node registration happens.
