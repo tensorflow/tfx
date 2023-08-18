@@ -6,4 +6,4 @@ To build a docker image, run below command with flags under root directory of gi
 
 ``` 
 
-`NOTE:` It is recommended to use images on [tensorflow/tfx docker hub](https://hub.docker.com/r/tensorflow/tfx/tags) or [TFX GCR](gcr.io/tfx-oss-public/tfx), instead of building docker image directly.
+`NOTE:` It is recommended to use images on [tensorflow/tfx docker hub](https://hub.docker.com/r/tensorflow/tfx/tags) or [TFX GCR](https://gcr.io/tfx-oss-public/tfx), instead of building docker image directly.
