@@ -560,7 +560,11 @@ class _ArtifactRecycler:
     self._mlmd = metadata_handler
     self._pipeline_name: Final[str] = pipeline_name
     self._pipeline_context: Final[metadata_store_pb2.Context] = (
-        self._get_pipeline_context()
+        context_lib.register_context_if_not_exists(
+            self._mlmd,
+            context_type_name=constants.PIPELINE_CONTEXT_TYPE_NAME,
+            context_name=self._pipeline_name,
+        )
     )
     self._new_run_id: Final[str] = new_run_id
     self._new_pipeline_run_context: Final[metadata_store_pb2.Context] = (
@@ -583,15 +587,6 @@ class _ArtifactRecycler:
             constants.NODE_CONTEXT_TYPE_NAME
         )
     }
-
-  def _get_pipeline_context(self) -> metadata_store_pb2.Context:
-    result = self._mlmd.store.get_context_by_type_and_name(
-        type_name=constants.PIPELINE_CONTEXT_TYPE_NAME,
-        context_name=self._pipeline_name,
-    )
-    if result is None:
-      raise LookupError(f'pipeline {self._pipeline_name} not found in MLMD.')
-    return result
 
   def _get_base_pipeline_run_context(
       self, base_run_id: Optional[str] = None
@@ -633,10 +628,8 @@ class _ArtifactRecycler:
         pipeline_run_contexts, key=lambda c: c.create_time_since_epoch
     )
     if not sorted_run_contexts:
-      raise LookupError(
-          'No previous pipeline_run_ids found. '
-          'You need to have completed a pipeline run before performing a '
-          'partial run with artifact reuse.')
+      return None
+
     logging.info(
         'base_run_id not provided. Default to latest pipeline run: %s',
         sorted_run_contexts[-1].name,
@@ -667,6 +660,13 @@ class _ArtifactRecycler:
       LookupError: If no successful Execution was found.
     """
     node_context = self._get_node_context(node_id)
+    if not self._base_run_context:
+      raise LookupError(
+          f'No previous run is found for {node_id}. '
+          'You need to have completed a pipeline run before performing a '
+          'partial run with artifact reuse.'
+      )
+
     all_associated_executions = (
         execution_lib.get_executions_associated_with_all_contexts(
             self._mlmd, contexts=[node_context, self._base_run_context]
