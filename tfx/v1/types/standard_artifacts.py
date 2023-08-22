@@ -29,6 +29,7 @@ Schema = standard_artifacts.Schema
 TransformCache = standard_artifacts.TransformCache
 TransformGraph = standard_artifacts.TransformGraph
 HyperParameters = standard_artifacts.HyperParameters
+ManagerArtifact = standard_artifacts.ManagerArtifact
 
 # Artifacts of small scalar-values.
 Bytes = standard_artifacts.Bytes

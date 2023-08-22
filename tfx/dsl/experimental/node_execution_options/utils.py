@@ -31,6 +31,7 @@ class NodeExecutionOptions:
   success_optional: bool = False
   max_execution_retries: int = 0
   execution_timeout_sec: int = 0
+  lazily_execute: bool = False
 
   def __post_init__(self):
     self.max_execution_retries = max(self.max_execution_retries, 0)

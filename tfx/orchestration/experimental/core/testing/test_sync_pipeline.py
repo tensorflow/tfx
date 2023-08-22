@@ -47,7 +47,11 @@ def _example_validator(
     statistics: InputArtifact[standard_artifacts.ExampleStatistics],
     schema: InputArtifact[standard_artifacts.Schema],
     anomalies: OutputArtifact[standard_artifacts.ExampleAnomalies]):
-  del statistics, schema, anomalies
+  del (
+      statistics,
+      schema,
+      anomalies,
+  )
 
 
 @component
@@ -78,7 +82,33 @@ def _chore():
 
 
 def create_pipeline() -> pipeline_pb2.Pipeline:
-  """Builds a test pipeline."""
+  """Builds a test pipeline.
+
+    ┌───────────┐
+    │example_gen│
+    └┬─┬─┬──────┘
+     │ │┌▽──────────────┐
+     │ ││stats_gen       │
+     │ │└┬─────────────┬─┘
+     │ │┌▽───────────┐│
+     │ ││schema_gen   ││
+     │ │└┬───────┬─┬──┘│
+     │┌▽─▽────┐│┌▽──▽─────────────┐
+     ││transform │││example_validator │
+     │└┬────────┘│└───────────────────┘
+    ┌▽─▽───────▽┐
+    │trainer       │
+    └┬─────────┬───┘
+    ┌▽─────┐┌▽─────────┐
+    │chore_a││evaluator  │
+    └┬──────┘└───────────┘
+    ┌▽──────┐
+    │chore_b │
+    └────────┘
+
+  Returns:
+    A pipeline proto for the above DAG
+  """
   # pylint: disable=no-value-for-parameter
   example_gen = _example_gen().with_id('my_example_gen')
   stats_gen = _statistics_gen(
@@ -143,6 +173,67 @@ def create_pipeline_with_foreach() -> pipeline_pb2.Pipeline:
       components=[
           example_gen,
           stats_gen,
+      ],
+      enable_cache=True,
+  )
+  dsl_compiler = compiler.Compiler()
+  return dsl_compiler.compile(pipeline)
+
+
+def create_chore_pipeline() -> pipeline_pb2.Pipeline:
+  """Creates a pipeline full of chores.
+
+    ┌─────────────┐┌──────────────┐
+    │example_gen_1││example_gen_2 │
+    └┬────────────┘└┬───────┬─────┘
+    ┌▽──────┐┌──────▽───┐┌▽──────┐
+    │chore_a ││chore_d    ││chore_e │
+    └┬───────┘└┬─────────┬┘└┬───────┘
+    ┌▽──────┐┌▽──────┐┌▽──▽───┐
+    │chore_b ││chore_f││chore_g   │
+    └┬───────┘└┬───────┘└─────────┘
+    ┌▽────────▽┐
+    │chore_c     │
+    └────────────┘
+  Returns:
+    A pipeline for the above DAG
+  """
+
+  # pylint: disable=no-value-for-parameter
+  example_gen_1 = _example_gen().with_id('my_example_gen_1')
+  example_gen_2 = _example_gen().with_id('my_example_gen_2')
+
+  chore_a = _chore().with_id('chore_a')
+  chore_a.add_upstream_node(example_gen_1)
+  chore_b = _chore().with_id('chore_b')
+  chore_b.add_upstream_node(chore_a)
+  chore_c = _chore().with_id('chore_c')
+  chore_c.add_upstream_node(chore_b)
+
+  chore_d = _chore().with_id('chore_d')
+  chore_d.add_upstream_node(example_gen_2)
+  chore_e = _chore().with_id('chore_e')
+  chore_e.add_upstream_node(example_gen_2)
+  chore_f = _chore().with_id('chore_f')
+  chore_f.add_upstream_node(chore_d)
+  chore_g = _chore().with_id('chore_g')
+  chore_g.add_upstream_node(chore_d)
+  chore_g.add_upstream_node(chore_e)
+  chore_f.add_downstream_node(chore_c)
+
+  pipeline = pipeline_lib.Pipeline(
+      pipeline_name='my_pipeline',
+      pipeline_root='/path/to/root',
+      components=[
+          example_gen_1,
+          example_gen_2,
+          chore_a,
+          chore_b,
+          chore_d,
+          chore_e,
+          chore_f,
+          chore_g,
+          chore_c,
       ],
       enable_cache=True,
   )

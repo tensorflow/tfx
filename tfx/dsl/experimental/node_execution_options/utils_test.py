@@ -49,19 +49,22 @@ class UtilsTest(tf.test.TestCase):
         'examples': channel.Channel(standard_artifacts.Examples)
     })
     component.node_execution_options = utils.NodeExecutionOptions(
-        trigger_strategy=pipeline_pb2.NodeExecutionOptions
-        .ALL_UPSTREAM_NODES_COMPLETED,
+        trigger_strategy=pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
         success_optional=True,
         max_execution_retries=-1,
-        execution_timeout_sec=100)
+        execution_timeout_sec=100,
+        lazily_execute=True,
+    )
     self.assertEqual(
         component.node_execution_options,
         utils.NodeExecutionOptions(
-            trigger_strategy=pipeline_pb2.NodeExecutionOptions
-            .ALL_UPSTREAM_NODES_COMPLETED,
+            trigger_strategy=pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
             success_optional=True,
             max_execution_retries=0,
-            execution_timeout_sec=100))
+            execution_timeout_sec=100,
+            lazily_execute=True,
+        ),
+    )
     component.node_execution_options = None
     self.assertIsNone(component.node_execution_options)
 

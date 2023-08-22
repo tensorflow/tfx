@@ -99,6 +99,10 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     return self.type
 
   @property
+  def is_manager_node(self) -> bool:
+    return False
+
+  @property
   @doc_controls.do_not_doc_in_subclasses
   def id(self) -> str:
     """Node id, unique across all TFX nodes in a pipeline.

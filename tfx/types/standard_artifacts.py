@@ -424,3 +424,7 @@ class TunerResults(_TfxArtifact):
 # WIP and subject to change.
 class DataView(_TfxArtifact):
   TYPE_NAME = 'DataView'
+
+
+class ManagerArtifact(_TfxArtifact):
+  TYPE_NAME = 'ManagerArtifact'

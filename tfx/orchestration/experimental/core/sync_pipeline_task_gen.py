@@ -110,6 +110,8 @@ class _Generator:
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
     self._fail_fast = fail_fast
+    self._node_id_to_uid = {}
+    self._node_id_to_npv: Dict[str, node_proto_view.NodeProtoView] = {}
 
   def __call__(self) -> List[task_lib.Task]:
     layers = _topsorted_layers(self._pipeline)
@@ -120,20 +122,39 @@ class _Generator:
     successful_node_ids = set()
     failed_nodes_dict: Dict[str, status_lib.Status] = {}
     finalize_pipeline_task = None
+    lazily_evaluated_node_ids = set()
+    for layer in layers:
+      for node in layer:
+        node_id = node.node_info.id
+        node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+        self._node_id_to_uid[node_id] = node_uid
+        self._node_id_to_npv[node_id] = node
+        node_state = self._node_states_dict[node_uid]
+        if node.execution_options.lazily_execute:
+          lazily_evaluated_node_ids.add(node.node_info.id)
+        if node_state.is_success() or (
+            node_state.is_failure()
+            and node.execution_options.node_success_optional
+        ):
+          successful_node_ids.add(node_id)
     for layer_nodes in layers:
       for node in layer_nodes:
         node_id = node.node_info.id
         node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+        self._node_id_to_uid[node_id] = node_uid
+        self._node_id_to_npv[node_id] = node
         node_state = self._node_states_dict[node_uid]
-        if node_state.is_success() or (node_state.is_failure(
-        ) and node.execution_options.node_success_optional):
-          successful_node_ids.add(node_id)
+        if node_id in successful_node_ids:
           continue
         if node_state.is_failure():
           failed_nodes_dict[node_id] = node_state.status
           continue
-        if not self._trigger_strategy_satisfied(node, successful_node_ids,
-                                                failed_nodes_dict):
+        if not self._trigger_strategy_satisfied(
+            node,
+            successful_node_ids,
+            failed_nodes_dict,
+            lazily_evaluated_node_ids,
+        ):
           continue
         tasks = self._generate_tasks_for_node(node)
         for task in tasks:
@@ -498,22 +519,44 @@ class _Generator:
         successful_node_ids | failed_nodes_dict.keys())
 
   def _trigger_strategy_satisfied(
-      self, node: node_proto_view.NodeProtoView, successful_node_ids: Set[str],
-      failed_nodes_dict: Dict[str, status_lib.Status]) -> bool:
+      self,
+      node: node_proto_view.NodeProtoView,
+      successful_node_ids: Set[str],
+      failed_nodes_dict: Dict[str, status_lib.Status],
+      lazily_evaluated_node_ids: Set[str],
+  ) -> bool:
     """Returns `True` if the node's Trigger Strategy is satisfied."""
     if node.execution_options.strategy == (
         pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED):
-      return self._upstream_nodes_completed(node, successful_node_ids,
-                                            failed_nodes_dict)
+      node_trigger_strategy_satisfied = self._upstream_nodes_completed(
+          node, successful_node_ids, failed_nodes_dict
+      )
     elif node.execution_options.strategy in (
         pipeline_pb2.NodeExecutionOptions.TRIGGER_STRATEGY_UNSPECIFIED,
         pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_SUCCEEDED):
-      return self._upstream_nodes_successful(node, successful_node_ids)
+      node_trigger_strategy_satisfied = self._upstream_nodes_successful(
+          node, successful_node_ids
+      )
     else:
       raise NotImplementedError(
           'Unrecognized node triggering strategy: %s' %
           pipeline_pb2.NodeExecutionOptions.TriggerStrategy.Name(
               node.execution_options.strategy))
+    if node.execution_options.lazily_execute:
+      any_downstream_node_otherwise_ready = False
+      successful_and_lazy_node_ids = (
+          successful_node_ids | lazily_evaluated_node_ids
+      )
+      for downstream_node in node.downstream_nodes:
+        downstream_trigger = self._trigger_strategy_satisfied(
+            self._node_id_to_npv[downstream_node],
+            successful_and_lazy_node_ids,
+            failed_nodes_dict,
+            lazily_evaluated_node_ids,
+        )
+        any_downstream_node_otherwise_ready |= downstream_trigger
+      node_trigger_strategy_satisfied &= any_downstream_node_otherwise_ready
+    return node_trigger_strategy_satisfied
 
   def _abort_task(
       self, failed_nodes_dict: Mapping[str, status_lib.Status]

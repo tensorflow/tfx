@@ -553,6 +553,12 @@ message NodeExecutionOptions {
   // same as ALL_UPSTREAM_NODES_SUCCEEDED.
   TriggerStrategy strategy = 4;
 
+  // If the node should lazily execute. If enabled then the node will not run
+  // until any of it's downstream nodes is otherwise ready to run. Currently
+  // only enabled for SYNC pipelines.
+  // TODO(b/297047530): Add this to ASYNC pipelines
+  bool lazily_execute = 10;
+
   // If set, the node's success is optional for orchestration. In other words,
   // the node will always be treated as a succeeded node when it completes, both
   // when triggering downstream nodes with either task or data dependency and
@@ -599,6 +605,14 @@ message NodeExecutionOptions {
 
   // Async mode trigger configuration for this node.
   AsyncTrigger async_trigger = 8;
+
+  // Fine-grained control over manager node execution.
+  // TODO(kmonte): Add support for ASYNC options
+  // Next id: 1
+  message ManagerNodeExecutionOptions {}
+
+  // Manager node execution options for this node. Unset if not manager ndoe.
+  ManagerNodeExecutionOptions manager_node_execution_options = 9;
 }
 
 // Pipeline node definition.

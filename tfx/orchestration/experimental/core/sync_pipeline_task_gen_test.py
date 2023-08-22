@@ -92,8 +92,14 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _default_ensure_node_services)
 
-  def _make_pipeline(self, pipeline_root, pipeline_run_id):
-    pipeline = test_sync_pipeline.create_pipeline()
+  def _make_pipeline(
+      self, pipeline_root, pipeline_run_id, get_chore_pipeline=False
+  ):
+    pipeline = (
+        test_sync_pipeline.create_pipeline()
+        if not get_chore_pipeline
+        else test_sync_pipeline.create_chore_pipeline()
+    )
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
             compiler_constants.PIPELINE_ROOT_PARAMETER_NAME: pipeline_root,
@@ -1022,6 +1028,40 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     )
     self.assertIsInstance(update_node_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(update_node_task.state, pstate.NodeState.RUNNING)
+
+  def test_lazy_execution(self):
+    pipeline = self._make_pipeline(self._pipeline_root, str(uuid.uuid4()), True)
+    self._pipeline = pipeline
+    eg_1 = test_utils.get_node(pipeline, 'my_example_gen_1')
+    eg_2 = test_utils.get_node(pipeline, 'my_example_gen_2')
+    chore_a = test_utils.get_node(pipeline, 'chore_a')
+    chore_b = test_utils.get_node(pipeline, 'chore_b')
+    chore_c = test_utils.get_node(pipeline, 'chore_c')
+    chore_d = test_utils.get_node(pipeline, 'chore_d')
+    chore_e = test_utils.get_node(pipeline, 'chore_e')
+    chore_f = test_utils.get_node(pipeline, 'chore_f')
+    chore_g = test_utils.get_node(pipeline, 'chore_g')
+
+    # chore_a and chore_b can execute way earlier but should wait for chore_f
+    chore_a.execution_options.lazily_execute = True
+    chore_b.execution_options.lazily_execute = True
+
+    # chore_d and chore_e are on the same level so they should execute at the
+    # same time
+    chore_d.execution_options.lazily_execute = True
+    chore_e.execution_options.lazily_execute = True
+
+    test_utils.fake_example_gen_run(self._mlmd_connection, eg_1, 1, 1)
+    test_utils.fake_example_gen_run(self._mlmd_connection, eg_2, 1, 1)
+
+    self._run_next(False, expect_nodes=[chore_d, chore_e])
+    self._run_next(False, expect_nodes=[chore_f, chore_g])
+
+    # Need to wait a cycle for chore_f to get marked as succesful.
+    self._run_next(False, expect_nodes=[])
+    self._run_next(False, expect_nodes=[chore_a])
+    self._run_next(False, expect_nodes=[chore_b])
+    self._run_next(False, expect_nodes=[chore_c])
 
 
 if __name__ == '__main__':
