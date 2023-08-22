@@ -364,47 +364,44 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
   def test_generate_resolved_info(self):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
-    resolved_info = task_gen_utils.generate_resolved_info(
-        self._mlmd_connection_manager, self._transform
-    )
-    self.assertCountEqual(
-        ['my_pipeline', 'my_pipeline.my_transform'],
-        [c.name for c in resolved_info.contexts],
-    )
-    self.assertLen(
-        resolved_info.input_and_params[0].input_artifacts['examples'], 1
-    )
-    self.assertProtoPartiallyEquals(
-        f"""
-        id: 1
-        uri: "my_examples_uri"
-        custom_properties {{
-          key: "span"
-          value {{
-            int_value: 2
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      resolved_info = task_gen_utils.generate_resolved_info(
+          mlmd_connection_manager, self._transform)
+      self.assertCountEqual(['my_pipeline', 'my_pipeline.my_transform'],
+                            [c.name for c in resolved_info.contexts])
+      self.assertLen(
+          resolved_info.input_and_params[0].input_artifacts['examples'], 1)
+      self.assertProtoPartiallyEquals(
+          f"""
+          id: 1
+          uri: "my_examples_uri"
+          custom_properties {{
+            key: "span"
+            value {{
+              int_value: 2
+            }}
           }}
-        }}
-        custom_properties {{
-          key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
-          value {{string_value: "{version.__version__}"}}
-        }}
-        custom_properties {{
-          key: "version"
-          value {{
-            int_value: 1
+          custom_properties {{
+            key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
+            value {{string_value: "{version.__version__}"}}
           }}
-        }}
-        state: LIVE""",
-        resolved_info.input_and_params[0]
-        .input_artifacts['examples'][0]
-        .mlmd_artifact,
-        ignored_fields=[
-            'type_id',
-            'type',
-            'create_time_since_epoch',
-            'last_update_time_since_epoch',
-        ],
-    )
+          custom_properties {{
+            key: "version"
+            value {{
+              int_value: 1
+            }}
+          }}
+          state: LIVE""",
+          resolved_info.input_and_params[0]
+          .input_artifacts['examples'][0]
+          .mlmd_artifact,
+          ignored_fields=[
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
 
   def test_generate_resolved_info_with_dynamic_exec_prop(self):
     dynamic_exec_properties_pipeline = (
@@ -431,33 +428,22 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
                 'test_run_dynamic_prop'
             )
 
-    otu.fake_upstream_node_run(
-        self._mlmd_connection,
-        self._upstream_node,
-        self.create_tempfile().full_path,
-    )
-    resolved_info = task_gen_utils.generate_resolved_info(
-        self._mlmd_connection_manager, self._dynamic_exec_properties_node
-    )
+    otu.fake_upstream_node_run(self._mlmd_connection, self._upstream_node,
+                               self.create_tempfile().full_path)
+    with self._mlmd_connection_manager as mlmd_connection_manager:
+      resolved_info = task_gen_utils.generate_resolved_info(
+          mlmd_connection_manager, self._dynamic_exec_properties_node)
 
-    self.assertCountEqual(
-        [
-            'my_pipeline',
-            'test_run_dynamic_prop',
-            'my_pipeline.DownstreamComponent',
-        ],
-        [c.name for c in resolved_info.contexts],
-    )
-    self.assertLen(
-        resolved_info.input_and_params[0].input_artifacts[
-            '_UpstreamComponent.num'
-        ],
-        1,
-    )
-    self.assertEqual(
-        otu.OUTPUT_NUM,
-        resolved_info.input_and_params[0].exec_properties['input_num'],
-    )
+      self.assertCountEqual([
+          'my_pipeline', 'test_run_dynamic_prop',
+          'my_pipeline.DownstreamComponent'
+      ], [c.name for c in resolved_info.contexts])
+      self.assertLen(
+          resolved_info.input_and_params[0]
+          .input_artifacts['_UpstreamComponent.num'], 1)
+      self.assertEqual(
+          otu.OUTPUT_NUM,
+          resolved_info.input_and_params[0].exec_properties['input_num'])
 
   @parameterized.named_parameters(
       dict(

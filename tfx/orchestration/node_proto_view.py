@@ -265,4 +265,4 @@ def get_view(
   if isinstance(pipeline_or_node, pipeline_pb2.Pipeline):
     return ComposablePipelineProtoView(pipeline_or_node)
 
-  raise ValueError(f'Got unknown pipeline or node type: {pipeline_or_node}.')
+  raise ValueError('Got unknown pipeline or node type.')
