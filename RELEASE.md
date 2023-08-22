@@ -2,6 +2,24 @@
 
 ## Major Features and Improvements
 
+## Breaking Changes 
+
+### For Pipeline Authors
+
+### For Component Authors
+
+## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Dependency Updates
+
+## Documentation Updates
+
+# Version 1.14.0
+
+## Major Features and Improvements
+
 *  Added python 3.10 support.
 
 ## Breaking Changes
