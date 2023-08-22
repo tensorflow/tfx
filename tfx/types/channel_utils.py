@@ -25,7 +25,8 @@ symbols are already available from one of followings:
 Consider other symbols as private.
 """
 
-from typing import Callable, cast, Dict, Iterable, Iterator, List, Type, Optional, Set, Sequence
+import typing
+from typing import Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Type, cast
 
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.proto.orchestration import placeholder_pb2
@@ -179,10 +180,60 @@ def external_pipeline_artifact_query(
 def get_dependent_channels(
     placeholder: ph.Placeholder,
 ) -> Iterator[channel.Channel]:
-  """Yields all Channels used in/under the given placeholder."""
+  """Yields all Channels used in/ the given placeholder."""
   for p in placeholder.traverse():
     if isinstance(p, ph.ChannelWrappedPlaceholder):
-      yield p.channel
+      yield typing.cast(channel.Channel, p.channel)
+
+
+def unwrap_simple_channel_placeholder(
+    placeholder: ph.Placeholder,
+) -> channel.Channel:
+  """Unwraps a `x.future()[0].value` placeholder and returns its `x`.
+
+  Args:
+    placeholder: A placeholder expression.
+
+  Returns:
+    The (only) channel involved in the expression.
+
+  Raises:
+    ValueError: If the input placeholder is anything more complex than
+      `some_channel.future()[0].value`, and in particular if it involves
+      multiple channels, arithmetic operations or input/output artifacts.
+  """
+  the_one_channel: channel.BaseChannel | None = None
+  for p in placeholder.traverse():
+    if isinstance(p, ph.ChannelWrappedPlaceholder):
+      if the_one_channel is not None:
+        raise ValueError(
+            'Expected a placeholder with just a single channel, but got one '
+            f'with multiple: {placeholder.encode()}'
+        )
+      the_one_channel = p.channel
+    # This check isn't exhaustive, e.g. the user could still do `+ 'foo` (using
+    # _ConcatOperator) or other simple operations involving private classes.
+    # Those would go undetected, but this is better than nothing and it doesn't
+    # require accessing those private classes.
+    elif isinstance(
+        p,
+        ph.RuntimeInfoPlaceholder
+        | ph.ExecPropertyPlaceholder
+        | ph.ExecInvocationPlaceholder
+        | ph.ArtifactPlaceholder
+        | ph.ListPlaceholder,
+    ):
+      raise ValueError(
+          'Expected a placeholder that only reads from an upstream channel, '
+          f'but got a more complex placeholder involving {type(p)}: '
+          f'{placeholder.encode()}'
+      )
+  if the_one_channel is None:
+    raise ValueError(
+        'Expected a placeholder with a single channel, but got one with no '
+        f'channels at all: {placeholder.encode()}'
+    )
+  return typing.cast(channel.Channel, the_one_channel)
 
 
 def encode_placeholder_with_channels(

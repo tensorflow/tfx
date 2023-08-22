@@ -23,12 +23,14 @@ from absl import logging
 import attr
 from tfx import types
 from tfx.dsl.compiler import constants as context_constants
+from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -41,7 +43,7 @@ from tfx.utils import proto_utils
 from tfx.utils import status as status_lib
 from tfx.utils import typing_utils
 
-from google.protobuf import any_pb2
+from tfx.orchestration.experimental.core import deployment_config_utils
 import ml_metadata as mlmd
 from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
@@ -172,9 +174,41 @@ def resolve_exec_properties(
           node_parameters=node.parameters))
 
 
+def _create_placeholder_context(
+    pipeline: pipeline_pb2.Pipeline,
+    node: node_proto_view.NodeProtoView,
+    input_artifacts: typing_utils.ArtifactMultiMap,
+) -> placeholder_utils.ResolutionContext:
+  """Collects context information into an object for placeholder resolution."""
+  exec_info = data_types.ExecutionInfo(
+      input_dict={key: list(value) for key, value in input_artifacts.items()},
+      pipeline_node=node.raw_proto(),
+      pipeline_info=pipeline.pipeline_info,
+      pipeline_run_id=pipeline.runtime_spec.pipeline_run_id.field_value.string_value,
+      top_level_pipeline_run_id=pipeline.runtime_spec.top_level_pipeline_run_id,
+  )
+
+  if not pipeline.deployment_config.Is(
+      pipeline_pb2.IntermediateDeploymentConfig.DESCRIPTOR
+  ):
+    return placeholder_utils.ResolutionContext(exec_info=exec_info)
+  depl_config = pipeline_pb2.IntermediateDeploymentConfig()
+  pipeline.deployment_config.Unpack(depl_config)
+  return placeholder_utils.ResolutionContext(
+      exec_info=exec_info,
+      executor_spec=deployment_config_utils.get_executor_spec(
+          depl_config, node.node_info.id
+      ),
+      platform_config=deployment_config_utils.get_platform_config(
+          depl_config, node.node_info.id
+      ),
+  )
+
+
 def generate_resolved_info(
     mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     node: node_proto_view.NodeProtoView,
+    pipeline: pipeline_pb2.Pipeline,
     skip_errors: Iterable[Type[exceptions.InputResolutionError]] = (),
 ) -> ResolvedInfo:
   """Returns a `ResolvedInfo` object for executing the node or `None` to skip.
@@ -183,6 +217,7 @@ def generate_resolved_info(
     mlmd_connection_manager: MLMDConnectionManager instance for handling
       multiple mlmd db connections.
     node: The pipeline node for which to generate.
+    pipeline: The pipeline proto from which the node was taken (for context).
     skip_errors: A list of errors to skip on the given error types.
 
   Returns:
@@ -207,8 +242,10 @@ def generate_resolved_info(
 
   # Resolve inputs.
   try:
-    resolved_input_artifacts = inputs_utils.resolve_input_artifacts(
-        metadata_handler=mlmd_connection_manager, pipeline_node=node
+    resolved_input_artifacts: Sequence[typing_utils.ArtifactMultiMap] = (
+        inputs_utils.resolve_input_artifacts(
+            metadata_handler=mlmd_connection_manager, pipeline_node=node
+        )
     )
   except exceptions.InputResolutionError as e:
     for skip_error in skip_errors:
@@ -219,27 +256,25 @@ def generate_resolved_info(
   if not resolved_input_artifacts:
     return result
 
-  if resolved_input_artifacts:
-    for input_artifacts in resolved_input_artifacts:
-      try:
-        dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
-            node_parameters=node.parameters, input_artifacts=input_artifacts)
-      except exceptions.InputResolutionError as e:
-        logging.exception('[%s] Parameter resolution error: %s',
-                          node.node_info.id, e)
-        raise
-
-      if not dynamic_exec_properties:
-        cur_exec_properties = exec_properties
-      else:
-        cur_exec_properties = {**exec_properties, **dynamic_exec_properties}
-
-      result.input_and_params.append(
-          InputAndParam(
-              input_artifacts=input_artifacts,
-              exec_properties=cur_exec_properties,
-          )
+  for input_artifacts in resolved_input_artifacts:
+    try:
+      dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
+          node_parameters=node.parameters,
+          context=_create_placeholder_context(pipeline, node, input_artifacts),
       )
+    except exceptions.InputResolutionError as e:
+      logging.exception(
+          '[%s] Parameter resolution error: %s', node.node_info.id, e
+      )
+      raise
+
+    result.input_and_params.append(
+        InputAndParam(
+            input_artifacts=input_artifacts,
+            exec_properties={**exec_properties, **dynamic_exec_properties},
+        )
+    )
+
   return result
 
 
@@ -451,19 +486,6 @@ def get_oldest_active_execution(
         active_executions, key=lambda e: e.create_time_since_epoch
     )
   return sorted_active_executions[0]
-
-
-# TODO(b/182944474): Raise error in _get_executor_spec if executor spec is
-# missing for a non-system node.
-def get_executor_spec(pipeline: pipeline_pb2.Pipeline,
-                      node_id: str) -> Optional[any_pb2.Any]:
-  """Returns executor spec for given node_id if it exists in pipeline IR, None otherwise."""
-  if not pipeline.deployment_config.Is(
-      pipeline_pb2.IntermediateDeploymentConfig.DESCRIPTOR):
-    return None
-  depl_config = pipeline_pb2.IntermediateDeploymentConfig()
-  pipeline.deployment_config.Unpack(depl_config)
-  return depl_config.executor_specs.get(node_id)
 
 
 def register_executions_from_existing_executions(

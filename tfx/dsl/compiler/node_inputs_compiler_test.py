@@ -28,6 +28,7 @@ from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.experimental.node_execution_options import utils as execution_options_utils
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
@@ -362,6 +363,28 @@ class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
 
     result = self._compile_node_inputs(
         consumer, components=[producer, consumer])
+
+    self.assertLen(result.inputs, 1)
+    dynamic_prop_input_key = list(result.inputs)[0]
+    self.assertFalse(result.inputs[dynamic_prop_input_key].hidden)
+    self.assertEqual(result.inputs[dynamic_prop_input_key].min_count, 1)
+
+  def testCompileInputsForComplexDynamicProperties(self):
+    producer = DummyNode('Producer')
+    consumer = DummyNode(
+        'Consumer',
+        exec_properties={
+            'x': (
+                producer.output('x', standard_artifacts.Integer).future().value
+                + 'foo'
+                + ph.execution_invocation().pipeline_run_id
+            )
+        },
+    )
+
+    result = self._compile_node_inputs(
+        consumer, components=[producer, consumer]
+    )
 
     self.assertLen(result.inputs, 1)
     dynamic_prop_input_key = list(result.inputs)[0]

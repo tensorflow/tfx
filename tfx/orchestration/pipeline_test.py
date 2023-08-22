@@ -151,7 +151,7 @@ class PipelineTest(test_case_utils.TfxTest):
   def testPipelineWithDynamicExecProperties(self):
     component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
                                                 {})
-    dynamic_exec_prop = component_a.outputs['output'].future()[0].value
+    dynamic_exec_prop = component_a.outputs['output'].future()[0].value + 'foo'
     component_b = _make_fake_component_instance(
         name='component_b',
         output_type=_OutputTypeB,

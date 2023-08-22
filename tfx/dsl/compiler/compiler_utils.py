@@ -234,17 +234,19 @@ def build_channel_to_key_fn(implicit_keys_map):
   return channel_to_key_fn
 
 
-def validate_dynamic_exec_ph_operator(placeholder: ph.ArtifactPlaceholder):
-  # Supported format for dynamic exec prop:
-  # component.output['ouput_key'].future()[0].value
-  if len(placeholder._operators) != 2:  # pylint: disable=protected-access
-    raise ValueError("dynamic exec property should contain two placeholder "
-                     "operator, while pass %d operaters" %
-                     len(placeholder._operators))  # pylint: disable=protected-access
-  if (not isinstance(placeholder._operators[0], ph._IndexOperator) or  # pylint: disable=protected-access
-      not isinstance(placeholder._operators[1], ph._ArtifactValueOperator)):  # pylint: disable=protected-access
-    raise ValueError("dynamic exec property should be in form of "
-                     "component.output[\'ouput_key\'].future()[0].value")
+def validate_exec_property_placeholder(key: str, placeholder: ph.Placeholder):
+  """Fails if the given placeholder is not allowed for an exec_property."""
+  for p in placeholder.traverse():
+    if isinstance(p, ph.ArtifactPlaceholder) and p.is_output:
+      raise ValueError(
+          f"Exec property {key!r} depends on output placeholder {p.key!r} but "
+          "must not."
+      )
+    if isinstance(p, ph.ExecPropertyPlaceholder):
+      raise ValueError(
+          f"Exec property {key!r} depends on another exec property "
+          f"{p.key!r} but must not."
+      )
 
 
 def output_spec_from_channel(channel: types.BaseChannel,

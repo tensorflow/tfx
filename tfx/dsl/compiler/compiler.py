@@ -513,13 +513,8 @@ def _set_node_parameters(node: pipeline_pb2.PipelineNode,
       compiler_utils.set_runtime_parameter_pb(parameter_value.runtime_parameter,
                                               value.name, value.ptype,
                                               value.default)
-    # RuntimeInfoPlaceholder passes Execution parameters of Facade
-    # components.
-    elif isinstance(value, placeholder.RuntimeInfoPlaceholder):
-      parameter_value.placeholder.CopyFrom(value.encode())
-    # ChannelWrappedPlaceholder passes dynamic execution parameter.
-    elif isinstance(value, placeholder.ChannelWrappedPlaceholder):
-      compiler_utils.validate_dynamic_exec_ph_operator(value)
+    elif isinstance(value, placeholder.Placeholder):
+      compiler_utils.validate_exec_property_placeholder(key, value)
       parameter_value.placeholder.CopyFrom(
           channel_utils.encode_placeholder_with_channels(
               value, compiler_utils.implicit_channel_key

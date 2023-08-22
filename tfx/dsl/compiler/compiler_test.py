@@ -154,7 +154,11 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     if persist_test_protos.value:
       _persist_pipeline_proto(
           pipeline_module.__name__, golden_filename, compiled_pb)
-    self.assertProtoEquals(expected_pb, compiled_pb)
+    self.assertProtoEquals(
+        expected_pb,
+        compiled_pb,
+        msg="Run this test with --persist_test_protos to update the goldens.",
+    )
 
   def testCompileAdditionalPropertyTypeError(self):
     dsl_compiler = compiler.Compiler()

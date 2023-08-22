@@ -22,6 +22,7 @@ import attr
 import grpc
 import portpicker
 from tfx import types
+from tfx.dsl.compiler import placeholder_utils
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
@@ -182,6 +183,7 @@ class Launcher:
     self._pipeline_info = pipeline_info
     self._pipeline_runtime_spec = pipeline_runtime_spec
     self._executor_spec = executor_spec
+    self._platform_config = platform_config
     self._executor_operators = {}
     self._executor_operators.update(DEFAULT_EXECUTOR_OPERATORS)
     self._executor_operators.update(custom_executor_operators or {})
@@ -315,11 +317,27 @@ class Launcher:
 
       # 4. Resolve the dynamic exec properties from implicit input channels.
       try:
+        placeholder_context = placeholder_utils.ResolutionContext(
+            exec_info=data_types.ExecutionInfo(
+                input_dict={
+                    key: list(value) for key, value in input_artifacts.items()
+                },
+                pipeline_node=self._pipeline_node,
+                pipeline_info=self._pipeline_info,
+                pipeline_run_id=self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value,
+                top_level_pipeline_run_id=self._pipeline_runtime_spec.top_level_pipeline_run_id,
+            ),
+            executor_spec=self._executor_spec,
+            platform_config=self._platform_config,
+        )
         dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
             node_parameters=self._pipeline_node.parameters,
-            input_artifacts=input_artifacts)
+            context=placeholder_context,
+        )
         exec_properties.update(dynamic_exec_properties)
       except exceptions.InputResolutionError as e:
+        logging.exception('[%s] Dynamic exec property resolution error: %s',
+                          self._pipeline_node.node_info.id, e)
         execution = self._register_or_reuse_execution(
             metadata_handler=m,
             contexts=contexts,
@@ -553,10 +571,9 @@ class Launcher:
 
     # Runs as a normal node.
     execution_preparation_result = self._prepare_execution()
-    (execution_info, contexts,
-     is_execution_needed) = (execution_preparation_result.execution_info,
-                             execution_preparation_result.contexts,
-                             execution_preparation_result.is_execution_needed)
+    execution_info = execution_preparation_result.execution_info
+    contexts = execution_preparation_result.contexts
+    is_execution_needed = execution_preparation_result.is_execution_needed
     if is_execution_needed:
       executor_watcher = None
       try:

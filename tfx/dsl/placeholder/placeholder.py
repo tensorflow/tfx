@@ -542,6 +542,10 @@ class ExecPropertyPlaceholder(_ProtoAccessiblePlaceholder):
   def __init__(self, key: str):
     super().__init__(placeholder_pb2.Placeholder.Type.EXEC_PROPERTY, key)
 
+  @property
+  def key(self) -> Optional[str]:
+    return self._key
+
   def serialize_list(self: _T,
                      serialization_format: ListSerializationFormat) -> _T:
     """Serializes list-value placeholder to JSON or comma-separated string.

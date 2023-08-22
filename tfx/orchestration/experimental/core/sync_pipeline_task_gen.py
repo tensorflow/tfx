@@ -402,7 +402,7 @@ class _Generator:
 
     try:
       resolved_info = task_gen_utils.generate_resolved_info(
-          self._mlmd_connection_manager, node)
+          self._mlmd_connection_manager, node, self._pipeline)
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
                    f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')

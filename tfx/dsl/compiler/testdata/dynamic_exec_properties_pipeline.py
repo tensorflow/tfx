@@ -43,8 +43,8 @@ def UpstreamComponent(start_num: Parameter[int],   # pylint: disable=invalid-nam
 
 class DownStreamSpec(types.ComponentSpec):
   PARAMETERS = {
-      'input_num':
-          component_spec.ExecutionParameter(type=int)
+      'input_num': component_spec.ExecutionParameter(type=int),
+      'input_str': component_spec.ExecutionParameter(type=str),
   }
   INPUTS = {}
   OUTPUTS = {}
@@ -68,16 +68,21 @@ class DownstreamComponent(base_component.BaseComponent):
   SPEC_CLASS = DownStreamSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(Executor)
 
-  def __init__(self,
-               input_num: Optional[Union[int, ph.Placeholder]] = None):
-    spec = DownStreamSpec(input_num=input_num)
+  def __init__(
+      self,
+      input_num: Optional[Union[int, ph.Placeholder]] = None,
+      input_str: Optional[Union[str, ph.Placeholder]] = None,
+  ):
+    spec = DownStreamSpec(input_num=input_num, input_str=input_str)
     super().__init__(spec=spec)
 
 
 def generate_dynamic_exec_components() -> List[base_node.BaseNode]:
   upstream_component = UpstreamComponent(start_num=1)  # pylint: disable=no-value-for-parameter
   downstream_component = DownstreamComponent(
-      input_num=upstream_component.outputs['num'].future()[0].value)
+      input_num=upstream_component.outputs['num'].future()[0].value,
+      input_str=ph.execution_invocation().pipeline_run_id,
+  )
   return [upstream_component, downstream_component]
 
 
