@@ -411,11 +411,19 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self._chore_a.execution_options.skip.SetInParent()
     self._chore_b.execution_options.skip.SetInParent()
     self._evaluator.execution_options.skip.SetInParent()
+
+    with self._mlmd_connection as m:
+      pipeline_state = test_utils.get_or_create_pipeline_state(
+          m, self._pipeline
+      )
+      with pipeline_state:
+        node_states_dict = pipeline_state.get_node_states_dict()
     expected_skipped_node_ids = {
         'my_example_gen', 'chore_a', 'chore_b', 'my_evaluator'
     }
-    self.assertEqual(expected_skipped_node_ids,
-                     sptg._skipped_node_ids(self._pipeline))
+    self.assertEqual(
+        expected_skipped_node_ids, sptg._skipped_node_ids(node_states_dict)
+    )
 
     layers = sptg._topsorted_layers(self._pipeline)
     # All downstream nodes of trainer are marked as skipped, so it's considered
@@ -434,6 +442,153 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self._run_next(
         False, expect_nodes=[self._example_validator, self._transform])
     self._run_next(False, expect_nodes=[self._trainer])
+    # All runnable nodes executed, finalization task should be produced.
+    [finalize_task] = self._generate(False, True)
+    self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
+
+  def test_terminal_nodes_with_partial_run_and_programatically_skipped(self):
+    """Tests that nodes with only skipped downstream nodes are terminal nodes.
+
+    Since we mark SKIPPED nodes as "succesful" we should make sure that the
+    parent nodes of SKIPPED (or SKIPPED_PARTIAL_RUN) nodes are considered as
+    terminal nodes so the pipeline will not finish prematurely.
+
+    There was a bug (b/282034382) were we only treated SKIPPED_PARTIAL_RUN nodes
+    as "skipped" so for nodes that were SKIPPED programtically would still be
+    treated as terminal nodes, causing some pipelines to pre-maturely finish.
+    """
+    # Check the expected skipped and terminal nodes.
+    self._example_gen.execution_options.skip.SetInParent()
+    self._chore_a.execution_options.skip.SetInParent()
+    self._chore_b.execution_options.skip.SetInParent()
+    self._evaluator.execution_options.skip.SetInParent()
+
+    # Mark trainer as programatically skipped, not as part of the partial run.
+    with self._mlmd_connection as m:
+      pipeline_state = test_utils.get_or_create_pipeline_state(
+          m, self._pipeline
+      )
+      with pipeline_state:
+        with pipeline_state.node_state_update_context(
+            task_lib.NodeUid.from_node(self._pipeline, self._trainer)
+        ) as node_state:
+          assert node_state.is_programmatically_skippable()
+          node_state.update(
+              pstate.NodeState.SKIPPED,
+              status_lib.Status(
+                  code=status_lib.Code.OK,
+                  message='Node skipped by client request.',
+              ),
+          )
+        node_states_dict = pipeline_state.get_node_states_dict()
+
+    expected_skipped_node_ids = {
+        'my_example_gen',
+        'chore_a',
+        'chore_b',
+        'my_evaluator',
+        'my_trainer',
+    }
+    self.assertEqual(
+        expected_skipped_node_ids, sptg._skipped_node_ids(node_states_dict)
+    )
+    layers = sptg._topsorted_layers(self._pipeline)
+
+    # Check that parent nodes of terminal skipped nodes are terminal
+    expected_terminal_nodes = {'my_transform', 'my_example_validator'}
+    self.assertSetEqual(
+        expected_terminal_nodes,
+        sptg._terminal_node_ids(layers, expected_skipped_node_ids),
+    )
+    # All downstream nodes of transform are marked as skipped, so it's
+    # considered a terminal node.
+    self.assertEqual(
+        {
+            self._transform.node_info.id,
+            self._example_validator.node_info.id,
+        },
+        sptg._terminal_node_ids(layers, expected_skipped_node_ids),
+    )
+
+    # Start executing the pipeline:
+    test_utils.fake_cached_example_gen_run(
+        self._mlmd_connection, self._example_gen
+    )
+    self._run_next(False, expect_nodes=[self._stats_gen])
+    self._run_next(False, expect_nodes=[self._schema_gen])
+
+    # Trigger PAUSE on transform so it doesn't get run next.
+    with self._mlmd_connection as m:
+      pipeline_state = test_utils.get_or_create_pipeline_state(
+          m, self._pipeline
+      )
+      with pipeline_state:
+        with pipeline_state.node_state_update_context(
+            task_lib.NodeUid.from_node(self._pipeline, self._transform)
+        ) as node_state:
+          assert node_state.is_stoppable()
+          node_state.update(
+              pstate.NodeState.STOPPING,
+              status_lib.Status(
+                  code=status_lib.Code.CANCELLED,
+                  message='Cancellation requested by client.',
+              ),
+          )
+
+    # Let example_validator "finish running".
+    self._run_next(False, expect_nodes=[self._example_validator])
+
+    # All tasks that can be run have been run, assume nothing happens since
+    # transform is paused.
+    tasks = self._generate(False, True)
+    self.assertEmpty(tasks)
+
+    # Pause the pipeline
+    with self._mlmd_connection as m:
+      pipeline_state = test_utils.get_or_create_pipeline_state(
+          m, self._pipeline
+      )
+      with pipeline_state:
+        pipeline_state.initiate_stop(
+            status_lib.Status(
+                code=status_lib.Code.CANCELLED,
+                message='Cancellation requested by client.',
+            ),
+        )
+    # All tasks that can be run have been run, assume nothing happens since
+    # transform is paused.
+    tasks = self._generate(False, True)
+    self.assertEmpty(tasks)
+
+    # Unpause just pipeline and transform and make sure pipeline will not
+    # finalize.
+    with self._mlmd_connection as m:
+      pipeline_state = test_utils.get_or_create_pipeline_state(
+          m, self._pipeline
+      )
+      with pipeline_state:
+        pipeline_state.initiate_resume()
+
+    tasks = self._generate(False, True)
+    self.assertEmpty(tasks)
+
+    # Unpause transform and make sure pipeline can continue as expected.
+    with self._mlmd_connection as m:
+      pipeline_state = test_utils.get_or_create_pipeline_state(
+          m, self._pipeline
+      )
+      with pipeline_state:
+        with pipeline_state.node_state_update_context(
+            task_lib.NodeUid.from_node(self._pipeline, self._transform)
+        ) as node_state:
+          node_state.update(
+              pstate.NodeState.STARTED,
+              status_lib.Status(
+                  code=status_lib.Code.OK,
+              ),
+          )
+
+    self._run_next(False, expect_nodes=[self._transform])
     # All runnable nodes executed, finalization task should be produced.
     [finalize_task] = self._generate(False, True)
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
