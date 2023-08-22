@@ -15,8 +15,7 @@
 
 # Base types are meant for type hinting only. Abstrain from directly inheriting
 # base types for your own classes.
-# pylint: disable=g-importing-member
-from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.dsl.components.base.base_node import BaseNode
 from tfx.types.channel import BaseChannel
+
 from tfx.v1.types import standard_artifacts
