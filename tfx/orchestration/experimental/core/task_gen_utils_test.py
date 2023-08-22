@@ -686,87 +686,51 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
   def test_get_unprocessed_inputs(self):
     with self._mlmd_connection as m:
-      # Prepare context.
-      context_type = metadata_store_pb2.ContextType(name='ctx_type')
-      context_type_id = m.store.put_context_type(context_type)
-      context = metadata_store_pb2.Context(name='ctx', type_id=context_type_id)
-      m.store.put_contexts([context])
-
-      # Prepare artifact.
-      artifact_type = metadata_store_pb2.ArtifactType(name='a_type')
-      artifact_type.id = m.store.put_artifact_type(artifact_type)
-      artifact_pb_1 = metadata_store_pb2.Artifact(type_id=artifact_type.id)
-      artifact_pb_1.id = m.store.put_artifacts([artifact_pb_1])[0]
-      artifact_pb_2 = metadata_store_pb2.Artifact(type_id=artifact_type.id)
-      artifact_pb_2.id = m.store.put_artifacts([artifact_pb_2])[0]
-      [artifact_1, artifact_2] = artifact_utils.deserialize_artifacts(
-          artifact_type, [artifact_pb_1, artifact_pb_2]
-      )
-
+      contexts = m.store.get_contexts()
       with self.subTest(name='NoInput'):
         # There is no input.
         resolved_info = task_gen_utils.ResolvedInfo(
-            contexts=[context], input_and_params=[]
+            contexts=contexts, input_and_params=[]
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [], resolved_info, self._transform
+            m, resolved_info, self._transform
         )
         self.assertEmpty(unprocessed_inputs)
+
+      # Fake one output for _example_gen, so there is 1 input for _transform.
+      otu.fake_upstream_node_run(
+          m, self._example_gen, self.create_tempfile().full_path
+      )
+      artifact_types = m.store.get_artifact_types()
+      artifacts = artifact_utils.deserialize_artifacts(
+          artifact_types[0], m.store.get_artifacts()
+      )
+      input_and_param = task_gen_utils.InputAndParam(
+          input_artifacts={'examples': artifacts}
+      )
+      resolved_info_for_transform = task_gen_utils.ResolvedInfo(
+          contexts=contexts,
+          input_and_params=[input_and_param],
+      )
 
       with self.subTest(name='OneUnprocessedInput'):
-        # There is 1 unprocessed_input
-        input_and_param = task_gen_utils.InputAndParam(
-            input_artifacts={'examples': [artifact_1, artifact_2]}
-        )
-        resolved_info = task_gen_utils.ResolvedInfo(
-            contexts=[context],
-            input_and_params=[input_and_param],
-        )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [], resolved_info, self._transform
+            m, resolved_info_for_transform, self._transform
         )
         self.assertLen(unprocessed_inputs, 1)
         self.assertEqual(unprocessed_inputs[0], input_and_param)
-
-      # Simulate that artifact_1 and artifact_2 are processed.
-      execution = execution_lib.prepare_execution(
-          m,
-          execution_type=metadata_store_pb2.ExecutionType(name='my_ex_type'),
-          state=metadata_store_pb2.Execution.COMPLETE,
-      )
-      execution = execution_lib.put_execution(
-          m,
-          execution,
-          [context],
-          input_artifacts={'examples': [artifact_1, artifact_2]},
-      )
 
       with self.subTest(name='ResolvedArtifactsMatchProcessedArtifacts'):
-        input_and_param = task_gen_utils.InputAndParam(
-            input_artifacts={'examples': [artifact_1, artifact_2]}
+        # Simulate that the output for _example_gen is processed, so no
+        # unprocessed input for _transform.
+        execution = otu.fake_start_node_with_handle(
+            m, self._transform, input_artifacts={'examples': artifacts}
         )
-        resolved_info = task_gen_utils.ResolvedInfo(
-            contexts=[context],
-            input_and_params=[input_and_param],
-        )
+        otu.fake_finish_node_with_handle(m, self._transform, execution.id)
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [execution], resolved_info, self._transform
+            m, resolved_info_for_transform, self._transform
         )
         self.assertEmpty(unprocessed_inputs)
-
-      with self.subTest(name='ResolvedArtifactsNotMatchProcessedArtifacts'):
-        input_and_param = task_gen_utils.InputAndParam(
-            input_artifacts={'key1': [artifact_1], 'key2': [artifact_2]}
-        )
-        resolved_info = task_gen_utils.ResolvedInfo(
-            contexts=[context],
-            input_and_params=[input_and_param],
-        )
-        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [execution], resolved_info, self._transform
-        )
-        self.assertLen(unprocessed_inputs, 1)
-        self.assertEqual(unprocessed_inputs[0], input_and_param)
 
   def test_get_unprocessed_inputs_no_trigger(self):
     # Set the example_gen to transform node as NO_TRIGGER.
@@ -784,7 +748,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     )
     unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
         self._mlmd_connection,
-        [],
         resolved_info,
         self._transform,
     )

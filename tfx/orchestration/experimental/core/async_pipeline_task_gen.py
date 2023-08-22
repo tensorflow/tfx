@@ -388,51 +388,11 @@ class _Generator:
 
     if backfill_token:
       # For backfills, ignore all previous executions.
-      successful_executions = []
+      unprocessed_inputs = resolved_info.input_and_params
     else:
-      artifact_create_times = []
-      input_triggers = node.execution_options.async_trigger.input_triggers
-      ignore_keys = {
-          k for k, t in input_triggers.items()
-          if k.startswith('_') or t.no_trigger
-      }
-      for input_and_param in resolved_info.input_and_params:
-        for key, artifacts in input_and_param.input_artifacts.items():
-          if key.startswith('_') or key in ignore_keys:
-            continue
-          artifact_create_times.extend(
-              a.mlmd_artifact.create_time_since_epoch for a in artifacts
-          )
-
-      if artifact_create_times:
-        # A resolved input whose artifacts with min timestamp T is not an input
-        # to a execution having creation timestamp < T. So, we only need to
-        # get executions with timestamp larger than the minimum timestamp of all
-        # the artifacts in resolved inputs.
-        successful_executions = task_gen_utils.get_executions(
-            metadata_handler,
-            node,
-            only_successful=True,
-            additional_filters=[
-                f'create_time_since_epoch >= {min(artifact_create_times)}'
-            ],
-        )
-      else:
-        # In cases that resolved_info don't have any artifacts, we only need to
-        # get the last successful execution.
-        successful_executions = task_gen_utils.get_executions(
-            metadata_handler,
-            node,
-            only_successful=True,
-            limit=1,
-        )
-      logging.info(
-          'Fetched %d successful executions.', len(successful_executions)
+      unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+          metadata_handler, resolved_info, node
       )
-
-    unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-        metadata_handler, successful_executions, resolved_info, node
-    )
     if not unprocessed_inputs:
       return result
 
