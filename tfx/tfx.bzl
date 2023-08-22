@@ -14,7 +14,7 @@
 """Proto library helper utils.
 """
 
-load("@com_google_protobuf//:protobuf.bzl", "py_proto_library")
+load("//google/protobuf:protobuf.bzl", "py_proto_library")
 
 def tfx_py_proto_library(name, srcs = [], deps = [], visibility = None, testonly = 0, use_grpc_plugin = False):
     """Opensource py_proto_library."""
@@ -22,9 +22,9 @@ def tfx_py_proto_library(name, srcs = [], deps = [], visibility = None, testonly
         name = name,
         srcs = srcs,
         srcs_version = "PY2AND3",
-        deps = ["@com_google_protobuf//:protobuf_python"] + deps,
-        default_runtime = "@com_google_protobuf//:protobuf_python",
-        protoc = "@com_google_protobuf//:protoc",
+        deps = ["@com_google_protobuf//:well_known_types_py_pb2"] + deps,
+        default_runtime = "//google/protobuf:protobuf_python",
+        protoc = "//google/protobuf:protoc",
         visibility = visibility,
         testonly = testonly,
         use_grpc_plugin = use_grpc_plugin,
