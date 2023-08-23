@@ -118,8 +118,8 @@ def enumerate_implicit_dependencies(
   for component in components:
     channels = list(component.inputs.values())
     for exec_property in component.exec_properties.values():
-      if isinstance(exec_property, ph.ChannelWrappedPlaceholder):
-        channels.append(exec_property.channel)
+      if isinstance(exec_property, ph.Placeholder):
+        channels.extend(channel_utils.get_dependent_channels(exec_property))
     for predicate in conditional.get_predicates(component, registry):
       channels.extend(channel_utils.get_dependent_channels(predicate))
 

@@ -356,12 +356,6 @@ class ComponentSpecTest(tf.test.TestCase):
     placeholder_parameter.type_check(
         'placeholder_parameter',
         placeholder.runtime_info('platform_config').base_dir)
-    with self.assertRaisesRegex(
-        TypeError, 'Only simple RuntimeInfoPlaceholders are supported'):
-      placeholder_parameter.type_check(
-          'placeholder_parameter',
-          placeholder.runtime_info('platform_config').base_dir +
-          placeholder.exec_property('version'))
 
   @unittest.skipIf(sys.version_info.major == 3 and sys.version_info.minor < 9,
                    'Only works for Python 3.9+')

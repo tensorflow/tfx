@@ -16,9 +16,10 @@ import collections
 import os
 
 import tensorflow as tf
-
 from tfx import types
+from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -303,19 +304,40 @@ class InputsUtilsTest(_TestMixin):
     text_format.Parse(
         """
         parameters {
-          key: "input_num"
+          key: "input_str"
           value {
             placeholder {
               operator {
-                artifact_value_op {
-                  expression {
+                concat_op {
+                  expressions {
                     operator {
-                      index_op {
+                      artifact_value_op {
                         expression {
-                          placeholder {
-                            key: "_test_placeholder"
+                          operator {
+                            index_op {
+                              expression {
+                                placeholder {
+                                  key: "_test_placeholder"
+                                }
+                              }
+                            }
                           }
                         }
+                      }
+                    }
+                  }
+                  expressions {
+                    value { string_value: "_foo_" }
+                  }
+                  expressions {
+                    operator {
+                      proto_op {
+                        expression {
+                          placeholder {
+                            type: EXEC_INVOCATION
+                          }
+                        }
+                        proto_field_path: ".pipeline_run_id"
                       }
                     }
                   }
@@ -323,21 +345,36 @@ class InputsUtilsTest(_TestMixin):
               }
             }
           }
-        }""", dynamic_parameters)
-    test_artifact = types.standard_artifacts.Integer()
+        }""",
+        dynamic_parameters,
+    )
+    test_artifact = types.standard_artifacts.String()
     test_artifact.uri = self.create_tempfile().full_path
-    test_artifact.value = 42
+    test_artifact.value = 'testvalue'
     input_dict = {'_test_placeholder': [test_artifact]}
     dynamic_parameters_res = inputs_utils.resolve_dynamic_parameters(
-        dynamic_parameters, input_dict)
+        dynamic_parameters,
+        placeholder_utils.ResolutionContext(
+            exec_info=data_types.ExecutionInfo(
+                input_dict=input_dict, pipeline_run_id='testrunid'
+            )
+        ),
+    )
     self.assertLen(dynamic_parameters_res, 1)
-    self.assertEqual(dynamic_parameters_res['input_num'], 42)
+    self.assertEqual(
+        dynamic_parameters_res['input_str'], 'testvalue_foo_testrunid'
+    )
 
     with self.assertRaises(
         exceptions.InvalidArgument,
-        msg='Failed to resolve dynamic exec property. '
-        'Key: input_num. Value: input("_test_placeholder")[0].value'):
-      inputs_utils.resolve_dynamic_parameters(dynamic_parameters, {})
+        msg=(
+            'Failed to resolve dynamic exec property. '
+            'Key: input_str. Value: input("_test_placeholder")[0].value'
+        ),
+    ):
+      inputs_utils.resolve_dynamic_parameters(
+          dynamic_parameters, placeholder_utils.ResolutionContext()
+      )
 
 
 if __name__ == '__main__':

@@ -40,8 +40,6 @@ from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
-OUTPUT_NUM = 33
-
 
 class TfxTest(test_case_utils.TfxTest):
 
@@ -111,19 +109,20 @@ def fake_example_gen_execution_with_state(
 
 def fake_upstream_node_run(mlmd_connection: metadata.Metadata,
                            upstream_node: pipeline_pb2.PipelineNode,
+                           fake_result: str,
                            tmp_path: str) -> metadata_store_pb2.Execution:
   """Writes fake upstream node output and successful execution to MLMD."""
   with mlmd_connection as mlmd_handle:
-    num_output = standard_artifacts.Integer()
-    num_output.uri = tmp_path
-    num_output.value = OUTPUT_NUM
+    result = standard_artifacts.String()
+    result.uri = tmp_path
+    result.value = fake_result
     contexts = context_lib.prepare_contexts(mlmd_handle, upstream_node.contexts)
     execution = execution_publish_utils.register_execution(
         mlmd_handle, upstream_node.node_info.type, contexts)
     execution_publish_utils.publish_succeeded_execution(mlmd_handle,
                                                         execution.id, contexts,
                                                         {
-                                                            'num': [num_output],
+                                                            'result': [result],
                                                         })
     return execution
 

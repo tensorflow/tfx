@@ -25,6 +25,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
@@ -185,20 +186,71 @@ class CompilerUtilsTest(tf.test.TestCase):
     self.assertEqual(fn(model), "real_key")
     self.assertEqual(fn(examples), "_example_gen.examples")
 
-  def testValidateDynamicExecPhOperator(self):
-    with self.assertRaises(ValueError):
-      invalid_dynamic_exec_ph = Channel(type=_MyType).future()
-      compiler_utils.validate_dynamic_exec_ph_operator(invalid_dynamic_exec_ph)
-    with self.assertRaises(ValueError):
-      invalid_dynamic_exec_ph = Channel(type=_MyType).future()[0].uri
-      compiler_utils.validate_dynamic_exec_ph_operator(invalid_dynamic_exec_ph)
-    with self.assertRaises(ValueError):
-      invalid_dynamic_exec_ph = Channel(
-          type=_MyType).future()[0].value + Channel(
-              type=_MyType).future()[0].value
-      compiler_utils.validate_dynamic_exec_ph_operator(invalid_dynamic_exec_ph)
-    valid_dynamic_exec_ph = Channel(type=_MyType).future()[0].value
-    compiler_utils.validate_dynamic_exec_ph_operator(valid_dynamic_exec_ph)
+
+class ValidateExecPropertyPlaceholderTest(tf.test.TestCase):
+
+  def test_accepts_canonical_dynamic_exec_prop_placeholder(self):
+    # .future()[0].uri is how we tell users to hook up a dynamic exec prop.
+    compiler_utils.validate_exec_property_placeholder(
+        "testkey", Channel(type=_MyType).future()[0].value
+    )
+
+  def test_accepts_complex_exec_prop_placeholder(self):
+    compiler_utils.validate_exec_property_placeholder(
+        "testkey",
+        ph.execution_invocation().pipeline_run_id
+        + "foo"
+        + ph.input("someartifact").uri
+        + "/somefile.txt",
+    )
+
+  def test_accepts_complex_dynamic_exec_prop_placeholder(self):
+    compiler_utils.validate_exec_property_placeholder(
+        "testkey",
+        Channel(type=_MyType).future()[0].value
+        + "foo"
+        + ph.input("someartifact").uri
+        + "/somefile.txt",
+    )
+
+  def test_rejects_output_artifact_placeholder(self):
+    with self.assertRaisesRegex(
+        ValueError, ".*testkey.*output placeholder.*someartifact.*"
+    ):
+      compiler_utils.validate_exec_property_placeholder(
+          "testkey", ph.output("someartifact").uri
+      )
+    with self.assertRaisesRegex(
+        ValueError, ".*testkey.*output placeholder.*someartifact.*"
+    ):
+      compiler_utils.validate_exec_property_placeholder(
+          "testkey",
+          ph.execution_invocation().pipeline_run_id
+          + "foo"
+          + ph.output("someartifact").uri
+          + "/somefile.txt",
+      )
+
+  def test_rejects_exec_property_dependency(self):
+    # One exec property can't depend on another. And we're validating
+    # placeholders that will populate exec properties here, so they can't read
+    # from them.
+    with self.assertRaisesRegex(
+        ValueError, ".*testkey.*another exec property.*somekey"
+    ):
+      compiler_utils.validate_exec_property_placeholder(
+          "testkey", ph.exec_property("somekey")
+      )
+    with self.assertRaisesRegex(
+        ValueError, ".*testkey.*another exec property.*somekey"
+    ):
+      compiler_utils.validate_exec_property_placeholder(
+          "testkey",
+          ph.execution_invocation().pipeline_run_id
+          + "foo"
+          + ph.exec_property("somekey")
+          + "/somefile.txt",
+      )
 
 
 if __name__ == "__main__":

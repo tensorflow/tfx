@@ -183,6 +183,15 @@ class PipelineBuilderTest(tf.test.TestCase):
             'expected_two_step_pipeline_with_dynamic_execution_properties.pbtxt',
             pipeline_pb2.PipelineSpec()), pipeline_spec)
 
+  def testTwoStepPipelineWithIllegalDynamicExecutionProperty(self):
+    pipeline = test_utils.two_step_pipeline_with_illegal_dynamic_exec_property()
+    with self.assertRaisesRegex(
+        ValueError, 'Invalid placeholder for exec prop range_config.*'
+    ):
+      pipeline_builder.PipelineBuilder(
+          tfx_pipeline=pipeline, default_image='gcr.io/my-tfx:latest'
+      ).build()
+
 
 if __name__ == '__main__':
   tf.test.main()

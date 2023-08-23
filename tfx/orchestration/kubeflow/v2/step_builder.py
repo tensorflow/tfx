@@ -368,15 +368,21 @@ class StepBuilder:
     for name, value in self._exec_properties.items():
       if value is None:
         continue
-      if isinstance(value, placeholder.ChannelWrappedPlaceholder):
-        input_parameter_spec = pipeline_pb2.TaskInputsSpec.InputParameterSpec()
-        task_output_parameter_spec = pipeline_pb2.TaskInputsSpec.InputParameterSpec.TaskOutputParameterSpec(
+      if isinstance(value, placeholder.Placeholder):
+        try:
+          # This unwraps channel.future()[0].value and disallows any other
+          # placeholder expressions.
+          channel = channel_utils.unwrap_simple_channel_placeholder(value)
+        except ValueError as e:
+          raise ValueError(f'Invalid placeholder for exec prop {name}') from e
+        task_spec.inputs.parameters[name].CopyFrom(
+            pipeline_pb2.TaskInputsSpec.InputParameterSpec(
+                task_output_parameter=pipeline_pb2.TaskInputsSpec.InputParameterSpec.TaskOutputParameterSpec(
+                    producer_task=channel.producer_component_id + '_task',
+                    output_parameter_key=channel.output_key,
+                )
+            )
         )
-        task_output_parameter_spec.producer_task = value.channel.producer_component_id + '_task'
-        task_output_parameter_spec.output_parameter_key = value.channel.output_key
-        input_parameter_spec.task_output_parameter.CopyFrom(
-            task_output_parameter_spec)
-        task_spec.inputs.parameters[name].CopyFrom(input_parameter_spec)
       elif isinstance(value, data_types.RuntimeParameter):
         parameter_utils.attach_parameter(value)
         task_spec.inputs.parameters[name].component_input_parameter = value.name
