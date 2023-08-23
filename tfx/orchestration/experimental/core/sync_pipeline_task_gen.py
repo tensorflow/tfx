@@ -113,7 +113,7 @@ class _Generator:
 
   def __call__(self) -> List[task_lib.Task]:
     layers = _topsorted_layers(self._pipeline)
-    skipped_node_ids = _skipped_node_ids(self._node_states_dict)
+    skipped_node_ids = _skipped_node_ids(self._pipeline)
     terminal_node_ids = _terminal_node_ids(layers, skipped_node_ids)
     exec_node_tasks = []
     update_node_state_tasks = []
@@ -532,17 +532,12 @@ class _Generator:
     )
 
 
-def _skipped_node_ids(
-    node_states_dict: Dict[task_lib.NodeUid, pstate.NodeState]
-) -> Set[str]:
-  """Returns the nodes that are marked as skipped in partial run or by user."""
+def _skipped_node_ids(pipeline: pipeline_pb2.Pipeline) -> Set[str]:
+  """Returns the set of nodes that are marked as skipped in partial run."""
   skipped_node_ids = set()
-  for node_uid, node_state in node_states_dict.items():
-    if node_state.state in (
-        pstate.NodeState.SKIPPED,
-        pstate.NodeState.SKIPPED_PARTIAL_RUN,
-    ):
-      skipped_node_ids.add(node_uid.node_id)
+  for node in pstate.get_all_nodes(pipeline):
+    if node.execution_options.HasField('skip'):
+      skipped_node_ids.add(node.node_info.id)
   return skipped_node_ids
 
 

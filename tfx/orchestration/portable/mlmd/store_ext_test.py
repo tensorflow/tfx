@@ -34,38 +34,55 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
     super().setUp()
     self.init_mlmd()
 
-  def testGetSuccessfulNodeExecutions(self):
+  def testGetNodeExecutions(self):
     c = self.put_context('node', 'my-pipeline.my-node')
-    self.put_execution('E', last_known_state='UNKNOWN', contexts=[c])
-    self.put_execution('E', last_known_state='NEW', contexts=[c])
-    self.put_execution('E', last_known_state='RUNNING', contexts=[c])
-    e1 = self.put_execution('E', last_known_state='COMPLETE', contexts=[c])
-    self.put_execution('E', last_known_state='FAILED', contexts=[c])
-    e2 = self.put_execution('E', last_known_state='CACHED', contexts=[c])
-    self.put_execution('E', last_known_state='CANCELED', contexts=[c])
+    e1 = self.put_execution('E', last_known_state='UNKNOWN', contexts=[c])
+    e2 = self.put_execution('E', last_known_state='NEW', contexts=[c])
+    e3 = self.put_execution('E', last_known_state='RUNNING', contexts=[c])
+    e4 = self.put_execution('E', last_known_state='COMPLETE', contexts=[c])
+    e5 = self.put_execution('E', last_known_state='FAILED', contexts=[c])
+    e6 = self.put_execution('E', last_known_state='CACHED', contexts=[c])
+    e7 = self.put_execution('E', last_known_state='CANCELED', contexts=[c])
 
-    result = store_ext.get_successful_node_executions(
+    result = store_ext.get_node_executions(
         self.store, pipeline_id='my-pipeline', node_id='my-node'
     )
-    self.assertEqual(_ids(result), _ids([e1, e2]))
+    self.assertEqual(_ids(result), _ids([e4, e6]))
 
     with self.subTest('With execution limit'):
-      result = store_ext.get_successful_node_executions(
+      result = store_ext.get_node_executions(
           self.store, pipeline_id='my-pipeline', node_id='my-node', limit=1
       )
-      self.assertEqual(_ids(result), _ids([e1]))
+      self.assertEqual(_ids(result), _ids([e4]))
 
     with self.subTest('Bad pipeline_id'):
-      result = store_ext.get_successful_node_executions(
+      result = store_ext.get_node_executions(
           self.store, pipeline_id='not-exist', node_id='my-node'
       )
       self.assertEmpty(result)
 
     with self.subTest('Bad node_id'):
-      result = store_ext.get_successful_node_executions(
+      result = store_ext.get_node_executions(
           self.store, pipeline_id='my-pipeline', node_id='not-exist'
       )
       self.assertEmpty(result)
+
+    with self.subTest('All execution states'):
+      result = store_ext.get_node_executions(
+          self.store,
+          pipeline_id='my-pipeline',
+          node_id='my-node',
+          execution_states=[
+              metadata_store_pb2.Execution.UNKNOWN,
+              metadata_store_pb2.Execution.NEW,
+              metadata_store_pb2.Execution.RUNNING,
+              metadata_store_pb2.Execution.COMPLETE,
+              metadata_store_pb2.Execution.FAILED,
+              metadata_store_pb2.Execution.CACHED,
+              metadata_store_pb2.Execution.CANCELED,
+          ],
+      )
+      self.assertEqual(_ids(result), _ids([e1, e2, e3, e4, e5, e6, e7]))
 
   def testGetOutputArtifactsFromExecutionIds(self):
     x1 = self.put_artifact('X')
@@ -188,34 +205,50 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
 
   def testGetLiveOutputArtifactsOfNodeByOutputKeyAsync(self):
     c1 = self.put_context('node', 'my-pipeline.my-node')
+
     x1 = self.put_artifact('X')
     x2 = self.put_artifact('X')
     x3 = self.put_artifact('X')
+    x4 = self.put_artifact('X')
+
     y1 = self.put_artifact('Y')
     y2 = self.put_artifact('Y', state='DELETED')
     y3 = self.put_artifact('Y')
     y4 = self.put_artifact('Y')
     y5 = self.put_artifact('Y')
+    y6 = self.put_artifact('Y')
+
     z1 = self.put_artifact('Z')
     z2 = self.put_artifact('Z')
     z3 = self.put_artifact('Z', state='ABANDONED')
+    z4 = self.put_artifact('Z')
 
     self.put_execution(
         'E',
+        last_known_state='CACHED',
         inputs={'x': [x1]},
         outputs={'y': [y1], 'z': [z1]},
         contexts=[c1],
     )
     self.put_execution(
         'E',
+        last_known_state='COMPLETE',
         inputs={'x': [x2]},
         outputs={'y': [y2, y3, y4], 'z': [z2]},
         contexts=[c1],
     )
     self.put_execution(
         'E',
+        last_known_state='COMPLETE',
         inputs={'x': [x3]},
         outputs={'y': [y5], 'z': [z3]},
+        contexts=[c1],
+    )
+    self.put_execution(
+        'E',
+        last_known_state='FAILED',
+        inputs={'x': [x4]},
+        outputs={'y': [y6], 'z': [z4]},
         contexts=[c1],
     )
 
@@ -229,6 +262,7 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
       self.assertDictEqual(
           result, {'y': [[y5], [y3, y4], [y1]], 'z': [[], [z2], [z1]]}
       )
+
     with self.subTest('With execution limit=2'):
       result = store_ext.get_live_output_artifacts_of_node_by_output_key(
           self.store,
@@ -238,6 +272,7 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
           execution_limit=2,
       )
       self.assertDictEqual(result, {'y': [[y5], [y3, y4]], 'z': [[], [z2]]})
+
     with self.subTest('With execution limit=0'):
       result = store_ext.get_live_output_artifacts_of_node_by_output_key(
           self.store,
@@ -248,6 +283,23 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
       )
       self.assertDictEqual(
           result, {'y': [[y5], [y3, y4], [y1]], 'z': [[], [z2], [z1]]}
+      )
+
+    with self.subTest('With execution_states=[COMPLETE, CACHED, FAILED]'):
+      result = store_ext.get_live_output_artifacts_of_node_by_output_key(
+          self.store,
+          pipeline_id='my-pipeline',
+          node_id='my-node',
+          pipeline_run_id='',
+          execution_states=[
+              metadata_store_pb2.Execution.COMPLETE,
+              metadata_store_pb2.Execution.CACHED,
+              metadata_store_pb2.Execution.FAILED,
+          ],
+      )
+      self.assertDictEqual(
+          result,
+          {'y': [[y6], [y5], [y3, y4], [y1]], 'z': [[z4], [], [z2], [z1]]},
       )
 
 

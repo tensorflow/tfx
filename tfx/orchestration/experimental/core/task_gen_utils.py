@@ -594,6 +594,7 @@ def update_external_artifact_type(local_mlmd_handle: metadata.Metadata,
 
 def get_unprocessed_inputs(
     metadata_handle: metadata.Metadata,
+    executions: Sequence[metadata_store_pb2.Execution],
     resolved_info: ResolvedInfo,
     node: node_proto_view.NodeProtoView,
 ) -> List[InputAndParam]:
@@ -601,6 +602,7 @@ def get_unprocessed_inputs(
 
   Args:
     metadata_handle: A handle to access local MLMD db.
+    executions: A list of executions
     resolved_info: Resolved input of a node. It may contain processed and
       unprocessed input.
     node: The pipeline node of the input.
@@ -613,42 +615,9 @@ def get_unprocessed_inputs(
 
   # Finds out the keys that should be ignored.
   input_triggers = node.execution_options.async_trigger.input_triggers
-  ignore_keys = {
-      k for k, t in input_triggers.items() if k.startswith('_') or t.no_trigger
-  }
-
-  artifact_create_times = []
-  for input_and_param in resolved_info.input_and_params:
-    for key, artifacts in input_and_param.input_artifacts.items():
-      if key in ignore_keys:
-        continue
-      artifact_create_times.extend(
-          a.mlmd_artifact.create_time_since_epoch for a in artifacts
-      )
-
-  if artifact_create_times:
-    # A resolved input whose artifacts with min timestamp T is not an input
-    # to a execution having creation timestamp < T. So, we only need to
-    # get executions with timestamp larger than the minimum timestamp of all
-    # the artifacts in resolved inputs.
-    executions = get_executions(
-        metadata_handle,
-        node,
-        only_successful=True,
-        additional_filters=[
-            f'create_time_since_epoch >= {min(artifact_create_times)}'
-        ],
-    )
-  else:
-    # In cases that resolved_info don't have any artifacts, we only need to
-    # get the last successful execution.
-    executions = get_executions(
-        metadata_handle,
-        node,
-        only_successful=True,
-        limit=1,
-    )
-  logging.info('Fetched %d successful executions.', len(executions))
+  ignore_keys = set(
+      [key for key, trigger in input_triggers.items() if trigger.no_trigger]
+  )
 
   # Gets the processed inputs.
   processed_inputs: List[Dict[str, Tuple[int, ...]]] = []
@@ -668,7 +637,7 @@ def get_unprocessed_inputs(
     ids_by_key = {
         k: tuple(sorted(v))
         for k, v in ids_by_key.items()
-        if k not in ignore_keys
+        if not k.startswith('_') and k not in ignore_keys
     }
     processed_inputs.append(ids_by_key)
 
@@ -714,7 +683,7 @@ def get_unprocessed_inputs(
     resolved_input_ids_by_key = {
         k: tuple(sorted(v))
         for k, v in resolved_input_ids_by_key.items()
-        if k not in ignore_keys
+        if not k.startswith('_') and k not in ignore_keys
     }
 
     for processed in processed_inputs:
