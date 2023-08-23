@@ -39,7 +39,7 @@ def _maybe_clause(clause: Optional[str]) -> List[str]:
   return [clause] if clause is not None else []
 
 
-def get_successful_node_executions(
+def get_node_executions(
     store: mlmd.MetadataStore,
     *,
     pipeline_id: str,
@@ -48,16 +48,23 @@ def get_successful_node_executions(
     order_by: mlmd.OrderByField = mlmd.OrderByField.ID,
     is_asc: bool = True,
     limit: Optional[int] = None,
+    execution_states: Optional[list[mlmd.proto.Execution.State]] = None,
 ) -> List[mlmd.proto.Execution]:
   """Gets all successful node executions."""
+  if not execution_states:
+    execution_states = [
+        mlmd.proto.Execution.COMPLETE,
+        mlmd.proto.Execution.CACHED,
+    ]
   node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
+  state_query = [
+      f'last_known_state = {mlmd.proto.Execution.State.Name(s)}'
+      for s in execution_states
+  ]
   node_executions_query = q.And([
       f'contexts_0.type = "{constants.NODE_CONTEXT_TYPE_NAME}"',
       f'contexts_0.name = "{node_context_name}"',
-      q.Or([
-          'last_known_state = COMPLETE',
-          'last_known_state = CACHED',
-      ]),
+      q.Or(state_query),
   ])
   if pipeline_run_id:
     node_executions_query.append(
@@ -122,7 +129,7 @@ def get_live_output_artifacts_of_node(
     A list of output artifacts from the given node.
   """
   # First query: Get all successful executions of the node.
-  node_executions = get_successful_node_executions(
+  node_executions = get_node_executions(
       store,
       pipeline_id=pipeline_id,
       node_id=node_id,
@@ -146,6 +153,7 @@ def get_live_output_artifacts_of_node_by_output_key(
     node_id: str,
     pipeline_run_id: Optional[str] = None,
     execution_limit: Optional[int] = None,
+    execution_states: Optional[list[mlmd.proto.Execution.State]] = None,
 ) -> Dict[str, List[List[mlmd.proto.Artifact]]]:
   """Get LIVE output artifacts of the given node grouped by output key.
 
@@ -175,20 +183,21 @@ def get_live_output_artifacts_of_node_by_output_key(
       artifacts from the specified pipeline run are returned if specified.
     execution_limit: Maximum number of latest executions from which live output
       artifacts will be returned.
+    execution_states: The MLMD execution state(s) to pull LIVE artifacts from.
+      Defaults to [COMPLETE, CACHED].
 
   Returns:
     A mapping from output key to all output artifacts from the given node.
   """
-  node_executions_ordered_by_desc_creation_time = (
-      get_successful_node_executions(
-          store,
-          pipeline_id=pipeline_id,
-          node_id=node_id,
-          pipeline_run_id=pipeline_run_id,
-          order_by=mlmd.OrderByField.CREATE_TIME,
-          is_asc=False,
-          limit=execution_limit,
-      )
+  node_executions_ordered_by_desc_creation_time = get_node_executions(
+      store,
+      pipeline_id=pipeline_id,
+      node_id=node_id,
+      pipeline_run_id=pipeline_run_id,
+      order_by=mlmd.OrderByField.CREATE_TIME,
+      is_asc=False,
+      limit=execution_limit,
+      execution_states=execution_states,
   )
   if not node_executions_ordered_by_desc_creation_time:
     return {}
