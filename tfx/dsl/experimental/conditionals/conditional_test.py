@@ -79,6 +79,12 @@ class ConditionalTest(tf.test.TestCase):
     self.assertPredicatesEqual(node2, pred)
 
   def testNestedConditionWithDuplicatePredicates(self):
+    # Note: This only catches the duplication if the _same_ predicate (in terms
+    # of Python object identity) is used. Ideally we would also detect
+    # equivalent predicates (like __eq__) but placeholders cannot implement
+    # __eq__ itself (due to its special function in creating predicates from
+    # ChannelWrappedPlaceholder) and placeholders also don't offer another
+    # equality function at the moment.
     pred = _FakePredicate('pred')
     with self.assertRaisesRegex(
         ValueError, 'Nested conditionals with duplicate predicates'):
