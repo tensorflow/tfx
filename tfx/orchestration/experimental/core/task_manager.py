@@ -270,6 +270,11 @@ class TaskManager:
             mlmd_handle=self._mlmd_handle, task=task, result=result
         )
       except garbage_collection.ArtifactCleanupError as e:
+        # Potentially GC can fail (we discovered this when GC would fail if
+        # historical artifacts got TTL'd), and if we don't check for this error
+        # then the *current* execution will also be failed.
+        # Since GC is about artifacts/executions from the past we decided to not
+        # have it's failure impact the current execution.
         logging.exception(
             'Garbage collection failed during post execution! %s', e
         )
@@ -288,7 +293,6 @@ class TaskManager:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)
 
-  # TODO(kmonte): Mark output artifacts as ABANDONED if we fail the execution.
   def _fail_execution(
       self, execution_id: int, error_code: int, error_msg: str
   ) -> None:
