@@ -48,7 +48,7 @@ def get_node_executions(
     order_by: mlmd.OrderByField = mlmd.OrderByField.ID,
     is_asc: bool = True,
     limit: Optional[int] = None,
-    execution_states: Optional[list[mlmd.proto.Execution.State]] = None,
+    execution_states: Optional[List['mlmd.proto.Execution.State']] = None,
 ) -> List[mlmd.proto.Execution]:
   """Gets all successful node executions."""
   if not execution_states:
@@ -153,7 +153,7 @@ def get_live_output_artifacts_of_node_by_output_key(
     node_id: str,
     pipeline_run_id: Optional[str] = None,
     execution_limit: Optional[int] = None,
-    execution_states: Optional[list[mlmd.proto.Execution.State]] = None,
+    execution_states: Optional[List['mlmd.proto.Execution.State']] = None,
 ) -> Dict[str, List[List[mlmd.proto.Artifact]]]:
   """Get LIVE output artifacts of the given node grouped by output key.
 
