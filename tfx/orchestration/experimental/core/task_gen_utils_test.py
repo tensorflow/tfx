@@ -134,7 +134,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       )
       self.assertLen(task_gen_utils.get_executions(m, self._example_gen), 3)
       succeeded_executions = task_gen_utils.get_executions(
-          m, self._example_gen, only_successful=True
+          m, self._example_gen, want_successful=True
       )
       self.assertLen(succeeded_executions, 2)
       self.assertEqual(
@@ -176,11 +176,14 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       # pipeline.
       self.assertCountEqual(
           active_eg_execs[0:2],
-          task_gen_utils.get_executions(m, self._example_gen, only_active=True))
+          task_gen_utils.get_executions(m, self._example_gen, want_active=True),
+      )
       self.assertEmpty(
-          task_gen_utils.get_executions(m, self._transform, only_active=True))
+          task_gen_utils.get_executions(m, self._transform, want_active=True)
+      )
       self.assertEmpty(
-          task_gen_utils.get_executions(m, self._trainer, only_active=True))
+          task_gen_utils.get_executions(m, self._trainer, want_active=True)
+      )
 
   def test_get_executions_only_active_with_backfill_token(self):
     with self._mlmd_connection as m:
@@ -266,7 +269,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           task_gen_utils.get_executions(
               m,
               self._example_gen,
-              only_active=True,
+              want_active=True,
               backfill_token=backfill_token_1,
           ),
       )
@@ -275,7 +278,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           task_gen_utils.get_executions(
               m,
               self._example_gen,
-              only_active=True,
+              want_active=True,
               backfill_token=backfill_token_2,
           ),
       )

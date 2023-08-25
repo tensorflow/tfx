@@ -246,8 +246,8 @@ def generate_resolved_info(
 def get_executions(
     metadata_handler: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
-    only_active: bool = False,
-    only_successful: bool = False,
+    want_active: bool = False,
+    want_successful: bool = False,
     limit: Optional[int] = None,
     backfill_token: str = '',
     additional_filters: Optional[List[str]] = None,
@@ -260,20 +260,21 @@ def get_executions(
   Args:
     metadata_handler: A handler to access MLMD db.
     node: The pipeline node for which to obtain executions.
-    only_active: If set to true, only active executions are returned. Otherwise,
+    want_active: If set to true, only active executions are returned. Otherwise,
       all executions are returned. Active executions mean executions with NEW or
       RUNNING last_known_state.
-    only_successful: If set to true, only successful executions are returned.
+    want_successful: If set to true, only successful executions are returned.
       Otherwise, all executions are returned. successful executions mean
       executions with COMPLETE or CACHED last_known_state.
-    limit: limit the number of executions return by the function.
+    limit: limit the number of executions return by the function. Executions are
+      ordered descendingly by CREATE_TIME, so the newest executions will return.
     backfill_token: If non-empty, only executions with custom property
       `__backfill_token__` set to the value are returned. Should only be set
       when backfilling in ASYNC mode.
     additional_filters: Additional filters to select executions.
 
   Returns:
-    List of executions for the given node in MLMD db.
+    List of executions ordered descendingly by CREATE_TIME for the given node.
   """
   if not node.contexts.contexts:
     return []
@@ -305,7 +306,9 @@ def get_executions(
         ])
     )
 
-  if only_active and only_successful:
+  # If both want_active and want_successful are true, return both active and
+  # successful executions.
+  if want_active and want_successful:
     filter_query.append(
         q.Or([
             'last_known_state = NEW',
@@ -314,11 +317,11 @@ def get_executions(
             'last_known_state = CACHED',
         ])
     )
-  elif only_active:
+  elif want_active:
     filter_query.append(
         q.Or(['last_known_state = NEW', 'last_known_state = RUNNING'])
     )
-  elif only_successful:
+  elif want_successful:
     filter_query.append(
         q.Or(['last_known_state = COMPLETE', 'last_known_state = CACHED'])
     )
@@ -627,26 +630,24 @@ def get_unprocessed_inputs(
       )
 
   if artifact_create_times:
-    # A resolved input whose artifacts with min timestamp T is not an input
+    # A resolved input whose artifacts with max timestamp T is not an input
     # to a execution having creation timestamp < T. So, we only need to
     # get executions with timestamp larger than the minimum timestamp of all
     # the artifacts in resolved inputs.
     executions = get_executions(
         metadata_handle,
         node,
-        only_successful=True,
+        want_successful=True,
         additional_filters=[
             f'create_time_since_epoch >= {min(artifact_create_times)}'
         ],
     )
   else:
-    # In cases that resolved_info don't have any artifacts, we only need to
-    # get the last successful execution.
+    # In cases that resolved_info don't have any artifacts, get all executions.
     executions = get_executions(
         metadata_handle,
         node,
-        only_successful=True,
-        limit=1,
+        want_successful=True,
     )
   logging.info('Fetched %d successful executions.', len(executions))
 

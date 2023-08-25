@@ -1169,7 +1169,7 @@ def _cancel_node(
             'Canceling active executions for pure service node: %s', node_uid
         )
         active_executions = task_gen_utils.get_executions(
-            mlmd_handle, node, only_active=True
+            mlmd_handle, node, want_active=True
         )
         _cancel_executions(active_executions, mlmd_handle, node_uid)
       return True

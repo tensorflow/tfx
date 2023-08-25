@@ -219,7 +219,7 @@ class _Generator:
     # Gets the active executions. If the active executions exist, generates a
     # task from the oldest active execution.
     active_executions = task_gen_utils.get_executions(
-        metadata_handler, node, only_active=True
+        metadata_handler, node, want_active=True
     )
     oldest_active_execution = task_gen_utils.get_oldest_active_execution(
         active_executions
