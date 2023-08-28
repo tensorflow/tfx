@@ -36,6 +36,12 @@ from tfx.utils import topsort
 from ml_metadata.proto import metadata_store_pb2
 
 
+_LAZY_TRIGGER_STRATEGIES = frozenset({
+    pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEDED,
+    pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+})
+
+
 class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
   """Task generator for executing a sync pipeline.
 
@@ -105,35 +111,58 @@ class _Generator:
               pipeline.execution_mode))
     self._pipeline_state = pipeline_state
     with self._pipeline_state:
-      self._node_states_dict = self._pipeline_state.get_node_states_dict()
+      self._node_state_by_node_uid = self._pipeline_state.get_node_states_dict()
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
     self._fail_fast = fail_fast
+    self._node_proto_view_by_node_id: Dict[
+        str, node_proto_view.NodeProtoView
+    ] = {}
 
   def __call__(self) -> List[task_lib.Task]:
     layers = _topsorted_layers(self._pipeline)
-    skipped_node_ids = _skipped_node_ids(self._node_states_dict)
+    skipped_node_ids = _skipped_node_ids(self._node_state_by_node_uid)
     terminal_node_ids = _terminal_node_ids(layers, skipped_node_ids)
     exec_node_tasks = []
     update_node_state_tasks = []
     successful_node_ids = set()
     failed_nodes_dict: Dict[str, status_lib.Status] = {}
     finalize_pipeline_task = None
+    lazily_evaluated_node_ids = set()
+    # Loop over all nodes before deciding scheduling so we have full knowledge
+    # of all the completed/lazy nodes.
+    for layer in layers:
+      for node in layer:
+        node_id = node.node_info.id
+        node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+        node_state = self._node_state_by_node_uid[node_uid]
+        self._node_proto_view_by_node_id[node_id] = node
+
+        if node.execution_options.strategy in _LAZY_TRIGGER_STRATEGIES:
+          lazily_evaluated_node_ids.add(node.node_info.id)
+        if node_state.is_success() or (
+            node_state.is_failure()
+            and node.execution_options.node_success_optional
+        ):
+          successful_node_ids.add(node_id)
+
     for layer_nodes in layers:
       for node in layer_nodes:
         node_id = node.node_info.id
         node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
-        node_state = self._node_states_dict[node_uid]
-        if node_state.is_success() or (node_state.is_failure(
-        ) and node.execution_options.node_success_optional):
-          successful_node_ids.add(node_id)
+        node_state = self._node_state_by_node_uid[node_uid]
+        if node_id in successful_node_ids:
           continue
         if node_state.is_failure():
           failed_nodes_dict[node_id] = node_state.status
           continue
-        if not self._trigger_strategy_satisfied(node, successful_node_ids,
-                                                failed_nodes_dict):
+        if not self._trigger_strategy_satisfied(
+            node,
+            successful_node_ids,
+            failed_nodes_dict,
+            lazily_evaluated_node_ids,
+        ):
           continue
         tasks = self._generate_tasks_for_node(node)
         for task in tasks:
@@ -210,7 +239,7 @@ class _Generator:
     node_id = node.node_info.id
     result = []
 
-    node_state = self._node_states_dict[node_uid]
+    node_state = self._node_state_by_node_uid[node_uid]
     if node_state.state in (pstate.NodeState.STOPPING, pstate.NodeState.STOPPED,
                             pstate.NodeState.PAUSING, pstate.NodeState.PAUSED):
       logging.info('Ignoring node in state \'%s\' for task generation: %s',
@@ -498,22 +527,57 @@ class _Generator:
         successful_node_ids | failed_nodes_dict.keys())
 
   def _trigger_strategy_satisfied(
-      self, node: node_proto_view.NodeProtoView, successful_node_ids: Set[str],
-      failed_nodes_dict: Dict[str, status_lib.Status]) -> bool:
+      self,
+      node: node_proto_view.NodeProtoView,
+      successful_node_ids: Set[str],
+      failed_nodes_dict: Dict[str, status_lib.Status],
+      lazily_evaluated_node_ids: Set[str],
+  ) -> bool:
     """Returns `True` if the node's Trigger Strategy is satisfied."""
-    if node.execution_options.strategy == (
-        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED):
-      return self._upstream_nodes_completed(node, successful_node_ids,
-                                            failed_nodes_dict)
+    if node.execution_options.strategy in (
+        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+    ):
+      node_trigger_strategy_satisfied = self._upstream_nodes_completed(
+          node, successful_node_ids, failed_nodes_dict
+      )
     elif node.execution_options.strategy in (
         pipeline_pb2.NodeExecutionOptions.TRIGGER_STRATEGY_UNSPECIFIED,
-        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_SUCCEEDED):
-      return self._upstream_nodes_successful(node, successful_node_ids)
+        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_SUCCEEDED,
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEDED,
+    ):
+      node_trigger_strategy_satisfied = self._upstream_nodes_successful(
+          node, successful_node_ids
+      )
     else:
       raise NotImplementedError(
           'Unrecognized node triggering strategy: %s' %
           pipeline_pb2.NodeExecutionOptions.TriggerStrategy.Name(
               node.execution_options.strategy))
+
+    if not node_trigger_strategy_satisfied:
+      return node_trigger_strategy_satisfied
+
+    # Only check that downstream nodes are otherwise satisfied if there are any
+    # downstream nodes, otherwise we should just treat the node as normal.
+    if (
+        node.execution_options.strategy in _LAZY_TRIGGER_STRATEGIES
+        and node.downstream_nodes
+    ):
+      any_downstream_node_otherwise_ready = False
+      successful_and_lazy_node_ids = (
+          successful_node_ids | lazily_evaluated_node_ids
+      )
+      for downstream_node in node.downstream_nodes:
+        downstream_trigger = self._trigger_strategy_satisfied(
+            self._node_proto_view_by_node_id[downstream_node],
+            successful_and_lazy_node_ids,
+            failed_nodes_dict,
+            lazily_evaluated_node_ids,
+        )
+        any_downstream_node_otherwise_ready |= downstream_trigger
+      node_trigger_strategy_satisfied &= any_downstream_node_otherwise_ready
+    return node_trigger_strategy_satisfied
 
   def _abort_task(
       self, failed_nodes_dict: Mapping[str, status_lib.Status]
@@ -594,8 +658,12 @@ def _unrunnable_descendants(node_by_id: Mapping[str,
   for node_with_upstream_failure in node_by_id[failed_node_id].downstream_nodes:
     # Nodes with ALL_UPSTREAM_NODES_COMPLETED trigger strategy can make progress
     # despite a failed upstream node.
-    if node_by_id[node_with_upstream_failure].execution_options.strategy != (
-        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED):
+    if node_by_id[
+        node_with_upstream_failure
+    ].execution_options.strategy not in (
+        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+    ):
       queue.append(node_with_upstream_failure)
   result = set()
   while queue:
