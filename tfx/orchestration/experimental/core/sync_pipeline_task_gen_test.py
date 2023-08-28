@@ -1043,12 +1043,23 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
       )
 
   @parameterized.parameters(
-      ('chore_a',
-       pipeline_pb2.NodeExecutionOptions(node_success_optional=True)),
-      ('chore_b',
-       pipeline_pb2.NodeExecutionOptions(
-           strategy=pipeline_pb2.NodeExecutionOptions
-           .ALL_UPSTREAM_NODES_COMPLETED)))
+      (
+          'chore_a',
+          pipeline_pb2.NodeExecutionOptions(node_success_optional=True),
+      ),
+      (
+          'chore_b',
+          pipeline_pb2.NodeExecutionOptions(
+              strategy=pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED
+          ),
+      ),
+      (
+          'chore_b',
+          pipeline_pb2.NodeExecutionOptions(
+              strategy=pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED
+          ),
+      ),
+  )
   def test_node_triggering_strategies(self, node_id, node_execution_options):
     """Tests node triggering strategies."""
     if node_id == 'chore_a':
@@ -1199,19 +1210,20 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
 
     # chore_a and chore_b can execute way earlier but should wait for chore_f
     chore_a.execution_options.strategy = (
-        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEDED
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED
     )
     chore_b.execution_options.strategy = (
-        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEDED
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED
     )
 
     # chore_d and chore_e are on the same level so they should execute at the
-    # same time
+    # same time Also use LAZILY_ALL_UPSTREAM_NODES_COMPLETED to check both
+    # strategies can work in the happy path.
     chore_d.execution_options.strategy = (
-        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEDED
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED
     )
     chore_e.execution_options.strategy = (
-        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEDED
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED
     )
 
     # chore_g is terminal and should execute normally.

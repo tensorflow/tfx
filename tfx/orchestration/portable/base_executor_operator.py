@@ -69,7 +69,7 @@ class BaseExecutorOperator(abc.ABC):
 
   def with_execution_watcher(
       self, execution_watcher_address: str) -> 'BaseExecutorOperator':
-    """Attach an execution watcher to the executor operator.
+    """Attatch an execution watcher to the executor operator.
 
     Args:
       execution_watcher_address: The address to an executor watcher gRPC service
