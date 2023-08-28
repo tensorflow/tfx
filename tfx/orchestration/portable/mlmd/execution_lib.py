@@ -311,7 +311,7 @@ def put_execution(
     output_event_type: The type of the output event, default to be OUTPUT.
 
   Returns:
-    An MLMD execution that is written to MLMD, with id pupulated.
+    An MLMD execution that is written to MLMD, with id populated.
   """
   start_time = time.time()
   artifact_and_events = []
