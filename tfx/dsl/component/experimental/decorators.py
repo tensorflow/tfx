@@ -308,12 +308,11 @@ def component(
     optional argument.
 
   The return value typehint should be either empty or `None`, in the case of a
-  component function that has no return values, or an instance of
-  `OutputDict(key_1=type_1, ...)`, where each key maps to a given type (each
-  type is a primitive value type, i.e. `int`, `float`, `str`, `bytes`, `bool`
-  `Dict` or  `List`; or `Optional[T]`, where T is a primitive type value, in
-  which case `None` can be returned), to indicate that the return value is a
-  dictionary with specified keys and value types.
+  component function that has no return values, or a `TypedDict` of primitive
+  value types (`int`, `float`, `str`, `bytes`, `bool`, `dict` or `list`; or
+  `Optional[T]`, where T is a primitive type value, in which case `None` can be
+  returned), to indicate that the return value is a dictionary with specified
+  keys and value types.
 
   Note that output artifacts should not be included in the return value
   typehint; they should be included as `OutputArtifact` annotations in the
@@ -330,9 +329,12 @@ def component(
       InputArtifact = tfx.dsl.components.InputArtifact
       OutputArtifact = tfx.dsl.components.OutputArtifact
       Parameter = tfx.dsl.components.Parameter
-      OutputDict = tfx.dsl.components.OutputDict
       Examples = tfx.types.standard_artifacts.Examples
       Model = tfx.types.standard_artifacts.Model
+
+      class MyOutput(TypedDict):
+        loss: float
+        accuracy: float
 
       @component(component_annotation=tfx.dsl.standard_annotations.Train)
       def MyTrainerComponent(
@@ -340,7 +342,7 @@ def component(
           model: OutputArtifact[Model],
           dropout_hyperparameter: float,
           num_iterations: Parameter[int] = 10
-          ) -> OutputDict(loss=float, accuracy=float):
+      ) -> MyOutput:
         '''My simple trainer component.'''
 
         records = read_examples(training_data.uri)
@@ -370,7 +372,7 @@ def component(
           model: OutputArtifact[standard_artifacts.Model],
           dropout_hyperparameter: float,
           num_iterations: Parameter[int] = 10
-          ) -> OutputDict(loss=float, accuracy=float):
+          ) -> Output:
         '''My simple trainer component.'''
 
         records = read_examples(training_data.uri)

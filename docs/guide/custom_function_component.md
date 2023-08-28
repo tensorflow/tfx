@@ -11,12 +11,15 @@ Writing your custom component in this style is very straightforward, as in the
 following example.
 
 ```python
+class MyOutput(TypedDict):
+  accuracy: float
+
 @component
 def MyValidationComponent(
     model: InputArtifact[Model],
     blessing: OutputArtifact[Model],
     accuracy_threshold: Parameter[int] = 10,
-    ) -> OutputDict(accuracy=float):
+) -> MyOutput:
   '''My simple custom model validation component.'''
 
   accuracy = evaluate_model(model)
@@ -120,12 +123,8 @@ return value using annotations from the
     described in the previous section). This argument can be optional or this
     argument can be defined with a default value. If your component has simple
     data type outputs (`int`, `float`, `str` or `bytes`), you can return these
-    outputs using an `OutputDict` instance. Apply the `OutputDict` type hint as
-    your component’s return value.
-
-*   For each **output**, add argument `<output_name>=<T>` to the `OutputDict`
-    constructor, where `<output_name>` is the output name and `<T>` is the
-    output type, such as: `int`, `float`, `str` or `bytes`.
+    outputs by using a `TypedDict` as a return type annotation, and returning an
+    appropriate dict object.
 
 In the body of your function, input and output artifacts are passed as
 `tfx.types.Artifact` objects; you can inspect its `.uri` to get its
@@ -137,8 +136,13 @@ output names and the values are the desired return values.
 The completed function component can look like this:
 
 ```python
+from typing import TypedDict
 import tfx.v1 as tfx
 from tfx.dsl.component.experimental.decorators import component
+
+class MyOutput(TypedDict):
+  loss: float
+  accuracy: float
 
 @component
 def MyTrainerComponent(
@@ -146,7 +150,7 @@ def MyTrainerComponent(
     model: tfx.dsl.components.OutputArtifact[tfx.types.standard_artifacts.Model],
     dropout_hyperparameter: float,
     num_iterations: tfx.dsl.components.Parameter[int] = 10
-    ) -> tfx.v1.dsl.components.OutputDict(loss=float, accuracy=float):
+) -> MyOutput:
   '''My simple trainer component.'''
 
   records = read_examples(training_data.uri)
