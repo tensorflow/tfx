@@ -21,6 +21,9 @@
 ## Major Features and Improvements
 
 *  Added python 3.10 support.
+*  Support `TypedDict` as a native output annotation for `@component`.
+   `OutputDict` is still supported but it is recommended to use `TypedDict`
+   instead.
 
 ## Breaking Changes
 
@@ -39,7 +42,8 @@
 
 ## Deprecations
 
-*   N/A
+*   For `@component` return type annotation, it is recommended to use a python
+    native `TypedDict` instead.
 
 ## Bug Fixes and Other Changes
 
