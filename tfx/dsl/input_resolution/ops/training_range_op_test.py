@@ -81,7 +81,7 @@ class TrainingRangeOpTest(
     actual_2 = self._training_range([model_2])
     self.assertArtifactListEqual(actual_2, self.examples[5:])
 
-  def testTrainingRangeOp_TrainOnTransformedExamples(
+  def testTrainingRangeOp_TrainOnTransformedExamples_ReturnsTransformedExamples(
       self,
   ):
     transformed_examples = self._build_examples(10)
@@ -103,11 +103,7 @@ class TrainingRangeOpTest(
     self.train_on_examples(
         self.model, transformed_examples, self.transform_graph
     )
-
-    actual = self._training_range([self.model], use_transformed_examples=False)
-    self.assertArtifactListEqual(actual, self.examples)
-
-    actual = self._training_range([self.model], use_transformed_examples=True)
+    actual = self._training_range([self.model])
     self.assertArtifactListEqual(actual, transformed_examples)
 
   def testTrainingRangeOp_SameSpanMultipleVersions_AllVersionsReturned(self):
@@ -167,9 +163,9 @@ class TrainingRangeOpTest(
     # The BulkInferrer takes in the same Examples used to Trainer the Model,
     # and outputs 5 new examples to be used downstream. This creates additional
     # Examples artifacts in MLMD linked to the Model, but they should NOT be
-    # returned as the Examples that the Model was trained on.
+    # returend as the Examples that the Model was trained on.
     self.put_execution(
-        'BulkInferrer',
+        'TFTrainer',
         inputs={
             'examples': self.unwrap_tfx_artifacts(self.examples),
             'model': self.unwrap_tfx_artifacts([self.model]),
