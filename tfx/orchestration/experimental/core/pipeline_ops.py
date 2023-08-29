@@ -44,13 +44,13 @@ from tfx.orchestration.experimental.core import sync_pipeline_task_gen
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
+from tfx.orchestration.experimental.core.service.proto import service_pb2
 from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
-from tfx.proto.orchestration import intermediate_artifact_emitter_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
@@ -1793,7 +1793,7 @@ def _generate_reference_uri_subdir(
 # The decorator applies the same lock used in OrchestratorServicer.
 @_pipeline_op()
 def publish_intermediate_artifact(
-    request: intermediate_artifact_emitter_pb2.PublishIntermediateArtifactRequest,
+    request: service_pb2.PublishIntermediateArtifactRequest,
     mlmd_handle: metadata.Metadata,
 ) -> metadata_store_pb2.Artifact:
   """Publishes an intermediate artifact.
