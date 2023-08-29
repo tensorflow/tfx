@@ -17,9 +17,10 @@ import os
 import time
 from typing import Iterable, Optional, Union
 
+from absl import logging
+from absl.testing import parameterized
 from absl.testing.absltest import mock
 import tensorflow as tf
-
 from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import garbage_collection
@@ -29,10 +30,11 @@ from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.proto.orchestration import garbage_collection_policy_pb2
 from tfx.types.artifact import Artifact
+
 from ml_metadata.proto import metadata_store_pb2
 
 
-class GarbageCollectionTest(test_utils.TfxTest):
+class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -198,7 +200,9 @@ class GarbageCollectionTest(test_utils.TfxTest):
         self._metadata.store.get_artifacts_by_id([e.id for e in examples
                                                  ])[0].state)
 
-  def test_garbage_collect_artifacts_throws_garbage_collection_error(self):
+  def test_garbage_collect_artifacts_does_not_throw_and_marks_deleted_when_not_found(
+      self,
+  ):
     test_dir = self.create_tempdir()
     pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
     example_gen_execution = test_utils.fake_example_gen_run_with_handle(
@@ -213,12 +217,91 @@ class GarbageCollectionTest(test_utils.TfxTest):
     )
     for examples_proto in examples_protos:
       examples_proto.uri = os.path.join(test_dir, 'does/not/exist')
-    self.assertRaises(
-        garbage_collection.ArtifactCleanupError,
-        lambda: garbage_collection.garbage_collect_artifacts(  # pylint: disable=g-long-lambda
-            self._metadata, examples_protos
-        ),
+
+    garbage_collection.garbage_collect_artifacts(
+        self._metadata, examples_protos
     )
+
+    # Also make sure the artifacts are still marked as DELETED.
+    final_artifacts = self._metadata.store.get_artifacts_by_id(
+        [e.id for e in examples]
+    )
+    for artifact in final_artifacts:
+      with self.subTest():
+        self.assertEqual(artifact.state, metadata_store_pb2.Artifact.DELETED)
+
+  @mock.patch.object(fileio, 'remove')
+  def test_garbage_collect_artifacts_does_not_throw_or_mark_deleted_when_permission_denied(
+      self, remove
+  ):
+    remove.side_effect = PermissionError('permission denied')
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+    example_gen_execution = test_utils.fake_example_gen_run_with_handle(
+        self._metadata, self._example_gen, span=0, version=0
+    )
+    example_gen_output = self._metadata.get_outputs_of_execution(
+        example_gen_execution.id
+    )
+    examples = example_gen_output['examples']
+    examples_protos = self._metadata.store.get_artifacts_by_id(
+        [e.id for e in examples]
+    )
+
+    garbage_collection.garbage_collect_artifacts(
+        self._metadata, examples_protos
+    )
+
+    # Also make sure the artifacts are not marked as DELETED.
+    final_artifacts = self._metadata.store.get_artifacts_by_id(
+        [e.id for e in examples]
+    )
+    for artifact in final_artifacts:
+      with self.subTest():
+        self.assertNotEqual(artifact.state, metadata_store_pb2.Artifact.DELETED)
+
+  @mock.patch.object(garbage_collection, 'garbage_collect_artifacts')
+  @mock.patch.object(logging, 'exception')
+  def test_run_garbage_collect_for_node_catches_garbage_collect_artifacts_error(
+      self,
+      logging_exception,
+      garbage_collect_artifacts,
+  ):
+    garbage_collect_artifacts.side_effect = Exception('Failed!')
+    example_gen_node_uid = task_lib.NodeUid.from_node(
+        self._pipeline, self._example_gen
+    )
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+    try:
+      garbage_collection.run_garbage_collection_for_node(
+          self._metadata, example_gen_node_uid, self._example_gen
+      )
+    except:  # pylint: disable=bare-except
+      self.fail('Error was raised')
+    logs = logging_exception.call_args_list
+    self.assertLen(logs, 1)
+    self.assertStartsWith(logs[0].args[0], r'Garbage collection for node')
+
+  @mock.patch.object(
+      garbage_collection, 'get_artifacts_to_garbage_collect_for_node'
+  )
+  @mock.patch.object(logging, 'exception')
+  def test_run_garbage_collect_for_node_catches_get_artifacts_to_garbage_collect_for_node_error(
+      self, logging_exception, get_artifacts_to_garbage_collect_for_node
+  ):
+    get_artifacts_to_garbage_collect_for_node.side_effect = Exception('Failed!')
+    example_gen_node_uid = task_lib.NodeUid.from_node(
+        self._pipeline, self._example_gen
+    )
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+    try:
+      garbage_collection.run_garbage_collection_for_node(
+          self._metadata, example_gen_node_uid, self._example_gen
+      )
+    except:  # pylint: disable=bare-except
+      self.fail('Error was raised')
+    logs = logging_exception.call_args_list
+    self.assertLen(logs, 1)
+    self.assertStartsWith(logs[0].args[0], r'Garbage collection for node')
 
   def test_keep_property_value_groups(self):
     policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(

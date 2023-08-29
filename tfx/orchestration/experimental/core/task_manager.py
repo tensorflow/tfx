@@ -25,7 +25,6 @@ from absl import logging
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
-from tfx.orchestration.experimental.core import garbage_collection
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state
 from tfx.orchestration.experimental.core import post_execution_utils
@@ -268,15 +267,6 @@ class TaskManager:
       try:
         post_execution_utils.publish_execution_results_for_task(
             mlmd_handle=self._mlmd_handle, task=task, result=result
-        )
-      except garbage_collection.ArtifactCleanupError as e:
-        # Potentially GC can fail (we discovered this when GC would fail if
-        # historical artifacts got TTL'd), and if we don't check for this error
-        # then the *current* execution will also be failed.
-        # Since GC is about artifacts/executions from the past we decided to not
-        # have it's failure impact the current execution.
-        logging.exception(
-            'Garbage collection failed during post execution! %s', e
         )
       except Exception as e:  # pylint: disable=broad-except
         logging.exception(

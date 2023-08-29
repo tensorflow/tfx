@@ -35,6 +35,7 @@ _KeepOrder = (garbage_collection_policy_pb2.GarbageCollectionPolicy.
               KeepPropertyValueGroups.Grouping.KeepOrder)
 
 
+# TODO(kmonte): Change to ExceptionGroup once python 3.11 becomes available.
 class ArtifactCleanupError(Exception):
   """Raised when garbage collection fails."""
 
@@ -290,23 +291,36 @@ def garbage_collect_artifacts(
   Args:
     mlmd_handle: A handle to the MLMD db.
     artifacts: Artifacts that we want to erase their file contents for GC.
-
-  Raises:
-    ArtifactCleanupError: Wraps any exception in ArtifactCleanupError if thrown.
   """
   if not artifacts:
     return
-  try:
-    for artifact in artifacts:
-      logging.info('Deleting URI %s', artifact.uri)
+  for artifact in artifacts:
+    logging.info('Deleting URI %s', artifact.uri)
+    # There are cases where the artifact URI has been TTL'd off disk, and in
+    # that case we want to mark it as DELETED still. However removing the URI
+    # may still fail (if permission is denied), in which case the artifact
+    # should not be marked for deletion.
+    # In the case that GC fails for a specific artifact we catch the Exception
+    # so that we can mark the other artifacts as DELETED in MLMD.
+    try:
       if fileio.isdir(artifact.uri):
         fileio.rmtree(artifact.uri)
       else:
         fileio.remove(artifact.uri)
+    except fileio.NotFoundError as e:
+      logging.exception(
+          'URI %s not found: %s for artifact %s', artifact.uri, e, artifact
+      )
+      artifact.state = metadata_store_pb2.Artifact.State.DELETED
+    # TODO(kmonte): See if there's some fileio exception list we can catch.
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      # Don't mark artifact as DELETED if we fail for some reason other than
+      # FileNotFound.
+      logging.exception('Failed to delete artifact %s: %s', artifact, e)
+    else:
+      # If no exception then mark as DELETED.
       artifact.state = metadata_store_pb2.Artifact.State.DELETED
     mlmd_handle.store.put_artifacts(artifacts)
-  except Exception as e:
-    raise ArtifactCleanupError() from e
 
 
 def run_garbage_collection_for_node(
@@ -319,6 +333,13 @@ def run_garbage_collection_for_node(
     raise ValueError(
         f'Node uids do not match for garbage collection: {node.node_info.id} '
         f'and {node_uid.node_id}')
-  artifacts = get_artifacts_to_garbage_collect_for_node(mlmd_handle, node_uid,
-                                                        node)
-  garbage_collect_artifacts(mlmd_handle, artifacts)
+  try:
+    # We never want to throw exception while GCing artifacts, since the failure
+    # of GC implies issues with the past executions, and failure will cause the
+    # current execution to fail, which is undesireable.
+    artifacts = get_artifacts_to_garbage_collect_for_node(
+        mlmd_handle, node_uid, node
+    )
+    garbage_collect_artifacts(mlmd_handle, artifacts)
+  except Exception as e:  # pylint: disable=broad-exception-caught
+    logging.exception('Garbage collection for node %s failed %s', node_uid, e)
