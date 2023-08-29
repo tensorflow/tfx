@@ -15,9 +15,11 @@
 
 import contextlib
 import copy
+import dataclasses
 import datetime
 import functools
 import itertools
+import os
 import random
 import threading
 import time
@@ -27,6 +29,8 @@ from absl import flags
 from absl import logging
 import attr
 from tfx import types
+from tfx.dsl.io import fileio
+from tfx.dsl.io import filesystem
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
@@ -44,12 +48,17 @@ from tfx.orchestration.experimental.core.task_schedulers import manual_task_sche
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import partial_run_utils
 from tfx.orchestration.portable.mlmd import artifact_lib
+from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.proto.orchestration import intermediate_artifact_emitter_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import status as status_lib
 
+from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
+
 
 _ENABLE_INPLACE_RESUME = flags.DEFINE_bool(
     'tflex_enable_inplace_resume',
@@ -1653,3 +1662,230 @@ def _mlmd_execution_code(
   elif status.code == status_lib.Code.CANCELLED:
     return metadata_store_pb2.Execution.CANCELED
   return metadata_store_pb2.Execution.FAILED
+
+
+@dataclasses.dataclass(frozen=True)
+class _MLMDProtos:
+  """Represents the MLMD protos associated with an execution."""
+
+  # Used for URI generation for internal intermediate artifacts. Also partially
+  # deep copied when constructing the intermediate artifact.
+  reference_artifact: metadata_store_pb2.Artifact
+
+  # Used to verify that a user provided external URI is unqique.
+  intermediate_artifacts: list[metadata_store_pb2.Artifact]
+
+  # Used to deserialize the intermediate Artifact proto.
+  artifact_type: metadata_store_pb2.ArtifactType
+
+  # Used to link the Execution to the intermediate Artifact with an OUTPUT
+  # Event edge in MLMD.
+  execution: metadata_store_pb2.Execution
+
+
+def _get_mlmd_protos_for_execution(
+    mlmd_handle: metadata.Metadata,
+    execution_id: int,
+    output_key: str,
+) -> _MLMDProtos:
+  """Gets MLMD protos associated with the execution ID and output key.
+
+  Args:
+    mlmd_handle: A handle to the MLMD database.
+    execution_id: The execution ID.
+    output_key: The output key.
+
+  Returns:
+    A _MLMDProtos struct with the MLMD protos for the reference artifact,
+    intermediate artifacts, artifact type, and execution.
+  """
+  # Get the LineageGraph associated with the execution.
+  try:
+    lineage_graph = mlmd_handle.store.get_lineage_subgraph(
+        query_options=metadata_store_pb2.LineageSubgraphQueryOptions(
+            starting_executions=(
+                metadata_store_pb2.LineageSubgraphQueryOptions.StartingNodes(
+                    filter_query=f'id = {execution_id}',
+                )
+            ),
+            max_num_hops=1,
+        ),
+        field_mask_paths=[
+            'artifacts',
+            'artifact_types',
+            'events',
+            'executions',
+        ],
+    )
+  except errors.StatusError as e:
+    raise status_lib.StatusNotOkError(code=e.error_code, message=str(e))
+
+  output_artifact_ids = set()
+  for event in lineage_graph.events:
+    if event_lib.is_valid_output_event(event, output_key):
+      output_artifact_ids.add(event.artifact_id)
+  output_artifacts = [
+      a for a in lineage_graph.artifacts if a.id in output_artifact_ids
+  ]
+
+  # Find the REFERENCE and LIVE artifacts in the subgraph.
+  reference_artifact = None
+  intermediate_artifacts = []
+  for artifact in output_artifacts:
+    if artifact.state == metadata_store_pb2.Artifact.State.REFERENCE:
+      if reference_artifact is not None:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.ALREADY_EXISTS,
+            message=(
+                'Found multiple REFERENCE Artifacts with output_key '
+                f'{output_key} for execution_id {execution_id}.'
+            ),
+        )
+      reference_artifact = artifact
+
+    elif artifact.state == metadata_store_pb2.Artifact.State.LIVE:
+      intermediate_artifacts.append(artifact)
+
+  if reference_artifact is None:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.NOT_FOUND,
+        message=(
+            f'REFERENCE Artifact with output_key {output_key} for '
+            f'execution_id {execution_id} not found.'
+        ),
+    )
+
+  try:
+    artifact_type = [
+        at
+        for at in lineage_graph.artifact_types
+        if at.id == reference_artifact.type_id
+    ][0]
+    execution = lineage_graph.executions[0]
+  except ValueError as e:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.NOT_FOUND, message=str(e)
+    )
+
+  return _MLMDProtos(
+      reference_artifact=reference_artifact,
+      intermediate_artifacts=intermediate_artifacts,
+      artifact_type=artifact_type,
+      execution=execution,
+  )
+
+
+def _generate_reference_uri_subdir(
+    reference_artifact_uri: str,
+) -> str:
+  """Generates and returns the URI for the intermediate artifact."""
+  # TODO(b/285399450): Properly handle ValueArtifacts, which have a uri of
+  # a file, e.g. some/uri/value instead of a directory.
+
+  now = datetime.datetime.now(datetime.timezone.utc)
+  # The subdirectory will be intermediate_artifact_YYYYMMDD_HHMMSS_FFFFFF.
+  subdirectory = now.strftime(f'{constants.PREFIX}_%Y%m%d_%H%M%S_%f')
+
+  # Return the intermediate artifact URI.
+  return os.path.join(reference_artifact_uri, subdirectory)
+
+
+# The decorator applies the same lock used in OrchestratorServicer.
+@_pipeline_op()
+def publish_intermediate_artifact(
+    request: intermediate_artifact_emitter_pb2.PublishIntermediateArtifactRequest,
+    mlmd_handle: metadata.Metadata,
+) -> metadata_store_pb2.Artifact:
+  """Publishes an intermediate artifact.
+
+  Args:
+    request: The PublishIntermediateArtifactRequest.
+    mlmd_handle: A handle to the MLMD database.
+
+  Returns:
+    The published intermediate Artifact proto.
+  """
+  # Check that a REFERENCE artifact corresponding to the output key and
+  # execution ID exists.
+  mlmd_protos = _get_mlmd_protos_for_execution(
+      mlmd_handle, request.execution_id, request.output_key
+  )
+
+  if request.external_uri:
+    # The final URI for the intermediate artifact is an external URI.
+    final_uri = request.external_uri
+
+    # Verify that an external artifact with the same URI has not already been
+    # published.
+    for artifact in mlmd_protos.intermediate_artifacts:
+      if artifact.uri == final_uri:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.ALREADY_EXISTS,
+            message=(
+                f'Artifact with URI {final_uri} has already been published: '
+                f'{artifact}'
+            ),
+        )
+
+  else:
+    # The final URI for the intermediate artifact is a subdirectory of the
+    # REFERENCE artifact's URI.
+    final_uri = _generate_reference_uri_subdir(
+        mlmd_protos.reference_artifact.uri,
+    )
+
+    try:
+      fileio.rename(request.temp_uri, final_uri)
+    except filesystem.NotFoundError as e:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.ABORTED, message=str(e)
+      )
+    logging.info(
+        'Moved temporary URI %s contents to final URI %s',
+        request.temp_uri,
+        final_uri,
+    )
+
+  # Build the intermediate artifact object. We set its state to LIVE, so that
+  # it can be immediately consumed.
+  intermediate_artifact = metadata_store_pb2.Artifact()
+  intermediate_artifact.CopyFrom(mlmd_protos.reference_artifact)
+  intermediate_artifact.uri = final_uri
+  intermediate_artifact.state = metadata_store_pb2.Artifact.State.LIVE
+  intermediate_artifact.ClearField('id')
+  intermediate_artifact.ClearField('create_time_since_epoch')
+  intermediate_artifact.ClearField('last_update_time_since_epoch')
+
+  # Copy any new properties/custom properties for the artifact.
+  for key, value in request.properties.items():
+    intermediate_artifact.properties[key].CopyFrom(value)
+  for key, value in request.custom_properties.items():
+    intermediate_artifact.custom_properties[key].CopyFrom(value)
+
+  try:
+    deserialized_intermediate_artifact = artifact_utils.deserialize_artifact(
+        mlmd_protos.artifact_type, intermediate_artifact
+    )
+  except ValueError as e:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
+    )
+
+  try:
+    contexts = mlmd_handle.store.get_contexts_by_execution(
+        mlmd_protos.execution.id
+    )
+    # Link the Execution to the Artifact with an OUTPUT Event edge.
+    execution_lib.put_execution(
+        mlmd_handle,
+        mlmd_protos.execution,
+        contexts,
+        output_artifacts={
+            request.output_key: [deserialized_intermediate_artifact]
+        },
+    )
+  except errors.StatusError as e:
+    raise status_lib.StatusNotOkError(code=e.error_code, message=str(e))
+
+  logging.info('Published intermediate artifact: %s', intermediate_artifact)
+  return intermediate_artifact
