@@ -605,6 +605,14 @@ message NodeExecutionOptions {
 
   // Async mode trigger configuration for this node.
   AsyncTrigger async_trigger = 8;
+
+  // Fine-grained control over manager node execution.
+  // TODO(b/298253165): Add support for ASYNC options
+  // Next id: 1
+  message ManagerNodeExecutionOptions {}
+
+  // Manager node execution options for this node. Unset if not manager ndoe.
+  ManagerNodeExecutionOptions manager_node_execution_options = 9;
 }
 
 // Pipeline node definition.

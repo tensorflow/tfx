@@ -21,6 +21,17 @@ from tfx.proto.orchestration import pipeline_pb2
 
 
 @dataclasses.dataclass
+class ManagerNodeOptions:
+  """Manager Node Execution Options.
+
+  Definitionally if a node has this set it is a manager node.
+  Currently only apply in experimental orchestrator and empty as we don't
+  support more complicated ManagerNodeOptions.
+  TODO(b/298253165): Add support for ASYNC options.
+  """
+
+
+@dataclasses.dataclass
 class NodeExecutionOptions:
   """Component Node Execution Options.
 
@@ -31,6 +42,7 @@ class NodeExecutionOptions:
   success_optional: bool = False
   max_execution_retries: int = 0
   execution_timeout_sec: int = 0
+  manager_node_execution_options: ManagerNodeOptions | None = None
 
   def __post_init__(self):
     self.max_execution_retries = max(self.max_execution_retries, 0)
