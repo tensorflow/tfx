@@ -549,10 +549,11 @@ message NodeExecutionOptions {
     ALL_UPSTREAM_NODES_COMPLETED = 2;
     // Specifies that all upstream nodes are in a succeeded state and that any
     // downstream node would otherwise be able to run.
-    LAZILY_ALL_UPSTREAM_NODES_SUCCEDED = 3;
+    LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED = 5;
     // Specifies that all upstream nodes are in a final state and that any
     // downstream node would otherwise be able to run.
     LAZILY_ALL_UPSTREAM_NODES_COMPLETED = 4;
+    reserved 3;
   }
   // The trigger strategy of this node.
   // Unset or set to default value of TRIGGER_STATEGY_UNDEFINED behaves the

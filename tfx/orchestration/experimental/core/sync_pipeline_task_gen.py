@@ -37,7 +37,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 _LAZY_TRIGGER_STRATEGIES = frozenset({
-    pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEDED,
+    pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED,
     pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
 })
 
@@ -544,7 +544,7 @@ class _Generator:
     elif node.execution_options.strategy in (
         pipeline_pb2.NodeExecutionOptions.TRIGGER_STRATEGY_UNSPECIFIED,
         pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_SUCCEEDED,
-        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEDED,
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED,
     ):
       node_trigger_strategy_satisfied = self._upstream_nodes_successful(
           node, successful_node_ids
@@ -565,17 +565,19 @@ class _Generator:
         and node.downstream_nodes
     ):
       any_downstream_node_otherwise_ready = False
-      successful_and_lazy_node_ids = (
+      successful_or_lazy_node_ids = (
           successful_node_ids | lazily_evaluated_node_ids
       )
       for downstream_node in node.downstream_nodes:
         downstream_trigger = self._trigger_strategy_satisfied(
             self._node_proto_view_by_node_id[downstream_node],
-            successful_and_lazy_node_ids,
+            successful_or_lazy_node_ids,
             failed_nodes_dict,
             lazily_evaluated_node_ids,
         )
         any_downstream_node_otherwise_ready |= downstream_trigger
+        if any_downstream_node_otherwise_ready:
+          break
       node_trigger_strategy_satisfied &= any_downstream_node_otherwise_ready
     return node_trigger_strategy_satisfied
 
