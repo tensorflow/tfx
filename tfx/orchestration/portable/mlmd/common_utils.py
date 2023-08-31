@@ -14,13 +14,17 @@
 """Common MLMD utility libraries."""
 
 import copy
-from typing import Any, TypeVar
+from typing import Any, Optional, Sequence, TypeVar, Tuple
 
 from absl import logging
 from tfx.orchestration import metadata
 
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
+
+
+_PIPELINE_RUN_CONTEXT_TYPE = 'pipeline_run'
+_NODE_CONTEXT_TYPE = 'node'
 
 
 MetadataType = TypeVar(
@@ -116,3 +120,47 @@ def _put_type_handler(
         '%s, New type: %s, error: %s') % (existing_type, metadata_type, exc)
     logging.warning(warning_str)
     raise RuntimeError(warning_str) from exc
+
+
+def get_execution_associated_pipeline_run_and_node_contexts(
+    metadata_handler: metadata.Metadata,
+    contexts: Optional[Sequence[metadata_store_pb2.Context]],
+) -> Tuple[
+    Optional[metadata_store_pb2.Context], Optional[metadata_store_pb2.Context]
+]:
+  """Filters and gets pipeline run and node contexts."""
+  if not contexts:
+    return (None, None)
+
+  context_types = metadata_handler.store.get_context_types()
+  pipeline_run_context_type = None
+  node_context_type = None
+  for context_type in context_types:
+    if context_type.name == _PIPELINE_RUN_CONTEXT_TYPE:
+      pipeline_run_context_type = context_type
+    elif context_type.name == _NODE_CONTEXT_TYPE:
+      node_context_type = context_type
+
+  pipeline_run_contexts = []
+  node_contexts = []
+  for context in contexts:
+    if (
+        pipeline_run_context_type
+        and context.type_id == pipeline_run_context_type.id
+    ):
+      pipeline_run_contexts.append(context)
+    elif node_context_type and context.type_id == node_context_type.id:
+      node_contexts.append(context)
+
+  if len(pipeline_run_contexts) > 1 or len(node_contexts) > 1:
+    logging.error(
+        'there should be no more than 1 pipeline run context and node context'
+        ' associated with a component execution'
+    )
+    return (None, None)
+
+  pipeline_run_context = (
+      pipeline_run_contexts[0] if pipeline_run_contexts else None
+  )
+  node_context = node_contexts[0] if node_contexts else None
+  return (pipeline_run_context, node_context)
