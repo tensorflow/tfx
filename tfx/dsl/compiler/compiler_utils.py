@@ -236,7 +236,7 @@ def build_channel_to_key_fn(implicit_keys_map):
 
 def validate_dynamic_exec_ph_operator(placeholder: ph.ArtifactPlaceholder):
   # Supported format for dynamic exec prop:
-  # component.output['ouput_key'].future()[0].value
+  # component.output['output_key'].future()[0].value
   if len(placeholder._operators) != 2:  # pylint: disable=protected-access
     raise ValueError("dynamic exec property should contain two placeholder "
                      "operator, while pass %d operaters" %
@@ -244,7 +244,7 @@ def validate_dynamic_exec_ph_operator(placeholder: ph.ArtifactPlaceholder):
   if (not isinstance(placeholder._operators[0], ph._IndexOperator) or  # pylint: disable=protected-access
       not isinstance(placeholder._operators[1], ph._ArtifactValueOperator)):  # pylint: disable=protected-access
     raise ValueError("dynamic exec property should be in form of "
-                     "component.output[\'ouput_key\'].future()[0].value")
+                     "component.output[\'output_key\'].future()[0].value")
 
 
 def output_spec_from_channel(channel: types.BaseChannel,
@@ -315,7 +315,7 @@ def _check_property_value_type(property_name: str,
 class _PipelineEnd(base_node.BaseNode):
   """Virtual pipeline end node.
 
-  While the pipeline end node does not exists nor accessible in DSL, having a
+  While the pipeline end node does not exist nor accessible in DSL, having a
   PipelineEnd class helps generalizing the compilation.
 
   Supported features:
