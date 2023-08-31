@@ -1518,7 +1518,7 @@ def _orchestrate_active_pipeline(
         )
         node = _filter_by_node_id(node_infos, node_id).node
         active_executions = task_gen_utils.get_executions(
-            mlmd_connection_manager.primary_mlmd_handle, node, only_active=True
+            mlmd_connection_manager.primary_mlmd_handle, node, want_active=True
         )
         _cancel_executions(
             active_executions,
