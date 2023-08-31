@@ -21,7 +21,7 @@ import os
 import random
 import time
 import types
-from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union, cast
 
 import absl
 from tfx.dsl.io import fileio
@@ -181,6 +181,25 @@ class Metadata:
     if self._store is None:
       raise RuntimeError('Metadata object is not in enter state')
     return self._store
+
+  @property
+  def mlmd_service_config(
+      self,
+  ) -> mlmd_service_pb2.MLMDServiceClientConfig | None:
+    """Returns the config for MLMD Service connection if service is used.
+
+    Returns:
+      An MLMDServiceClientConfig object if MLMD Service is used. Otherwise
+      returns None.
+    """
+    if not isinstance(
+        self._connection_config, mlmd_service_pb2.MLMDServiceClientConfig
+    ):
+      return None
+    mlmd_service_config = cast(
+        mlmd_service_pb2.MLMDServiceClientConfig, self._connection_config
+    )
+    return mlmd_service_config
 
   def _prepare_artifact_type(
       self, artifact_type: metadata_store_pb2.ArtifactType

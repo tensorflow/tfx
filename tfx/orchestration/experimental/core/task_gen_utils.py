@@ -547,7 +547,8 @@ def register_executions(
         execution_type,
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
-        execution_name=str(uuid.uuid4()))
+        execution_name=str(uuid.uuid4()),
+        contexts=contexts)
     # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     executions.append(execution)

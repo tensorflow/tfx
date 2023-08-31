@@ -41,11 +41,45 @@ from ml_metadata.proto import metadata_store_pb2
 
 ArtifactState = types.artifact.ArtifactState
 
+_ORCHESTRATOR_RESERVED_ID = '__ORCHESTRATOR__'
+_PIPELINE_RUN_ID = 'pipeline_run_id'
+_PIPELINE_EXEC_MODE = 'pipeline_exec_mode'
+_PIPELINE_EXEC_MODE_SYNC = 'sync'
+_PIPELINE_EXEC_MODE_ASYNC = 'async'
+
+
 # LINT.IfChange(execution_result)
 _EXECUTION_RESULT = '__execution_result__'
 # LINT.ThenChange()
 _PROPERTY_SCHEMA_PREFIX = '__schema__'
 _PROPERTY_SCHEMA_SUFFIX = '__'
+_COMPONENT_EXECUTION_GURI_PREFIX = 'component_execution_guri_prefix'
+
+
+def is_sync_pipeline_execution(
+    pipeline_execution: metadata_store_pb2.Execution,
+) -> bool:
+  """Returns `True` if the pipeline execution is in sync mode."""
+  return (
+      pipeline_execution.custom_properties.get(_PIPELINE_EXEC_MODE)
+      and pipeline_execution.custom_properties.get(
+          _PIPELINE_EXEC_MODE
+      ).string_value
+      == _PIPELINE_EXEC_MODE_SYNC
+  )
+
+
+def is_async_pipeline_execution(
+    pipeline_execution: metadata_store_pb2.Execution,
+) -> bool:
+  """Returns `True` if the pipeline execution is in async mode."""
+  return (
+      pipeline_execution.custom_properties.get(_PIPELINE_EXEC_MODE)
+      and pipeline_execution.custom_properties.get(
+          _PIPELINE_EXEC_MODE
+      ).string_value
+      == _PIPELINE_EXEC_MODE_ASYNC
+  )
 
 
 def is_execution_successful(execution: metadata_store_pb2.Execution) -> bool:
@@ -110,6 +144,21 @@ def is_execution_failed(execution: metadata_store_pb2.Execution) -> bool:
   return execution.last_known_state == metadata_store_pb2.Execution.FAILED
 
 
+def is_component_execution_type(
+    execution_type: metadata_store_pb2.ExecutionType,
+) -> bool:
+  """Returns `True` if the execution type is a component execution type.
+
+  Args:
+    execution_type: An ExecutionType message.
+
+  Returns:
+    A bool value indicating whether or not the execution type is a component
+    execution type.
+  """
+  return execution_type.name != _ORCHESTRATOR_RESERVED_ID
+
+
 def is_internal_key(key: str) -> bool:
   """Returns `True` if the key is an internal-only execution property key."""
   return key.startswith('__')
@@ -150,6 +199,7 @@ def prepare_execution(
     state: metadata_store_pb2.Execution.State,
     exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
     execution_name: str = '',
+    contexts: Optional[Sequence[metadata_store_pb2.Context]] = None,
 ) -> metadata_store_pb2.Execution:
   """Creates an execution proto based on the information provided.
 
@@ -160,6 +210,7 @@ def prepare_execution(
     state: The state of the execution.
     exec_properties: Execution properties that need to be attached.
     execution_name: Name of the execution.
+    contexts: MLMD contexts to be associated with the execution.
 
   Returns:
     A metadata_store_pb2.Execution message.
@@ -193,6 +244,10 @@ def prepare_execution(
       execution.properties[k].CopyFrom(value.field_value)
     else:
       execution.custom_properties[k].CopyFrom(value.field_value)
+
+  if is_component_execution_type(execution_type):
+    _set_component_execution_guri_prefix(execution, metadata_handler, contexts)
+
   logging.debug('Prepared EXECUTION:\n %s', execution)
 
   telemetry_utils.noop_telemetry(
@@ -279,6 +334,71 @@ def _create_artifact_and_event_pairs(
   return result
 
 
+def _set_component_execution_guri_prefix(
+    execution: metadata_store_pb2.Execution,
+    metadata_handler: metadata.Metadata,
+    contexts: Optional[Sequence[metadata_store_pb2.Context]],
+):
+  """Sets component execution Guri prefix based on go/tflex-execution-guris.
+  
+  Args:
+    execution: A metadata_store_pb2.Execution message to be mutated.
+    metadata_handler: A handler to access MLMD store.
+    contexts: MLMD contexts to be associated with the execution.
+  """
+  if (
+      not metadata_handler.mlmd_service_config
+      or not metadata_handler.mlmd_service_config.pipeline_asset
+  ):
+    return
+
+  pipeline_run_context, node_context = (
+      common_utils.get_execution_associated_pipeline_run_and_node_contexts(
+          metadata_handler, contexts
+      )
+  )
+
+  if pipeline_run_context:
+    # SYNC mode
+    execution_query = q.And([
+        'type = "%s"' % _ORCHESTRATOR_RESERVED_ID,
+        'custom_properties.pipeline_run_id.string_value = "%s"'
+        % pipeline_run_context.name,
+    ])
+    pipeline_execution = metadata_handler.store.get_executions(
+        list_options=execution_query.list_options()
+    )
+    if not pipeline_execution or not is_sync_pipeline_execution(
+        pipeline_execution[0]
+    ):
+      return
+    run_uuid = pipeline_execution[0].name
+  else:
+    # ASYNC mode
+    execution_query = q.And([
+        'type = "%s"' % _ORCHESTRATOR_RESERVED_ID,
+        'last_known_state = NEW OR last_known_state = RUNNING',
+    ])
+    active_pipeline_execution = metadata_handler.store.get_executions(
+        list_options=execution_query.list_options()
+    )
+    if not active_pipeline_execution or not is_async_pipeline_execution(
+        active_pipeline_execution[0]
+    ):
+      return
+    run_uuid = active_pipeline_execution[0].name
+
+  if not run_uuid:
+    return
+
+  owner = metadata_handler.mlmd_service_config.pipeline_asset.owner
+  name = metadata_handler.mlmd_service_config.pipeline_asset.name
+  node_id = node_context.name if node_context else ''
+  execution.custom_properties[_COMPONENT_EXECUTION_GURI_PREFIX].string_value = (
+      f'tflex_component_execution://{owner}:{name}:{name}:{run_uuid}:{node_id}'
+  )
+
+
 def put_execution(
     metadata_handler: metadata.Metadata,
     execution: metadata_store_pb2.Execution,
@@ -328,6 +448,7 @@ def put_execution(
             metadata_handler=metadata_handler,
             artifact_dict=output_artifacts,
             event_type=output_event_type))
+
   execution_id, artifact_ids, contexts_ids = (
       metadata_handler.store.put_execution(
           execution=execution,
