@@ -23,6 +23,7 @@ from absl import logging
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import pipeline_state
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import common_utils
@@ -164,6 +165,7 @@ def prepare_execution(
   Returns:
     A metadata_store_pb2.Execution message.
   """
+  print(pipeline_state.PipelineState.load_all_active(metadata_handler))
   start_time = time.time()
   execution = metadata_store_pb2.Execution()
   execution.last_known_state = state
