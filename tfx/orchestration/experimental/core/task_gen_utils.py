@@ -42,6 +42,7 @@ from tfx.utils import status as status_lib
 from tfx.utils import typing_utils
 
 from google.protobuf import any_pb2
+# Guri library is internal.
 import ml_metadata as mlmd
 from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
@@ -473,6 +474,7 @@ def register_executions_from_existing_executions(
     metadata_handle: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
     existing_executions: List[metadata_store_pb2.Execution],
+    execution_guri_prefix: Optional[str] = None,
 ) -> Sequence[metadata_store_pb2.Execution]:
   """Registers a list of new executions from a list of failed/canceled executions."""
   if not existing_executions:
@@ -490,6 +492,7 @@ def register_executions_from_existing_executions(
         state=metadata_store_pb2.Execution.NEW,
         exec_properties=exec_properties,
         execution_name=str(uuid.uuid4()),
+        execution_guri_prefix=execution_guri_prefix,
     )
     # Only copy necessary custom_properties from the failed/canceled execution.
     # LINT.IfChange(new_execution_custom_properties)
@@ -520,6 +523,7 @@ def register_executions(
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
     input_and_params: List[InputAndParam],
+    execution_guri_prefix: Optional[str] = None,
 ) -> Sequence[metadata_store_pb2.Execution]:
   """Registers multiple executions in MLMD.
 
@@ -534,6 +538,8 @@ def register_executions(
     input_and_params: A list of InputAndParams, which includes input_dicts
     (dictionaries of artifacts. One execution will be registered for each of the
     input_dict) and corresponding exec_properties.
+    execution_guri_prefix: execution Guri prefix based on
+      go/tflex-execution-guris.
 
   Returns:
     A list of MLMD executions that are registered in MLMD, with id populated.
@@ -547,7 +553,8 @@ def register_executions(
         execution_type,
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
-        execution_name=str(uuid.uuid4()))
+        execution_name=str(uuid.uuid4()),
+        execution_guri_prefix=execution_guri_prefix)
     # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     executions.append(execution)
@@ -779,3 +786,26 @@ def interpret_status_from_failed_execution(
     )
   error_msg = textwrap.shorten(error_msg, width=512) if error_msg else None
   return status_lib.Status(code=error_code, message=error_msg)
+
+
+def generate_execution_guri_prefix(
+    metadata_handle: metadata.Metadata,
+    pipeline_name: str,
+    pipeline_execution_uuid: str,
+    component_id: str,
+) -> Optional[str]:
+  """Generates execution GUri prefix based on go/tflex-execution-guris."""
+  if (
+      not metadata_handle.mlmd_service_config
+      or not metadata_handle.mlmd_service_config.pipeline_asset
+  ):
+    return
+  owner = metadata_handle.mlmd_service_config.pipeline_asset.owner
+  project_name = metadata_handle.mlmd_service_config.pipeline_asset.name
+  return 'tflex_component_execution://{}:{}:{}:{}:{}'.format(
+      owner,
+      project_name,
+      pipeline_name,
+      pipeline_execution_uuid,
+      component_id,
+  )

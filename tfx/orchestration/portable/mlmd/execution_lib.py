@@ -46,6 +46,7 @@ _EXECUTION_RESULT = '__execution_result__'
 # LINT.ThenChange()
 _PROPERTY_SCHEMA_PREFIX = '__schema__'
 _PROPERTY_SCHEMA_SUFFIX = '__'
+_COMPONENT_EXECUTION_GURI = 'component_execution_guri'
 
 
 def is_execution_successful(execution: metadata_store_pb2.Execution) -> bool:
@@ -150,6 +151,7 @@ def prepare_execution(
     state: metadata_store_pb2.Execution.State,
     exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
     execution_name: str = '',
+    execution_guri_prefix: Optional[str] = None,
 ) -> metadata_store_pb2.Execution:
   """Creates an execution proto based on the information provided.
 
@@ -160,6 +162,8 @@ def prepare_execution(
     state: The state of the execution.
     exec_properties: Execution properties that need to be attached.
     execution_name: Name of the execution.
+    execution_guri_prefix: execution Guri prefix based on
+      go/tflex-execution-guris.
 
   Returns:
     A metadata_store_pb2.Execution message.
@@ -193,6 +197,12 @@ def prepare_execution(
       execution.properties[k].CopyFrom(value.field_value)
     else:
       execution.custom_properties[k].CopyFrom(value.field_value)
+
+  if execution_guri_prefix:
+    execution.custom_properties[_COMPONENT_EXECUTION_GURI].string_value = (
+        f'{execution_guri_prefix}:{execution.name}'
+    )
+
   logging.debug('Prepared EXECUTION:\n %s', execution)
 
   telemetry_utils.noop_telemetry(

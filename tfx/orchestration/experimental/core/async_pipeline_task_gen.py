@@ -282,6 +282,7 @@ class _Generator:
 
     with self._pipeline_state:
       node_state = self._pipeline_state.get_node_state(node_uid)
+      pipeline_execution_uuid = self._pipeline_state.execution.name
     if (
         not backfill_token and node_state.state != pstate.NodeState.STARTED
     ) or (backfill_token and node_state.state == pstate.NodeState.STARTING):
@@ -407,6 +408,12 @@ class _Generator:
         node.node_info.type,
         resolved_info.contexts,
         unprocessed_inputs,
+        execution_guri_prefix=task_gen_utils.generate_execution_guri_prefix(
+            metadata_handle=self._mlmd_handle,
+            pipeline_name=self._pipeline.pipeline_info.id,
+            pipeline_execution_uuid=pipeline_execution_uuid,
+            component_id=node.node_info.id,
+        ),
     )
     for e in new_executions:
       event_observer.make_notify_execution_state_change_fn(node_uid)(None, e)
