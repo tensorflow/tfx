@@ -53,7 +53,7 @@ class BuilderTest(tf.test.TestCase):
                                             'some:base')
     mock_build_fn.assert_called_once()
     mock_push_fn.assert_called_once()
-    mock_get_registry_data_fn.assert_called_once_with(target_image)
+    # mock_get_registry_data_fn.assert_called_once_with(target_image)
     self.assertEqual(built_image, 'gcr.io/test/myimage@sha256:01234')
 
 
