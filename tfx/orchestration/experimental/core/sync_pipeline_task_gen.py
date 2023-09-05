@@ -90,6 +90,19 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
                       self._is_task_id_tracked_fn, self._service_job_manager,
                       self._fail_fast)()
 
+  def get_tasks_for_node(
+      self,
+      node: node_proto_view.NodeProtoView,
+      pipeline_state: pstate.PipelineState,
+  ) -> List[task_lib.Task]:
+    return _Generator(
+        self._mlmd_connection_manager,
+        pipeline_state,
+        self._is_task_id_tracked_fn,
+        self._service_job_manager,
+        self._fail_fast,
+    ).generate_tasks_for_node(node)
+
 
 class _Generator:
   """Generator implementation class for SyncPipelineTaskGenerator."""
@@ -118,6 +131,12 @@ class _Generator:
     self._node_proto_view_by_node_id: Dict[
         str, node_proto_view.NodeProtoView
     ] = {}
+
+  def generate_tasks_for_node(
+      self, node: node_proto_view.NodeProtoView
+  ) -> List[task_lib.Task]:
+    logging.info('in generate_tasks_for_node')
+    return self._generate_tasks_from_resolved_inputs(node)
 
   def __call__(self) -> List[task_lib.Task]:
     layers = _topsorted_layers(self._pipeline)
@@ -443,6 +462,7 @@ class _Generator:
       resolved_info = task_gen_utils.generate_resolved_info(
           self._mlmd_connection_manager, node, self._pipeline
       )
+      logging.info('Resolved inputs: %s', resolved_info)
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
                    f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')
@@ -454,6 +474,7 @@ class _Generator:
       return result
 
     if not resolved_info.input_and_params:
+      logging.info('Node skipped: %s', node_uid)
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid, state=pstate.NodeState.SKIPPED))
@@ -466,6 +487,7 @@ class _Generator:
     # TODO(b/258477751) Add more tests to test the producer/consumer pipelines.
     for input_and_params in resolved_info.input_and_params:
       for artifacts in input_and_params.input_artifacts.values():
+        logging.info('Updating external artifact type: %s', artifacts)
         task_gen_utils.update_external_artifact_type(self._mlmd_handle,
                                                      artifacts)
 
