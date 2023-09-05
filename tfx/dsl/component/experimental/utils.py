@@ -156,6 +156,7 @@ def _create_component_spec_class(
     arg_defaults: Dict[str, Any],
     inputs: Optional[Dict[str, Type[artifact.Artifact]]] = None,
     outputs: Optional[Dict[str, Type[artifact.Artifact]]] = None,
+    async_outputs: Optional[Dict[str, Type[artifact.Artifact]]] = None,
     parameters: Optional[Dict[str, Any]] = None,
     type_annotation: Optional[Type[system_executions.SystemExecution]] = None,
     json_compatible_inputs: Optional[Dict[str, Any]] = None,
@@ -168,6 +169,8 @@ def _create_component_spec_class(
     arg_defaults: A dict from func arg name to its default value.
     inputs: A dict from input name to its Artifact type.
     outputs: A dict from output name to its Artifact type.
+    async_outputs: A dict from intermediate output artifact name to its Artifact
+      type.
     parameters: A dict from parameter name to its primitive type.
     type_annotation: a subclass to SystemExecution used to annotate the
       component on ComponentSpec.
@@ -199,6 +202,20 @@ def _create_component_spec_class(
     for key, artifact_type in outputs.items():
       assert key not in arg_defaults, 'Optional outputs are not supported.'
       spec_outputs[key] = component_spec.ChannelParameter(type=artifact_type)
+      if json_compatible_outputs and key in json_compatible_outputs:
+        setattr(
+            spec_outputs[key],
+            '_JSON_COMPAT_TYPEHINT',
+            json_compatible_outputs[key],
+        )
+  if async_outputs:
+    for key, artifact_type in async_outputs.items():
+      assert (
+          key not in arg_defaults
+      ), 'Optional intermediate artifacts are not supported.'
+      spec_outputs[key] = component_spec.ChannelParameter(
+          type=artifact_type, is_async_channel=True
+      )
       if json_compatible_outputs and key in json_compatible_outputs:
         setattr(
             spec_outputs[key],
@@ -298,6 +315,7 @@ def create_component_class(
     base_component_class: Type[base_component.BaseComponent],
     inputs: Optional[Dict[str, Type[artifact.Artifact]]] = None,
     outputs: Optional[Dict[str, Type[artifact.Artifact]]] = None,
+    async_outputs: Optional[Dict[str, Type[artifact.Artifact]]] = None,
     parameters: Optional[Dict[str, Any]] = None,
     type_annotation: Optional[Type[system_executions.SystemExecution]] = None,
     json_compatible_inputs: Optional[Dict[str, Any]] = None,
@@ -319,6 +337,8 @@ def create_component_class(
     base_component_class: The base class of the generated component class.
     inputs: A dict from input name to its Artifact type.
     outputs: A dict from output name to its Artifact type.
+    async_outputs: A dict from intermediate output artifact name to its Artifact
+      type.
     parameters: A dict from parameter name to its primitive type.
     type_annotation: a subclass to SystemExecution used to annotate the
       component on ComponentSpec.
@@ -343,6 +363,7 @@ def create_component_class(
       arg_defaults,
       inputs,
       outputs,
+      async_outputs,
       parameters,
       type_annotation,
       json_compatible_inputs,

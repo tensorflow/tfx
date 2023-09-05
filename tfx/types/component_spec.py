@@ -394,7 +394,7 @@ COMPATIBLE_TYPES_KEY = '_compatible_types'
 
 
 class ChannelParameter:
-  """An channel parameter that forms part of a ComponentSpec.
+  """A channel parameter that forms part of a ComponentSpec.
 
   This type of parameter should be specified in the INPUTS and OUTPUTS dict
   fields of a ComponentSpec:
@@ -414,7 +414,9 @@ class ChannelParameter:
       self,
       type: Optional[Type[artifact.Artifact]] = None,  # pylint: disable=redefined-builtin
       optional: bool = False,
-      allow_empty: Optional[bool] = None):
+      allow_empty: Optional[bool] = None,
+      is_async_channel: bool = False,
+  ):
     """ChannelParameter constructor.
 
     Note the distinction between `optional` and `allow_empty`.
@@ -432,6 +434,8 @@ class ChannelParameter:
         inputs to this channel is optional. Should only be explicitly set if
         `optional` is True. For backwards compatibility, if `optional` is True
         but this is not specified, we will treat this as True.
+      is_async_channel: Whether the channel parameter is for an intermediate
+        output artifact or not. Defaults to False.
     """
     if not (inspect.isclass(type) and issubclass(type, artifact.Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
@@ -439,6 +443,7 @@ class ChannelParameter:
           'tfx.types.Artifact.')
     self.type = type
     self.optional = optional
+    self.is_async_channel = is_async_channel
 
     if allow_empty is None:
       # allow_empty not explicitly specified.
@@ -451,8 +456,9 @@ class ChannelParameter:
       # allow_empty explicitly specified
       self.allow_empty_explicitly_set = True
       if not optional:
-        raise ValueError('allow_empty should only be explictly set if '
-                         'optional is True')
+        raise ValueError(
+            'allow_empty should only be explicitly set if optional is True'
+        )
     self.allow_empty = allow_empty
 
   def __repr__(self):

@@ -426,9 +426,17 @@ def component(
 
   utils.assert_is_top_level_func(func)
 
-  (inputs, outputs, parameters, arg_formats, arg_defaults, returned_values,
-   json_typehints, return_json_typehints) = (
-       function_parser.parse_typehint_component_function(func))
+  (
+      inputs,
+      outputs,
+      async_outputs,
+      parameters,
+      arg_formats,
+      arg_defaults,
+      returned_values,
+      json_typehints,
+      return_json_typehints,
+  ) = function_parser.parse_typehint_component_function(func)
   if use_beam and list(parameters.values()).count(_BeamPipeline) != 1:
     raise ValueError('The decorated function must have one and only one '
                      'optional parameter of type '
@@ -452,6 +460,7 @@ def component(
       ),
       inputs=inputs,
       outputs=outputs,
+      async_outputs=async_outputs,
       parameters=parameters,
       type_annotation=component_annotation,
       json_compatible_inputs=json_typehints,

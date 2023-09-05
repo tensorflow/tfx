@@ -244,6 +244,10 @@ class OutputArtifact(_ArtifactGeneric):
   """Output artifact object type annotation."""
 
 
+class AsyncOutputArtifact(_ArtifactGeneric):
+  """Intermediate artifact object type annotation."""
+
+
 class Parameter(_PrimitiveTypeGeneric):
   """Component parameter type annotation."""
 

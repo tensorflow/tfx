@@ -128,6 +128,8 @@ class ParsedSignature(NamedTuple):
       subclass of `tfx.types.Artifact`).
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
+    async_outputs: A dictionary mapping each intermediate output artifact name
+      to its artifact type (as a subclass of `tfx.types.Artifact`).
     parameters: A dictionary mapping each parameter name to its primitive type
       (one of `int`, `float`, `str`, `bool`, `beam.Pipeline` or any json
       compatible types). Json compatibility is determined by
@@ -148,6 +150,7 @@ class ParsedSignature(NamedTuple):
   """
   inputs: Dict[str, Type[artifact.Artifact]]
   outputs: Dict[str, Type[artifact.Artifact]]
+  async_outputs: Dict[str, Type[artifact.Artifact]]
   parameters: Dict[str, Any]
   arg_formats: Dict[str, utils.ArgFormats]
   arg_defaults: Dict[str, Any]
@@ -179,6 +182,7 @@ def _parse_signature(
   # Parse function arguments.
   inputs = {}
   outputs = {}
+  async_outputs = {}
   parameters = {}
   arg_formats = {}
   returned_outputs = {}
@@ -212,6 +216,14 @@ def _parse_signature(
         )
       arg_formats[arg] = utils.ArgFormats.OUTPUT_ARTIFACT
       outputs[arg] = arg_typehint.type
+    elif isinstance(arg_typehint, annotations.AsyncOutputArtifact):
+      if arg in arg_defaults:
+        raise ValueError(
+            'Intermediate artifact of component function cannot be declared as '
+            'optional (error for argument %r of %r).' % (arg, func)
+        )
+      arg_formats[arg] = utils.ArgFormats.OUTPUT_ARTIFACT
+      async_outputs[arg] = arg_typehint.type
     elif isinstance(arg_typehint, annotations.Parameter):
       utils.parse_parameter_arg(
           arg,
@@ -285,6 +297,7 @@ def _parse_signature(
   return ParsedSignature(
       inputs,
       outputs,
+      async_outputs,
       parameters,
       arg_formats,
       arg_defaults,

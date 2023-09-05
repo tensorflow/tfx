@@ -180,6 +180,9 @@ class UtilsTest(tf.test.TestCase):
         artifact_examples_output: annotations.OutputArtifact[
             standard_artifacts.Examples
         ],
+        artifact_intermediate_output: annotations.AsyncOutputArtifact[
+            standard_artifacts.Model
+        ],
         int_param: annotations.Parameter[int],
         json_compat_param: annotations.Parameter[Dict[str, int]],
         str_param: annotations.Parameter[str] = 'foo',
@@ -195,6 +198,7 @@ class UtilsTest(tf.test.TestCase):
     (
         inputs,
         outputs,
+        async_outputs,
         parameters,
         arg_formats,
         arg_defaults,
@@ -215,6 +219,7 @@ class UtilsTest(tf.test.TestCase):
         base_component_class=base_component_class,
         inputs=inputs,
         outputs=outputs,
+        async_outputs=async_outputs,
         parameters=parameters,
         type_annotation=type_annotation,
         json_compatible_inputs=json_typehints,
@@ -232,10 +237,14 @@ class UtilsTest(tf.test.TestCase):
         spec_inputs['artifact_int_input'].type, standard_artifacts.Integer
     )
     spec_outputs = actual_spec_class.OUTPUTS
-    self.assertLen(spec_outputs, 4)
+    self.assertLen(spec_outputs, 5)
     self.assertEqual(
         spec_outputs['artifact_examples_output'].type,
         standard_artifacts.Examples,
+    )
+    self.assertEqual(
+        spec_outputs['artifact_intermediate_output'].type,
+        standard_artifacts.Model,
     )
     self.assertEqual(spec_outputs['str_output'].type, standard_artifacts.String)
     self.assertEqual(

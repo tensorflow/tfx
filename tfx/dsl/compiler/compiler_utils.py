@@ -294,6 +294,10 @@ def output_spec_from_channel(channel: types.BaseChannel,
     result.artifact_spec.external_artifact_uris.extend(
         output_channel._predefined_artifact_uris)
 
+  # Compile OutputSpec.artifact_spec.is_intermediate_artifact
+  if output_channel.is_async_channel:
+    result.artifact_spec.is_intermediate_artifact = True
+
   return result
 
 
