@@ -44,7 +44,6 @@ from tfx.orchestration.experimental.core import sync_pipeline_task_gen
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import task_queue as tq
-from tfx.orchestration.experimental.core.service.proto import service_pb2
 from tfx.orchestration.experimental.core.task_schedulers import manual_task_scheduler
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import partial_run_utils
@@ -1793,14 +1792,26 @@ def _generate_reference_uri_subdir(
 # The decorator applies the same lock used in OrchestratorServicer.
 @_pipeline_op()
 def publish_intermediate_artifact(
-    request: service_pb2.PublishIntermediateArtifactRequest,
     mlmd_handle: metadata.Metadata,
+    execution_id: int,
+    output_key: str,
+    properties: Optional[dict[str, metadata_store_pb2.Value]],
+    custom_properties: Optional[dict[str, metadata_store_pb2.Value]],
+    external_uri: Optional[str] = None,
+    temp_uri: Optional[str] = None,
 ) -> metadata_store_pb2.Artifact:
   """Publishes an intermediate artifact.
 
   Args:
-    request: The PublishIntermediateArtifactRequest.
     mlmd_handle: A handle to the MLMD database.
+    execution_id: The ID of the execution which generates the artifact.
+    output_key: The output key of the artifact.
+    properties: Properties of the artifact.
+    custom_properties: Custom properties of the artifact.
+    external_uri: The external URI provided by the user. Exactly one of
+      external_uri and temp_uri must be set.
+    temp_uri: Temp URI generated internally by Tflex. Exactly one of
+      external_uri and temp_uri must be set.
 
   Returns:
     The published intermediate Artifact proto.
@@ -1808,12 +1819,12 @@ def publish_intermediate_artifact(
   # Check that a REFERENCE artifact corresponding to the output key and
   # execution ID exists.
   mlmd_protos = _get_mlmd_protos_for_execution(
-      mlmd_handle, request.execution_id, request.output_key
+      mlmd_handle, execution_id, output_key
   )
 
-  if request.external_uri:
+  if external_uri:
     # The final URI for the intermediate artifact is an external URI.
-    final_uri = request.external_uri
+    final_uri = external_uri
 
     # Verify that an external artifact with the same URI has not already been
     # published.
@@ -1826,8 +1837,7 @@ def publish_intermediate_artifact(
                 f'{artifact}'
             ),
         )
-
-  else:
+  elif temp_uri:
     # The final URI for the intermediate artifact is a subdirectory of the
     # REFERENCE artifact's URI.
     final_uri = _generate_reference_uri_subdir(
@@ -1835,15 +1845,20 @@ def publish_intermediate_artifact(
     )
 
     try:
-      fileio.rename(request.temp_uri, final_uri)
+      fileio.rename(temp_uri, final_uri)
     except filesystem.NotFoundError as e:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.ABORTED, message=str(e)
       )
     logging.info(
         'Moved temporary URI %s contents to final URI %s',
-        request.temp_uri,
+        temp_uri,
         final_uri,
+    )
+  else:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INVALID_ARGUMENT,
+        message='Neither external_uri nor temp_uri was provided.',
     )
 
   # Build the intermediate artifact object. We set its state to LIVE, so that
@@ -1857,10 +1872,12 @@ def publish_intermediate_artifact(
   intermediate_artifact.ClearField('last_update_time_since_epoch')
 
   # Copy any new properties/custom properties for the artifact.
-  for key, value in request.properties.items():
-    intermediate_artifact.properties[key].CopyFrom(value)
-  for key, value in request.custom_properties.items():
-    intermediate_artifact.custom_properties[key].CopyFrom(value)
+  if properties:
+    for key, value in properties.items():
+      intermediate_artifact.properties[key].CopyFrom(value)
+  if custom_properties:
+    for key, value in custom_properties.items():
+      intermediate_artifact.custom_properties[key].CopyFrom(value)
 
   try:
     deserialized_intermediate_artifact = artifact_utils.deserialize_artifact(
@@ -1880,9 +1897,7 @@ def publish_intermediate_artifact(
         mlmd_handle,
         mlmd_protos.execution,
         contexts,
-        output_artifacts={
-            request.output_key: [deserialized_intermediate_artifact]
-        },
+        output_artifacts={output_key: [deserialized_intermediate_artifact]},
     )
   except errors.StatusError as e:
     raise status_lib.StatusNotOkError(code=e.error_code, message=str(e))
