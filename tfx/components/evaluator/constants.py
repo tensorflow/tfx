@@ -20,10 +20,20 @@ ARTIFACT_PROPERTY_CURRENT_MODEL_URI_KEY = 'current_model'
 ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY = 'current_model_id'
 ARTIFACT_PROPERTY_BASELINE_MODEL_URI_KEY = 'baseline_model'
 ARTIFACT_PROPERTY_BASELINE_MODEL_ID_KEY = 'baseline_model_id'
+ARTIFACT_PROPERTY_BLESSING_MESSAGE_KEY = 'blessing_message'
 
 # Values for blessing results.
 BLESSED_VALUE = 1
 NOT_BLESSED_VALUE = 0
+
+# Values for blessing messages.
+NO_THRESHOLD_NO_BASELINE_VALUE = (
+    'No threshold configured and there is no baseline.'
+)
+RUBBER_STAMPED_MODEL_VALUE = (
+    'The model was rubber stamped (blessed) because there were no baseline '
+    'models.'
+)
 
 # File names for blessing results.
 BLESSED_FILE_NAME = 'BLESSED'
