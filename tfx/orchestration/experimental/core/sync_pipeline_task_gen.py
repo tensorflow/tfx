@@ -112,6 +112,7 @@ class _Generator:
     self._pipeline_state = pipeline_state
     with self._pipeline_state:
       self._node_state_by_node_uid = self._pipeline_state.get_node_states_dict()
+      self._pipeline_execution_uuid = self._pipeline_state.execution.name
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
@@ -312,6 +313,12 @@ class _Generator:
               node_uid=node_uid, state=pstate.NodeState.COMPLETE))
       return result
 
+    execution_guri_prefix = task_gen_utils.generate_execution_guri_prefix(
+        metadata_handle=self._mlmd_handle,
+        pipeline_name=self._pipeline.pipeline_info.id,
+        pipeline_execution_uuid=self._pipeline_execution_uuid,
+        component_id=node.node_info.id,
+    )
     # If the node has a failed execution, try to retry the failed execution.
     failed_executions = [
         e for e in latest_executions_set if execution_lib.is_execution_failed(e)
@@ -338,7 +345,10 @@ class _Generator:
       ):
         [retry_execution] = (
             task_gen_utils.register_executions_from_existing_executions(
-                self._mlmd_handle, node, failed_executions
+                self._mlmd_handle,
+                node,
+                failed_executions,
+                execution_guri_prefix,
             )
         )
         result.extend(
@@ -363,7 +373,10 @@ class _Generator:
     if canceled_executions and node_state.state == pstate.NodeState.STARTING:
       new_executions = (
           task_gen_utils.register_executions_from_existing_executions(
-              self._mlmd_handle, node, canceled_executions
+              self._mlmd_handle,
+              node,
+              canceled_executions,
+              execution_guri_prefix,
           )
       )
       with mlmd_state.mlmd_execution_atomic_op(
@@ -462,7 +475,14 @@ class _Generator:
         metadata_handler=self._mlmd_handle,
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
-        input_and_params=resolved_info.input_and_params)
+        input_and_params=resolved_info.input_and_params,
+        execution_guri_prefix=task_gen_utils.generate_execution_guri_prefix(
+            metadata_handle=self._mlmd_handle,
+            pipeline_name=self._pipeline.pipeline_info.id,
+            pipeline_execution_uuid=self._pipeline_execution_uuid,
+            component_id=node.node_info.id,
+        ),
+    )
 
     # Selects the first artifacts and create a exec task.
     input_artifacts = resolved_info.input_and_params[0].input_artifacts
