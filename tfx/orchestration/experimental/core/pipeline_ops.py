@@ -51,7 +51,6 @@ from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import status as status_lib
 
@@ -1880,25 +1879,25 @@ def publish_intermediate_artifact(
       intermediate_artifact.custom_properties[key].CopyFrom(value)
 
   try:
-    deserialized_intermediate_artifact = artifact_utils.deserialize_artifact(
-        mlmd_protos.artifact_type, intermediate_artifact
-    )
-  except ValueError as e:
-    raise status_lib.StatusNotOkError(
-        code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
-    )
-
-  try:
     contexts = mlmd_handle.store.get_contexts_by_execution(
         mlmd_protos.execution.id
     )
-    # Link the Execution to the Artifact with an OUTPUT Event edge.
-    execution_lib.put_execution(
-        mlmd_handle,
-        mlmd_protos.execution,
-        contexts,
-        output_artifacts={output_key: [deserialized_intermediate_artifact]},
+    event = event_lib.generate_event(
+        event_type=metadata_store_pb2.Event.OUTPUT,
+        key=output_key,
+        # Event index begins at 0, but we still to increment by 1 because the
+        # REFERENCE artifact will have index 0.
+        index=len(mlmd_protos.intermediate_artifacts) + 1,
     )
+    # Link the Execution to the Artifact with an OUTPUT Event edge.
+    mlmd_handle.store.put_execution(
+        execution=mlmd_protos.execution,
+        artifact_and_events=[(intermediate_artifact, event)],
+        contexts=contexts,
+        reuse_context_if_already_exist=True,
+        reuse_artifact_if_already_exist_by_external_id=True,
+    )
+
   except errors.StatusError as e:
     raise status_lib.StatusNotOkError(code=e.error_code, message=str(e))
 
