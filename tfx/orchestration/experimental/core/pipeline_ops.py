@@ -1671,7 +1671,9 @@ class _MLMDProtos:
   reference_artifact: metadata_store_pb2.Artifact
 
   # Used to verify that a user provided external URI is unqique.
-  intermediate_artifacts: list[metadata_store_pb2.Artifact]
+  # TODO(b/299374487): Change to `list` once lowerbound Python
+  # version is update to 3.9.
+  intermediate_artifacts: List[metadata_store_pb2.Artifact]
 
   # Used to deserialize the intermediate Artifact proto.
   artifact_type: metadata_store_pb2.ArtifactType
