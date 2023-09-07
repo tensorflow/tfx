@@ -34,6 +34,7 @@ MODEL_BLESSSING_KEY = 'model_blessing'
 MODEL_EXPORT_KEY = 'model_export'
 MODEL_INFRA_BLESSING_KEY = 'model_infra_blessing'
 MODEL_PUSH_KEY = 'model_push'
+TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'
 
 # Taken from tfx.tflex.dsl.types.standard_artifacts. We don't use the existing
 # constants due to Copybara.
