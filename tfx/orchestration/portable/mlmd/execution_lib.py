@@ -524,7 +524,9 @@ def register_pending_output_artifacts(
                      f'{execution.last_known_state}')
 
   for artifact in itertools.chain.from_iterable(output_artifacts.values()):
-    artifact.state = ArtifactState.PENDING
+    # We preserve artifacts in state REFERENCE.
+    if artifact.state != ArtifactState.REFERENCE:
+      artifact.state = ArtifactState.PENDING
 
   existing_pending_output_artifacts = get_pending_output_artifacts(
       metadata_handle, execution_id)
