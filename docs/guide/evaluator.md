@@ -15,7 +15,7 @@ the [Pusher](pusher.md) that it is ok to push the model to production.
 
 *   Consumes:
     *   An eval split from
-        [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen)
+        [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) or from [Transform](https://www.tensorflow.org/tfx/guide/transform) 
     *   A trained model from [Trainer](trainer.md)
     *   A previously blessed model (if validation to be performed)
 *   Emits:
