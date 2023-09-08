@@ -1722,7 +1722,13 @@ def _get_mlmd_protos_for_execution(
 
   output_artifact_ids = set()
   for event in lineage_graph.events:
-    if event_lib.is_valid_output_event(event, output_key):
+    # We check both OUTPUT and PENDING_OUTPUT state because the REFERENCE
+    # artifact will have event type PENDING_OUTPUT, but LIVE intermediate
+    # artifacts will have event type OUTPUT.
+    if event_lib.contains_key(event, output_key) and event.type in [
+        metadata_store_pb2.Event.PENDING_OUTPUT,
+        metadata_store_pb2.Event.OUTPUT,
+    ]:
       output_artifact_ids.add(event.artifact_id)
   output_artifacts = [
       a for a in lineage_graph.artifacts if a.id in output_artifact_ids
@@ -1887,7 +1893,7 @@ def publish_intermediate_artifact(
     event = event_lib.generate_event(
         event_type=metadata_store_pb2.Event.OUTPUT,
         key=output_key,
-        # Event index begins at 0, but we still to increment by 1 because the
+        # Event index begins at 0, but we still increment by 1 because the
         # REFERENCE artifact will have index 0.
         index=len(mlmd_protos.intermediate_artifacts) + 1,
     )
