@@ -82,17 +82,17 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
   """
   maybe_origin = typing.get_origin(tp)
   maybe_args = typing.get_args(tp)
-  if inspect.isclass(tp):
-    if not maybe_args:
-      if issubclass(tp, dict) and hasattr(tp, '__annotations__'):
-        return _is_typed_dict_compatible(value, tp)
-      return isinstance(value, tp)
   if tp is Any:
     return True
   if tp in (None, type(None)):
     return value is None
   if isinstance(tp, enum_type_wrapper.EnumTypeWrapper):
     return value in tp.values()
+  if inspect.isclass(tp):
+    if not maybe_args:
+      if issubclass(tp, dict) and hasattr(tp, '__annotations__'):
+        return _is_typed_dict_compatible(value, tp)
+      return isinstance(value, tp)
   if maybe_origin is not None:
     # Union[T]
     if maybe_origin is typing.Union:
