@@ -29,6 +29,7 @@ from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import artifact as artifact_type
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
@@ -643,47 +644,71 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
         execution_lib.prepare_execution(
             self._mlmd_handle,
             metadata_store_pb2.ExecutionType(name='my_execution_type'),
-            state=metadata_store_pb2.Execution.RUNNING),
+            state=metadata_store_pb2.Execution.RUNNING,
+        ),
         self._generate_contexts(self._mlmd_handle),
-        input_artifacts={'example': [input_example]})
-
-    output_model = _create_tfx_artifact(uri='model')
-    output_artifacts = {'model': [output_model]}
-    execution_lib.register_pending_output_artifacts(self._mlmd_handle,
-                                                    execution.id,
-                                                    output_artifacts)
-
-    actual_output_artifact = self._mlmd_handle.store.get_artifacts_by_id(
-        [output_model.id])[0]
-    self.assertProtoPartiallyEquals(
-        output_model.mlmd_artifact,
-        actual_output_artifact,
-        ignored_fields=[
-            'type',
-            'create_time_since_epoch',
-            'last_update_time_since_epoch',
-        ],
+        input_artifacts={'example': [input_example]},
     )
-    self.assertEqual(actual_output_artifact.state,
-                     metadata_store_pb2.Artifact.PENDING)
+
+    reference_artifact = _create_tfx_artifact(uri='model')
+    reference_artifact.state = artifact_type.ArtifactState.REFERENCE
+    output_artifact = _create_tfx_artifact(uri='output_artifact')
+    output_artifacts = {
+        'reference_artifact': [reference_artifact],
+        'output_artifact': [output_artifact],
+    }
+    execution_lib.register_output_artifacts(
+        self._mlmd_handle, execution.id, output_artifacts
+    )
+
+    # Check that the REFERENCE intermediate artifact still has state REFERENCE.
+    ignored_fields = [
+        'type',
+        'create_time_since_epoch',
+        'last_update_time_since_epoch',
+    ]
+    actual_reference_artifact = self._mlmd_handle.store.get_artifacts_by_id(
+        [reference_artifact.id]
+    )[0]
+    self.assertProtoPartiallyEquals(
+        reference_artifact.mlmd_artifact,
+        actual_reference_artifact,
+        ignored_fields=ignored_fields,
+    )
+    self.assertEqual(
+        actual_reference_artifact.state, metadata_store_pb2.Artifact.REFERENCE
+    )
+    self.assertEqual(
+        actual_reference_artifact.type, _DEFAULT_ARTIFACT_TYPE.TYPE_NAME
+    )
+
+    # Check that the output_artifact output artifact has state PENDING.
+    actual_output_artifact = self._mlmd_handle.store.get_artifacts_by_id(
+        [output_artifact.id]
+    )[0]
+    self.assertProtoPartiallyEquals(
+        output_artifact.mlmd_artifact,
+        actual_output_artifact,
+        ignored_fields=ignored_fields,
+    )
+    self.assertEqual(
+        actual_output_artifact.state, metadata_store_pb2.Artifact.PENDING
+    )
     self.assertEqual(
         actual_output_artifact.type, _DEFAULT_ARTIFACT_TYPE.TYPE_NAME
     )
 
-    # Verifies edges between artifacts and execution.
-    [input_event] = (
-        self._mlmd_handle.store.get_events_by_artifact_ids([input_example.id]))
-    self.assertEqual(input_event.execution_id, execution.id)
-    self.assertEqual(input_event.type, metadata_store_pb2.Event.INPUT)
-    self.assertLen(input_event.path.steps, 2)
-
-    self.assertTrue(output_model.mlmd_artifact.HasField('id'))
-    [pending_output_event] = (
-        self._mlmd_handle.store.get_events_by_artifact_ids([output_model.id]))
-    self.assertEqual(pending_output_event.execution_id, execution.id)
-    self.assertEqual(pending_output_event.type,
-                     metadata_store_pb2.Event.PENDING_OUTPUT)
-    self.assertLen(pending_output_event.path.steps, 2)
+    # Verify that a PENDING_OUTPUT edge exists between the execution and each
+    # artifacts.
+    for artifact_id in [reference_artifact.id, output_artifact.id]:
+      [output_event] = self._mlmd_handle.store.get_events_by_artifact_ids(
+          [artifact_id]
+      )
+      self.assertEqual(output_event.execution_id, execution.id)
+      self.assertEqual(
+          output_event.type, metadata_store_pb2.Event.PENDING_OUTPUT
+      )
+      self.assertLen(output_event.path.steps, 2)
 
   def testRegisterOutputArtifactsOnInactiveExecutionFails(self):
     execution = execution_lib.put_execution(
@@ -696,11 +721,17 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     with self.assertRaisesRegex(
         ValueError, 'Cannot register output artifacts on inactive execution'):
-      execution_lib.register_pending_output_artifacts(self._mlmd_handle,
-                                                      execution.id, {})
+      execution_lib.register_output_artifacts(
+          self._mlmd_handle, execution.id, {}
+      )
 
+  @parameterized.named_parameters(
+      ('reference_artifact', True),
+      ('output_artifact', False),
+  )
   def testRegisterOutputArtifactsTwiceWithSameArgumentsReusesExistingArtifact(
-      self):
+      self, is_reference
+  ):
     execution = execution_lib.put_execution(
         self._mlmd_handle,
         execution_lib.prepare_execution(
@@ -711,16 +742,22 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
 
     artifact_uri = '/model/1'
     output_model_first_call = _create_tfx_artifact(artifact_uri)
-    execution_lib.register_pending_output_artifacts(
-        self._mlmd_handle, execution.id, {'model': [output_model_first_call]})
+    if is_reference:
+      output_model_first_call.state = artifact_type.ArtifactState.REFERENCE
+    execution_lib.register_output_artifacts(
+        self._mlmd_handle, execution.id, {'model': [output_model_first_call]}
+    )
 
     # Assert the new artifact was registered in MLMD with valid IDs.
     self.assertGreater(output_model_first_call.id, 0)
     self.assertGreater(output_model_first_call.type_id, 0)
 
     output_model_second_call = _create_tfx_artifact(artifact_uri)
-    execution_lib.register_pending_output_artifacts(
-        self._mlmd_handle, execution.id, {'model': [output_model_second_call]})
+    if is_reference:
+      output_model_second_call.state = artifact_type.ArtifactState.REFERENCE
+    execution_lib.register_output_artifacts(
+        self._mlmd_handle, execution.id, {'model': [output_model_second_call]}
+    )
 
     # Assert the second call reuses the type IDs from the first call.
     self.assertEqual(output_model_first_call.id, output_model_second_call.id)
@@ -729,7 +766,15 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(output_model_first_call.uri, artifact_uri)
     self.assertEqual(output_model_second_call.uri, artifact_uri)
 
-  def testRegisterOutputArtifactsTwiceWithDifferentArgumentsRaisesError(self):
+  @parameterized.named_parameters(
+      ('both_true', True, True),
+      ('both_false', False, False),
+      ('true_false', True, False),
+      ('false_true', False, True),
+  )
+  def testRegisterOutputArtifactsTwiceWithDifferentArgumentsRaisesError(
+      self, first_is_reference, second_is_reference
+  ):
     execution = execution_lib.put_execution(
         self._mlmd_handle,
         execution_lib.prepare_execution(
@@ -739,15 +784,26 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
         self._generate_contexts(self._mlmd_handle))
 
     output_model_first_call = _create_tfx_artifact('/model/1')
-    execution_lib.register_pending_output_artifacts(
-        self._mlmd_handle, execution.id, {'model': [output_model_first_call]})
+    if first_is_reference:
+      output_model_first_call.state = artifact_type.ArtifactState.REFERENCE
+    execution_lib.register_output_artifacts(
+        self._mlmd_handle, execution.id, {'model': [output_model_first_call]}
+    )
 
-    output_model_second_call = _create_tfx_artifact('/model/2')
+    # If the artifact states are the same, make the URIs different so that the
+    # ValueError is still raised.
+    second_uri = (
+        '/model/2' if first_is_reference == second_is_reference else '/model/1'
+    )
+    output_model_second_call = _create_tfx_artifact(second_uri)
+    if second_is_reference:
+      output_model_second_call.state = artifact_type.ArtifactState.REFERENCE
     with self.assertRaisesRegex(
-        ValueError, 'Pending output artifacts were already registered'):
-      execution_lib.register_pending_output_artifacts(
-          self._mlmd_handle, execution.id,
-          {'model': [output_model_second_call]})
+        ValueError, 'artifacts were already registered'
+    ):
+      execution_lib.register_output_artifacts(
+          self._mlmd_handle, execution.id, {'model': [output_model_second_call]}
+      )
 
   @parameterized.named_parameters(
       dict(

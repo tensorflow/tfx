@@ -13,6 +13,9 @@
 # limitations under the License.
 """Portable libraries for execution related APIs."""
 
+from __future__ import annotations
+
+import collections
 import copy
 import itertools
 import re
@@ -482,22 +485,26 @@ def _artifact_maps_contain_same_uris(
     right_artifact_list = right[key]
     if len(left_artifact_list) != len(right_artifact_list):
       return False
-    for left_artifact, right_artifact in zip(left_artifact_list,
-                                             right_artifact_list):
-      if left_artifact.uri != right_artifact.uri:
-        return False
+    if set(a.uri for a in left_artifact_list) != set(
+        a.uri for a in right_artifact_list
+    ):
+      return False
   return True
 
 
-def register_pending_output_artifacts(
-    metadata_handle: metadata.Metadata, execution_id: int,
-    output_artifacts: typing_utils.ArtifactMultiMap) -> None:
-  """Registers pending output artifacts for a given execution in MLMD.
+def register_output_artifacts(
+    metadata_handle: metadata.Metadata,
+    execution_id: int,
+    output_artifacts: typing_utils.ArtifactMultiMap,
+):
+  """Registers REFERENCE and PENDING output artifacts with the execution.
 
-  This operation does not modify the execution itself, but simply creates the
-  output artifacts in MLMD with a PENDING state and adds events with type
-  PENDING_OUTPUT to associate them with the execution. The output artifacts will
-  be modified in-place to add IDs as registered by MLMD.
+  Artifacts in output_artifacts not in state REFERENCE will be given state
+  PENDING. Artifacts in state REFERENCE will keep their state.
+
+  Each output artifact will be linked to the execution with a PENDING_OUTPUT
+  event. The artifacts will be modified in-place to add IDs as registered by
+  MLMD.
 
   This function is idempotent if called more than once with the same output
   artifact dict. In that case, the function will find the already registered
@@ -519,47 +526,136 @@ def register_pending_output_artifacts(
   start_time = time.time()
   [execution] = metadata_handle.store.get_executions_by_id([execution_id])
   if not is_execution_running(execution):
-    raise ValueError('Cannot register output artifacts on inactive '
-                     f'execution ID={execution_id} with state = '
-                     f'{execution.last_known_state}')
+    raise ValueError(
+        'Cannot register output artifacts on inactive '
+        f'execution ID={execution_id} with state = '
+        f'{execution.last_known_state}'
+    )
 
-  for artifact in itertools.chain.from_iterable(output_artifacts.values()):
-    artifact.state = ArtifactState.PENDING
+  _register_pending_output_artifacts(
+      metadata_handle, execution, output_artifacts
+  )
+  _register_reference_output_artifacts(
+      metadata_handle, execution, output_artifacts
+  )
 
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='register_output_artifacts',
+      start_time=start_time,
+  )
+
+
+def _reuse_existing_artifacts(
+    artifacts: typing_utils.ArtifactMultiMap,
+    existing_artifacts: typing_utils.ArtifactMultiMap,
+) -> None:
+  """Re-uses existing artifact IDs if they contain the same URIs."""
+  if not _artifact_maps_contain_same_uris(artifacts, existing_artifacts):
+    raise ValueError(
+        'Output artifacts were already registered for this execution, but with '
+        'a different set of output artifacts.'
+        f'\nProvided artifacts:\n{artifacts}'
+        f'\nExisting artifacts:\n{existing_artifacts}'
+    )
+
+  # The output maps have the same content so copy over existing artifact IDs.
+  for key, existing_artifact_list in existing_artifacts.items():
+    provided_artifact_list = artifacts[key]
+    for existing_artifact in existing_artifact_list:
+      for provided_artifact in provided_artifact_list:
+        if existing_artifact.uri == provided_artifact.uri:
+          provided_artifact.id = existing_artifact.id
+          provided_artifact.type_id = existing_artifact.type_id
+          break
+
+
+def _register_reference_output_artifacts(
+    metadata_handle: metadata.Metadata,
+    execution: metadata_store_pb2.Execution,
+    output_artifacts: typing_utils.ArtifactMultiMap,
+) -> None:
+  """Registers REFERENCE output artifacts for a given execution in MLMD."""
+  start_time = time.time()
+
+  reference_output_artifacts = collections.defaultdict(list)
+  for key, artifacts in output_artifacts.items():
+    for artifact in artifacts:
+      # Only consider artifacts in state REFERENCE.
+      if artifact.state == ArtifactState.REFERENCE:
+        reference_output_artifacts[key].append(artifact)
+
+  # Find existing registered REFERENCE artifacts with a PENDING_OUTPUT event and
+  # re-use them.
+  valid_artifact_states = [metadata_store_pb2.Artifact.State.REFERENCE]
   existing_pending_output_artifacts = get_pending_output_artifacts(
-      metadata_handle, execution_id)
+      metadata_handle, execution.id, valid_artifact_states
+  )
   if existing_pending_output_artifacts:
-    # Reuse existing pending output artifacts if this function was already
-    # called with the same arguments and for the same execution.
-    if not _artifact_maps_contain_same_uris(output_artifacts,
-                                            existing_pending_output_artifacts):
-      raise ValueError('Pending output artifacts were already registered for'
-                       'this execution, but with a different set of output'
-                       'artifacts.\nProvided output_artifacts:\n'
-                       f'{output_artifacts}\nExisting pending output '
-                       f'artifacts:\n{existing_pending_output_artifacts}')
-    # The output maps have the same content so copy over existing artifact IDs.
-    for key, existing_artifact_list in (
-        existing_pending_output_artifacts.items()):
-      provided_artifact_list = output_artifacts[key]
-      for existing_artifact, provided_artifact in zip(existing_artifact_list,
-                                                      provided_artifact_list):
-        provided_artifact.id = existing_artifact.id
-        provided_artifact.type_id = existing_artifact.type_id
-  else:
-    # Register the pending output artifacts for this execution.
-    contexts = metadata_handle.store.get_contexts_by_execution(execution_id)
-    _ = put_execution(
+    _reuse_existing_artifacts(
+        reference_output_artifacts, existing_pending_output_artifacts
+    )
+
+  elif reference_output_artifacts:
+    # Register the reference output artifacts for this execution.
+    contexts = metadata_handle.store.get_contexts_by_execution(execution.id)
+    put_execution(
         metadata_handle,
         execution,
         contexts,
-        output_artifacts=output_artifacts,
-        output_event_type=metadata_store_pb2.Event.PENDING_OUTPUT
+        output_artifacts=reference_output_artifacts,
+        output_event_type=metadata_store_pb2.Event.PENDING_OUTPUT,
     )
 
   telemetry_utils.noop_telemetry(
       module='execution_lib',
-      method='register_pending_output_artifacts',
+      method='_register_reference_output_artifacts',
+      start_time=start_time,
+  )
+
+
+def _register_pending_output_artifacts(
+    metadata_handle: metadata.Metadata,
+    execution: metadata_store_pb2.Execution,
+    output_artifacts: typing_utils.ArtifactMultiMap,
+) -> None:
+  """Registers PENDING output artifacts for a given execution in MLMD."""
+  start_time = time.time()
+
+  pending_output_artifacts = collections.defaultdict(list)
+  for key, artifacts in output_artifacts.items():
+    for artifact in artifacts:
+      # Only consider artifacts not in state REFERENCE.
+      if artifact.state != ArtifactState.REFERENCE:
+        artifact.state = ArtifactState.PENDING
+        pending_output_artifacts[key].append(artifact)
+
+  # Find existing registered artifacts (that are not in state REFERENCE) with a
+  # PENDING_OUTPUT event and re-use them.
+  valid_artifact_states = metadata_store_pb2.Artifact.State.values()
+  valid_artifact_states.remove(metadata_store_pb2.Artifact.State.REFERENCE)
+  existing_pending_output_artifacts = get_pending_output_artifacts(
+      metadata_handle, execution.id, valid_artifact_states
+  )
+  if existing_pending_output_artifacts:
+    _reuse_existing_artifacts(
+        pending_output_artifacts, existing_pending_output_artifacts
+    )
+
+  elif pending_output_artifacts:
+    # Register the pending output artifacts for this execution.
+    contexts = metadata_handle.store.get_contexts_by_execution(execution.id)
+    put_execution(
+        metadata_handle,
+        execution,
+        contexts,
+        output_artifacts=pending_output_artifacts,
+        output_event_type=metadata_store_pb2.Event.PENDING_OUTPUT,
+    )
+
+  telemetry_utils.noop_telemetry(
+      module='execution_lib',
+      method='_register_pending_output_artifacts',
       start_time=start_time,
   )
 
@@ -664,7 +760,11 @@ def get_output_artifacts(
 
 
 def get_pending_output_artifacts(
-    metadata_handle: metadata.Metadata, execution_id: int
+    metadata_handle: metadata.Metadata,
+    execution_id: int,
+    valid_artifact_states: Optional[
+        List[metadata_store_pb2.Artifact.State]
+    ] = None,
 ) -> typing_utils.ArtifactMultiDict:
   """Gets pending output artifacts of the execution.
 
@@ -676,11 +776,14 @@ def get_pending_output_artifacts(
     metadata_handle: A Metadata instance that is in entered state.
     execution_id: A valid MLMD execution ID. If the execution_id does not exist,
       this function will return an empty dict instead of raising an error.
+    valid_artifact_states: Artifact states to consider. If None, then defaults
+      to all artifact states.
 
   Returns:
     A reconstructed pending output artifacts multimap.
   """
   start_time = time.time()
+
   events = metadata_handle.store.get_events_by_execution_ids([execution_id])
   pending_output_events = [
       e for e in events if e.type == metadata_store_pb2.Event.PENDING_OUTPUT
@@ -688,8 +791,19 @@ def get_pending_output_artifacts(
   artifacts = artifact_lib.get_artifacts_by_ids(
       metadata_handle, [e.artifact_id for e in pending_output_events]
   )
+
+  if valid_artifact_states is None:
+    valid_artifact_states = metadata_store_pb2.Artifact.State.values()
+  valid_artifacts = [
+      a for a in artifacts if a.mlmd_artifact.state in valid_artifact_states
+  ]
+  valid_artifact_ids = set(a.id for a in valid_artifacts)
+  valid_events = [
+      e for e in pending_output_events if e.artifact_id in valid_artifact_ids
+  ]
+
   artifact_map = event_lib.reconstruct_artifact_multimap(
-      artifacts, pending_output_events
+      valid_artifacts, valid_events
   )
 
   telemetry_utils.noop_telemetry(

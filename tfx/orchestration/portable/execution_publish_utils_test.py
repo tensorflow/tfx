@@ -179,8 +179,9 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       output_key = 'examples'
       output_example = standard_artifacts.Examples()
       output_example.uri = '/examples_uri'
-      execution_lib.register_pending_output_artifacts(
-          m, execution_id, {output_key: [output_example]})
+      execution_lib.register_output_artifacts(
+          m, execution_id, {output_key: [output_example]}
+      )
       executor_output = execution_result_pb2.ExecutorOutput()
       text_format.Parse(
           """
@@ -287,8 +288,9 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       output_example = standard_artifacts.Examples()
       output_example.uri = outputs_utils.RESOLVED_AT_RUNTIME
       output_example.is_external = True
-      execution_lib.register_pending_output_artifacts(
-          m, execution_id, {output_key: [output_example]})
+      execution_lib.register_output_artifacts(
+          m, execution_id, {output_key: [output_example]}
+      )
       executor_output = execution_result_pb2.ExecutorOutput()
       # The executor output contains two artifacts compared to the original one.
       for output_artifact_uri in ['/examples_uri/1', '/examples_uri/2']:

@@ -1926,7 +1926,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           metadata_store_pb2.Execution.State.RUNNING,
           eg_execs[0].last_known_state,
       )
-      execution_lib.register_pending_output_artifacts(
+      execution_lib.register_output_artifacts(
           m, eg_execs[0].id, {'Examples': [standard_artifacts.Examples()]}
       )
       eg_artifact = execution_lib.get_pending_output_artifacts(
