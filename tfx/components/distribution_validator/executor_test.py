@@ -90,6 +90,8 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     validation_output = standard_artifacts.ExampleAnomalies()
     validation_output.uri = os.path.join(output_data_dir, 'output')
+    validation_metrics_output = standard_artifacts.ExampleValidationMetrics()
+    validation_metrics_output.uri = os.path.join(output_data_dir, 'output')
 
     input_dict = {
         standard_component_specs.STATISTICS_KEY: [stats_artifact],
@@ -106,6 +108,9 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     output_dict = {
         standard_component_specs.ANOMALIES_KEY: [validation_output],
+        standard_component_specs.VALIDATION_METRICS_KEY: [
+            validation_metrics_output
+        ],
     }
 
     distribution_validator_executor = executor.Executor()
@@ -346,6 +351,8 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     validation_output = standard_artifacts.ExampleAnomalies()
     validation_output.uri = os.path.join(output_data_dir, 'output')
+    validation_metrics_output = standard_artifacts.ExampleValidationMetrics()
+    validation_metrics_output.uri = os.path.join(output_data_dir, 'output')
 
     validation_config = text_format.Parse(
         config, distribution_validator_pb2.DistributionValidatorConfig())
@@ -372,6 +379,9 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     output_dict = {
         standard_component_specs.ANOMALIES_KEY: [validation_output],
+        standard_component_specs.VALIDATION_METRICS_KEY: [
+            validation_metrics_output
+        ],
     }
 
     distribution_validator_executor = executor.Executor()
@@ -541,6 +551,8 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     validation_output = standard_artifacts.ExampleAnomalies()
     validation_output.uri = os.path.join(output_data_dir, 'output')
+    validation_metrics_output = standard_artifacts.ExampleValidationMetrics()
+    validation_metrics_output.uri = os.path.join(output_data_dir, 'output')
 
     input_dict = {
         standard_component_specs.STATISTICS_KEY: [stats_artifact],
@@ -558,6 +570,9 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     output_dict = {
         standard_component_specs.ANOMALIES_KEY: [validation_output],
+        standard_component_specs.VALIDATION_METRICS_KEY: [
+            validation_metrics_output
+        ],
     }
 
     distribution_validator_executor = executor.Executor()
@@ -872,6 +887,8 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     validation_output = standard_artifacts.ExampleAnomalies()
     validation_output.uri = os.path.join(output_data_dir, 'output')
+    validation_metrics_output = standard_artifacts.ExampleValidationMetrics()
+    validation_metrics_output.uri = os.path.join(output_data_dir, 'output')
 
     input_dict = {
         standard_component_specs.STATISTICS_KEY: [stats_artifact],
@@ -889,6 +906,9 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     output_dict = {
         standard_component_specs.ANOMALIES_KEY: [validation_output],
+        standard_component_specs.VALIDATION_METRICS_KEY: [
+            validation_metrics_output
+        ],
     }
 
     distribution_validator_executor = executor.Executor()

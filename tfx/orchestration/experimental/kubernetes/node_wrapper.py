@@ -35,10 +35,6 @@ class NodeWrapper(base_node.BaseNode):
     self._inputs = node.inputs
     self._outputs = node.outputs
     self._exec_properties = node.exec_properties
-    # Currently the NodeExecutionOptions in tfx.dsl.experiment.utils is for the
-    # experimental orchestrator, but we need to set the field here anyways so
-    # the property can be accessed properly.
-    self._node_execution_options = None
 
   @property
   def type(self) -> str:
