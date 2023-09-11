@@ -330,7 +330,7 @@ class _Generator:
 
     try:
       resolved_info = task_gen_utils.generate_resolved_info(
-          mlmd_connection_manager=self._mlmd_connection_manager,
+          mlmd_handle_like=self._mlmd_connection_manager,
           node=node,
           skip_errors=[exceptions.InsufficientInputError],
       )
