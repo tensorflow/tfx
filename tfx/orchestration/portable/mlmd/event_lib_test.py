@@ -185,6 +185,19 @@ class EventLibTest(tf.test.TestCase, parameterized.TestCase):
         'c': [c],
     })
 
+    result = event_lib.reconstruct_artifact_multimap(
+        artifacts=[a1],
+        events=[
+            Event(artifact_id=a1.id, path=valid_path('a', 1)),
+        ],
+    )
+    self.assertEqual(
+        result,
+        {
+            'a': [a1],
+        },
+    )
+
   def testReconstructArtifactMultimap_DuplicationPermitted(self):
     a = Artifact(id=1, name='a')
 
@@ -230,7 +243,7 @@ class EventLibTest(tf.test.TestCase, parameterized.TestCase):
         event_lib.reconstruct_artifact_multimap(
             artifacts=[a1],
             events=[
-                Event(artifact_id=a1.id, path=valid_path('a', 1)),
+                Event(artifact_id=a1.id, path=valid_path('a', 2)),
             ])
 
     with self.subTest('Missing the middle'):
