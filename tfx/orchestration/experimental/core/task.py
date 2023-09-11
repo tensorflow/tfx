@@ -19,7 +19,7 @@ core task generation loop based on the state of MLMD db.
 
 import abc
 import enum
-from typing import Dict, Hashable, List, Optional, Type, TypeVar
+from typing import Dict, Hashable, List, Optional, Sequence, Type, TypeVar
 
 import attr
 from tfx import types
@@ -155,7 +155,7 @@ class ExecNodeTask(Task):
   """
   node_uid: NodeUid
   execution_id: int
-  contexts: List[metadata_store_pb2.Context]
+  contexts: Sequence[metadata_store_pb2.Context]
   exec_properties: Dict[str, types.ExecPropertyTypes]
   input_artifacts: Dict[str, List[types.Artifact]]
   output_artifacts: Dict[str, List[types.Artifact]]

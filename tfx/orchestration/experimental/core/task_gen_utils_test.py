@@ -22,6 +22,7 @@ import tensorflow as tf
 from tfx import types
 from tfx import version
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils as otu
@@ -917,6 +918,56 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
     oldest = task_gen_utils.get_oldest_active_execution(executions)
     self.assertIsNone(oldest)
+
+  def test_generate_tasks_from_one_input(self):
+    with self._mlmd_connection as m:
+      # Fake one output for _example_gen, so there is 1 input for _transform.
+      otu.fake_upstream_node_run(
+          m, self._example_gen, self.create_tempfile().full_path
+      )
+      artifact_types = m.store.get_artifact_types()
+      artifacts = artifact_utils.deserialize_artifacts(
+          artifact_types[0], m.store.get_artifacts()
+      )
+      input_and_param = task_gen_utils.InputAndParam(
+          input_artifacts={'examples': artifacts}
+      )
+
+      # Put contexts.
+      context_type = metadata_store_pb2.ContextType(name='my_ctx_type')
+      context_type_id = m.store.put_context_type(context_type)
+      contexts = [
+          metadata_store_pb2.Context(name='context-1', type_id=context_type_id),
+          metadata_store_pb2.Context(name='context-2', type_id=context_type_id),
+      ]
+      m.store.put_contexts(contexts)
+      executions = task_gen_utils.register_executions(
+          metadata_handler=m,
+          execution_type=self._transform.node_info.type,
+          contexts=contexts,
+          input_and_params=[input_and_param],
+      )
+      tasks = task_gen_utils.generate_tasks_from_one_input(
+          metadata_handle=m,
+          node=self._transform,
+          execution=executions[0],
+          input_and_param=input_and_param,
+          contexts=contexts,
+          pipeline=self._pipeline,
+          execution_node_state=pstate.NodeState.RUNNING,
+      )
+
+      self.assertLen(tasks, 2)
+      [update_task, exec_task] = tasks
+      self.assertIsInstance(update_task, task_lib.UpdateNodeStateTask)
+      self.assertEqual(
+          update_task,
+          task_lib.UpdateNodeStateTask(
+              task_lib.NodeUid.from_node(self._pipeline, self._transform),
+              state=pstate.NodeState.RUNNING,
+          ),
+      )
+      self.assertIsInstance(exec_task, task_lib.ExecNodeTask)
 
 
 if __name__ == '__main__':

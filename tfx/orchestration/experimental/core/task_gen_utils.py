@@ -16,7 +16,7 @@
 import collections
 import itertools
 import textwrap
-from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple, Type
+from typing import Callable, Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple, Type
 import uuid
 
 from absl import logging
@@ -27,6 +27,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import inputs_utils
@@ -519,7 +520,7 @@ def register_executions(
     metadata_handler: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
-    input_and_params: List[InputAndParam],
+    input_and_params: Sequence[InputAndParam],
 ) -> Sequence[metadata_store_pb2.Execution]:
   """Registers multiple executions in MLMD.
 
@@ -779,3 +780,86 @@ def interpret_status_from_failed_execution(
     )
   error_msg = textwrap.shorten(error_msg, width=512) if error_msg else None
   return status_lib.Status(code=error_code, message=error_msg)
+
+
+def generate_tasks_from_one_input(
+    metadata_handle: metadata.Metadata,
+    node: node_proto_view.NodeProtoView,
+    execution: metadata_store_pb2.Execution,
+    input_and_param: InputAndParam,
+    contexts: Sequence[metadata_store_pb2.Context],
+    pipeline: pipeline_pb2.Pipeline,
+    execution_node_state: str,
+    backfill_token: str = '',
+    execution_commit_fn: Optional[
+        Callable[
+            [
+                Optional[metadata_store_pb2.Execution],
+                metadata_store_pb2.Execution,
+            ],
+            None,
+        ]
+    ] = None,
+) -> Sequence[task_lib.Task]:
+  """Generates tasks for node an execution.
+
+  Args:
+    metadata_handle: Handle to interact with MLMD.
+    node: Node to tasks for.
+    execution: Metadata execution to generate tasks for.
+    input_and_param: Inputs and param for node execution.
+    contexts: Contexts for node execution.
+    pipeline: Pipeline for this execution.
+    execution_node_state: What state the execution should be set to. Should
+      always be pstate.NodeState.RUNNING but we can't import pstate here due to
+      circular dependencies.
+    backfill_token: The backfill token for the execution, if applicable.
+    execution_commit_fn: Optional function to be provided when the new execution
+      is updated.
+
+  Returns:
+    A list of tasks for the node. Guaranteed to be in the form of:
+    [UpdateNodeStateTask, ExecNodeTask].
+  """
+
+  with mlmd_state.mlmd_execution_atomic_op(
+      metadata_handle, execution.id, on_commit=execution_commit_fn
+  ) as execution:
+    execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+  outputs_resolver = outputs_utils.OutputsResolver(
+      node,
+      pipeline.pipeline_info,
+      pipeline.runtime_spec,
+      pipeline.execution_mode,
+  )
+  output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
+  outputs_utils.make_output_dirs(output_artifacts)
+
+  node_uid = task_lib.NodeUid.from_node(pipeline, node)
+  tasks = []
+  tasks.append(
+      task_lib.UpdateNodeStateTask(
+          node_uid=node_uid,
+          state=execution_node_state,
+          backfill_token=backfill_token,
+      )
+  )
+  tasks.append(
+      task_lib.ExecNodeTask(
+          node_uid=node_uid,
+          execution_id=execution.id,
+          contexts=contexts,
+          input_artifacts=input_and_param.input_artifacts,
+          exec_properties=input_and_param.exec_properties,
+          output_artifacts=output_artifacts,
+          executor_output_uri=outputs_resolver.get_executor_output_uri(
+              execution.id
+          ),
+          stateful_working_dir=outputs_resolver.get_stateful_working_directory(
+              execution.id
+          ),
+          tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
+          pipeline=pipeline,
+      )
+  )
+  return tasks

@@ -27,7 +27,6 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
-from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
@@ -402,52 +401,31 @@ class _Generator:
             constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
         ] = backfill_token
 
-    new_executions = task_gen_utils.register_executions(
-        metadata_handler,
-        node.node_info.type,
-        resolved_info.contexts,
-        unprocessed_inputs,
+    execution_state_change_fn = (
+        event_observer.make_notify_execution_state_change_fn(node_uid)
     )
-    for e in new_executions:
-      event_observer.make_notify_execution_state_change_fn(node_uid)(None, e)
+    executions = task_gen_utils.register_executions(
+        metadata_handler=metadata_handler,
+        execution_type=node.node_info.type,
+        contexts=resolved_info.contexts,
+        input_and_params=unprocessed_inputs,
+    )
 
-    # Selects the first artifacts and create a exec task.
-    input_and_param = unprocessed_inputs[0]
-    execution = new_executions[0]
-    # Selects the first execution and marks it as RUNNING.
-    with mlmd_state.mlmd_execution_atomic_op(
-        mlmd_handle=self._mlmd_handle,
-        execution_id=execution.id,
-        on_commit=event_observer.make_notify_execution_state_change_fn(
-            node_uid)) as execution:
-      execution.last_known_state = metadata_store_pb2.Execution.RUNNING
+    map(lambda e: execution_state_change_fn(None, e), executions)
 
-    outputs_resolver = outputs_utils.OutputsResolver(
-        node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
-        self._pipeline.execution_mode)
-    output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
-    outputs_utils.make_output_dirs(output_artifacts)
-    result.append(
-        task_lib.UpdateNodeStateTask(
-            node_uid=node_uid,
-            state=pstate.NodeState.RUNNING,
+    result.extend(
+        task_gen_utils.generate_tasks_from_one_input(
+            metadata_handle=metadata_handler,
+            node=node,
+            execution=executions[0],
+            input_and_param=unprocessed_inputs[0],
+            contexts=resolved_info.contexts,
+            pipeline=self._pipeline,
+            execution_node_state=pstate.NodeState.RUNNING,
             backfill_token=backfill_token,
+            execution_commit_fn=execution_state_change_fn,
         )
     )
-    result.append(
-        task_lib.ExecNodeTask(
-            node_uid=node_uid,
-            execution_id=execution.id,
-            contexts=resolved_info.contexts,
-            input_artifacts=input_and_param.input_artifacts,
-            exec_properties=input_and_param.exec_properties,
-            output_artifacts=output_artifacts,
-            executor_output_uri=outputs_resolver.get_executor_output_uri(
-                execution.id),
-            stateful_working_dir=outputs_resolver
-            .get_stateful_working_directory(execution.id),
-            tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
-            pipeline=self._pipeline))
     return result
 
   def _ensure_node_services_if_pure(
