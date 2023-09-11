@@ -54,6 +54,11 @@ ARTIFACT_TYPE_NAME_BY_KEY = {
     MODEL_PUSH_KEY: MODEL_PUSH_TYPE_NAME,
 }
 
+# Maximum number of hops for lineage tracing using MLMD metadata_resolver.
+MAX_NUM_HOPS = 50
+# A fixed batch size for batch querying APIs in MLMD metadata_resolver.
+BATCH_SIZE = 100
+
 
 # TODO(b/269147946): Put validation logic inside ResolverOp Property instead,
 # providing compile time check.
