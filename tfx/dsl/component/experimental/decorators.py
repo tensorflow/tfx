@@ -181,6 +181,8 @@ class _SimpleComponent(base_component.BaseComponent):
                                      None)
       if json_compat_typehint:
         setattr(spec_kwargs[key], '_JSON_COMPAT_TYPEHINT', json_compat_typehint)
+      if channel_parameter.is_async_channel:
+        spec_kwargs[key].set_as_intermediate_channel()
     spec = self.SPEC_CLASS(**spec_kwargs)
     super().__init__(spec)
     # Set class name, which is the decorated function name, as the default id.
@@ -426,9 +428,17 @@ def component(
 
   utils.assert_is_top_level_func(func)
 
-  (inputs, outputs, parameters, arg_formats, arg_defaults, returned_values,
-   json_typehints, return_json_typehints) = (
-       function_parser.parse_typehint_component_function(func))
+  (
+      inputs,
+      outputs,
+      async_outputs,
+      parameters,
+      arg_formats,
+      arg_defaults,
+      returned_values,
+      json_typehints,
+      return_json_typehints,
+  ) = function_parser.parse_typehint_component_function(func)
   if use_beam and list(parameters.values()).count(_BeamPipeline) != 1:
     raise ValueError('The decorated function must have one and only one '
                      'optional parameter of type '
@@ -452,6 +462,7 @@ def component(
       ),
       inputs=inputs,
       outputs=outputs,
+      async_outputs=async_outputs,
       parameters=parameters,
       type_annotation=component_annotation,
       json_compatible_inputs=json_typehints,

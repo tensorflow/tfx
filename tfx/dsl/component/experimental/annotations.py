@@ -244,6 +244,11 @@ class OutputArtifact(_ArtifactGeneric):
   """Output artifact object type annotation."""
 
 
+# TODO(b/285399450): Make this class a client, as per go/tflex-list-output.
+class AsyncOutputArtifact(_ArtifactGeneric):
+  """Intermediate artifact object type annotation."""
+
+
 class Parameter(_PrimitiveTypeGeneric):
   """Component parameter type annotation."""
 
