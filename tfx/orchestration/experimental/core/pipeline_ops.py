@@ -58,6 +58,7 @@ from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
 
 
+# TODO(b/200206549): Remove once testing is complete
 _ENABLE_INPLACE_RESUME = flags.DEFINE_bool(
     'tflex_enable_inplace_resume',
     default=False,
@@ -877,6 +878,7 @@ def resume_pipeline(
         code=status_lib.Code.NOT_FOUND,
         message='Pipeline failed to resume. No previous pipeline run found.',
     )
+  # TODO(b/200206549): Remove once testing is complete
   if _ENABLE_INPLACE_RESUME.value:
     if run_id is None:
       raise status_lib.StatusNotOkError(
@@ -885,7 +887,6 @@ def resume_pipeline(
               'Inplace resume requires run_id to be provided but it was not.'
           ),
       )
-    # TODO(b/200206549): Add support to grab nodes from subpipelines.
     nodes_to_start = [
         node_id
         for node_id, state in latest_pipeline_view.get_node_states_dict().items()
@@ -954,6 +955,85 @@ def resume_pipeline(
     return pstate.PipelineState.new(
         mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view
     )
+
+
+@_pipeline_op()
+def revive_pipeline_run(
+    mlmd_handle: metadata.Metadata, pipeline_id: str, pipeline_run_id: str
+) -> pstate.PipelineState:
+  """Revives a pipeline run from previously failed nodes.
+
+  Args:
+    mlmd_handle: A handle to the MLMD db.
+    pipeline_id: The id (name) of the pipeline to resume.
+    pipeline_run_id: the run_id of the pipeline run to resume.
+
+  Returns:
+    The `PipelineState` object upon success.
+
+  Raises:
+    status_lib.StatusNotOkError: Failure to resume pipeline. With code
+      `ALREADY_EXISTS` if a pipeline is already running. With code
+      `status_lib.Code.FAILED_PRECONDITION` if a previous pipeline run
+      is not found for resuming. With code 'INVALID_ARGUMENT' if trying to
+      revive a pipeline run while there's another active run and concurrent runs
+      are not enabled.
+  """
+  pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(
+      pipeline_id, pipeline_run_id
+  )
+  logging.info(
+      'Received request to revive pipeline; pipeline uid: %s', pipeline_uid
+  )
+  with pstate.PipelineState.load_run(
+      mlmd_handle, pipeline_id=pipeline_id, run_id=pipeline_run_id
+  ) as pipeline_state:
+    pipeline = pipeline_state.pipeline
+    if pipeline.execution_mode != pipeline_pb2.Pipeline.SYNC:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.FAILED_PRECONDITION,
+          message=(
+              'Only SYNC pipeline execution modes supported; '
+              f'found pipeline with execution mode: {pipeline.execution_mode}'
+          ),
+      )
+    if pipeline_state.is_active():
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.ALREADY_EXISTS,
+          message='Cannot revive a live pipeline run.',
+      )
+    if (
+        not env.get_env().concurrent_pipeline_runs_enabled()
+        and pstate.PipelineState.load_all_active(mlmd_handle)
+    ):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(
+              'Concurrent runs must be enabled to revive a pipeline run while'
+              'another run is active.'
+          ),
+      )
+    # TODO(b/200206549): Add support to grab nodes from subpipelines.
+    # TODO(b/272015049): Add support for manager start nodes.
+    nodes_to_start = [
+        node_uid
+        for node_uid, state in pipeline_state.get_node_states_dict().items()
+        if state.is_startable()
+    ]
+
+    logging.info(
+        'The following nodes will be attempted to be started: %s',
+        nodes_to_start,
+    )
+    for node_uid in nodes_to_start:
+      with pipeline_state.node_state_update_context(node_uid) as node_state:
+        node_state.update(pstate.NodeState.STARTING)
+    pipeline_state.set_pipeline_execution_state(
+        metadata_store_pb2.Execution.State.NEW
+    )
+    pipeline_state.initiate_resume()
+
+  return pipeline_state
 
 
 def _wait_for_predicate(
