@@ -23,7 +23,7 @@ import os
 import random
 import threading
 import time
-from typing import Callable, List, Mapping, Optional, Sequence
+from typing import Callable, Dict, List, Mapping, Optional, Sequence
 
 from absl import flags
 from absl import logging
@@ -1802,8 +1802,8 @@ def publish_intermediate_artifact(
     mlmd_handle: metadata.Metadata,
     execution_id: int,
     output_key: str,
-    properties: Optional[dict[str, metadata_store_pb2.Value]],
-    custom_properties: Optional[dict[str, metadata_store_pb2.Value]],
+    properties: Optional[Dict[str, metadata_store_pb2.Value]],
+    custom_properties: Optional[Dict[str, metadata_store_pb2.Value]],
     external_uri: Optional[str] = None,
     temp_uri: Optional[str] = None,
 ) -> metadata_store_pb2.Artifact:
