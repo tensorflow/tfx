@@ -23,7 +23,7 @@ import os
 import random
 import threading
 import time
-from typing import Callable, List, Mapping, Optional, Sequence
+from typing import Callable, List, Mapping, Optional, Sequence, Tuple
 
 from absl import flags
 from absl import logging
@@ -1911,3 +1911,79 @@ def publish_intermediate_artifact(
 
   logging.info('Published intermediate artifact: %s', intermediate_artifact)
   return intermediate_artifact
+
+
+def _create_artifact_and_events(
+    key: str,
+    artifacts: Sequence[metadata_store_pb2.Artifact],
+    events: Sequence[metadata_store_pb2.Event],
+) -> Sequence[Tuple[metadata_store_pb2.Artifact, metadata_store_pb2.Event]]:
+  """Creates list of Artifact and INPUT Event tuples."""
+  new_artifact_ids = set(a.id for a in artifacts)
+  index = -1
+  for event in events:
+    if event_lib.is_valid_input_event(event, expected_input_key=key):
+      index = max(index, event.path.steps[1].index)
+      if event.artifact_id in new_artifact_ids:
+        new_artifact_ids.remove(event.artifact_id)
+
+  # Create new events only for any artifacts that don't have an existing INPUT
+  # event.
+  artifacts_by_ids = {a.id: a for a in artifacts}
+  artifact_and_events = []
+  for artifact_id in new_artifact_ids:
+    index += 1
+    event = event_lib.generate_event(
+        event_type=metadata_store_pb2.Event.INPUT,
+        # NOTE: The component must declare an input channel with no_trigger(),
+        # where the input_key for the read artifacts matches the output_key for
+        # the component that emitted the artifact.
+        key=key,
+        index=index,
+    )
+    artifact_and_events.append((artifacts_by_ids[artifact_id], event))
+
+  return artifact_and_events
+
+
+@_pipeline_op()
+def mark_intermediate_read_artifacts_as_processed(
+    mlmd_handle: metadata.Metadata,
+    execution_id: int,
+    read_artifacts: Mapping[str, Sequence[metadata_store_pb2.Artifact]],
+) -> None:
+  """Links the artifacts to the execution with INPUT events.
+
+  Args:
+    mlmd_handle: A handle to the MLMD database.
+    execution_id: The ID of the execution.
+    read_artifacts: The dictionary of artifacts to link to the execution with
+      INPUT events.
+  """
+  executions = mlmd_handle.store.get_executions_by_id([execution_id])
+  if len(executions) != 1:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INVALID_ARGUMENT,
+        message=(
+            f'Expected exactly 1 Execution with id {execution_id}, but found '
+            f'{len(executions)}: {executions}'
+        ),
+    )
+  execution = executions[0]
+
+  events = mlmd_handle.store.get_events_by_execution_ids([execution.id])
+  artifact_and_events = []
+  for key, artifacts in read_artifacts.items():
+    artifact_and_events.extend(
+        _create_artifact_and_events(key, artifacts, events)
+    )
+
+  # Link the intermediately read artifacts to the execution.
+  contexts = mlmd_handle.store.get_contexts_by_execution(execution.id)
+  mlmd_handle.store.put_execution(
+      execution=execution,
+      artifact_and_events=artifact_and_events,
+      contexts=contexts,
+      reuse_context_if_already_exist=True,
+      reuse_artifact_if_already_exist_by_external_id=True,
+  )
