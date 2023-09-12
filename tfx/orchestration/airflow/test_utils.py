@@ -49,6 +49,8 @@ def create_mysql_container(container_name: str) -> Tuple[str, int]:
       ports={_MYSQL_PORT: None},
       detach=True)
   container.reload()  # required to get auto-assigned ports
+  ip_address = str(container.attrs['NetworkSettings']['IPAddress'])
+  logging.info('IP address: %s', ip_address)
   port = int(container.ports[_MYSQL_PORT][0]['HostPort'])
 
   # From go/kokoro-native-docker-migration, the Ubuntu 20.04 version has an
