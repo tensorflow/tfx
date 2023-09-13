@@ -20,7 +20,7 @@ landing_page:
         learn the two main styles of developing a TFX pipeline:</p>
         <ul>
         <li>Using the <code>InteractiveContext</code> to develop a pipeline in a notebook,
-        working with one component at a time.  This style is makes development easier
+        working with one component at a time.  This style makes development easier
         and more Pythonic.</li>
         <li>Defining an entire pipeline and executing it with a runner.  This is what
         your pipelines will look like when you deploy them.</li>
