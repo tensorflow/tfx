@@ -65,7 +65,7 @@ class Evaluator(base_beam_component.BaseBeamComponent):
 
     Args:
       examples: A BaseChannel of type `standard_artifacts.Examples`, usually
-        produced by an ExampleGen component or by Transform component. _required_
+        produced by an ExampleGen component. _required_
       model: A BaseChannel of type `standard_artifacts.Model`, usually produced
         by a Trainer component.
       baseline_model: An optional channel of type 'standard_artifacts.Model' as
