@@ -64,19 +64,21 @@ class ResolvedInfo:
 
 
 def generate_task_from_execution(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
     node: node_proto_view.NodeProtoView,
     execution: metadata_store_pb2.Execution,
-    cancel_type: Optional[task_lib.NodeCancelType] = None) -> task_lib.Task:
+    cancel_type: Optional[task_lib.NodeCancelType] = None,
+) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   if not execution_lib.is_execution_active(execution):
     raise RuntimeError(f'Execution is not active: {execution}.')
 
-  contexts = metadata_handler.store.get_contexts_by_execution(execution.id)
+  contexts = metadata_handle.store.get_contexts_by_execution(execution.id)
   exec_properties = extract_properties(execution)
   input_artifacts = execution_lib.get_input_artifacts(
-      metadata_handler, execution.id)
+      metadata_handle, execution.id
+  )
   outputs_resolver = outputs_utils.OutputsResolver(node, pipeline.pipeline_info,
                                                    pipeline.runtime_spec,
                                                    pipeline.execution_mode)
@@ -99,7 +101,7 @@ def generate_task_from_execution(
 
 
 def generate_cancel_task_from_running_execution(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
     node: node_proto_view.NodeProtoView,
     executions: Iterable[metadata_store_pb2.Execution],
@@ -110,7 +112,7 @@ def generate_cancel_task_from_running_execution(
   Returns `None` if a task cannot be generated from running execution.
 
   Args:
-    metadata_handler: A handler to access MLMD db.
+    metadata_handle: A handler to access MLMD db.
     pipeline: The pipeline containing the node.
     node: The pipeline node for which to generate a task.
     executions: A sequence of all executions for the given node.
@@ -133,11 +135,12 @@ def generate_cancel_task_from_running_execution(
         'A node can have only one running execution, but get multiple running '
         f'executions for node {node.node_info.id}')
   return generate_task_from_execution(
-      metadata_handler,
+      metadata_handle,
       pipeline,
       node,
       running_executions[0],
-      cancel_type=cancel_type)
+      cancel_type=cancel_type,
+  )
 
 
 def extract_properties(
@@ -194,7 +197,7 @@ def generate_resolved_info(
   """
   # Register node contexts.
   contexts = context_lib.prepare_contexts(
-      metadata_handler=mlmd_cm.get_handle(mlmd_handle_like),
+      metadata_handle=mlmd_cm.get_handle(mlmd_handle_like),
       node_contexts=node.contexts,
   )
 
@@ -209,7 +212,7 @@ def generate_resolved_info(
   # Resolve inputs.
   try:
     resolved_input_artifacts = inputs_utils.resolve_input_artifacts(
-        metadata_handler=mlmd_handle_like, pipeline_node=node
+        metadata_handle=mlmd_handle_like, pipeline_node=node
     )
   except exceptions.InputResolutionError as e:
     for skip_error in skip_errors:
@@ -245,7 +248,7 @@ def generate_resolved_info(
 
 
 def get_executions(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
     want_active: bool = False,
     want_successful: bool = False,
@@ -259,7 +262,7 @@ def get_executions(
   node.
 
   Args:
-    metadata_handler: A handler to access MLMD db.
+    metadata_handle: A handler to access MLMD db.
     node: The pipeline node for which to obtain executions.
     want_active: If set to true, only active executions are returned. Otherwise,
       all executions are returned. Active executions mean executions with NEW or
@@ -338,7 +341,7 @@ def get_executions(
   if additional_filters:
     filter_query.extend(additional_filters)
 
-  return metadata_handler.store.get_executions(
+  return metadata_handle.store.get_executions(
       list_options=mlmd.ListOptions(
           order_by=mlmd.OrderByField.CREATE_TIME,
           is_asc=False,
@@ -486,7 +489,7 @@ def register_executions_from_existing_executions(
     # TODO(b/224800273): We also need to resolve and set dynamic execution
     # properties.
     new_execution = execution_lib.prepare_execution(
-        metadata_handler=metadata_handle,
+        metadata_handle=metadata_handle,
         execution_type=node.node_info.type,
         state=metadata_store_pb2.Execution.NEW,
         exec_properties=exec_properties,
@@ -517,7 +520,7 @@ def register_executions_from_existing_executions(
 
 
 def register_executions(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
     input_and_params: Sequence[InputAndParam],
@@ -529,12 +532,12 @@ def register_executions(
   -  the contexts will be linked to both the executions and its input artifacts.
 
   Args:
-    metadata_handler: A handler to access MLMD.
+    metadata_handle: A handler to access MLMD.
     execution_type: The type of the execution.
     contexts: MLMD contexts to associate with the executions.
     input_and_params: A list of InputAndParams, which includes input_dicts
-    (dictionaries of artifacts. One execution will be registered for each of the
-    input_dict) and corresponding exec_properties.
+      (dictionaries of artifacts. One execution will be registered for each of
+      the input_dict) and corresponding exec_properties.
 
   Returns:
     A list of MLMD executions that are registered in MLMD, with id populated.
@@ -544,11 +547,12 @@ def register_executions(
   for index, input_and_param in enumerate(input_and_params):
     # Prepare executions.
     execution = execution_lib.prepare_execution(
-        metadata_handler,
+        metadata_handle,
         execution_type,
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
-        execution_name=str(uuid.uuid4()))
+        execution_name=str(uuid.uuid4()),
+    )
     # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     executions.append(execution)
@@ -557,15 +561,19 @@ def register_executions(
   if len(executions) == 1:
     return [
         execution_lib.put_execution(
-            metadata_handler,
+            metadata_handle,
             executions[0],
             contexts,
-            input_artifacts=input_and_params[0].input_artifacts)
+            input_artifacts=input_and_params[0].input_artifacts,
+        )
     ]
 
   return execution_lib.put_executions(
-      metadata_handler, executions, contexts,
-      [input_and_param.input_artifacts for input_and_param in input_and_params])
+      metadata_handle,
+      executions,
+      contexts,
+      [input_and_param.input_artifacts for input_and_param in input_and_params],
+  )
 
 
 def update_external_artifact_type(local_mlmd_handle: metadata.Metadata,

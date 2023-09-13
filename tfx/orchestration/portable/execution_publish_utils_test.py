@@ -41,7 +41,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
     self._connection_config.sqlite.SetInParent()
     self._execution_type = metadata_store_pb2.ExecutionType(name='my_ex_type')
 
-  def _generate_contexts(self, metadata_handler):
+  def _generate_contexts(self, metadata_handle):
     context_spec = pipeline_pb2.NodeContexts()
     text_format.Parse(
         """
@@ -57,7 +57,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             field_value {string_value: 'my_component'}
           }
         }""", context_spec)
-    return context_lib.prepare_contexts(metadata_handler, context_spec)
+    return context_lib.prepare_contexts(metadata_handle, context_spec)
 
   def testRegisterExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

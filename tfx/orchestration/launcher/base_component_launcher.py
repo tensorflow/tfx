@@ -156,7 +156,7 @@ class BaseComponentLauncher(abc.ABC):
     """Prepare inputs, outputs and execution properties for actual execution."""
 
     with self._metadata_connection as m:
-      driver = self._driver_class(metadata_handler=m)
+      driver = self._driver_class(metadata_handle=m)
 
       execution_decision = driver.pre_execution(
           input_dict=input_dict,
@@ -182,7 +182,7 @@ class BaseComponentLauncher(abc.ABC):
     """Publish execution result to ml metadata."""
 
     with self._metadata_connection as m:
-      p = publisher.Publisher(metadata_handler=m)
+      p = publisher.Publisher(metadata_handle=m)
       p.publish_execution(
           component_info=self._component_info, output_artifacts=output_dict)
 

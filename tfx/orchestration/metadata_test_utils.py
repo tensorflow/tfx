@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.orchestration.metadata."""
 
+from typing import Mapping
+
 import tensorflow as tf
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -59,25 +61,33 @@ class MetadataTest(tf.test.TestCase):
         component_id='my_component',
         pipeline_info=self._pipeline_info5)
 
-  def _get_all_runs(self, metadata_handler: metadata.Metadata,
-                    pipeline_name: str):
+  def _get_all_runs(
+      self, metadata_handle: metadata.Metadata, pipeline_name: str
+  ):
     result = []
-    for context in metadata_handler.store.get_contexts_by_type(
-        metadata._CONTEXT_TYPE_PIPELINE_RUN):  # pylint: disable=protected-access
+    for context in metadata_handle.store.get_contexts_by_type(
+        metadata._CONTEXT_TYPE_PIPELINE_RUN  # pylint: disable=protected-access
+    ):  # pylint: disable=protected-access
       if context.properties['pipeline_name'].string_value == pipeline_name:
         result.append(context.properties['run_id'].string_value)
     return result
 
-  def _get_execution_states(self, metadata_handler: metadata.Metadata,
-                            pipeline_info: data_types.PipelineInfo):
-    pipeline_run_context = metadata_handler.store.get_context_by_type_and_name(
+  def _get_execution_states(
+      self,
+      metadata_handle: metadata.Metadata,
+      pipeline_info: data_types.PipelineInfo,
+  ) -> Mapping[str, str]:
+    """Returns a mapping from component id to execution state."""
+    pipeline_run_context = metadata_handle.store.get_context_by_type_and_name(
         metadata._CONTEXT_TYPE_PIPELINE_RUN,  # pylint: disable=protected-access
-        pipeline_info.pipeline_run_context_name)
+        pipeline_info.pipeline_run_context_name,
+    )
     result = {}
     if not pipeline_run_context:
       return result
-    for execution in metadata_handler.store.get_executions_by_context(
-        pipeline_run_context.id):
+    for execution in metadata_handle.store.get_executions_by_context(
+        pipeline_run_context.id
+    ):
       result[execution.properties['component_id']
              .string_value] = execution.properties['state'].string_value
     return result

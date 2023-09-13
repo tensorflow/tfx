@@ -942,7 +942,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       ]
       m.store.put_contexts(contexts)
       executions = task_gen_utils.register_executions(
-          metadata_handler=m,
+          metadata_handle=m,
           execution_type=self._transform.node_info.type,
           contexts=contexts,
           input_and_params=[input_and_param],

@@ -64,14 +64,16 @@ class _TestMixin(test_case_utils.TfxTest):
   def make_model(self, **kwargs) -> types.Artifact:
     return self._make_artifact('Model', **kwargs)
 
-  def fake_execute(self, metadata_handler, pipeline_node, input_map,
-                   output_map):
+  def fake_execute(self, metadata_handle, pipeline_node, input_map, output_map):
     contexts = context_lib.prepare_contexts(
-        metadata_handler, pipeline_node.contexts)
+        metadata_handle, pipeline_node.contexts
+    )
     execution = execution_publish_utils.register_execution(
-        metadata_handler, pipeline_node.node_info.type, contexts, input_map)
+        metadata_handle, pipeline_node.node_info.type, contexts, input_map
+    )
     return execution_publish_utils.publish_succeeded_execution(
-        metadata_handler, execution.id, contexts, output_map)
+        metadata_handle, execution.id, contexts, output_map
+    )
 
   def assertArtifactEqual(self, expected, actual):
     self.assertProtoPartiallyEquals(
@@ -181,7 +183,8 @@ class InputsUtilsTest(_TestMixin):
       # Gets inputs for transform. Should get back what the first ExampleGen
       # published in the `output_examples` channel.
       transform_inputs = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=my_transform)[0]
+          metadata_handle=m, pipeline_node=my_transform
+      )[0]
       self.assertArtifactMapEqual({'examples_1': [output_example],
                                    'examples_2': [output_example]},
                                   transform_inputs)
@@ -192,7 +195,8 @@ class InputsUtilsTest(_TestMixin):
       with self.assertRaisesRegex(
           exceptions.InsufficientInputError, 'InputSpec min_count has not met'):
         inputs_utils.resolve_input_artifacts(
-            metadata_handler=m, pipeline_node=my_trainer)
+            metadata_handle=m, pipeline_node=my_trainer
+        )
 
       # Tries to resolve inputs for transform after adding a new context query
       # to the input spec that refers to a non-existent context. Inputs cannot
@@ -204,7 +208,8 @@ class InputsUtilsTest(_TestMixin):
       with self.assertRaisesRegex(
           exceptions.InsufficientInputError, 'InputSpec min_count has not met'):
         inputs_utils.resolve_input_artifacts(
-            metadata_handler=m, pipeline_node=my_transform)
+            metadata_handle=m, pipeline_node=my_transform
+        )
 
   def testResolveInputArtifacts_OutputKeyUnset(self):
     pipeline = self.load_pipeline_proto(
@@ -223,7 +228,8 @@ class InputsUtilsTest(_TestMixin):
       # Gets inputs for pusher. Should get back what the first Model
       # published in the `output_model` channel.
       pusher_inputs = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=my_pusher)[0]
+          metadata_handle=m, pipeline_node=my_pusher
+      )[0]
       self.assertArtifactMapEqual({'model': [output_model]},
                                   pusher_inputs)
 
@@ -232,23 +238,24 @@ class InputsUtilsTest(_TestMixin):
         'pipeline_for_input_resolver_test.pbtxt')
     self._my_example_gen = self._pipeline.nodes[0].pipeline_node
     self._my_transform = self._pipeline.nodes[2].pipeline_node
-    self._metadata_handler = self.enter_context(self.get_metadata())
+    self._metadata_handle = self.enter_context(self.get_metadata())
 
     examples = [self.make_examples(uri=f'examples/{i+1}')
                 for i in range(num_examples)]
     output_dict = self.fake_execute(
-        self._metadata_handler,
+        self._metadata_handle,
         self._my_example_gen,
         input_map=None,
-        output_map={'output_examples': examples})
+        output_map={'output_examples': examples},
+    )
     self._examples = output_dict['output_examples']
 
   def testResolveInputArtifacts_Normal(self):
     self._setup_pipeline_for_input_resolver_test()
 
     result = inputs_utils.resolve_input_artifacts(
-        pipeline_node=self._my_transform,
-        metadata_handler=self._metadata_handler)
+        pipeline_node=self._my_transform, metadata_handle=self._metadata_handle
+    )
     self.assertIsInstance(result, inputs_utils.Trigger)
     self.assertArtifactMapListEqual([{'examples_1': self._examples,
                                       'examples_2': self._examples}], result)
@@ -262,7 +269,8 @@ class InputsUtilsTest(_TestMixin):
         r'inputs\[examples_1\] has min_count = 2 but only got 1'):
       inputs_utils.resolve_input_artifacts(
           pipeline_node=self._my_transform,
-          metadata_handler=self._metadata_handler)
+          metadata_handle=self._metadata_handle,
+      )
 
   def testResolveParameterSchema(self):
     parameters = pipeline_pb2.NodeParameters()

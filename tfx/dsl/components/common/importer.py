@@ -56,12 +56,13 @@ def _set_artifact_properties(artifact: types.Artifact,
 
 
 def _prepare_artifact(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     uri: str,
     properties: Dict[str, Any],
     custom_properties: Dict[str, Any],
-    reimport: bool, output_artifact_class: Type[types.Artifact],
-    mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType]
+    reimport: bool,
+    output_artifact_class: Type[types.Artifact],
+    mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType],
 ) -> types.Artifact:
   """Prepares the Importer's output artifact.
 
@@ -70,7 +71,7 @@ def _prepare_artifact(
   `reimport` argument is set to True.
 
   Args:
-    metadata_handler: The handler of MLMD.
+    metadata_handle: The handler of MLMD.
     uri: The uri of the artifact.
     properties: The properties of the artifact, given as a dictionary from
       string keys to integer / string values. Must conform to the declared
@@ -96,12 +97,13 @@ def _prepare_artifact(
           ('Custom property value for key %r must be a string or integer '
            '(got %r instead)') % (key, value))
 
-  unfiltered_previous_artifacts = metadata_handler.get_artifacts_by_uri(uri)
+  unfiltered_previous_artifacts = metadata_handle.get_artifacts_by_uri(uri)
   new_artifact_type = False
   if mlmd_artifact_type and not mlmd_artifact_type.id:
     try:
-      mlmd_artifact_type = metadata_handler.store.get_artifact_type(
-          mlmd_artifact_type.name)
+      mlmd_artifact_type = metadata_handle.store.get_artifact_type(
+          mlmd_artifact_type.name
+      )
     except errors.NotFoundError:
       # Artifact type is not registered, so it must be new.
       new_artifact_type = True
@@ -160,7 +162,7 @@ def _prepare_artifact(
 
 
 def generate_output_dict(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     uri: str,
     properties: Dict[str, Any],
     custom_properties: Dict[str, Any],
@@ -176,7 +178,7 @@ def generate_output_dict(
   argument is set to True.
 
   Args:
-    metadata_handler: The handler of MLMD.
+    metadata_handle: The handler of MLMD.
     uri: The uri of the artifact.
     properties: The properties of the artifact, given as a dictionary from
       string keys to integer / string values. Must conform to the declared
@@ -197,13 +199,14 @@ def generate_output_dict(
   return {
       output_key: [
           _prepare_artifact(
-              metadata_handler,
+              metadata_handle,
               uri=uri,
               properties=properties,
               custom_properties=custom_properties,
               output_artifact_class=output_artifact_class,
               mlmd_artifact_type=mlmd_artifact_type,
-              reimport=reimport)
+              reimport=reimport,
+          )
       ]
   }
 
@@ -221,32 +224,36 @@ class ImporterDriver(base_driver.BaseDriver):
       component_info: data_types.ComponentInfo,
   ) -> data_types.ExecutionDecision:
     # Registers contexts and execution.
-    contexts = self._metadata_handler.register_pipeline_contexts_if_not_exists(
-        pipeline_info)
-    execution = self._metadata_handler.register_execution(
+    contexts = self._metadata_handle.register_pipeline_contexts_if_not_exists(
+        pipeline_info
+    )
+    execution = self._metadata_handle.register_execution(
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,
         component_info=component_info,
-        contexts=contexts)
+        contexts=contexts,
+    )
     # Create imported artifacts.
     output_key = exec_properties[OUTPUT_KEY_KEY]
     output_channel = output_dict[output_key]
     output_artifacts = generate_output_dict(
-        self._metadata_handler,
+        self._metadata_handle,
         uri=exec_properties[SOURCE_URI_KEY],
         properties=output_channel.additional_properties,
         custom_properties=output_channel.additional_custom_properties,
         reimport=exec_properties[REIMPORT_OPTION_KEY],
         output_artifact_class=output_channel.type,
-        output_key=output_key)
+        output_key=output_key,
+    )
 
     # Update execution with imported artifacts.
-    self._metadata_handler.update_execution(
+    self._metadata_handle.update_execution(
         execution=execution,
         component_info=component_info,
         output_artifacts=output_artifacts,
         execution_state=metadata.EXECUTION_STATE_CACHED,
-        contexts=contexts)
+        contexts=contexts,
+    )
 
     output_dict[output_key] = channel_utils.as_channel(
         output_artifacts[output_key])

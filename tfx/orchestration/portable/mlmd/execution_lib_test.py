@@ -74,7 +74,7 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
     mlmd_connection = metadata.Metadata(connection_config=connection_config)
     self._mlmd_handle = self.enter_context(mlmd_connection)
 
-  def _generate_contexts(self, metadata_handler):
+  def _generate_contexts(self, metadata_handle):
     context_spec = pipeline_pb2.NodeContexts()
     text_format.Parse(
         """
@@ -90,7 +90,7 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
             field_value {string_value: 'my_component'}
           }
         }""", context_spec)
-    return context_lib.prepare_contexts(metadata_handler, context_spec)
+    return context_lib.prepare_contexts(metadata_handle, context_spec)
 
   def testPrepareExecution(self):
     execution_type = metadata_store_pb2.ExecutionType()

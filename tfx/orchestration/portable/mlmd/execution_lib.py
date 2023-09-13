@@ -148,7 +148,7 @@ def sort_executions_newest_to_oldest(
 
 
 def prepare_execution(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     state: metadata_store_pb2.Execution.State,
     exec_properties: Optional[Mapping[str, types.ExecPropertyTypes]] = None,
@@ -157,7 +157,7 @@ def prepare_execution(
   """Creates an execution proto based on the information provided.
 
   Args:
-    metadata_handler: A handler to access MLMD store.
+    metadata_handle: A handler to access MLMD store.
     execution_type: A metadata_pb2.ExecutionType message describing the type of
       the execution.
     state: The state of the execution.
@@ -171,7 +171,8 @@ def prepare_execution(
   execution = metadata_store_pb2.Execution()
   execution.last_known_state = state
   execution.type_id = common_utils.register_type_if_not_exist(
-      metadata_handler, execution_type).id
+      metadata_handle, execution_type
+  ).id
   if execution_name:
     execution.name = execution_name
 
@@ -218,7 +219,7 @@ def _get_id(artifact: metadata_store_pb2.Artifact) -> Any:
 
 
 def _create_artifact_and_event_pairs(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     artifact_dict: typing_utils.ArtifactMultiMap,
     event_type: metadata_store_pb2.Event.Type,
 ) -> List[Tuple[metadata_store_pb2.Artifact, metadata_store_pb2.Event]]:
@@ -227,7 +228,7 @@ def _create_artifact_and_event_pairs(
   The result of this function will be used in a MLMD put_execution() call.
 
   Args:
-    metadata_handler: A handler to access MLMD store.
+    metadata_handle: A handler to access MLMD store.
     artifact_dict: The source of artifacts to work on. For each unique artifact
       in the dict, creates a tuple for that. Note that all artifacts of the same
       key in the artifact_dict are expected to share the same artifact type. If
@@ -265,7 +266,7 @@ def _create_artifact_and_event_pairs(
               artifact_type.name == artifact.artifact_type.name
           ), 'Artifacts under the same key should share the same artifact type.'
         artifact_type = common_utils.register_type_if_not_exist(
-            metadata_handler, artifact.artifact_type
+            metadata_handle, artifact.artifact_type
         )
         artifact.set_mlmd_artifact_type(artifact_type)
         if artifact_id:
@@ -283,15 +284,13 @@ def _create_artifact_and_event_pairs(
 
 
 def put_execution(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     execution: metadata_store_pb2.Execution,
     contexts: Sequence[metadata_store_pb2.Context],
     input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
     output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
-    input_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
-    .INPUT,
-    output_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
-    .OUTPUT
+    input_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event.INPUT,
+    output_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event.OUTPUT,
 ) -> metadata_store_pb2.Execution:
   """Writes an execution-centric subgraph to MLMD.
 
@@ -299,7 +298,7 @@ def put_execution(
   execution centric subgraph to MLMD.
 
   Args:
-    metadata_handler: A handler to access MLMD.
+    metadata_handle: A handler to access MLMD.
     execution: The execution to be written to MLMD.
     contexts: MLMD contexts to associated with the execution.
     input_artifacts: Input artifacts of the execution. Each artifact will be
@@ -321,23 +320,29 @@ def put_execution(
   if input_artifacts:
     artifact_and_events.extend(
         _create_artifact_and_event_pairs(
-            metadata_handler=metadata_handler,
+            metadata_handle=metadata_handle,
             artifact_dict=input_artifacts,
-            event_type=input_event_type))
+            event_type=input_event_type,
+        )
+    )
   if output_artifacts:
     outputs_utils.tag_output_artifacts_with_version(output_artifacts)
     artifact_and_events.extend(
         _create_artifact_and_event_pairs(
-            metadata_handler=metadata_handler,
+            metadata_handle=metadata_handle,
             artifact_dict=output_artifacts,
-            event_type=output_event_type))
+            event_type=output_event_type,
+        )
+    )
   execution_id, artifact_ids, contexts_ids = (
-      metadata_handler.store.put_execution(
+      metadata_handle.store.put_execution(
           execution=execution,
           artifact_and_events=artifact_and_events,
           contexts=contexts,
           reuse_context_if_already_exist=True,
-          reuse_artifact_if_already_exist_by_external_id=True))
+          reuse_artifact_if_already_exist_by_external_id=True,
+      )
+  )
   execution.id = execution_id
   for artifact_and_event, a_id in zip(artifact_and_events, artifact_ids):
     artifact, _ = artifact_and_event
@@ -354,17 +359,17 @@ def put_execution(
 
 
 def put_executions(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     executions: Sequence[metadata_store_pb2.Execution],
     contexts: Sequence[metadata_store_pb2.Context],
-    input_artifacts_maps: Optional[Sequence[
-        typing_utils.ArtifactMultiMap]] = None,
-    output_artifacts_maps: Optional[Sequence[
-        typing_utils.ArtifactMultiMap]] = None,
-    input_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
-    .INPUT,
-    output_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event
-    .OUTPUT
+    input_artifacts_maps: Optional[
+        Sequence[typing_utils.ArtifactMultiMap]
+    ] = None,
+    output_artifacts_maps: Optional[
+        Sequence[typing_utils.ArtifactMultiMap]
+    ] = None,
+    input_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event.INPUT,
+    output_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event.OUTPUT,
 ) -> Sequence[metadata_store_pb2.Execution]:
   """Writes an execution-centric subgraph to MLMD.
 
@@ -372,7 +377,7 @@ def put_executions(
   the execution centric subgraph to MLMD.
 
   Args:
-    metadata_handler: A handler to access MLMD.
+    metadata_handle: A handler to access MLMD.
     executions: A list of executions to be written to MLMD.
     contexts: A list of MLMD contexts to associated with all the executions.
     input_artifacts_maps: A list of ArtifactMultiMap for input. Each of the
@@ -403,7 +408,7 @@ def put_executions(
   if input_artifacts_maps:
     for idx, input_artifacts in enumerate(input_artifacts_maps):
       artifact_and_event_pairs = _create_artifact_and_event_pairs(
-          metadata_handler, input_artifacts, event_type=input_event_type
+          metadata_handle, input_artifacts, event_type=input_event_type
       )
       for artifact, event in artifact_and_event_pairs:
         artifact_id = _get_id(artifact)
@@ -423,14 +428,15 @@ def put_executions(
     for idx, output_artifacts in enumerate(output_artifacts_maps):
       outputs_utils.tag_output_artifacts_with_version(output_artifacts)
       artifact_and_event_pairs = _create_artifact_and_event_pairs(
-          metadata_handler, output_artifacts, event_type=output_event_type)
+          metadata_handle, output_artifacts, event_type=output_event_type
+      )
       for artifact, event in artifact_and_event_pairs:
         artifacts.append(artifact)
         artifact_event_edges.append((idx, len(artifacts) - 1, event))
 
   try:
     execution_ids, artifact_ids, context_ids = (
-        metadata_handler.store.put_lineage_subgraph(
+        metadata_handle.store.put_lineage_subgraph(
             executions,
             artifacts,
             contexts,
@@ -460,7 +466,7 @@ def put_executions(
     ):
       result.append(
           put_execution(
-              metadata_handler=metadata_handler,
+              metadata_handle=metadata_handle,
               execution=execution,
               contexts=contexts,
               input_artifacts=input_artifacts,
@@ -661,13 +667,13 @@ def _register_pending_output_artifacts(
 
 
 def get_executions_associated_with_all_contexts(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     contexts: Iterable[metadata_store_pb2.Context],
 ) -> List[metadata_store_pb2.Execution]:
   """Returns executions that are associated with all given contexts.
 
   Args:
-    metadata_handler: A handler to access MLMD.
+    metadata_handle: A handler to access MLMD.
     contexts: MLMD contexts for which to fetch associated executions.
 
   Returns:
@@ -680,7 +686,7 @@ def get_executions_associated_with_all_contexts(
           for i, context in enumerate(contexts)
       ]
   )
-  executions = metadata_handler.store.get_executions(
+  executions = metadata_handle.store.get_executions(
       list_options=execution_query.list_options()
   )
   telemetry_utils.noop_telemetry(

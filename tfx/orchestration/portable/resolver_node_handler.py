@@ -64,7 +64,8 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
     with mlmd_connection as m:
       # 1.Prepares all contexts.
       contexts = context_lib.prepare_contexts(
-          metadata_handler=m, node_contexts=pipeline_node.contexts)
+          metadata_handle=m, node_contexts=pipeline_node.contexts
+      )
 
       # 2. Resolves inputs and execution properties.
       exec_properties = data_types_utils.build_parsed_value_dict(
@@ -72,23 +73,25 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
               node_parameters=pipeline_node.parameters))
       try:
         resolved_inputs = inputs_utils.resolve_input_artifacts(
-            pipeline_node=pipeline_node,
-            metadata_handler=m)
+            pipeline_node=pipeline_node, metadata_handle=m
+        )
         logging.info('[%s] Resolved inputs: %s', pipeline_node.node_info.id,
                      resolved_inputs)
       except exceptions.InputResolutionError as e:
         logging.exception('[%s] Input resolution error: %s',
                           pipeline_node.node_info.id, e)
         execution = execution_publish_utils.register_execution(
-            metadata_handler=m,
+            metadata_handle=m,
             execution_type=pipeline_node.node_info.type,
             contexts=contexts,
-            exec_properties=exec_properties)
+            exec_properties=exec_properties,
+        )
         execution_publish_utils.publish_failed_execution(
-            metadata_handler=m,
+            metadata_handle=m,
             contexts=contexts,
             execution_id=execution.id,
-            executor_output=self._build_error_output(code=e.grpc_code_value))
+            executor_output=self._build_error_output(code=e.grpc_code_value),
+        )
         return data_types.ExecutionInfo(
             execution_id=execution.id,
             exec_properties=exec_properties,
@@ -102,20 +105,23 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
 
       # 3. Registers execution in metadata.
       execution = execution_publish_utils.register_execution(
-          metadata_handler=m,
+          metadata_handle=m,
           execution_type=pipeline_node.node_info.type,
           contexts=contexts,
-          exec_properties=exec_properties)
+          exec_properties=exec_properties,
+      )
 
       # TODO(b/197741942): Support len > 1.
       if len(resolved_inputs) > 1:
         execution_publish_utils.publish_failed_execution(
-            metadata_handler=m,
+            metadata_handle=m,
             contexts=contexts,
             execution_id=execution.id,
             executor_output=self._build_error_output(
                 _ERROR_CODE_UNIMPLEMENTED,
-                'Handling more than one input dicts not implemented yet.'))
+                'Handling more than one input dicts not implemented yet.',
+            ),
+        )
         return data_types.ExecutionInfo(
             execution_id=execution.id,
             exec_properties=exec_properties,
@@ -127,10 +133,11 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
       # 4. Publish the execution as a cached execution with
       # resolved input artifact as the output artifacts.
       execution_publish_utils.publish_internal_execution(
-          metadata_handler=m,
+          metadata_handle=m,
           contexts=contexts,
           execution_id=execution.id,
-          output_artifacts=input_artifacts)
+          output_artifacts=input_artifacts,
+      )
 
       return data_types.ExecutionInfo(
           execution_id=execution.id,

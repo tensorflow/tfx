@@ -25,12 +25,12 @@ from tfx.utils import typing_utils
 
 
 def get_artifacts_by_ids(
-    metadata_handler: metadata.Metadata,
-    artifact_ids: Sequence[int]) -> Sequence[types.Artifact]:
+    metadata_handle: metadata.Metadata, artifact_ids: Sequence[int]
+) -> Sequence[types.Artifact]:
   """Gets TFX artifacts from MLMD by ID.
 
   Args:
-    metadata_handler: A handler to access MLMD.
+    metadata_handle: A handler to access MLMD.
     artifact_ids: The IDs of existing artifacts to query.
 
   Returns:
@@ -41,7 +41,7 @@ def get_artifacts_by_ids(
   """
   start_time = time.time()
   mlmd_artifacts, artifact_types = (
-      metadata_handler.store.get_artifacts_and_types_by_artifact_ids(
+      metadata_handle.store.get_artifacts_and_types_by_artifact_ids(
           artifact_ids
       )
   )
@@ -73,7 +73,7 @@ def get_artifacts_by_ids(
 
 
 def update_artifacts(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     tfx_artifact_map: typing_utils.ArtifactMultiMap,
     new_artifact_state: Optional[str] = None,
 ) -> None:
@@ -87,7 +87,7 @@ def update_artifacts(
       tfx_artifact.state = new_artifact_state
     mlmd_artifacts_to_update.append(tfx_artifact.mlmd_artifact)
   if mlmd_artifacts_to_update:
-    metadata_handler.store.put_artifacts(mlmd_artifacts_to_update)
+    metadata_handle.store.put_artifacts(mlmd_artifacts_to_update)
   telemetry_utils.noop_telemetry(
       module='artifact_lib',
       method='update_artifacts',

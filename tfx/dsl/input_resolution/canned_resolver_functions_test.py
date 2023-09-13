@@ -118,7 +118,8 @@ class CannedResolverFunctionsTest(
           contexts=[mlmd_context])
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
     self.assertNotEmpty(resolved)  # Non-empty resolution implies Trigger.
 
     # Check that actual_artifacts = [mlmd_artifact_2, mlmd_artifact_3] because
@@ -141,7 +142,8 @@ class CannedResolverFunctionsTest(
     mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
     self.assertNotEmpty(resolved)  # Non-empty resolution implies Trigger.
 
     # The resolved artifacts should have (span, version) tuples of:
@@ -166,7 +168,8 @@ class CannedResolverFunctionsTest(
     mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
     self.assertNotEmpty(resolved)  # Non-empty resolution implies Trigger.
 
     # The resolved artifacts should have (span, version) tuples of:
@@ -190,7 +193,8 @@ class CannedResolverFunctionsTest(
     self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
     self.assertEmpty(resolved)  # Empty resolution implies Skip.
 
   def testRollingRangeResolverFn_E2E(self):
@@ -208,7 +212,8 @@ class CannedResolverFunctionsTest(
     mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
     self.assertNotEmpty(resolved)  # Non-empty resolution implies Trigger.
 
     # The resolved artifacts should have (span, version) tuples of:
@@ -230,7 +235,8 @@ class CannedResolverFunctionsTest(
     mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
     self.assertNotEmpty(resolved)  # Non-empty resolution implies Trigger.
 
     actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
@@ -250,7 +256,8 @@ class CannedResolverFunctionsTest(
     self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
     self.assertNotEmpty(resolved)  # Non-empty resolution implies Trigger.
 
     actual_spans = sorted([
@@ -288,7 +295,8 @@ class CannedResolverFunctionsTest(
     self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
     self.assertEmpty(resolved)  # Empty resolution implies Skip.
 
   def testSequentialRollingRangeResolverFn_E2E(self):
@@ -309,7 +317,8 @@ class CannedResolverFunctionsTest(
     mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
     self.assertNotEmpty(resolved)  # Non-empty resolution implies Trigger.
 
     # The resolved artifacts should have (span, version) tuples of:
@@ -344,7 +353,8 @@ class CannedResolverFunctionsTest(
     _ = self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle)
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
     self.assertEmpty(resolved)  # Empty resolution implies Skip.
 
   def testResolverFnContext(self):

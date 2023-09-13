@@ -458,10 +458,11 @@ class _Generator:
                                                      artifacts)
 
     executions = task_gen_utils.register_executions(
-        metadata_handler=self._mlmd_handle,
+        metadata_handle=self._mlmd_handle,
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
-        input_and_params=resolved_info.input_and_params)
+        input_and_params=resolved_info.input_and_params,
+    )
 
     result.extend(
         task_gen_utils.generate_tasks_from_one_input(

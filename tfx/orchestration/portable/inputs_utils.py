@@ -43,13 +43,13 @@ class Skip(tuple, Sequence[typing_utils.ArtifactMultiMap]):
 def resolve_input_artifacts(
     *,
     pipeline_node: pipeline_pb2.PipelineNode,
-    metadata_handler: mlmd_cm.HandleLike,
+    metadata_handle: mlmd_cm.HandleLike,
 ) -> Union[Trigger, Skip]:
   """Resolve input artifacts according to a pipeline node IR definition.
 
   Args:
     pipeline_node: Current PipelineNode on which input resolution is running.
-    metadata_handler: Metadata or MLMDConnectionManager instance for handling
+    metadata_handle: Metadata or MLMDConnectionManager instance for handling
       mlmd db connections.
 
   Raises:
@@ -63,7 +63,7 @@ def resolve_input_artifacts(
   """
   try:
     node_inputs = pipeline_node.inputs
-    resolved = node_inputs_resolver.resolve(metadata_handler, node_inputs)
+    resolved = node_inputs_resolver.resolve(metadata_handle, node_inputs)
     return Trigger(resolved) if resolved else Skip()
   except exceptions.SkipSignal as e:
     logging.info('Input resolution skipped; reason = %s', e)

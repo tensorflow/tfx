@@ -184,7 +184,8 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
     span = 2
     with self._mlmd_connection as m:
       previous_output = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=self._pipeline_node)[0]
+          metadata_handle=m, pipeline_node=self._pipeline_node
+      )[0]
 
       # Version should be the max of existing version + 1 if span exists,
       # otherwise 0.
@@ -315,12 +316,13 @@ class LauncherTest(test_case_utils.TfxTest):
         execution = execution_publish_utils.register_execution(
             m, example_gen.node_info.type, contexts)
         publish_execution(
-            metadata_handler=m,
+            metadata_handle=m,
             execution_id=execution.id,
             contexts=contexts,
             output_artifacts={
                 'output_examples': [output_example],
-            })
+            },
+        )
 
       if transform:
         # Publishes Transform output.
@@ -331,12 +333,13 @@ class LauncherTest(test_case_utils.TfxTest):
         execution = execution_publish_utils.register_execution(
             m, transform.node_info.type, contexts)
         publish_execution(
-            metadata_handler=m,
+            metadata_handle=m,
             execution_id=execution.id,
             contexts=contexts,
             output_artifacts={
                 'transform_graph': [output_transform_graph],
-            })
+            },
+        )
 
   @staticmethod
   def fakeExampleGenOutput(mlmd_connection: metadata.Metadata,
@@ -777,18 +780,20 @@ class LauncherTest(test_case_utils.TfxTest):
     # state.
     with self._mlmd_connection as m:
       contexts = context_lib.prepare_contexts(
-          metadata_handler=m,
-          node_contexts=test_launcher._pipeline_node.contexts)
+          metadata_handle=m, node_contexts=test_launcher._pipeline_node.contexts
+      )
       exec_properties = data_types_utils.build_parsed_value_dict(
           inputs_utils.resolve_parameters_with_schema(
               node_parameters=test_launcher._pipeline_node.parameters))
       input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=test_launcher._pipeline_node)[0]
+          metadata_handle=m, pipeline_node=test_launcher._pipeline_node
+      )[0]
       first_execution = test_launcher._register_or_reuse_execution(
-          metadata_handler=m,
+          metadata_handle=m,
           contexts=contexts,
           input_artifacts=input_artifacts,
-          exec_properties=exec_properties)
+          exec_properties=exec_properties,
+      )
       self.assertEqual(first_execution.last_known_state,
                        metadata_store_pb2.Execution.RUNNING)
 

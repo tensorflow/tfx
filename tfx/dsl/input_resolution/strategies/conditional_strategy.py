@@ -35,8 +35,9 @@ class ConditionalStrategy(resolver.ResolverStrategy):
     self._predicates = predicates
 
   def resolve_artifacts(
-      self, metadata_handler: metadata.Metadata,
-      input_dict: Dict[str, List[types.Artifact]]
+      self,
+      metadata_handle: metadata.Metadata,
+      input_dict: Dict[str, List[types.Artifact]],
   ) -> Optional[Dict[str, List[types.Artifact]]]:
     for placeholder_pb in self._predicates:
       context = placeholder_utils.ResolutionContext(

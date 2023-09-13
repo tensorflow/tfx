@@ -195,7 +195,7 @@ class _Generator:
 
   def _generate_tasks_for_node(
       self,
-      metadata_handler: metadata.Metadata,
+      metadata_handle: metadata.Metadata,
       node: node_proto_view.NodeProtoView,
       backfill_token: str,
   ) -> List[task_lib.Task]:
@@ -204,7 +204,7 @@ class _Generator:
     If a node execution is not feasible, `None` is returned.
 
     Args:
-      metadata_handler: A handler to access MLMD db.
+      metadata_handle: A handler to access MLMD db.
       node: The pipeline node for which to generate a task.
       backfill_token: Backfill token, if applicable.
 
@@ -218,7 +218,7 @@ class _Generator:
     # Gets the active executions. If the active executions exist, generates a
     # task from the oldest active execution.
     active_executions = task_gen_utils.get_executions(
-        metadata_handler, node, want_active=True
+        metadata_handle, node, want_active=True
     )
     oldest_active_execution = task_gen_utils.get_oldest_active_execution(
         active_executions
@@ -299,7 +299,7 @@ class _Generator:
 
     if backfill_token and (
         newest_executions := task_gen_utils.get_executions(
-            metadata_handler, node, limit=1
+            metadata_handle, node, limit=1
         )
     ):
       newest_execution = newest_executions[0]
@@ -390,7 +390,7 @@ class _Generator:
       unprocessed_inputs = resolved_info.input_and_params
     else:
       unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-          metadata_handler, resolved_info, node
+          metadata_handle, resolved_info, node
       )
     if not unprocessed_inputs:
       return result
@@ -405,7 +405,7 @@ class _Generator:
         event_observer.make_notify_execution_state_change_fn(node_uid)
     )
     executions = task_gen_utils.register_executions(
-        metadata_handler=metadata_handler,
+        metadata_handle=metadata_handle,
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
         input_and_params=unprocessed_inputs,
@@ -415,7 +415,7 @@ class _Generator:
 
     result.extend(
         task_gen_utils.generate_tasks_from_one_input(
-            metadata_handle=metadata_handler,
+            metadata_handle=metadata_handle,
             node=node,
             execution=executions[0],
             input_and_param=unprocessed_inputs[0],
