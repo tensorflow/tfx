@@ -556,6 +556,21 @@ class PipelineState:
       )
       _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
 
+    # Find any normal pipeline node and prepare the contexts, which will
+    # register the associated pipeline contexts and pipeline run ID context.
+    #
+    # We do this so the pipeline contexts and pipeline run ID context are
+    # created immediately when the pipeline is started, so we can immediately
+    # associate extra information with them, rather than having to wait
+    # until the orchestrator generates tasks for a node in the pipeline for
+    # the contexts to be registered.
+    #
+    # If there are no normal nodes then no contexts are prepared.
+    for node in pipeline.nodes:
+      if node.WhichOneof('node') == 'pipeline_node':
+        context_lib.prepare_contexts(mlmd_handle, node.pipeline_node.contexts)
+        break
+
     # update _active_pipelines_exist to be True so orchestrator will keep
     # fetching the latest contexts and execution when orchestrating the pipeline
     # run.
