@@ -39,6 +39,8 @@ toc:
   path: /tfx/tutorials/tfx/airflow_workshop
 - title: "Neural Structured Learning in TFX"
   path: /tfx/tutorials/tfx/neural_structured_learning
+- title: "LLM fine-tuning and conversion with TFX"
+  path: /tfx/tutorials/tfx/gpt2_fine_tuning_and_conversion
 
 - heading: "Data Validation"
 - title: "Get started with TFDV"
