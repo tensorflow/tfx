@@ -431,6 +431,213 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         ) as pipeline_state_run2:
           pipeline_state_run2.is_active()
 
+  def test_revive_pipeline_run(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      pipeline_id = pipeline.pipeline_info.id
+      # Enforce the same run_id
+      run_id = pipeline.runtime_spec.pipeline_run_id.field_value.string_value
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['ExampleGen'])
+
+      # Error if attempt to revive the pipeline when there is no previous run.
+      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
+        pipeline_ops.revive_pipeline_run(
+            m, pipeline_id=pipeline_id, pipeline_run_id=run_id
+        )
+      self.assertEqual(
+          status_lib.Code.NOT_FOUND, exception_context.exception.code
+      )
+
+      # Initiate a pipeline start.
+      pipeline_state_run1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      # Error if attempt to revive the pipeline when the run_id is still active.
+      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
+        pipeline_ops.revive_pipeline_run(
+            m, pipeline_id=pipeline_id, pipeline_run_id=run_id
+        )
+      self.assertEqual(
+          status_lib.Code.ALREADY_EXISTS, exception_context.exception.code
+      )
+
+      def _inactivate(pipeline_state):
+        time.sleep(2.0)
+        with pipeline_ops._PIPELINE_OPS_LOCK:
+          with pipeline_state:
+            pipeline_state.set_pipeline_execution_state(
+                metadata_store_pb2.Execution.CANCELED
+            )
+
+      thread = threading.Thread(target=_inactivate, args=(pipeline_state_run1,))
+      thread.start()
+      # Stop pipeline so we can revive.
+      pipeline_ops.stop_pipeline(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      )
+
+      pipeline_2 = copy.deepcopy(pipeline)
+      pipeline_2.runtime_spec.pipeline_run_id.field_value.string_value = 'run2'
+      # Initiate a pipeline start.
+      run_state_2 = pipeline_ops.initiate_pipeline_start(m, pipeline_2)
+      # Error if attempt to revive the pipeline when there concurrent runs are
+      # not enabled and there is another active run.
+      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
+        pipeline_ops.revive_pipeline_run(
+            m, pipeline_id=pipeline_id, pipeline_run_id=run_id
+        )
+      self.assertEqual(
+          status_lib.Code.INVALID_ARGUMENT, exception_context.exception.code
+      )
+
+      thread = threading.Thread(target=_inactivate, args=(run_state_2,))
+      thread.start()
+      # Stop pipeline so we can revive.
+      pipeline_ops.stop_pipeline(
+          m, task_lib.PipelineUid.from_pipeline(pipeline_2)
+      )
+
+      with pipeline_state_run1:
+        example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+        trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+        with pipeline_state_run1.node_state_update_context(
+            example_gen_node_uid
+        ) as node_state:
+          node_state.update(pstate.NodeState.COMPLETE)
+        with pipeline_state_run1.node_state_update_context(
+            trainer_node_uid
+        ) as node_state:
+          node_state.update(pstate.NodeState.FAILED)
+        pipeline_state_run1.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.CANCELED
+        )
+        pipeline_state_run1.initiate_stop(
+            status_lib.Status(code=status_lib.Code.ABORTED)
+        )
+      # Only Trainer is marked to run since ExampleGen succeeded in previous
+      # run.
+      expected_pipeline = copy.deepcopy(pipeline)
+      with pipeline_ops.revive_pipeline_run(
+          m, pipeline_id=pipeline_id, pipeline_run_id=run_id
+      ) as pipeline_state_run3:
+        self.assertEqual(
+            pipeline_state_run3.get_node_state(trainer_node_uid).state,
+            pstate.NodeState.STARTING,
+        )
+        self.assertEqual(
+            pipeline_state_run3.get_node_state(example_gen_node_uid).state,
+            pstate.NodeState.COMPLETE,
+        )
+        self.assertEqual(expected_pipeline, pipeline_state_run3.pipeline)
+        pipeline_state_run3.is_active()
+
+  def test_revive_pipeline_run_with_updated_ir(self):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      pipeline_id = pipeline.pipeline_info.id
+      # Enforce the same run_id
+      run_id = pipeline.runtime_spec.pipeline_run_id.field_value.string_value
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+
+      # Initiate a pipeline start.
+      pipeline_state_run1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      def _inactivate(pipeline_state):
+        time.sleep(2.0)
+        with pipeline_ops._PIPELINE_OPS_LOCK:
+          with pipeline_state:
+            pipeline_state.set_pipeline_execution_state(
+                metadata_store_pb2.Execution.CANCELED
+            )
+
+      thread = threading.Thread(target=_inactivate, args=(pipeline_state_run1,))
+      thread.start()
+      # Stop pipeline so we can revive.
+      pipeline_ops.stop_pipeline(
+          m, task_lib.PipelineUid.from_pipeline(pipeline)
+      )
+
+      with pipeline_state_run1:
+        example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+        with pipeline_state_run1.node_state_update_context(
+            example_gen_node_uid
+        ) as node_state:
+          node_state.update(pstate.NodeState.FAILED)
+        pipeline_state_run1.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.CANCELED
+        )
+        pipeline_state_run1.initiate_stop(
+            status_lib.Status(code=status_lib.Code.ABORTED)
+        )
+
+      pipeline_to_update_to = copy.deepcopy(pipeline)
+      pipeline_to_update_to.nodes[
+          0
+      ].pipeline_node.execution_options.max_execution_retries = 10
+      expected_pipeline = copy.deepcopy(pipeline_to_update_to)
+      with pipeline_ops.revive_pipeline_run(
+          m,
+          pipeline_id=pipeline_id,
+          pipeline_run_id=run_id,
+          pipeline_to_update_with=pipeline_to_update_to,
+      ) as pipeline_state_run2:
+        self.assertEqual(
+            pipeline_state_run2.get_node_state(example_gen_node_uid).state,
+            pstate.NodeState.STARTING,
+        )
+        self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
+        pipeline_state_run2.is_active()
+
+  def test_revive_pipeline_run_when_concurrent_pipeline_runs_enabled(self):
+    with test_utils.concurrent_pipeline_runs_enabled_env():
+      with self._mlmd_connection as m:
+        pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+        pipeline_id = pipeline.pipeline_info.id
+        pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+        node_example_gen = pipeline.nodes.add().pipeline_node
+        node_example_gen.node_info.id = 'ExampleGen'
+        node_example_gen.downstream_nodes.extend(['Trainer'])
+        node_trainer = pipeline.nodes.add().pipeline_node
+        node_trainer.node_info.id = 'Trainer'
+        node_trainer.upstream_nodes.extend(['ExampleGen'])
+
+        # Initiate a pipeline start.
+        pipeline_state_run1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+        with pipeline_state_run1:
+          example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+          trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+          with pipeline_state_run1.node_state_update_context(
+              example_gen_node_uid
+          ) as node_state:
+            node_state.update(pstate.NodeState.COMPLETE)
+          with pipeline_state_run1.node_state_update_context(
+              trainer_node_uid
+          ) as node_state:
+            node_state.update(pstate.NodeState.FAILED)
+          pipeline_state_run1.set_pipeline_execution_state(
+              metadata_store_pb2.Execution.CANCELED
+          )
+          pipeline_state_run1.initiate_stop(
+              status_lib.Status(code=status_lib.Code.ABORTED)
+          )
+
+        run_id = pipeline.runtime_spec.pipeline_run_id.field_value.string_value
+
+        # Success if pipeline revived with run id.
+        self.assertEqual('run0', pipeline_uid.pipeline_run_id)
+        with pipeline_ops.revive_pipeline_run(
+            m, pipeline_id=pipeline_id, pipeline_run_id=run_id
+        ) as pipeline_state_run2:
+          pipeline_state_run2.is_active()
+
   @mock.patch.object(partial_run_utils, 'snapshot')
   def test_initiate_pipeline_start_with_invalid_partial_run(
       self, mock_snapshot
