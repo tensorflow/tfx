@@ -392,7 +392,7 @@ class LatestPolicyModel(
       batch_downstream_artifacts_by_model_ids = (
           mlmd_resolver.get_downstream_artifacts_by_artifact_ids(
               batch_model_artifact_ids,
-              max_num_hops=ops_utils.MAX_NUM_HOPS,
+              max_num_hops=ops_utils.LATEST_POLICY_MODEL_OP_MAX_NUM_HOPS,
               filter_query=filter_query,
               event_filter=event_filter,
           )

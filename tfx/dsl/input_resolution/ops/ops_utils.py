@@ -35,6 +35,7 @@ MODEL_EXPORT_KEY = 'model_export'
 MODEL_INFRA_BLESSING_KEY = 'model_infra_blessing'
 MODEL_PUSH_KEY = 'model_push'
 TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'
+ROOT_ARTIFACT_KEY = 'root_artifact'
 
 # Taken from tfx.tflex.dsl.types.standard_artifacts. We don't use the existing
 # constants due to Copybara.
@@ -55,7 +56,14 @@ ARTIFACT_TYPE_NAME_BY_KEY = {
 }
 
 # Maximum number of hops for lineage tracing using MLMD metadata_resolver.
-MAX_NUM_HOPS = 50
+
+# Set to 100 because this is the maximum value allowed by MLMD.
+GRAPH_TRAVERSAL_OP_MAX_NUM_HOPS = 100
+
+# Set to 50 because we assume a Model is relatively few hops away from
+# ModelBlessing, ModelInfraBlessing, and ModelPush.
+LATEST_POLICY_MODEL_OP_MAX_NUM_HOPS = 50
+
 # A fixed batch size for batch querying APIs in MLMD metadata_resolver.
 BATCH_SIZE = 100
 

@@ -21,6 +21,7 @@ from tfx.dsl.input_resolution.ops import all_spans_op
 from tfx.dsl.input_resolution.ops import consecutive_spans_op
 from tfx.dsl.input_resolution.ops import equal_property_values_op
 from tfx.dsl.input_resolution.ops import exclude_spans_op
+from tfx.dsl.input_resolution.ops import graph_traversal_op
 from tfx.dsl.input_resolution.ops import group_by_lineage_op
 from tfx.dsl.input_resolution.ops import latest_create_time_op
 from tfx.dsl.input_resolution.ops import latest_pipeline_run_outputs_op as latest_pipeline_run_op
@@ -64,6 +65,7 @@ AllSpans = all_spans_op.AllSpans
 ConsecutiveSpans = consecutive_spans_op.ConsecutiveSpans
 EqualPropertyValues = equal_property_values_op.EqualPropertyValues
 ExcludeSpans = exclude_spans_op.ExcludeSpans
+GraphTraversal = graph_traversal_op.GraphTraversal
 GroupByDisjointLineage = group_by_lineage_op.GroupByDisjointLineage
 GroupByPivot = group_by_lineage_op.GroupByPivot
 LatestCreateTime = latest_create_time_op.LatestCreateTime
@@ -85,6 +87,7 @@ _register_op(AllSpans)
 _register_op(ConsecutiveSpans)
 _register_op(EqualPropertyValues)
 _register_op(ExcludeSpans)
+_register_op(GraphTraversal)
 _register_op(GroupByDisjointLineage)
 _register_op(GroupByPivot)
 _register_op(LatestCreateTime)
