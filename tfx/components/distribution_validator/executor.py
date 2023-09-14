@@ -27,6 +27,7 @@ from tfx.proto import distribution_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import json_utils
+from tfx.utils import monitoring_utils
 from tfx.utils import writer_utils
 
 from tensorflow_metadata.proto.v0 import anomalies_pb2
@@ -35,6 +36,7 @@ from tensorflow_metadata.proto.v0 import statistics_pb2
 
 # Default file name for anomalies output.
 DEFAULT_FILE_NAME = 'SchemaDiff.pb'
+
 
 _COMPARISON_ANOMALY_TYPES = frozenset([
     anomalies_pb2.AnomalyInfo.Type.COMPARATOR_CONTROL_DATA_MISSING,
@@ -45,12 +47,13 @@ _COMPARISON_ANOMALY_TYPES = frozenset([
     anomalies_pb2.AnomalyInfo.Type.COMPARATOR_HIGH_NUM_EXAMPLES,
     # Any custom validation anomalies generated are passed through, regardless
     # of whether those anomalies are generated from multiple datasets.
-    anomalies_pb2.AnomalyInfo.Type.CUSTOM_VALIDATION
+    anomalies_pb2.AnomalyInfo.Type.CUSTOM_VALIDATION,
 ])
 
 
 def _get_comparison_only_anomalies(
-    anomalies: anomalies_pb2.Anomalies) -> anomalies_pb2.Anomalies:
+    anomalies: anomalies_pb2.Anomalies,
+) -> anomalies_pb2.Anomalies:
   """Returns new Anomalies proto with only info from statistics comparison."""
   new_anomalies = anomalies_pb2.Anomalies()
   new_anomalies.CopyFrom(anomalies)
@@ -62,7 +65,8 @@ def _get_comparison_only_anomalies(
     new_anomalies.anomaly_info[feature].ClearField('short_description')
     new_anomalies.anomaly_info[feature].ClearField('diff_regions')
     reasons_to_keep = [
-        r for r in new_anomalies.anomaly_info[feature].reason
+        r
+        for r in new_anomalies.anomaly_info[feature].reason
         if r.type in _COMPARISON_ANOMALY_TYPES
     ]
     del new_anomalies.anomaly_info[feature].reason[:]
@@ -75,7 +79,8 @@ def _get_comparison_only_anomalies(
   new_anomalies.dataset_anomaly_info.ClearField('short_description')
   new_anomalies.dataset_anomaly_info.ClearField('diff_regions')
   dataset_reasons_to_keep = [
-      r for r in new_anomalies.dataset_anomaly_info.reason
+      r
+      for r in new_anomalies.dataset_anomaly_info.reason
       if r.type in _COMPARISON_ANOMALY_TYPES
   ]
   del new_anomalies.dataset_anomaly_info.reason[:]
@@ -89,14 +94,15 @@ def _get_comparison_only_anomalies(
 
 def _make_schema_from_config(
     config: distribution_validator_pb2.DistributionValidatorConfig,
-    statistics_list: statistics_pb2.DatasetFeatureStatisticsList
+    statistics_list: statistics_pb2.DatasetFeatureStatisticsList,
 ) -> schema_pb2.Schema:
   """Converts a config to a schema that can be used for data validation."""
   schema = tfdv.infer_schema(statistics_list)
   for feature in config.default_slice_config.feature:
     try:
       schema_feature = schema_util.get_feature(
-          schema, path.FeaturePath.from_proto(feature.path))
+          schema, path.FeaturePath.from_proto(feature.path)
+      )
     except ValueError:
       # Statistics could be missing for features in the config in which case
       # they will not be present in the schema. Just continue; an anomaly will
@@ -107,13 +113,14 @@ def _make_schema_from_config(
       schema_feature.drift_comparator.CopyFrom(feature.distribution_comparator)
   if config.default_slice_config.HasField('num_examples_comparator'):
     schema.dataset_constraints.num_examples_drift_comparator.CopyFrom(
-        config.default_slice_config.num_examples_comparator)
+        config.default_slice_config.num_examples_comparator
+    )
   return schema
 
 
 def _add_anomalies_for_missing_comparisons(
     raw_anomalies: anomalies_pb2.Anomalies,
-    config: distribution_validator_pb2.DistributionValidatorConfig
+    config: distribution_validator_pb2.DistributionValidatorConfig,
 ) -> anomalies_pb2.Anomalies:
   """Identifies whether comparison could be done on the configured features.
 
@@ -130,11 +137,13 @@ def _add_anomalies_for_missing_comparisons(
     could not be done.
   """
   compared_features = set(
-      ['.'.join(info.path.step) for info in raw_anomalies.drift_skew_info])
+      ['.'.join(info.path.step) for info in raw_anomalies.drift_skew_info]
+  )
   anomalies = anomalies_pb2.Anomalies()
   anomalies.CopyFrom(raw_anomalies)
   anomalies.anomaly_name_format = (
-      anomalies_pb2.Anomalies.AnomalyNameFormat.SERIALIZED_PATH)
+      anomalies_pb2.Anomalies.AnomalyNameFormat.SERIALIZED_PATH
+  )
   for feature in config.default_slice_config.feature:
     if '.'.join(feature.path.step) in compared_features:
       continue
@@ -146,19 +155,24 @@ def _add_anomalies_for_missing_comparisons(
     reason.description = (
         'Validation could not be done, which could be '
         'due to missing data, use of a comparator that is not suitable for the '
-        'feature type, or some other reason.')
+        'feature type, or some other reason.'
+    )
     anomalies.anomaly_info[feature_key].path.CopyFrom(feature.path)
-    anomalies.anomaly_info[
-        feature_key].severity = anomalies_pb2.AnomalyInfo.Severity.ERROR
+    anomalies.anomaly_info[feature_key].severity = (
+        anomalies_pb2.AnomalyInfo.Severity.ERROR
+    )
   return anomalies
 
 
 class Executor(base_executor.BaseExecutor):
   """DistributionValidator component executor."""
 
-  def Do(self, input_dict: Dict[str, List[types.Artifact]],
-         output_dict: Dict[str, List[types.Artifact]],
-         exec_properties: Dict[str, Any]) -> None:
+  def Do(
+      self,
+      input_dict: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, Any],
+  ) -> None:
     """DistributionValidator executor entrypoint.
 
     This checks for changes in data distributions from one dataset to another,
@@ -175,66 +189,97 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     # Load and deserialize include splits from execution properties.
-    include_splits_list = json_utils.loads(
-        exec_properties.get(standard_component_specs.INCLUDE_SPLIT_PAIRS_KEY,
-                            'null')) or []
+    include_splits_list = (
+        json_utils.loads(
+            exec_properties.get(
+                standard_component_specs.INCLUDE_SPLIT_PAIRS_KEY, 'null'
+            )
+        )
+        or []
+    )
     include_splits = set((test, base) for test, base in include_splits_list)
 
     test_statistics = artifact_utils.get_single_instance(
-        input_dict[standard_component_specs.STATISTICS_KEY])
+        input_dict[standard_component_specs.STATISTICS_KEY]
+    )
     baseline_statistics = artifact_utils.get_single_instance(
-        input_dict[standard_component_specs.BASELINE_STATISTICS_KEY])
+        input_dict[standard_component_specs.BASELINE_STATISTICS_KEY]
+    )
 
     config = exec_properties.get(
-        standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY)
+        standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY
+    )
     custom_validation_config = exec_properties.get(
-        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY)
+        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY
+    )
 
     logging.info('Running distribution_validator with config %s', config)
 
     # Set up pairs of splits to validate.
     split_pairs = []
     for test_split in artifact_utils.decode_split_names(
-        test_statistics.split_names):
+        test_statistics.split_names
+    ):
       for baseline_split in artifact_utils.decode_split_names(
-          baseline_statistics.split_names):
+          baseline_statistics.split_names
+      ):
         if (test_split, baseline_split) in include_splits:
           split_pairs.append((test_split, baseline_split))
         elif not include_splits and test_split == baseline_split:
           split_pairs.append((test_split, baseline_split))
     if not split_pairs:
       raise ValueError(
-          'No split pairs from test and baseline statistics: %s, %s' %
-          (test_statistics, baseline_statistics))
+          'No split pairs from test and baseline statistics: %s, %s'
+          % (test_statistics, baseline_statistics)
+      )
     if include_splits:
       missing_split_pairs = include_splits - set(split_pairs)
       if missing_split_pairs:
         raise ValueError(
-            'Missing split pairs identified in include_split_pairs: %s' %
-            ', '.join([
-                '%s_%s' % (test, baseline)
-                for test, baseline in missing_split_pairs
-            ]))
+            'Missing split pairs identified in include_split_pairs: %s'
+            % ', '.join(
+                [
+                    '%s_%s' % (test, baseline)
+                    for test, baseline in missing_split_pairs
+                ]
+            )
+        )
 
     anomalies_artifact = artifact_utils.get_single_instance(
-        output_dict[standard_component_specs.ANOMALIES_KEY])
+        output_dict[standard_component_specs.ANOMALIES_KEY]
+    )
     anomalies_artifact.split_names = artifact_utils.encode_split_names(
-        ['%s_%s' % (test, baseline) for test, baseline in split_pairs])
+        ['%s_%s' % (test, baseline) for test, baseline in split_pairs]
+    )
+
+    validation_metrics_artifact = None
+    if standard_component_specs.VALIDATION_METRICS_KEY in output_dict:
+      validation_metrics_artifact = artifact_utils.get_single_instance(
+          output_dict[standard_component_specs.VALIDATION_METRICS_KEY]
+      )
+      validation_metrics_artifact.split_names = (
+          artifact_utils.encode_split_names(
+              ['%s_%s' % (test, baseline) for test, baseline in split_pairs]
+          )
+      )
 
     for test_split, baseline_split in split_pairs:
       split_pair = '%s_%s' % (test_split, baseline_split)
       logging.info('Processing split pair %s', split_pair)
       test_stats_split = stats_artifact_utils.load_statistics(
-          test_statistics, test_split).proto()
+          test_statistics, test_split
+      ).proto()
       baseline_stats_split = stats_artifact_utils.load_statistics(
-          baseline_statistics, baseline_split).proto()
+          baseline_statistics, baseline_split
+      ).proto()
 
       schema = _make_schema_from_config(config, baseline_stats_split)
       full_anomalies = tfdv.validate_statistics(
           test_stats_split,
           schema,
           previous_statistics=baseline_stats_split,
-          custom_validation_config=custom_validation_config)
+          custom_validation_config=custom_validation_config,
+      )
       anomalies = _get_comparison_only_anomalies(full_anomalies)
       anomalies = _add_anomalies_for_missing_comparisons(anomalies, config)
       writer_utils.write_anomalies(
@@ -244,4 +289,10 @@ class Executor(base_executor.BaseExecutor):
               DEFAULT_FILE_NAME,
           ),
           anomalies,
+      )
+      monitoring_utils.generate_monitoring_metrics(
+          test_stats_split,
+          baseline_stats_split,
+          split_pair,
+          validation_metrics_artifact,
       )

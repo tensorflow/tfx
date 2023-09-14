@@ -169,6 +169,24 @@ class ExampleAnomalies(_TfxArtifact):  # pylint: disable=missing-class-docstring
     self.split_names = standard_artifact_utils.encode_split_names(list(splits))
 
 
+class ExampleValidationMetrics(_TfxArtifact):  # pylint: disable=missing-class-docstring
+  TYPE_NAME = 'ExampleValidationMetrics'
+  PROPERTIES = {
+      'span': SPAN_PROPERTY,
+      'split_names': SPLIT_NAMES_PROPERTY,
+  }
+
+  @property
+  def splits(self) -> Sequence[str]:
+    return standard_artifact_utils.decode_split_names(self.split_names)
+
+  @splits.setter
+  def splits(self, splits: Sequence[str]) -> None:
+    if not pure_typing_utils.is_compatible(splits, Sequence[str]):
+      raise TypeError(f'splits should be Sequence[str] but got {splits}')
+    self.split_names = standard_artifact_utils.encode_split_names(list(splits))
+
+
 class ExampleStatistics(_TfxArtifact):  # pylint: disable=missing-class-docstring
   TYPE_NAME = 'ExampleStatistics'
   TYPE_ANNOTATION = Statistics
