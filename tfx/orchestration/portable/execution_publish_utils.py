@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Portable library for registering and publishing executions."""
-import itertools
 from typing import Mapping, Optional, Sequence
 import uuid
 
@@ -63,11 +62,14 @@ def set_execution_result_if_not_empty(
     execution: metadata_store_pb2.Execution,
 ) -> None:
   """Sets execution result as a custom property of the execution."""
-  if executor_output and (executor_output.execution_result.result_message or
-                          executor_output.execution_result.metadata_details or
-                          executor_output.execution_result.code):
-    execution_lib.set_execution_result(executor_output.execution_result,
-                                       execution)
+  if executor_output and (
+      executor_output.execution_result.result_message
+      or executor_output.execution_result.metadata_details
+      or executor_output.execution_result.code
+  ):
+    execution_lib.set_execution_result(
+        executor_output.execution_result, execution
+    )
 
 
 def publish_succeeded_execution(
@@ -106,17 +108,37 @@ def publish_succeeded_execution(
   Raises:
     RuntimeError: if the executor output to a output channel is partial.
   """
-  unpacked_output_artifacts = None if executor_output is None else (
-      data_types_utils.unpack_executor_output_artifacts(
-          executor_output.output_artifacts))
-  output_artifacts_to_publish = merge_utils.merge_updated_output_artifacts(
-      output_artifacts, unpacked_output_artifacts)
+  unpacked_output_artifacts = (
+      None  # pylint: disable=g-long-ternary
+      if executor_output is None
+      else (
+          data_types_utils.unpack_executor_output_artifacts(
+              executor_output.output_artifacts
+          )
+      )
+  )
+  # TODO(b/300541907) Address corner case if the node returns an ExecutorOutput
+  # that contains new or updated artifacts for the intermediate output key,
+  # which is not supported.
+  merged_output_artifacts = merge_utils.merge_updated_output_artifacts(
+      output_artifacts, unpacked_output_artifacts
+  )
 
-  for artifact in itertools.chain(*output_artifacts_to_publish.values()):
-    # Mark output artifact as PUBLISHED (LIVE in MLMD) if it was not in state
-    # REFERENCE.
-    if artifact.state != types.artifact.ArtifactState.REFERENCE:
-      artifact.state = types.artifact.ArtifactState.PUBLISHED
+  output_artifacts_to_publish = {}
+  for key, artifacts in merged_output_artifacts.items():
+    output_artifacts_to_publish[key] = []
+    for artifact in artifacts:
+      if artifact.state != types.artifact.ArtifactState.REFERENCE:
+        # Mark output artifact as PUBLISHED (LIVE in MLMD) if it was not in
+        # state REFERENCE.
+        artifact.state = types.artifact.ArtifactState.PUBLISHED
+
+        # TODO(b/300541196): Investigate if/how this affects governance.
+        # We don't want to create an OUTPUT_EVENT for the REFERENCE artifact
+        # used for intermediate artifact emission. However, a
+        # PENDING_OUTPUT_EVENT created by the governance task scheduler will
+        # remain in MLMD.
+        output_artifacts_to_publish[key].append(artifact)
 
   [execution] = metadata_handle.store.get_executions_by_id([execution_id])
   execution.last_known_state = metadata_store_pb2.Execution.COMPLETE

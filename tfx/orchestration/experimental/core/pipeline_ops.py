@@ -1991,9 +1991,10 @@ def publish_intermediate_artifact(
     event = event_lib.generate_event(
         event_type=metadata_store_pb2.Event.OUTPUT,
         key=output_key,
-        # Event index begins at 0, but we still increment by 1 because the
-        # REFERENCE artifact will have index 0.
-        index=len(mlmd_protos.intermediate_artifacts) + 1,
+        # We intentionally start the OUTPUT Event at index at 0, even though
+        # there is a PENDING_OUTPUT Event with index 0 associated with the
+        # REFERENCE artifact.
+        index=len(mlmd_protos.intermediate_artifacts),
     )
     # Link the Execution to the Artifact with an OUTPUT Event edge.
     mlmd_handle.store.put_execution(
