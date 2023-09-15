@@ -411,7 +411,8 @@ class _Generator:
         input_and_params=unprocessed_inputs,
     )
 
-    map(lambda e: execution_state_change_fn(None, e), executions)
+    for execution in executions:
+      execution_state_change_fn(None, execution)
 
     result.extend(
         task_gen_utils.generate_tasks_from_one_input(
