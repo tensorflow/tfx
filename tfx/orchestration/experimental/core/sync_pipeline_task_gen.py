@@ -249,11 +249,14 @@ class _Generator:
     # but we ensure node services and check service status.
     service_status = self._ensure_node_services_if_pure(node_id)
     if service_status is not None:
-      if service_status == service_jobs.ServiceStatus.FAILED:
+      if service_status.status == service_jobs.ServiceStatusCode.FAILED:
         # TODO(b/205642811): Mark all pending executions as either failed (if
         # active) or canceled (if new), and delete the the executions temporary
         # and output directories.
-        error_msg = f'service job failed; node uid: {node_uid}'
+        error_msg = (
+            f'service job failed; node uid: {node_uid}; error message:'
+            f' {service_status.msg}'
+        )
         result.append(
             self._update_node_state_to_failed_task(
                 node_uid,
@@ -261,13 +264,15 @@ class _Generator:
                 error_msg=error_msg,
             )
         )
-      elif service_status == service_jobs.ServiceStatus.SUCCESS:
+      elif service_status.status == service_jobs.ServiceStatusCode.SUCCESS:
         logging.info('Service node successful: %s', node_uid)
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid, state=pstate.NodeState.COMPLETE))
-      elif (service_status == service_jobs.ServiceStatus.RUNNING and
-            node_state.state != pstate.NodeState.RUNNING):
+      elif (
+          service_status.status == service_jobs.ServiceStatusCode.RUNNING
+          and node_state.state != pstate.NodeState.RUNNING
+      ):
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid, state=pstate.NodeState.RUNNING))
@@ -276,14 +281,20 @@ class _Generator:
     # For mixed service nodes, we ensure node services and check service
     # status; pipeline is aborted if the service jobs have failed.
     service_status = self._ensure_node_services_if_mixed(node.node_info.id)
-    if service_status == service_jobs.ServiceStatus.FAILED:
-      error_msg = f'associated service job failed; node uid: {node_uid}'
-      result.append(
-          self._update_node_state_to_failed_task(
-              node_uid, error_code=status_lib.Code.UNKNOWN, error_msg=error_msg
-          )
-      )
-      return result
+    if service_status:
+      if service_status.status == service_jobs.ServiceStatusCode.FAILED:
+        error_msg = (
+            f'associated service job failed; node uid: {node_uid}, error'
+            f' message: {service_status.msg}'
+        )
+        result.append(
+            self._update_node_state_to_failed_task(
+                node_uid,
+                error_code=status_lib.Code.UNKNOWN,
+                error_msg=error_msg,
+            )
+        )
+        return result
 
     # If a task for the node is already tracked by the task queue, it need
     # not be considered for generation again.

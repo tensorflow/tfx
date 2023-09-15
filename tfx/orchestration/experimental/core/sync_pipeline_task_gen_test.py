@@ -87,7 +87,9 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertIn(
           node_id,
           (self._example_gen.node_info.id, self._transform.node_info.id))
-      return service_jobs.ServiceStatus.SUCCESS
+      return service_jobs.ServiceStatus(
+          status=service_jobs.ServiceStatusCode.SUCCESS
+      )
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _default_ensure_node_services)
@@ -604,7 +606,9 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
 
     def _ensure_node_services(unused_pipeline_state, node_id):
       self.assertEqual('my_example_gen', node_id)
-      return service_jobs.ServiceStatus.RUNNING
+      return service_jobs.ServiceStatus(
+          status=service_jobs.ServiceStatusCode.RUNNING
+      )
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
@@ -649,7 +653,10 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
 
     def _ensure_node_services(unused_pipeline_state, node_id):
       self.assertEqual('my_example_gen', node_id)
-      return service_jobs.ServiceStatus.FAILED
+      return service_jobs.ServiceStatus(
+          status=service_jobs.ServiceStatusCode.FAILED,
+          msg='foobar error',
+      )
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
@@ -665,6 +672,13 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(pstate.NodeState.FAILED, update_node_state_task.state)
     self.assertEqual(
         status_lib.Code.UNKNOWN, update_node_state_task.status.code
+    )
+    self.assertEqual(
+        'service job failed; node uid:'
+        " NodeUid(pipeline_uid=PipelineUid(pipeline_id='my_pipeline',"
+        " pipeline_run_id=None), node_id='my_example_gen'); error message:"
+        ' foobar error',
+        update_node_state_task.status.message,
     )
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
     self.assertEqual(status_lib.Code.UNKNOWN, finalize_task.status.code)
