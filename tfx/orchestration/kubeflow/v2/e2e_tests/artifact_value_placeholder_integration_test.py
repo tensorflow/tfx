@@ -31,7 +31,7 @@ def _tasks_for_pipeline_with_artifact_value_passing():
       parameters={
           'message': str,
       },
-      image='gcr.io/ml-pipeline/mirrors/cloud-sdk',
+      image='gcr.io/google.com/cloudsdktool/cloud-sdk',
       command=[
           'sh',
           '-exc',
@@ -56,7 +56,7 @@ def _tasks_for_pipeline_with_artifact_value_passing():
       inputs={
           'text': simple_artifacts.File,
       },
-      image='gcr.io/ml-pipeline/mirrors/cloud-sdk',
+      image='gcr.io/google.com/cloudsdktool/cloud-sdk',
       command=[
           'echo',
           placeholders.InputValuePlaceholder('text'),
