@@ -26,10 +26,7 @@ class CleanupHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
     self._mock_service_job_manager = mock.create_autospec(
         service_jobs.ServiceJobManager, instance=True)
     self._mock_service_job_manager.ensure_node_services.return_value = (
-        service_jobs.ServiceStatus(
-            status=service_jobs.ServiceStatusCode.SUCCESS
-        )
-    )
+        service_jobs.ServiceStatus.SUCCESS)
     self._mock_service_job_manager.stop_node_services.return_value = True
     self._mock_service_job_manager.is_pure_service_node.return_value = True
     self._mock_service_job_manager.is_mixed_service_node.return_value = False
@@ -39,10 +36,10 @@ class CleanupHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
 
   def test_calls_forwarded_to_underlying_instance(self):
     self.assertEqual(
-        service_jobs.ServiceStatusCode.SUCCESS,
+        service_jobs.ServiceStatus.SUCCESS,
         self._wrapper.ensure_node_services(
             mock.Mock(), 'node1', self._backfill_token
-        ).status,
+        ),
     )
     self.assertTrue(self._wrapper.stop_node_services(mock.Mock(), 'node2'))
     self.assertTrue(self._wrapper.is_pure_service_node(mock.Mock(), 'node3'))
@@ -61,10 +58,10 @@ class CleanupHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
     self._mock_service_job_manager.ensure_node_services.side_effect = RuntimeError(
         'test error')
     self.assertEqual(
-        service_jobs.ServiceStatusCode.FAILED,
+        service_jobs.ServiceStatus.FAILED,
         self._wrapper.ensure_node_services(
             mock.Mock(), 'node1', self._backfill_token
-        ).status,
+        ),
     )
     self._mock_service_job_manager.ensure_node_services.assert_called_once_with(
         mock.ANY, 'node1', self._backfill_token
@@ -74,13 +71,12 @@ class CleanupHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
 
   def test_ensure_node_services_cleanup_on_failure(self):
     self._mock_service_job_manager.ensure_node_services.return_value = (
-        service_jobs.ServiceStatus(status=service_jobs.ServiceStatusCode.FAILED)
-    )
+        service_jobs.ServiceStatus.FAILED)
     self.assertEqual(
-        service_jobs.ServiceStatusCode.FAILED,
+        service_jobs.ServiceStatus.FAILED,
         self._wrapper.ensure_node_services(
             mock.Mock(), 'node1', self._backfill_token
-        ).status,
+        ),
     )
     self._mock_service_job_manager.stop_node_services.assert_called_once_with(
         mock.ANY, 'node1')
