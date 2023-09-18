@@ -12,6 +12,8 @@
 
 ## Bug Fixes and Other Changes
 
+* Fixed a synchronization bug in google_cloud_ai_platform tuner.
+
 ## Dependency Updates
 
 ## Documentation Updates
