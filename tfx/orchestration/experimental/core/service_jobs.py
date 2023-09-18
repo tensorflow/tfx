@@ -16,6 +16,7 @@
 import abc
 import dataclasses
 import enum
+from typing import Optional
 
 from absl import logging
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -32,7 +33,7 @@ class ServiceStatusCode(enum.Enum):
 @dataclasses.dataclass
 class ServiceStatus:
   status: ServiceStatusCode
-  msg: str | None = None
+  msg: Optional[str] = None
 
 
 class ServiceJobManager(abc.ABC):
