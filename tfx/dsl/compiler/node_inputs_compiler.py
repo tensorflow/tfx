@@ -396,9 +396,9 @@ def _validate_min_count(
   producer_options = channel.producer_component.node_execution_options
   if producer_options and producer_options.success_optional and min_count > 0:
     raise ValueError(
-        f'Node({channel.producer_component}) is set to success_optional '
+        f'Node({channel.producer_component_id}) is set to success_optional '
         f'= True but its consumer Node({consumer_node.id}).inputs[{input_key}] '
-        'has min_count > 0.'
+        'has min_count > 0. The consumer\'s input may need to be optional'
     )
 
   consumer_options = consumer_node.node_execution_options
@@ -407,7 +407,8 @@ def _validate_min_count(
   ) and min_count > 0:
     raise ValueError(f'Node({consumer_node.id}) has '
                      'trigger_strategy = ALL_UPSTREAM_NODES_COMPLETED '
-                     f'but its inputs[{input_key}] has min_count > 0.')
+                     f'but its inputs[{input_key}] has min_count > 0. The '
+                     'consumer\'s input may need to be optional')
 
 
 def compile_node_inputs(
