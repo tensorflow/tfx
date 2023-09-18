@@ -21,29 +21,12 @@ from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import python_driver_operator
 from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import executable_spec_pb2
-from tfx.utils import import_utils
 
 from tfx.orchestration.python_execution_binary import python_executor_operator_dispatcher
 
 
 _PythonClassExecutableSpec = executable_spec_pb2.PythonClassExecutableSpec
 _BeamExecutableSpec = executable_spec_pb2.BeamExecutableSpec
-
-
-def _import_class_path(
-    executable_spec: Union[_PythonClassExecutableSpec, _BeamExecutableSpec],
-):
-  """Import the class path from Python or Beam executor spec."""
-  if isinstance(executable_spec, _BeamExecutableSpec):
-    import_utils.import_class_by_path(
-        executable_spec.python_executor_spec.class_path
-    )
-  elif isinstance(executable_spec, _PythonClassExecutableSpec):
-    import_utils.import_class_by_path(executable_spec.class_path)
-  else:
-    raise ValueError(
-        f'Executable spec type {type(executable_spec)} is not supported.'
-    )
 
 
 def _run_driver(
@@ -62,10 +45,6 @@ def run_python_custom_component(
     mlmd_connection_config: Optional[metadata.ConnectionConfigType] = None,
 ) -> None:
   """Run Python custom component declared with @component decorator."""
-  # Eagerly import class path from executable spec such that all artifact
-  # references are resolved.
-  _import_class_path(executable_spec)
-
   # MLMD connection config being set indicates a driver execution instead of an
   # executor execution as accessing MLMD is not supported for executors.
   if mlmd_connection_config:
