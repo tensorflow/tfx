@@ -88,7 +88,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
           node_id,
           (self._example_gen.node_info.id, self._transform.node_info.id))
       return service_jobs.ServiceStatus(
-          status=service_jobs.ServiceStatusCode.SUCCESS
+          code=service_jobs.ServiceStatusCode.SUCCESS
       )
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
@@ -607,7 +607,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     def _ensure_node_services(unused_pipeline_state, node_id):
       self.assertEqual('my_example_gen', node_id)
       return service_jobs.ServiceStatus(
-          status=service_jobs.ServiceStatusCode.RUNNING
+          code=service_jobs.ServiceStatusCode.RUNNING
       )
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
@@ -654,7 +654,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     def _ensure_node_services(unused_pipeline_state, node_id):
       self.assertEqual('my_example_gen', node_id)
       return service_jobs.ServiceStatus(
-          status=service_jobs.ServiceStatusCode.FAILED,
+          code=service_jobs.ServiceStatusCode.FAILED,
           msg='foobar error',
       )
 

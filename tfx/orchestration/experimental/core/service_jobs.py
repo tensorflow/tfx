@@ -32,7 +32,7 @@ class ServiceStatusCode(enum.Enum):
 
 @dataclasses.dataclass
 class ServiceStatus:
-  status: ServiceStatusCode
+  code: ServiceStatusCode
   msg: Optional[str] = None
 
 
@@ -164,7 +164,7 @@ class ServiceJobManagerCleanupWrapper(ServiceJobManager):
           'Exception raised by underlying `ServiceJobManager` instance.'
       )
       service_status = ServiceStatus(
-          status=ServiceStatusCode.FAILED, msg=str(e)
+          code=ServiceStatusCode.FAILED, msg=str(e)
       )
     if service_status.status == ServiceStatusCode.FAILED:
       logging.info(

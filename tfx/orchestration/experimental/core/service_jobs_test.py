@@ -27,7 +27,7 @@ class CleanupHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
         service_jobs.ServiceJobManager, instance=True)
     self._mock_service_job_manager.ensure_node_services.return_value = (
         service_jobs.ServiceStatus(
-            status=service_jobs.ServiceStatusCode.SUCCESS
+            code=service_jobs.ServiceStatusCode.SUCCESS
         )
     )
     self._mock_service_job_manager.stop_node_services.return_value = True
@@ -74,7 +74,7 @@ class CleanupHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
 
   def test_ensure_node_services_cleanup_on_failure(self):
     self._mock_service_job_manager.ensure_node_services.return_value = (
-        service_jobs.ServiceStatus(status=service_jobs.ServiceStatusCode.FAILED)
+        service_jobs.ServiceStatus(code=service_jobs.ServiceStatusCode.FAILED)
     )
     self.assertEqual(
         service_jobs.ServiceStatusCode.FAILED,

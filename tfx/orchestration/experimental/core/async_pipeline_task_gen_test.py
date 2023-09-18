@@ -455,7 +455,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     ):
       if node_id == 'my_example_gen':
         return service_jobs.ServiceStatus(
-            service_jobs.ServiceStatusCode.FAILED, msg='foobar error'
+            code=service_jobs.ServiceStatusCode.FAILED, msg='foobar error'
         )
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
@@ -484,11 +484,11 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     ):
       if node_id == 'my_example_gen':
         return service_jobs.ServiceStatus(
-            service_jobs.ServiceStatusCode.RUNNING,
+            code=service_jobs.ServiceStatusCode.RUNNING,
         )
       if node_id == 'my_transform':
         return service_jobs.ServiceStatus(
-            service_jobs.ServiceStatusCode.FAILED, msg='foobar error'
+            code=service_jobs.ServiceStatusCode.FAILED, msg='foobar error'
         )
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (

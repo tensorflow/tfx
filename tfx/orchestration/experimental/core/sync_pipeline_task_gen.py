@@ -249,7 +249,7 @@ class _Generator:
     # but we ensure node services and check service status.
     service_status = self._ensure_node_services_if_pure(node_id)
     if service_status is not None:
-      if service_status.status == service_jobs.ServiceStatusCode.FAILED:
+      if service_status.code == service_jobs.ServiceStatusCode.FAILED:
         # TODO(b/205642811): Mark all pending executions as either failed (if
         # active) or canceled (if new), and delete the the executions temporary
         # and output directories.
@@ -264,13 +264,13 @@ class _Generator:
                 error_msg=error_msg,
             )
         )
-      elif service_status.status == service_jobs.ServiceStatusCode.SUCCESS:
+      elif service_status.code == service_jobs.ServiceStatusCode.SUCCESS:
         logging.info('Service node successful: %s', node_uid)
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid, state=pstate.NodeState.COMPLETE))
       elif (
-          service_status.status == service_jobs.ServiceStatusCode.RUNNING
+          service_status.code == service_jobs.ServiceStatusCode.RUNNING
           and node_state.state != pstate.NodeState.RUNNING
       ):
         result.append(
@@ -282,7 +282,7 @@ class _Generator:
     # status; pipeline is aborted if the service jobs have failed.
     service_status = self._ensure_node_services_if_mixed(node.node_info.id)
     if service_status:
-      if service_status.status == service_jobs.ServiceStatusCode.FAILED:
+      if service_status.code == service_jobs.ServiceStatusCode.FAILED:
         error_msg = (
             f'associated service job failed; node uid: {node_uid}, error'
             f' message: {service_status.msg}'
