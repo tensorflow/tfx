@@ -12,15 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.python_execution_binary.python_execution_binary_utils."""
+
+from typing import Dict, List, Union
+
 import tensorflow as tf
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.python_execution_binary import python_execution_binary_utils
 from tfx.proto.orchestration import executable_spec_pb2
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact
+from tfx.types import channel
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
+
+
+_TArtifact = Union[artifact.Artifact, metadata_store_pb2.Artifact]
+_TArtifactList = Union[
+    execution_result_pb2.ExecutorOutput.ArtifactList, List[_TArtifact]
+]
+_TValue = Union[metadata_store_pb2.Value, channel.ExecPropertyTypes]
 
 
 class _MyArtifact(artifact.Artifact):
@@ -32,13 +44,28 @@ class _MyArtifact(artifact.Artifact):
 
 class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
 
-  def CheckArtifactDict(self, a, b):
-    self.assertEqual(a.keys(), b.keys())
-    for k, a_v in a.items():
-      b_v = b[k]
-      for a_artifact, b_artifact in zip(a_v, b_v):
-        self.assertDictEqual(a_artifact.to_json_dict(),
-                             b_artifact.to_json_dict())
+  def _convert_to_artifact_proto(
+      self, a: _TArtifact
+  ) -> metadata_store_pb2.Artifact:
+    return a if isinstance(a, metadata_store_pb2.Artifact) else a.mlmd_artifact
+
+  def _assert_artifact_map_equals(
+      self,
+      expected: Dict[str, _TArtifactList],
+      actual: Dict[str, _TArtifactList],
+  ) -> None:
+    self.assertSameElements(expected.keys(), actual.keys())
+    for key in expected.keys():
+      e, a = (
+          v.artifacts
+          if isinstance(v, execution_result_pb2.ExecutorOutput.ArtifactList)
+          else v
+          for v in [expected[key], actual[key]]
+      )
+      self.assertProtoEquals(
+          list(map(self._convert_to_artifact_proto, e)),
+          list(map(self._convert_to_artifact_proto, a)),
+      )
 
   def testExecutionInfoSerialization(self):
     my_artifact = _MyArtifact()
@@ -72,8 +99,12 @@ class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
     rehydrated = python_execution_binary_utils.deserialize_execution_info(
         serialized)
 
-    self.CheckArtifactDict(rehydrated.input_dict, {'input': [my_artifact]})
-    self.CheckArtifactDict(rehydrated.output_dict, {'output': [my_artifact]})
+    self._assert_artifact_map_equals(
+        rehydrated.input_dict, {'input': [my_artifact]}
+    )
+    self._assert_artifact_map_equals(
+        rehydrated.output_dict, {'output': [my_artifact]}
+    )
     self.assertEqual(rehydrated.exec_properties, exec_properties)
     self.assertEqual(rehydrated.execution_output_uri, execution_output_uri)
     self.assertEqual(rehydrated.stateful_working_dir, stateful_working_dir)
@@ -88,8 +119,11 @@ class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
         """, executable_spec_pb2.PythonClassExecutableSpec())
     python_serialized = python_execution_binary_utils.serialize_executable_spec(
         python_executable_spec)
-    python_rehydrated = python_execution_binary_utils.deserialize_executable_spec(
-        python_serialized)
+    python_rehydrated = (
+        python_execution_binary_utils.deserialize_executable_spec(
+            python_serialized
+        )
+    )
     self.assertProtoEquals(python_rehydrated, python_executable_spec)
 
     beam_executable_spec = text_format.Parse(
@@ -114,11 +148,86 @@ class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
         }
         """, metadata_store_pb2.ConnectionConfig())
 
-    rehydrated_connection_config = python_execution_binary_utils.deserialize_mlmd_connection_config(
-        python_execution_binary_utils.serialize_mlmd_connection_config(
-            connection_config))
+    rehydrated_connection_config = (
+        python_execution_binary_utils.deserialize_mlmd_connection_config(
+            python_execution_binary_utils.serialize_mlmd_connection_config(
+                connection_config
+            )
+        )
+    )
 
     self.assertProtoEquals(rehydrated_connection_config, connection_config)
+
+  def testGetUpdatedExecutionInvocation(self):
+    execution_info = data_types.ExecutionInfo()
+    artifacts = [_MyArtifact() for _ in range(4)]
+    execution_info.input_dict = {
+        'input0': [artifacts[0]],
+    }
+    execution_info.output_dict = {
+        'output0': [artifacts[1]],
+        'output1': [artifacts[2]],
+    }
+    updated_hook_fn_kwargs = {
+        'output1': [artifacts[3]],
+    }
+    new_execution_info = (
+        python_execution_binary_utils.get_updated_execution_invocation(
+            execution_info, updated_hook_fn_kwargs
+        )
+    )
+    self._assert_artifact_map_equals(
+        {'output0': [artifacts[1]], 'output1': [artifacts[3]]},
+        new_execution_info.output_dict,
+    )
+
+  def testGetUpdatedExecutorOutput(self):
+    execution_info = data_types.ExecutionInfo()
+    artifacts = [_MyArtifact() for _ in range(9)]
+    execution_info.output_dict = {
+        'input': [artifacts[0]],
+    }
+    execution_info.output_dict = {
+        'output1': [
+            artifacts[1]
+        ],  # Not in the original executor_output, not modified from the hook_fn
+        'output2': [
+            artifacts[2]
+        ],  # Not in the original executor_output, modified from the hook_fn
+        'output3': [
+            artifacts[3]
+        ],  # Is in the original executor_output, not modified from the hook_fn
+        'output4': [
+            artifacts[4]
+        ],  # Is in the original executor_output, modified from the hook_fn
+    }
+    executor_output = execution_result_pb2.ExecutorOutput(
+        output_artifacts={
+            'output3': execution_result_pb2.ExecutorOutput.ArtifactList(
+                artifacts=[artifacts[5].mlmd_artifact]
+            ),
+            'output4': execution_result_pb2.ExecutorOutput.ArtifactList(
+                artifacts=[artifacts[6].mlmd_artifact]
+            ),
+        },
+    )
+    updated_hook_fn_kwargs = {
+        'output2': artifacts[7],
+        'output4': [artifacts[8]],
+    }
+    new_executor_output = (
+        python_execution_binary_utils.get_updated_executor_output(
+            execution_info, executor_output, updated_hook_fn_kwargs
+        )
+    )
+    self._assert_artifact_map_equals(
+        {
+            'output2': [artifacts[7]],
+            'output3': [artifacts[5]],
+            'output4': [artifacts[8]],
+        },
+        new_executor_output.output_artifacts,
+    )
 
 
 if __name__ == '__main__':
