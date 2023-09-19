@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*  Dropped python 3.8 support.
+
 ## Breaking Changes
 
 ### For Pipeline Authors
