@@ -484,15 +484,22 @@ def register_executions_from_existing_executions(
 
   exec_properties = resolve_exec_properties(node)
   new_executions = []
-  input_artifacts = []
+  input_artifacts_maps = []
   for existing_execution in existing_executions:
-    # TODO(b/224800273): We also need to resolve and set dynamic execution
-    # properties.
+    input_artifacts = execution_lib.get_input_artifacts(
+        metadata_handle, existing_execution.id
+    )
+    input_artifacts_maps.append(input_artifacts)
+    # Resolve dynamic execution properties.
+    dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
+        node_parameters=node.parameters, input_artifacts=input_artifacts
+    )
+    full_exec_properties = {**exec_properties, **dynamic_exec_properties}
     new_execution = execution_lib.prepare_execution(
         metadata_handle=metadata_handle,
         execution_type=node.node_info.type,
         state=metadata_store_pb2.Execution.NEW,
-        exec_properties=exec_properties,
+        exec_properties=full_exec_properties,
         execution_name=str(uuid.uuid4()),
     )
     # Only copy necessary custom_properties from the failed/canceled execution.
@@ -502,11 +509,6 @@ def register_executions_from_existing_executions(
     )
     # LINT.ThenChange(:execution_custom_properties)
     new_executions.append(new_execution)
-    input_artifacts.append(
-        execution_lib.get_input_artifacts(
-            metadata_handle, existing_execution.id
-        )
-    )
 
   contexts = metadata_handle.store.get_contexts_by_execution(
       existing_executions[0].id
@@ -515,7 +517,7 @@ def register_executions_from_existing_executions(
       metadata_handle,
       new_executions,
       contexts,
-      input_artifacts_maps=input_artifacts,
+      input_artifacts_maps=input_artifacts_maps,
   )
 
 

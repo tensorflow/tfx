@@ -15,6 +15,7 @@
 
 import os
 import time
+from unittest import mock
 import uuid
 
 from absl.testing import parameterized
@@ -612,61 +613,81 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       context_type_id = m.store.put_context_type(context_type)
       contexts = [
           metadata_store_pb2.Context(name='context-1', type_id=context_type_id),
-          metadata_store_pb2.Context(name='context-2', type_id=context_type_id)
+          metadata_store_pb2.Context(name='context-2', type_id=context_type_id),
       ]
       m.store.put_contexts(contexts)
 
       # Put a failed execution.
       input_and_param = task_gen_utils.InputAndParam(
-          input_artifacts={'input_example': [standard_artifacts.Examples()]})
+          input_artifacts={'input_example': [standard_artifacts.Examples()]}
+      )
       execution_type = metadata_store_pb2.ExecutionType(name='my_ex_type')
       failed_execution = execution_lib.prepare_execution(
           m,
           execution_type,
           metadata_store_pb2.Execution.FAILED,
           input_and_param.exec_properties,
-          execution_name=str(uuid.uuid4()))
+          execution_name=str(uuid.uuid4()),
+      )
       failed_execution.custom_properties[
-          task_gen_utils
-          ._EXTERNAL_EXECUTION_INDEX].int_value = 1
+          task_gen_utils._EXTERNAL_EXECUTION_INDEX
+      ].int_value = 1
       failed_execution.custom_properties['should_not_be_copied'].int_value = 1
       failed_execution = execution_lib.put_execution(
           m,
           failed_execution,
           contexts,
-          input_artifacts=input_and_param.input_artifacts)
+          input_artifacts=input_and_param.input_artifacts,
+      )
 
       # Register a retry execution from a failed execution.
-      [retry_execution] = (
-          task_gen_utils.register_executions_from_existing_executions(
-              m, self._example_gen, [failed_execution]
-          )
-      )
+      with mock.patch.object(
+          task_gen_utils.inputs_utils,
+          'resolve_dynamic_parameters',
+          autospec=True,
+      ) as mock_resolve_dynamic_properties:
+        [retry_execution] = (
+            task_gen_utils.register_executions_from_existing_executions(
+                m, self._example_gen, [failed_execution]
+            )
+        )
+        # Make sure it tries to resolve dynamic exec properties.
+        mock_resolve_dynamic_properties.assert_called_once()
 
       self.assertEqual(
           retry_execution.last_known_state, metadata_store_pb2.Execution.NEW
       )
       self.assertEqual(
           retry_execution.custom_properties[
-              task_gen_utils._EXTERNAL_EXECUTION_INDEX],
+              task_gen_utils._EXTERNAL_EXECUTION_INDEX
+          ],
           failed_execution.custom_properties[
-              task_gen_utils._EXTERNAL_EXECUTION_INDEX])
+              task_gen_utils._EXTERNAL_EXECUTION_INDEX
+          ],
+      )
       self.assertIsNone(
-          retry_execution.custom_properties.get('should_not_be_copied'))
+          retry_execution.custom_properties.get('should_not_be_copied')
+      )
       # Check all input artifacts are the same.
       retry_execution_inputs = execution_lib.get_input_artifacts(
-          m, retry_execution.id)
+          m, retry_execution.id
+      )
       failed_execution_inputs = execution_lib.get_input_artifacts(
-          m, failed_execution.id)
-      self.assertEqual(retry_execution_inputs.keys(),
-                       failed_execution_inputs.keys())
+          m, failed_execution.id
+      )
+      self.assertEqual(
+          retry_execution_inputs.keys(), failed_execution_inputs.keys()
+      )
       for key in retry_execution_inputs:
         retry_execution_artifacts_ids = sorted(
-            [a.id for a in retry_execution_inputs[key]])
+            [a.id for a in retry_execution_inputs[key]]
+        )
         failed_execution_artifacts_ids = sorted(
-            [a.id for a in failed_execution_inputs[key]])
-        self.assertEqual(retry_execution_artifacts_ids,
-                         failed_execution_artifacts_ids)
+            [a.id for a in failed_execution_inputs[key]]
+        )
+        self.assertEqual(
+            retry_execution_artifacts_ids, failed_execution_artifacts_ids
+        )
 
       [context_1, context_2] = m.store.get_contexts()
       self.assertLen(m.store.get_executions_by_context(context_1.id), 2)
