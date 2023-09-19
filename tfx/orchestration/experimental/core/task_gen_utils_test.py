@@ -21,6 +21,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx import version
+from tfx.orchestration import data_types_utils
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
@@ -31,6 +32,7 @@ from tfx.orchestration.experimental.core.testing import test_dynamic_exec_proper
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
@@ -615,6 +617,16 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           metadata_store_pb2.Context(name='context-2', type_id=context_type_id)
       ]
       m.store.put_contexts(contexts)
+      # Add dynamic exec property to example gen
+      ph_value = placeholder_pb2.PlaceholderExpression(
+          value=data_types_utils.set_metadata_value(
+              metadata_store_pb2.Value(), 'foo_value'
+          )
+      )
+      dynamic_exec_property = (
+          self._example_gen.parameters.parameters.get_or_create('ph_property')
+      )
+      dynamic_exec_property.placeholder.CopyFrom(ph_value)
 
       # Put a failed execution.
       input_and_param = task_gen_utils.InputAndParam(
@@ -651,6 +663,10 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
               task_gen_utils._EXTERNAL_EXECUTION_INDEX],
           failed_execution.custom_properties[
               task_gen_utils._EXTERNAL_EXECUTION_INDEX])
+      self.assertEqual(
+          retry_execution.custom_properties['ph_property'].string_value,
+          'foo_value',
+      )
       self.assertIsNone(
           retry_execution.custom_properties.get('should_not_be_copied'))
       # Check all input artifacts are the same.

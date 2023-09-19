@@ -486,13 +486,41 @@ def register_executions_from_existing_executions(
   new_executions = []
   input_artifacts = []
   for existing_execution in existing_executions:
-    # TODO(b/224800273): We also need to resolve and set dynamic execution
-    # properties.
+    input_artifacts_for_existing_execution = execution_lib.get_input_artifacts(
+        metadata_handle, existing_execution.id
+    )
+    try:
+      dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
+          node_parameters=node.parameters,
+          input_artifacts=input_artifacts_for_existing_execution,
+      )
+    except exceptions.InputResolutionError as e:
+      logging.exception(
+          '[%s] Parameter resolution error: %s', node.node_info.id, e
+      )
+      raise
+
+    combined_exec_properties = {**exec_properties, **dynamic_exec_properties}
+    logging.info(
+        'exec properties for execution id: %s: %s',
+        existing_execution.id,
+        exec_properties,
+    )
+    logging.info(
+        'dynamic exec properties for execution id: %s: %s',
+        existing_execution.id,
+        dynamic_exec_properties,
+    )
+    logging.info(
+        'combined exec properties for execution id: %s: %s',
+        existing_execution.id,
+        combined_exec_properties,
+    )
     new_execution = execution_lib.prepare_execution(
         metadata_handle=metadata_handle,
         execution_type=node.node_info.type,
         state=metadata_store_pb2.Execution.NEW,
-        exec_properties=exec_properties,
+        exec_properties=combined_exec_properties,
         execution_name=str(uuid.uuid4()),
     )
     # Only copy necessary custom_properties from the failed/canceled execution.
@@ -502,11 +530,7 @@ def register_executions_from_existing_executions(
     )
     # LINT.ThenChange(:execution_custom_properties)
     new_executions.append(new_execution)
-    input_artifacts.append(
-        execution_lib.get_input_artifacts(
-            metadata_handle, existing_execution.id
-        )
-    )
+    input_artifacts.append(input_artifacts_for_existing_execution)
 
   contexts = metadata_handle.store.get_contexts_by_execution(
       existing_executions[0].id
