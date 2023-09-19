@@ -123,7 +123,7 @@ class _Generator:
       if service_status is not None:
         if (
             node_state.backfill_token
-            and service_status == service_jobs.ServiceStatus.SUCCESS
+            and service_status.code == service_jobs.ServiceStatusCode.SUCCESS
         ):
           # Transitions ExampleGen node to STOPPED state and service job to
           # STATE_STOPPED when backfill completes.
@@ -144,8 +144,11 @@ class _Generator:
           self._service_job_manager.stop_node_services(
               self._pipeline_state, node_id
           )
-        elif service_status != service_jobs.ServiceStatus.RUNNING:
-          error_msg = f'associated service job failed; node uid: {node_uid}'
+        elif service_status.code != service_jobs.ServiceStatusCode.RUNNING:
+          error_msg = (
+              f'associated service job failed; node uid: {node_uid}; error'
+              f' message: {service_status.msg}'
+          )
           result.append(
               task_lib.UpdateNodeStateTask(
                   node_uid=node_uid,
@@ -170,8 +173,11 @@ class _Generator:
       # status; the node is aborted if its service jobs have failed.
       service_status = self._ensure_node_services_if_mixed(node.node_info.id)
       if service_status is not None:
-        if service_status != service_jobs.ServiceStatus.RUNNING:
-          error_msg = f'associated service job failed; node uid: {node_uid}'
+        if service_status.code != service_jobs.ServiceStatusCode.RUNNING:
+          error_msg = (
+              f'associated service job failed; node uid: {node_uid}; error'
+              f' message: {service_status.msg}'
+          )
           result.append(
               task_lib.UpdateNodeStateTask(
                   node_uid=node_uid,
