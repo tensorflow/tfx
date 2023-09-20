@@ -177,14 +177,16 @@ def resolve_exec_properties(
 
 
 def generate_resolved_info(
-    mlmd_handle_like: mlmd_cm.HandleLike,
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     node: node_proto_view.NodeProtoView,
     skip_errors: Iterable[Type[exceptions.InputResolutionError]] = (),
 ) -> ResolvedInfo:
   """Returns a `ResolvedInfo` object for executing the node or `None` to skip.
 
   Args:
-    mlmd_handle_like: An instance for handling multiple mlmd db connections.
+    mlmd_connection_manager: An instance for handling multiple mlmd db
+      connections. We need to handle multiple MLMD connections so we can resolve
+      external pipeline artifacts.
     node: The pipeline node for which to generate.
     skip_errors: A list of errors to skip on the given error types.
 
@@ -197,7 +199,7 @@ def generate_resolved_info(
   """
   # Register node contexts.
   contexts = context_lib.prepare_contexts(
-      metadata_handle=mlmd_cm.get_handle(mlmd_handle_like),
+      metadata_handle=mlmd_cm.get_handle(mlmd_connection_manager),
       node_contexts=node.contexts,
   )
 
@@ -212,7 +214,7 @@ def generate_resolved_info(
   # Resolve inputs.
   try:
     resolved_input_artifacts = inputs_utils.resolve_input_artifacts(
-        metadata_handle=mlmd_handle_like, pipeline_node=node
+        metadata_handle=mlmd_connection_manager, pipeline_node=node
     )
   except exceptions.InputResolutionError as e:
     for skip_error in skip_errors:
