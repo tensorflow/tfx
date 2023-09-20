@@ -17,6 +17,7 @@ import contextlib
 import functools
 import os
 import threading
+import time
 
 from absl import logging
 from absl.testing.absltest import mock
@@ -129,13 +130,14 @@ class TaskManagerTest(test_utils.TfxTest):
     self._type_url = deployment_config.executor_specs['Trainer'].type_url
 
   @contextlib.contextmanager
-  def _task_manager(self, task_queue):
+  def _task_manager(self, task_queue, max_active_task_schedulers=1000):
     with tm.TaskManager(
         mock.Mock(),
         task_queue,
-        max_active_task_schedulers=1000,
+        max_active_task_schedulers=max_active_task_schedulers,
         max_dequeue_wait_secs=0.1,
-        process_all_queued_tasks_before_exit=True) as task_manager:
+        process_all_queued_tasks_before_exit=True,
+    ) as task_manager:
       yield task_manager
 
   @mock.patch.object(pstate, 'record_state_change_time')
@@ -272,6 +274,95 @@ class TaskManagerTest(test_utils.TfxTest):
     mock_fail_exec.assert_called_once()
     self.assertLen(mock_publish.mock_calls, 2)
     self.assertLen(mock_record_state_change_time.mock_calls, 1)
+
+  @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
+  def test_task_scheduler_cancellations_are_prioritized(
+      self, unused_mock
+  ) -> None:
+    collector = _Collector()
+
+    # Register a fake task scheduler.
+    ts.TaskSchedulerRegistry.register(
+        self._type_url,
+        functools.partial(
+            _FakeTaskScheduler,
+            block_nodes={'Trainer', 'Transform'},
+            collector=collector,
+        ),
+    )
+
+    task_queue = tq.TaskQueue()
+    with self._task_manager(
+        task_queue, max_active_task_schedulers=2
+    ) as task_manager:
+
+      def _wait_for(
+          num_pending, num_active, num_ts_futures, timeout=30.0
+      ) -> None:
+        start_time = time.time()
+        while time.time() - start_time <= timeout:
+          if (
+              len(task_manager._pending_schedulers) == num_pending
+              and task_manager._active_scheduler_counter.count() == num_active
+              and len(task_manager._ts_futures) == num_ts_futures
+          ):
+            return
+          time.sleep(0.1)
+        raise TimeoutError(
+            f'Timeout waiting for {num_pending} pending and {num_active} task'
+            ' schedulers.'
+        )
+
+      # Enqueue 4 tasks.
+      task_queue.enqueue(
+          _test_exec_node_task(
+              'Trainer', 'test-pipeline', pipeline=self._pipeline
+          )
+      )
+      task_queue.enqueue(
+          _test_exec_node_task(
+              'Transform', 'test-pipeline', pipeline=self._pipeline
+          )
+      )
+      task_queue.enqueue(
+          _test_exec_node_task(
+              'Evaluator', 'test-pipeline', pipeline=self._pipeline
+          )
+      )
+      task_queue.enqueue(
+          _test_exec_node_task(
+              'Pusher', 'test-pipeline', pipeline=self._pipeline
+          )
+      )
+
+      # Since max_active_task_schedulers=2, the first two tasks should be active
+      # and the other two pending.
+      _wait_for(num_pending=2, num_active=2, num_ts_futures=2)
+
+      self.assertEqual(
+          ['Evaluator', 'Pusher'],
+          [
+              s.task_scheduler.task.node_uid.node_id
+              for s in task_manager._pending_schedulers
+          ],
+      )
+      task_queue.enqueue(_test_cancel_node_task('Evaluator', 'test-pipeline'))
+      task_queue.enqueue(_test_cancel_node_task('Pusher', 'test-pipeline'))
+
+      # Cancellations should be prioritized and go through even when
+      # `max_active_task_schedulers` slots are occupied.
+      _wait_for(num_pending=0, num_active=2, num_ts_futures=2)
+
+      task_queue.enqueue(_test_cancel_node_task('Trainer', 'test-pipeline'))
+      task_queue.enqueue(_test_cancel_node_task('Transform', 'test-pipeline'))
+      _wait_for(num_pending=0, num_active=0, num_ts_futures=0)
+
+    self.assertTrue(task_manager.done())
+    self.assertIsNone(task_manager.exception())
+    self.assertCountEqual(
+        ['Trainer', 'Transform', 'Evaluator', 'Pusher'],
+        [task.node_uid.node_id for task in collector.scheduled_tasks],
+    )
 
 
 class _FakeComponentScheduler(ts.TaskScheduler):
