@@ -28,6 +28,7 @@ from tfx.dsl.input_resolution.ops import latest_pipeline_run_outputs_op as lates
 from tfx.dsl.input_resolution.ops import latest_policy_model_op
 from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import latest_version_op
+from tfx.dsl.input_resolution.ops import paired_spans_op
 from tfx.dsl.input_resolution.ops import shuffle_op
 from tfx.dsl.input_resolution.ops import skip_if_empty_op
 from tfx.dsl.input_resolution.ops import skip_if_less_than_n_spans_op
@@ -60,6 +61,7 @@ def _register_op(cls: _ResolverOpType) -> None:
     raise ValueError(f'Duplicated name {cls.canonical_name} while registering.')
   _OPS_BY_NAME[cls.canonical_name] = cls
 
+
 # go/keep-sorted start
 AllSpans = all_spans_op.AllSpans
 ConsecutiveSpans = consecutive_spans_op.ConsecutiveSpans
@@ -73,6 +75,7 @@ LatestPipelineRunOutputs = latest_pipeline_run_op.LatestPipelineRunOutputs
 LatestPolicyModel = latest_policy_model_op.LatestPolicyModel
 LatestSpan = latest_span_op.LatestSpan
 LatestVersion = latest_version_op.LatestVersion
+PairedSpans = paired_spans_op.PairedSpans
 Shuffle = shuffle_op.Shuffle
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
 SkipIfLessThanNSpans = skip_if_less_than_n_spans_op.SkipIfLessThanNSpans
@@ -95,6 +98,7 @@ _register_op(LatestPipelineRunOutputs)
 _register_op(LatestPolicyModel)
 _register_op(LatestSpan)
 _register_op(LatestVersion)
+_register_op(PairedSpans)
 _register_op(Shuffle)
 _register_op(SkipIfEmpty)
 _register_op(SkipIfLessThanNSpans)
@@ -111,6 +115,7 @@ def _register_strategy(cls: _ResolverStrategyType) -> None:
   if class_path in _OPS_BY_CLASSPATH:
     raise ValueError(f'Duplicated class path {class_path} while registering.')
   _OPS_BY_CLASSPATH[class_path] = cls
+
 
 # For ResolverStrategy, register them but do not expose their public name.
 # go/keep-sorted start
