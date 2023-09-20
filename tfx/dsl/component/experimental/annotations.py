@@ -17,7 +17,7 @@ Experimental. No backwards compatibility guarantees.
 """
 
 import inspect
-from typing import Any, Dict, List, Type, Union, get_args, get_origin
+from typing import Any, Dict, Generic, List, Type, TypeVar, Union, get_args, get_origin
 
 from tfx.dsl.component.experimental import json_compat
 from tfx.types import artifact
@@ -30,6 +30,8 @@ try:
 except ModuleNotFoundError:
   beam = None
   _BeamPipeline = Any
+
+T = TypeVar('T')
 
 
 def _check_valid_input_artifact_params(params):
@@ -242,6 +244,12 @@ class InputArtifact(_ArtifactGeneric):
 
 class OutputArtifact(_ArtifactGeneric):
   """Output artifact object type annotation."""
+
+
+# TODO(b/300702245): Compiler should throw an error if user tries to use this
+# ph.output(...) on an AsyncOutputArtifact.
+class AsyncOutputArtifact(Generic[T]):
+  """Intermediate artifact object type annotation."""
 
 
 class Parameter(_PrimitiveTypeGeneric):

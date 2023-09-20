@@ -57,7 +57,13 @@ def create_tfx_component_class(
     output_channel_params = output_channel_parameters or {}
     for output_key, output_channel_param in output_channel_params.items():
       if output_key not in arguments:
-        arguments[output_key] = types.Channel(type=output_channel_param.type)
+        output_channel = types.OutputChannel(
+            artifact_type=output_channel_param.type,
+            producer_component=self,
+            output_key=output_key,
+            is_async=output_channel_param.is_async,
+        )
+        arguments[output_key] = output_channel
 
     base_class.__init__(
         self,

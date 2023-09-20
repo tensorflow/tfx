@@ -248,7 +248,7 @@ def _generate_output_artifact(
   artifact = artifact_utils.deserialize_artifact(output_spec.artifact_spec.type)
   _attach_artifact_properties(output_spec.artifact_spec, artifact)
 
-  if output_spec.artifact_spec.is_intermediate_artifact:
+  if output_spec.artifact_spec.is_async:
     # Mark the artifact state as REFERENCE to distinguish it from PUBLISHED
     # (LIVE in MLMD) intermediate artifacts emitted during a component's
     # execution. At the end  of the component's execution, its state will remain

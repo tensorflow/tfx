@@ -458,6 +458,7 @@ class OutputChannel(Channel):
       output_key: str,
       additional_properties: Optional[Dict[str, Property]] = None,
       additional_custom_properties: Optional[Dict[str, Property]] = None,
+      is_async: bool = False,
   ):
     super().__init__(
         type=artifact_type,
@@ -468,6 +469,7 @@ class OutputChannel(Channel):
     self._producer_component = producer_component
     self._garbage_collection_policy = None
     self._predefined_artifact_uris = None
+    self._is_async = is_async
 
   def __repr__(self) -> str:
     return (
@@ -477,7 +479,8 @@ class OutputChannel(Channel):
         f'output_key={self.output_key}, '
         f'additional_properties={self.additional_properties}, '
         f'additional_custom_properties={self.additional_custom_properties}, '
-        f'_input_trigger={self._input_trigger}'
+        f'_input_trigger={self._input_trigger}, '
+        f'_is_async={self._is_async})'
     )
 
   def get_data_dependent_node_ids(self) -> Set[str]:
@@ -498,6 +501,11 @@ class OutputChannel(Channel):
   def producer_component_id(self) -> str:
     return self._producer_component.id
 
+  @property
+  @doc_controls.do_not_generate_docs
+  def is_async(self) -> bool:
+    return self._is_async
+
   @doc_controls.do_not_generate_docs
   def as_output_channel(
       self, producer_component: Any, output_key: str) -> 'OutputChannel':
@@ -513,6 +521,10 @@ class OutputChannel(Channel):
   @doc_controls.do_not_generate_docs
   def set_external(self, predefined_artifact_uris: List[str]) -> None:
     self._predefined_artifact_uris = predefined_artifact_uris
+
+  @doc_controls.do_not_generate_docs
+  def set_as_async_channel(self) -> None:
+    self._is_async = True
 
 
 @doc_controls.do_not_generate_docs
@@ -664,7 +676,7 @@ class ExternalPipelineChannel(BaseChannel):
 
     Args:
       artifact_type: Subclass of Artifact for this channel.
-      owner: Onwer of the pipeline.
+      owner: Owner of the pipeline.
       pipeline_name: Name of the pipeline the artifacts belong to.
       producer_component_id: Id of the component produces the artifacts.
       output_key: The output key when producer component produces the artifacts
