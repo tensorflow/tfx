@@ -97,6 +97,21 @@ class FakeSpec(component_spec.ComponentSpec):
       'x': component_spec.ChannelParameter(
           type=tfx_artifact.Artifact, optional=True
       ),
+      ops_utils.ROOT_ARTIFACT_KEY: component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      'examples': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      'transform_graph': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      'model_blessing': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      'model_push_path': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
       ops_utils.MODEL_KEY: component_spec.ChannelParameter(
           type=tfx_artifact.Artifact, optional=True
       ),
@@ -216,6 +231,23 @@ class ResolverTestCase(
         contexts=contexts,
     )
     return examples
+
+  def transform_examples(
+      self,
+      examples: List[types.Artifact],
+      contexts: Sequence[metadata_store_pb2.Context] = (),
+  ) -> types.Artifact:
+    inputs = {'examples': self.unwrap_tfx_artifacts(examples)}
+    transform_graph = self.prepare_tfx_artifact(TransformGraph)
+    self.put_execution(
+        'Transform',
+        inputs=inputs,
+        outputs={
+            'transform_graph': self.unwrap_tfx_artifacts([transform_graph])
+        },
+        contexts=contexts,
+    )
+    return transform_graph
 
   def train_on_examples(
       self,

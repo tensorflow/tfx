@@ -13,9 +13,9 @@
 # limitations under the License.
 """Module for GraphTraversal operator."""
 
-import collections
 from typing import Sequence
 
+from absl import logging
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
@@ -23,19 +23,6 @@ from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.types import artifact_utils
 
 from ml_metadata.tools.mlmd_resolver import metadata_resolver
-
-
-def _pascal_to_snake_case(text):
-  """Converts a PascalCase string to snake_case."""
-  result = ''
-  for char in text:
-    if char.isupper():
-      if result:
-        result += '_'
-      result += char.lower()
-    else:
-      result += char
-  return result
 
 
 class GraphTraversal(
@@ -110,10 +97,16 @@ class GraphTraversal(
         filter_query=filter_query,
     )
 
-    result = collections.defaultdict(list)
-    result[ops_utils.ROOT_ARTIFACT_KEY] = [root_artifact]
+    result = {ops_utils.ROOT_ARTIFACT_KEY: [root_artifact]}
+    for artifact_type in self.artifact_type_names:
+      result[artifact_type] = []
     if not related_artifacts.get(root_artifact.id):
-      # No upstream (or downstream) artifacts were found.
+      logging.info(
+          'No neighboring artifacts were found for root artifact %s and '
+          'artifact_type_names %s.',
+          root_artifact,
+          self.artifact_type_names,
+      )
       return result
     related_artifacts = related_artifacts[root_artifact.id]
 
@@ -130,17 +123,16 @@ class GraphTraversal(
     # Build the result dictionary, with a separate key for each ArtifactType.
     for artifact in related_artifacts:
       if artifact.type in self.artifact_type_names:
-        key = _pascal_to_snake_case(artifact.type)
         deserialized_artifact = artifact_utils.deserialize_artifact(
             artifact_type_by_artifact_id[artifact.id], artifact
         )
-        result[key].append(deserialized_artifact)
+        result[artifact.type].append(deserialized_artifact)
 
     for key, artifacts in result.items():
       result[key] = sorted(
           artifacts,
           # If the user wants to sort Examples artifacts by span/version, they
-          # can call the the all_spans(...) canned resolver functions.
+          # can call the all_spans(...) canned resolver functions.
           key=lambda a: (a.mlmd_artifact.create_time_since_epoch, a.id),
       )
 
