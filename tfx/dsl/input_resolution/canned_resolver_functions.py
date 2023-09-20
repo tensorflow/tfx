@@ -469,3 +469,46 @@ def sequential_rolling_range(artifacts,
 @sequential_rolling_range.output_type_inferrer
 def _infer_seqential_rolling_range_type(channel, **kwargs):  # pylint: disable=unused-argument
   return {'window': channel.type}
+
+
+@resolver_function.resolver_function()
+def paired_spans(artifacts, *, keep_all_versions: bool = False):
+  """Pairs up Examples from different channels, matching by (span, version).
+
+  This enables grouping together Artifacts from separate channels.
+
+  Example usage:
+
+  Consider two channels A and B.
+
+  Channel A: [(span 0, version 0), (span 0, version 1), (span 1, version 0)]
+  Channel B: [(span 0, verison 0), (span 0, version 1)]
+
+  With keep_all_verisons=True, paired_spans() will give the following output:
+
+  [{'channel_a' : [(span 0, version 0)], 'channel_b' : [(span 0, version 0)]},
+   {'channel_a' : [(span 0, version 1)], 'channel_b' : [(span 0, version 1)]}]
+
+  With keep_all_verisons=False, paired_spans() will give the following output:
+
+  [{'channel_a' : [(span 0, version 1)], 'channel_b' : [(span 0, version 1)]}]
+
+  Since paired_spans() returns a list of dicts, it must be used together
+  with ForEach. For example:
+
+  with ForEach(paired_spans({'a' : channel_a, 'b' : channel_b})) as paired_dict:
+    component = Component(a=paired_dict['a'], b=paired_dict['b'])
+
+  Note, paired_spans() can pair Artifacts from N >= 2 channels.
+
+  Args:
+    artifacts: A dictionary of artifacts.
+    keep_all_versions: Whether to pair up all versions of artifacts, or only the
+      latest version. Defaults to False.
+
+  Returns:
+    A list of artifact dicts where each dict has as its key the channel key,
+    and as its value has a list with a single artifact having the same span and
+    version across the dict.
+  """
+  return ops.PairedSpans(artifacts, keep_all_versions=keep_all_versions)
