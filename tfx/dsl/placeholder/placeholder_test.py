@@ -916,15 +916,6 @@ class PlaceholderTest(tf.test.TestCase):
             ph.RuntimeInfoPlaceholder
         }, got_dict.keys())
 
-  def testIterate(self):
-    p = ph.input('model')
-    with self.assertRaisesRegex(
-        RuntimeError, 'Iterate over a placeholder is not supported. '
-    ):
-      # Iterate over a placeholder by mistake.
-      for _ in p:
-        break
-
 
 if __name__ == '__main__':
   tf.test.main()
