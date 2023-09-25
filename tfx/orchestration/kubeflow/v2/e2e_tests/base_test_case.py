@@ -38,6 +38,7 @@ _MAX_JOB_EXECUTION_TIME = datetime.timedelta(minutes=90)
 class BaseKubeflowV2Test(test_case_utils.TfxTest):
   """Defines testing harness for pipeline on KubeflowV2DagRunner."""
 
+  # Dummy trigger
   # The following environment variables need to be set prior to calling the test
   # in this file. All variables are required and do not have a default.
 
