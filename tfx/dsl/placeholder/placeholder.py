@@ -855,6 +855,7 @@ class ListPlaceholder(Placeholder):
       component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
+    result.operator.list_concat_op.SetInParent()
     expressions = result.operator.list_concat_op.expressions
     for input_placeholder in self._input_placeholders:
       expressions.append(input_placeholder.encode(component_spec))
