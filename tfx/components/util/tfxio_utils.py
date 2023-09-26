@@ -13,6 +13,7 @@
 # limitations under the License.
 """TFXIO (standardized TFX inputs) related utilities."""
 
+import logging
 from typing import Any, Callable, Dict, List, Iterator, Optional, Tuple, Union
 
 import pyarrow as pa
@@ -79,7 +80,7 @@ def resolve_payload_format_and_data_view_uri(
   # DataView (the one with the largest create time). This will guarantee that
   # the RecordBatch read from each artifact will share the same Arrow schema
   # (and thus Tensors fed to TF graphs, if applicable). The DataView will need
-  # to guarantee backward compatibilty with older spans. Usually the DataView
+  # to guarantee backward compatibility with older spans. Usually the DataView
   # is a struct2tensor query, so such guarantee is provided by protobuf
   # (as long as the user follows the basic principles of making changes to
   # the proto).
@@ -92,6 +93,22 @@ def resolve_payload_format_and_data_view_uri(
       'Unable to resolve a DataView for the Examples Artifacts '
       'provided -- some Artifacts did not have DataView attached: {}'
       .format(violating_artifacts))
+
+
+def get_file_format_and_patterns(
+    examples: List[artifact.Artifact],
+    split: str,
+) -> Tuple[List[str], List[str]]:
+  """Get aligned lists of file patterns and formats for Examples artifacts."""
+  file_patterns, file_formats = [], []
+  for examples_artifact in examples:
+    file_pattern = examples_utils.get_split_file_patterns(
+        [examples_artifact], split
+    )
+    assert len(file_pattern) == 1
+    file_patterns.append(file_pattern[0])
+    file_formats.append(examples_utils.get_file_format(examples_artifact))
+  return file_patterns, file_formats
 
 
 def get_split_tfxio(
@@ -129,15 +146,21 @@ def get_split_tfxio(
   Raises:
     NotImplementedError: when given an unsupported example payload type.
   """
-  factory = get_tfxio_factory_from_artifact(
-      examples=examples,
+  payload_format, data_view_uri = resolve_payload_format_and_data_view_uri(
+      examples
+  )
+  file_patterns, file_formats = get_file_format_and_patterns(examples, split)
+  logging.info('Reading from pattern %s for split %s', file_patterns, split)
+  return make_tfxio(
+      file_pattern=file_patterns,
+      file_format=file_formats,
       telemetry_descriptors=telemetry_descriptors,
+      payload_format=payload_format,
+      data_view_uri=data_view_uri,
       schema=schema,
       read_as_raw_records=read_as_raw_records,
       raw_record_column_name=raw_record_column_name,
   )
-  split_patterns = examples_utils.get_split_file_patterns(examples, split)
-  return factory(split_patterns)
 
 
 def get_tfxio_factory_from_artifact(
