@@ -37,6 +37,7 @@ if tfdv.default_sharded_output_supported():
       'testcase_name': 'yes_sharded_output',
       'sharded_output': True
   })
+_TEST_SPAN_NUMBER = 16000
 
 
 # TODO(b/133421802): Investigate why tensorflow.TestCase could cause a crash
@@ -77,6 +78,7 @@ class ExecutorTest(parameterized.TestCase):
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
     examples.split_names = artifact_utils.encode_split_names(
         ['train', 'eval', 'test'])
+    examples.span = _TEST_SPAN_NUMBER
 
     input_dict = {
         standard_component_specs.EXAMPLES_KEY: [examples],
@@ -105,6 +107,7 @@ class ExecutorTest(parameterized.TestCase):
         artifact_utils.encode_split_names(['train', 'eval']), stats.split_names)
     self.assertEqual(
         stats.get_string_custom_property(executor.STATS_DASHBOARD_LINK), '')
+    self.assertEqual(stats.span, _TEST_SPAN_NUMBER)
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
