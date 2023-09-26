@@ -33,6 +33,7 @@ from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
+from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -485,6 +486,9 @@ def register_executions_from_existing_executions(
     return []
 
   exec_properties = resolve_exec_properties(node)
+  exec_type = common_utils.register_type_if_not_exist(
+      metadata_handle, node.node_info.type
+  )
   new_executions = []
   input_artifacts = []
   for existing_execution in existing_executions:
@@ -520,7 +524,7 @@ def register_executions_from_existing_executions(
     )
     new_execution = execution_lib.prepare_execution(
         metadata_handle=metadata_handle,
-        execution_type=node.node_info.type,
+        execution_type=exec_type,
         state=metadata_store_pb2.Execution.NEW,
         exec_properties=combined_exec_properties,
         execution_name=str(uuid.uuid4()),
@@ -570,11 +574,14 @@ def register_executions(
       All registered executions have a state of NEW.
   """
   executions = []
+  registered_execution_type = common_utils.register_type_if_not_exist(
+      metadata_handle, execution_type
+  )
   for index, input_and_param in enumerate(input_and_params):
     # Prepare executions.
     execution = execution_lib.prepare_execution(
         metadata_handle,
-        execution_type,
+        registered_execution_type,
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
         execution_name=str(uuid.uuid4()),
@@ -582,7 +589,7 @@ def register_executions(
     # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     executions.append(execution)
-  # LINT.ThenChange(:new_execution_custom_properties)
+    # LINT.ThenChange(:new_execution_custom_properties)
 
   if len(executions) == 1:
     return [
