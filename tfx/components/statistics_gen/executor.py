@@ -21,6 +21,7 @@ from tensorflow_data_validation.statistics import stats_options as options
 from tensorflow_data_validation.utils import dashboard_util
 from tfx import types
 from tfx.components.statistics_gen import stats_artifact_utils
+from tfx.components.util import examples_utils
 from tfx.components.util import tfxio_utils
 from tfx.dsl.components.base import base_beam_executor
 from tfx.types import artifact_utils
@@ -97,16 +98,25 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           'list. Got %s instead.'
           % type(exclude_splits)
       )
+
     # Setup output splits.
     examples = artifact_utils.get_single_instance(
         input_dict[standard_component_specs.EXAMPLES_KEY]
     )
-    examples_split_names = artifact_utils.decode_split_names(
-        examples.split_names
-    )
-    split_names = [
-        split for split in examples_split_names if split not in exclude_splits
-    ]
+
+    if examples.has_custom_property(
+        examples_utils.CUSTOM_SPLIT_PATTERN_PROPERTY_NAME
+    ):
+      split_to_pattern = json_utils.loads(
+          examples.get_string_custom_property(
+              examples_utils.CUSTOM_SPLIT_PATTERN_PROPERTY_NAME
+          )
+      )
+      splits = list(split_to_pattern.keys())
+    else:
+      splits = artifact_utils.decode_split_names(examples.split_names)
+
+    split_names = [split for split in splits if split not in exclude_splits]
     statistics_artifact = artifact_utils.get_single_instance(
         output_dict[standard_component_specs.STATISTICS_KEY]
     )
@@ -180,9 +190,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         tfxio_schema = stats_options.schema
 
     split_and_tfxio = []
-    for split in artifact_utils.decode_split_names(examples.split_names):
-      if split in exclude_splits:
-        continue
+
+    for split in split_names:
       tfxio = tfxio_utils.get_split_tfxio(
           examples=[examples],
           split=split,
