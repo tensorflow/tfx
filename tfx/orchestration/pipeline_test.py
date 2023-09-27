@@ -13,9 +13,11 @@
 # limitations under the License.
 """Tests for tfx.orchestration.pipeline."""
 
+from __future__ import annotations
+
 import itertools
 import os
-from typing import Any, Dict, Optional, Type
+from typing import Any, Type
 
 import tensorflow as tf
 from tfx import types
@@ -41,15 +43,15 @@ def _make_fake_node_instance(name: str):
   class _FakeNode(base_node.BaseNode):
 
     @property
-    def inputs(self) -> Dict[str, Any]:
+    def inputs(self) -> dict[str, Any]:
       return {}
 
     @property
-    def outputs(self) -> Dict[str, Any]:
+    def outputs(self) -> dict[str, Any]:
       return {}
 
     @property
-    def exec_properties(self) -> Dict[str, Any]:
+    def exec_properties(self) -> dict[str, Any]:
       return {}
 
   return _FakeNode().with_id(name)
@@ -58,11 +60,11 @@ def _make_fake_node_instance(name: str):
 def _make_fake_component_instance(
     name: str,
     output_type: Type[types.Artifact],
-    inputs: Dict[str, types.Channel],
-    outputs: Dict[str, types.Channel],
+    inputs: dict[str, types.Channel],
+    outputs: dict[str, types.Channel],
     with_beam: bool = False,
-    dynamic_exec_property: Optional[ph.Placeholder] = None):
-
+    dynamic_exec_property: ph.Placeholder | None = None,
+):
   class _FakeComponentSpec(types.ComponentSpec):
     PARAMETERS = {
         'exec_prop': ExecutionParameter(type=int)
@@ -81,7 +83,8 @@ def _make_fake_component_instance(
     def __init__(
         self,
         type: Type[types.Artifact],  # pylint: disable=redefined-builtin
-        spec_kwargs: Dict[str, Any]):
+        spec_kwargs: dict[str, Any],
+    ):
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
       super().__init__(spec=spec)
       self._id = name
@@ -94,7 +97,8 @@ def _make_fake_component_instance(
     def __init__(
         self,
         type: Type[types.Artifact],  # pylint: disable=redefined-builtin
-        spec_kwargs: Dict[str, Any]):
+        spec_kwargs: dict[str, Any],
+    ):
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
       super().__init__(spec=spec)
       self._id = name
