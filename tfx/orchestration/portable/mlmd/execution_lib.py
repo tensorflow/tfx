@@ -254,6 +254,8 @@ def _create_artifact_and_event_pairs(
             artifact_event_map[artifact_id][1], key=key, index=index
         )
       else:
+        # TODO(b/153904840): If artifact id is present, skip putting the
+        # artifact into the pair when MLMD API is ready.
         event = event_lib.generate_event(
             event_type=event_type, key=key, index=index
         )
@@ -263,10 +265,9 @@ def _create_artifact_and_event_pairs(
           assert (
               artifact_type.name == artifact.artifact_type.name
           ), 'Artifacts under the same key should share the same artifact type.'
-        else:
-          artifact_type = common_utils.register_type_if_not_exist(
-              metadata_handle, artifact.artifact_type
-          )
+        artifact_type = common_utils.register_type_if_not_exist(
+            metadata_handle, artifact.artifact_type
+        )
         artifact.set_mlmd_artifact_type(artifact_type)
         if artifact_id:
           artifact_event_map[artifact_id] = (artifact.mlmd_artifact, event)

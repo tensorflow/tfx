@@ -255,7 +255,7 @@ message InputGraph {
   // Nodes of this input graph. Key is the node ID.
   map<string, Node> nodes = 1;
   // The ID of the output node of the input graph. The output data type of the
-  // input graph is the output data type of the result node.
+  // input graph is the output data type of the reuslt node.
   string result_node = 2;
 }
 
@@ -431,7 +431,7 @@ message OutputSpec {
     // output artifact created by the orchestrator at the start of the
     // component execution will be given state REFERENCE. Artifacts emitted
     // during component execution will be given state LIVE.
-    bool is_async = 5;
+    bool is_intermediate_artifact = 5;
   }
   ArtifactSpec artifact_spec = 1;
 
@@ -556,7 +556,7 @@ message NodeExecutionOptions {
     reserved 3;
   }
   // The trigger strategy of this node.
-  // Unset or set to default value of TRIGGER_STRATEGY_UNDEFINED behaves the
+  // Unset or set to default value of TRIGGER_STATEGY_UNDEFINED behaves the
   // same as ALL_UPSTREAM_NODES_SUCCEEDED.
   TriggerStrategy strategy = 4;
 

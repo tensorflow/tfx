@@ -506,27 +506,6 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
-  def testListEmpty(self):
-    self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.to_list([]), """
-        operator {
-          list_concat_op {}
-        }
-    """)
-    self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.to_list([]) + ph.to_list([ph.exec_property('random_str')]), """
-        operator {
-          list_concat_op {
-            expressions {
-              placeholder {
-                type: EXEC_PROPERTY
-                key: "random_str"
-              }
-            }
-          }
-        }
-    """)
-
   def testProtoOperatorDescriptor(self):
     placeholder = ph.exec_property('splits_config').analyze[0]
     component_spec = standard_component_specs.TransformSpec
@@ -936,15 +915,6 @@ class PlaceholderTest(tf.test.TestCase):
             ph.ArtifactPlaceholder, ph.ExecPropertyPlaceholder,
             ph.RuntimeInfoPlaceholder
         }, got_dict.keys())
-
-  def testIterate(self):
-    p = ph.input('model')
-    with self.assertRaisesRegex(
-        RuntimeError, 'Iterate over a placeholder is not supported. '
-    ):
-      # Iterate over a placeholder by mistake.
-      for _ in p:
-        break
 
 
 if __name__ == '__main__':

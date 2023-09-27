@@ -84,15 +84,11 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     ):
       self.assertIn(
           node_id,
-          (self._example_gen.node_info.id, self._transform.node_info.id),
-      )
-      return service_jobs.ServiceStatus(
-          code=service_jobs.ServiceStatusCode.RUNNING
-      )
+          (self._example_gen.node_info.id, self._transform.node_info.id))
+      return service_jobs.ServiceStatus.RUNNING
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
-        _default_ensure_node_services
-    )
+        _default_ensure_node_services)
 
   def _finish_node_execution(
       self, use_task_queue, exec_node_task, success=True
@@ -458,9 +454,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         unused_pipeline_state, node_id, unused_backfill_token=''
     ):
       if node_id == 'my_example_gen':
-        return service_jobs.ServiceStatus(
-            code=service_jobs.ServiceStatusCode.FAILED, msg='foobar error'
-        )
+        return service_jobs.ServiceStatus.FAILED
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
@@ -472,13 +466,6 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_active_executions=0)
     self.assertIsInstance(update_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(status_lib.Code.UNKNOWN, update_task.status.code)
-    self.assertEqual(
-        'associated service job failed; node uid:'
-        " NodeUid(pipeline_uid=PipelineUid(pipeline_id='my_pipeline',"
-        " pipeline_run_id=None), node_id='my_example_gen'); error message:"
-        ' foobar error',
-        update_task.status.message,
-    )
 
   def test_mix_service_job_failed(self):
     """Tests task generation when my_transform mix service job fails."""
@@ -487,13 +474,9 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         unused_pipeline_state, node_id, unused_backfill_token=''
     ):
       if node_id == 'my_example_gen':
-        return service_jobs.ServiceStatus(
-            code=service_jobs.ServiceStatusCode.RUNNING,
-        )
+        return service_jobs.ServiceStatus.RUNNING
       if node_id == 'my_transform':
-        return service_jobs.ServiceStatus(
-            code=service_jobs.ServiceStatusCode.FAILED, msg='foobar error'
-        )
+        return service_jobs.ServiceStatus.FAILED
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
@@ -506,13 +489,6 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     self.assertIsInstance(example_gen_update_task, task_lib.UpdateNodeStateTask)
     self.assertIsInstance(transform_update_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(status_lib.Code.UNKNOWN, transform_update_task.status.code)
-    self.assertEqual(
-        'associated service job failed; node uid:'
-        " NodeUid(pipeline_uid=PipelineUid(pipeline_id='my_pipeline',"
-        " pipeline_run_id=None), node_id='my_transform'); error message:"
-        ' foobar error',
-        transform_update_task.status.message,
-    )
 
   def test_backfill(self):
     """Tests async pipeline task generation for backfill."""
@@ -821,9 +797,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         unused_pipeline_state, node_id, unused_backfill_token=''
     ):
       if node_id == self._example_gen.node_info.id:
-        return service_jobs.ServiceStatus(
-            code=service_jobs.ServiceStatusCode.SUCCESS
-        )
+        return service_jobs.ServiceStatus.SUCCESS
 
     self._mock_service_job_manager.reset_mock()
     self._mock_service_job_manager.ensure_node_services.side_effect = (

@@ -44,6 +44,10 @@ def run_with_executor(
   Returns:
     The output from executor.
   """
+  # In cases where output directories are not empty due to a previous or
+  # unrelated execution, clear the directories to ensure consistency.
+  outputs_utils.clear_output_dirs(execution_info.output_dict)
+
   for _, artifact_list in execution_info.input_dict.items():
     for artifact in artifact_list:
       if isinstance(artifact, ValueArtifact):

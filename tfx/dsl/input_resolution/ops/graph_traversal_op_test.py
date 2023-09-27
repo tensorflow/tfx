@@ -52,7 +52,7 @@ class GraphTraversalOpTest(
 
     spans_and_versions = [(1, 0), (2, 0), (3, 0)]
     self.examples = self.create_examples(spans_and_versions)
-    self.transform_graph = self.transform_examples(self.examples)
+    self.transform_graph = self.prepare_tfx_artifact(test_utils.TransformGraph)
 
     # Train using the Examples and TransformGraph.
     self.model = self.prepare_tfx_artifact(test_utils.Model)
@@ -107,13 +107,13 @@ class GraphTraversalOpTest(
         result,
         {
             'root_artifact': [self.model],
-            'Examples': self.examples,
-            'TransformGraph': [self.transform_graph],
+            'examples': self.examples,
+            'transform_graph': [self.transform_graph],
         },
     )
 
-    # "model_blessing" should have no artifacts in the result dictionary,
-    # because there is no path from ModelBlessing --> ModelPush.
+    # "model_blessing" should NOT be in the result dictionary, because there
+    # is no path from ModelBlessing --> ModelPush.
     result = self._graph_traversal(
         self.model_push,
         traverse_upstream=True,
@@ -128,10 +128,9 @@ class GraphTraversalOpTest(
         result,
         {
             'root_artifact': [self.model_push],
-            'Examples': self.examples,
-            'TransformGraph': [self.transform_graph],
-            'Model': [self.model],
-            'ModelBlessing': [],
+            'examples': self.examples,
+            'transform_graph': [self.transform_graph],
+            'model': [self.model],
         },
     )
 
@@ -144,8 +143,7 @@ class GraphTraversalOpTest(
         result,
         {
             'root_artifact': [self.model],
-            'TransformGraph': [self.transform_graph],
-            'FakeArtifactTypeName': [],
+            'transform_graph': [self.transform_graph],
         },
     )
 
@@ -164,10 +162,9 @@ class GraphTraversalOpTest(
         result,
         {
             'root_artifact': [self.examples[0]],
-            'TransformGraph': [self.transform_graph],
-            'Model': [self.model],
-            'ModelBlessing': [self.model_blessing_1, self.model_blessing_2],
-            'ModelPushPath': [self.model_push],
+            'model': [self.model],
+            'model_blessing': [self.model_blessing_1, self.model_blessing_2],
+            'model_push_path': [self.model_push],
         },
     )
 
@@ -183,7 +180,7 @@ class GraphTraversalOpTest(
         result,
         {
             'root_artifact': [self.examples[0]],
-            'Examples': [self.examples[0]],
+            'examples': [self.examples[0]],
         },
     )
 

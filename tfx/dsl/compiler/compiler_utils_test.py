@@ -32,10 +32,8 @@ from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
 from tfx.types.channel import Channel
-from tfx.types.channel import OutputChannel
 from tfx.types.channel_utils import external_pipeline_artifact_query
 
-from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -201,29 +199,6 @@ class CompilerUtilsTest(tf.test.TestCase):
       compiler_utils.validate_dynamic_exec_ph_operator(invalid_dynamic_exec_ph)
     valid_dynamic_exec_ph = Channel(type=_MyType).future()[0].value
     compiler_utils.validate_dynamic_exec_ph_operator(valid_dynamic_exec_ph)
-
-  def testOutputSpecFromChannel_AsyncOutputChannel(self):
-    channel = OutputChannel(
-        artifact_type=standard_artifacts.Model,
-        output_key="model",
-        producer_component="trainer",
-        is_async=True,
-    )
-
-    actual = compiler_utils.output_spec_from_channel(channel, "trainer")
-    expected = text_format.Parse(
-        """
-        artifact_spec {
-          type {
-            name: "Model"
-            base_type: MODEL
-          }
-          is_async: true
-        }
-        """,
-        pipeline_pb2.OutputSpec(),
-    )
-    self.assertProtoEquals(actual, expected)
 
 
 if __name__ == "__main__":

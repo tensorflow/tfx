@@ -16,7 +16,7 @@
 from collections.abc import MutableSequence, Sequence
 import contextlib
 import inspect
-from typing import Any, List, Type, TypeVar, get_args, get_origin, Optional, Union
+from typing import Any, List, Type, TypeVar, cast, get_args, get_origin, Optional, Union
 
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import execution_result_pb2
@@ -99,11 +99,13 @@ class Environ(contextlib.ExitStack):
             result = artifact_utils.deserialize_artifact(
                 type_hint.artifact_type, result
             )
-          if not isinstance(result, type_hint):
+          try:
+            result = cast(type_hint, result)
+          except Exception as e:
             raise TypeError(
                 f'Expected {type_hint} for {debug_target} but got'
                 f' {result.__class__.__name__}.'
-            )
+            ) from e
           return result
         else:
           raise TypeError(
@@ -122,11 +124,13 @@ class Environ(contextlib.ExitStack):
                   try_deserialize_artifact(a, artifact_type)
                   for a in artifact_list
               ]
-              if any(not isinstance(a, artifact_type) for a in artifact_list):
+              try:
+                artifact_list = [cast(artifact_type, a) for a in artifact_list]
+              except Exception as e:
                 raise TypeError(
                     f'Expected {type_hint} for {debug_target} but got'
                     f' {artifact_list}'
-                )
+                ) from e
               return artifact_list
       raise TypeError(
           f'Invalid type hint {type_hint} for {debug_target}. Must be one of'
