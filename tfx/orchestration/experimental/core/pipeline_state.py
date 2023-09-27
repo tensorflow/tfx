@@ -983,11 +983,13 @@ class PipelineState:
     return _get_metadata_value(
         self._execution.custom_properties.get(property_key))
 
-  def save_property(self, property_key: str, property_value: str) -> None:
-    """Saves a custom property to the pipeline execution."""
+  def save_property(
+      self, property_key: str, property_value: types.Property
+  ) -> None:
     self._check_context()
-    self._execution.custom_properties[
-        property_key].string_value = property_value
+    data_types_utils.set_metadata_value(
+        self._execution.custom_properties[property_key], property_value
+    )
 
   def remove_property(self, property_key: str) -> None:
     """Removes a custom property of the pipeline execution if exists."""

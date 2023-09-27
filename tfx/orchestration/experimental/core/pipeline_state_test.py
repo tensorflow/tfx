@@ -20,7 +20,9 @@ import time
 from typing import List
 from unittest import mock
 
+from absl.testing import parameterized
 import tensorflow as tf
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
@@ -185,7 +187,7 @@ class PipelineIRCodecTest(test_utils.TfxTest):
     )
 
 
-class PipelineStateTest(test_utils.TfxTest):
+class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -829,9 +831,13 @@ class PipelineStateTest(test_utils.TfxTest):
             pipeline_state.get_node_states_dict(),
         )
 
-  def test_save_and_remove_property(self):
+  @parameterized.named_parameters(
+      ('string', 'string_value'),
+      ('int', 1),
+      ('float', 2.3),
+  )
+  def test_save_and_read_and_remove_property(self, property_value):
     property_key = 'key'
-    property_value = 'value'
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
@@ -844,13 +850,19 @@ class PipelineStateTest(test_utils.TfxTest):
           mlmd_executions[0].custom_properties.get(property_key)
       )
       self.assertEqual(
-          mlmd_executions[0].custom_properties.get(property_key).string_value,
+          data_types_utils.get_metadata_value(
+              mlmd_executions[0].custom_properties[property_key]
+          ),
           property_value,
       )
 
       with pstate.PipelineState.load(
           m, task_lib.PipelineUid.from_pipeline(pipeline)
       ) as pipeline_state:
+        # Also check that PipelineState returns the correct value
+        self.assertEqual(
+            pipeline_state.get_property(property_key), property_value
+        )
         pipeline_state.remove_property(property_key)
 
       mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
