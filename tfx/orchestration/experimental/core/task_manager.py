@@ -19,7 +19,7 @@ import textwrap
 import threading
 import traceback
 import typing
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from absl import logging
 from tfx.orchestration import data_types_utils
@@ -36,7 +36,7 @@ from tfx.utils import status as status_lib
 from ml_metadata.proto import metadata_store_pb2
 
 
-_MAX_DEQUEUE_WAIT_SECS = 1.0
+_MAX_DEQUEUE_WAIT_SECS = 5.0
 
 
 class Error(Exception):
@@ -77,36 +77,29 @@ class _SchedulerWrapper:
 
   def __init__(
       self,
-      task_scheduler: ts.TaskScheduler[task_lib.ExecNodeTask],
+      task_scheduler: ts.TaskScheduler,
       active_scheduler_counter: _ActiveSchedulerCounter,
   ):
-    self.task_scheduler = task_scheduler
+    self._task_scheduler = task_scheduler
     self._active_scheduler_counter = active_scheduler_counter
-    self.cancel_requested = threading.Event()
-    self.pause_requested = threading.Event()
-    if task_scheduler.task.cancel_type is not None:
-      self.cancel_requested.set()
-      if task_scheduler.task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC:
-        self.pause_requested.set()
+    self.pause = False
 
   def schedule(self) -> ts.TaskSchedulerResult:
     with self._active_scheduler_counter:
-      logging.info('Starting task scheduler: %s', self.task_scheduler)
+      logging.info('Starting task scheduler: %s', self._task_scheduler)
       try:
-        return self.task_scheduler.schedule()
+        return self._task_scheduler.schedule()
       finally:
-        logging.info('Task scheduler finished: %s', self.task_scheduler)
+        logging.info('Task scheduler finished: %s', self._task_scheduler)
 
   def cancel(self, cancel_task: task_lib.CancelNodeTask) -> None:
-    logging.info('Cancelling task scheduler: %s', self.task_scheduler)
-    self.cancel_requested.set()
-    if cancel_task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC:
-      self.pause_requested.set()
-    self.task_scheduler.cancel(cancel_task=cancel_task)
+    logging.info('Cancelling task scheduler: %s', self._task_scheduler)
+    self.pause = cancel_task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC
+    self._task_scheduler.cancel(cancel_task=cancel_task)
 
   def __str__(self) -> str:
     return (
-        f'{str(self.task_scheduler)} wrapped in {self.__class__.__qualname__}'
+        f'{str(self._task_scheduler)} wrapped in {self.__class__.__qualname__}'
     )
 
 
@@ -153,12 +146,9 @@ class TaskManager:
     self._main_future = None
     self._max_active_task_schedulers = max_active_task_schedulers
 
-    self._pending_schedulers: List[_SchedulerWrapper] = []
-
-    # Async executor for task schedulers. We have 1 extra worker so that task
-    # schedulers being canceled can be run without being blocked by active ones.
+    # Async executor for task schedulers.
     self._ts_executor = futures.ThreadPoolExecutor(
-        max_workers=self._max_active_task_schedulers + 1,
+        max_workers=self._max_active_task_schedulers,
         thread_name_prefix='orchestrator_active_task_schedulers',
     )
     self._ts_futures = set()
@@ -204,15 +194,14 @@ class TaskManager:
     try:
       while not self._stop_event.is_set():
         self._cleanup()
-        self._prioritize_and_submit()
         num_active = self._active_scheduler_counter.count()
         logging.log_every_n_seconds(
             logging.INFO,
-            'Number of active task schedulers: %d (max: %d (+1)), queued: %d',
+            'Number of active task schedulers: %d (max: %d), queued: %d',
             30,
             num_active,
             self._max_active_task_schedulers,
-            len(self._ts_futures) + len(self._pending_schedulers) - num_active,
+            len(self._ts_futures) - num_active,
         )
         task = self._task_queue.dequeue(self._max_dequeue_wait_secs)
         if task is None:
@@ -230,7 +219,6 @@ class TaskManager:
 
       # Final cleanup before exiting. Any exceptions raised here are
       # automatically chained with any raised in the try block.
-      self._prioritize_and_submit(True)
       self._cleanup(True)
 
   def _handle_task(self, task: task_lib.Task) -> None:
@@ -261,8 +249,12 @@ class TaskManager:
           self._active_scheduler_counter,
       )
       logging.info('Instantiated task scheduler: %s', scheduler)
+      if task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC:
+        scheduler.pause = True
       self._scheduler_by_node_uid[node_uid] = scheduler
-    self._pending_schedulers.append(scheduler)
+      self._ts_futures.add(
+          self._ts_executor.submit(self._process_exec_node_task, scheduler,
+                                   task))
 
   def _handle_cancel_node_task(self, task: task_lib.CancelNodeTask) -> None:
     """Handles `CancelNodeTask`."""
@@ -305,10 +297,8 @@ class TaskManager:
     )
     # If the node was paused, we do not complete the execution as it is expected
     # that a new ExecNodeTask would be issued for resuming the execution.
-    if not (
-        scheduler.pause_requested.is_set()
-        and result.status.code == status_lib.Code.CANCELLED
-    ):
+    if not (scheduler.pause and
+            result.status.code == status_lib.Code.CANCELLED):
       try:
         post_execution_utils.publish_execution_results_for_task(
             mlmd_handle=self._mlmd_handle, task=task, result=result
@@ -346,40 +336,6 @@ class TaskManager:
             textwrap.shorten(error_msg, width=512),
         )
       execution.last_known_state = metadata_store_pb2.Execution.FAILED
-
-  def _prioritize_and_submit(self, final: bool = False) -> None:
-    """Prioritizes and submits task schedulers to the threadpool executor."""
-    # Prioritize task scheduler cancellations so that they are not blocked
-    # by active task schedulers which can take a long time to finish.
-    tmp_pending_schedulers = []
-    for scheduler in self._pending_schedulers:
-      if scheduler.cancel_requested.is_set():
-        self._ts_futures.add(
-            self._ts_executor.submit(
-                self._process_exec_node_task,
-                scheduler,
-                scheduler.task_scheduler.task,
-            )
-        )
-      else:
-        tmp_pending_schedulers.append(scheduler)
-    self._pending_schedulers = tmp_pending_schedulers
-
-    # Submit task schedulers to the executor as long as there are workers
-    # available, or enqueue them all if final=True.
-    tmp_pending_schedulers = []
-    for scheduler in self._pending_schedulers:
-      if final or len(self._ts_futures) < self._max_active_task_schedulers:
-        self._ts_futures.add(
-            self._ts_executor.submit(
-                self._process_exec_node_task,
-                scheduler,
-                scheduler.task_scheduler.task,
-            )
-        )
-      else:
-        tmp_pending_schedulers.append(scheduler)
-    self._pending_schedulers = tmp_pending_schedulers
 
   def _cleanup(self, final: bool = False) -> None:
     """Cleans up any remnant effects."""

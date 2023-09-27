@@ -580,7 +580,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
               id: 1
               name: "CheckpointModel"
             }
-            is_async: True
+            is_intermediate_artifact: True
           }
         }
       }

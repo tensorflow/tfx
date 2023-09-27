@@ -363,10 +363,6 @@ class Placeholder:
   def __radd__(self: _T, left: str) -> _T:
     return self._clone_and_use_operators([_ConcatOperator(left=left)])
 
-  def __iter__(self: _T) -> Iterator[_T]:
-    raise RuntimeError('Iterate over a placeholder is not supported. '
-                       'Did you miss the ending `,` in your tuple?')
-
   def __deepcopy__(self, memo):
     # This method is implemented to make sure Placeholder is deep copyable
     # by copy.deepcopy().
@@ -855,7 +851,6 @@ class ListPlaceholder(Placeholder):
       component_spec: Optional[Type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
-    result.operator.list_concat_op.SetInParent()
     expressions = result.operator.list_concat_op.expressions
     for input_placeholder in self._input_placeholders:
       expressions.append(input_placeholder.encode(component_spec))

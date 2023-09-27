@@ -281,20 +281,6 @@ class ComponentSpecTest(tf.test.TestCase):
     optional_specified = SpecWithOptionalOutput(x=channel.Channel(type=_Z))
     self.assertIn('x', optional_specified.outputs.keys())
 
-  def testIsIntermediateChannel(self):
-    class Spec(ComponentSpec):
-      PARAMETERS = {}
-      INPUTS = {}
-      OUTPUTS = {
-          'x': ChannelParameter(
-              type=_Z,
-              is_async=True,
-          )
-      }
-
-    spec = Spec(x=channel.Channel(type=_Z))
-    self.assertTrue(spec.OUTPUTS['x'].is_async)
-
   def testChannelParameterType(self):
     arg_name = 'foo'
 

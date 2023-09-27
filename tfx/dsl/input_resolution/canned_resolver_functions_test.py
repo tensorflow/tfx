@@ -38,7 +38,6 @@ class CannedResolverFunctionsTest(
     super().setUp()
     self.init_mlmd()
     self.enter_context(self.mlmd_handle)
-    self.mlmd_context = self.put_context('pipeline', 'pipeline')
 
   def assertResolvedAndMLMDArtifactEqual(
       self,
@@ -59,29 +58,27 @@ class CannedResolverFunctionsTest(
                        resolved_artifact.properties['version'])
 
   def _insert_artifacts_into_mlmd(
-      self,
-      spans: Sequence[int],
-      versions: Sequence[int],
-      artifact_type: str = 'DummyArtifact',
-  ) -> Sequence[metadata_store_pb2.Artifact]:
+      self, spans: Sequence[int],
+      versions: Sequence[int]) -> Sequence[metadata_store_pb2.Artifact]:
     """Inserts artifacts with the given spans and versions into MLMD."""
+    mlmd_context = self.put_context('pipeline', 'pipeline')
 
     mlmd_artifacts = []
     for span, version in zip(spans, versions):
       mlmd_artifacts.append(
           self.put_artifact(
-              artifact_type=artifact_type,
-              properties={'span': span, 'version': version},
-          )
-      )
+              artifact_type='DummyArtifact',
+              properties={
+                  'span': span,
+                  'version': version
+              }))
 
     for mlmd_artifact in mlmd_artifacts:
       self.put_execution(
           'ProducerNode',
           inputs={},
           outputs={'x': [mlmd_artifact]},
-          contexts=[self.mlmd_context],
-      )
+          contexts=[mlmd_context])
 
     return mlmd_artifacts
 
@@ -108,6 +105,7 @@ class CannedResolverFunctionsTest(
 
     # Populate the MLMD database with DummyArtifacts to test the input
     # resolution end to end.
+    mlmd_context = self.put_context('pipeline', 'pipeline')
     mlmd_artifact_1 = self.put_artifact('DummyArtifact')
     mlmd_artifact_2 = self.put_artifact('DummyArtifact')
     mlmd_artifact_3 = self.put_artifact('DummyArtifact')
@@ -117,8 +115,7 @@ class CannedResolverFunctionsTest(
           'ProducerNode',
           inputs={},
           outputs={'x': [mlmd_artifact]},
-          contexts=[self.mlmd_context],
-      )
+          contexts=[mlmd_context])
 
     resolved = inputs_utils.resolve_input_artifacts(
         pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
@@ -359,51 +356,6 @@ class CannedResolverFunctionsTest(
         pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
     )
     self.assertEmpty(resolved)  # Empty resolution implies Skip.
-
-  def testPairedInput(self):
-    xs = canned_resolver_functions.paired_spans(
-        {
-            'x': channel_utils.artifact_query(
-                test_utils.DummyArtifact,
-            ),
-            'examples': channel_utils.artifact_query(
-                test_utils.Examples,
-            ),
-        },
-        keep_all_versions=True,
-    )
-    self._insert_artifacts_into_mlmd([0, 1, 2], [0, 0, 0], 'DummyArtifact')
-    self._insert_artifacts_into_mlmd([0, 1], [0, 0], 'Examples')
-
-    with for_each.ForEach(xs) as each_x:
-      inputs = each_x
-    pipeline_node = test_utils.compile_inputs(inputs)
-
-    resolved = inputs_utils.resolve_input_artifacts(
-        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
-    )
-
-    self.assertLen(resolved, 2)
-    expected_spans = [0, 1]
-    expected_versions = [0, 0]
-
-    for i, artifacts in enumerate(resolved):
-      example = artifacts['examples'][0].mlmd_artifact
-      x = artifacts['x'][0].mlmd_artifact
-
-      self.assertEqual(example.properties['span'].int_value, expected_spans[i])
-      self.assertEqual(
-          example.properties['version'].int_value, expected_versions[i]
-      )
-      # Paired input is paired over span and version.
-      self.assertEqual(
-          example.properties['span'].int_value,
-          x.properties['span'].int_value,
-      )
-      self.assertEqual(
-          example.properties['version'].int_value,
-          x.properties['version'].int_value,
-      )
 
   def testResolverFnContext(self):
     channel = canned_resolver_functions.latest_created(

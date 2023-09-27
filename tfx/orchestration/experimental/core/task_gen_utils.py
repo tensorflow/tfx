@@ -33,7 +33,6 @@ from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
-from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -178,16 +177,14 @@ def resolve_exec_properties(
 
 
 def generate_resolved_info(
-    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
+    mlmd_handle_like: mlmd_cm.HandleLike,
     node: node_proto_view.NodeProtoView,
     skip_errors: Iterable[Type[exceptions.InputResolutionError]] = (),
 ) -> ResolvedInfo:
   """Returns a `ResolvedInfo` object for executing the node or `None` to skip.
 
   Args:
-    mlmd_connection_manager: An instance for handling multiple mlmd db
-      connections. We need to handle multiple MLMD connections so we can resolve
-      external pipeline artifacts.
+    mlmd_handle_like: An instance for handling multiple mlmd db connections.
     node: The pipeline node for which to generate.
     skip_errors: A list of errors to skip on the given error types.
 
@@ -200,7 +197,7 @@ def generate_resolved_info(
   """
   # Register node contexts.
   contexts = context_lib.prepare_contexts(
-      metadata_handle=mlmd_cm.get_handle(mlmd_connection_manager),
+      metadata_handle=mlmd_cm.get_handle(mlmd_handle_like),
       node_contexts=node.contexts,
   )
 
@@ -215,7 +212,7 @@ def generate_resolved_info(
   # Resolve inputs.
   try:
     resolved_input_artifacts = inputs_utils.resolve_input_artifacts(
-        metadata_handle=mlmd_connection_manager, pipeline_node=node
+        metadata_handle=mlmd_handle_like, pipeline_node=node
     )
   except exceptions.InputResolutionError as e:
     for skip_error in skip_errors:
@@ -486,47 +483,16 @@ def register_executions_from_existing_executions(
     return []
 
   exec_properties = resolve_exec_properties(node)
-  exec_type = common_utils.register_type_if_not_exist(
-      metadata_handle, node.node_info.type
-  )
   new_executions = []
   input_artifacts = []
   for existing_execution in existing_executions:
-    input_artifacts_for_existing_execution = execution_lib.get_input_artifacts(
-        metadata_handle, existing_execution.id
-    )
-    try:
-      dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
-          node_parameters=node.parameters,
-          input_artifacts=input_artifacts_for_existing_execution,
-      )
-    except exceptions.InputResolutionError as e:
-      logging.exception(
-          '[%s] Parameter resolution error: %s', node.node_info.id, e
-      )
-      raise
-
-    combined_exec_properties = {**exec_properties, **dynamic_exec_properties}
-    logging.info(
-        'exec properties for execution id: %s: %s',
-        existing_execution.id,
-        exec_properties,
-    )
-    logging.info(
-        'dynamic exec properties for execution id: %s: %s',
-        existing_execution.id,
-        dynamic_exec_properties,
-    )
-    logging.info(
-        'combined exec properties for execution id: %s: %s',
-        existing_execution.id,
-        combined_exec_properties,
-    )
+    # TODO(b/224800273): We also need to resolve and set dynamic execution
+    # properties.
     new_execution = execution_lib.prepare_execution(
         metadata_handle=metadata_handle,
-        execution_type=exec_type,
+        execution_type=node.node_info.type,
         state=metadata_store_pb2.Execution.NEW,
-        exec_properties=combined_exec_properties,
+        exec_properties=exec_properties,
         execution_name=str(uuid.uuid4()),
     )
     # Only copy necessary custom_properties from the failed/canceled execution.
@@ -536,7 +502,11 @@ def register_executions_from_existing_executions(
     )
     # LINT.ThenChange(:execution_custom_properties)
     new_executions.append(new_execution)
-    input_artifacts.append(input_artifacts_for_existing_execution)
+    input_artifacts.append(
+        execution_lib.get_input_artifacts(
+            metadata_handle, existing_execution.id
+        )
+    )
 
   contexts = metadata_handle.store.get_contexts_by_execution(
       existing_executions[0].id
@@ -574,14 +544,11 @@ def register_executions(
       All registered executions have a state of NEW.
   """
   executions = []
-  registered_execution_type = common_utils.register_type_if_not_exist(
-      metadata_handle, execution_type
-  )
   for index, input_and_param in enumerate(input_and_params):
     # Prepare executions.
     execution = execution_lib.prepare_execution(
         metadata_handle,
-        registered_execution_type,
+        execution_type,
         metadata_store_pb2.Execution.NEW,
         input_and_param.exec_properties,
         execution_name=str(uuid.uuid4()),
@@ -589,7 +556,7 @@ def register_executions(
     # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     executions.append(execution)
-    # LINT.ThenChange(:new_execution_custom_properties)
+  # LINT.ThenChange(:new_execution_custom_properties)
 
   if len(executions) == 1:
     return [

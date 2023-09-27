@@ -294,10 +294,6 @@ def output_spec_from_channel(channel: types.BaseChannel,
     result.artifact_spec.external_artifact_uris.extend(
         output_channel._predefined_artifact_uris)
 
-  # Compile OutputSpec.artifact_spec.is_async
-  if output_channel.is_async:
-    result.artifact_spec.is_async = True
-
   return result
 
 
