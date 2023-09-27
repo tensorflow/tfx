@@ -29,10 +29,10 @@ from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import test_case_utils
-from tensorflow_metadata.proto.v0 import anomalies_pb2
-from tensorflow_metadata.proto.v0 import statistics_pb2
 
 from google.protobuf import text_format
+from tensorflow_metadata.proto.v0 import anomalies_pb2
+from tensorflow_metadata.proto.v0 import statistics_pb2
 
 FLAGS = flags.FLAGS
 
@@ -118,14 +118,17 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                                          exec_properties)
 
       for split_pair_name in expected_split_pair_names:
-        output_path = os.path.join(validation_output.uri,
-                                   'SplitPair-' + split_pair_name,
-                                   'SchemaDiff.pb')
+        output_path = os.path.join(
+            validation_output.uri,
+            'SplitPair-' + split_pair_name,
+            'SchemaDiff.pb',
+        )
         self.assertTrue(fileio.exists(output_path))
 
       # Confirm that no unexpected result files exist.
       all_outputs = fileio.glob(
-          os.path.join(validation_output.uri, 'SplitPair-*'))
+          os.path.join(validation_output.uri, 'SplitPair-*')
+      )
       for output in all_outputs:
         split_pair = output.split('SplitPair-')[1]
         self.assertIn(split_pair, expected_split_pair_names)
@@ -379,11 +382,12 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train_eval']),
-        validation_output.split_names)
+        validation_output.split_names,
+    )
 
-    distribution_anomalies_path = os.path.join(validation_output.uri,
-                                               'SplitPair-train_eval',
-                                               'SchemaDiff.pb')
+    distribution_anomalies_path = os.path.join(
+        validation_output.uri, 'SplitPair-train_eval', 'SchemaDiff.pb'
+    )
     self.assertTrue(fileio.exists(distribution_anomalies_path))
     distribution_anomalies_bytes = io_utils.read_bytes_file(
         distribution_anomalies_path)
@@ -565,11 +569,12 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train_eval']),
-        validation_output.split_names)
+        validation_output.split_names,
+    )
 
-    distribution_anomalies_path = os.path.join(validation_output.uri,
-                                               'SplitPair-train_eval',
-                                               'SchemaDiff.pb')
+    distribution_anomalies_path = os.path.join(
+        validation_output.uri, 'SplitPair-train_eval', 'SchemaDiff.pb'
+    )
     self.assertTrue(fileio.exists(distribution_anomalies_path))
     distribution_anomalies_bytes = io_utils.read_bytes_file(
         distribution_anomalies_path)
@@ -896,19 +901,90 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train_eval']),
-        validation_output.split_names)
+        validation_output.split_names,
+    )
 
     expected_anomalies = text_format.Parse(expected_anomalies,
                                            anomalies_pb2.Anomalies())
-    distribution_anomalies_path = os.path.join(validation_output.uri,
-                                               'SplitPair-train_eval',
-                                               'SchemaDiff.pb')
+    distribution_anomalies_path = os.path.join(
+        validation_output.uri, 'SplitPair-train_eval', 'SchemaDiff.pb'
+    )
     self.assertTrue(fileio.exists(distribution_anomalies_path))
     distribution_anomalies_bytes = io_utils.read_bytes_file(
         distribution_anomalies_path)
     distribution_anomalies = anomalies_pb2.Anomalies()
     distribution_anomalies.ParseFromString(distribution_anomalies_bytes)
     self.assertEqualExceptBaseline(expected_anomalies, distribution_anomalies)
+
+  def testAddOutput(self):
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata'
+    )
+
+    stats_artifact = standard_artifacts.ExampleStatistics()
+    stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
+    stats_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval']
+    )
+
+    validation_config = text_format.Parse(
+        """
+      default_slice_config: {
+        feature: {
+            path: {
+                step: 'parent_feature'
+                step: 'value_feature'
+            }
+            distribution_comparator: {
+              jensen_shannon_divergence: {
+                  threshold: 0.0
+              }
+            }
+        }
+      }""",
+        distribution_validator_pb2.DistributionValidatorConfig(),
+    )
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName,
+    )
+
+    anomalies_output = standard_artifacts.ExampleAnomalies()
+    anomalies_output.uri = os.path.join(output_data_dir, 'output')
+    validation_metrics_output = standard_artifacts.ExampleValidationMetrics()
+    validation_metrics_output.uri = os.path.join(output_data_dir, 'output')
+
+    input_dict = {
+        standard_component_specs.STATISTICS_KEY: [stats_artifact],
+        standard_component_specs.BASELINE_STATISTICS_KEY: [stats_artifact],
+    }
+
+    # The analyzed splits are set for this test to get a single result proto.
+    exec_properties = {
+        # List needs to be serialized before being passed into Do function.
+        standard_component_specs.INCLUDE_SPLIT_PAIRS_KEY: json_utils.dumps(
+            [('train', 'eval')]
+        ),
+        standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY: (
+            validation_config
+        ),
+    }
+
+    output_dict = {
+        standard_component_specs.ANOMALIES_KEY: [anomalies_output],
+        standard_component_specs.VALIDATION_METRICS_KEY: [
+            validation_metrics_output
+        ],
+    }
+
+    distribution_validator_executor = executor.Executor()
+    distribution_validator_executor.Do(input_dict, output_dict, exec_properties)
+
+    distribution_anomalies_path = os.path.join(
+        anomalies_output.uri, 'SplitPair-train_eval', 'SchemaDiff.pb'
+    )
+    self.assertTrue(fileio.exists(distribution_anomalies_path))
 
 
 if __name__ == '__main__':
