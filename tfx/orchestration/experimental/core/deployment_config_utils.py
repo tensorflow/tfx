@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Functions to unpack IntermediateDeploymentConfig and its children."""
+from typing import Optional
 
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import proto_utils
@@ -22,7 +23,7 @@ from google.protobuf import message
 def get_node_platform_config(
     deployment_config: pipeline_pb2.IntermediateDeploymentConfig,
     node_id: str,
-) -> message.Message | None:
+) -> Optional[message.Message]:
   """Returns the platform config for the given node if it exists."""
   platform_config = deployment_config.node_level_platform_configs.get(node_id)
   if platform_config is None:
@@ -33,7 +34,7 @@ def get_node_platform_config(
 def get_node_executor_spec(
     deployment_config: pipeline_pb2.IntermediateDeploymentConfig,
     node_id: str,
-) -> message.Message | None:
+) -> Optional[message.Message]:
   """Returns the executor spec for the given node if it exists."""
   executor_spec = deployment_config.executor_specs.get(node_id)
   if executor_spec is None:
