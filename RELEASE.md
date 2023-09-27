@@ -17,7 +17,9 @@
 * Fixed a synchronization bug in google_cloud_ai_platform tuner.
 
 ## Dependency Updates
-
+| Package Name | Version Constraints | Previously (in `v1.14.0`) | Comments |
+| -- | -- | -- | -- |
+| `keras-tuner` | `>=1.0.4,<2,!=1.4.0,!=1.4.1` | `>=1.0.4,<2` | |
 ## Documentation Updates
 
 # Version 1.14.0
