@@ -77,6 +77,10 @@ class Model(DummyArtifact):
   TYPE_NAME = ops_utils.MODEL_TYPE_NAME
 
 
+class ModelRun(DummyArtifact):
+  TYPE_NAME = ops_utils.MODEL_RUN_TYPE_NAME
+
+
 class ModelBlessing(DummyArtifact):
   TYPE_NAME = ops_utils.MODEL_BLESSING_TYPE_NAME
 

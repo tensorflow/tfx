@@ -42,6 +42,7 @@ ROOT_ARTIFACT_KEY = 'root_artifact'
 EXAMPLES_TYPE_NAME = 'Examples'
 TRANSFORM_GRAPH_TYPE_NAME = 'TransformGraph'
 MODEL_TYPE_NAME = 'Model'
+MODEL_RUN_TYPE_NAME = 'ModelRunPath'
 MODEL_BLESSING_TYPE_NAME = 'ModelBlessing'
 MODEL_INFRA_BLESSSING_TYPE_NAME = 'ModelInfraBlessingPath'
 MODEL_PUSH_TYPE_NAME = 'ModelPushPath'
@@ -209,3 +210,17 @@ def filter_artifacts_by_span(
       result.append(max(artifacts_by_span[span], key=version_time_and_id))
 
   return result
+
+
+def sort_artifact_dict(
+    artifacts_by_key: Dict[str, List[types.Artifact]]
+) -> Dict[str, List[types.Artifact]]:
+  """Sorts the artifact dict values by (creation time, id)."""
+  for key, artifacts in artifacts_by_key.items():
+    artifacts_by_key[key] = sorted(
+        artifacts,
+        # If the user wants to sort Examples artifacts by span/version, they
+        # can call the all_spans(...) canned resolver functions.
+        key=lambda a: (a.mlmd_artifact.create_time_since_epoch, a.id),
+    )
+  return artifacts_by_key

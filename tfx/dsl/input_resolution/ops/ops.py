@@ -30,6 +30,7 @@ from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import latest_version_op
 from tfx.dsl.input_resolution.ops import paired_spans_op
 from tfx.dsl.input_resolution.ops import shuffle_op
+from tfx.dsl.input_resolution.ops import siblings_op
 from tfx.dsl.input_resolution.ops import skip_if_empty_op
 from tfx.dsl.input_resolution.ops import skip_if_less_than_n_spans_op
 from tfx.dsl.input_resolution.ops import sliding_window_op
@@ -77,6 +78,7 @@ LatestSpan = latest_span_op.LatestSpan
 LatestVersion = latest_version_op.LatestVersion
 PairedSpans = paired_spans_op.PairedSpans
 Shuffle = shuffle_op.Shuffle
+Siblings = siblings_op.Siblings
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
 SkipIfLessThanNSpans = skip_if_less_than_n_spans_op.SkipIfLessThanNSpans
 SlidingWindow = sliding_window_op.SlidingWindow
@@ -100,6 +102,7 @@ _register_op(LatestSpan)
 _register_op(LatestVersion)
 _register_op(PairedSpans)
 _register_op(Shuffle)
+_register_op(Siblings)
 _register_op(SkipIfEmpty)
 _register_op(SkipIfLessThanNSpans)
 _register_op(SlidingWindow)

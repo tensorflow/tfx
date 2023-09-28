@@ -128,12 +128,4 @@ class GraphTraversal(
         )
         result[artifact.type].append(deserialized_artifact)
 
-    for key, artifacts in result.items():
-      result[key] = sorted(
-          artifacts,
-          # If the user wants to sort Examples artifacts by span/version, they
-          # can call the all_spans(...) canned resolver functions.
-          key=lambda a: (a.mlmd_artifact.create_time_since_epoch, a.id),
-      )
-
-    return result
+    return ops_utils.sort_artifact_dict(result)
