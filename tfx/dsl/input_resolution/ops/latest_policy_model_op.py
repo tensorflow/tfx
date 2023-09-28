@@ -350,7 +350,23 @@ class LatestPolicyModel(
     input_child_artifact_ids_filter_query = q.to_sql_string(
         list(input_child_artifact_ids)
     )
-    filter_query = f'type IN {downstream_artifact_type_names_filter_query}'
+
+    # We consider MARKED_FOR_DELETION and DELETED states, because a garbage
+    # collected ModelBlessing/ModelInfraBlessing/ModelPush doesn't mean that the
+    # Model has never been blessed/pushed in the past. We exclude ABANDONED,
+    # because that state is used for output artifacts from failed or cancelled
+    # exceutions.
+    valid_states = [
+        metadata_store_pb2.Artifact.State.LIVE,
+        metadata_store_pb2.Artifact.State.MARKED_FOR_DELETION,
+        metadata_store_pb2.Artifact.State.DELETED,
+    ]
+    valid_states_filter_query = q.to_sql_string(valid_states)
+
+    filter_query = (
+        f'type IN {downstream_artifact_type_names_filter_query} AND state IN'
+        f' {valid_states_filter_query}'
+    )
 
     if input_child_artifact_ids and specifies_child_artifacts:
       filter_query = (

@@ -319,10 +319,12 @@ class ResolverTestCase(
   def push_model(
       self,
       model: types.Artifact,
+      model_push: Optional[types.Artifact] = None,
       contexts: Sequence[metadata_store_pb2.Context] = (),
   ):
     """Add an Execution to MLMD where the Pusher pushes the model."""
-    model_push = self.prepare_tfx_artifact(ModelPush)
+    if model_push is None:
+      model_push = self.prepare_tfx_artifact(ModelPush)
     self.put_execution(
         'ServomaticPusher',
         inputs={'model_export': self.unwrap_tfx_artifacts([model])},
