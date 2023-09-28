@@ -17,8 +17,11 @@ from typing import Sequence
 
 from absl import logging
 from tfx import types
+from tfx.dsl.compiler import compiler_utils
+from tfx.dsl.compiler import constants
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
+from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.types import artifact_utils
 
@@ -38,11 +41,15 @@ class GraphTraversal(
 
   # The artifact type names to search for, e.g. "ModelBlessing",
   # "TransformGraph". Should match Tflex standard artifact type names or user
-  # defined custom artifact type names.
+  # defined custom artifact type names. Can not be empty.
   artifact_type_names = resolver_op.Property(type=Sequence[str])
 
-  # TODO(b/299985043): Add a node_ids field that only returns artifacts produced
-  # by components with a specific node ID.
+  # The producer component node IDs to match by, e.g.
+  # "example-gen.import-example". Optional.
+  node_ids = resolver_op.Property(type=Sequence[str], default=[])
+
+  # The Event output key(s) to match by. Optional.
+  output_keys = resolver_op.Property(type=Sequence[str], default=[])
 
   def apply(self, input_list: Sequence[types.Artifact]):
     """Returns a dict with the upstream (or downstream) and root artifacts.
@@ -84,7 +91,34 @@ class GraphTraversal(
     root_artifact = input_list[0]
 
     # Query MLMD to get the upstream (or downstream) artifacts.
-    filter_query = f'type IN {q.to_sql_string(self.artifact_type_names)}'
+    filter_query = ''
+    if self.artifact_type_names:
+      query = f'type IN {q.to_sql_string(self.artifact_type_names)}'
+      filter_query = query
+
+    if self.node_ids:
+      for context in self.context.store.get_contexts_by_artifact(
+          root_artifact.id
+      ):
+        if context.type == constants.PIPELINE_CONTEXT_TYPE_NAME:
+          pipeline_name = context.name
+          break
+      else:
+        raise ValueError('No pipeline context was found.')
+
+      # We match against the node Context's name, which has the format
+      # <pipeline-name>.<node-id>
+      node_context_names = [
+          compiler_utils.node_context_name(pipeline_name, ni)
+          for ni in self.node_ids
+      ]
+      query = (
+          f'contexts_a.name IN {q.to_sql_string(node_context_names)} '
+          'AND contexts_a.type = '
+          f'{q.to_sql_string(constants.NODE_CONTEXT_TYPE_NAME)}'
+      )
+      filter_query += ' AND ' + query
+
     mlmd_resolver = metadata_resolver.MetadataResolver(self.context.store)
     mlmd_resolver_fn = (
         mlmd_resolver.get_upstream_artifacts_by_artifact_ids
@@ -103,9 +137,11 @@ class GraphTraversal(
     if not related_artifacts.get(root_artifact.id):
       logging.info(
           'No neighboring artifacts were found for root artifact %s and '
-          'artifact_type_names %s.',
+          'artifact_type_names %s node_ids %s output_keys %s.',
           root_artifact,
           self.artifact_type_names,
+          self.node_ids,
+          self.output_keys,
       )
       return result
     related_artifacts = related_artifacts[root_artifact.id]
@@ -121,11 +157,25 @@ class GraphTraversal(
           break
 
     # Build the result dictionary, with a separate key for each ArtifactType.
+    artifact_ids = set(a.id for a in related_artifacts)
+    events = self.context.store.get_events_by_artifact_ids(artifact_ids)
+    events_by_artifact_id = {
+        e.artifact_id: e for e in events if event_lib.is_valid_output_event(e)
+    }
     for artifact in related_artifacts:
-      if artifact.type in self.artifact_type_names:
-        deserialized_artifact = artifact_utils.deserialize_artifact(
-            artifact_type_by_artifact_id[artifact.id], artifact
-        )
-        result[artifact.type].append(deserialized_artifact)
+      # MLMD does not support filter querying by event.paths, so we manually
+      # check for matching output key.
+      # TODO(b/302394845): Once MLMD supports filtering by the last event, then
+      # add this check inside the filter_query or event_filter.
+      if self.output_keys and not any(
+          event_lib.contains_key(events_by_artifact_id[artifact.id], k)
+          for k in self.output_keys
+      ):
+        continue
+
+      deserialized_artifact = artifact_utils.deserialize_artifact(
+          artifact_type_by_artifact_id[artifact.id], artifact
+      )
+      result[artifact.type].append(deserialized_artifact)
 
     return ops_utils.sort_artifact_dict(result)

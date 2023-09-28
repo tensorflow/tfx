@@ -215,6 +215,17 @@ class ResolverTestCase(
     """Return the underlying MLMD Artifacta of a list of TFleX Artifacts."""
     return [a.mlmd_artifact for a in artifacts]
 
+  def build_node_context(
+      self,
+      pipeline_name: str,
+      node_id: str,
+  ):
+    """Returns a "node" Context with name "pipeline_name.node_id."""
+    context = self.put_context(
+        context_type='node', context_name=f'{pipeline_name}.{node_id}'
+    )
+    return context
+
   def create_examples(
       self,
       spans_and_versions: Sequence[Tuple[int, int]],
