@@ -686,35 +686,31 @@ def get_unprocessed_inputs(
       k for k, t in input_triggers.items() if k.startswith('_') or t.no_trigger
   }
 
-  artifact_create_times = []
+  max_timestamp_in_each_input: List[int] = []
   for input_and_param in resolved_info.input_and_params:
+    max_timestamp_in_one_input = 0
     for key, artifacts in input_and_param.input_artifacts.items():
-      if key in ignore_keys:
+      if key in ignore_keys or not artifacts:
         continue
-      artifact_create_times.extend(
-          a.mlmd_artifact.create_time_since_epoch for a in artifacts
+      max_timestamp_in_one_input = max(
+          max_timestamp_in_one_input,
+          max(a.mlmd_artifact.create_time_since_epoch for a in artifacts),
       )
+    max_timestamp_in_each_input.append(max_timestamp_in_one_input)
 
-  if artifact_create_times:
-    # A resolved input whose artifacts with max timestamp T is not an input
-    # to a execution having creation timestamp < T. So, we only need to
-    # get executions with timestamp larger than the minimum timestamp of all
-    # the artifacts in resolved inputs.
-    executions = get_executions(
-        metadata_handle,
-        node,
-        want_successful=True,
-        additional_filters=[
-            f'create_time_since_epoch >= {min(artifact_create_times)}'
-        ],
-    )
-  else:
-    # In cases that resolved_info don't have any artifacts, get all executions.
-    executions = get_executions(
-        metadata_handle,
-        node,
-        want_successful=True,
-    )
+  # A resolved input whose artifacts with max timestamp T is not an input
+  # to a execution having creation timestamp < T. So, we only need to
+  # get executions with timestamp larger than the minimum timestamp of all
+  # the inputs in resolved_info.
+  executions = get_executions(
+      metadata_handle,
+      node,
+      want_successful=True,
+      additional_filters=[
+          'create_time_since_epoch >='
+          f' {min(max_timestamp_in_each_input, default=0)}'
+      ],
+  )
   logging.info('Fetched %d successful executions.', len(executions))
 
   # Gets the processed inputs.
