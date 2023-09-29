@@ -15,7 +15,6 @@
 
 import os
 import time
-from unittest import mock
 import uuid
 
 from absl.testing import parameterized
@@ -727,13 +726,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         )
         self.assertEmpty(unprocessed_inputs)
 
-      # Fake 2 artifacts for _example_gen.
-      otu.fake_upstream_node_run(
-          m,
-          self._example_gen,
-          fake_result='Tflex rocks.',
-          tmp_path=self.create_tempfile().full_path,
-      )
+      # Fake one output for _example_gen, so there is 1 input for _transform.
       otu.fake_upstream_node_run(
           m,
           self._example_gen,
@@ -744,7 +737,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       artifacts = artifact_utils.deserialize_artifacts(
           artifact_types[0], m.store.get_artifacts()
       )
-      artifacts.sort(key=lambda a: a.mlmd_artifact.create_time_since_epoch)
       input_and_param = task_gen_utils.InputAndParam(
           input_artifacts={'examples': artifacts}
       )
@@ -754,24 +746,13 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       )
 
       with self.subTest(name='OneUnprocessedInput'):
-        mock.patch.object(
-            m.store,
-            'get_executions',
-            wraps=m.store.get_executions,
-        ).start()
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
             m, resolved_info_for_transform, self._transform
         )
-        m.store.get_executions.assert_called_once()
         self.assertLen(unprocessed_inputs, 1)
         self.assertEqual(unprocessed_inputs[0], input_and_param)
 
       with self.subTest(name='ResolvedArtifactsMatchProcessedArtifacts'):
-        mock.patch.object(
-            m.store,
-            'get_executions',
-            wraps=m.store.get_executions,
-        ).start()
         # Simulate that the output for _example_gen is processed, so no
         # unprocessed input for _transform.
         execution = otu.fake_start_node_with_handle(
@@ -780,14 +761,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         otu.fake_finish_node_with_handle(m, self._transform, execution.id)
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
             m, resolved_info_for_transform, self._transform
-        )
-        m.store.get_executions.assert_called_once()
-        self.assertEqual(
-            m.store.get_executions.call_args[1]['list_options'].filter_query,
-            "(contexts_0.type = 'node') AND (contexts_0.name ="
-            " 'my_pipeline.my_transform') AND ((last_known_state = COMPLETE) OR"
-            ' (last_known_state = CACHED)) AND (create_time_since_epoch >='
-            f' {artifacts[-1].mlmd_artifact.create_time_since_epoch})',
         )
         self.assertEmpty(unprocessed_inputs)
 

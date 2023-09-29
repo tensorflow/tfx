@@ -237,6 +237,11 @@ def build_channel_to_key_fn(implicit_keys_map):
 def validate_exec_property_placeholder(key: str, placeholder: ph.Placeholder):
   """Fails if the given placeholder is not allowed for an exec_property."""
   for p in placeholder.traverse():
+    if isinstance(p, ph.ArtifactPlaceholder) and p.is_input:
+      raise ValueError(
+          f"Exec property {key!r} is not allowed to depend on input placeholder"
+          f" {p.key!r}."
+      )
     if isinstance(p, ph.ArtifactPlaceholder) and p.is_output:
       raise ValueError(
           f"Exec property {key!r} depends on output placeholder {p.key!r} but "
