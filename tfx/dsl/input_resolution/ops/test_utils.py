@@ -116,6 +116,9 @@ class FakeSpec(component_spec.ComponentSpec):
       'model_push_path': component_spec.ChannelParameter(
           type=tfx_artifact.Artifact, optional=True
       ),
+      'model_run': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
       ops_utils.MODEL_KEY: component_spec.ChannelParameter(
           type=tfx_artifact.Artifact, optional=True
       ),

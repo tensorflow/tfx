@@ -131,9 +131,15 @@ class GraphTraversal(
         filter_query=filter_query,
     )
 
+    # Build the result dict to return. We include the root_artifact to help with
+    # input synchronization in ASYNC mode. Note, Python dicts preserve key
+    # insertion order, so when a user gets the unrolled dict values, they will
+    # first get the root artifact, followed by ancestor/descendant artifacts in
+    # the same order as self.artifact_type_names.
     result = {ops_utils.ROOT_ARTIFACT_KEY: [root_artifact]}
     for artifact_type in self.artifact_type_names:
       result[artifact_type] = []
+
     if not related_artifacts.get(root_artifact.id):
       logging.info(
           'No neighboring artifacts were found for root artifact %s and '

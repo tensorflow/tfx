@@ -93,8 +93,11 @@ class Siblings(
             output_keys.add(key)
       self.output_keys = list(output_keys)
 
-    # Build the empty result dict to return. We include the root_artifact to
-    # help with input synchronization in ASYNC mode.
+    # Build the result dict to return. We include the root_artifact to help with
+    # input synchronization in ASYNC mode. Note, Python dicts preserve key
+    # insertion order, so when a user gets the unrolled dict values, they will
+    # first get the root artifact, followed by sibling artifacts in the same
+    # order as self.output_keys.
     result = {ops_utils.ROOT_ARTIFACT_KEY: [root_artifact]}
     for output_key in self.output_keys:
       result[output_key] = []
