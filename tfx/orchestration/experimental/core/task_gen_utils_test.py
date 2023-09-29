@@ -22,6 +22,7 @@ import tensorflow as tf
 from tfx import types
 from tfx import version
 from tfx.orchestration import data_types_utils
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
@@ -41,6 +42,8 @@ from tfx.utils import test_case_utils as tu
 from ml_metadata.proto import metadata_store_pb2
 
 State = metadata_store_pb2.Execution.State
+
+_PIPELINE_RUN_ID = 'test_run_0'
 
 
 class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
@@ -63,12 +66,10 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     # Sets up the pipeline.
     pipeline = test_async_pipeline.create_pipeline()
     self._pipeline = pipeline
-    self._pipeline_info = pipeline.pipeline_info
-    self._pipeline_runtime_spec = pipeline.runtime_spec
-    self._pipeline_runtime_spec.pipeline_root.field_value.string_value = (
-        pipeline_root)
-    self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
-        'test_run_0')
+    pipeline.runtime_spec.pipeline_root.field_value.string_value = pipeline_root
+    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = (
+        _PIPELINE_RUN_ID
+    )
 
     # Extracts components.
     self._example_gen = pipeline.nodes[0].pipeline_node
@@ -371,7 +372,9 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
   def test_generate_resolved_info(self):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
     resolved_info = task_gen_utils.generate_resolved_info(
-        self._mlmd_connection_manager, self._transform
+        self._mlmd_connection_manager,
+        node_proto_view.get_view(self._transform),
+        self._pipeline,
     )
     self.assertCountEqual(
         ['my_pipeline', 'my_pipeline.my_transform'],
@@ -413,23 +416,23 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     )
 
   def test_generate_resolved_info_with_dynamic_exec_prop(self):
-    dynamic_exec_properties_pipeline = (
-        test_dynamic_exec_properties_pipeline.create_pipeline())
-    self._dynamic_exec_properties_pipeline = dynamic_exec_properties_pipeline
-    self._pipeline_runtime_spec = dynamic_exec_properties_pipeline.runtime_spec
-    self._pipeline_runtime_spec.pipeline_root.field_value.string_value = (
-        self._pipeline_root)
-    self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
-        'test_run_dynamic_prop')
+    self._pipeline = test_dynamic_exec_properties_pipeline.create_pipeline()
+    pipeline_runtime_spec = self._pipeline.runtime_spec
+    pipeline_runtime_spec.pipeline_root.field_value.string_value = (
+        self._pipeline_root
+    )
+    pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
+        'test_run_dynamic_prop'
+    )
 
-    self._upstream_node = (
-        dynamic_exec_properties_pipeline.nodes[0].pipeline_node)
-    self._dynamic_exec_properties_node = (
-        dynamic_exec_properties_pipeline.nodes[1].pipeline_node)
+    [upstream_node, dynamic_exec_properties_node] = [
+        n.pipeline_node for n in self._pipeline.nodes
+    ]
 
-    self._set_pipeline_context(self._dynamic_exec_properties_pipeline,
-                               'pipeline_run', 'test_run_dynamic_prop')
-    for input_spec in self._dynamic_exec_properties_node.inputs.inputs.values():
+    self._set_pipeline_context(
+        self._pipeline, 'pipeline_run', 'test_run_dynamic_prop'
+    )
+    for input_spec in dynamic_exec_properties_node.inputs.inputs.values():
       for channel in input_spec.channels:
         for context_query in channel.context_queries:
           if context_query.type.name == 'pipeline_run':
@@ -439,11 +442,14 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
     otu.fake_upstream_node_run(
         self._mlmd_connection,
-        self._upstream_node,
-        self.create_tempfile().full_path,
+        upstream_node,
+        fake_result='Tflex rocks.',
+        tmp_path=self.create_tempfile().full_path,
     )
     resolved_info = task_gen_utils.generate_resolved_info(
-        self._mlmd_connection_manager, self._dynamic_exec_properties_node
+        self._mlmd_connection_manager,
+        node_proto_view.get_view(dynamic_exec_properties_node),
+        self._pipeline,
     )
 
     self.assertCountEqual(
@@ -456,13 +462,13 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     )
     self.assertLen(
         resolved_info.input_and_params[0].input_artifacts[
-            '_UpstreamComponent.num'
+            '_UpstreamComponent.result'
         ],
         1,
     )
     self.assertEqual(
-        otu.OUTPUT_NUM,
-        resolved_info.input_and_params[0].exec_properties['input_num'],
+        'Tflex rocks. Especially the run with ID: test_run_dynamic_prop',
+        resolved_info.input_and_params[0].exec_properties['input_str'],
     )
 
   @parameterized.named_parameters(
@@ -651,7 +657,10 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       # Register a retry execution from a failed execution.
       [retry_execution] = (
           task_gen_utils.register_executions_from_existing_executions(
-              m, self._example_gen, [failed_execution]
+              m,
+              self._pipeline,
+              node_proto_view.get_view(self._example_gen),
+              [failed_execution],
           )
       )
 
@@ -719,7 +728,10 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
       # Fake one output for _example_gen, so there is 1 input for _transform.
       otu.fake_upstream_node_run(
-          m, self._example_gen, self.create_tempfile().full_path
+          m,
+          self._example_gen,
+          fake_result='Tflex rocks.',
+          tmp_path=self.create_tempfile().full_path,
       )
       artifact_types = m.store.get_artifact_types()
       artifacts = artifact_utils.deserialize_artifacts(
@@ -764,7 +776,9 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     # ExampleGen generates the first output.
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
     resolved_info = task_gen_utils.generate_resolved_info(
-        self._mlmd_connection_manager, self._transform
+        self._mlmd_connection_manager,
+        node_proto_view.get_view(self._transform),
+        self._pipeline,
     )
     unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
         self._mlmd_connection,
@@ -939,7 +953,10 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     with self._mlmd_connection as m:
       # Fake one output for _example_gen, so there is 1 input for _transform.
       otu.fake_upstream_node_run(
-          m, self._example_gen, self.create_tempfile().full_path
+          m,
+          self._example_gen,
+          fake_result='Tflex rocks.',
+          tmp_path=self.create_tempfile().full_path,
       )
       artifact_types = m.store.get_artifact_types()
       artifacts = artifact_utils.deserialize_artifacts(

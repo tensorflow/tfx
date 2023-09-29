@@ -184,6 +184,23 @@ nodes {
           }
         }
       }
+      parameters {
+        key: "input_str"
+        value {
+          placeholder {
+            operator {
+              proto_op {
+                expression {
+                  placeholder {
+                    type: EXEC_INVOCATION
+                  }
+                }
+                proto_field_path: ".pipeline_run_id"
+              }
+            }
+          }
+        }
+      }
     }
     upstream_nodes: "UpstreamComponent"
     execution_options {

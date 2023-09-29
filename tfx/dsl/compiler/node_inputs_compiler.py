@@ -347,26 +347,26 @@ def _compile_inputs_for_dynamic_properties(
     result: A `NodeInputs` proto to which the compiled result would be written.
   """
   for exec_property in tfx_node.exec_properties.values():
-    if not isinstance(exec_property, placeholder.ChannelWrappedPlaceholder):
+    if not isinstance(exec_property, placeholder.Placeholder):
       continue
-    channel_type = exec_property.channel.type
-    if not typing_utils.is_compatible(
-        channel_type, Type[value_artifact.ValueArtifact]
-    ):
-      raise ValueError(
-          'Dynamic execution property only supports ValueArtifact typed '
-          f'channel. Got {channel_type.TYPE_NAME}.'
+    for channel in channel_utils.get_dependent_channels(exec_property):
+      channel_type = channel.type  # is_compatible() needs this variable.
+      if not typing_utils.is_compatible(
+          channel_type, Type[value_artifact.ValueArtifact]
+      ):
+        raise ValueError(
+            'Dynamic execution property only supports ValueArtifact typed '
+            f'channel. Got {channel_type.TYPE_NAME}.'
+        )
+      _compile_input_spec(
+          pipeline_ctx=context,
+          tfx_node=tfx_node,
+          input_key=context.get_node_context(tfx_node).get_input_key(channel),
+          channel=channel,
+          hidden=False,
+          min_count=1,
+          result=result,
       )
-    _compile_input_spec(
-        pipeline_ctx=context,
-        tfx_node=tfx_node,
-        input_key=(
-            context.get_node_context(tfx_node)
-            .get_input_key(exec_property.channel)),
-        channel=exec_property.channel,
-        hidden=False,
-        min_count=1,
-        result=result)
 
 
 def _validate_min_count(

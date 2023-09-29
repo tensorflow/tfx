@@ -335,25 +335,7 @@ class ExecutionParameter:
   def type_check(self, arg_name: str, value: Any):
     """Perform type check to the parameter passed in."""
     if isinstance(value, placeholder.Placeholder):
-      if isinstance(value, placeholder.ChannelWrappedPlaceholder):
-        return
-      placeholders_involved = list(value.traverse())
-      if len(placeholders_involved) != 1 or not isinstance(
-          placeholders_involved[0], placeholder.RuntimeInfoPlaceholder
-      ):
-        placeholders_involved_str = [
-            x.__class__.__name__ for x in placeholders_involved
-        ]
-        raise TypeError(
-            'Only simple RuntimeInfoPlaceholders are supported, but while '
-            f'checking parameter {arg_name!r}, the following placeholders were '
-            f'involved: {placeholders_involved_str}'
-        )
-      if not issubclass(self.type, str):
-        raise TypeError(
-            'Cannot use Placeholders except for str parameter, but parameter '
-            f'{arg_name!r} was of type {self.type}.'
-        )
+      # TODO(b/266800844): Insert a type plausibility check.
       return
 
     is_runtime_param = _is_runtime_param(value)

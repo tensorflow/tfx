@@ -348,7 +348,7 @@ class _Generator:
       ):
         [retry_execution] = (
             task_gen_utils.register_executions_from_existing_executions(
-                self._mlmd_handle, node, failed_executions
+                self._mlmd_handle, self._pipeline, node, failed_executions
             )
         )
         result.extend(
@@ -373,7 +373,7 @@ class _Generator:
     if canceled_executions and node_state.state == pstate.NodeState.STARTING:
       new_executions = (
           task_gen_utils.register_executions_from_existing_executions(
-              self._mlmd_handle, node, canceled_executions
+              self._mlmd_handle, self._pipeline, node, canceled_executions
           )
       )
       with mlmd_state.mlmd_execution_atomic_op(
@@ -441,7 +441,8 @@ class _Generator:
 
     try:
       resolved_info = task_gen_utils.generate_resolved_info(
-          self._mlmd_connection_manager, node)
+          self._mlmd_connection_manager, node, self._pipeline
+      )
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
                    f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')
