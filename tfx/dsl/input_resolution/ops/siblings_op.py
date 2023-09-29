@@ -21,7 +21,6 @@ from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.types import artifact_utils
 
-from ml_metadata.google.tfx import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -72,9 +71,9 @@ class Siblings(
             direction=metadata_store_pb2.LineageSubgraphQueryOptions.BIDIRECTIONAL,
         ),
         field_mask_paths=[
-            metadata_store.ARTIFACTS_FIELD_MASK_PATH,
-            metadata_store.ARTIFACT_TYPES_FIELD_MASK_PATH,
-            metadata_store.EVENTS_FIELD_MASK_PATH,
+            'artifacts',
+            'artifact_types',
+            'events',
         ],
     )
 
