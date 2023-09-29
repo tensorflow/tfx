@@ -436,14 +436,14 @@ class Pipeline(base_node.BaseNode):
 
 
 def enumerate_implicit_dependencies(
-    components: List[base_node.BaseNode],
+    components: Collection[base_node.BaseNode],
     registry: dsl_context_registry.DslContextRegistry,
     pipeline: Optional[Pipeline] = None,
 ) -> Iterator[Tuple[base_node.BaseNode, base_node.BaseNode]]:
   """Enumerate component dependencies arising from data deps between them.
 
   Args:
-    components: List of components to consider.
+    components: Components to consider.
     registry: DslContextRegistry to use for looking up conditional predicates.
     pipeline: Pipeline object if calling from the context of one.
 
