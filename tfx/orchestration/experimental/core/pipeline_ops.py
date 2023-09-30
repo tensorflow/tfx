@@ -54,7 +54,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import io_utils
 from tfx.utils import status as status_lib
 
-from ml_metadata import errors
+from ml_metadata import errors as mlmd_errors
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -1773,13 +1773,6 @@ class _MLMDProtos:
   # version is update to 3.9.
   intermediate_artifacts: List[metadata_store_pb2.Artifact]
 
-  # Used to deserialize the intermediate Artifact proto.
-  artifact_type: metadata_store_pb2.ArtifactType
-
-  # Used to link the Execution to the intermediate Artifact with an OUTPUT
-  # Event edge in MLMD.
-  execution: metadata_store_pb2.Execution
-
 
 def _get_mlmd_protos_for_execution(
     mlmd_handle: metadata.Metadata,
@@ -1807,15 +1800,14 @@ def _get_mlmd_protos_for_execution(
                 )
             ),
             max_num_hops=1,
+            direction=metadata_store_pb2.LineageSubgraphQueryOptions.DOWNSTREAM,
         ),
         field_mask_paths=[
             'artifacts',
-            'artifact_types',
             'events',
-            'executions',
         ],
     )
-  except errors.StatusError as e:
+  except mlmd_errors.StatusError as e:
     raise status_lib.StatusNotOkError(code=e.error_code, message=str(e))
 
   output_artifact_ids = set()
@@ -1859,23 +1851,9 @@ def _get_mlmd_protos_for_execution(
         ),
     )
 
-  try:
-    artifact_type = [
-        at
-        for at in lineage_graph.artifact_types
-        if at.id == reference_artifact.type_id
-    ][0]
-    execution = lineage_graph.executions[0]
-  except ValueError as e:
-    raise status_lib.StatusNotOkError(
-        code=status_lib.Code.NOT_FOUND, message=str(e)
-    )
-
   return _MLMDProtos(
       reference_artifact=reference_artifact,
       intermediate_artifacts=intermediate_artifacts,
-      artifact_type=artifact_type,
-      execution=execution,
   )
 
 
@@ -1985,9 +1963,7 @@ def publish_intermediate_artifact(
       intermediate_artifact.custom_properties[key].CopyFrom(value)
 
   try:
-    contexts = mlmd_handle.store.get_contexts_by_execution(
-        mlmd_protos.execution.id
-    )
+    contexts = mlmd_handle.store.get_contexts_by_execution(execution_id)
     event = event_lib.generate_event(
         event_type=metadata_store_pb2.Event.OUTPUT,
         key=output_key,
@@ -1996,16 +1972,20 @@ def publish_intermediate_artifact(
         # REFERENCE artifact.
         index=len(mlmd_protos.intermediate_artifacts),
     )
-    # Link the Execution to the Artifact with an OUTPUT Event edge.
-    mlmd_handle.store.put_execution(
-        execution=mlmd_protos.execution,
-        artifact_and_events=[(intermediate_artifact, event)],
-        contexts=contexts,
-        reuse_context_if_already_exist=True,
-        reuse_artifact_if_already_exist_by_external_id=True,
-    )
+    # TODO(b/262040844): Instead of directly using the context manager here, we
+    # should consider creating and using wrapper functions.
+    with mlmd_state.evict_from_cache(execution_id):
+      [execution] = mlmd_handle.store.get_executions_by_id([execution_id])
+      # Link the Execution to the Artifact with an OUTPUT Event edge.
+      mlmd_handle.store.put_execution(
+          execution=execution,
+          artifact_and_events=[(intermediate_artifact, event)],
+          contexts=contexts,
+          reuse_context_if_already_exist=True,
+          reuse_artifact_if_already_exist_by_external_id=True,
+      )
 
-  except errors.StatusError as e:
+  except mlmd_errors.StatusError as e:
     raise status_lib.StatusNotOkError(code=e.error_code, message=str(e))
 
   logging.info('Published intermediate artifact: %s', intermediate_artifact)
