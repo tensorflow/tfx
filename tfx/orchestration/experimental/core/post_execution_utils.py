@@ -48,7 +48,9 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     assert status.code != status_lib.Code.OK
     _remove_temporary_task_dirs(
         stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
-    if status.code == status_lib.Code.CANCELLED:
+    if status.code == status_lib.Code.CANCELLED and execution_result is None:
+      # Mark the execution as cancelled only if the task was cancelled by the
+      # task scheduler, and not by the executor.
       logging.info('Cancelling execution (id: %s); task id: %s; status: %s',
                    task.execution_id, task.task_id, status)
       execution_state = proto.Execution.CANCELED
@@ -76,9 +78,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
       if executor_output.execution_result.code != status_lib.Code.OK:
         _update_state(
             status_lib.Status(
-                # We should not reuse "execution_result.code" because it may be
-                # CANCELLED, in which case we should still fail the execution.
-                code=status_lib.Code.UNKNOWN,
+                code=executor_output.execution_result.code,
                 message=executor_output.execution_result.result_message),
             executor_output.execution_result)
         return
