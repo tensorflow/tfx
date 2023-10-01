@@ -14,7 +14,6 @@
 """Portable APIs for managing artifacts in MLMD."""
 
 import itertools
-import time
 from typing import Optional, Sequence
 
 from tfx import types
@@ -24,6 +23,7 @@ from tfx.types import artifact_utils
 from tfx.utils import typing_utils
 
 
+@telemetry_utils.noop_telemetry
 def get_artifacts_by_ids(
     metadata_handle: metadata.Metadata, artifact_ids: Sequence[int]
 ) -> Sequence[types.Artifact]:
@@ -39,7 +39,6 @@ def get_artifacts_by_ids(
   Raises:
     ValueError if one or more of the artifact IDs does not exist in MLMD.
   """
-  start_time = time.time()
   mlmd_artifacts, artifact_types = (
       metadata_handle.store.get_artifacts_and_types_by_artifact_ids(
           artifact_ids
@@ -57,28 +56,21 @@ def get_artifacts_by_ids(
     mlmd_artifact.type = artifact_types_by_id[mlmd_artifact.type_id].name
 
   # Return a list with MLMD artifacts deserialized to TFX Artifact instances.
-  mlmd_artifacts = [
+  return [
       artifact_utils.deserialize_artifact(
           artifact_types_by_id[mlmd_artifact.type_id], mlmd_artifact
       )
       for mlmd_artifact in mlmd_artifacts
   ]
 
-  telemetry_utils.noop_telemetry(
-      module='artifact_lib',
-      method='get_artifacts_by_ids',
-      start_time=start_time,
-  )
-  return mlmd_artifacts
 
-
+@telemetry_utils.noop_telemetry
 def update_artifacts(
     metadata_handle: metadata.Metadata,
     tfx_artifact_map: typing_utils.ArtifactMultiMap,
     new_artifact_state: Optional[str] = None,
 ) -> None:
   """Updates existing TFX artifacts in MLMD."""
-  start_time = time.time()
   mlmd_artifacts_to_update = []
   for tfx_artifact in itertools.chain.from_iterable(tfx_artifact_map.values()):
     if not tfx_artifact.mlmd_artifact.HasField('id'):
@@ -88,8 +80,3 @@ def update_artifacts(
     mlmd_artifacts_to_update.append(tfx_artifact.mlmd_artifact)
   if mlmd_artifacts_to_update:
     metadata_handle.store.put_artifacts(mlmd_artifacts_to_update)
-  telemetry_utils.noop_telemetry(
-      module='artifact_lib',
-      method='update_artifacts',
-      start_time=start_time
-  )

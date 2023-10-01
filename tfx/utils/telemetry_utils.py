@@ -14,6 +14,7 @@
 """Utilities for gathering telemetry for TFX components and pipelines."""
 
 import contextlib
+import functools
 import re
 import sys
 import threading
@@ -104,11 +105,12 @@ def make_beam_labels_args() -> List[str]:
   return result
 
 
-def noop_telemetry(*args, **kwargs) -> None:
-  """This function is a no-op in OSS."""
-  del args
-  del kwargs
-  return None
+def noop_telemetry(func):
+  """This decorator is a no-op in OSS."""
+  @functools.wraps(func)
+  def wrapper(*args, **kwargs):
+    return func(*args, **kwargs)
+  return wrapper
 
 
 class TFXHttpRequest(http.HttpRequest):

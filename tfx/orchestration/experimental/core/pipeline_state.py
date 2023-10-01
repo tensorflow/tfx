@@ -71,9 +71,6 @@ _MAX_STATE_HISTORY_LEN = 10
 _PIPELINE_EXEC_MODE = 'pipeline_exec_mode'
 _PIPELINE_EXEC_MODE_SYNC = 'sync'
 _PIPELINE_EXEC_MODE_ASYNC = 'async'
-_PIPELINE_STATE_STREAMZ_PREFIX = (
-    '/orchestrator/experimental/core/pipeline_state'
-)
 
 _last_state_change_time_secs = -1.0
 _state_change_time_lock = threading.Lock()
@@ -443,6 +440,7 @@ class PipelineState:
     self._on_commit_callbacks: List[Callable[[], None]] = []
 
   @classmethod
+  @telemetry_utils.noop_telemetry
   @_synchronized
   def new(
       cls,
@@ -469,7 +467,6 @@ class PipelineState:
     Raises:
       status_lib.StatusNotOkError: If a pipeline with same UID already exists.
     """
-    start_time = time.time()
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
     context = context_lib.register_context_if_not_exists(
         mlmd_handle,
@@ -587,14 +584,10 @@ class PipelineState:
         )
     )
     record_state_change_time()
-
-    telemetry_utils.noop_telemetry(
-        start_time=start_time,
-        method='new',
-    )
     return pipeline_state
 
   @classmethod
+  @telemetry_utils.noop_telemetry
   def load(
       cls, mlmd_handle: metadata.Metadata, pipeline_uid: task_lib.PipelineUid
   ) -> 'PipelineState':
@@ -612,7 +605,6 @@ class PipelineState:
       with the given pipeline uid exists in MLMD. With code=INTERNAL if more
       than 1 active execution exists for given pipeline uid.
     """
-    start_time = time.time()
     context = _get_orchestrator_context(mlmd_handle, pipeline_uid.pipeline_id)
     uids_and_states = cls._load_from_context(mlmd_handle, context, pipeline_uid)
     if not uids_and_states:
@@ -625,14 +617,10 @@ class PipelineState:
           message=(
               f'Expected 1 but found {len(uids_and_states)} active pipelines '
               f'for pipeline uid: {pipeline_uid}'))
-
-    telemetry_utils.noop_telemetry(
-        start_time=start_time,
-        method='load',
-    )
     return uids_and_states[0][1]
 
   @classmethod
+  @telemetry_utils.noop_telemetry
   @_synchronized
   def load_all_active(cls,
                       mlmd_handle: metadata.Metadata) -> List['PipelineState']:
@@ -648,7 +636,6 @@ class PipelineState:
       status_lib.StatusNotOkError: With code=INTERNAL if more than one active
       pipeline are found with the same pipeline uid.
     """
-    start_time = time.time()
     result = []
     global _active_pipelines_exist
     if _active_pipelines_exist:
@@ -672,11 +659,6 @@ class PipelineState:
     if not result:
       _active_pipelines_exist = False
       logging.info('No active pipelines, set _active_pipelines_exist=False.')
-
-    telemetry_utils.noop_telemetry(
-        start_time=start_time,
-        method='load_all_active',
-    )
     return result
 
   @classmethod
@@ -1277,40 +1259,29 @@ def pipeline_id_from_orchestrator_context(
   return context.name
 
 
+@telemetry_utils.noop_telemetry
 def get_all_nodes(
     pipeline: pipeline_pb2.Pipeline) -> List[node_proto_view.NodeProtoView]:
   """Returns the views of nodes or inner pipelines in the given pipeline."""
   # TODO(goutham): Handle system nodes.
-  start_time = time.time()
-  view_res = [
+  return [
       node_proto_view.get_view(pipeline_or_node)
       for pipeline_or_node in pipeline.nodes
   ]
 
-  telemetry_utils.noop_telemetry(
-      start_time=start_time,
-      method='get_all_nodes',
-  )
-  return view_res
 
-
+@telemetry_utils.noop_telemetry
 def get_all_node_executions(
     pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
 ) -> Dict[str, List[metadata_store_pb2.Execution]]:
   """Returns all executions of all pipeline nodes if present."""
-  start_time = time.time()
-  executions = {
+  return {
       node.node_info.id: task_gen_utils.get_executions(mlmd_handle, node)
       for node in get_all_nodes(pipeline)
   }
 
-  telemetry_utils.noop_telemetry(
-      start_time=start_time,
-      method='get_all_node_executions',
-  )
-  return executions
 
-
+@telemetry_utils.noop_telemetry
 def get_all_node_artifacts(
     pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
 ) -> Dict[str, Dict[int, Dict[str, List[metadata_store_pb2.Artifact]]]]:
@@ -1324,7 +1295,6 @@ def get_all_node_artifacts(
     Dict of node id to Dict of execution id to Dict of key to output artifact
     list.
   """
-  start_time = time.time()
   executions_dict = get_all_node_executions(pipeline, mlmd_handle)
   result = {}
   for node_id, executions in executions_dict.items():
@@ -1338,11 +1308,6 @@ def get_all_node_artifacts(
         ]
       node_artifacts[execution.id] = execution_artifacts
     result[node_id] = node_artifacts
-
-  telemetry_utils.noop_telemetry(
-      start_time=start_time,
-      method='get_all_node_artifacts',
-  )
   return result
 
 

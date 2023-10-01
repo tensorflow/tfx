@@ -19,7 +19,6 @@ import collections
 import copy
 import itertools
 import re
-import time
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from absl import logging
@@ -147,6 +146,7 @@ def sort_executions_newest_to_oldest(
       executions, key=lambda e: e.create_time_since_epoch, reverse=True)
 
 
+@telemetry_utils.noop_telemetry
 def prepare_execution(
     metadata_handle: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
@@ -167,7 +167,6 @@ def prepare_execution(
   Returns:
     A metadata_store_pb2.Execution message.
   """
-  start_time = time.time()
   execution = metadata_store_pb2.Execution()
   execution.last_known_state = state
   execution.type_id = common_utils.register_type_if_not_exist(
@@ -198,10 +197,6 @@ def prepare_execution(
     else:
       execution.custom_properties[k].CopyFrom(value.field_value)
   logging.debug('Prepared EXECUTION:\n %s', execution)
-
-  telemetry_utils.noop_telemetry(
-      module='execution_lib', method='prepare_execution', start_time=start_time
-  )
   return execution
 
 
@@ -218,6 +213,7 @@ def _get_id(artifact: metadata_store_pb2.Artifact) -> Any:
   return None
 
 
+@telemetry_utils.noop_telemetry
 def _create_artifact_and_event_pairs(
     metadata_handle: metadata.Metadata,
     artifact_dict: typing_utils.ArtifactMultiMap,
@@ -239,7 +235,6 @@ def _create_artifact_and_event_pairs(
   Returns:
     A list of [Artifact, Event] tuples
   """
-  start_time = time.time()
   if not artifact_dict:
     return []
 
@@ -273,15 +268,10 @@ def _create_artifact_and_event_pairs(
         else:
           result.append((artifact.mlmd_artifact, event))
   result.extend(list(artifact_event_map.values()))
-
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='_create_artifact_and_event_pairs',
-      start_time=start_time
-  )
   return result
 
 
+@telemetry_utils.noop_telemetry
 def put_execution(
     metadata_handle: metadata.Metadata,
     execution: metadata_store_pb2.Execution,
@@ -314,7 +304,6 @@ def put_execution(
   Returns:
     An MLMD execution that is written to MLMD, with id populated.
   """
-  start_time = time.time()
   artifact_and_events = []
   if input_artifacts:
     artifact_and_events.extend(
@@ -349,14 +338,10 @@ def put_execution(
   for context, c_id in zip(contexts, contexts_ids):
     context.id = c_id
 
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='put_execution',
-      start_time=start_time
-  )
   return execution
 
 
+@telemetry_utils.noop_telemetry
 def put_executions(
     metadata_handle: metadata.Metadata,
     executions: Sequence[metadata_store_pb2.Execution],
@@ -391,7 +376,6 @@ def put_executions(
   Returns:
     A list of MLMD executions that are written to MLMD, with id pupulated.
   """
-  start_time = time.time()
   if input_artifacts_maps and len(executions) != len(input_artifacts_maps):
     raise ValueError(
         f'The number of executions {len(executions)} should be the same as '
@@ -450,10 +434,6 @@ def put_executions(
       artifact.id = artifact_id
     for context, context_id in zip(contexts, context_ids):
       context.id = context_id
-    telemetry_utils.noop_telemetry(
-        module='execution_lib', method='put_executions', start_time=start_time
-    )
-
     return executions
   except mlmd.errors.UnimplementedError:
     logging.warning(
@@ -470,12 +450,10 @@ def put_executions(
               contexts=contexts,
               input_artifacts=input_artifacts,
               output_artifacts=output_artifacts,
+              input_event_type=input_event_type,
+              output_event_type=output_event_type,
           )
       )
-
-    telemetry_utils.noop_telemetry(
-        module='execution_lib', method='put_executions', start_time=start_time
-    )
     return result
 
 
@@ -497,6 +475,7 @@ def _artifact_maps_contain_same_uris(
   return True
 
 
+@telemetry_utils.noop_telemetry
 def register_output_artifacts(
     metadata_handle: metadata.Metadata,
     execution_id: int,
@@ -528,7 +507,6 @@ def register_output_artifacts(
     was called once before for the same execution but with a different output
     artifact dict.
   """
-  start_time = time.time()
   [execution] = metadata_handle.store.get_executions_by_id([execution_id])
   if not is_execution_running(execution):
     raise ValueError(
@@ -542,12 +520,6 @@ def register_output_artifacts(
   )
   _register_reference_output_artifacts(
       metadata_handle, execution, output_artifacts
-  )
-
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='register_output_artifacts',
-      start_time=start_time,
   )
 
 
@@ -575,14 +547,13 @@ def _reuse_existing_artifacts(
           break
 
 
+@telemetry_utils.noop_telemetry
 def _register_reference_output_artifacts(
     metadata_handle: metadata.Metadata,
     execution: metadata_store_pb2.Execution,
     output_artifacts: typing_utils.ArtifactMultiMap,
 ) -> None:
   """Registers REFERENCE output artifacts for a given execution in MLMD."""
-  start_time = time.time()
-
   reference_output_artifacts = collections.defaultdict(list)
   for key, artifacts in output_artifacts.items():
     for artifact in artifacts:
@@ -612,21 +583,14 @@ def _register_reference_output_artifacts(
         output_event_type=metadata_store_pb2.Event.PENDING_OUTPUT,
     )
 
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='_register_reference_output_artifacts',
-      start_time=start_time,
-  )
 
-
+@telemetry_utils.noop_telemetry
 def _register_pending_output_artifacts(
     metadata_handle: metadata.Metadata,
     execution: metadata_store_pb2.Execution,
     output_artifacts: typing_utils.ArtifactMultiMap,
 ) -> None:
   """Registers PENDING output artifacts for a given execution in MLMD."""
-  start_time = time.time()
-
   pending_output_artifacts = collections.defaultdict(list)
   for key, artifacts in output_artifacts.items():
     for artifact in artifacts:
@@ -658,13 +622,8 @@ def _register_pending_output_artifacts(
         output_event_type=metadata_store_pb2.Event.PENDING_OUTPUT,
     )
 
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='_register_pending_output_artifacts',
-      start_time=start_time,
-  )
 
-
+@telemetry_utils.noop_telemetry
 def get_executions_associated_with_all_contexts(
     metadata_handle: metadata.Metadata,
     contexts: Iterable[metadata_store_pb2.Context],
@@ -678,7 +637,6 @@ def get_executions_associated_with_all_contexts(
   Returns:
     A list of executions associated with all given contexts.
   """
-  start_time = time.time()
   execution_query = q.And(
       [
           'contexts_%s.id = %s' % (i, context.id)
@@ -688,14 +646,10 @@ def get_executions_associated_with_all_contexts(
   executions = metadata_handle.store.get_executions(
       list_options=execution_query.list_options()
   )
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='get_executions_associated_with_all_contexts',
-      start_time=start_time
-  )
   return executions
 
 
+@telemetry_utils.noop_telemetry
 def get_input_artifacts(
     metadata_handle: metadata.Metadata, execution_id: int
 ) -> typing_utils.ArtifactMultiDict:
@@ -713,23 +667,15 @@ def get_input_artifacts(
   Returns:
     A reconstructed input artifacts multimap.
   """
-  start_time = time.time()
   events = metadata_handle.store.get_events_by_execution_ids([execution_id])
   input_events = [e for e in events if event_lib.is_valid_input_event(e)]
   artifacts = artifact_lib.get_artifacts_by_ids(
       metadata_handle, [e.artifact_id for e in input_events]
   )
-  artifact_map = event_lib.reconstruct_artifact_multimap(
-      artifacts, input_events
-  )
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='get_input_artifacts',
-      start_time=start_time
-  )
-  return artifact_map
+  return event_lib.reconstruct_artifact_multimap(artifacts, input_events)
 
 
+@telemetry_utils.noop_telemetry
 def get_output_artifacts(
     metadata_handle: metadata.Metadata, execution_id: int
 ) -> typing_utils.ArtifactMultiDict:
@@ -747,23 +693,15 @@ def get_output_artifacts(
   Returns:
     A reconstructed output artifacts multimap.
   """
-  start_time = time.time()
   events = metadata_handle.store.get_events_by_execution_ids([execution_id])
   output_events = [e for e in events if event_lib.is_valid_output_event(e)]
   artifacts = artifact_lib.get_artifacts_by_ids(
       metadata_handle, [e.artifact_id for e in output_events]
   )
-  output_events = event_lib.reconstruct_artifact_multimap(
-      artifacts, output_events
-  )
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='get_output_artifacts',
-      start_time=start_time
-  )
-  return output_events
+  return event_lib.reconstruct_artifact_multimap(artifacts, output_events)
 
 
+@telemetry_utils.noop_telemetry
 def get_pending_output_artifacts(
     metadata_handle: metadata.Metadata,
     execution_id: int,
@@ -787,8 +725,6 @@ def get_pending_output_artifacts(
   Returns:
     A reconstructed pending output artifacts multimap.
   """
-  start_time = time.time()
-
   events = metadata_handle.store.get_events_by_execution_ids([execution_id])
   pending_output_events = [
       e for e in events if e.type == metadata_store_pb2.Event.PENDING_OUTPUT
@@ -807,18 +743,10 @@ def get_pending_output_artifacts(
       e for e in pending_output_events if e.artifact_id in valid_artifact_ids
   ]
 
-  artifact_map = event_lib.reconstruct_artifact_multimap(
-      valid_artifacts, valid_events
-  )
-
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='get_pending_output_artifacts',
-      start_time=start_time
-  )
-  return artifact_map
+  return event_lib.reconstruct_artifact_multimap(valid_artifacts, valid_events)
 
 
+@telemetry_utils.noop_telemetry
 def set_execution_result(
     execution_result: execution_result_pb2.ExecutionResult,
     execution: metadata_store_pb2.Execution,
@@ -830,7 +758,6 @@ def set_execution_result(
       executor.
     execution: The execution to set to.
   """
-  start_time = time.time()
   # TODO(b/161832842): Switch to PROTO value type to circumvent TypeError which
   # may be raised when converting embedded `Any` protos.
   try:
@@ -852,13 +779,9 @@ def set_execution_result(
           'Skipped setting execution_result as custom property of the '
           'execution due to error'
       )
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='set_execution_result',
-      start_time=start_time,
-  )
 
 
+@telemetry_utils.noop_telemetry
 def get_execution_result(
     execution: metadata_store_pb2.Execution, ignore_parse_errors=False
 ) -> Optional[execution_result_pb2.ExecutionResult]:
@@ -875,7 +798,6 @@ def get_execution_result(
   Returns:
     An `ExecutionResult` object if one exists.
   """
-  start_time = time.time()
   value = execution.custom_properties.get(_EXECUTION_RESULT)
   if not value:
     return None
@@ -890,9 +812,4 @@ def get_execution_result(
     if ignore_parse_errors:
       return None
     raise
-  telemetry_utils.noop_telemetry(
-      module='execution_lib',
-      method='get_execution_result',
-      start_time=start_time,
-  )
   return execution_result

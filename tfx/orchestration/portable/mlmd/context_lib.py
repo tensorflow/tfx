@@ -13,7 +13,6 @@
 # limitations under the License.
 """Portable libraries for context related APIs."""
 
-import time
 from typing import List, Optional
 
 from absl import logging
@@ -124,6 +123,7 @@ def _register_context_if_not_exist(
   return context
 
 
+@telemetry_utils.noop_telemetry
 def register_context_if_not_exists(
     metadata_handle: metadata.Metadata,
     context_type_name: str,
@@ -145,26 +145,20 @@ def register_context_if_not_exists(
   Returns:
     An MLMD context.
   """
-  start_time = time.time()
   context_spec = pipeline_pb2.ContextSpec(
       name=pipeline_pb2.Value(
           field_value=metadata_store_pb2.Value(string_value=context_name)
       ),
       type=metadata_store_pb2.ContextType(name=context_type_name),
   )
-  register_res = _register_context_if_not_exist(
+  return _register_context_if_not_exist(
       metadata_handle=metadata_handle,
       context_spec=context_spec,
       parent_contexts=parent_contexts,
   )
-  telemetry_utils.noop_telemetry(
-      module='context_lib',
-      method='register_context_if_not_exists',
-      start_time=start_time,
-  )
-  return register_res
 
 
+@telemetry_utils.noop_telemetry
 def prepare_contexts(
     metadata_handle: metadata.Metadata,
     node_contexts: pipeline_pb2.NodeContexts,
@@ -181,7 +175,6 @@ def prepare_contexts(
   Returns:
     A list of metadata_store_pb2.Context messages.
   """
-  start_time = time.time()
   result = []
   pipeline_contexts = []
 
@@ -211,12 +204,10 @@ def prepare_contexts(
     )
     result.append(context)
 
-  telemetry_utils.noop_telemetry(
-      module='context_lib', method='prepare_contexts', start_time=start_time
-  )
   return result
 
 
+@telemetry_utils.noop_telemetry
 def put_parent_context_if_not_exists(
     metadata_handle: metadata.Metadata, parent_id: int, child_id: int
 ) -> None:
@@ -227,7 +218,6 @@ def put_parent_context_if_not_exists(
     parent_id: The id of the parent metadata_store_pb2.Context.
     child_id: The id of the child metadata_store_pb2.Context.
   """
-  start_time = time.time()
   parent_context = metadata_store_pb2.ParentContext(
       parent_id=parent_id, child_id=child_id
   )
@@ -236,8 +226,3 @@ def put_parent_context_if_not_exists(
   except mlmd_errors.AlreadyExistsError:
     # Ensure idempotence.
     pass
-  telemetry_utils.noop_telemetry(
-      module='context_lib',
-      method='put_parent_context_if_not_exists',
-      start_time=start_time,
-  )
