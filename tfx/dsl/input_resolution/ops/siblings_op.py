@@ -24,6 +24,10 @@ from tfx.types import artifact_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
+# Valid artifact states for Siblings.
+_VALID_ARTIFACT_STATES = [metadata_store_pb2.Artifact.State.LIVE]
+
+
 class Siblings(
     resolver_op.ResolverOp,
     canonical_name='tfx.Siblings',
@@ -47,11 +51,17 @@ class Siblings(
       raise ValueError('Siblings ResolverOp does not support batch queries.')
     root_artifact = input_list[0]
 
+    artifact_states_filter_query = (
+        ops_utils.get_valid_artifact_states_filter_query(_VALID_ARTIFACT_STATES)
+    )
     lineage_graph = self.context.store.get_lineage_subgraph(
         query_options=metadata_store_pb2.LineageSubgraphQueryOptions(
             starting_artifacts=(
                 metadata_store_pb2.LineageSubgraphQueryOptions.StartingNodes(
-                    filter_query=f'id = {root_artifact.id}',
+                    filter_query=(
+                        f'id = {root_artifact.id} AND '
+                        f'{artifact_states_filter_query}'
+                    ),
                 )
             ),
             ending_executions=(
