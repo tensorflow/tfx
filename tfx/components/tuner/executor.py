@@ -1,4 +1,4 @@
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2023 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 from absl import logging
+from keras_tuner.distribute import utils as tuner_distribute_utils
 from keras_tuner.engine import base_tuner
 from keras_tuner.engine import trial
 from tfx import types
@@ -65,37 +66,47 @@ def write_best_hyperparameters(
   logging.info('Best HyperParameters: %s', best_hparams_config)
   best_hparams_path = os.path.join(
       artifact_utils.get_single_uri(
-          output_dict[standard_component_specs.BEST_HYPERPARAMETERS_KEY]),
-      _DEFAULT_BEST_HP_FILE_NAME)
+          output_dict[standard_component_specs.BEST_HYPERPARAMETERS_KEY]
+      ),
+      _DEFAULT_BEST_HP_FILE_NAME,
+  )
   io_utils.write_string_file(best_hparams_path, json.dumps(best_hparams_config))
   logging.info('Best Hyperparameters are written to %s.', best_hparams_path)
 
   # Saves tuner results in pandas `records` format (list of rows).
   results = []
   for trial_obj in tuner.oracle.get_best_trials(tuner.oracle.max_trials):
-    if trial_obj.status == trial.TrialStatus.COMPLETED and trial_obj.hyperparameters.values:
+    if (
+        trial_obj.status == trial.TrialStatus.COMPLETED
+        and trial_obj.hyperparameters.values
+    ):
       results.append({
           'trial_id': trial_obj.trial_id,
           'score': trial_obj.score,
-          **trial_obj.hyperparameters.values
+          **trial_obj.hyperparameters.values,
       })
 
   tuner_results_path = os.path.join(
       artifact_utils.get_single_uri(
-          output_dict[standard_component_specs.TUNER_RESULTS_KEY]),
-      _DEFAULT_TUNER_RESULTS_FILE_NAME)
+          output_dict[standard_component_specs.TUNER_RESULTS_KEY]
+      ),
+      _DEFAULT_TUNER_RESULTS_FILE_NAME,
+  )
   io_utils.write_string_file(tuner_results_path, json.dumps(results))
   logging.info('Tuner results are written to %s.', tuner_results_path)
 
 
-def search(input_dict: Dict[str, List[types.Artifact]],
-           exec_properties: Dict[str, Any],
-           working_dir: str) -> base_tuner.BaseTuner:
+def search(
+    input_dict: Dict[str, List[types.Artifact]],
+    exec_properties: Dict[str, Any],
+    working_dir: str,
+) -> base_tuner.BaseTuner:
   """Conduct a single hyperparameter search loop, and return the Tuner."""
   tuner_fn = _get_tuner_fn(exec_properties)
 
-  fn_args = fn_args_utils.get_common_fn_args(input_dict, exec_properties,
-                                             working_dir)
+  fn_args = fn_args_utils.get_common_fn_args(
+      input_dict, exec_properties, working_dir
+  )
 
   tuner_fn_result = tuner_fn(fn_args)
   result = tuner_fn_result.tuner
@@ -105,7 +116,12 @@ def search(input_dict: Dict[str, List[types.Artifact]],
   logging.info('Start tuning... Tuner ID: %s', result.tuner_id)
   result.search(**tuner_fn_result.fit_kwargs)
   logging.info('Finished tuning... Tuner ID: %s', result.tuner_id)
-  result.results_summary()
+  # Print results only from a chief oracle. For tuner workers results_summary()
+  # makes an RPC call to a chief oracle that might be killed by the time all
+  # trials have finished.
+  distributed_tuning = tuner_distribute_utils.has_chief_oracle()
+  if tuner_distribute_utils.is_chief_oracle() or not distributed_tuning:
+    result.results_summary()
 
   return result
 

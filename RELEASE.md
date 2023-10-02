@@ -15,6 +15,8 @@
 ## Bug Fixes and Other Changes
 
 * Fixed a synchronization bug in google_cloud_ai_platform tuner.
+* Fixed a race condition in tfx.Tuner when it's used with distributed tuning.
+  Occasionally this could result in tfx.Tuner running forever.
 
 ## Dependency Updates
 | Package Name | Version Constraints | Previously (in `v1.14.0`) | Comments |

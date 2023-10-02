@@ -16,8 +16,7 @@
 import random
 import re
 import string
-import typing
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Mapping
 
 from absl import logging
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
@@ -29,7 +28,6 @@ from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
 from tfx.orchestration.kubeflow.v2 import step_builder
-from tfx.types import channel_utils
 
 from google.protobuf import json_format
 
@@ -159,21 +157,14 @@ class PipelineBuilder:
     self._pipeline.finalize()
 
     # Map from (upstream_node_id, output_key) to output_type (ValueArtifact)
-    dynamic_exec_properties: dict[tuple[str, str], str] = {}
+    dynamic_exec_properties = {}
     for component in self._pipeline.components:
       for name, value in component.exec_properties.items():
-        if isinstance(value, placeholder.Placeholder):
-          try:
-            # This unwraps channel.future()[0].value and disallows any other
-            # placeholder expressions.
-            channel = channel_utils.unwrap_simple_channel_placeholder(value)
-          except ValueError as e:
-            raise ValueError(f'Invalid placeholder for exec prop {name}') from e
-          node_id = channel.producer_component_id
-          dynamic_exec_properties[
-              # The cast() is just to tell pytype that it's not None.
-              (node_id, typing.cast(str, channel.output_key))
-          ] = channel.type.TYPE_NAME
+
+        if isinstance(value, placeholder.ChannelWrappedPlaceholder):
+          node_id = value.channel.producer_component_id
+          dynamic_exec_properties[(
+              node_id, value.channel.output_key)] = value.channel.type.TYPE_NAME
     tfx_tasks = {}
     component_defs = {}
     # Map from (producer component id, output key) to (new producer component
