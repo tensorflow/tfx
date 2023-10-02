@@ -14,7 +14,7 @@
 """Tests for tfx.utils.channel."""
 
 import tensorflow as tf
-from tfx.dsl.placeholder import placeholder
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.types import artifact
 from tfx.types import channel
 from tfx.types import channel_utils
@@ -69,8 +69,8 @@ class ChannelUtilsTest(tf.test.TestCase):
     int2 = channel.Channel(type=standard_artifacts.Integer)
     pred1 = int1.future().value == 1
     pred2 = int1.future().value == int2.future().value
-    pred3 = placeholder.logical_not(pred1)
-    pred4 = placeholder.logical_and(pred1, pred2)
+    pred3 = ph.logical_not(pred1)
+    pred4 = ph.logical_and(pred1, pred2)
 
     self.assertEqual(set(channel_utils.get_dependent_channels(pred1)), {int1})
     self.assertEqual(
@@ -80,6 +80,48 @@ class ChannelUtilsTest(tf.test.TestCase):
     self.assertEqual(
         set(channel_utils.get_dependent_channels(pred4)), {int1, int2}
     )
+
+  def testUnwrapSimpleChannelPlaceholder(self):
+    int1 = channel.Channel(type=standard_artifacts.Integer)
+    self.assertEqual(
+        channel_utils.unwrap_simple_channel_placeholder(int1.future()[0].value),
+        int1,
+    )
+    self.assertEqual(
+        channel_utils.unwrap_simple_channel_placeholder(int1.future().value),
+        int1,
+    )
+
+  def testUnwrapSimpleChannelPlaceholderRejectsMultiChannel(self):
+    str1 = channel.Channel(type=standard_artifacts.String)
+    str2 = channel.Channel(type=standard_artifacts.String)
+    with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
+      channel_utils.unwrap_simple_channel_placeholder(
+          str1.future()[0].value + str2.future()[0].value
+      )
+    with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
+      channel_utils.unwrap_simple_channel_placeholder(
+          ph.join([str1.future()[0].value, str2.future()[0].value], ',')
+      )
+
+  def testUnwrapSimpleChannelPlaceholderRejectsNoChannel(self):
+    with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
+      channel_utils.unwrap_simple_channel_placeholder(ph.to_list([]))
+    with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
+      channel_utils.unwrap_simple_channel_placeholder(ph.input('disallowed'))
+    with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
+      channel_utils.unwrap_simple_channel_placeholder(ph.output('disallowed'))
+
+  def testUnwrapSimpleChannelPlaceholderRejectsComplexPlaceholders(self):
+    str1 = channel.Channel(type=standard_artifacts.String)
+    with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
+      channel_utils.unwrap_simple_channel_placeholder(
+          str1.future()[0].value + 'foo'
+      )
+    with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
+      channel_utils.unwrap_simple_channel_placeholder(
+          str1.future()[0].value + ph.execution_invocation().pipeline_run_id
+      )
 
 
 if __name__ == '__main__':

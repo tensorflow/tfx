@@ -301,6 +301,25 @@ class StepBuilderTest(tf.test.TestCase):
             'expected_dynamic_execution_properties_downstream_component_task.pbtxt',
             pipeline_pb2.PipelineTaskSpec()), example_gen_task_spec)
 
+  def testIllegalDynamicExecutionProperty(self):
+    dynamic_exec_properties = {
+        ('range_config_generator', 'range_config'): 'String'
+    }
+    pipeline = test_utils.two_step_pipeline_with_illegal_dynamic_exec_property()
+    example_gen = pipeline.components[1]
+    component_defs = {}
+    with self.assertRaisesRegex(
+        ValueError, 'Invalid placeholder for exec prop range_config.*'
+    ):
+      step_builder.StepBuilder(
+          node=example_gen,
+          image='gcr.io/tensorflow/tfx:latest',
+          component_defs=component_defs,
+          deployment_config=pipeline_pb2.PipelineDeploymentConfig(),
+          dynamic_exec_properties=dynamic_exec_properties,
+          dsl_context_reg=dsl_context_registry.get(),
+      ).build()
+
   def testBuildLatestBlessedModelStrategySucceed(self):
     latest_blessed_resolver = resolver.Resolver(
         strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy,

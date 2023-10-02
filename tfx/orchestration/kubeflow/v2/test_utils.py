@@ -35,6 +35,8 @@ from tfx.utils import proto_utils
 
 from google.protobuf import message
 
+_ph = tfx.dsl.placeholders
+
 _TEST_TWO_STEP_PIPELINE_NAME = 'two-step-pipeline'
 
 _TEST_TWO_STEP_PIPELINE_WITH_DYNAMIC_EXEC_PROPERTIES_NAME = 'two-step-pipeline-with-dynamic-exec-properties'
@@ -102,10 +104,37 @@ def two_step_pipeline_with_dynamic_exec_properties():
       input_date='22-09-26')
   example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(
       query='SELECT * FROM TABLE',
-      range_config=input_config_generator.outputs['range_config'].future()
-      [0].value).with_beam_pipeline_args([
-          '--runner=DataflowRunner',
-      ])
+      range_config=(
+          input_config_generator.outputs['range_config'].future()[0].value
+      ),
+  ).with_beam_pipeline_args([
+      '--runner=DataflowRunner',
+  ])
+  return tfx.dsl.Pipeline(
+      pipeline_name=_TEST_TWO_STEP_PIPELINE_WITH_DYNAMIC_EXEC_PROPERTIES_NAME,
+      pipeline_root=_TEST_PIPELINE_ROOT,
+      components=[input_config_generator, example_gen],
+      beam_pipeline_args=[
+          '--project=my-gcp-project',
+      ],
+  )
+
+
+def two_step_pipeline_with_illegal_dynamic_exec_property():
+  """Returns a simple 2-step pipeline under test with the second component's execution property declaring an illegally complex placeholder."""
+
+  input_config_generator = range_config_generator(  # pylint: disable=no-value-for-parameter
+      input_date='22-09-26'
+  )
+  example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(
+      query='SELECT * FROM TABLE',
+      range_config=(
+          input_config_generator.outputs['range_config'].future()[0].value
+          + _ph.execution_invocation().pipeline_run_id
+      ),
+  ).with_beam_pipeline_args([
+      '--runner=DataflowRunner',
+  ])
   return tfx.dsl.Pipeline(
       pipeline_name=_TEST_TWO_STEP_PIPELINE_WITH_DYNAMIC_EXEC_PROPERTIES_NAME,
       pipeline_root=_TEST_PIPELINE_ROOT,
