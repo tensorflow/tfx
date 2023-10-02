@@ -28,19 +28,6 @@ from tfx.utils import typing_utils
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.tools.mlmd_resolver import metadata_resolver
 
-# Valid artifact states for LatestPolicyModel.
-#
-# We include MARKED_FOR_DELETION and DELETED states, which correspond to garbage
-# collected artifacts. It is possible for the downstream
-# ModelBlessing/ModelInfraBlessing/ModelPush to be garbage colelcted, but this
-# doesn't mean that the Model wasn't blessed. We exclude ABANDONED, because that
-# state is used for output artifacts from failed or cancelled exceutions.
-_VALID_ARTIFACT_STATES = [
-    metadata_store_pb2.Artifact.State.LIVE,
-    metadata_store_pb2.Artifact.State.MARKED_FOR_DELETION,
-    metadata_store_pb2.Artifact.State.DELETED,
-]
-
 
 # TODO(kshivvy): Consider supporting LATEST_PUSHED_DIFFERENT_DATA and
 # LATEST_EVALUATOR_BLESSED_DIFFERENT_DATA for Evaluator input resolution.
@@ -364,12 +351,21 @@ class LatestPolicyModel(
         list(input_child_artifact_ids)
     )
 
-    artifact_states_filter_query = (
-        ops_utils.get_valid_artifact_states_filter_query(_VALID_ARTIFACT_STATES)
-    )
+    # We consider MARKED_FOR_DELETION and DELETED states, because a garbage
+    # collected ModelBlessing/ModelInfraBlessing/ModelPush doesn't mean that the
+    # Model has never been blessed/pushed in the past. We exclude ABANDONED,
+    # because that state is used for output artifacts from failed or cancelled
+    # exceutions.
+    valid_states = [
+        metadata_store_pb2.Artifact.State.LIVE,
+        metadata_store_pb2.Artifact.State.MARKED_FOR_DELETION,
+        metadata_store_pb2.Artifact.State.DELETED,
+    ]
+    valid_states_filter_query = q.to_sql_string(valid_states)
+
     filter_query = (
-        f'type IN {downstream_artifact_type_names_filter_query} AND '
-        f'{artifact_states_filter_query}'
+        f'type IN {downstream_artifact_type_names_filter_query} AND state IN'
+        f' {valid_states_filter_query}'
     )
 
     if input_child_artifact_ids and specifies_child_artifacts:

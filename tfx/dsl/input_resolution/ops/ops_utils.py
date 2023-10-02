@@ -17,11 +17,7 @@ from typing import Dict, List, Optional, Sequence, Set
 
 from tfx import types
 from tfx.orchestration.portable.input_resolution import exceptions
-from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.utils import typing_utils
-
-from ml_metadata.proto import metadata_store_pb2
-
 
 # Maps from "span" and "version" to PropertyType.INT. Many ResolverOps require
 # one or both of these properties, so we define constants here for convenience.
@@ -71,13 +67,6 @@ LATEST_POLICY_MODEL_OP_MAX_NUM_HOPS = 50
 
 # A fixed batch size for batch querying APIs in MLMD metadata_resolver.
 BATCH_SIZE = 100
-
-
-def get_valid_artifact_states_filter_query(
-    valid_artifact_states: Sequence['metadata_store_pb2.Artifact.State'],
-) -> str:
-  """Returns a filter query for valid artifact states."""
-  return f'state IN {q.to_sql_string(valid_artifact_states)}'
 
 
 # TODO(b/269147946): Put validation logic inside ResolverOp Property instead,

@@ -52,6 +52,7 @@ from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
+from tfx.utils import test_case_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -73,7 +74,9 @@ def _test_pipeline(
   return pipeline
 
 
-class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
+class PipelineOpsTest(
+    test_utils.TfxTest, parameterized.TestCase, test_case_utils.MlmdMixins
+):
 
   def setUp(self):
     super().setUp()
@@ -3008,6 +3011,75 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertTrue(
             pipeline_state.execution.custom_properties.get('deleted')
         )
+
+  def _assertInputEventsHaveIncreasingIndex(
+      self, events: list[metadata_store_pb2.Event], key: str
+  ):
+    for i, event in enumerate(events):
+      self.assertEqual(event.type, metadata_store_pb2.Event.INPUT)
+      self.assertEqual(event.path.steps[0].key, key)
+      self.assertEqual(event.path.steps[1].index, i)
+
+  def test_mark_intermediately_read_artifacts_as_processed(self):
+    # We use MlmdMixins MLMD connection for convenience.
+    self.init_mlmd()
+
+    pipeline_context = self.put_context('pipeline', 'my-pipeline')
+    execution = self.put_execution(
+        execution_type='Trainer',
+        last_known_state=metadata_store_pb2.Execution.State.RUNNING,
+        contexts=[pipeline_context],
+    )
+    read_artifacts_1 = {
+        'model': [self.put_artifact(artifact_type='Model') for _ in range(10)],
+        'model_blessing': [
+            self.put_artifact(artifact_type='ModelBlessing') for _ in range(10)
+        ],
+    }
+
+    # Read the 10 Model and 10 ModelBlessing artifacts and mark them as
+    # processsed.
+    pipeline_ops.mark_intermediately_read_artifacts_as_processed(
+        self.mlmd_handle, execution.id, read_artifacts_1
+    )
+
+    # Check that all the events have the correct key and index of 0.
+    events = self.store.get_events_by_execution_ids([execution.id])
+    model_events = [e for e in events if e.path.steps[0].key == 'model']
+    model_blessing_events = [
+        e for e in events if e.path.steps[0].key == 'model_blessing'
+    ]
+    self.assertLen(model_events, 10)
+    self.assertLen(model_blessing_events, 10)
+    self._assertInputEventsHaveIncreasingIndex(model_events, 'model')
+    self._assertInputEventsHaveIncreasingIndex(
+        model_blessing_events, 'model_blessing'
+    )
+
+    # Re-read Models 6 through 10, and read 5 new Models, in a single call to
+    # mark_intermediate_read_artifacts_as_processed().
+    artifacts = read_artifacts_1['model'][5:]
+    artifacts.extend(
+        [self.put_artifact(artifact_type='Model') for _ in range(5)]
+    )
+    read_artifacts_2 = {'model': artifacts}
+    pipeline_ops.mark_intermediately_read_artifacts_as_processed(
+        self.mlmd_handle, execution.id, read_artifacts_2
+    )
+
+    # The Model Event indexes should be kept in increasing consecutive order,
+    # accounting for existing events.
+    events = self.store.get_events_by_execution_ids([execution.id])
+    model_events = [e for e in events if e.path.steps[0].key == 'model']
+    model_blessing_events = [
+        e for e in events if e.path.steps[0].key == 'model_blessing'
+    ]
+    self.assertLen(model_events, 15)
+    self.assertLen(model_blessing_events, 10)
+    self._assertInputEventsHaveIncreasingIndex(model_events, 'model')
+    self._assertInputEventsHaveIncreasingIndex(
+        model_blessing_events, 'model_blessing'
+    )
 
 
 if __name__ == '__main__':
