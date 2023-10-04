@@ -277,6 +277,10 @@ class Artifact(json_utils.Jsonable):
         # Avoid populating empty property protobuf with the [] operator.
         return 0.0
       return self._artifact.properties[name].double_value
+    elif property_mlmd_type == metadata_store_pb2.BOOLEAN:
+      if name not in self._artifact.properties:
+        # Avoid populating empty property protobuf with the [] operator.
+        return False
     elif property_mlmd_type == metadata_store_pb2.STRUCT:
       if name not in self._artifact.properties:
         # Avoid populating empty property protobuf with the [] operator.
@@ -642,6 +646,11 @@ class Artifact(json_utils.Jsonable):
     """Sets a custom property of float type."""
     self._artifact.custom_properties[key].double_value = builtins.float(value)
 
+  @doc_controls.do_not_doc_in_subclasses
+  def set_bool_custom_property(self, key: str, value: bool):
+    """Sets a custom property of bool type."""
+    self._artifact.custom_properties[key].bool_value = value
+
   @doc_controls.do_not_doc_inheritable
   def set_json_value_custom_property(self, key: str, value: JsonValueType):
     """Sets a custom property of JSON type."""
@@ -698,8 +707,19 @@ class Artifact(json_utils.Jsonable):
     return self._artifact.custom_properties[key].double_value
 
   @doc_controls.do_not_doc_in_subclasses
+  def get_bool_custom_property(self, key: str) -> bool:
+    """Get a custom property of bool type."""
+    if key not in self._artifact.custom_properties:
+      return False
+    json_value = self.get_json_value_custom_property(key)
+    if isinstance(json_value, bool):
+      return json_value
+    return self._artifact.custom_properties[key].bool_value
+
+  @doc_controls.do_not_doc_in_subclasses
   def get_custom_property(
-      self, key: str) -> Optional[Union[int, float, str, JsonValueType]]:
+      self, key: str
+  ) -> Optional[Union[int, float, str, bool, JsonValueType]]:
     """Gets a custom property with key. Return None if not found."""
     if key not in self._artifact.custom_properties:
       return None
@@ -715,6 +735,8 @@ class Artifact(json_utils.Jsonable):
       return mlmd_value.double_value
     elif mlmd_value.HasField('string_value'):
       return mlmd_value.string_value
+    elif mlmd_value.HasField('bool_value'):
+      return mlmd_value.bool_value
     return None
 
   @doc_controls.do_not_doc_inheritable
@@ -820,6 +842,8 @@ def _ArtifactType(  # pylint: disable=invalid-name
         properties[name] = Property(PropertyType.JSON_VALUE)
       elif property_type == metadata_store_pb2.PropertyType.STRING:
         properties[name] = Property(PropertyType.STRING)
+      elif property_type == metadata_store_pb2.PropertyType.BOOLEAN:
+        properties[name] = Property(PropertyType.BOOLEAN)
       else:
         raise ValueError('Unsupported MLMD property type: %s.' % property_type)
     annotation = None

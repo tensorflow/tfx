@@ -39,14 +39,15 @@ class _MyArtifact(artifact.Artifact):
       'int2': artifact.Property(type=artifact.PropertyType.INT),
       'float1': artifact.Property(type=artifact.PropertyType.FLOAT),
       'float2': artifact.Property(type=artifact.PropertyType.FLOAT),
-      'proto1':
-          artifact.Property(type=artifact.PropertyType.PROTO
-                           ),  # Expected proto type: google.protobuf.Value
-      'proto2':
-          artifact.Property(type=artifact.PropertyType.PROTO
-                           ),  # Expected proto type: google.protobuf.Value
+      'proto1': artifact.Property(
+          type=artifact.PropertyType.PROTO
+      ),  # Expected proto type: google.protobuf.Value
+      'proto2': artifact.Property(
+          type=artifact.PropertyType.PROTO
+      ),  # Expected proto type: google.protobuf.Value
       'string1': artifact.Property(type=artifact.PropertyType.STRING),
       'string2': artifact.Property(type=artifact.PropertyType.STRING),
+      'bool1': artifact.Property(type=artifact.PropertyType.BOOLEAN),
   }
 
 _MyArtifact2 = artifact._ArtifactType(  # pylint: disable=invalid-name
@@ -220,11 +221,23 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(
         0.5, instance.mlmd_artifact.custom_properties['float_key'].double_value)
 
+    instance.set_bool_custom_property('bool_key', True)
+    self.assertTrue(
+        instance.mlmd_artifact.custom_properties['bool_key'].bool_value
+    )
+    self.assertFalse(instance.get_bool_custom_property('fake_key'))
+
     self.assertEqual(
         textwrap.dedent("""\
         Artifact(artifact: id: 1
         type_id: 2
         uri: "/tmp/uri2"
+        custom_properties {
+          key: "bool_key"
+          value {
+            bool_value: true
+          }
+        }
         custom_properties {
           key: "float_key"
           value {
@@ -259,6 +272,10 @@ class ArtifactTest(tf.test.TestCase):
         name: "test_artifact"
         , artifact_type: name: "MyTypeName"
         properties {
+          key: "bool1"
+          value: BOOLEAN
+        }
+        properties {
           key: "float1"
           value: DOUBLE
         }
@@ -290,7 +307,9 @@ class ArtifactTest(tf.test.TestCase):
           key: "string2"
           value: STRING
         }
-        )"""), str(instance))
+        )"""),
+        str(instance),
+    )
 
     # Test json serialization.
     json_dict = json_utils.dumps(instance)
@@ -349,6 +368,7 @@ class ArtifactTest(tf.test.TestCase):
     my_artifact.set_json_value_custom_property('customjson2', ['a', 'b', 3])
     my_artifact.set_json_value_custom_property('customjson3', 'xyz')
     my_artifact.set_json_value_custom_property('customjson4', 3.14)
+    my_artifact.set_json_value_custom_property('customjson5', False)
 
     # Test that the JsonValue getters return the same values we just set
     self.assertEqual(my_artifact.jsonvalue_string, 'aaa')
@@ -365,6 +385,10 @@ class ArtifactTest(tf.test.TestCase):
         my_artifact.get_json_value_custom_property('customjson3'), 'xyz')
     self.assertEqual(
         my_artifact.get_json_value_custom_property('customjson4'), 3.14)
+    self.assertEqual(
+        my_artifact.get_json_value_custom_property('customjson5'), False
+    )
+    self.assertEqual(my_artifact.get_bool_custom_property('customjson5'), False)
     self.assertTrue(my_artifact.has_custom_property('customjson1'))
     self.assertTrue(my_artifact.has_custom_property('customjson2'))
 
@@ -517,6 +541,19 @@ class ArtifactTest(tf.test.TestCase):
                 key: "__value__"
                 value {
                   number_value: 3.14
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson5"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  bool_value: false
                 }
               }
             }
@@ -816,6 +853,19 @@ class ArtifactTest(tf.test.TestCase):
                 key: "__value__"
                 value {
                   number_value: 3.14
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson5"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  bool_value: false
                 }
               }
             }
