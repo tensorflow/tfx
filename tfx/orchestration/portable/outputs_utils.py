@@ -202,10 +202,7 @@ class OutputsResolver:
 
   def get_executor_output_uri(self, execution_id: int) -> str:
     """Generates executor output uri given execution_id."""
-    execution_dir = os.path.join(self._node_dir, _SYSTEM, _EXECUTOR_EXECUTION,
-                                 str(execution_id))
-    fileio.makedirs(execution_dir)
-    return os.path.join(execution_dir, _EXECUTOR_OUTPUT_FILE)
+    return get_executor_output_uri(self._node_dir, execution_id)
 
   def get_driver_output_uri(self) -> str:
     driver_output_dir = os.path.join(
@@ -312,6 +309,14 @@ def generate_output_artifacts(
       output_artifacts[key].append(artifact)
 
   return output_artifacts
+
+
+def get_executor_output_uri(node_dir, execution_id: int) -> str:
+  """Generates executor output uri given execution_id."""
+  execution_dir = os.path.join(node_dir, _SYSTEM, _EXECUTOR_EXECUTION,
+                               str(execution_id))
+  fileio.makedirs(execution_dir)
+  return os.path.join(execution_dir, _EXECUTOR_OUTPUT_FILE)
 
 
 def get_stateful_working_directory(node_dir: str,
