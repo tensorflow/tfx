@@ -58,6 +58,17 @@ class CannedResolverFunctionsTest(
       self.assertEqual(mlmd_artifact.properties['version'],
                        resolved_artifact.properties['version'])
 
+  def _add_executions_into_mlmd(
+      self, mlmd_artifacts: Sequence[metadata_store_pb2.Artifact]
+  ):
+    for mlmd_artifact in mlmd_artifacts:
+      self.put_execution(
+          'ProducerNode',
+          inputs={},
+          outputs={'x': [mlmd_artifact]},
+          contexts=[self.mlmd_context],
+      )
+
   def _insert_artifacts_into_mlmd(
       self,
       spans: Sequence[int],
@@ -74,14 +85,7 @@ class CannedResolverFunctionsTest(
               properties={'span': span, 'version': version},
           )
       )
-
-    for mlmd_artifact in mlmd_artifacts:
-      self.put_execution(
-          'ProducerNode',
-          inputs={},
-          outputs={'x': [mlmd_artifact]},
-          contexts=[self.mlmd_context],
-      )
+    self._add_executions_into_mlmd(mlmd_artifacts)
 
     return mlmd_artifacts
 
@@ -404,6 +408,63 @@ class CannedResolverFunctionsTest(
           example.properties['version'].int_value,
           x.properties['version'].int_value,
       )
+
+  def testFilterPropertyEqualResolverFn_E2E(self):
+    channel = canned_resolver_functions.filter_property_equal(
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
+        key='span',
+        value=1,
+    )
+    pipeline_node = test_utils.compile_inputs({'x': channel})
+
+    spans = [1, 2, 3, 4]
+    versions = [0, 0, 0, 0]
+    mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
+    self.assertNotEmpty(resolved)
+
+    actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
+    expected_artifacts = [mlmd_artifacts[0]]
+    self.assertResolvedAndMLMDArtifactListEqual(
+        actual_artifacts, expected_artifacts
+    )
+    self.assertEqual(actual_artifacts[0].properties['span'].int_value, 1)
+
+  def testFilterCustomPropertyEqualResolverFn_E2E(self):
+    channel = canned_resolver_functions.filter_custom_property_equal(
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
+        key='purity',
+        value=2,
+    )
+    pipeline_node = test_utils.compile_inputs({'x': channel})
+
+    mlmd_artifacts = []
+    purities = [1, 1, 2]
+    for purity in purities:
+      mlmd_artifacts.append(
+          self.put_artifact(
+              artifact_type='DummyArtifact',
+              custom_properties={'purity': purity},
+          )
+      )
+    self._add_executions_into_mlmd(mlmd_artifacts)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
+    self.assertNotEmpty(resolved)
+
+    actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
+    expected_artifacts = [mlmd_artifacts[2]]
+    self.assertResolvedAndMLMDArtifactListEqual(
+        actual_artifacts, expected_artifacts
+    )
+    self.assertEqual(
+        actual_artifacts[0].custom_properties['purity'].int_value, 2
+    )
 
   def testResolverFnContext(self):
     channel = canned_resolver_functions.latest_created(

@@ -13,11 +13,12 @@
 # limitations under the License.
 """Module for public facing, canned resolver functions."""
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 from absl import logging
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution.ops import ops
+from tfx.types import artifact
 
 
 @resolver_function.resolver_function
@@ -512,3 +513,79 @@ def paired_spans(artifacts, *, keep_all_versions: bool = False):
     version across the dict.
   """
   return ops.PairedSpans(artifacts, keep_all_versions=keep_all_versions)
+
+
+@resolver_function.resolver_function
+def filter_property_equal(
+    artifacts,
+    *,
+    key: str,
+    value: Union[int, float, str, bool, artifact.JsonValueType],
+):
+  """Returns artifacts with matching property values.
+
+  Example usage:
+
+  Consider artifacts [A, B, C] with bool property 'blessed' set to
+  [True, True, False].
+
+  filter_property_equal(
+      [A, B, C],
+      property_key='blessed',
+      property_value=False,
+  )
+
+  will return [C].
+
+  Args:
+    artifacts: The list of artifacts to filter.
+    key: The property key to match by.
+    value: The expected property value to match by.
+
+  Returns:
+    Artifact(s) with matching custom property (or property) values.
+  """
+  return ops.EqualPropertyValues(
+      artifacts,
+      property_key=key,
+      property_value=value,
+      is_custom_property=False,
+  )
+
+
+@resolver_function.resolver_function
+def filter_custom_property_equal(
+    artifacts,
+    *,
+    key: str,
+    value: Union[int, float, str, bool, artifact.JsonValueType],
+):
+  """Returns artifacts with matching custom property values.
+
+  Example usage:
+
+  Consider artifact [A, B, C] with int custom property 'purity' set to
+  [1, 1, 2].
+
+  filter_custom_property_equal(
+      [A, B, C],
+      property_key='purity',
+      property_value=2,
+  )
+
+  will return [C].
+
+  Args:
+    artifacts: The list of artifacts to filter.
+    key: The property key to match by.
+    value: The expected property value to match by.
+
+  Returns:
+    Artifact(s) with matching custom property (or property) values.
+  """
+  return ops.EqualPropertyValues(
+      artifacts,
+      property_key=key,
+      property_value=value,
+      is_custom_property=True,
+  )

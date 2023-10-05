@@ -14,25 +14,30 @@
 """Module for EqualPropertyValues operator."""
 
 from typing import Sequence, Union
+
+from absl import logging
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
+from tfx.utils import json_utils
 
 
 class EqualPropertyValues(
     resolver_op.ResolverOp,
-    canonical_name="tfx.EqualPropertyValues",
+    canonical_name='tfx.EqualPropertyValues',
     arg_data_types=(resolver_op.DataType.ARTIFACT_LIST,),
     return_data_type=resolver_op.DataType.ARTIFACT_LIST,
 ):
-  """EqualPropertyValues operator.
+  """EqualPropertyValues operator."""
 
-  The will iterate through the artifact list and find the artifact(s) with the
-  matching custom property (or property) values.
-  """
+  # The property key to match by.
   property_key = resolver_op.Property(type=str)
-  property_value = resolver_op.Property(type=Union[int, float, bool, str])
 
-  # If True, only search the artifact's custom properties, else search its
+  # The expected property value to match by.
+  property_value = resolver_op.Property(
+      type=Union[int, float, bool, str, json_utils.JsonValue]
+  )
+
+  # If True, match by the artifact's custom properties, else match by its
   # properties. Defaults to True.
   is_custom_property = resolver_op.Property(type=bool, default=True)
 
@@ -40,29 +45,29 @@ class EqualPropertyValues(
       self,
       input_list: Sequence[types.Artifact],
   ) -> Sequence[types.Artifact]:
-    """Apply the EqualPropertyValues operator.
-
-    Args:
-      input_list: A list of input artifacts.
-    Returns:
-      A list of dict of artifacts.
-    """
+    """Returns artifacts with matching custom property (or property) values."""
     output_artifact_list = []
     for artifact in input_list:
       if self.is_custom_property:
-        property_value = artifact.get_custom_property(self.property_key)
-        if not property_value:
-          raise ValueError(
-              f"The artifact does not contain the property {self.property_key}."
+        if not artifact.has_custom_property(self.property_key):
+          logging.warning(
+              'The artifact %s does not contain the custom property %s.',
+              artifact,
+              self.property_key,
           )
+          return []
+        actual_property_value = artifact.get_custom_property(self.property_key)
       else:
-        if not hasattr(artifact, self.property_key):
-          raise ValueError(
-              f"The artifact does not contain the property {self.property_key}."
+        if not artifact.has_property(self.property_key):
+          logging.warning(
+              'The artifact %s does not contain the property %s.',
+              artifact,
+              self.property_key,
           )
-        property_value = getattr(artifact, self.property_key)
+          return []
+        actual_property_value = getattr(artifact, self.property_key)
 
-      if property_value == self.property_value:
+      if actual_property_value == self.property_value:
         output_artifact_list.append(artifact)
 
     return output_artifact_list
