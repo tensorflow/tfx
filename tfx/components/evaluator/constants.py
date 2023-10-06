@@ -20,6 +20,9 @@ ARTIFACT_PROPERTY_CURRENT_MODEL_URI_KEY = 'current_model'
 ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY = 'current_model_id'
 ARTIFACT_PROPERTY_BASELINE_MODEL_URI_KEY = 'baseline_model'
 ARTIFACT_PROPERTY_BASELINE_MODEL_ID_KEY = 'baseline_model_id'
+ARTIFACT_PROPERTY_BLESSING_MESSAGE_KEY = 'blessing_message'
+ARTIFACT_PROPERTY_VALIDATION_RESULT_KEY = 'validation_result'
+
 
 # Values for blessing results.
 BLESSED_VALUE = 1
@@ -29,5 +32,33 @@ NOT_BLESSED_VALUE = 0
 BLESSED_FILE_NAME = 'BLESSED'
 NOT_BLESSED_FILE_NAME = 'NOT_BLESSED'
 
+# File name for validations.tfrecord file produced by TFMA v2.
+VALIDATIONS_TFRECORDS_FILE_NAME = 'validations.tfrecord'
+
 # Key for evaluation results in executor output_dict.
 EVALUATION_KEY = 'evaluation'
+
+# Values for blessing messages.
+RUBBER_STAMPED_AND_BLESSED_VALUE = (
+    'The model was rubber stamped (no baseline models found) and blessed. '
+    'Any change thresholds were ignored, but value thresholds were '
+    'checked and passed.'
+)
+RUBBER_STAMPED_AND_NOT_BLESSED_VALUE = (
+    'The model was rubber stamped (no baseline models found) and not blessed. '
+    'Any change thresholds were ignored, but value thresholds were '
+    'checked and failed.'
+)
+
+
+def get_no_validation_file_value(validation_path: str) -> str:
+  return (
+      f'No validations.tfrecords file found at {validation_path}. The '
+      '"blessed" custom_property will not be set.'
+  )
+
+
+# Spanner has a 2.5MB limit on string values, see go/spanner-limits.
+# kMaxStringSizeCharacters is not available in Python, so we copy its
+# calculation here.
+VALIDATION_RESULT_MAX_CHARACTERS = int((10 << 20) / 4)  # 2,621,440 characters
