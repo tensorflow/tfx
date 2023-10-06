@@ -1032,13 +1032,19 @@ class PipelineView:
     self._pipeline = None  # lazily set
 
   @classmethod
-  def load_all(cls, mlmd_handle: metadata.Metadata, pipeline_id: str,
-               **kwargs) -> List['PipelineView']:
+  def load_all(
+      cls,
+      mlmd_handle: metadata.Metadata,
+      pipeline_id: str,
+      list_options: Optional[mlmd.ListOptions] = None,
+      **kwargs,
+  ) -> List['PipelineView']:
     """Loads all pipeline views from MLMD.
 
     Args:
       mlmd_handle: A handle to the MLMD db.
       pipeline_id: Id of the pipeline state to load.
+      list_options: List options to customize the query for getting executions.
       **kwargs: Extra option to pass into mlmd store functions.
 
     Returns:
@@ -1054,7 +1060,7 @@ class PipelineView:
     # list_options = mlmd.ListOptions(
     #    order_by=mlmd.OrderByField.CREATE_TIME, is_asc=True)
     executions = mlmd_handle.store.get_executions_by_context(
-        context.id, list_options=None, **kwargs
+        context.id, list_options=list_options, **kwargs
     )
     executions = sorted(executions, key=lambda x: x.create_time_since_epoch)
     return [cls(pipeline_id, context, execution) for execution in executions]

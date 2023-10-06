@@ -1208,6 +1208,37 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
             pipeline_state.get_previous_node_states_dict(),
         )
 
+  def test_load_all_with_list_options(self):
+    """Verifies list_options parameter is applied to MLMD calls in load_all."""
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline(
+          'pipeline',
+          execution_mode=pipeline_pb2.Pipeline.SYNC,
+          pipeline_run_id='001',
+          pipeline_nodes=['Trainer'],
+      )
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        pipeline_state.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.COMPLETE
+        )
+      pipeline2 = _test_pipeline(
+          'pipeline',
+          execution_mode=pipeline_pb2.Pipeline.SYNC,
+          pipeline_run_id='002',
+          pipeline_nodes=['Trainer'],
+      )
+      pstate.PipelineState.new(m, pipeline2)
+      list_options = mlmd.ListOptions(
+          filter_query='custom_properties.pipeline_run_id.string_value = "001"'
+      )
+
+      pipeline_runs = pstate.PipelineView.load_all(
+          m, 'pipeline', list_options=list_options
+      )
+
+      self.assertLen(pipeline_runs, 1)
+      self.assertEqual(pipeline_runs[0].pipeline_run_id, '001')
+
   @mock.patch.object(pstate, 'time')
   def test_get_previous_node_run_states_for_skipped_nodes(self, mock_time):
     """Tests that nodes marked to be skipped have the right previous run state."""
