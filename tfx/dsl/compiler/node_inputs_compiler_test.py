@@ -391,8 +391,11 @@ class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertFalse(result.inputs[dynamic_prop_input_key].hidden)
     self.assertEqual(result.inputs[dynamic_prop_input_key].min_count, 1)
 
-  def testCompileMinCount(self):
-
+  @parameterized.parameters(
+      (pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,),
+      (pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED),
+  )
+  def testCompileMinCount(self, trigger_strategy):
     class DummyComponentSpec(component_spec.ComponentSpec):
       INPUTS = {
           'required': component_spec.ChannelParameter(
@@ -430,8 +433,8 @@ class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
     c5 = DummyComponent(
         required=producer.output('x')).with_id('Consumer5')
     c5.node_execution_options = execution_options_utils.NodeExecutionOptions(
-        trigger_strategy=pipeline_pb2.NodeExecutionOptions
-        .ALL_UPSTREAM_NODES_COMPLETED)
+        trigger_strategy=trigger_strategy
+    )
 
     p = self._prepare_pipeline(
         [producer, optional_producer, c1, c2, c3, c4, c5])

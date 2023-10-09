@@ -402,13 +402,21 @@ def _validate_min_count(
     )
 
   consumer_options = consumer_node.node_execution_options
-  if consumer_options and consumer_options.trigger_strategy == (
-      pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED
-  ) and min_count > 0:
-    raise ValueError(f'Node({consumer_node.id}) has '
-                     'trigger_strategy = ALL_UPSTREAM_NODES_COMPLETED '
-                     f'but its inputs[{input_key}] has min_count > 0. The '
-                     'consumer\'s input may need to be optional')
+  if (
+      consumer_options
+      and consumer_options.trigger_strategy
+      in (
+          pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
+          pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+      )
+      and min_count > 0
+  ):
+    raise ValueError(
+        f'Node({consumer_node.id}) has trigger_strategy ='
+        f' {pipeline_pb2.NodeExecutionOptions.TriggerStrategy.Name(consumer_options.trigger_strategy)} but'
+        f" its inputs[{input_key}] has min_count > 0. The consumer's input may"
+        ' need to be optional'
+    )
 
 
 def compile_node_inputs(
