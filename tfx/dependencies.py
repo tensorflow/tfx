@@ -86,7 +86,6 @@ def make_required_install_packages():
       'google-cloud-aiplatform>=1.6.2,<2',
       'google-cloud-bigquery>=2.26.0,<3',
       'grpcio>=1.28.1,<2',
-      # (b/301992397) Exclude non-working keras-tuner versions.
       'keras-tuner>=1.0.4,<2,!=1.4.0,!=1.4.1',
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
