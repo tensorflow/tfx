@@ -217,8 +217,10 @@ class _WorkerExecutor(base_executor.BaseExecutor):
     # For the chief process, tuner_executor.search() starts the oracle server.
     # The server keeps running till all trials are done.
     tuner = tuner_executor.search(
-        input_dict, exec_properties, _WORKING_DIRECTORY
-    )
+        input_dict=input_dict,
+        exec_properties=exec_properties,
+        working_dir=_WORKING_DIRECTORY,
+        print_tuning_summary=True)
     tuner_executor.write_best_hyperparameters(tuner, output_dict)
 
   def _start_chief_oracle_in_subprocess(
@@ -295,8 +297,14 @@ class _WorkerExecutor(base_executor.BaseExecutor):
     logging.info('Setting KERASTUNER_TUNER_ID with %s',
                  os.environ['KERASTUNER_TUNER_ID'])
 
-    return tuner_executor.search(input_dict, exec_properties,
-                                 _WORKING_DIRECTORY)
+    # Printing tuning summary in distributed setting involves RPC calls to Chief
+    # worker. Chief worker stops after all tuning trials are finished and might
+    # be unavailable for such RPC calls.
+    return tuner_executor.search(
+        input_dict=input_dict,
+        exec_properties=exec_properties,
+        working_dir=_WORKING_DIRECTORY,
+        print_tuning_summary=False)
 
   def __init__(self, context):
     super().__init__(context)

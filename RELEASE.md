@@ -15,6 +15,7 @@
 ## Bug Fixes and Other Changes
 
 * Fixed a synchronization bug in google_cloud_ai_platform tuner.
+* Print best tuning trials only from the chief worker of google_cloud_ai_platform tuner.
 
 ## Dependency Updates
 | Package Name | Version Constraints | Previously (in `v1.14.0`) | Comments |
