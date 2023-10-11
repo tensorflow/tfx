@@ -263,18 +263,35 @@ def get_artifacts_to_garbage_collect_for_node(
 ) -> List[metadata_store_pb2.Artifact]:
   """Returns output artifacts of the given node to garbage collect."""
   policies_by_output_key = _get_garbage_collection_policies_for_node(node)
+  logging.info(
+      'Garabge collection policies for node %s: %s',
+      node.node_info.id,
+      policies_by_output_key,
+  )
   if not policies_by_output_key:
     return []
   result = []
   artifacts = _get_output_artifacts_for_node(mlmd_handle, node_uid)
+  logging.info('Artifacts for node %s: %s', node.node_info.id, artifacts)
   events = _get_events_for_artifacts(mlmd_handle, artifacts)
+  logging.info('Events for node %s: %s', node.node_info.id, events)
   artifacts_by_output_key = _group_artifacts_by_output_key(artifacts, events)
+  logging.info(
+      'Artifacts by output key for node %s: %s',
+      node.node_info.id,
+      artifacts_by_output_key,
+  )
   for output_key, policy in policies_by_output_key.items():
     if output_key not in artifacts_by_output_key:
       continue
     artifacts_to_garbage_collect_for_output_key = _artifacts_to_garbage_collect(
         mlmd_handle, artifacts_by_output_key[output_key], events, policy)
     result.extend(artifacts_to_garbage_collect_for_output_key)
+    logging.info(
+        'Artifacts to garbage collect for output key %s: %s',
+        output_key,
+        artifacts_to_garbage_collect_for_output_key,
+    )
   return result
 
 
@@ -339,6 +356,11 @@ def run_garbage_collection_for_node(
     # current execution to fail, which is undesireable.
     artifacts = get_artifacts_to_garbage_collect_for_node(
         mlmd_handle, node_uid, node
+    )
+    logging.info(
+        'Artifacts to garbage collect for node %s: %s',
+        node.node_info.id,
+        artifacts,
     )
     garbage_collect_artifacts(mlmd_handle, artifacts)
   except Exception as e:  # pylint: disable=broad-exception-caught
