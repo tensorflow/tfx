@@ -80,11 +80,11 @@ def make_required_install_packages():
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
       'apache-beam[gcp]>=2.47,<3',
-      'attrs>=19.3.0,<22',
+      'attrs>=19.3.0,<24',
       'click>=7,<9',
       'google-api-core<3',
       'google-cloud-aiplatform>=1.6.2,<2',
-      'google-cloud-bigquery>=2.26.0,<3',
+      'google-cloud-bigquery>=3,<4',
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2,!=1.4.0,!=1.4.1',
       'kubernetes>=10.0.1,<13',
@@ -99,7 +99,7 @@ def make_required_install_packages():
       # pylint: disable=line-too-long
       'tensorflow' + select_constraint('>=2.13.0,<2.14'),
       # pylint: enable=line-too-long
-      'tensorflow-hub>=0.9.0,<0.14',
+      'tensorflow-hub>=0.15.0,<0.16',
       'tensorflow-data-validation'
       + select_constraint(
           default='>=1.14.0,<1.15.0',
