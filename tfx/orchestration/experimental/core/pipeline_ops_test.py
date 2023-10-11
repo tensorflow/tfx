@@ -245,28 +245,54 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         node_trainer.node_info.id = 'Trainer'
         node_trainer.upstream_nodes.extend(['ExampleGen'])
 
-        # Initiate a pipeline start.
-        pipeline_state_run1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
-
-        with pipeline_state_run1:
-          example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
-          trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
-          with pipeline_state_run1.node_state_update_context(
-              example_gen_node_uid
+        # Initiate a pipeline run.
+        with pipeline_ops.initiate_pipeline_start(
+            m, pipeline
+        ) as pipeline_state:
+          with pipeline_state.node_state_update_context(
+              task_lib.NodeUid(
+                  task_lib.PipelineUid.from_pipeline(pipeline), 'ExampleGen'
+              )
           ) as node_state:
             node_state.update(pstate.NodeState.COMPLETE)
-          with pipeline_state_run1.node_state_update_context(
-              trainer_node_uid
+          with pipeline_state.node_state_update_context(
+              task_lib.NodeUid(
+                  task_lib.PipelineUid.from_pipeline(pipeline), 'Trainer'
+              )
           ) as node_state:
             node_state.update(pstate.NodeState.FAILED)
-          pipeline_state_run1.set_pipeline_execution_state(
+          pipeline_state.set_pipeline_execution_state(
               metadata_store_pb2.Execution.COMPLETE
           )
-          pipeline_state_run1.initiate_stop(
+          pipeline_state.initiate_stop(
               status_lib.Status(code=status_lib.Code.ABORTED)
           )
 
+        # Initiate another pipeline run.
         pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
+        with pipeline_ops.initiate_pipeline_start(
+            m, pipeline
+        ) as pipeline_state:
+          with pipeline_state.node_state_update_context(
+              task_lib.NodeUid(
+                  task_lib.PipelineUid.from_pipeline(pipeline), 'ExampleGen'
+              )
+          ) as node_state:
+            node_state.update(pstate.NodeState.FAILED)
+          with pipeline_state.node_state_update_context(
+              task_lib.NodeUid(
+                  task_lib.PipelineUid.from_pipeline(pipeline), 'Trainer'
+              )
+          ) as node_state:
+            node_state.update(pstate.NodeState.FAILED)
+          pipeline_state.set_pipeline_execution_state(
+              metadata_store_pb2.Execution.COMPLETE
+          )
+          pipeline_state.initiate_stop(
+              status_lib.Status(code=status_lib.Code.ABORTED)
+          )
+
+        pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run2'
 
         # Error if attempt to resume the pipeline without providing run id.
         with self.assertRaises(
@@ -285,9 +311,13 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual('run0', pipeline_uid.pipeline_run_id)
         with pipeline_ops.resume_pipeline(
             m, pipeline, pipeline_id=pipeline_id, run_id='run0'
-        ) as pipeline_state_run2:
-          pipeline_state_run2.is_active()
+        ) as pipeline_state:
+          pipeline_state.is_active()
           mock_snapshot.assert_called_once()
+          self.assertEqual(
+              'run0',  # Should be run0, not run1
+              pipeline.runtime_spec.snapshot_settings.base_pipeline_run_strategy.base_run_id,
+          )
 
   @flagsaver.flagsaver(tflex_enable_inplace_resume=True)
   def test_inplace_resume_pipeline(self):

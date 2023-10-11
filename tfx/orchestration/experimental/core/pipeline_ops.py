@@ -934,7 +934,7 @@ def resume_pipeline(
           skip_snapshot_nodes=_get_previously_skipped_nodes(
               latest_pipeline_view
           ),
-          snapshot_settings=partial_run_utils.latest_pipeline_snapshot_settings(),
+          snapshot_settings=snapshot_settings,
       )
     except ValueError as e:
       raise status_lib.StatusNotOkError(
