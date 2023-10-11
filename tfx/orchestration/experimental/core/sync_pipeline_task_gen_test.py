@@ -1258,6 +1258,35 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self._run_next(False, expect_nodes=[chore_b])
     self._run_next(False, expect_nodes=[chore_c])
 
+  def test_generate_tasks_for_node(self):
+    pipeline = self._make_pipeline(self._pipeline_root, str(uuid.uuid4()), True)
+    self._pipeline = pipeline
+    chore_b = test_utils.get_node(pipeline, 'chore_b')
+
+    def id_tracked_fn():
+      raise ValueError('Should not be called!')
+
+    task_gen = sptg.SyncPipelineTaskGenerator(
+        mlmd_connection_manager=self._mlmd_cm,
+        is_task_id_tracked_fn=id_tracked_fn,
+        service_job_manager=self._mock_service_job_manager,
+    )
+    chore_b_uid = task_lib.NodeUid.from_node(self._pipeline, chore_b)
+
+    with self._mlmd_connection as m:
+      pipeline_state = test_utils.get_or_create_pipeline_state(
+          m, self._pipeline
+      )
+      tasks = task_gen.get_tasks_for_node(chore_b, pipeline_state)
+
+    self.assertLen(tasks, 2)
+    [update_task, exec_task] = tasks
+    self.assertIsInstance(update_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(update_task.state, pstate.NodeState.RUNNING)
+    self.assertEqual(update_task.node_uid, chore_b_uid)
+    self.assertIsInstance(exec_task, task_lib.ExecNodeTask)
+    self.assertEqual(exec_task.node_uid, chore_b_uid)
+
 
 if __name__ == '__main__':
   tf.test.main()

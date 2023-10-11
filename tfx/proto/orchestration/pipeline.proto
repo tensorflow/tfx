@@ -606,6 +606,27 @@ message NodeExecutionOptions {
 
   // Async mode trigger configuration for this node.
   AsyncTrigger async_trigger = 8;
+
+  // Configurations around a resource lifetime.
+  // Current behavior for ASYNC pipelines is undefined.
+  // TODO(b/298253165)
+  message ResourceLifetime {
+    // If this node indicates a boundary to a resource lifetime. Intended to be
+    // used to support some resource being "available" between the execution of
+    // two nodes. Currently we provide a "best effort" to run the lifetime end
+    // of a successful start node during pipeline finalization (eg; the user
+    // requests for the pipeline to stop, pipeline fails do to node errors) if
+    // the lifetime_start is marked as SUCCESSFUL. More generally, provides a
+    // way to attempt node execution even if otherwise unpermitted by the DAG.
+    // As an implementation detail we enforce a 1:1 mapping.
+    oneof paired_lifetime {
+      // If set then the node this NodeExecutionOptions belongs to marks the end
+      // of some lifetime.
+      string lifetime_start = 1;
+    }
+  }
+
+  ResourceLifetime resource_lifetime = 9;
 }
 
 // Pipeline node definition.

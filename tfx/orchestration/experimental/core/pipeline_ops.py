@@ -1147,7 +1147,7 @@ def orchestrate(
     )
     try:
       _orchestrate_stop_initiated_pipeline(
-          mlmd_connection_manager.primary_mlmd_handle,
+          mlmd_connection_manager,
           task_queue,
           service_job_manager,
           pipeline_state,
@@ -1320,14 +1320,136 @@ def _cancel_executions(
       )
 
 
+def _run_end_nodes(
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
+    task_queue: tq.TaskQueue,
+    pipeline_state: pstate.PipelineState,
+    service_job_manager: service_jobs.ServiceJobManager,
+):
+  """Runs any end node that should be ran.
+
+  Args:
+    mlmd_connection_manager: Connection manager to manager multiple mlmd
+      connections.
+    task_queue: TaskQueue for managing tasks for nodes.
+    pipeline_state: PipelineState object for this pipeline run.
+    service_job_manager: Manager for service jobs. Unused but needed to
+      construct a SyncPipelineTaskGenerator.
+  """
+  # Build some dicts and find all paired nodes
+  end_nodes = []
+  pipeline = pipeline_state.pipeline
+  nodes = pstate.get_all_nodes(pipeline)
+  node_uid_by_id = {}
+  with pipeline_state:
+    node_state_by_node_uid = pipeline_state.get_node_states_dict()
+  for node in nodes:
+    node_uid_by_id[node.node_info.id] = task_lib.NodeUid.from_node(
+        pipeline, node
+    )
+    if not node.execution_options.HasField('resource_lifetime'):
+      logging.info('Node %s has no resource lifetime', node.node_info.id)
+      continue
+    resource_lifetime = node.execution_options.resource_lifetime
+    if resource_lifetime.HasField('lifetime_start'):
+      logging.info(
+          'Node %s is an end node with upstream %s',
+          node.node_info.id,
+          resource_lifetime.lifetime_start,
+      )
+      end_nodes.append(node)
+  logging.info('end_nodes: %s', [n.node_info.id for n in end_nodes])
+  end_nodes_to_start = []
+  # Find end nodes to start, and those that are already running.
+  for end_node in end_nodes:
+    node_id = end_node.node_info.id
+
+    logging.info('checking if end node %s should be started', node_id)
+    end_node_state = node_state_by_node_uid[node_uid_by_id[node_id]]
+    upstream_node_uid = node_uid_by_id[
+        end_node.execution_options.resource_lifetime.lifetime_start
+    ]
+    start_node_state = node_state_by_node_uid[upstream_node_uid]
+    if start_node_state.is_success() and not end_node_state.is_success():
+      logging.info(
+          'Node %s in state %s should be started',
+          node_id,
+          end_node_state.state,
+      )
+      end_nodes_to_start.append(end_node)
+    else:
+      logging.info(
+          'Node %s in state %s should not be started',
+          node_id,
+          end_node_state.state,
+      )
+
+  logging.info(
+      'Starting end nodes: %s', [n.node_info.id for n in end_nodes_to_start]
+  )
+  if not end_nodes_to_start:
+    return
+  generated_tasks = []
+  generator = sync_pipeline_task_gen.SyncPipelineTaskGenerator(
+      mlmd_connection_manager,
+      task_queue.contains_task_id,
+      service_job_manager,
+  )
+  for node in end_nodes_to_start:
+    # We never want to crash here to wrap everything in a try/except. If we
+    # are unable to generate cleanup tasks then log, mark the node as FAILED,
+    # and move on.
+    try:
+      logging.info('generating tasks for node %s', node.node_info.id)
+      tasks = generator.get_tasks_for_node(node, pipeline_state)
+      generated_tasks.extend(tasks)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      logging.exception(
+          'Failed to generate tasks for paired end node %s: %s',
+          node,
+          e,
+      )
+      with pipeline_state:
+        with pipeline_state.node_state_update_context(
+            node_uid_by_id[node.node_info.id]
+        ) as node_state:
+          logging.info(
+              'Marking node %s as failed since we failed to generate tasks for'
+              ' it during cleaup.',
+              node.node_info.id,
+          )
+          node_state.update(
+              pstate.NodeState.FAILED,
+              status=status_lib.Status(
+                  code=status_lib.Code.INTERNAL,
+                  message=f'Unable to run end node during cleanup: {e}',
+              ),
+          )
+        continue
+
+  with pipeline_state:
+    for task in generated_tasks:
+      if isinstance(task, task_lib.UpdateNodeStateTask):
+        # TODO(b/272015049): Revist how to display launched jobs
+        logging.info(
+            'Got update node state task for node %s, to state %s',
+            task.node_uid.node_id,
+            task.state,
+        )
+      elif isinstance(task, task_lib.ExecNodeTask):
+        logging.info('Got exec task for node %s', task.node_uid.node_id)
+        task_queue.enqueue(task)
+      else:
+        logging.error('Unsupported task: %s', task.task_id)
+
+
 def _orchestrate_stop_initiated_pipeline(
-    mlmd_handle: metadata.Metadata,
+    mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     task_queue: tq.TaskQueue,
     service_job_manager: service_jobs.ServiceJobManager,
     pipeline_state: pstate.PipelineState,
 ) -> None:
   """Orchestrates stop initiated pipeline."""
-  # Flip all the stoppable nodes to state STOPPING.
   nodes_to_stop = []
   with pipeline_state:
     pipeline = pipeline_state.pipeline
@@ -1354,7 +1476,7 @@ def _orchestrate_stop_initiated_pipeline(
   stopped_nodes = []
   for node in nodes_to_stop:
     if _cancel_node(
-        mlmd_handle,
+        mlmd_connection_manager.primary_mlmd_handle,
         task_queue,
         service_job_manager,
         pipeline_state,
@@ -1370,11 +1492,12 @@ def _orchestrate_stop_initiated_pipeline(
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         node_state.update(pstate.NodeState.STOPPED, node_state.status)
 
+  logging.info('stopped nodes: %s', stopped_nodes)
   # If all the nodes_to_stop have been stopped, we can update the pipeline
   # execution state.
-  all_stopped = set(n.node_info.id for n in nodes_to_stop) == set(
-      n.node_info.id for n in stopped_nodes
-  )
+  nodes_to_stop_ids = set(n.node_info.id for n in nodes_to_stop)
+  stopped_nodes_ids = set(n.node_info.id for n in stopped_nodes)
+  all_stopped = nodes_to_stop_ids == stopped_nodes_ids
   if all_stopped:
     with pipeline_state:
       # Update pipeline execution state in MLMD.
@@ -1388,6 +1511,32 @@ def _orchestrate_stop_initiated_pipeline(
               status=stop_reason,
           )
       )
+    if any(
+        n.execution_options.HasField('resource_lifetime')
+        for n in pstate.get_all_nodes(pipeline_state.pipeline)
+    ):
+      logging.info('Pipeline has paired nodes. May launch additional jobs')
+      # Note that this is a pretty hacky "best effort" attempt at cleanup, we
+      # Put the ExecNodeTasks into the task_queue but do no monitoring of them,
+      # and we do not support node re-try if the cleanup task fails.
+      # TODO(b/272015049): If requested support retry of cleanup tasks.
+      try:
+        _run_end_nodes(
+            mlmd_connection_manager,
+            task_queue,
+            pipeline_state,
+            service_job_manager,
+        )
+      except Exception as e:  # pylint: disable=broad-exception-caught
+        logging.exception('Failed to run end nodes: %s', e)
+    else:
+      logging.info('No paired nodes found in pipeline.')
+  else:
+    logging.info(
+        'Not all nodes stopped! node_to_stop: %s, stopped_nodes: %s',
+        nodes_to_stop_ids,
+        stopped_nodes_ids,
+    )
 
 
 def _orchestrate_update_initiated_pipeline(
