@@ -23,9 +23,10 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ARG APT_COMMAND="apt-get -o Acquire::Retries=3 -y"
 
-# Install python 3.8 and additional dependencies.
+# Install python 3.10 and additional dependencies.
 RUN ${APT_COMMAND} update && \
   ${APT_COMMAND} install --no-install-recommends -q software-properties-common && \
+  add-apt-repository -y ppa:deadsnakes/ppa && \
   ${APT_COMMAND} update && \
   ${APT_COMMAND} install --no-install-recommends -q \
   build-essential \
@@ -33,14 +34,14 @@ RUN ${APT_COMMAND} update && \
   libsnappy-dev \
   protobuf-compiler \
   libprotobuf-dev \
-  python3.8-dev \
+  python3.10-dev \
   python3-distutils \
   wget \
   unzip \
   git && \
-  update-alternatives --install /usr/bin/python python /usr/bin/python3.8 1 && \
-  update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 && \
-  update-alternatives --install /usr/bin/python-config python-config /usr/bin/python3.8-config 1 && \
+  update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
+  update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 && \
+  update-alternatives --install /usr/bin/python-config python-config /usr/bin/python3.10-config 1 && \
   ${APT_COMMAND} autoclean && \
   ${APT_COMMAND} autoremove --purge
 

@@ -140,6 +140,7 @@ def make_extra_packages_airflow():
 def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
+      # TODO(b/304892416): Migrate from KFP SDK v1 to v2.
       'kfp>=1.8.14,<2',
       'kfp-pipeline-spec>=0.1.10,<0.2',
   ]
@@ -157,6 +158,8 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
+      # TODO(b/304892416): Migrate from KFP SDK v1 to v2.
+      'kfp>=1.8.14,<2',
       'kfp-pipeline-spec>=0.1.10,<0.2',
       'mmh>=2.2,<3',
       'python-snappy>=0.5,<0.6',
