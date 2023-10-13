@@ -20,9 +20,10 @@ from tfx.dsl.compiler import constants
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
-from tfx.utils import telemetry_utils
+from tfx.utils import metrics_utils
 from tfx.proto.orchestration import pipeline_pb2
 
+from tfx.utils import telemetry_utils
 import ml_metadata as mlmd
 from ml_metadata import errors as mlmd_errors
 from ml_metadata.proto import metadata_store_pb2
@@ -123,7 +124,7 @@ def _register_context_if_not_exist(
   return context
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def register_context_if_not_exists(
     metadata_handle: metadata.Metadata,
     context_type_name: str,
@@ -158,7 +159,7 @@ def register_context_if_not_exists(
   )
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def prepare_contexts(
     metadata_handle: metadata.Metadata,
     node_contexts: pipeline_pb2.NodeContexts,
@@ -207,7 +208,7 @@ def prepare_contexts(
   return result
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def put_parent_context_if_not_exists(
     metadata_handle: metadata.Metadata, parent_id: int, child_id: int
 ) -> None:

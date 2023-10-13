@@ -36,7 +36,7 @@ from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import orchestration_options
-from tfx.utils import telemetry_utils
+from tfx.utils import metrics_utils
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable.mlmd import context_lib
@@ -46,6 +46,7 @@ from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import json_utils
 from tfx.utils import status as status_lib
 
+from tfx.utils import telemetry_utils
 from google.protobuf import message
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
@@ -440,7 +441,7 @@ class PipelineState:
     self._on_commit_callbacks: List[Callable[[], None]] = []
 
   @classmethod
-  @telemetry_utils.noop_telemetry
+  @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
   @_synchronized
   def new(
       cls,
@@ -587,7 +588,7 @@ class PipelineState:
     return pipeline_state
 
   @classmethod
-  @telemetry_utils.noop_telemetry
+  @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
   def load(
       cls, mlmd_handle: metadata.Metadata, pipeline_uid: task_lib.PipelineUid
   ) -> 'PipelineState':
@@ -620,7 +621,7 @@ class PipelineState:
     return uids_and_states[0][1]
 
   @classmethod
-  @telemetry_utils.noop_telemetry
+  @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
   @_synchronized
   def load_all_active(cls,
                       mlmd_handle: metadata.Metadata) -> List['PipelineState']:
@@ -1265,7 +1266,7 @@ def pipeline_id_from_orchestrator_context(
   return context.name
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_all_nodes(
     pipeline: pipeline_pb2.Pipeline) -> List[node_proto_view.NodeProtoView]:
   """Returns the views of nodes or inner pipelines in the given pipeline."""
@@ -1276,7 +1277,7 @@ def get_all_nodes(
   ]
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_all_node_executions(
     pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
 ) -> Dict[str, List[metadata_store_pb2.Execution]]:
@@ -1287,7 +1288,7 @@ def get_all_node_executions(
   }
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_all_node_artifacts(
     pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
 ) -> Dict[str, Dict[int, Dict[str, List[metadata_store_pb2.Artifact]]]]:

@@ -30,12 +30,13 @@ from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import filter_query_builder as q
-from tfx.utils import telemetry_utils
+from tfx.utils import metrics_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import proto_utils
 from tfx.utils import typing_utils
 
+from tfx.utils import telemetry_utils
 from google.protobuf import json_format
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
@@ -146,7 +147,7 @@ def sort_executions_newest_to_oldest(
       executions, key=lambda e: e.create_time_since_epoch, reverse=True)
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def prepare_execution(
     metadata_handle: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
@@ -213,7 +214,7 @@ def _get_id(artifact: metadata_store_pb2.Artifact) -> Any:
   return None
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def _create_artifact_and_event_pairs(
     metadata_handle: metadata.Metadata,
     artifact_dict: typing_utils.ArtifactMultiMap,
@@ -271,7 +272,7 @@ def _create_artifact_and_event_pairs(
   return result
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def put_execution(
     metadata_handle: metadata.Metadata,
     execution: metadata_store_pb2.Execution,
@@ -341,7 +342,7 @@ def put_execution(
   return execution
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def put_executions(
     metadata_handle: metadata.Metadata,
     executions: Sequence[metadata_store_pb2.Execution],
@@ -475,7 +476,7 @@ def _artifact_maps_contain_same_uris(
   return True
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def register_output_artifacts(
     metadata_handle: metadata.Metadata,
     execution_id: int,
@@ -547,7 +548,7 @@ def _reuse_existing_artifacts(
           break
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def _register_reference_output_artifacts(
     metadata_handle: metadata.Metadata,
     execution: metadata_store_pb2.Execution,
@@ -584,7 +585,7 @@ def _register_reference_output_artifacts(
     )
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def _register_pending_output_artifacts(
     metadata_handle: metadata.Metadata,
     execution: metadata_store_pb2.Execution,
@@ -623,7 +624,7 @@ def _register_pending_output_artifacts(
     )
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_executions_associated_with_all_contexts(
     metadata_handle: metadata.Metadata,
     contexts: Iterable[metadata_store_pb2.Context],
@@ -649,7 +650,7 @@ def get_executions_associated_with_all_contexts(
   return executions
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_input_artifacts(
     metadata_handle: metadata.Metadata, execution_id: int
 ) -> typing_utils.ArtifactMultiDict:
@@ -675,7 +676,7 @@ def get_input_artifacts(
   return event_lib.reconstruct_artifact_multimap(artifacts, input_events)
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_output_artifacts(
     metadata_handle: metadata.Metadata, execution_id: int
 ) -> typing_utils.ArtifactMultiDict:
@@ -701,7 +702,7 @@ def get_output_artifacts(
   return event_lib.reconstruct_artifact_multimap(artifacts, output_events)
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_pending_output_artifacts(
     metadata_handle: metadata.Metadata,
     execution_id: int,
@@ -746,7 +747,7 @@ def get_pending_output_artifacts(
   return event_lib.reconstruct_artifact_multimap(valid_artifacts, valid_events)
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def set_execution_result(
     execution_result: execution_result_pb2.ExecutionResult,
     execution: metadata_store_pb2.Execution,
@@ -781,7 +782,7 @@ def set_execution_result(
       )
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_execution_result(
     execution: metadata_store_pb2.Execution, ignore_parse_errors=False
 ) -> Optional[execution_result_pb2.ExecutionResult]:

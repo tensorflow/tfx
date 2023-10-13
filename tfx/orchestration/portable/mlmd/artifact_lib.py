@@ -18,12 +18,14 @@ from typing import Optional, Sequence
 
 from tfx import types
 from tfx.orchestration import metadata
-from tfx.utils import telemetry_utils
+from tfx.utils import metrics_utils
 from tfx.types import artifact_utils
 from tfx.utils import typing_utils
 
+from tfx.utils import telemetry_utils
 
-@telemetry_utils.noop_telemetry
+
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_artifacts_by_ids(
     metadata_handle: metadata.Metadata, artifact_ids: Sequence[int]
 ) -> Sequence[types.Artifact]:
@@ -64,7 +66,7 @@ def get_artifacts_by_ids(
   ]
 
 
-@telemetry_utils.noop_telemetry
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def update_artifacts(
     metadata_handle: metadata.Metadata,
     tfx_artifact_map: typing_utils.ArtifactMultiMap,
