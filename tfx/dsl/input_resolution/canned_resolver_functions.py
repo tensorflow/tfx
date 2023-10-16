@@ -113,7 +113,8 @@ def static_range(artifacts,
     min_spans: Minimum number of desired example spans in the range. If
       min_spans is None, and if both end_span_number and start_span_number are
       positive, it is set to end_span_number - start_span_number + 1. Else if
-      min_spans is None, it is set to -1.
+      min_spans is None, it is set to -1, meaning all unique spans will be
+      considered.
 
   Returns:
     Artifacts with spans in [start_span, end_span] inclusive.
@@ -133,11 +134,26 @@ def static_range(artifacts,
     # spans will be considered.
     if start_span_number >= 0 and end_span_number >= 0:
       min_spans = end_span_number - start_span_number + 1
+
+      # Decrement min_spans by the number of spans in exclude_span_numbers that
+      # are in the range [start_span_number, end_span_number].
+      num_excluded_spans = 0
+      for excluded_span in exclude_span_numbers:
+        if (
+            excluded_span >= start_span_number
+            and excluded_span <= end_span_number
+        ):
+          num_excluded_spans += 1
+      min_spans -= num_excluded_spans
+
       logging.warning(
           'min_spans for static_range(...) was not set and is being set to '
-          'end_span_number - start_span_number + 1 = %s - %s + 1 = %s.',
+          'end_span_number - start_span_number + 1 - '
+          '(number of excluded spans in the range [start_span, end_span]) = '
+          '%s - %s + 1 - %s = %s.',
           end_span_number,
           start_span_number,
+          num_excluded_spans,
           min_spans,
       )
     else:
