@@ -99,6 +99,32 @@ connection_config.mysql.ssl_options.verify_server_cert = '...'
 store = metadata_store.MetadataStore(connection_config)
 ```
 
+*   **PostgreSQL** connects to a PostgreSQL server.
+
+```python
+connection_config = metadata_store_pb2.ConnectionConfig()
+connection_config.postgresql.host = '...'
+connection_config.postgresql.port = '...'
+connection_config.postgresql.user = '...'
+connection_config.postgresql.password = '...'
+connection_config.postgresql.dbname = '...'
+store = metadata_store.MetadataStore(connection_config)
+```
+
+Similarly, when using a PostgreSQL instance with Google CloudSQL
+([quickstart](https://cloud.google.com/sql/docs/postgres/quickstart),
+[connect-overview](https://cloud.google.com/sql/docs/postgres/connect-overview)),
+one could also use SSL option if applicable.
+
+```python
+connection_config.postgresql.ssloption.sslmode = '...' # disable, allow, verify-ca, verify-full, etc.
+connection_config.postgresql.ssloption.sslcert = '...'
+connection_config.postgresql.ssloption.sslkey = '...'
+connection_config.postgresql.ssloption.sslpassword = '...'
+connection_config.postgresql.ssloption.sslrootcert = '...'
+store = metadata_store.MetadataStore(connection_config)
+```
+
 ## Data model
 
 The Metadata Store uses the following data model to record and retrieve metadata
