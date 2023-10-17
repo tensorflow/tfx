@@ -271,7 +271,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     self._compile_and_run_pipeline(
         pipeline=pipeline, workflow_name=pipeline_name)
     artifacts = self._get_artifacts_with_type_and_pipeline(
-        type_name='Integer', pipeline_name=pipeline_name)
+        type_name='String', pipeline_name=pipeline_name)
     self.assertEqual(len(artifacts), 1)
 
 
