@@ -677,6 +677,8 @@ message PipelineRuntimeSpec {
   // The id of the pipeline run for the top-level pipeline in this execution. If
   // The top level-pipeline is ASYNC then this will be empty.
   string top_level_pipeline_run_id = 3;
+  // URL to the Tflex frontend for this pipeline/run.
+  string frontend_url = 4;
   // Used for partial runs.
   SnapshotSettings snapshot_settings = 8;
 }

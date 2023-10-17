@@ -25,6 +25,7 @@ sh_binary(
         "//tfx/extensions/google_cloud_big_query/experimental/elwc_example_gen/proto:elwc_config_pb2.py",
         "//tfx/orchestration/experimental/centralized_kubernetes_orchestrator/service/proto:service_pb2.py",
         "//tfx/orchestration/experimental/centralized_kubernetes_orchestrator/service/proto:service_pb2_grpc.py",
+        "//tfx/orchestration/experimental/core:component_generated_alert_pb2.py",
         "//tfx/orchestration/kubeflow/proto:kubeflow_pb2.py",
         "//tfx/proto:bulk_inferrer_pb2.py",
         "//tfx/proto:distribution_validator_pb2.py",

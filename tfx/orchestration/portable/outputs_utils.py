@@ -311,14 +311,19 @@ def generate_output_artifacts(
   return output_artifacts
 
 
+# LINT.IfChange(execution_output_uri)
+def get_executor_output_dir(output_uri: str) -> str:
+  """Generates executor output directory for a given executor output uri."""
+  return os.path.dirname(output_uri)
+
+
 def get_executor_output_uri(node_dir, execution_id: int) -> str:
-  """Generates executor output uri given execution_id."""
-  # LINT.IfChange(execution_output_uri)
+  """Generates executor output uri for a given execution_id."""
   execution_dir = os.path.join(node_dir, _SYSTEM, _EXECUTOR_EXECUTION,
                                str(execution_id))
   fileio.makedirs(execution_dir)
   return os.path.join(execution_dir, _EXECUTOR_OUTPUT_FILE)
-  # LINT.ThenChange(<Internal source code for executor_output_uri>)
+# LINT.ThenChange(<Internal source code for executor_output_uri>)
 
 
 def get_stateful_working_directory(node_dir: str,

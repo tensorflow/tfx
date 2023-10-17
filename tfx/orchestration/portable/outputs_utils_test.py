@@ -331,6 +331,17 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(artifact_7.uri, outputs_utils.RESOLVED_AT_RUNTIME)
     self.assertTrue(artifact_7.is_external)
 
+  def testGetExecutorOutputDir(self):
+    executor_output_dir = outputs_utils.get_executor_output_dir(
+        self._output_resolver().get_executor_output_uri(1)
+    )
+
+    self.assertRegex(
+        executor_output_dir, '.*/test_node/.system/executor_execution/1$'
+    )
+
+    self.assertTrue(fileio.isdir(executor_output_dir))
+
   def testGetExecutorOutputUri(self):
     executor_output_uri = self._output_resolver().get_executor_output_uri(1)
     self.assertRegex(
@@ -584,7 +595,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           }
         }
       }
-  }                                                
+  }
   """,
         pipeline_pb2.PipelineNode(),
     )
