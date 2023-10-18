@@ -20,11 +20,17 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import component_generated_alert_pb2
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import post_execution_utils
+from tfx.orchestration.experimental.core import task as task_lib
+from tfx.orchestration.experimental.core import task_scheduler as ts
+from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.proto.orchestration import execution_invocation_pb2
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils as tu
@@ -102,6 +108,8 @@ class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
     executor_output = execution_result_pb2.ExecutorOutput()
     executor_output.execution_result.code = 0
 
+    mock_publish.return_value = [None, None]
+
     post_execution_utils.publish_execution_results(
         self.mlmd_handle, executor_output, execution_info, contexts=[])
 
@@ -112,6 +120,63 @@ class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
         contexts=[],
         output_artifacts=execution_info.output_dict,
         executor_output=executor_output)
+
+  @mock.patch.object(event_observer, 'notify')
+  def test_publish_execution_results_for_task_with_alerts(self, mock_notify):
+    _ = self._prepare_execution_info()
+
+    executor_output = execution_result_pb2.ExecutorOutput()
+    executor_output.execution_result.code = 0
+
+    component_generated_alerts = (
+        component_generated_alert_pb2.ComponentGeneratedAlertList()
+    )
+    component_generated_alerts.component_generated_alert_list.append(
+        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+            alert_name='test_alert',
+            alert_body='test_alert_body',
+        )
+    )
+    executor_output.execution_properties[
+        post_execution_utils._COMPONENT_GENERATED_ALERTS_KEY
+    ].proto_value.Pack(component_generated_alerts)
+
+    [execution] = self.mlmd_handle.store.get_executions()
+
+    # Create test pipeline.
+    deployment_config = pipeline_pb2.IntermediateDeploymentConfig()
+    executor_spec = pipeline_pb2.ExecutorSpec.PythonClassExecutorSpec(
+        class_path='trainer.TrainerExecutor')
+    deployment_config.executor_specs['AlertGenerator'].Pack(
+        executor_spec
+    )
+    pipeline = pipeline_pb2.Pipeline()
+    pipeline.nodes.add().pipeline_node.node_info.id = 'AlertGenerator'
+    pipeline.pipeline_info.id = 'test-pipeline'
+    pipeline.deployment_config.Pack(deployment_config)
+
+    node_uid = task_lib.NodeUid(
+        pipeline_uid=task_lib.PipelineUid(
+            pipeline_id=pipeline.pipeline_info.id
+        ),
+        node_id='AlertGenerator',
+    )
+    task = test_utils.create_exec_node_task(
+        node_uid=node_uid,
+        execution=execution,
+        pipeline=pipeline,
+    )
+    result = ts.TaskSchedulerResult(
+        status=status_lib.Status(
+            code=status_lib.Code.OK,
+            message='test TaskScheduler result'
+        ),
+        output=ts.ExecutorNodeOutput(executor_output=executor_output)
+    )
+    post_execution_utils.publish_execution_results_for_task(
+        self.mlmd_handle, task, result
+    )
+    mock_notify.assert_called_once()
 
 
 if __name__ == '__main__':

@@ -84,8 +84,18 @@ class NodeStateChange:
   new_state: Any
 
 
+@dataclasses.dataclass(frozen=True)
+class ComponentGeneratedAlert:
+  """ComponentGeneratedAlert event."""
+  execution: metadata_store_pb2.Execution
+  pipeline_uid: task_lib.PipelineUid
+  node_id: str
+  alert_name: str
+  alert_body: str
+
+
 Event = Union[PipelineStarted, PipelineFinished, NodeStateChange,
-              ExecutionStateChange]
+              ExecutionStateChange, ComponentGeneratedAlert]
 
 ObserverFn = Callable[[Event], None]
 

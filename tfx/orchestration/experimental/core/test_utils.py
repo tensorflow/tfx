@@ -266,8 +266,10 @@ def fake_finish_node_with_handle(
   else:
     output_artifacts = None
   contexts = context_lib.prepare_contexts(mlmd_handle, node.contexts)
-  return execution_publish_utils.publish_succeeded_execution(
-      mlmd_handle, execution_id, contexts, output_artifacts)
+  output_dict, _ = execution_publish_utils.publish_succeeded_execution(
+      mlmd_handle, execution_id, contexts, output_artifacts
+  )
+  return output_dict
 
 
 def create_exec_node_task(

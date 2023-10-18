@@ -20,6 +20,7 @@ from absl import logging
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import component_generated_alert_pb2
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import garbage_collection
@@ -34,6 +35,9 @@ from tfx.utils import status as status_lib
 from tfx.utils import typing_utils
 
 from ml_metadata import proto
+
+
+_COMPONENT_GENERATED_ALERTS_KEY = '__component_generated_alerts__'
 
 
 def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
@@ -87,7 +91,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     # TODO(b/262040844): Instead of directly using the context manager here, we
     # should consider creating and using wrapper functions.
     with mlmd_state.evict_from_cache(task.execution_id):
-      execution_publish_utils.publish_succeeded_execution(
+      _, execution = execution_publish_utils.publish_succeeded_execution(
           mlmd_handle,
           execution_id=task.execution_id,
           contexts=task.contexts,
@@ -96,6 +100,24 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     garbage_collection.run_garbage_collection_for_node(mlmd_handle,
                                                        task.node_uid,
                                                        task.get_node())
+    if _COMPONENT_GENERATED_ALERTS_KEY in execution.custom_properties:
+      alerts_proto = component_generated_alert_pb2.ComponentGeneratedAlertList()
+      execution.custom_properties[
+          _COMPONENT_GENERATED_ALERTS_KEY
+      ].proto_value.Unpack(alerts_proto)
+
+      for alert in alerts_proto.component_generated_alert_list:
+        alert_event = event_observer.ComponentGeneratedAlert(
+            execution=execution,
+            pipeline_uid=task_lib.PipelineUid(
+                pipeline_id=task.pipeline.pipeline_info.id
+            ),
+            node_id=task.node_uid.node_id,
+            alert_body=alert.alert_body,
+            alert_name=alert.alert_name,
+        )
+        event_observer.notify(alert_event)
+
   elif isinstance(result.output, ts.ImporterNodeOutput):
     output_artifacts = result.output.output_artifacts
     _remove_temporary_task_dirs(
@@ -156,12 +178,13 @@ def publish_execution_results(
   # TODO(b/262040844): Instead of directly using the context manager here, we
   # should consider creating and using wrapper functions.
   with mlmd_state.evict_from_cache(execution_info.execution_id):
-    return execution_publish_utils.publish_succeeded_execution(
+    output_dict, _ = execution_publish_utils.publish_succeeded_execution(
         mlmd_handle,
         execution_id=execution_info.execution_id,
         contexts=contexts,
         output_artifacts=execution_info.output_dict,
         executor_output=executor_output)
+    return output_dict
 
 
 def _update_execution_state_in_mlmd(
