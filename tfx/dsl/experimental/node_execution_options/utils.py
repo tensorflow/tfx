@@ -16,6 +16,7 @@
 This is only used for the experimental orchestrator.
 """
 import dataclasses
+from typing import Optional
 
 from tfx.proto.orchestration import pipeline_pb2
 
@@ -31,6 +32,18 @@ class NodeExecutionOptions:
   success_optional: bool = False
   max_execution_retries: int = 0
   execution_timeout_sec: int = 0
+
+  # This is an experimental feature to enable "end nodes" in a pipeline to
+  # support resource lifetimes. If this field is set then the node which this
+  # NodeExecutionOptions belongs to will run during pipeline finalization if the
+  # "lifetime_start" has run succesfully.
+  # Pipeline finalization happens when:
+  # 1. All nodes in the pipeline completed, this is the "happy path".
+  # 2. A user requests for the pipeline to stop
+  # 3. A node fails in the pipeline and it cannot continue executing.
+  # This should be the id of the node "starting" a lifetime.
+  # If you want to use this feature please contact kmonte@ first.
+  lifetime_start: Optional[str] = None
 
   def __post_init__(self):
     self.max_execution_retries = max(self.max_execution_retries, 0)

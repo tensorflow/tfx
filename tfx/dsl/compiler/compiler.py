@@ -245,6 +245,10 @@ class Compiler:
       node.execution_options.node_success_optional = node_execution_options.success_optional
       node.execution_options.max_execution_retries = node_execution_options.max_execution_retries
       node.execution_options.execution_timeout_sec = node_execution_options.execution_timeout_sec
+      if node_execution_options.lifetime_start:
+        node.execution_options.resource_lifetime.lifetime_start = (
+            node_execution_options.lifetime_start
+        )
 
     if pipeline_ctx.is_async_mode:
       input_triggers = node.execution_options.async_trigger.input_triggers
