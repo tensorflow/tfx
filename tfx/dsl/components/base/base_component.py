@@ -46,6 +46,10 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
     DRIVER_CLASS: a subclass of base_driver.BaseDriver as a custom driver for
       this component (optional, defaults to base_driver.BaseDriver). This is a
       class level value.
+    PRE_EXECUTABLE_SPEC: an optional PythonClassExecutableSpec of pre-execution
+      hook.
+    POST_EXECUTABLE_SPEC an optional PythonClassExecutableSpec of post-execution
+      hook.
     spec: an instance of `SPEC_CLASS`. See types.ComponentSpec for more details.
     platform_config: a protobuf message representing platform config for a
       component instance.
@@ -66,6 +70,9 @@ class BaseComponent(base_node.BaseNode, abc.ABC):
   # property as well.
   DRIVER_CLASS = base_driver.BaseDriver
   doc_controls.do_not_doc_in_subclasses(DRIVER_CLASS)
+
+  PRE_EXECUTABLE_SPEC = None
+  POST_EXECUTABLE_SPEC = None
 
   def __init__(
       self,

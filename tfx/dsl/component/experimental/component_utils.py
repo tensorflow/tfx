@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utils for TFX component types. Intended for internal usage only."""
 
-from typing import Any, Callable, Dict, Optional, Type
+from typing import Any, Callable, Mapping, Optional, Type
 
 from tfx import types
 from tfx.dsl.components.base import base_component
@@ -21,20 +21,28 @@ from tfx.dsl.components.base import executor_spec as base_executor_spec
 from tfx.types import component_spec
 from tfx.types.system_executions import SystemExecution
 
+from google.protobuf import message
+
 
 def create_tfx_component_class(
     name: str,
     tfx_executor_spec: base_executor_spec.ExecutorSpec,
-    input_channel_parameters: Optional[Dict[
-        str, component_spec.ChannelParameter]] = None,
-    output_channel_parameters: Optional[Dict[
-        str, component_spec.ChannelParameter]] = None,
-    execution_parameters: Optional[Dict[
-        str, component_spec.ExecutionParameter]] = None,
+    input_channel_parameters: Optional[
+        Mapping[str, component_spec.ChannelParameter]
+    ] = None,
+    output_channel_parameters: Optional[
+        Mapping[str, component_spec.ChannelParameter]
+    ] = None,
+    execution_parameters: Optional[
+        Mapping[str, component_spec.ExecutionParameter]
+    ] = None,
     type_annotation: Optional[Type[SystemExecution]] = None,
-    default_init_args: Optional[Dict[str, Any]] = None,
+    default_init_args: Optional[Mapping[str, Any]] = None,
+    pre_execution_spec: Optional[message.Message] = None,
+    post_execution_spec: Optional[message.Message] = None,
     base_class: Type[
-        base_component.BaseComponent] = base_component.BaseComponent,
+        base_component.BaseComponent
+    ] = base_component.BaseComponent,
 ) -> Callable[..., base_component.BaseComponent]:
   """Creates a TFX component class dynamically."""
   tfx_component_spec_class = type(
@@ -79,6 +87,8 @@ def create_tfx_component_class(
       dict(
           SPEC_CLASS=tfx_component_spec_class,
           EXECUTOR_SPEC=tfx_executor_spec,
+          PRE_EXECUTABLE_SPEC=pre_execution_spec,
+          POST_EXECUTABLE_SPEC=post_execution_spec,
           __init__=tfx_component_class_init,
       ),
   )
