@@ -3204,6 +3204,65 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
             pipeline_state.execution.custom_properties.get('deleted')
         )
 
+  @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
+  def test_orchestrate_pipelines_with_specified_pipeline_uid(
+      self, mock_sync_task_gen
+  ):
+    with self._mlmd_cm as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
+      sync_pipelines = [
+          _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC),
+          _test_pipeline('pipeline2', pipeline_pb2.Pipeline.SYNC),
+      ]
+
+      for pipeline in sync_pipelines:
+        pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      # Active executions for active sync pipelines.
+      mock_sync_task_gen.return_value.generate.side_effect = [
+          [
+              test_utils.create_exec_node_task(
+                  task_lib.NodeUid(
+                      pipeline_uid=task_lib.PipelineUid.from_pipeline(
+                          sync_pipelines[0]
+                      ),
+                      node_id='Trainer',
+                  )
+              )
+          ],
+          [
+              test_utils.create_exec_node_task(
+                  task_lib.NodeUid(
+                      pipeline_uid=task_lib.PipelineUid.from_pipeline(
+                          sync_pipelines[1]
+                      ),
+                      node_id='Trainer',
+                  )
+              )
+          ],
+      ]
+
+      task_queue = tq.TaskQueue()
+      pipeline_ops.orchestrate(
+          mlmd_connection_manager,
+          task_queue,
+          service_jobs.DummyServiceJobManager(),
+          pipeline_uid=task_lib.PipelineUid.from_pipeline_id_and_run_id(
+              pipeline_id='pipeline1', pipeline_run_id='run0'
+          ),
+      )
+
+      self.assertEqual(1, mock_sync_task_gen.return_value.generate.call_count)
+
+      # Verify there is only one task in the task queue
+      task = task_queue.dequeue()
+      task_queue.task_done(task)
+      self.assertIsInstance(task, task_lib.ExecNodeTask)
+      self.assertEqual(
+          test_utils.create_node_uid('pipeline1', 'Trainer'), task.node_uid
+      )
+      self.assertTrue(task_queue.is_empty())
+
 
 if __name__ == '__main__':
   tf.test.main()
