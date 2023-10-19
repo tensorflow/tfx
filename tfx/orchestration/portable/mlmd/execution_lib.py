@@ -330,6 +330,7 @@ def put_execution(
           contexts=contexts,
           reuse_context_if_already_exist=True,
           reuse_artifact_if_already_exist_by_external_id=True,
+          only_associate_but_do_not_update_contexts=True,
       )
   )
   execution.id = execution_id
