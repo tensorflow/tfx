@@ -80,13 +80,8 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.40,<3',
       'attrs>=19.3.0,<22',
       'click>=7,<9',
-      # TODO(b/245393802): Remove pinned version when pip can find depenencies
-      # without this. `google-api-core` is needed for many google cloud
-      # packages. `google-api-core==1.33.0` and
-      # `google-cloud-aiplatform==1.18.0` requires
-      # `protobuf>=3.20.1` while `tensorflow` requires `protobuf<3.20`.
-      'google-api-core<1.33',
-      'google-cloud-aiplatform>=1.6.2,<1.18',
+      'google-api-core<3',
+      'google-cloud-aiplatform>=1.6.2,<2',
       'google-cloud-bigquery>=2.26.0,<3',
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2',
