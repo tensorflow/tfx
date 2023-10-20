@@ -465,7 +465,7 @@ class _Generator:
       logging.info('Resolved inputs: %s', resolved_info)
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
-                   f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')
+                   f'error: {e.__cause__ or e}')
       result.append(
           self._update_node_state_to_failed_task(
               node_uid, error_code=e.grpc_code_value, error_msg=error_msg
