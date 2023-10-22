@@ -25,12 +25,7 @@ from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.types import artifact_utils
 
-from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.tools.mlmd_resolver import metadata_resolver
-
-
-# Valid artifact states for GraphTraversal.
-_VALID_ARTIFACT_STATES = [metadata_store_pb2.Artifact.State.LIVE]
 
 
 class GraphTraversal(
@@ -96,13 +91,10 @@ class GraphTraversal(
     root_artifact = input_list[0]
 
     # Query MLMD to get the upstream (or downstream) artifacts.
-    artifact_states_filter_query = (
-        ops_utils.get_valid_artifact_states_filter_query(_VALID_ARTIFACT_STATES)
-    )
-    filter_query = (
-        f'type IN {q.to_sql_string(self.artifact_type_names)} AND '
-        f'{artifact_states_filter_query}'
-    )
+    filter_query = ''
+    if self.artifact_type_names:
+      query = f'type IN {q.to_sql_string(self.artifact_type_names)}'
+      filter_query = query
 
     if self.node_ids:
       for context in self.context.store.get_contexts_by_artifact(
