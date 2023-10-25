@@ -20,12 +20,12 @@ import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import component_generated_alert_pb2
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler as ts
 from tfx.orchestration.experimental.core import test_utils
+from tfx.orchestration.experimental.core.proto import component_generated_alert_pb2
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.proto.orchestration import execution_invocation_pb2
