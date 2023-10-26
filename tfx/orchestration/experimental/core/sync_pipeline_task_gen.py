@@ -324,7 +324,8 @@ class _Generator:
     node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
     latest_executions_set = task_gen_utils.get_latest_executions_set(
         node_executions)
-
+    logging.info('node executions: %s', node_executions)
+    logging.info('latest executions set: %s', latest_executions_set)
     # Generates tasks from resolved inputs if the node doesn't have any
     # execution.
     if not latest_executions_set:
@@ -389,7 +390,9 @@ class _Generator:
         e for e in latest_executions_set
         if execution_lib.is_execution_canceled(e)
     ]
+    logging.info('canceled executions: %s', canceled_executions)
     if canceled_executions and node_state.state == pstate.NodeState.STARTING:
+      logging.info('restarting node %s', node.node_info.id)
       new_executions = (
           task_gen_utils.register_executions_from_existing_executions(
               self._mlmd_handle, self._pipeline, node, canceled_executions
@@ -436,6 +439,10 @@ class _Generator:
       self, execution: metadata_store_pb2.Execution,
       node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates tasks for a node from its existing execution."""
+    logging.info(
+        'Generating tasks from existing execution for node: %s',
+        node.node_info.id,
+    )
     tasks = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
     with mlmd_state.mlmd_execution_atomic_op(
@@ -455,6 +462,9 @@ class _Generator:
       node: node_proto_view.NodeProtoView,
   ) -> List[task_lib.Task]:
     """Generates tasks for a node by freshly resolving inputs."""
+    logging.info(
+        'Generating tasks from resolved inputs for node: %s', node.node_info.id
+    )
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
@@ -465,7 +475,7 @@ class _Generator:
       logging.info('Resolved inputs: %s', resolved_info)
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
-                   f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')
+                   f'error: {e.__cause__ or e}')
       result.append(
           self._update_node_state_to_failed_task(
               node_uid, error_code=e.grpc_code_value, error_msg=error_msg

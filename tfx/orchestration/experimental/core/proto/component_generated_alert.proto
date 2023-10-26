@@ -16,7 +16,7 @@
 
 syntax = "proto2";
 
-package tfx.orchestration.experimental.core;
+package tfx.orchestration.experimental.core.proto;
 
 message ComponentGeneratedAlertInfo {
   optional string alert_name = 1;
