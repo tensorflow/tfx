@@ -80,6 +80,8 @@ ENTRYPOINT ["/opt/apache/beam/boot"]
 
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
+RUN sed -i 's/python3/python/g' /usr/bin/pip
+
 RUN python -m pip install --upgrade pip
 
 COPY --from=wheel-builder /tfx/src/dist/*.whl /tfx/src/dist/
