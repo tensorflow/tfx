@@ -993,8 +993,9 @@ def exec_property(key: str) -> ExecPropertyPlaceholder:
 
 
 class RuntimeInfoKey(enum.Enum):
-  PLATFORM_CONFIG = 'platform_config'
   EXECUTOR_SPEC = 'executor_spec'
+  PLATFORM_CONFIG = 'platform_config'
+  PIPELINE_PLATFORM_CONFIG = 'pipeline_platform_config'
 
 
 _RUNTIME_INFO_KEYS = frozenset(key.value for key in RuntimeInfoKey)
@@ -1004,9 +1005,12 @@ def runtime_info(key: str) -> RuntimeInfoPlaceholder:
   """Returns a Placeholder that contains runtime information for component.
 
   Currently the runtime info includes following keys:
-  1. platform_config: A platform_config proto that contains platform specific
-     information.
-  2. executor_spec: The executor spec proto.
+  1. executor_spec: The executor spec proto.
+  2. platform_config: A proto that contains platform-specific information for
+         the current pipeline node.
+  3. pipeline_platform_config: A proto that contains platform-specific
+        information for the pipeline as a whole.
+
 
   Args:
     key: The key of the runtime information.

@@ -54,10 +54,13 @@ class ResolutionContext:
       render all kinds of placeholders.
     executor_spec: An executor spec proto for rendering context placeholder.
     platform_config: A platform config proto for rendering context placeholder.
+    pipeline_platform_config: A pipeline-level config proto for rendering
+      context placeholder.
   """
   exec_info: data_types.ExecutionInfo = None
   executor_spec: message.Message = None
   platform_config: message.Message = None
+  pipeline_platform_config: message.Message = None
 
 
 # A Placeholder Expression can be resolved to the following types:
@@ -181,20 +184,26 @@ class _ExpressionResolver:
 
   def __init__(self, context: ResolutionContext):
     self._resolution_values = {
-        placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT:
-            context.exec_info.input_dict,
-        placeholder_pb2.Placeholder.Type.OUTPUT_ARTIFACT:
-            context.exec_info.output_dict,
-        placeholder_pb2.Placeholder.Type.EXEC_PROPERTY:
-            context.exec_info.exec_properties,
+        placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT: (
+            context.exec_info.input_dict
+        ),
+        placeholder_pb2.Placeholder.Type.OUTPUT_ARTIFACT: (
+            context.exec_info.output_dict
+        ),
+        placeholder_pb2.Placeholder.Type.EXEC_PROPERTY: (
+            context.exec_info.exec_properties
+        ),
         placeholder_pb2.Placeholder.Type.RUNTIME_INFO: {
             ph.RuntimeInfoKey.EXECUTOR_SPEC.value: context.executor_spec,
             ph.RuntimeInfoKey.PLATFORM_CONFIG.value: context.platform_config,
+            ph.RuntimeInfoKey.PIPELINE_PLATFORM_CONFIG.value: (
+                context.pipeline_platform_config
+            ),
         },
-        placeholder_pb2.Placeholder.Type.EXEC_INVOCATION:
-            context.exec_info.to_proto(),
-        placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE:
-            os.environ.get,
+        placeholder_pb2.Placeholder.Type.EXEC_INVOCATION: (
+            context.exec_info.to_proto()
+        ),
+        placeholder_pb2.Placeholder.Type.ENVIRONMENT_VARIABLE: os.environ.get,
     }
 
   def resolve(self, expression: placeholder_pb2.PlaceholderExpression) -> Any:

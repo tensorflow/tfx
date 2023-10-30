@@ -217,7 +217,11 @@ class _Generator:
     Returns:
       Returns a `Task` or `None` if task generation is deemed infeasible.
     """
-    logging.info('Generating task for node %s', node.node_info.id)
+    logging.info(
+        '[AsyncPipelineTaskGenerator._generate_tasks_for_node] invoked for'
+        ' node %s',
+        node.node_info.id,
+    )
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
