@@ -19,12 +19,12 @@ from unittest import mock
 
 import tensorflow as tf
 from tfx.dsl.io import fileio
-from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.kubeflow import container_entrypoint
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.portable import beam_executor_operator
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import outputs_utils

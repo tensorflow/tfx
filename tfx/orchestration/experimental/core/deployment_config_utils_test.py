@@ -34,6 +34,13 @@ def make_deployment_config(
 
 class DeploymentConfigUtilsTest(tf.test.TestCase):
 
+  def test_returns_none_pipeline_platform_config(self):
+    self.assertIsNone(
+        deployment_config_utils.get_pipeline_platform_config(
+            pipeline_pb2.IntermediateDeploymentConfig()
+        )
+    )
+
   def test_returns_plain_platform_config(self):
     expected_config = platform_config_pb2.DockerPlatformConfig(
         docker_server_url='docker/server/url'

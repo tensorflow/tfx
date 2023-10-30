@@ -303,9 +303,10 @@ class _EventObserver:
         try:
           observer_fn(event)
         except Exception as e:  # pylint: disable=broad-except
-          logging.exception(
-              "Exception raised by observer function when observing "
-              "event %s: %s", event, e)
+          logging.error("Exception caught while observing event: %s", event)
+          # Log exception separately as events can be very long and block the
+          # exception from being logged.
+          logging.exception("Exception: %s", e)
 
     def dequeue():
       try:
