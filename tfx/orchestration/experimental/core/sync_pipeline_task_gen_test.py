@@ -1105,6 +1105,11 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         data_types_utils.set_metadata_value(
             chore_a_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
             'foobar error')
+        data_types_utils.set_metadata_value(
+            chore_a_exec.custom_properties[constants.EXECUTION_ERROR_CODE_KEY],
+            status_lib.Code.RESOURCE_EXHAUSTED,
+        )
+
     # Despite upstream node failure, chore b proceeds because:
     # 1) It's failure strategy is ALL_UPSTREAM_NODES_COMPLETED, or
     # 2) chore a's `success_optional` bit is set to True.
@@ -1112,7 +1117,14 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     # All runnable nodes executed, finalization task should be produced.
     [finalize_task] = self._generate(False, True)
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
-    self.assertEqual(status_lib.Code.OK, finalize_task.status.code)
+
+    # Pipeline should only be ok if the failed node is optional.
+    if node_execution_options.node_success_optional:
+      self.assertEqual(status_lib.Code.OK, finalize_task.status.code)
+    else:
+      self.assertEqual(
+          status_lib.Code.RESOURCE_EXHAUSTED, finalize_task.status.code
+      )
 
   def test_component_retry(self):
     """Tests component retry."""

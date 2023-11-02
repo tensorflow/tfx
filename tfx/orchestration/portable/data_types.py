@@ -58,6 +58,8 @@ class ExecutionInfo:
   # The id of the pipeline run for the top-level pipeline in this execution. If
   # the top-level pipeline is ASYNC then this will be the empty string.
   top_level_pipeline_run_id: Optional[str] = None
+  # URL to the Tflex frontend for this pipeline/run.
+  frontend_url: Optional[str] = None
   # LINT.ThenChange(../../proto/orchestration/execution_invocation.proto)
 
   def to_proto(self) -> execution_invocation_pb2.ExecutionInvocation:
@@ -83,6 +85,7 @@ class ExecutionInfo:
         pipeline_info=self.pipeline_info,
         pipeline_run_id=self.pipeline_run_id,
         top_level_pipeline_run_id=self.top_level_pipeline_run_id,
+        frontend_url=self.frontend_url,
     )
 
   @classmethod
@@ -112,4 +115,5 @@ class ExecutionInfo:
         pipeline_info=execution_invocation.pipeline_info,
         pipeline_run_id=execution_invocation.pipeline_run_id,
         top_level_pipeline_run_id=execution_invocation.top_level_pipeline_run_id,
+        frontend_url=execution_invocation.frontend_url,
     )

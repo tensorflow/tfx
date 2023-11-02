@@ -217,7 +217,11 @@ class _Generator:
     Returns:
       Returns a `Task` or `None` if task generation is deemed infeasible.
     """
-    logging.info('Generating task for node %s', node.node_info.id)
+    logging.info(
+        '[AsyncPipelineTaskGenerator._generate_tasks_for_node] invoked for'
+        ' node %s',
+        node.node_info.id,
+    )
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
@@ -341,9 +345,23 @@ class _Generator:
           skip_errors=[exceptions.InsufficientInputError],
       )
     except exceptions.InputResolutionError as e:
+      error_msg = (
+          f'failure to resolve inputs; node uid: {node_uid}; '
+          f'error: {e.__cause__ if hasattr(e, "__cause__") else e}'
+      )
       logging.exception(
           'Task cannot be generated for node %s since no input artifacts '
           'are resolved. Error: %s', node.node_info.id, e)
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid,
+              state=pstate.NodeState.STARTED,
+              status=status_lib.Status(
+                  code=status_lib.Code.UNAVAILABLE, message=error_msg
+              ),
+              backfill_token='',
+          )
+      )
       return result
 
     # Note that some nodes e.g. ImportSchemaGen don't have inputs, and for those
