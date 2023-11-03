@@ -21,7 +21,7 @@ import "ml_metadata/proto/metadata_store_service.proto";
 import "tfx/proto/orchestration/pipeline.proto";
 
 // All the information needed for a TFX component execution.
-// Next ID: 16
+// Next ID: 17
 message ExecutionInvocation {
   reserved 1, 2;
 
@@ -65,6 +65,9 @@ message ExecutionInvocation {
   // The id of the pipeline run for the top-level pipeline in this execution.
   // If the top level-pipeline is ASYNC then this will be empty.
   string top_level_pipeline_run_id = 15;
+
+  // URL to the Tflex frontend for this pipeline/run.
+  string frontend_url = 16;
 
   // Flags passed to a component.
   map<string, string> extra_flags = 14;

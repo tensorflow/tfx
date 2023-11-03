@@ -15,7 +15,7 @@
 
 import copy
 import enum
-from typing import Any, Collection, Dict, Iterator, List, Optional, Tuple, Union, cast
+from typing import Any, Collection, Iterator, Mapping, Optional, Union, cast
 import warnings
 
 from tfx.dsl.compiler import constants
@@ -79,7 +79,9 @@ def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
 class PipelineInputs:
   """A utility class to help declare input signatures of composable pipelines."""
 
-  def __init__(self, inputs: Optional[Dict[str, channel.BaseChannel]] = None):
+  def __init__(
+      self, inputs: Optional[Mapping[str, channel.BaseChannel]] = None
+  ):
     self._inputs = inputs or {}
     self._wrapped_inputs = {
         k: channel.PipelineInputChannel(v, output_key=k)
@@ -88,11 +90,11 @@ class PipelineInputs:
     self._pipeline = None
 
   @property
-  def raw_inputs(self) -> Dict[str, channel.BaseChannel]:
+  def raw_inputs(self) -> Mapping[str, channel.BaseChannel]:
     return self._inputs
 
   @property
-  def inputs(self) -> Dict[str, channel.PipelineInputChannel]:
+  def inputs(self) -> Mapping[str, channel.PipelineInputChannel]:
     return self._wrapped_inputs
 
   def __getitem__(self, key) -> channel.PipelineInputChannel:
@@ -247,20 +249,24 @@ class Pipeline(base_node.BaseNode):
     platform_config: Pipeline level platform config, in proto form.
   """
 
-  def __init__(self,
-               pipeline_name: str,
-               pipeline_root: Optional[Union[str, ph.Placeholder]] = '',
-               metadata_connection_config: Optional[
-                   metadata.ConnectionConfigType] = None,
-               components: Optional[List[base_node.BaseNode]] = None,
-               enable_cache: Optional[bool] = False,
-               beam_pipeline_args: Optional[List[Union[str,
-                                                       ph.Placeholder]]] = None,
-               platform_config: Optional[message.Message] = None,
-               execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
-               inputs: Optional[PipelineInputs] = None,
-               outputs: Optional[Dict[str, channel.OutputChannel]] = None,
-               **kwargs):
+  def __init__(
+      self,
+      pipeline_name: str,
+      pipeline_root: Optional[Union[str, ph.Placeholder]] = '',
+      metadata_connection_config: Optional[
+          metadata.ConnectionConfigType
+      ] = None,
+      components: Collection[base_node.BaseNode] = (),
+      enable_cache: Optional[bool] = False,
+      beam_pipeline_args: Optional[
+          Collection[Union[str, ph.Placeholder]]
+      ] = None,
+      platform_config: Optional[message.Message] = None,
+      execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
+      inputs: Optional[PipelineInputs] = None,
+      outputs: Optional[Mapping[str, channel.OutputChannel]] = None,
+      **kwargs,
+  ):
     """Initialize pipeline.
 
     Args:
@@ -365,10 +371,10 @@ class Pipeline(base_node.BaseNode):
     return self._components
 
   @components.setter
-  def components(self, components: List[base_node.BaseNode]):
+  def components(self, components: Collection[base_node.BaseNode]):
     self._set_components(components)
 
-  def _set_components(self, components: List[base_node.BaseNode]) -> None:
+  def _set_components(self, components: Collection[base_node.BaseNode]) -> None:
     """Set a full list of components of the pipeline."""
     self._check_mutable()
 
@@ -415,7 +421,7 @@ class Pipeline(base_node.BaseNode):
           'separated.')
 
   @property
-  def inputs(self) -> Dict[str, Any]:
+  def inputs(self) -> Mapping[str, Any]:
     # If we view a Pipeline as a Node, its inputs should be unwrapped (raw)
     # channels that are provided through PipelineInputs, and consumed by nodes
     # in the inner pipeline.
@@ -425,13 +431,13 @@ class Pipeline(base_node.BaseNode):
       return {}
 
   @property
-  def outputs(self) -> Dict[str, Any]:
+  def outputs(self) -> Mapping[str, Any]:
     # If we view a Pipeline as a Node, its outputs should be wrapped channels
     # that will be consumed by nodes in the outer pipeline.
     return self._outputs
 
   @property
-  def exec_properties(self) -> Dict[str, Any]:
+  def exec_properties(self) -> Mapping[str, Any]:
     return {}
 
 
@@ -439,7 +445,7 @@ def enumerate_implicit_dependencies(
     components: Collection[base_node.BaseNode],
     registry: dsl_context_registry.DslContextRegistry,
     pipeline: Optional[Pipeline] = None,
-) -> Iterator[Tuple[base_node.BaseNode, base_node.BaseNode]]:
+) -> Iterator[tuple[base_node.BaseNode, base_node.BaseNode]]:
   """Enumerate component dependencies arising from data deps between them.
 
   Args:

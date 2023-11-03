@@ -140,8 +140,6 @@ class _Generator:
 
   def __call__(self) -> List[task_lib.Task]:
     layers = _topsorted_layers(self._pipeline)
-    skipped_node_ids = _skipped_node_ids(self._node_state_by_node_uid)
-    terminal_node_ids = _terminal_node_ids(layers, skipped_node_ids)
     exec_node_tasks = []
     update_node_state_tasks = []
     successful_node_ids = set()
@@ -164,16 +162,15 @@ class _Generator:
             and node.execution_options.node_success_optional
         ):
           successful_node_ids.add(node_id)
+        elif node_state.is_failure():
+          failed_nodes_dict[node_id] = node_state.status
 
     for layer_nodes in layers:
       for node in layer_nodes:
         node_id = node.node_info.id
-        node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
-        node_state = self._node_state_by_node_uid[node_uid]
         if node_id in successful_node_ids:
           continue
-        if node_state.is_failure():
-          failed_nodes_dict[node_id] = node_state.status
+        if node_id in failed_nodes_dict:
           continue
         if not self._trigger_strategy_satisfied(
             node,
@@ -201,58 +198,60 @@ class _Generator:
           elif isinstance(task, task_lib.ExecNodeTask):
             exec_node_tasks.append(task)
 
+        # TODO(b/308161293): Remove this and check for updates in later layers
+        # as well.
         if finalize_pipeline_task:
           break
-
       if finalize_pipeline_task:
         break
 
-    if not self._fail_fast and failed_nodes_dict:
-      assert not finalize_pipeline_task
-      node_by_id = _node_by_id(self._pipeline)
-      # Collect nodes that cannot be run because they have a failed ancestor.
-      unrunnable_descendant_ids = set()
-      for node_id in failed_nodes_dict:
-        unrunnable_descendant_ids |= _unrunnable_descendants(
-            node_by_id, node_id)
-      # Nodes that are still runnable have neither succeeded nor failed, don't
-      # have a failed ancestor, or have a triggering strategy that ignores
-      # upstream failures.
-      runnable_node_ids = node_by_id.keys() - (
-          unrunnable_descendant_ids | successful_node_ids
-          | failed_nodes_dict.keys())
-      if not runnable_node_ids:
-        # If there are no runnable nodes and not all nodes are completed,
-        # we can abort the pipeline.
-        if unrunnable_descendant_ids:
-          finalize_pipeline_task = self._abort_task(failed_nodes_dict)
-        # If all nodes are completed and not all terminal nodes are successful,
-        # the pipeline should be marked failed.
-        elif terminal_node_ids & failed_nodes_dict.keys():
-          failed_terminal_nodes = {
-              k: v
-              for k, v in failed_nodes_dict.items()
-              if k in terminal_node_ids
-          }
-          finalize_pipeline_task = self._abort_task(failed_terminal_nodes)
-
+    # Always update node states if possible.
     result = update_node_state_tasks
+    # If there was a pipeline finalization then make sure we are supposed to
+    # be in fail_fast mode.
     if finalize_pipeline_task:
       result.append(finalize_pipeline_task)
-    elif terminal_node_ids <= successful_node_ids:
-      # If all terminal nodes are successful, the pipeline can be finalized.
-      result.append(
-          task_lib.FinalizePipelineTask(
-              pipeline_uid=self._pipeline_state.pipeline_uid,
-              status=status_lib.Status(code=status_lib.Code.OK)))
+      return result
+
+    # Collect nodes that cannot be run because they have a failed ancestor.
+    unrunnable_descendant_ids = set()
+    for node_id in failed_nodes_dict:
+      unrunnable_descendant_ids |= _unrunnable_descendants(
+          self._node_proto_view_by_node_id, node_id
+      )
+    # Nodes that are still runnable have neither succeeded nor failed, don't
+    # have a failed ancestor, or have a triggering strategy that ignores
+    # upstream failures.
+    runnable_node_ids = self._node_proto_view_by_node_id.keys() - (
+        unrunnable_descendant_ids
+        | successful_node_ids
+        | failed_nodes_dict.keys()
+    )
+    # If there are no more runnable nodes, then we finalize the pipeline,
+    # otherwise run our exec_node tasks,
+    if not runnable_node_ids:
+      if failed_nodes_dict:
+        result.append(self._abort_task(failed_nodes_dict))
+      else:
+        result.append(
+            task_lib.FinalizePipelineTask(
+                pipeline_uid=self._pipeline_state.pipeline_uid,
+                status=status_lib.Status(code=status_lib.Code.OK),
+            )
+        )
     else:
       result.extend(exec_node_tasks)
+
     return result
 
   def _generate_tasks_for_node(
       self, node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates list of tasks for the given node."""
-    logging.info('Generating task for node %s', node.node_info.id)
+    logging.info(
+        '[SyncPipelineTaskGenerator._generate_tasks_for_node] invoked for'
+        ' node %s',
+        node.node_info.id,
+    )
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
     node_id = node.node_info.id
     result = []
@@ -324,7 +323,8 @@ class _Generator:
     node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
     latest_executions_set = task_gen_utils.get_latest_executions_set(
         node_executions)
-
+    logging.info('node executions: %s', node_executions)
+    logging.info('latest executions set: %s', latest_executions_set)
     # Generates tasks from resolved inputs if the node doesn't have any
     # execution.
     if not latest_executions_set:
@@ -389,7 +389,9 @@ class _Generator:
         e for e in latest_executions_set
         if execution_lib.is_execution_canceled(e)
     ]
+    logging.info('canceled executions: %s', canceled_executions)
     if canceled_executions and node_state.state == pstate.NodeState.STARTING:
+      logging.info('restarting node %s', node.node_info.id)
       new_executions = (
           task_gen_utils.register_executions_from_existing_executions(
               self._mlmd_handle, self._pipeline, node, canceled_executions
@@ -436,6 +438,10 @@ class _Generator:
       self, execution: metadata_store_pb2.Execution,
       node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates tasks for a node from its existing execution."""
+    logging.info(
+        'Generating tasks from existing execution for node: %s',
+        node.node_info.id,
+    )
     tasks = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
     with mlmd_state.mlmd_execution_atomic_op(
@@ -455,6 +461,9 @@ class _Generator:
       node: node_proto_view.NodeProtoView,
   ) -> List[task_lib.Task]:
     """Generates tasks for a node by freshly resolving inputs."""
+    logging.info(
+        'Generating tasks from resolved inputs for node: %s', node.node_info.id
+    )
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
@@ -465,7 +474,7 @@ class _Generator:
       logging.info('Resolved inputs: %s', resolved_info)
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
-                   f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')
+                   f'error: {e.__cause__ or e}')
       result.append(
           self._update_node_state_to_failed_task(
               node_uid, error_code=e.grpc_code_value, error_msg=error_msg

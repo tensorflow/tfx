@@ -41,6 +41,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.proto.orchestration import metadata_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import json_utils
@@ -1279,11 +1280,31 @@ def get_all_nodes(
 
 @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_all_node_executions(
-    pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
+    pipeline: pipeline_pb2.Pipeline,
+    mlmd_handle: metadata.Metadata,
+    node_filter_options: Optional[metadata_pb2.NodeFilterOptions] = None,
 ) -> Dict[str, List[metadata_store_pb2.Execution]]:
   """Returns all executions of all pipeline nodes if present."""
+  additional_filters = None
+  if node_filter_options is not None:
+    additional_filters = []
+    if node_filter_options.max_create_time.ToMilliseconds() > 0:
+      additional_filters.append(
+          'create_time_since_epoch <='
+          f' {node_filter_options.max_create_time.ToMilliseconds()}'
+      )
+    if node_filter_options.min_create_time.ToMilliseconds() > 0:
+      additional_filters.append(
+          'create_time_since_epoch >='
+          f' {node_filter_options.min_create_time.ToMilliseconds()}'
+      )
+    if node_filter_options.types:
+      type_filter_query = '","'.join(node_filter_options.types)
+      additional_filters.append(f'type IN ("{type_filter_query}")')
   return {
-      node.node_info.id: task_gen_utils.get_executions(mlmd_handle, node)
+      node.node_info.id: task_gen_utils.get_executions(
+          mlmd_handle, node, additional_filters=additional_filters
+      )
       for node in get_all_nodes(pipeline)
   }
 

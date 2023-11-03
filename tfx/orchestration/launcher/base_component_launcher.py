@@ -18,7 +18,6 @@ import copy
 from typing import Any, Dict, List, Optional, cast
 
 import absl
-
 from tfx import types
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
@@ -27,6 +26,7 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import base_component_config
+from tfx.orchestration.portable import data_types as portable_data_types
 
 
 class BaseComponentLauncher(abc.ABC):
@@ -186,7 +186,7 @@ class BaseComponentLauncher(abc.ABC):
       p.publish_execution(
           component_info=self._component_info, output_artifacts=output_dict)
 
-  def launch(self) -> data_types.ExecutionInfo:
+  def launch(self) -> portable_data_types.ExecutionInfo:
     """Execute the component, includes driver, executor and publisher.
 
     Returns:
@@ -212,8 +212,9 @@ class BaseComponentLauncher(abc.ABC):
                       self._component_info.component_id)
     self._run_publisher(output_dict=execution_decision.output_dict)
 
-    return data_types.ExecutionInfo(
+    return portable_data_types.ExecutionInfo(
         input_dict=execution_decision.input_dict,
         output_dict=execution_decision.output_dict,
         exec_properties=execution_decision.exec_properties,
-        execution_id=execution_decision.execution_id)
+        execution_id=execution_decision.execution_id,
+    )

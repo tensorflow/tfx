@@ -15,6 +15,7 @@ syntax = "proto3";
 
 package tfx.orchestration;
 
+import "google/protobuf/timestamp.proto";
 import "ml_metadata/proto/metadata_store.proto";
 
 // Connection config for ML Metadata.
@@ -32,4 +33,27 @@ message MLMDServiceConfig {
   string owner = 1;
   string name = 2;
   string mlmd_service_target = 3;
+}
+
+// Filter options for getting MLMD nodes (Artifacts / Executions / Contexts)
+// from MLMD.
+message NodeFilterOptions {
+  // The earliest create time (inclusive) of MLMD nodes.
+  // If not set, will consider all MLMD nodes created since the Unix epoch.
+  google.protobuf.Timestamp min_create_time = 1;
+
+  // The latest create time (inclusive) of MLMD nodes.
+  // If not set, will consider all MLMD nodes created before now.
+  google.protobuf.Timestamp max_create_time = 2;
+
+  // The names of node types (ArtifactTypes / ExecutionTypes / ContextTypes).
+  //
+  // Examples are:
+  // 'Model' as the name of an ArtifactType,
+  // 'tfx.dsl.components.common.resolver.Resolver' as the name of an
+  // ExecutionType,
+  // 'pipeline' as the name of a ContextType.
+  //
+  // If not set, will consider all MLMD nodes regardless of their types.
+  repeated string types = 3;
 }
