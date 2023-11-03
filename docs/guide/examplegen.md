@@ -464,7 +464,7 @@ from tfx.components.example_gen.csv_example_gen import executor
 
 example_gen = FileBasedExampleGen(
     input_base=os.path.join(base_dir, 'data/simple'),
-    custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor))
+    custom_executor_spec=executor_spec.BeamExecutorSpec(executor.Executor))
 ```
 
 Now, we also support reading Avro and Parquet files using this
