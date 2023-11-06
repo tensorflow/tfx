@@ -31,6 +31,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.proto.orchestration import metadata_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import status as status_lib
@@ -379,6 +380,54 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(
           {pipeline.nodes[0].pipeline_node.node_info.id: [execution]},
           pstate.get_all_node_executions(pipeline, m),
+      )
+      mock_get_executions.assert_called_once_with(
+          mock.ANY, mock.ANY, additional_filters=None
+      )
+
+  @mock.patch.object(task_gen_utils, 'get_executions')
+  def test_get_all_node_executions_with_node_filter_options(
+      self, mock_get_executions
+  ):
+    execution_1 = metadata_store_pb2.Execution(
+        name='test_execution',
+        type='test_execution_type1',
+        create_time_since_epoch=1234567891012,
+    )
+    execution_2 = metadata_store_pb2.Execution(
+        name='test_execution',
+        type='test_execution_type2',
+        create_time_since_epoch=1234567891013,
+    )
+    mock_get_executions.return_value = [execution_1, execution_2]
+
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
+
+      node_filter_options = metadata_pb2.NodeFilterOptions(
+          types=['test_execution_type1', 'test_execution_type2'],
+      )
+      node_filter_options.min_create_time.FromMilliseconds(1234567891012)
+      node_filter_options.max_create_time.FromMilliseconds(1234567891013)
+
+      self.assertEqual(
+          {
+              pipeline.nodes[0].pipeline_node.node_info.id: [
+                  execution_1,
+                  execution_2,
+              ]
+          },
+          pstate.get_all_node_executions(pipeline, m, node_filter_options),
+      )
+
+      mock_get_executions.assert_called_once_with(
+          mock.ANY,
+          mock.ANY,
+          additional_filters=[
+              'create_time_since_epoch <= 1234567891013',
+              'create_time_since_epoch >= 1234567891012',
+              'type IN ("test_execution_type1","test_execution_type2")',
+          ],
       )
 
   def test_new_pipeline_state_when_pipeline_already_exists(self):

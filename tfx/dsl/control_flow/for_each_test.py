@@ -19,6 +19,7 @@ from tfx import types
 from tfx.dsl.components.base import base_node
 from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.control_flow import for_each
+from tfx.orchestration import pipeline as pipeline_lib
 from tfx.types import resolved_channel
 from tfx.utils import test_case_utils
 
@@ -123,6 +124,17 @@ class ForEachTest(test_case_utils.TfxTest):
     context1 = dsl_context_registry.get().get_contexts(c1)[-1]
     context2 = dsl_context_registry.get().get_contexts(c2)[-1]
     self.assertNotEqual(context1, context2)
+
+  # TODO(b/247709394): This should be removed once subpipelines are supported.
+  def testForEach_Subpipeline_NotImplemented(self):
+    a = A()
+    with self.assertRaises(NotImplementedError):
+      with for_each.ForEach(a.outputs['aa']) as aa:
+        p_in = pipeline_lib.PipelineInputs({'aa': aa})
+        b = B(aa=p_in.inputs['aa'])
+        pipeline_lib.Pipeline(
+            pipeline_name='foo', components=b, inputs=p_in, outputs={}
+        )
 
 
 if __name__ == '__main__':

@@ -207,6 +207,9 @@ def _create_placeholder_context(
       platform_config=deployment_config_utils.get_node_platform_config(
           depl_config, node.node_info.id
       ),
+      pipeline_platform_config=deployment_config_utils.get_pipeline_platform_config(
+          depl_config
+      ),
   )
 
 

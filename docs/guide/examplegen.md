@@ -192,7 +192,7 @@ Span can be retrieved by using '{SPAN}' spec in the
 
 *   This spec matches digits and maps the data into the relevant SPAN numbers.
     For example, 'data_{SPAN}-*.tfrecord' will collect files like
-    'data_12-a.tfrecord', 'date_12-b.tfrecord'.
+    'data_12-a.tfrecord', 'data_12-b.tfrecord'.
 *   Optionally, this spec can be specified with the width of the integers when
     mapped. For example, 'data_{SPAN:2}.file' maps to files like 'data_02.file'
     and 'data_27.file' (as inputs for Span-2 and Span-27 respectively), but does

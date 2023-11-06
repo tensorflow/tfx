@@ -239,3 +239,47 @@ def create_chore_pipeline() -> pipeline_pb2.Pipeline:
   )
   dsl_compiler = compiler.Compiler()
   return dsl_compiler.compile(pipeline)
+
+
+def create_pipeline_with_subpipeline() -> pipeline_pb2.Pipeline:
+  """Creates a pipeline with a subpipeline."""
+  # pylint: disable=no-value-for-parameter
+  example_gen = _example_gen().with_id('my_example_gen')
+
+  p_in = pipeline_lib.PipelineInputs(
+      {'examples': example_gen.outputs['examples']}
+  )
+  stats_gen = _statistics_gen(examples=p_in['examples']).with_id(
+      'my_statistics_gen'
+  )
+  schema_gen = _schema_gen(statistics=stats_gen.outputs['statistics']).with_id(
+      'my_schema_gen'
+  )
+  p_out = {'schema': schema_gen.outputs['schema']}
+
+  componsable_pipeline = pipeline_lib.Pipeline(
+      pipeline_name='sub-pipeline',
+      pipeline_root='/path/to/root/sub',
+      components=[stats_gen, schema_gen],
+      enable_cache=True,
+      inputs=p_in,
+      outputs=p_out,
+  )
+
+  transform = _transform(
+      examples=example_gen.outputs['examples'],
+      schema=componsable_pipeline.outputs['schema'],
+  ).with_id('my_transform')
+
+  pipeline = pipeline_lib.Pipeline(
+      pipeline_name='my_pipeline',
+      pipeline_root='/path/to/root',
+      components=[
+          example_gen,
+          componsable_pipeline,
+          transform,
+      ],
+      enable_cache=True,
+  )
+  dsl_compiler = compiler.Compiler()
+  return dsl_compiler.compile(pipeline)
