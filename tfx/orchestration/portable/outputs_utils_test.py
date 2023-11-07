@@ -384,14 +384,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
             f.write('')
         self.assertTrue(fileio.exists(artifact.uri))
 
-    outputs_utils.clear_output_dirs(output_artifacts)
-    for _, artifact_list in output_artifacts.items():
-      for artifact in artifact_list:
-        if artifact.is_external:
-          continue
-        if not isinstance(artifact, ValueArtifact):
-          self.assertEqual(fileio.listdir(artifact.uri), [])
-
     outputs_utils.remove_output_dirs(output_artifacts)
     for _, artifact_list in output_artifacts.items():
       for artifact in artifact_list:
@@ -451,18 +443,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           with fileio.open(os.path.join(artifact.uri, 'output'),
                            'w') as f:
             f.write('test')
-
-    outputs_utils.clear_output_dirs(external_artifacts)
-    for _, artifact_list in external_artifacts.items():
-      for artifact in artifact_list:
-        # clear_output_dirs method doesn't affect the external uris.
-        if isinstance(artifact, ValueArtifact):
-          with fileio.open(artifact.uri, 'r') as f:
-            self.assertEqual(f.read(), 'test')
-        else:
-          with fileio.open(os.path.join(artifact.uri, 'output'),
-                           'r') as f:
-            self.assertEqual(f.read(), 'test')
 
     outputs_utils.remove_output_dirs(external_artifacts)
     for _, artifact_list in external_artifacts.items():

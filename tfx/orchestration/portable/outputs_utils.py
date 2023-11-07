@@ -86,30 +86,6 @@ def remove_output_dirs(
         fileio.remove(artifact.uri)
 
 
-def clear_output_dirs(
-    output_dict: Mapping[str, Sequence[types.Artifact]]) -> None:
-  """Clear dirs of output artifacts' URI."""
-  for _, artifact_list in output_dict.items():
-    for artifact in artifact_list:
-      # Omit lifecycle management for external artifacts.
-      if artifact.is_external:
-        continue
-      # Clear out the contents of the output directory while preserving the
-      # output directory itself. Needed to preserve any storage attributes of
-      # the output directory.
-      if not fileio.isdir(artifact.uri):
-        continue
-      child_paths = [
-          os.path.join(artifact.uri, filename)
-          for filename in fileio.listdir(artifact.uri)
-      ]
-      for path in child_paths:
-        if fileio.isdir(path):
-          fileio.rmtree(path)
-        else:
-          fileio.remove(path)
-
-
 def remove_stateful_working_dir(stateful_working_dir: str) -> None:
   """Remove stateful_working_dir."""
   # Clean up stateful working dir
