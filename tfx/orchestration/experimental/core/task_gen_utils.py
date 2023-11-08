@@ -191,6 +191,7 @@ def _create_placeholder_context(
       pipeline_info=pipeline.pipeline_info,
       pipeline_run_id=pipeline.runtime_spec.pipeline_run_id.field_value.string_value,
       top_level_pipeline_run_id=pipeline.runtime_spec.top_level_pipeline_run_id,
+      frontend_url=pipeline.runtime_spec.frontend_url,
   )
 
   if not pipeline.deployment_config.Is(
