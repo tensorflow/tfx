@@ -95,12 +95,15 @@ def generate_task_from_execution(
       input_artifacts=input_artifacts,
       output_artifacts=output_artifacts,
       executor_output_uri=outputs_resolver.get_executor_output_uri(
-          execution.id),
+          execution.id
+      ),
       stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-          execution.id),
+          execution
+      ),
       tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
       pipeline=pipeline,
-      cancel_type=cancel_type)
+      cancel_type=cancel_type,
+  )
 
 
 def generate_cancel_task_from_running_execution(
@@ -562,6 +565,13 @@ def register_executions_from_existing_executions(
     new_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].CopyFrom(
         existing_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX]
     )
+    new_execution.custom_properties[
+        outputs_utils.STATEFUL_WORKING_DIR_INDEX
+    ].CopyFrom(
+        existing_execution.custom_properties[
+            outputs_utils.STATEFUL_WORKING_DIR_INDEX
+        ]
+    )
     # LINT.ThenChange(:execution_custom_properties)
     new_executions.append(new_execution)
     input_artifacts.append(input_artifacts_for_existing_execution)
@@ -616,6 +626,9 @@ def register_executions(
     )
     # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
+    execution.custom_properties[
+        outputs_utils.STATEFUL_WORKING_DIR_INDEX
+    ].string_value = str(uuid.uuid4())
     executions.append(execution)
     # LINT.ThenChange(:new_execution_custom_properties)
 
@@ -921,7 +934,7 @@ def generate_tasks_from_one_input(
               execution.id
           ),
           stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-              execution.id
+              execution
           ),
           tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
           pipeline=pipeline,

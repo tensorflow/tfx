@@ -19,6 +19,7 @@ import copy
 import datetime
 import os
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
+import uuid
 
 from absl import logging
 from tfx import types
@@ -48,6 +49,27 @@ _VALUE_ARTIFACT_FILE_NAME = 'value'
 RESOLVED_AT_RUNTIME = '{resolved_at_runtime}'
 # LINT.ThenChange(<Internal source code>)
 _ORCHESTRATOR_GENERATED_BCL_DIR = 'orchestrator_generated_bcl'
+STATEFUL_WORKING_DIR_INDEX = '__stateful_working_dir_index__'
+
+
+def _get_stateful_working_dir_index(
+    execution: Optional[metadata_store_pb2.Execution] = None,
+) -> str:
+  """Gets stateful working directory index.
+
+  If the execution is provided, stateful_working_dir_index storing as a custom
+  property will be returned. If not provided, a random UUID will be generated
+  and returned.
+
+  Args:
+    execution: the execution that stores the stateful_working_dir_index.
+
+  Returns:
+    a index for stateful working dir.
+  """
+  if execution:
+    return execution.custom_properties[STATEFUL_WORKING_DIR_INDEX].string_value
+  return str(uuid.uuid4())
 
 
 def make_output_dirs(
@@ -88,15 +110,7 @@ def remove_output_dirs(
 
 def remove_stateful_working_dir(stateful_working_dir: str) -> None:
   """Remove stateful_working_dir."""
-  # Clean up stateful working dir
-  # Note that:
-  # stateful_working_dir = os.path.join(
-  #    self._node_dir,
-  #    _SYSTEM,
-  #    _STATEFUL_WORKING_DIR, <-- we want to clean from this level down.
-  #    dir_suffix)
-  stateful_working_dir = os.path.abspath(
-      os.path.join(stateful_working_dir, os.pardir))
+  stateful_working_dir = os.path.abspath(stateful_working_dir)
   try:
     fileio.rmtree(stateful_working_dir)
   except fileio.NotFoundError:
@@ -187,28 +201,18 @@ class OutputsResolver:
     fileio.makedirs(driver_output_dir)
     return os.path.join(driver_output_dir, _DRIVER_OUTPUT_FILE)
 
-  def get_stateful_working_directory(self,
-                                     execution_id: Optional[int] = None) -> str:
-    """Generates stateful working directory given (optional) execution id.
+  def get_stateful_working_directory(
+      self, execution: Optional[metadata_store_pb2.Execution] = None
+  ) -> str:
+    """Generates stateful working directory.
 
     Args:
-      execution_id: An optional execution id which will be used as part of the
-        stateful working dir path if provided. The stateful working dir path
-        will be <node_dir>/.system/stateful_working_dir/<execution_id>. If
-        execution_id is not provided, for backward compatibility purposes,
-        <pipeline_run_id> is used instead of <execution_id> but an error is
-        raised if the execution_mode is not SYNC (since ASYNC pipelines have no
-        pipeline_run_id).
+      execution: the execution that the stateful working dir belongs to.
 
     Returns:
       Path to stateful working directory.
-
-    Raises:
-      ValueError: If execution_id is not provided and execution_mode of the
-        pipeline is not SYNC.
     """
-    return get_stateful_working_directory(self._node_dir, self._execution_mode,
-                                          self._pipeline_run_id, execution_id)
+    return get_stateful_working_directory(self._node_dir, execution)
 
   def make_tmp_dir(self, execution_id: int) -> str:
     """Generates a temporary directory."""
@@ -297,51 +301,30 @@ def get_executor_output_uri(node_dir, execution_id: int) -> str:
   # LINT.ThenChange(<Internal source code for executor_output_uri>)
 
 
-def get_stateful_working_directory(node_dir: str,
-                                   execution_mode: pipeline_pb2.Pipeline
-                                   .ExecutionMode = pipeline_pb2.Pipeline.SYNC,
-                                   pipeline_run_id: str = '',
-                                   execution_id: Optional[int] = None) -> str:
+def get_stateful_working_directory(
+    node_dir: str, execution: Optional[metadata_store_pb2.Execution] = None
+) -> str:
   """Generates stateful working directory.
+
+  The generated stateful working directory will have the following pattern:
+  node_idr/.system/stateful_working_dir/{stateful_working_dir_index}. The
+  stateful_working_dir_index is an UUID stored as a custom property of the
+  execution. If the execution is not provided, a random UUID will be generated
+  and used as the directory suffix.
 
   Args:
     node_dir: The root directory of the node.
-    execution_mode: Execution mode of the pipeline.
-    pipeline_run_id: Optional pipeline_run_id, only available if execution mode
-      is SYNC.
-    execution_id: An optional execution id which will be used as part of the
-      stateful working dir path if provided. The stateful working dir path will
-      be <node_dir>/.system/stateful_working_dir/<execution_id>. If execution_id
-      is not provided, for backward compatibility purposes, <pipeline_run_id> is
-      used instead of <execution_id> but an error is raised if the
-      execution_mode is not SYNC (since ASYNC pipelines have no
-      pipeline_run_id).
+    execution: The execution containing stateful_working_dir_index.
 
   Returns:
     Path to stateful working directory.
-
-  Raises:
-    ValueError: If execution_id is not provided and execution_mode of the
-      pipeline is not SYNC.
   """
-  if (execution_id is None and execution_mode != pipeline_pb2.Pipeline.SYNC):
-    raise ValueError(
-        'Cannot create stateful working dir if execution id is `None` and '
-        'the execution mode of the pipeline is not `SYNC`.')
-
-  if execution_id is None:
-    dir_suffix = pipeline_run_id
-  else:
-    dir_suffix = str(execution_id)
-
-  # TODO(b/150979622): We should introduce an id that is not changed across
-  # retries of the same component run to provide better isolation between
-  # "retry" and "new execution". When it is available, introduce it into
-  # stateful working directory.
   # NOTE: If this directory structure is changed, please update
   # the remove_stateful_working_dir function in this file accordingly.
-  stateful_working_dir = os.path.join(node_dir, _SYSTEM, _STATEFUL_WORKING_DIR,
-                                      dir_suffix)
+  stateful_working_dir_index = _get_stateful_working_dir_index(execution)
+  stateful_working_dir = os.path.join(
+      node_dir, _SYSTEM, _STATEFUL_WORKING_DIR, stateful_working_dir_index
+  )
   try:
     fileio.makedirs(stateful_working_dir)
   except Exception:  # pylint: disable=broad-except
