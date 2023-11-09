@@ -23,6 +23,7 @@ from absl import logging
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import data_types_utils
+from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -131,8 +132,13 @@ class TaskManagerTest(test_utils.TfxTest):
 
   @contextlib.contextmanager
   def _task_manager(self, task_queue, max_active_task_schedulers=1000):
+    # Use TaskManagerE2ETest below if you want to test MLMD integration.
+    mlmd_handle = mock.create_autospec(metadata.Metadata, instance=True)
+    mlmd_handle.store.get_executions_by_id.return_value = [
+        metadata_store_pb2.Execution()
+    ]
     with tm.TaskManager(
-        mock.Mock(),
+        mlmd_handle,
         task_queue,
         max_active_task_schedulers=max_active_task_schedulers,
         max_dequeue_wait_secs=0.1,
@@ -683,6 +689,26 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]
         ),
+    )
+
+  @mock.patch.object(time, 'time')
+  def test_execution_start_time_property(self, mock_time):
+    mock_time.return_value = 12345
+    self._register_task_scheduler(
+        ts.TaskSchedulerResult(
+            status=status_lib.Status(code=status_lib.Code.OK),
+            output=ts.ImporterNodeOutput(
+                output_artifacts=self._task.output_artifacts
+            ),
+        )
+    )
+    _ = self._run_task_manager()
+    execution = self._get_execution()
+    self.assertEqual(
+        12345,
+        execution.custom_properties.get(
+            constants.EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY
+        ).int_value,
     )
 
 

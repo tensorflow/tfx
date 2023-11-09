@@ -17,6 +17,7 @@ from concurrent import futures
 import sys
 import textwrap
 import threading
+import time
 import traceback
 import typing
 from typing import Dict, List, Optional
@@ -90,14 +91,23 @@ class _SchedulerWrapper:
         self.pause_requested.set()
 
   def schedule(self) -> ts.TaskSchedulerResult:
+    """Runs task scheduler."""
     with self._active_scheduler_counter:
       logging.info('Starting task scheduler: %s', self.task_scheduler)
+      with mlmd_state.mlmd_execution_atomic_op(
+          self.task_scheduler.mlmd_handle,
+          self.task_scheduler.task.execution_id,
+      ) as execution:
+        execution.custom_properties[
+            constants.EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY
+        ].int_value = int(time.time())
       try:
         return self.task_scheduler.schedule()
       finally:
         logging.info('Task scheduler finished: %s', self.task_scheduler)
 
   def cancel(self, cancel_task: task_lib.CancelNodeTask) -> None:
+    """Cancels task scheduler."""
     logging.info('Cancelling task scheduler: %s', self.task_scheduler)
     self.cancel_requested.set()
     if cancel_task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC:
