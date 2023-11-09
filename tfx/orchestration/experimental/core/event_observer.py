@@ -89,6 +89,7 @@ class ComponentGeneratedAlert:
   """ComponentGeneratedAlert event."""
   execution: metadata_store_pb2.Execution
   pipeline_uid: task_lib.PipelineUid
+  pipeline_run: str
   node_id: str
   alert_name: str
   alert_body: str

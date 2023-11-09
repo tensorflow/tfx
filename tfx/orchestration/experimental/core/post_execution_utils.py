@@ -105,13 +105,15 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
       execution.custom_properties[
           _COMPONENT_GENERATED_ALERTS_KEY
       ].proto_value.Unpack(alerts_proto)
+      pipeline_uid = task_lib.PipelineUid(
+          pipeline_id=task.pipeline.pipeline_info.id,
+      )
 
       for alert in alerts_proto.component_generated_alert_list:
         alert_event = event_observer.ComponentGeneratedAlert(
             execution=execution,
-            pipeline_uid=task_lib.PipelineUid(
-                pipeline_id=task.pipeline.pipeline_info.id
-            ),
+            pipeline_uid=pipeline_uid,
+            pipeline_run=pipeline_uid.pipeline_run_id,
             node_id=task.node_uid.node_id,
             alert_body=alert.alert_body,
             alert_name=alert.alert_name,
