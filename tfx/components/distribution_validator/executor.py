@@ -37,6 +37,12 @@ from tensorflow_metadata.proto.v0 import statistics_pb2
 # Default file name for anomalies output.
 DEFAULT_FILE_NAME = 'SchemaDiff.pb'
 
+# Keys for artifact (custom) properties.
+ARTIFACT_PROPERTY_BLESSED_KEY = 'blessed'
+
+# Values for blessing results.
+BLESSED_VALUE = 1
+NOT_BLESSED_VALUE = 0
 
 _COMPARISON_ANOMALY_TYPES = frozenset([
     anomalies_pb2.AnomalyInfo.Type.COMPARATOR_CONTROL_DATA_MISSING,
@@ -263,6 +269,7 @@ class Executor(base_executor.BaseExecutor):
           )
       )
     current_stats_span = test_statistics.span
+    blessed_value_dict = {}
     for test_split, baseline_split in split_pairs:
       split_pair = '%s_%s' % (test_split, baseline_split)
       logging.info('Processing split pair %s', split_pair)
@@ -282,6 +289,14 @@ class Executor(base_executor.BaseExecutor):
       )
       anomalies = _get_comparison_only_anomalies(full_anomalies)
       anomalies = _add_anomalies_for_missing_comparisons(anomalies, config)
+
+      if anomalies.anomaly_info or anomalies.HasField(
+          'dataset_anomaly_info'
+      ):
+        blessed_value_dict[split_pair] = NOT_BLESSED_VALUE
+      else:
+        blessed_value_dict[split_pair] = BLESSED_VALUE
+
       writer_utils.write_anomalies(
           os.path.join(
               anomalies_artifact.uri,
@@ -297,3 +312,8 @@ class Executor(base_executor.BaseExecutor):
           current_stats_span,
           validation_metrics_artifact,
       )
+
+    # Set blessed custom property for Anomalies Artifact
+    anomalies_artifact.set_json_value_custom_property(
+        ARTIFACT_PROPERTY_BLESSED_KEY, blessed_value_dict
+    )

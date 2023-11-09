@@ -135,10 +135,8 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
 
   @parameterized.named_parameters(
       {
-          'testcase_name':
-              'multiple_features',
-          'config':
-              """
+          'testcase_name': 'multiple_features',
+          'config': """
               default_slice_config: {
               feature: {
                   path: {
@@ -163,8 +161,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
             }
             """,
           'custom_validation_config': None,
-          'expected_anomalies':
-              """
+          'expected_anomalies': """
         anomaly_info {
           key: "company"
           value {
@@ -215,11 +212,11 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
           }
         }
           """,
-      }, {
-          'testcase_name':
-              'dataset_constraint',
-          'config':
-              """
+          'anomalies_blessed_value': 0,
+      },
+      {
+          'testcase_name': 'dataset_constraint',
+          'config': """
           default_slice_config: {
             num_examples_comparator: {
                 min_fraction_threshold: 1.0,
@@ -228,8 +225,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
           }
        """,
           'custom_validation_config': None,
-          'expected_anomalies':
-              """
+          'expected_anomalies': """
                 anomaly_name_format: SERIALIZED_PATH
                 dataset_anomaly_info {
                   severity: ERROR
@@ -239,11 +235,11 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                     description: "The ratio of num examples in the current dataset versus the previous span is 2.02094 (up to six significant digits), which is above the threshold 1."
                   }
                 }""",
-      }, {
-          'testcase_name':
-              'no_anomalies',
-          'config':
-              """
+          'anomalies_blessed_value': 0,
+      },
+      {
+          'testcase_name': 'no_anomalies',
+          'config': """
               default_slice_config: {
               feature: {
                   path: {
@@ -258,8 +254,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
             }
             """,
           'custom_validation_config': None,
-          'expected_anomalies':
-              """
+          'expected_anomalies': """
         anomaly_name_format: SERIALIZED_PATH
         drift_skew_info {
           path {
@@ -272,11 +267,11 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
           }
         }
           """,
-      }, {
-          'testcase_name':
-              'custom_anomalies',
-          'config':
-              """
+          'anomalies_blessed_value': 1,
+      },
+      {
+          'testcase_name': 'custom_anomalies',
+          'config': """
               default_slice_config: {
               feature: {
                   path: {
@@ -305,8 +300,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                 }
               }
           """,
-          'expected_anomalies':
-              """
+          'expected_anomalies': """
         anomaly_info {
           key: "company"
           value {
@@ -332,9 +326,16 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
           }
         }
           """,
-      })
-  def testAnomaliesGenerated(self, config, custom_validation_config,
-                             expected_anomalies):
+          'anomalies_blessed_value': 0,
+      },
+  )
+  def testAnomaliesGenerated(
+      self,
+      config,
+      custom_validation_config,
+      expected_anomalies,
+      anomalies_blessed_value,
+  ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
@@ -397,6 +398,12 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                                            anomalies_pb2.Anomalies())
 
     self.assertEqualExceptBaseline(expected_anomalies, distribution_anomalies)
+    self.assertEqual(
+        validation_output.get_json_value_custom_property(
+            executor.ARTIFACT_PROPERTY_BLESSED_KEY
+        ),
+        {'train_eval': anomalies_blessed_value},
+    )
 
   def testStructData(self):
     source_data_dir = FLAGS.test_tmpdir
