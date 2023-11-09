@@ -486,7 +486,17 @@ class _Generator:
       logging.info('Node skipped: %s', node_uid)
       result.append(
           task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=pstate.NodeState.SKIPPED))
+              node_uid=node_uid,
+              state=pstate.NodeState.SKIPPED,
+              status=status_lib.Status(
+                  code=status_lib.Code.OK,
+                  message=(
+                      'Node execution skipped either due to conditional'
+                      ' evaluated to false or no inputs resolved.'
+                  ),
+              ),
+          )
+      )
       return result
 
     # Copys artifact types of the external artifacts to local db, in idempotent
