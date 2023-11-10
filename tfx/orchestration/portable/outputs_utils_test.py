@@ -18,6 +18,7 @@ from unittest import mock
 from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.io import fileio
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import outputs_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -331,6 +332,18 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(artifact_7.uri, outputs_utils.RESOLVED_AT_RUNTIME)
     self.assertTrue(artifact_7.is_external)
 
+  def testGetExecutorOutputDir(self):
+    execution_info = data_types.ExecutionInfo(
+        execution_output_uri=self._output_resolver().get_executor_output_uri(1)
+    )
+    executor_output_dir = outputs_utils.get_executor_output_dir(execution_info)
+
+    self.assertRegex(
+        executor_output_dir, '.*/test_node/.system/executor_execution/1$'
+    )
+
+    self.assertTrue(fileio.isdir(executor_output_dir))
+
   def testGetExecutorOutputUri(self):
     executor_output_uri = self._output_resolver().get_executor_output_uri(1)
     self.assertRegex(
@@ -564,7 +577,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           }
         }
       }
-  }                                                
+  }
   """,
         pipeline_pb2.PipelineNode(),
     )
