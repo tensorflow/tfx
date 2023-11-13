@@ -40,6 +40,12 @@ _LAZY_TRIGGER_STRATEGIES = frozenset({
     pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
 })
 
+_UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES = frozenset({
+    pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
+    pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+    pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS,
+})
+
 
 class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
   """Task generator for executing a sync pipeline.
@@ -207,8 +213,9 @@ class _Generator:
 
     # Always update node states if possible.
     result = update_node_state_tasks
-    # If there was a pipeline finalization then make sure we are supposed to
-    # be in fail_fast mode.
+    # If finalize_pipeline_task is set here then we should be in fail_fast
+    # mode. Will only update node states and finalize pipeline, ignoring other
+    # tasks.
     if finalize_pipeline_task:
       result.append(finalize_pipeline_task)
       return result
@@ -217,7 +224,9 @@ class _Generator:
     unrunnable_descendant_ids = set()
     for node_id in failed_nodes_dict:
       unrunnable_descendant_ids |= _unrunnable_descendants(
-          self._node_proto_view_by_node_id, node_id
+          self._node_proto_view_by_node_id,
+          node_id,
+          set(failed_nodes_dict.keys()),
       )
     # Nodes that are still runnable have neither succeeded nor failed, don't
     # have a failed ancestor, or have a triggering strategy that ignores
@@ -227,9 +236,11 @@ class _Generator:
         | successful_node_ids
         | failed_nodes_dict.keys()
     )
+
     # If there are no more runnable nodes, then we finalize the pipeline,
     # otherwise run our exec_node tasks,
     if not runnable_node_ids:
+      logging.info('No more runnable nodes in pipeline, finalizing.')
       if failed_nodes_dict:
         result.append(self._abort_task(failed_nodes_dict))
       else:
@@ -560,6 +571,59 @@ class _Generator:
     return set(node.upstream_nodes) <= (
         successful_node_ids | failed_nodes_dict.keys())
 
+  def _lifetime_end_when_subgraph_cannot_progress(
+      self,
+      node: node_proto_view.NodeProtoView,
+      successful_node_ids: Set[str],
+      failed_nodes_dict: Mapping[str, status_lib.Status],
+  ) -> bool:
+    """Returns `True` if all upstream nodes are either COMPLETE or unrunnable."""
+    if not (
+        start_node := node.execution_options.resource_lifetime.lifetime_start
+    ):
+      raise ValueError(
+          f'Node {node.node_info.id} has trigger strategy'
+          ' LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS but no lifetime_start.'
+      )
+    # If the start node was not successful we will never trigger the end node.
+    if start_node not in successful_node_ids:
+      return False
+
+    failed_nodes = set(failed_nodes_dict.keys())
+
+    # Otherwise, the end node should run if none of its upstream nodes are
+    # runnable, find *all* unrunnable nodes for the pipeline.
+    unrunnable_nodes = set()
+    for upstream_node in node.upstream_nodes:
+      if upstream_node in failed_nodes_dict:
+        unrunnable_nodes |= _unrunnable_descendants(
+            self._node_proto_view_by_node_id,
+            upstream_node,
+            failed_nodes,
+        )
+
+    # All nodes not in this set are runnable.
+    complete_or_unrunnable_nodes = (
+        successful_node_ids | unrunnable_nodes | failed_nodes
+    )
+
+    # Any potentially runnable upstream nodes are the upstream nodes that are
+    # not complete or unrunnable.
+    runnable_upstream_node_ids = (
+        set(node.upstream_nodes) - complete_or_unrunnable_nodes
+    )
+    logging.info(
+        '[LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS trigger check]'
+        ' for node %s,'
+        ' complete_or_unrunnable nodes: %s, runnable upstream nodes: %s',
+        node.node_info.id,
+        complete_or_unrunnable_nodes,
+        runnable_upstream_node_ids,
+    )
+    # If this set is empty then the end node should run, otherwise it needs to
+    # wait.
+    return not runnable_upstream_node_ids
+
   def _trigger_strategy_satisfied(
       self,
       node: node_proto_view.NodeProtoView,
@@ -582,6 +646,15 @@ class _Generator:
     ):
       node_trigger_strategy_satisfied = self._upstream_nodes_successful(
           node, successful_node_ids
+      )
+    elif (
+        node.execution_options.strategy
+        == pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS
+    ):
+      node_trigger_strategy_satisfied = (
+          self._lifetime_end_when_subgraph_cannot_progress(
+              node, successful_node_ids, failed_nodes_dict
+          )
       )
     else:
       raise NotImplementedError(
@@ -686,25 +759,42 @@ def _node_by_id(
   return result
 
 
-def _unrunnable_descendants(node_by_id: Mapping[str,
-                                                node_proto_view.NodeProtoView],
-                            failed_node_id: str) -> Set[str]:
+# TODO(b/308963693): Get all unrunnable nodes at once.
+def _unrunnable_descendants(
+    node_by_id: Mapping[str, node_proto_view.NodeProtoView],
+    failed_node_id: str,
+    failed_node_ids: Set[str],
+) -> Set[str]:
   """Returns node_ids of all unrunnable descendants of the given failed node_id."""
   queue = collections.deque()
   for node_with_upstream_failure in node_by_id[failed_node_id].downstream_nodes:
-    # Nodes with ALL_UPSTREAM_NODES_COMPLETED trigger strategy can make progress
+    # Nodes with a upstream success optional trigger strategy can make progress
     # despite a failed upstream node.
-    if node_by_id[
-        node_with_upstream_failure
-    ].execution_options.strategy not in (
-        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
-        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+    if (
+        node_by_id[node_with_upstream_failure].execution_options.strategy
+        not in _UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES
     ):
       queue.append(node_with_upstream_failure)
-  result = set()
+  unrunnable = set()
   while queue:
     q_node_id = queue.popleft()
-    if q_node_id not in result:
+    node = node_by_id[q_node_id]
+    start_node = node.execution_options.resource_lifetime.lifetime_start
+    if (
+        node.execution_options.strategy
+        == pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS
+        and not (start_node in failed_node_ids or start_node in unrunnable)
+    ):
+      logging.info(
+          '%s is an end node that may still be run since its start node %s was'
+          ' neither failed nor unrunnable. Not marking the end node nor its'
+          ' descendants as unrunnable due to the failure of %s.',
+          q_node_id,
+          start_node,
+          failed_node_id,
+      )
+      continue
+    if q_node_id not in unrunnable:
       queue.extend(node_by_id[q_node_id].downstream_nodes)
-      result.add(q_node_id)
-  return result
+      unrunnable.add(q_node_id)
+  return unrunnable

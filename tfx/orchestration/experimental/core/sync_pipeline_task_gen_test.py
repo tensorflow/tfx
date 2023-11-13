@@ -15,6 +15,7 @@
 
 import itertools
 import os
+from typing import Literal
 import uuid
 
 from absl.testing import parameterized
@@ -95,13 +96,23 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         _default_ensure_node_services)
 
   def _make_pipeline(
-      self, pipeline_root, pipeline_run_id, get_chore_pipeline=False
+      self,
+      pipeline_root,
+      pipeline_run_id,
+      pipeline_type: Literal['standard', 'chore', 'lifetime'] = 'standard',
   ):
-    pipeline = (
-        test_sync_pipeline.create_pipeline()
-        if not get_chore_pipeline
-        else test_sync_pipeline.create_chore_pipeline()
-    )
+    if pipeline_type == 'standard':
+      pipeline = test_sync_pipeline.create_pipeline()
+    elif pipeline_type == 'chore':
+      pipeline = test_sync_pipeline.create_chore_pipeline()
+    elif pipeline_type == 'lifetime':
+      pipeline = test_sync_pipeline.create_resource_lifetime_pipeline()
+    else:
+      raise ValueError(
+          f'Unsupported pipeline type: {pipeline_type}. Supported types:'
+          ' "standard", "chore", and "lifetime".'
+      )
+
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline, {
             compiler_constants.PIPELINE_ROOT_PARAMETER_NAME: pipeline_root,
@@ -1222,7 +1233,9 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(update_node_task.state, pstate.NodeState.RUNNING)
 
   def test_lazy_execution(self):
-    pipeline = self._make_pipeline(self._pipeline_root, str(uuid.uuid4()), True)
+    pipeline = self._make_pipeline(
+        self._pipeline_root, str(uuid.uuid4()), pipeline_type='chore'
+    )
     self._pipeline = pipeline
     eg_1 = test_utils.get_node(pipeline, 'my_example_gen_1')
     eg_2 = test_utils.get_node(pipeline, 'my_example_gen_2')
@@ -1271,7 +1284,9 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self._run_next(False, expect_nodes=[chore_c])
 
   def test_generate_tasks_for_node(self):
-    pipeline = self._make_pipeline(self._pipeline_root, str(uuid.uuid4()), True)
+    pipeline = self._make_pipeline(
+        self._pipeline_root, str(uuid.uuid4()), pipeline_type='chore'
+    )
     self._pipeline = pipeline
     chore_b = test_utils.get_node(pipeline, 'chore_b')
 
@@ -1298,6 +1313,102 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(update_task.node_uid, chore_b_uid)
     self.assertIsInstance(exec_task, task_lib.ExecNodeTask)
     self.assertEqual(exec_task.node_uid, chore_b_uid)
+
+  def _setup_for_resource_lifetime_pipeline(self):
+    pipeline = self._make_pipeline(
+        self._pipeline_root, str(uuid.uuid4()), pipeline_type='lifetime'
+    )
+    self._pipeline = pipeline
+    self.start_a = test_utils.get_node(pipeline, 'start_a')
+    self.start_b = test_utils.get_node(pipeline, 'start_b')
+    self.worker = test_utils.get_node(pipeline, 'worker')
+    self.end_b = test_utils.get_node(pipeline, 'end_b')
+    self.end_a = test_utils.get_node(pipeline, 'end_a')
+
+  def test_trigger_strategy_lifetime_end_when_subgraph_cannot_progress_multiple_lifetimes_only_worker_fails(
+      self,
+  ):
+    self._setup_for_resource_lifetime_pipeline()
+
+    test_utils.fake_example_gen_run(self._mlmd_connection, self.start_a, 1, 1)
+
+    self._run_next(False, expect_nodes=[self.start_b])
+    [worker_task] = self._generate_and_test(
+        False,
+        num_initial_executions=2,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        ignore_update_node_state_tasks=True,
+    )
+    self.assertEqual(
+        task_lib.NodeUid.from_node(self._pipeline, self.worker),
+        worker_task.node_uid,
+    )
+
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, worker_task.execution_id
+      ) as worker_b_exec:
+        # Fail stats-gen execution.
+        worker_b_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+        data_types_utils.set_metadata_value(
+            worker_b_exec.custom_properties[constants.EXECUTION_ERROR_CODE_KEY],
+            status_lib.Code.UNAVAILABLE,
+        )
+        data_types_utils.set_metadata_value(
+            worker_b_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+            'foobar error',
+        )
+
+    self._run_next(False, expect_nodes=[self.end_b])
+    self._run_next(False, expect_nodes=[self.end_a])
+
+    # Pipeline should fail due to chore_a having failed.
+    [finalize_task] = self._generate(False, True)
+    self.assertEqual(status_lib.Code.UNAVAILABLE, finalize_task.status.code)
+    self.assertEqual('foobar error', finalize_task.status.message)
+
+  def test_trigger_strategy_lifetime_end_when_subgraph_cannot_progress_multiple_lifetimes_inner_start_fails(
+      self,
+  ):
+    self._setup_for_resource_lifetime_pipeline()
+
+    test_utils.fake_example_gen_run(self._mlmd_connection, self.start_a, 1, 1)
+
+    [start_b_task] = self._generate_and_test(
+        False,
+        num_initial_executions=1,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        ignore_update_node_state_tasks=True,
+    )
+    self.assertEqual(
+        task_lib.NodeUid.from_node(self._pipeline, self.start_b),
+        start_b_task.node_uid,
+    )
+    # Fail start_b execution
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, start_b_task.execution_id
+      ) as start_b_exec:
+        # Fail stats-gen execution.
+        start_b_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+        data_types_utils.set_metadata_value(
+            start_b_exec.custom_properties[constants.EXECUTION_ERROR_CODE_KEY],
+            status_lib.Code.UNAVAILABLE,
+        )
+        data_types_utils.set_metadata_value(
+            start_b_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+            'foobar error',
+        )
+
+    self._run_next(False, expect_nodes=[self.end_a])
+    # Pipeline should fail due to chore_a having failed.
+    [finalize_task] = self._generate(False, True)
+    self.assertEqual(status_lib.Code.UNAVAILABLE, finalize_task.status.code)
+    self.assertEqual('foobar error', finalize_task.status.message)
 
 
 if __name__ == '__main__':

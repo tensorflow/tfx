@@ -537,9 +537,11 @@ message NodeExecutionOptions {
   // An enum defines the trigger strategy of when the node will be ready to be
   // triggered. Only supported in the experimental orchestrator under SYNC mode
   // and ignored when configured for other platforms.
-  // Note that for all trigger strategies outlined below, all
-  // upstream nodes with either task or data dependency needs to be in a final
-  // state.
+  // Note that for all trigger strategies outlined below, except
+  // LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS all upstream nodes with either
+  // task or data dependency needs to be in a final state.
+  // For LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS upstream nodes can be
+  // "unrunnable", e.g. they cannot run due to upstream failures.
   enum TriggerStrategy {
     // Unspecified.  Behave the same as ALL_UPSTREAM_NODES_SUCCEEDED.
     TRIGGER_STRATEGY_UNSPECIFIED = 0;
@@ -553,6 +555,12 @@ message NodeExecutionOptions {
     // Specifies that all upstream nodes are in a final state and that any
     // downstream node would otherwise be able to run.
     LAZILY_ALL_UPSTREAM_NODES_COMPLETED = 4;
+    // Trigger strategy for resource lifetimes so that the end node may run
+    // when the subgraph is no longer capable of progressing. This trigger
+    // strategy requires NodeExecutionOptions.resource_lifetime.lifetime_start
+    // to be set and will error otherwise.
+    // This trigger strategy is considered experimental. Use at your own risk.
+    LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS = 6;
     reserved 3;
   }
   // The trigger strategy of this node.
@@ -611,14 +619,16 @@ message NodeExecutionOptions {
   // Current behavior for ASYNC pipelines is undefined.
   // TODO(b/298253165)
   message ResourceLifetime {
-    // If this node indicates a boundary to a resource lifetime. Intended to be
-    // used to support some resource being "available" between the execution of
-    // two nodes. Currently we provide a "best effort" to run the lifetime end
-    // of a successful start node during pipeline finalization (eg; the user
-    // requests for the pipeline to stop, pipeline fails do to node errors) if
-    // the lifetime_start is marked as SUCCESSFUL. More generally, provides a
-    // way to attempt node execution even if otherwise unpermitted by the DAG.
-    // As an implementation detail we enforce a 1:1 mapping.
+    // This is an experimental feature to enable "end nodes" in a pipeline to
+    // support resource lifetimes. If this field is set then the node which this
+    // NodeExecutionOptions belongs to will run during pipeline finalization if
+    // the "lifetime_start" has run succesfully.
+    // Pipeline finalization happens when:
+    // 1. All nodes in the pipeline completed, this is the "happy path".
+    // 2. A user requests for the pipeline to stop
+    // 3. A node fails in the pipeline and it cannot continue executing.
+    // This should be the id of the node "starting" a lifetime.
+    // If you want to use this feature please contact kmonte@ first.
     oneof paired_lifetime {
       // If set then the node this NodeExecutionOptions belongs to marks the end
       // of some lifetime.

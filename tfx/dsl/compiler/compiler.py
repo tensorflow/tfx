@@ -241,6 +241,17 @@ class Compiler:
          ) and not pipeline_ctx.is_sync_mode:
         raise ValueError("Node level triggering strategies and success "
                          "optionality are only used in SYNC pipelines.")
+      if (
+          node_execution_options.trigger_strategy
+          == pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS
+          and not node_execution_options.lifetime_start
+      ):
+        raise ValueError(
+            f"Node {node.node_info.id} has the trigger strategy"
+            " LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS set but no"
+            " lifetime_start. In order to use the trigger strategy the node"
+            " must have a lifetime_start."
+        )
       node.execution_options.strategy = node_execution_options.trigger_strategy
       node.execution_options.node_success_optional = node_execution_options.success_optional
       node.execution_options.max_execution_retries = node_execution_options.max_execution_retries
