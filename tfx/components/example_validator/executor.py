@@ -29,17 +29,8 @@ from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import writer_utils
 
-from tensorflow_metadata.proto.v0 import anomalies_pb2
-
 # Default file name for anomalies output.
 DEFAULT_FILE_NAME = 'SchemaDiff.pb'
-
-# Keys for artifact (custom) properties.
-ARTIFACT_PROPERTY_BLESSED_KEY = 'blessed'
-
-# Values for blessing results.
-BLESSED_VALUE = 1
-NOT_BLESSED_VALUE = 0
 
 
 class Executor(base_executor.BaseExecutor):
@@ -98,7 +89,6 @@ class Executor(base_executor.BaseExecutor):
             artifact_utils.get_single_uri(
                 input_dict[standard_component_specs.SCHEMA_KEY])))
 
-    blessed_value_dict = {}
     for split in artifact_utils.decode_split_names(stats_artifact.split_names):
       if split in exclude_splits:
         continue
@@ -120,25 +110,12 @@ class Executor(base_executor.BaseExecutor):
       output_uri = artifact_utils.get_split_uri(
           output_dict[standard_component_specs.ANOMALIES_KEY], split)
       label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
-
-      anomalies = self._Validate(label_inputs, label_outputs)
-      if anomalies.anomaly_info or anomalies.HasField('dataset_anomaly_info'):
-        blessed_value_dict[split] = NOT_BLESSED_VALUE
-      else:
-        blessed_value_dict[split] = BLESSED_VALUE
-
+      self._Validate(label_inputs, label_outputs)
       logging.info(
           'Validation complete for split %s. Anomalies written to '
           '%s.', split, output_uri)
 
-      # Set blessed custom property for anomalies artifact.
-      anomalies_artifact.set_json_value_custom_property(
-          ARTIFACT_PROPERTY_BLESSED_KEY, blessed_value_dict
-      )
-
-  def _Validate(
-      self, inputs: Dict[str, Any], outputs: Dict[str, Any]
-  ) -> anomalies_pb2.Anomalies:
+  def _Validate(self, inputs: Dict[str, Any], outputs: Dict[str, Any]) -> None:
     """Validate the inputs and put validate result into outputs.
 
       This is the implementation part of example validator executor. This is
@@ -165,9 +142,6 @@ class Executor(base_executor.BaseExecutor):
           external config file.
       outputs: A dictionary of labeled output values, including:
           - labels.SCHEMA_DIFF_PATH: the path to write the schema diff to
-
-    Returns:
-      An Anomalies proto containing anomalies for the split.
     """
     schema = value_utils.GetSoleValue(inputs,
                                       standard_component_specs.SCHEMA_KEY)
@@ -184,4 +158,3 @@ class Executor(base_executor.BaseExecutor):
     writer_utils.write_anomalies(
         os.path.join(schema_diff_path, DEFAULT_FILE_NAME), anomalies
     )
-    return anomalies

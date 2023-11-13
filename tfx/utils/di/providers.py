@@ -48,9 +48,6 @@ class Provider(abc.ABC, Generic[_T]):
     The factory class can contain additional dependency requests with argument
     type annotations. Both argument name and the argument type matters.
 
-    Factory function may raise FalseMatchError to indicate the match was
-    actually False, and needs to lookup for other providers.
-
     Cyclic depedency would result in infinite recursive call thus not allowed.
 
     Args:
