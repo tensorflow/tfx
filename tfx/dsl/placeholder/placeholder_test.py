@@ -279,6 +279,10 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testRejectsValueOfOutputArtifact(self):
+    with self.assertRaises(ValueError):
+      _ = ph.output('primitive').value
+
   def testConcatUriWithString(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         ph.output('model').uri + '/model', """

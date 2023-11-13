@@ -120,6 +120,8 @@ class ArtifactPlaceholder(placeholder_base.Placeholder):
 
   @property
   def value(self) -> _ArtifactValueOperator:
+    if self.is_output:
+      raise ValueError('Calling ph.output(..).value is not supported.')
     return _ArtifactValueOperator(self)
 
   def __getitem__(self, index: Union[int, str]) -> ArtifactPlaceholder:
