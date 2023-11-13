@@ -15,6 +15,8 @@
 
 import collections.abc
 import inspect
+import sys
+import types
 import typing
 from typing import Any, Iterable, Literal, Mapping, Type, TypeVar, TypedDict
 
@@ -94,9 +96,11 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
         return _is_typed_dict_compatible(value, tp)
       return isinstance(value, tp)
   if maybe_origin is not None:
-    # Union[T]
+    # Union[T, U] or T | U
     if maybe_origin is typing.Union:
       assert maybe_args, f'{tp} should be subscripted.'
+      return any(is_compatible(value, arg) for arg in maybe_args)
+    if sys.version_info >= (3, 10) and maybe_origin is types.UnionType:
       return any(is_compatible(value, arg) for arg in maybe_args)
     # Type[T]
     elif maybe_origin is type:
