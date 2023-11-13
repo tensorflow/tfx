@@ -371,6 +371,75 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
           pstate.get_all_node_artifacts(pipeline, m),
       )
 
+  @mock.patch.object(pstate, 'get_all_node_executions')
+  @mock.patch.object(execution_lib, 'get_output_artifacts')
+  def test_get_all_node_artifacts_with_execution_filter_options(
+      self, mock_get_output_artifacts, mock_get_all_node_executions
+  ):
+    artifact_1 = metadata_store_pb2.Artifact(id=1)
+    artifact_2 = metadata_store_pb2.Artifact(id=2)
+
+    artifact_obj_1 = mock.Mock()
+    artifact_obj_2 = mock.Mock()
+    artifact_obj_1.mlmd_artifact = artifact_1
+    artifact_obj_2.mlmd_artifact = artifact_2
+
+    execution_1 = metadata_store_pb2.Execution(
+        id=1,
+        type='test_execution_type1',
+        create_time_since_epoch=1234567891012,
+    )
+    execution_2 = metadata_store_pb2.Execution(
+        id=2,
+        type='test_execution_type2',
+        create_time_since_epoch=1234567891013,
+    )
+
+    with self._mlmd_connection as m:
+      # Expect node `Trainer` to be associated with 2 executions:
+      # `execution_1` outputs `artifact_1`,
+      # `execution_2` outputs `artifact_2`.
+      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
+      mock_get_all_node_executions.return_value = {
+          pipeline.nodes[0].pipeline_node.node_info.id: [
+              execution_1,
+              execution_2,
+          ]
+      }
+      # Expect get_output_artifacts() to be called twice.
+      mock_get_output_artifacts.side_effect = [
+          {'key1': [artifact_obj_1]},
+          {'key2': [artifact_obj_2]},
+      ]
+
+      execution_filter_options = metadata_pb2.NodeFilterOptions(
+          types=['test_execution_type1', 'test_execution_type2'],
+      )
+      execution_filter_options.min_create_time.FromMilliseconds(1234567891012)
+      execution_filter_options.max_create_time.FromMilliseconds(1234567891013)
+      self.assertEqual(
+          {
+              pipeline.nodes[0].pipeline_node.node_info.id: {
+                  1: {'key1': [artifact_1]},
+                  2: {'key2': [artifact_2]},
+              }
+          },
+          pstate.get_all_node_artifacts(
+              pipeline, m, execution_filter_options=execution_filter_options
+          ),
+      )
+
+      mock_get_all_node_executions.assert_called_once_with(
+          mock.ANY,
+          mock.ANY,
+          node_filter_options=execution_filter_options,
+      )
+      # Assert `execution_filter_options` is called twice with proper execution
+      # ids.
+      mock_get_output_artifacts.assert_has_calls(
+          [mock.call(mock.ANY, 1), mock.call(mock.ANY, 2)]
+      )
+
   @mock.patch.object(task_gen_utils, 'get_executions')
   def test_get_all_node_executions(self, mock_get_executions):
     execution = metadata_store_pb2.Execution(name='test_execution')

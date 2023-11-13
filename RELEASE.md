@@ -3,8 +3,8 @@
 ## Major Features and Improvements
 
 *  Dropped python 3.8 support.
-*  Extend GetPipelineRunExecutions API to support filtering executions by
-create_time, type.
+*  Extend GetPipelineRunExecutions, GetPipelineRunArtifacts APIs to support
+   filtering by execution create_time, type.
 
 ## Breaking Changes
 
