@@ -15,7 +15,9 @@
 
 import abc
 import functools
-from typing import Any, Callable, Generic, Optional, TypeVar
+import inspect
+import sys
+from typing import Any, Callable, Generic, Optional, TypeVar, Union, get_args, get_origin
 
 from tfx.utils import pure_typing_utils
 
@@ -84,6 +86,19 @@ class ValueProvider(Provider[_T]):
       return f'ValueProvider({self._value})'
 
 
+def _is_subclass(cls: type[Any], type_hint: Any) -> bool:
+  """issubclass that supports Union and Optional correctly."""
+  if inspect.isclass(type_hint) or sys.version_info >= (3, 10):
+    # issubclass recognizes Optional / Union type in python>=3.10
+    return issubclass(cls, type_hint)
+  origin = get_origin(type_hint)
+  args = get_args(type_hint)
+  if origin is Union:
+    if any(_is_subclass(cls, arg) for arg in args):
+      return True
+  return False
+
+
 class ClassProvider(Provider[_T]):
   """Simple provider for the class.
 
@@ -98,8 +113,9 @@ class ClassProvider(Provider[_T]):
     self._cls = cls
 
   def match(self, name: str, type_hint: Any) -> bool:
-    # Note that issubclass also handles Optional / Union type correctly.
-    return issubclass(self._cls, type_hint)
+    if type_hint is None:
+      return False
+    return _is_subclass(self._cls, type_hint)
 
   def make_factory(self, name: str, type_hint: Any) -> Callable[..., Any]:
     return self._cls
@@ -116,7 +132,9 @@ class NamedClassProvider(Provider[_T]):
     self._cls = cls
 
   def match(self, name: str, type_hint: Any) -> bool:
-    return name == self._name and issubclass(self._cls, type_hint)
+    return name == self._name and (
+        type_hint is None or _is_subclass(self._cls, type_hint)
+    )
 
   def make_factory(self, name: str, type_hint: Any) -> Callable[..., Any]:
     return self._cls
