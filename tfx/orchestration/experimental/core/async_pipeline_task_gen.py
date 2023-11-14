@@ -13,6 +13,7 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
+import traceback
 from typing import Callable, List, Optional
 
 from absl import logging
@@ -345,9 +346,49 @@ class _Generator:
           skip_errors=[exceptions.InsufficientInputError],
       )
     except exceptions.InputResolutionError as e:
-      logging.exception(
-          'Task cannot be generated for node %s since no input artifacts '
-          'are resolved. Error: %s', node.node_info.id, e)
+      error_msg = (
+          f'failure to resolve inputs; node uid: {node_uid}; '
+          f'error: {traceback.format_exception(e, limit=0)}'
+      )
+      if backfill_token:
+        logging.exception(
+            'InputResolutionError raised when resolving input artifacts for'
+            ' node %s during backfill. Setting node to FAILED state with status'
+            ' code FAILED_PRECONDITION. Error: %s',
+            node.node_info.id,
+            error_msg,
+        )
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.FAILED,
+                status=status_lib.Status(
+                    code=status_lib.Code.FAILED_PRECONDITION,
+                    message=(
+                        f'Backfill of node {node.node_info.id} failed'
+                        f' Error: {error_msg}'
+                    ),
+                ),
+                backfill_token='',
+            )
+        )
+      else:
+        logging.exception(
+            'InputResolutionError raised when resolving input artifacts for'
+            ' node %s. Setting node to STARTED state with status code'
+            ' UNAVALIABLE. Error: %s',
+            node.node_info.id,
+            e,
+        )
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.STARTED,
+                status=status_lib.Status(
+                    code=status_lib.Code.UNAVAILABLE, message=error_msg
+                ),
+            )
+        )
       return result
 
     # Note that some nodes e.g. ImportSchemaGen don't have inputs, and for those
@@ -357,17 +398,18 @@ class _Generator:
          resolved_info.input_and_params[0].input_artifacts is None) or
         (node.inputs.inputs and
          not any(resolved_info.input_and_params[0].input_artifacts.values()))):
-      logging.info(
-          'Task cannot be generated for node %s since no input artifacts '
-          'are resolved.', node.node_info.id)
-
       if backfill_token:
+        error_msg = (
+            f'Backfill of node {node.node_info.id} resvoled no input artifacts'
+        )
         logging.info(
             (
                 'Backfill of node %s resolved no input artifacts. Setting node'
-                ' to STOPPED state'
+                ' to STOPPED state with status code FAIL_PRECONDITION.'
+                ' Error: %s'
             ),
             node.node_info.id,
+            error_msg,
         )
         result.append(
             task_lib.UpdateNodeStateTask(
@@ -375,12 +417,29 @@ class _Generator:
                 state=pstate.NodeState.STOPPED,
                 status=status_lib.Status(
                     code=status_lib.Code.FAILED_PRECONDITION,
-                    message=(
-                        f'Backfill of node {node.node_info.id} resvoled no'
-                        ' input artifacts'
-                    ),
+                    message=error_msg,
                 ),
                 backfill_token='',
+            )
+        )
+      else:
+        logging.info(
+            'No input artifacts resolved for node %s. Setting node to STARTED'
+            ' state with OK status.',
+            node.node_info.id,
+        )
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.STARTED,
+                status=status_lib.Status(
+                    code=status_lib.Code.OK,
+                    message=(
+                        'Waiting for new input artifacts to be processed.'
+                        ' Non-triggering input or insufficient number of'
+                        ' artifacts will not trigger new execution.'
+                    ),
+                ),
             )
         )
 
