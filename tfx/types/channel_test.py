@@ -101,6 +101,13 @@ class ChannelTest(tf.test.TestCase):
     self.assertIsInstance(future[0], placeholder.ChannelWrappedPlaceholder)
     self.assertIsInstance(future.value, placeholder.ChannelWrappedPlaceholder)
 
+  def testLatestProducsPlaceholder(self):
+    chnl = channel.Channel(type=_MyType)
+    latest = chnl.latest()
+    self.assertIsInstance(latest, placeholder.ChannelWrappedPlaceholder)
+    self.assertIs(latest.channel, chnl)
+    self.assertIsInstance(latest.value, placeholder.ChannelWrappedPlaceholder)
+
   def testValidUnionChannel(self):
     channel1 = channel.Channel(type=_MyType)
     channel2 = channel.Channel(type=_MyType)
