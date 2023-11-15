@@ -354,9 +354,8 @@ class _Generator:
         logging.exception(
             'InputResolutionError raised when resolving input artifacts for'
             ' node %s during backfill. Setting node to FAILED state with status'
-            ' code FAILED_PRECONDITION. Error: %s',
+            ' code FAILED_PRECONDITION.',
             node.node_info.id,
-            error_msg,
         )
         result.append(
             task_lib.UpdateNodeStateTask(
@@ -376,9 +375,8 @@ class _Generator:
         logging.exception(
             'InputResolutionError raised when resolving input artifacts for'
             ' node %s. Setting node to STARTED state with status code'
-            ' UNAVALIABLE. Error: %s',
+            ' UNAVALIABLE.',
             node.node_info.id,
-            e,
         )
         result.append(
             task_lib.UpdateNodeStateTask(
