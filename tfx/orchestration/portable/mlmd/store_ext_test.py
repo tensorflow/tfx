@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.utils.mlmd.store_ext."""
 
+import time
+
 import tensorflow as tf
 from tfx.orchestration.portable.mlmd import store_ext
 from tfx.utils import test_case_utils
@@ -82,44 +84,65 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
       )
       self.assertEqual(_ids(result), _ids([e3, e4, e5, e6, e7]))
 
-  def testGetOutputArtifactsFromExecutionIds(self):
-    x1 = self.put_artifact('X')
-    x2 = self.put_artifact('X')
-    y1 = self.put_artifact('Y', state='DELETED')
-    y2 = self.put_artifact('Y')
-    y3 = self.put_artifact('Y')
-    y4 = self.put_artifact('Y')
-    e1 = self.put_execution('E', inputs={'x': [x1]}, outputs={'y': [y1]})
-    e2 = self.put_execution('E', inputs={'x': [x2]}, outputs={'y': [y2]})
+  def testGetNodeExecutionsCapByArtifactCreateTime(self):
+    pipeline_run_context_1 = self.put_context('pipeline_run1', 'run-20230413')
+    pipeline_run_context_2 = self.put_context('pipeline_run1', 'run-20230414')
+    node_context = self.put_context('node', 'my-pipeline.my-node')
+    type_id = self.put_artifact_type('test-artifact-type')
+    a1 = metadata_store_pb2.Artifact(type_id=type_id, state='DELETED')
+    a2 = metadata_store_pb2.Artifact(
+        type_id=type_id, state='MARKED_FOR_DELETION'
+    )
+    a3 = metadata_store_pb2.Artifact(type_id=type_id, state='LIVE')
+    a4 = metadata_store_pb2.Artifact(type_id=type_id, state='LIVE')
+
+    # Insert 3 executions, sleep 1 second in between to ensure executions don't
+    # have the same update time.
+    self.put_execution(
+        'test-execution-type',
+        inputs={'input': [a1]},
+        outputs={'output': [a2]},
+        contexts=[pipeline_run_context_1, node_context],
+    )
+    time.sleep(1)
+    e2 = self.put_execution(
+        'test-execution-type',
+        inputs={'input': [a2]},
+        outputs={'output': [a3]},
+        contexts=[pipeline_run_context_2, node_context],
+    )
+    time.sleep(1)
     e3 = self.put_execution(
-        'E',
-        inputs={'x': [x2]},
-        outputs={'y': [y3]},
-        output_event_type=metadata_store_pb2.Event.DECLARED_OUTPUT,
-    )
-    e4 = self.put_execution(
-        'E',
-        inputs={'x': [x2]},
-        outputs={'y': [y4]},
-        output_event_type=metadata_store_pb2.Event.INTERNAL_OUTPUT,
+        'test-execution-type',
+        inputs={'input': [a3]},
+        outputs={'output': [a4]},
+        contexts=[pipeline_run_context_2, node_context],
     )
 
-    result = store_ext.get_output_artifacts_from_execution_ids(
-        self.store,
-        execution_ids=_sorted_ids([e1, e2, e3, e4]),
-    )
-    self.assertEqual(_sorted_ids(result), _sorted_ids([y1, y2, y3, y4]))
-
-    with self.subTest('With artifact filter'):
-      result = store_ext.get_output_artifacts_from_execution_ids(
-          self.store,
-          execution_ids=_sorted_ids([e1, e2, e3, e4]),
-          artifact_filter=lambda a: a.state == metadata_store_pb2.Artifact.LIVE,
+    with self.subTest('With execution limited by live artifacts create time'):
+      artifacts = store_ext.get_live_output_artifacts_of_node(
+          self.store, pipeline_id='my-pipeline', node_id='my-node'
       )
-      self.assertEqual(_sorted_ids(result), _sorted_ids([y2, y3, y4]))
+      min_artifact_create_time = min(
+          [a.create_time_since_epoch for a in artifacts], default=0
+      )
+      result = store_ext.get_node_executions(
+          self.store,
+          pipeline_id='my-pipeline',
+          node_id='my-node',
+          min_last_update_time_since_epoch=min_artifact_create_time,
+      )
+      self.assertEqual(_ids(result), _ids([e2, e3]))
 
   def testGetLiveOutputArtifactsOfNode(self):
     c = self.put_context('node', 'my-pipeline.my-node')
+
+    with self.subTest('With no LIVE node artifacts'):
+      result = store_ext.get_live_output_artifacts_of_node(
+          self.store, pipeline_id='my-pipeline', node_id='my-node'
+      )
+      self.assertEmpty(result)
+
     x1 = self.put_artifact('X')
     x2 = self.put_artifact('X')
     y1 = self.put_artifact('Y', state='DELETED')
@@ -139,6 +162,16 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
   def testGetLiveOutputArtifactsOfNodeByOutputKeySync(self):
     c1 = self.put_context('pipeline_run', 'run-20230413')
     c2 = self.put_context('node', 'my-pipeline.my-node')
+
+    with self.subTest('With no LIVE node artifacts'):
+      result = store_ext.get_live_output_artifacts_of_node_by_output_key(
+          self.store,
+          pipeline_id='my-pipeline',
+          node_id='my-node',
+          pipeline_run_id='run-20230413',
+      )
+      self.assertEmpty(result)
+
     x1 = self.put_artifact('X')
     x2 = self.put_artifact('X')
     x3 = self.put_artifact('X')
@@ -203,6 +236,15 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
 
   def testGetLiveOutputArtifactsOfNodeByOutputKeyAsync(self):
     c1 = self.put_context('node', 'my-pipeline.my-node')
+
+    with self.subTest('With no LIVE node artifacts'):
+      result = store_ext.get_live_output_artifacts_of_node_by_output_key(
+          self.store,
+          pipeline_id='my-pipeline',
+          node_id='my-node',
+          pipeline_run_id='',
+      )
+      self.assertEmpty(result)
 
     x1 = self.put_artifact('X')
     x2 = self.put_artifact('X')
