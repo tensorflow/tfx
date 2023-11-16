@@ -52,12 +52,15 @@ class ExecutorTest(parameterized.TestCase):
       {
           'testcase_name': 'No_anomalies',
           'custom_validation_config': None,
-          'expected_anomalies': {}
-      }, {
-          'testcase_name':
-              'Custom_validation',
-          'custom_validation_config':
-              """
+          'expected_anomalies': {},
+          'expected_blessing': {
+              'train': executor.BLESSED_VALUE,
+              'eval': executor.BLESSED_VALUE,
+          },
+      },
+      {
+          'testcase_name': 'Custom_validation',
+          'custom_validation_config': """
               feature_validations {
               feature_path { step: 'company' }
               validations {
@@ -81,10 +84,19 @@ class ExecutorTest(parameterized.TestCase):
                     type: CUSTOM_VALIDATION
                     short_description: 'Feature does not have enough values.'
                   }
-                  """, anomalies_pb2.AnomalyInfo())
-          }
-      })
-  def testDo(self, custom_validation_config, expected_anomalies):
+                  """,
+                  anomalies_pb2.AnomalyInfo(),
+              )
+          },
+          'expected_blessing': {
+              'train': executor.NOT_BLESSED_VALUE,
+              'eval': executor.NOT_BLESSED_VALUE,
+          },
+      },
+  )
+  def testDo(
+      self, custom_validation_config, expected_anomalies, expected_blessing
+  ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
@@ -154,6 +166,13 @@ class ExecutorTest(parameterized.TestCase):
                                    'SchemaDiff.pb')
     self.assertFalse(fileio.exists(train_file_path))
     # TODO(zhitaoli): Add comparison to expected anomolies.
+
+    self.assertEqual(
+        validation_output.get_json_value_custom_property(
+            executor.ARTIFACT_PROPERTY_BLESSED_KEY
+        ),
+        expected_blessing,
+    )
 
 
 if __name__ == '__main__':
