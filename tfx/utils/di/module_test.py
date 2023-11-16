@@ -28,7 +28,7 @@ class ModuleTest(tf.test.TestCase):
 
   def testGet_Simple(self):
     mod = module.DependencyModule()
-    mod.provide_value(42, name='x')
+    mod.provide_named_value('x', 42)
     self.assertEqual(mod.get('x', int), 42)
 
   def testGet_MissingDependency(self):
@@ -42,7 +42,7 @@ class ModuleTest(tf.test.TestCase):
 
   def testInject_Simple(self):
     mod = module.DependencyModule()
-    mod.provide_value(42, name='x')
+    mod.provide_named_value('x', 42)
 
     def add_one(x: int):
       return x + 1
@@ -51,7 +51,7 @@ class ModuleTest(tf.test.TestCase):
 
   def testInject_MissingDependency(self):
     mod = module.DependencyModule()
-    mod.provide_value(42, name='x')
+    mod.provide_named_value('x', 42)
 
     def add(x: int, y: int):
       return x + y
@@ -61,7 +61,7 @@ class ModuleTest(tf.test.TestCase):
 
   def testInject_MissingDependency_DefaultArgumentUsed(self):
     mod = module.DependencyModule()
-    mod.provide_value(42, name='x')
+    mod.provide_named_value('x', 42)
 
     def add(x: int, y: int = 1):
       return x + y
@@ -70,7 +70,7 @@ class ModuleTest(tf.test.TestCase):
 
   def testProvideValue_TypeShouldMatch(self):
     mod = module.DependencyModule()
-    mod.provide_value(42, name='x')
+    mod.provide_named_value('x', 42)
     self.assertEqual(mod.get('x', int), 42)
     self.assertEqual(mod.get('x', None), 42)  # When type_hint is not given.
     with self.assertRaises(errors.NotProvidedError):
@@ -104,7 +104,7 @@ class ModuleTest(tf.test.TestCase):
         self.x = x
 
     mod = module.DependencyModule()
-    mod.provide_value(42, name='x')
+    mod.provide_named_value('x', 42)
     mod.provide_class(Foo)
 
     foo = mod.get(ANY_NAME, Foo)
@@ -177,8 +177,8 @@ class ModuleTest(tf.test.TestCase):
 
     mod = module.DependencyModule()
     mod.provide_class(Foo)
-    mod.provide_value(42, name='x')
-    mod.provide_value('foo', name='y')
+    mod.provide_named_value('x', 42)
+    mod.provide_named_value('y', 'foo')
 
     foo = mod.get(ANY_NAME, Foo)
     self.assertEqual(foo.x, 42)
