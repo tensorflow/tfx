@@ -18,6 +18,7 @@ from unittest import mock
 from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.io import fileio
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import outputs_utils
 from tfx.proto.orchestration import execution_result_pb2
@@ -28,6 +29,7 @@ from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
+from ml_metadata.proto import metadata_store_pb2
 
 _PIPELINE_INFO = text_format.Parse("""
   id: "test_pipeline"
@@ -354,27 +356,44 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
       executor_output = execution_result_pb2.ExecutorOutput()
       f.write(executor_output.SerializeToString())
 
-  def testGetStatefulWorkingDir(self):
+  def testGetStatefulWorkingDirWithoutExecution(self):
     stateful_working_dir = (
-        self._output_resolver().get_stateful_working_directory())
-    self.assertRegex(stateful_working_dir,
-                     '.*/test_node/.system/stateful_working_dir/test_run_0')
+        self._output_resolver().get_stateful_working_directory()
+    )
+    self.assertRegex(
+        stateful_working_dir, '.*/test_node/.system/stateful_working_dir/.+'
+    )
     self.assertTrue(fileio.exists(stateful_working_dir))
 
-  @parameterized.parameters(pipeline_pb2.Pipeline.SYNC,
-                            pipeline_pb2.Pipeline.ASYNC)
-  def testGetStatefulWorkingDirWithExecutionId(self, exec_mode):
+  def testGetStatefulWorkingDirWithExecutionAndClearingPreviousContent(self):
+    mocked_index = 'random123'
+    dummy_execution = metadata_store_pb2.Execution(
+        id=1,
+        type_id=1,
+        name='dummy_execution',
+        last_known_state=metadata_store_pb2.Execution.State.RUNNING,
+    )
+    dummy_execution.custom_properties[
+        constants.STATEFUL_WORKING_DIR_INDEX
+    ].string_value = mocked_index
     stateful_working_dir = (
-        self._output_resolver(exec_mode).get_stateful_working_directory(1))
-    self.assertRegex(stateful_working_dir,
-                     '.*/test_node/.system/stateful_working_dir/1')
-    fileio.exists(stateful_working_dir)
+        self._output_resolver().get_stateful_working_directory(dummy_execution)
+    )
+    self.assertRegex(
+        stateful_working_dir,
+        f'.*/test_node/.system/stateful_working_dir/{mocked_index}',
+    )
+    self.assertTrue(fileio.exists(stateful_working_dir))
 
-  def testGetStatefulWorkingDirAsyncRaisesWithoutExecutionId(self):
-    with self.assertRaisesRegex(ValueError,
-                                'Cannot create stateful working dir'):
-      self._output_resolver(
-          pipeline_pb2.Pipeline.ASYNC).get_stateful_working_directory()
+    # Create an empty subdir in stateful_working_dir and test clearing previous
+    # content from existing stateful working dir.
+    subdir = os.path.join(stateful_working_dir, 'subdir')
+    fileio.mkdir(subdir)
+    self._output_resolver().get_stateful_working_directory(
+        dummy_execution, clear_previous_content=True
+    )
+    self.assertTrue(fileio.exists(stateful_working_dir))
+    self.assertFalse(fileio.exists(subdir))
 
   def testGetTmpDir(self):
     tmp_dir = self._output_resolver().make_tmp_dir(1)

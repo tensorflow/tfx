@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Portable library for output artifacts resolution including caching decision.
-"""
+"""Portable library for output artifacts resolution including caching decision."""
 
 import collections
 import copy
 import datetime
 import os
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
+import uuid
 
 from absl import logging
 from tfx import types
@@ -26,6 +26,7 @@ from tfx import version
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -188,28 +189,31 @@ class OutputsResolver:
     fileio.makedirs(driver_output_dir)
     return os.path.join(driver_output_dir, _DRIVER_OUTPUT_FILE)
 
-  def get_stateful_working_directory(self,
-                                     execution_id: Optional[int] = None) -> str:
-    """Generates stateful working directory given (optional) execution id.
+  def get_stateful_working_directory(
+      self,
+      execution: Optional[metadata_store_pb2.Execution] = None,
+      clear_previous_content: bool = False,
+  ) -> str:
+    """Generates stateful working directory.
+
+    This function will do the following tasks:
+      1. generate stateful working directory.
+      2. clear previous content from the existing stateful working dir if
+      clear_previous_content is True.
 
     Args:
-      execution_id: An optional execution id which will be used as part of the
-        stateful working dir path if provided. The stateful working dir path
-        will be <node_dir>/.system/stateful_working_dir/<execution_id>. If
-        execution_id is not provided, for backward compatibility purposes,
-        <pipeline_run_id> is used instead of <execution_id> but an error is
-        raised if the execution_mode is not SYNC (since ASYNC pipelines have no
-        pipeline_run_id).
+      execution: execution containing stateful_working_dir_index.
+      clear_previous_content: indicates if it will remove previous content from
+        the existing stateful working dir.
 
     Returns:
       Path to stateful working directory.
-
-    Raises:
-      ValueError: If execution_id is not provided and execution_mode of the
-        pipeline is not SYNC.
     """
-    return get_stateful_working_directory(self._node_dir, self._execution_mode,
-                                          self._pipeline_run_id, execution_id)
+    return get_stateful_working_directory(
+        self._node_dir,
+        execution=execution,
+        clear_previous_content=clear_previous_content,
+    )
 
   def make_tmp_dir(self, execution_id: int) -> str:
     """Generates a temporary directory."""
@@ -301,57 +305,90 @@ def get_executor_output_uri(node_dir, execution_id: int) -> str:
   return os.path.join(execution_dir, _EXECUTOR_OUTPUT_FILE)
 
 
-def get_stateful_working_directory(node_dir: str,
-                                   execution_mode: pipeline_pb2.Pipeline
-                                   .ExecutionMode = pipeline_pb2.Pipeline.SYNC,
-                                   pipeline_run_id: str = '',
-                                   execution_id: Optional[int] = None) -> str:
-  """Generates stateful working directory.
+def get_stateful_working_dir_index(
+    execution: Optional[metadata_store_pb2.Execution] = None,
+) -> str:
+  """Gets stateful working directory index.
+
+  If the execution is provided, stateful_working_dir_index which is stored as a
+  custom property will be returned. If not provided, a UUID will be generated
+  and returned.
 
   Args:
-    node_dir: The root directory of the node.
-    execution_mode: Execution mode of the pipeline.
-    pipeline_run_id: Optional pipeline_run_id, only available if execution mode
-      is SYNC.
-    execution_id: An optional execution id which will be used as part of the
-      stateful working dir path if provided. The stateful working dir path will
-      be <node_dir>/.system/stateful_working_dir/<execution_id>. If execution_id
-      is not provided, for backward compatibility purposes, <pipeline_run_id> is
-      used instead of <execution_id> but an error is raised if the
-      execution_mode is not SYNC (since ASYNC pipelines have no
-      pipeline_run_id).
+    execution: execution that stores the stateful_working_dir_index.
+
+  Returns:
+    an index for stateful working dir.
+  """
+  if execution:
+    return execution.custom_properties[
+        constants.STATEFUL_WORKING_DIR_INDEX
+    ].string_value
+  return str(uuid.uuid4())
+
+
+def get_stateful_working_directory(
+    node_dir: str,
+    execution: Optional[metadata_store_pb2.Execution] = None,
+    clear_previous_content: bool = False,
+) -> str:
+  """Generates stateful working directory.
+
+  This function will do the following tasks:
+    1. generate stateful working directory.
+    2. clear previous content from the existing stateful working dir if
+    clear_previous_content is True.
+
+  The generated stateful working directory will have the following pattern:
+  node_idr/.system/stateful_working_dir/{stateful_working_dir_index}. The
+  stateful_working_dir_index is an UUID stored as a custom property in the
+  execution. If the execution is not provided, a random UUID will be generated
+  and used as the directory suffix.
+
+  Args:
+    node_dir: root directory of the node.
+    execution: execution containing stateful_working_dir_index.
+    clear_previous_content: indicates if it will remove previous content from
+      the existing stateful working dir.
 
   Returns:
     Path to stateful working directory.
-
-  Raises:
-    ValueError: If execution_id is not provided and execution_mode of the
-      pipeline is not SYNC.
   """
-  if (execution_id is None and execution_mode != pipeline_pb2.Pipeline.SYNC):
-    raise ValueError(
-        'Cannot create stateful working dir if execution id is `None` and '
-        'the execution mode of the pipeline is not `SYNC`.')
-
-  if execution_id is None:
-    dir_suffix = pipeline_run_id
-  else:
-    dir_suffix = str(execution_id)
-
-  # TODO(b/150979622): We should introduce an id that is not changed across
-  # retries of the same component run to provide better isolation between
-  # "retry" and "new execution". When it is available, introduce it into
-  # stateful working directory.
   # NOTE: If this directory structure is changed, please update
   # the remove_stateful_working_dir function in this file accordingly.
-  stateful_working_dir = os.path.join(node_dir, _SYSTEM, _STATEFUL_WORKING_DIR,
-                                      dir_suffix)
-  try:
-    fileio.makedirs(stateful_working_dir)
-  except Exception:  # pylint: disable=broad-except
-    logging.exception('Failed to make stateful working dir: %s',
-                      stateful_working_dir)
-    raise
+  # Create stateful working dir for the execution.
+  stateful_working_dir_index = get_stateful_working_dir_index(execution)
+  stateful_working_dir = os.path.join(
+      node_dir, _SYSTEM, _STATEFUL_WORKING_DIR, stateful_working_dir_index
+  )
+  if not fileio.exists(stateful_working_dir):
+    try:
+      fileio.makedirs(stateful_working_dir)
+    except Exception:  # pylint: disable=broad-except
+      logging.exception(
+          'Failed to make stateful working directory: %s',
+          stateful_working_dir,
+      )
+  elif clear_previous_content:
+    for filename in fileio.listdir(stateful_working_dir):
+      file_path = os.path.join(stateful_working_dir, filename)
+      try:
+        if fileio.isdir(file_path):
+          fileio.rmtree(file_path)
+        else:
+          fileio.remove(file_path)
+      except Exception as e:  # pylint: disable=broad-except
+        logging.exception(
+            'Failed to delete previous content from stateful working directory:'
+            ' %s. Error: %s.',
+            file_path,
+            e,
+        )
+    logging.info(
+        'Successfully removed previous content from stateful working'
+        ' directory: %s.',
+        stateful_working_dir,
+    )
   return stateful_working_dir
 
 
