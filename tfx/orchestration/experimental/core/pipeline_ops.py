@@ -917,6 +917,7 @@ def _recursively_revive_pipelines(
     pipeline_id: str,
     pipeline_run_id: str,
     was_running_subpipeline: bool = False,
+    clear_previous_pipeline_run_content: bool = False,
 ) -> pstate.PipelineState:
   """Recursively revives all pipelines, resuing executions if present."""
   with pstate.PipelineState.load_run(
@@ -1046,6 +1047,18 @@ def _recursively_revive_pipelines(
         pipeline_id,
     )
     pipeline_state.set_pipeline_execution_state(new_pipeline_state)
+    if clear_previous_pipeline_run_content:
+      print(
+          'yhh: clear_previous_pipeline_run_content=',
+          clear_previous_pipeline_run_content,
+      )
+      pipeline_state.require_clearing_previous_pipeline_run_content()
+      print(
+          'yhh: custom_properties[clear_previous_pipeline_run_content]=',
+          pipeline_state.execution.custom_properties[
+              constants.CLEAR_PREVIOUS_PIPELINE_RUN_CONTENT
+          ],
+      )
     return pipeline_state
 
 
@@ -1055,6 +1068,7 @@ def revive_pipeline_run(
     pipeline_id: str,
     pipeline_run_id: str,
     pipeline_to_update_with: Optional[pipeline_pb2.Pipeline] = None,
+    clear_previous_pipeline_run_content: bool = False,
 ) -> pstate.PipelineState:
   """Revives a pipeline run from previously failed nodes.
 
@@ -1063,6 +1077,8 @@ def revive_pipeline_run(
     pipeline_id: The id (name) of the pipeline to resume.
     pipeline_run_id: the run_id of the pipeline run to resume.
     pipeline_to_update_with: Optionally an IR to update to for the revived run.
+    clear_previous_pipeline_run_content: indicates if previous pipeline run
+      content should be removed.
 
   Returns:
     The `PipelineState` object upon success.
@@ -1121,7 +1137,10 @@ def revive_pipeline_run(
       logging.info('Applied update')
 
   pipeline_state = _recursively_revive_pipelines(
-      mlmd_handle, pipeline_id, pipeline_run_id
+      mlmd_handle,
+      pipeline_id,
+      pipeline_run_id,
+      clear_previous_pipeline_run_content=clear_previous_pipeline_run_content,
   )
   return pipeline_state
 

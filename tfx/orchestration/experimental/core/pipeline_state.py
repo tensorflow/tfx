@@ -32,6 +32,7 @@ from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
@@ -961,6 +962,13 @@ class PipelineState:
                             self._execution.last_known_state, state,
                             self.pipeline_uid))
       self._execution.last_known_state = state
+
+  def require_clearing_previous_pipeline_run_content(self) -> None:
+    """Sets clear_previous_pipeline_run_content to True."""
+    self._check_context()
+    self._execution.custom_properties[
+        constants.CLEAR_PREVIOUS_PIPELINE_RUN_CONTENT
+    ].bool_value = True
 
   def get_property(self, property_key: str) -> Optional[types.Property]:
     """Returns custom property value from the pipeline execution."""
