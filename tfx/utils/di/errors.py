@@ -16,3 +16,15 @@
 
 class NotProvidedError(Exception):
   pass
+
+
+class FalseMatchError(Exception):
+  """Provider error to indicate the match() was actually False.
+
+  This error is used if the match() logic depends on the dependency injected
+  value which is not available on match() time.
+  """
+
+
+class InvalidTypeHintError(TypeError):
+  """Error when the matched provider confronts invalid type_hint value."""

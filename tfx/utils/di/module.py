@@ -78,7 +78,10 @@ class DependencyModule:
   def get(self, name: str, type_hint: Any):
     for provider in self._providers:
       if provider.match(name, type_hint):
-        return self.call(provider.make_factory(name, type_hint))
+        try:
+          return self.call(provider.make_factory(name, type_hint))
+        except errors.FalseMatchError:
+          continue
     is_optional, _ = pure_typing_utils.maybe_unwrap_optional(type_hint)
     if is_optional:
       return None
