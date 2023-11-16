@@ -72,6 +72,7 @@ def generate_task_from_execution(
     node: node_proto_view.NodeProtoView,
     execution: metadata_store_pb2.Execution,
     cancel_type: Optional[task_lib.NodeCancelType] = None,
+    clear_previous_content: bool = False,
 ) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   if not execution_lib.is_execution_active(execution):
@@ -95,12 +96,15 @@ def generate_task_from_execution(
       input_artifacts=input_artifacts,
       output_artifacts=output_artifacts,
       executor_output_uri=outputs_resolver.get_executor_output_uri(
-          execution.id),
+          execution.id
+      ),
       stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-          execution.id),
+          execution=execution, clear_previous_content=clear_previous_content,
+      ),
       tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
       pipeline=pipeline,
-      cancel_type=cancel_type)
+      cancel_type=cancel_type,
+  )
 
 
 def generate_cancel_task_from_running_execution(
@@ -562,6 +566,13 @@ def register_executions_from_existing_executions(
     new_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].CopyFrom(
         existing_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX]
     )
+    new_execution.custom_properties[
+        constants.STATEFUL_WORKING_DIR_INDEX
+    ].CopyFrom(
+        existing_execution.custom_properties[
+            constants.STATEFUL_WORKING_DIR_INDEX
+        ]
+    )
     # LINT.ThenChange(:execution_custom_properties)
     new_executions.append(new_execution)
     input_artifacts.append(input_artifacts_for_existing_execution)
@@ -616,6 +627,9 @@ def register_executions(
     )
     # LINT.IfChange(execution_custom_properties)
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
+    execution.custom_properties[
+        constants.STATEFUL_WORKING_DIR_INDEX
+    ].string_value = outputs_utils.get_stateful_working_dir_index()
     executions.append(execution)
     # LINT.ThenChange(:new_execution_custom_properties)
 
@@ -921,7 +935,7 @@ def generate_tasks_from_one_input(
               execution.id
           ),
           stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-              execution.id
+              execution
           ),
           tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
           pipeline=pipeline,
