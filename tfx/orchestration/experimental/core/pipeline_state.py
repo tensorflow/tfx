@@ -1285,6 +1285,8 @@ def get_all_node_executions(
     node_filter_options: Optional[metadata_pb2.NodeFilterOptions] = None,
 ) -> Dict[str, List[metadata_store_pb2.Execution]]:
   """Returns all executions of all pipeline nodes if present."""
+  # TODO(b/310712984): Make use of Tflex MLMD filter query builder once
+  # developed.
   additional_filters = None
   if node_filter_options is not None:
     additional_filters = []
@@ -1311,19 +1313,26 @@ def get_all_node_executions(
 
 @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_all_node_artifacts(
-    pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
+    pipeline: pipeline_pb2.Pipeline,
+    mlmd_handle: metadata.Metadata,
+    execution_filter_options: Optional[metadata_pb2.NodeFilterOptions] = None,
 ) -> Dict[str, Dict[int, Dict[str, List[metadata_store_pb2.Artifact]]]]:
   """Returns all output artifacts of all pipeline nodes if present.
 
   Args:
     pipeline: Pipeline proto associated with a `PipelineState` object.
     mlmd_handle: Handle to MLMD db.
+    execution_filter_options: Filter options on executions from which the output
+      artifacts are created.
 
   Returns:
     Dict of node id to Dict of execution id to Dict of key to output artifact
     list.
   """
-  executions_dict = get_all_node_executions(pipeline, mlmd_handle)
+
+  executions_dict = get_all_node_executions(
+      pipeline, mlmd_handle, node_filter_options=execution_filter_options
+  )
   result = {}
   for node_id, executions in executions_dict.items():
     node_artifacts = {}
