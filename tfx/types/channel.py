@@ -24,6 +24,7 @@ symbols are already available from one of followings:
 
 Consider other symbols as private.
 """
+from __future__ import annotations
 
 import abc
 import copy
