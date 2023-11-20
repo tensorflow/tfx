@@ -98,6 +98,15 @@ class FakeSpec(component_spec.ComponentSpec):
 
   PARAMETERS = {}
   INPUTS = {
+      '0': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      '1': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      '2': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
       'x': component_spec.ChannelParameter(
           type=tfx_artifact.Artifact, optional=True
       ),

@@ -28,6 +28,7 @@ from tfx.dsl.input_resolution.ops import latest_pipeline_run_outputs_op as lates
 from tfx.dsl.input_resolution.ops import latest_policy_model_op
 from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import latest_version_op
+from tfx.dsl.input_resolution.ops import list_to_dict_op
 from tfx.dsl.input_resolution.ops import paired_spans_op
 from tfx.dsl.input_resolution.ops import shuffle_op
 from tfx.dsl.input_resolution.ops import siblings_op
@@ -76,6 +77,7 @@ LatestPipelineRunOutputs = latest_pipeline_run_op.LatestPipelineRunOutputs
 LatestPolicyModel = latest_policy_model_op.LatestPolicyModel
 LatestSpan = latest_span_op.LatestSpan
 LatestVersion = latest_version_op.LatestVersion
+ListToDict = list_to_dict_op.ListToDict
 PairedSpans = paired_spans_op.PairedSpans
 Shuffle = shuffle_op.Shuffle
 Siblings = siblings_op.Siblings
@@ -100,6 +102,7 @@ _register_op(LatestPipelineRunOutputs)
 _register_op(LatestPolicyModel)
 _register_op(LatestSpan)
 _register_op(LatestVersion)
+_register_op(ListToDict)
 _register_op(PairedSpans)
 _register_op(Shuffle)
 _register_op(Siblings)
