@@ -20,6 +20,11 @@ EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY = '__execution_start_time__'
 BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY = '__backfill_token__'
 # LINT.ThenChange()
 
+# Key used by execution_logger to log component generated alerts as custom
+# properties and by post_execution_utils to check for the presence of alerts in
+# an execution's custom properties.
+COMPONENT_GENERATED_ALERTS_KEY = '__component_generated_alerts__'
+
 IMPORTER_NODE_TYPE = 'tfx.dsl.components.common.importer.Importer'
 RESOLVER_NODE_TYPE = 'tfx.dsl.components.common.resolver.Resolver'
 MANUAL_NODE_TYPE = 'tfx.dsl.components.common.manual_node.ManualNode'

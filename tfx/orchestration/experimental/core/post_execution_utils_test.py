@@ -21,6 +21,7 @@ from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import component_generated_alert_pb2
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import task as task_lib
@@ -138,7 +139,7 @@ class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
         )
     )
     executor_output.execution_properties[
-        post_execution_utils._COMPONENT_GENERATED_ALERTS_KEY
+        constants.COMPONENT_GENERATED_ALERTS_KEY
     ].proto_value.Pack(component_generated_alerts)
 
     [execution] = self.mlmd_handle.store.get_executions()

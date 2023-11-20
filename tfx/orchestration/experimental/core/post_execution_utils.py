@@ -37,9 +37,6 @@ from tfx.utils import typing_utils
 from ml_metadata import proto
 
 
-_COMPONENT_GENERATED_ALERTS_KEY = '__component_generated_alerts__'
-
-
 def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
                                        task: task_lib.ExecNodeTask,
                                        result: ts.TaskSchedulerResult) -> None:
@@ -100,14 +97,12 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     garbage_collection.run_garbage_collection_for_node(mlmd_handle,
                                                        task.node_uid,
                                                        task.get_node())
-    if _COMPONENT_GENERATED_ALERTS_KEY in execution.custom_properties:
+    if constants.COMPONENT_GENERATED_ALERTS_KEY in execution.custom_properties:
       alerts_proto = component_generated_alert_pb2.ComponentGeneratedAlertList()
       execution.custom_properties[
-          _COMPONENT_GENERATED_ALERTS_KEY
+          constants.COMPONENT_GENERATED_ALERTS_KEY
       ].proto_value.Unpack(alerts_proto)
-      pipeline_uid = task_lib.PipelineUid(
-          pipeline_id=task.pipeline.pipeline_info.id,
-      )
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline=task.pipeline)
 
       for alert in alerts_proto.component_generated_alert_list:
         alert_event = event_observer.ComponentGeneratedAlert(
