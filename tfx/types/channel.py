@@ -25,6 +25,8 @@ symbols are already available from one of followings:
 Consider other symbols as private.
 """
 
+from __future__ import annotations
+
 import abc
 import copy
 import dataclasses
@@ -32,13 +34,15 @@ import inspect
 import json
 import textwrap
 from typing import Any, Dict, Generic, Iterable, List, Optional, Sequence, Set, Type, TypeVar, Union, cast
+
 from absl import logging
-from tfx.dsl.placeholder import placeholder
+from tfx.dsl.placeholder import artifact_placeholder
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
+
 from google.protobuf import json_format
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
@@ -172,8 +176,8 @@ class BaseChannel(abc.ABC, Generic[_AT]):
   def trigger_by_property(self, *property_keys: str):
     return self._with_input_trigger(TriggerByProperty(property_keys))
 
-  def future(self) -> placeholder.ChannelWrappedPlaceholder:
-    return placeholder.ChannelWrappedPlaceholder(self)
+  def future(self) -> ChannelWrappedPlaceholder:
+    return ChannelWrappedPlaceholder(self)
 
   def __eq__(self, other):
     return self is other
@@ -702,3 +706,51 @@ class ExternalPipelineChannel(BaseChannel):
         f'output_key={self.output_key}, '
         f'pipeline_run_id={self.pipeline_run_id})'
     )
+
+
+class ChannelWrappedPlaceholder(artifact_placeholder.ArtifactPlaceholder):
+  """Wraps a Channel in a Placeholder.
+
+  This is necessary because Placeholder-based expressions are built (in terms of
+  Python execution order) before they're passed to the Tflex component that uses
+  them. Therefore, when a Channel is passed from an upstream component, we can't
+  yet reference its name/key wrt. the downstream component in which it is used.
+  So a ChannelWrappedPlaceholder simply remembers the original Channel instance
+  that was used. The Placeholder expression tree built from this wrapper is then
+  passed to the component that uses it, and encode_placeholder_with_channels()
+  is used to inject the key only later, when encoding the Placeholder.
+
+  For instance, this allows making Predicates using syntax like:
+    channel.future().value > 5
+  """
+
+  def __init__(
+      self,
+      channel: BaseChannel,
+      key: Optional[str] = None,
+      index: Optional[Union[int, str]] = None,
+  ):
+    super().__init__(is_input=True, key=key, index=index)
+    self.channel = channel
+
+  def set_key(self, key: Optional[str]):
+    """Sets the channel key that this placeholder resolves to.
+
+    It's important to note that placeholders are semantically immutable. This
+    setter technically violates this guarantee, but we control the effects of it
+    by _only_ calling the setter right before an `encode()` operation on this
+    placeholder or a larger placeholder that contains it, and then calling
+    set_key(None) right after. encode_placeholder_with_channels() demonstrates
+    how to do this correctly and should be the preferred way to call set_key().
+
+    Args:
+      key: The new key for the channel.
+    """
+    self._key = key
+
+  def __getitem__(self, index: Union[int, str]) -> ChannelWrappedPlaceholder:
+    if self._index is not None:
+      raise ValueError(
+          'Do not call [0] or [...] twice on a .future() placeholder'
+      )
+    return ChannelWrappedPlaceholder(self.channel, key=self._key, index=index)

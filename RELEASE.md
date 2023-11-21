@@ -8,6 +8,15 @@
 
 ## Breaking Changes
 
+*   `Placeholder` and all subclasses have been moved to other modules, their
+    structure has been changed and they're now immutable. Most users won't care
+    (the main public-facing API is unchanged and behaves the same way). If you
+    do special operations like `isinstance()` or some kind of custom
+    serialization on placeholders, you will have to update your code.
+*   `placeholder.Placeholder.traverse()` now returns more items than before,
+    namely also placeholder operators like `_ConcatOperator` (which is the
+    implementation of Python's `+` operator).
+
 ### For Pipeline Authors
 
 ### For Component Authors

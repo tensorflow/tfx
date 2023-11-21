@@ -81,12 +81,12 @@ class ChannelWrappedPlaceholderTest(parameterized.TestCase, tf.test.TestCase):
       },
   )
   def testConcat(self, left, right):
-    self.assertIsInstance(left + right, ph.ChannelWrappedPlaceholder)
+    self.assertIsInstance(left + right, ph.Placeholder)
 
   def testJoinWithSelf(self):
     left = Channel(type=_MyType).future().value
     right = Channel(type=_MyType).future().value
-    self.assertIsInstance(ph.join([left, right]), ph.ChannelWrappedPlaceholder)
+    self.assertIsInstance(ph.join([left, right]), ph.Placeholder)
 
   def testEncodeWithKeys(self):
     my_channel = Channel(type=_MyType)
@@ -113,7 +113,6 @@ class ChannelWrappedPlaceholderTest(parameterized.TestCase, tf.test.TestCase):
       }
     """, placeholder_pb2.PlaceholderExpression())
     self.assertProtoEquals(actual_pb, expected_pb)
-    self.assertIsNone(channel_future._key)
 
 
 class PredicateTest(parameterized.TestCase, tf.test.TestCase):

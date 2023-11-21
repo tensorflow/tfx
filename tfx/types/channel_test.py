@@ -98,8 +98,8 @@ class ChannelTest(tf.test.TestCase):
     future = chnl.future()
     self.assertIsInstance(future, placeholder.ChannelWrappedPlaceholder)
     self.assertIs(future.channel, chnl)
-    self.assertIsInstance(future[0], placeholder.ChannelWrappedPlaceholder)
-    self.assertIsInstance(future.value, placeholder.ChannelWrappedPlaceholder)
+    self.assertIsInstance(future[0], placeholder.Placeholder)
+    self.assertIsInstance(future.value, placeholder.Placeholder)
 
   def testValidUnionChannel(self):
     channel1 = channel.Channel(type=_MyType)

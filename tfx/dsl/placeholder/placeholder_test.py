@@ -44,6 +44,8 @@ class PlaceholderTest(tf.test.TestCase):
   def _assert_placeholder_pb_equal_and_deepcopyable(self, placeholder,
                                                     expected_pb_str):
     """This function will delete the original copy of placeholder."""
+    # Due to inclusion in types like ExecutableSpec, placeholders need to by
+    # deepcopy()-able.
     placeholder_copy = copy.deepcopy(placeholder)
     expected_pb = text_format.Parse(expected_pb_str,
                                     placeholder_pb2.PlaceholderExpression())
@@ -834,7 +836,7 @@ class PlaceholderTest(tf.test.TestCase):
 
   def testRuntimeInfoInvalidKey(self):
     with self.assertRaises(ValueError):
-      ph.runtime_info('invalid_key')
+      ph.runtime_info('invalid_key')  # pytype: disable=wrong-arg-types
 
   def testProtoSerializationOperator(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -930,17 +932,29 @@ class PlaceholderTest(tf.test.TestCase):
     p = ('google/' + ph.runtime_info('platform_config').user + '/' +
          ph.output('model').uri + '/model/' + '0/' +
          ph.exec_property('version'))
-    got_dict = {type(x): x for x in p.traverse()}
-    self.assertCountEqual(
-        {
-            ph.ArtifactPlaceholder, ph.ExecPropertyPlaceholder,
-            ph.RuntimeInfoPlaceholder
-        }, got_dict.keys())
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+
+  def testListTraverse(self):
+    p = ph.to_list([
+        ph.runtime_info('platform_config').user,
+        ph.output('model').uri,
+        ph.exec_property('version'),
+    ])
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
+    self.assertIn(ph.ListPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
 
   def testIterate(self):
     p = ph.input('model')
     with self.assertRaisesRegex(
-        RuntimeError, 'Iterate over a placeholder is not supported. '
+        RuntimeError, 'Iterating over a placeholder is not supported. '
     ):
       # Iterate over a placeholder by mistake.
       for _ in p:
