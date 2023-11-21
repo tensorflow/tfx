@@ -274,6 +274,7 @@ class _Generator:
                    node_state.state, node_uid)
       return result
 
+    # tEST
     # If this is a pure service node, there is no ExecNodeTask to generate
     # but we ensure node services and check service status.
     service_status = self._ensure_node_services_if_pure(node_id)
@@ -503,7 +504,7 @@ class _Generator:
                   code=status_lib.Code.OK,
                   message=(
                       'Node execution skipped either due to conditional'
-                      ' evaluated to false or no inputs resolved.'
+                      ' evaluated to false or no inputs resolved. Test'
                   ),
               ),
           )
