@@ -503,7 +503,9 @@ class _Generator:
                   code=status_lib.Code.OK,
                   message=(
                       'Node execution skipped either due to conditional'
-                      ' evaluated to false or no inputs resolved.'
+                      ' evaluated to false or no inputs resolved. Please check'
+                      ' whether the output of the upstream node was generated'
+                      ' successfully.'
                   ),
               ),
           )
