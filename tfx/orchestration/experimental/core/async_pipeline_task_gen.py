@@ -13,6 +13,7 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
+import sys
 import traceback
 from typing import Callable, List, Optional
 
@@ -345,10 +346,10 @@ class _Generator:
           pipeline=self._pipeline,
           skip_errors=[exceptions.InsufficientInputError],
       )
-    except exceptions.InputResolutionError as e:
+    except exceptions.InputResolutionError:
       error_msg = (
           f'failure to resolve inputs; node uid: {node_uid}; '
-          f'error: {traceback.format_exception(e, limit=0)}'
+          f'error: {traceback.format_exception(*sys.exc_info(), limit=0)}'
       )
       if backfill_token:
         logging.exception(
