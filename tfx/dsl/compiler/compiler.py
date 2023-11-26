@@ -394,15 +394,18 @@ def _fully_qualified_name(cls: Type[Any]):
 def _validate_pipeline(tfx_pipeline: pipeline.Pipeline,
                        parent_pipelines: List[pipeline.Pipeline]):
   """Performs pre-compile validations."""
-  if (tfx_pipeline.execution_mode == pipeline.ExecutionMode.ASYNC and
-      compiler_utils.has_task_dependency(tfx_pipeline)):
-    raise ValueError("Task dependency is not supported in ASYNC mode.")
+  compiler_utils.find_task_dependency(tfx_pipeline)
+  if tfx_pipeline.execution_mode == pipeline.ExecutionMode.ASYNC:
+    task_deps = compiler_utils.find_task_dependency(tfx_pipeline)
+    if task_deps:
+      raise ValueError("Task dependency is unsupported in Async mode. "
+                       f"Found task dependencies: {task_deps}")
+
+    if parent_pipelines:
+      raise ValueError("Subpipeline is unsupported in Async execution mode.")
 
   if not compiler_utils.ensure_topological_order(tfx_pipeline.components):
     raise ValueError("Pipeline components are not topologically sorted.")
-
-  if parent_pipelines and tfx_pipeline.execution_mode != pipeline.ExecutionMode.SYNC:
-    raise ValueError("Subpipeline has to be Sync execution mode.")
 
 
 def _set_node_context(node: pipeline_pb2.PipelineNode,
