@@ -1581,7 +1581,7 @@ def _orchestrate_stop_initiated_pipeline(
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         node_state.update(pstate.NodeState.STOPPED, node_state.status)
 
-  logging.info('stopped nodes: %s', stopped_nodes)
+  logging.info('stopped nodes: %s', [n.node_info.id for n in stopped_nodes])
   # If all the nodes_to_stop have been stopped, we can update the pipeline
   # execution state.
   nodes_to_stop_ids = set(n.node_info.id for n in nodes_to_stop)
@@ -1824,7 +1824,7 @@ def _orchestrate_active_pipeline(
     )
 
   tasks = generator.generate(pipeline_state)
-  logging.info('Generated tasks: %s', [type(t).__name__ for t in tasks])
+  logging.info('Generated tasks: %s', [t.task_id for t in tasks])
 
   # Call stop_node_services for pure / mixed service nodes which reached a
   # terminal state.

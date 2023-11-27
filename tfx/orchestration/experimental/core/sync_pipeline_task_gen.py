@@ -240,7 +240,13 @@ class _Generator:
     # If there are no more runnable nodes, then we finalize the pipeline,
     # otherwise run our exec_node tasks,
     if not runnable_node_ids:
-      logging.info('No more runnable nodes in pipeline, finalizing.')
+      logging.info(
+          'No more runnable nodes in pipeline, finalizing. Succesful nodes: %s,'
+          ' failed nodes: %s, unrunnable nodes: %s.',
+          successful_node_ids,
+          failed_nodes_dict.keys(),
+          unrunnable_descendant_ids,
+      )
       if failed_nodes_dict:
         result.append(self._abort_task(failed_nodes_dict))
       else:
