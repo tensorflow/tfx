@@ -907,7 +907,8 @@ class PipelineState:
                             copy.deepcopy(self._execution), node_uid,
                             self.pipeline_run_id, old_state, node_state)
       ])
-    _save_node_states_dict(self._execution, node_states_dict)
+    if old_state != node_state:
+      _save_node_states_dict(self._execution, node_states_dict)
 
   def get_node_state(self,
                      node_uid: task_lib.NodeUid,
@@ -1429,9 +1430,32 @@ def _save_node_states_dict(pipeline_execution: metadata_store_pb2.Execution,
                            node_states: Dict[str, NodeState],
                            state_type: Optional[str] = _NODE_STATES) -> None:
   """Saves node states dict to pipeline execution with specified type."""
+  node_states_json = json_utils.dumps(node_states)
+  max_mlmd_str_value_len = env.get_env().max_mlmd_str_value_length()
+
+  # Removes state history from node states if it's too large to avoid hitting
+  # MLMD limit.
+  if max_mlmd_str_value_len and len(node_states_json) > max_mlmd_str_value_len:
+    logging.info(
+        'Node states length %d is too large (> %d); Removing state history'
+        ' from it.',
+        len(node_states_json),
+        max_mlmd_str_value_len,
+    )
+    node_states_no_history = {}
+    for node, old_state in node_states.items():
+      new_state = copy.deepcopy(old_state)
+      new_state.state_history.clear()
+      node_states_no_history[node] = new_state
+    node_states_json = json_utils.dumps(node_states_no_history)
+    logging.info(
+        'Node states length after removing state history: %d',
+        len(node_states_json),
+    )
+
   data_types_utils.set_metadata_value(
-      pipeline_execution.custom_properties[state_type],
-      json_utils.dumps(node_states))
+      pipeline_execution.custom_properties[state_type], node_states_json
+  )
 
 
 def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,

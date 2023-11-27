@@ -34,6 +34,7 @@ from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import metadata_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import run_state_pb2
+from tfx.utils import json_utils
 from tfx.utils import status as status_lib
 
 import ml_metadata as mlmd
@@ -127,6 +128,19 @@ class NodeStateTest(test_utils.TfxTest):
     self.assertTrue(hasattr(node_state, 'last_updated_time'))
 
 
+class TestEnv(env._DefaultEnv):
+
+  def __init__(self, base_dir, max_str_len):
+    self.base_dir = base_dir
+    self.max_str_len = max_str_len
+
+  def get_base_dir(self):
+    return self.base_dir
+
+  def max_mlmd_str_value_length(self):
+    return self.max_str_len
+
+
 class PipelineIRCodecTest(test_utils.TfxTest):
 
   def setUp(self):
@@ -136,20 +150,8 @@ class PipelineIRCodecTest(test_utils.TfxTest):
         self.id(),
     )
 
-  class _TestEnv(env._DefaultEnv):
-
-    def __init__(self, base_dir, max_str_len):
-      self.base_dir = base_dir
-      self.max_str_len = max_str_len
-
-    def get_base_dir(self):
-      return self.base_dir
-
-    def max_mlmd_str_value_length(self):
-      return self.max_str_len
-
   def test_encode_decode_no_base_dir(self):
-    with self._TestEnv(None, None):
+    with TestEnv(None, None):
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
     self.assertEqual(
@@ -162,7 +164,7 @@ class PipelineIRCodecTest(test_utils.TfxTest):
     )
 
   def test_encode_decode_with_base_dir(self):
-    with self._TestEnv(self._pipeline_root, None):
+    with TestEnv(self._pipeline_root, None):
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
     self.assertEqual(
@@ -175,7 +177,7 @@ class PipelineIRCodecTest(test_utils.TfxTest):
     )
 
   def test_encode_decode_exceeds_max_len(self):
-    with self._TestEnv(self._pipeline_root, 0):
+    with TestEnv(self._pipeline_root, 0):
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
     self.assertEqual(
@@ -713,7 +715,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
     def recorder(event):
       events.append(event)
 
-    with event_observer.init(), self._mlmd_connection as m:
+    with TestEnv(None, 2000), event_observer.init(), self._mlmd_connection as m:
       event_observer.register_observer(recorder)
 
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
@@ -887,7 +889,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(pstate, 'time')
   def test_get_node_states_dict(self, mock_time):
     mock_time.time.return_value = time.time()
-    with self._mlmd_connection as m:
+    with TestEnv(None, 20000), self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
@@ -1115,7 +1117,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(pstate, 'time')
   def test_pipeline_view_get_node_run_states(self, mock_time):
     mock_time.time.return_value = time.time()
-    with self._mlmd_connection as m:
+    with TestEnv(None, 20000), self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
@@ -1200,7 +1202,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(pstate, 'time')
   def test_pipeline_view_get_node_run_state_history(self, mock_time):
     mock_time.time.return_value = time.time()
-    with self._mlmd_connection as m:
+    with TestEnv(None, 20000), self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
@@ -1247,7 +1249,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   ):
     """Tests that nodes marked to be skipped have the right node state and previous node state."""
     mock_time.time.return_value = time.time()
-    with self._mlmd_connection as m:
+    with TestEnv(None, 20000), self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
@@ -1366,7 +1368,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   def test_get_previous_node_run_states_for_skipped_nodes(self, mock_time):
     """Tests that nodes marked to be skipped have the right previous run state."""
     mock_time.time.return_value = time.time()
-    with self._mlmd_connection as m:
+    with TestEnv(None, 20000), self._mlmd_connection as m:
       pipeline = _test_pipeline(
           'pipeline1',
           execution_mode=pipeline_pb2.Pipeline.SYNC,
@@ -1491,6 +1493,44 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
             ),
             pipeline_state_run1.pipeline_uid,
         )
+
+  @mock.patch.object(pstate, 'time')
+  def test_save_node_states_dict(self, mock_time):
+    mock_time.time.return_value = time.time()
+    state_record_1 = pstate.StateRecord(
+        state='STARTED',
+        backfill_token='token-1',
+        update_time=10000,
+        status_code=1,
+    )
+    node_states = {
+        'some_node': pstate.NodeState(
+            state=pstate.NodeState.COMPLETE, state_history=[state_record_1]
+        )
+    }
+    node_states_without_state_history = {
+        'some_node': pstate.NodeState(
+            state=pstate.NodeState.COMPLETE,
+        )
+    }
+    with TestEnv(None, 20):
+      execution = metadata_store_pb2.Execution()
+      pstate._save_node_states_dict(execution, node_states)
+      self.assertEqual(
+          data_types_utils.get_metadata_value(
+              execution.custom_properties[pstate._NODE_STATES]
+          ),
+          json_utils.dumps(node_states_without_state_history),
+      )
+    with TestEnv(None, 2000):
+      execution = metadata_store_pb2.Execution()
+      pstate._save_node_states_dict(execution, node_states)
+      self.assertEqual(
+          data_types_utils.get_metadata_value(
+              execution.custom_properties[pstate._NODE_STATES]
+          ),
+          json_utils.dumps(node_states),
+      )
 
 
 if __name__ == '__main__':
