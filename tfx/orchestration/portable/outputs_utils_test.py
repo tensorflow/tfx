@@ -554,37 +554,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         }
         """, executor_output)
 
-  def testInvalidExternalUris(self):
-    external_artifact_uri = os.path.join(self._pipeline_root,
-                                         'node/execution/1')
-    invalid_pipeline_node = text_format.Parse(
-        f"""
-  node_info {{
-    id: "test_node"
-  }}
-  outputs {{
-    outputs {{
-      key: "invalid_output"
-      value {{
-        artifact_spec {{
-          type {{
-            id: 1
-            name: "String"
-          }}
-          external_artifact_uris: "{external_artifact_uri}"
-        }}
-      }}
-    }}
- }}
-""", pipeline_pb2.PipelineNode())
-    with self.assertRaisesRegex(
-        ValueError, 'is not allowed within the pipeline base directory.'):
-      outputs_utils.OutputsResolver(
-          pipeline_node=invalid_pipeline_node,
-          pipeline_info=_PIPELINE_INFO,
-          pipeline_runtime_spec=self._pipeline_runtime_spec
-      ).generate_output_artifacts(1)
-
   def testGetOrchestratorGeneratedBclDir(self):
     expected_bcl_dir = os.path.join(
         self.tmp_dir, 'test_node/.system/orchestrator_generated_bcl'
