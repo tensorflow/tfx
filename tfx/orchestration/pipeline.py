@@ -253,11 +253,11 @@ class Pipeline(base_node.BaseNode):
                metadata_connection_config: Optional[
                    metadata.ConnectionConfigType] = None,
                components: Optional[List[base_node.BaseNode]] = None,
-               enable_cache: Optional[bool] = False,
+               enable_cache: bool = False,
                beam_pipeline_args: Optional[List[Union[str,
                                                        ph.Placeholder]]] = None,
                platform_config: Optional[message.Message] = None,
-               execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
+               execution_mode: ExecutionMode = ExecutionMode.SYNC,
                inputs: Optional[PipelineInputs] = None,
                outputs: Optional[Dict[str, channel.OutputChannel]] = None,
                **kwargs):
