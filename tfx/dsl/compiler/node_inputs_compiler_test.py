@@ -391,6 +391,40 @@ class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertFalse(result.inputs[dynamic_prop_input_key].hidden)
     self.assertEqual(result.inputs[dynamic_prop_input_key].min_count, 1)
 
+  def testCompileInputsForDynamicPropertyWithUri(self):
+    producer = DummyNode('Producer')
+    consumer = DummyNode(
+        'Consumer',
+        exec_properties={
+            'x': producer.output('x', standard_artifacts.Integer).future().uri
+        },
+    )
+
+    result = self._compile_node_inputs(
+        consumer, components=[producer, consumer]
+    )
+
+    self.assertLen(result.inputs, 1)
+    dynamic_prop_input_key = list(result.inputs)[0]
+    self.assertFalse(result.inputs[dynamic_prop_input_key].hidden)
+    self.assertEqual(result.inputs[dynamic_prop_input_key].min_count, 1)
+
+  def testCompileInputsForInvalidDynamicProperty(self):
+    producer = DummyNode('Producer')
+    consumer = DummyNode(
+        'Consumer',
+        exec_properties={
+            'x': (
+                producer.output('x', standard_artifacts.Examples).future().value
+            )
+        },
+    )
+
+    with self.assertRaisesRegex(
+        ValueError, '.*must be of a value artifact type.*Examples.*x.*Consumer'
+    ):
+      self._compile_node_inputs(consumer, components=[producer, consumer])
+
   @parameterized.parameters(
       (pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,),
       (pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED),

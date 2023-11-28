@@ -23,6 +23,7 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.placeholder import artifact_placeholder
 from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import metadata_pb2
@@ -336,7 +337,7 @@ def _compile_inputs_for_dynamic_properties(
   """Compiles additional InputSpecs used in dynamic properties.
 
   Dynamic properties are the execution properties whose value comes from the
-  artifact value. Becauese of that, dynamic property resolution happens after
+  artifact value. Because of that, dynamic property resolution happens after
   the input resolution at orchestrator, so input resolution should include the
   resolved artifacts for the channel on which dynamic properties depend (thus
   `_compile_channel(hidden=False)`).
@@ -346,18 +347,27 @@ def _compile_inputs_for_dynamic_properties(
     tfx_node: A `BaseNode` instance from pipeline DSL.
     result: A `NodeInputs` proto to which the compiled result would be written.
   """
-  for exec_property in tfx_node.exec_properties.values():
+  for key, exec_property in tfx_node.exec_properties.items():
     if not isinstance(exec_property, placeholder.Placeholder):
       continue
+
+    # Validate all the .future().value placeholders. Note that .future().uri is
+    # also allowed and doesn't need additional validation.
+    for p in exec_property.traverse():
+      if isinstance(p, artifact_placeholder._ArtifactValueOperator):  # pylint: disable=protected-access
+        for channel in channel_utils.get_dependent_channels(p):
+          channel_type = channel.type  # is_compatible() needs this variable.
+          if not typing_utils.is_compatible(
+              channel_type, Type[value_artifact.ValueArtifact]
+          ):
+            raise ValueError(
+                'When you pass <channel>.future().value to an execution '
+                'property, the channel must be of a value artifact type '
+                f'(String, Float, ...). Got {channel_type.TYPE_NAME} in exec '
+                f'property {key!r} of node {tfx_node.id!r}.'
+            )
+
     for channel in channel_utils.get_dependent_channels(exec_property):
-      channel_type = channel.type  # is_compatible() needs this variable.
-      if not typing_utils.is_compatible(
-          channel_type, Type[value_artifact.ValueArtifact]
-      ):
-        raise ValueError(
-            'Dynamic execution property only supports ValueArtifact typed '
-            f'channel. Got {channel_type.TYPE_NAME}.'
-        )
       _compile_input_spec(
           pipeline_ctx=context,
           tfx_node=tfx_node,

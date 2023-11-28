@@ -178,11 +178,10 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     downstream_component = next(
         c for c in test_pipeline.components
         if isinstance(c, dynamic_exec_properties_pipeline.DownstreamComponent))
-    test_wrong_type_channel = channel.Channel(_MyType).future()
+    test_wrong_type_channel = channel.Channel(_MyType).future().value
     downstream_component.exec_properties["input_num"] = test_wrong_type_channel
     with self.assertRaisesRegex(
-        ValueError,
-        "Dynamic execution property only supports ValueArtifact typed channel."
+        ValueError, ".*channel must be of a value artifact type.*"
     ):
       dsl_compiler.compile(test_pipeline)
 
