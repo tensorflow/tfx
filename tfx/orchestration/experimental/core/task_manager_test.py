@@ -575,9 +575,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   def test_executor_failure(self):
@@ -605,9 +604,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   def test_scheduler_raises_exception(self):
@@ -623,9 +621,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertEqual(metadata_store_pb2.Execution.FAILED,
                      execution.last_known_state)
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   def test_scheduler_raises_StatusNotOkError(self):
@@ -653,9 +650,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         ].string_value,
     )
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
