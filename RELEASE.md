@@ -16,6 +16,9 @@
 *   `placeholder.Placeholder.traverse()` now returns more items than before,
     namely also placeholder operators like `_ConcatOperator` (which is the
     implementation of Python's `+` operator).
+*   The `placeholder.RuntimeInfoKey` enumeration was removed. Just hard-code the
+    appropriate string values in your code, and reference the new `Literal` type
+    `placeholder.RuntimeInfoKeys` if you want to ensure correctness.
 
 ### For Pipeline Authors
 

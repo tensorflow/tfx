@@ -23,7 +23,6 @@ from typing import Any, Callable, Dict, List, Set, Union
 from absl import logging
 import attr
 from tfx.dsl.io import fileio
-from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact
@@ -198,11 +197,9 @@ class _ExpressionResolver:
             context.exec_info.exec_properties
         ),
         placeholder_pb2.Placeholder.Type.RUNTIME_INFO: {
-            ph.RuntimeInfoKey.EXECUTOR_SPEC.value: context.executor_spec,
-            ph.RuntimeInfoKey.PLATFORM_CONFIG.value: context.platform_config,
-            ph.RuntimeInfoKey.PIPELINE_PLATFORM_CONFIG.value: (
-                context.pipeline_platform_config
-            ),
+            "executor_spec": context.executor_spec,
+            "platform_config": context.platform_config,
+            "pipeline_platform_config": context.pipeline_platform_config,
         },
         placeholder_pb2.Placeholder.Type.EXEC_INVOCATION: (
             context.exec_info.to_proto()

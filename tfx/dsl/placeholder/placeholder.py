@@ -24,5 +24,5 @@ from tfx.dsl.placeholder.artifact_placeholder import ArtifactPlaceholder, input,
 from tfx.dsl.placeholder.runtime_placeholders import environment_variable, EnvironmentVariablePlaceholder
 from tfx.dsl.placeholder.runtime_placeholders import execution_invocation, ExecInvocationPlaceholder
 from tfx.dsl.placeholder.runtime_placeholders import exec_property, ExecPropertyPlaceholder
-from tfx.dsl.placeholder.runtime_placeholders import runtime_info, RuntimeInfoPlaceholder, RuntimeInfoKey
+from tfx.dsl.placeholder.runtime_placeholders import runtime_info, RuntimeInfoPlaceholder, RuntimeInfoKeys
 from tfx.types.channel import ChannelWrappedPlaceholder

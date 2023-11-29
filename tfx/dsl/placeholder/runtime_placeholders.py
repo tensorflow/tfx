@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-import enum
+import typing
 from typing import Any, Literal, Optional, Union
 
 from tfx.dsl.placeholder import placeholder_base
@@ -45,19 +45,11 @@ def exec_property(key: str) -> ExecPropertyPlaceholder:
   return ExecPropertyPlaceholder(key)
 
 
-class RuntimeInfoKey(enum.Enum):
-  EXECUTOR_SPEC = 'executor_spec'
-  PLATFORM_CONFIG = 'platform_config'
-  PIPELINE_PLATFORM_CONFIG = 'pipeline_platform_config'
-
-
 RuntimeInfoKeys = Literal[
     'executor_spec',
     'platform_config',
     'pipeline_platform_config',
 ]
-
-_RUNTIME_INFO_KEYS = frozenset(key.value for key in RuntimeInfoKey)
 
 
 def runtime_info(key: RuntimeInfoKeys) -> RuntimeInfoPlaceholder:
@@ -150,7 +142,7 @@ class RuntimeInfoPlaceholder(placeholder_base.Placeholder):
   def __init__(self, key: RuntimeInfoKeys):
     """Initializes the class. Consider this private."""
     super().__init__(expected_type=message.Message)
-    if key not in _RUNTIME_INFO_KEYS:
+    if key not in typing.get_args(RuntimeInfoKeys):
       raise ValueError(f'Got unsupported runtime info key: {key}.')
     self._key = key
 
