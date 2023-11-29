@@ -100,7 +100,11 @@ def resolve_placeholder_expression(
   except NullDereferenceError as err:
     logging.warning(
         "Dereferenced None during placeholder evaluation. Ignoring.")
-    logging.warning("Placeholder=%s", err.placeholder)
+    logging.warning(
+        "When evaluating expression=%s, failed to resolve placeholder=%r.",
+        debug_str(expression),
+        err.placeholder,
+    )
     return None
   except Exception as e:
     raise ValueError(
