@@ -19,6 +19,7 @@ import copy
 import datetime
 import os
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
+import uuid
 
 from absl import logging
 from tfx import types
@@ -26,6 +27,7 @@ from tfx import version
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -89,15 +91,6 @@ def remove_output_dirs(
 
 def remove_stateful_working_dir(stateful_working_dir: str) -> None:
   """Remove stateful_working_dir."""
-  # Clean up stateful working dir
-  # Note that:
-  # stateful_working_dir = os.path.join(
-  #    self._node_dir,
-  #    _SYSTEM,
-  #    _STATEFUL_WORKING_DIR, <-- we want to clean from this level down.
-  #    dir_suffix)
-  stateful_working_dir = os.path.abspath(
-      os.path.join(stateful_working_dir, os.pardir))
   try:
     fileio.rmtree(stateful_working_dir)
   except fileio.NotFoundError:
@@ -138,7 +131,7 @@ def _attach_artifact_properties(spec: pipeline_pb2.OutputSpec.ArtifactSpec,
       raise RuntimeError(f'Unexpected value_type: {value_type}')
 
 
-def _get_node_dir(
+def get_node_dir(
     pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec, node_id: str
 ) -> str:
   """Gets node dir for the given pipeline node."""
@@ -164,7 +157,7 @@ class OutputsResolver:
     self._pipeline_run_id = (
         pipeline_runtime_spec.pipeline_run_id.field_value.string_value)
     self._execution_mode = execution_mode
-    self._node_dir = _get_node_dir(
+    self._node_dir = get_node_dir(
         pipeline_runtime_spec, pipeline_node.node_info.id
     )
 
@@ -187,28 +180,22 @@ class OutputsResolver:
     fileio.makedirs(driver_output_dir)
     return os.path.join(driver_output_dir, _DRIVER_OUTPUT_FILE)
 
-  def get_stateful_working_directory(self,
-                                     execution_id: Optional[int] = None) -> str:
-    """Generates stateful working directory given (optional) execution id.
+  def get_stateful_working_directory(
+      self,
+      execution: Optional[metadata_store_pb2.Execution] = None,
+  ) -> str:
+    """Generates stateful working directory.
 
     Args:
-      execution_id: An optional execution id which will be used as part of the
-        stateful working dir path if provided. The stateful working dir path
-        will be <node_dir>/.system/stateful_working_dir/<execution_id>. If
-        execution_id is not provided, for backward compatibility purposes,
-        <pipeline_run_id> is used instead of <execution_id> but an error is
-        raised if the execution_mode is not SYNC (since ASYNC pipelines have no
-        pipeline_run_id).
+      execution: execution containing stateful_working_dir_index.
 
     Returns:
       Path to stateful working directory.
-
-    Raises:
-      ValueError: If execution_id is not provided and execution_mode of the
-        pipeline is not SYNC.
     """
-    return get_stateful_working_directory(self._node_dir, self._execution_mode,
-                                          self._pipeline_run_id, execution_id)
+    return get_stateful_working_directory(
+        self._node_dir,
+        execution=execution,
+    )
 
   def make_tmp_dir(self, execution_id: int) -> str:
     """Generates a temporary directory."""
@@ -323,57 +310,65 @@ def get_executor_output_uri(node_dir, execution_id: int) -> str:
   return os.path.join(execution_dir, _EXECUTOR_OUTPUT_FILE)
 
 
-def get_stateful_working_directory(node_dir: str,
-                                   execution_mode: pipeline_pb2.Pipeline
-                                   .ExecutionMode = pipeline_pb2.Pipeline.SYNC,
-                                   pipeline_run_id: str = '',
-                                   execution_id: Optional[int] = None) -> str:
-  """Generates stateful working directory.
+def get_stateful_working_dir_index(
+    execution: Optional[metadata_store_pb2.Execution] = None,
+) -> str:
+  """Gets stateful working directory index.
+
+  Returned the UUID stored in the execution. If the execution is not provided or
+  UUID is not found in the execution, a new UUID will be returned.
 
   Args:
-    node_dir: The root directory of the node.
-    execution_mode: Execution mode of the pipeline.
-    pipeline_run_id: Optional pipeline_run_id, only available if execution mode
-      is SYNC.
-    execution_id: An optional execution id which will be used as part of the
-      stateful working dir path if provided. The stateful working dir path will
-      be <node_dir>/.system/stateful_working_dir/<execution_id>. If execution_id
-      is not provided, for backward compatibility purposes, <pipeline_run_id> is
-      used instead of <execution_id> but an error is raised if the
-      execution_mode is not SYNC (since ASYNC pipelines have no
-      pipeline_run_id).
+    execution: execution that stores the stateful_working_dir_index.
+
+  Returns:
+    an index for stateful working dir.
+  """
+  index = None
+  if (
+      execution is not None
+      and constants.STATEFUL_WORKING_DIR_INDEX in execution.custom_properties
+  ):
+    index = data_types_utils.get_metadata_value(
+        execution.custom_properties[constants.STATEFUL_WORKING_DIR_INDEX])
+  return str(index) if index is not None else str(uuid.uuid4())
+
+
+def get_stateful_working_directory(
+    node_dir: str,
+    execution: Optional[metadata_store_pb2.Execution] = None,
+) -> str:
+  """Generates stateful working directory.
+
+  The generated stateful working directory will have the following pattern:
+  node_id/.system/stateful_working_dir/{stateful_working_dir_index}. The
+  stateful_working_dir_index is an UUID stored as a custom property in the
+  execution. If the execution is not provided or no UUID was found from
+  execution, a new UUID will be generated and used as the directory suffix.
+
+  Args:
+    node_dir: root directory of the node.
+    execution: execution containing stateful_working_dir_index.
 
   Returns:
     Path to stateful working directory.
-
-  Raises:
-    ValueError: If execution_id is not provided and execution_mode of the
-      pipeline is not SYNC.
   """
-  if (execution_id is None and execution_mode != pipeline_pb2.Pipeline.SYNC):
-    raise ValueError(
-        'Cannot create stateful working dir if execution id is `None` and '
-        'the execution mode of the pipeline is not `SYNC`.')
-
-  if execution_id is None:
-    dir_suffix = pipeline_run_id
-  else:
-    dir_suffix = str(execution_id)
-
-  # TODO(b/150979622): We should introduce an id that is not changed across
-  # retries of the same component run to provide better isolation between
-  # "retry" and "new execution". When it is available, introduce it into
-  # stateful working directory.
   # NOTE: If this directory structure is changed, please update
   # the remove_stateful_working_dir function in this file accordingly.
-  stateful_working_dir = os.path.join(node_dir, _SYSTEM, _STATEFUL_WORKING_DIR,
-                                      dir_suffix)
-  try:
-    fileio.makedirs(stateful_working_dir)
-  except Exception:  # pylint: disable=broad-except
-    logging.exception('Failed to make stateful working dir: %s',
-                      stateful_working_dir)
-    raise
+  # Create stateful working dir for the execution.
+  stateful_working_dir_index = get_stateful_working_dir_index(execution)
+  stateful_working_dir = os.path.join(
+      node_dir, _SYSTEM, _STATEFUL_WORKING_DIR, stateful_working_dir_index
+  )
+  if not fileio.exists(stateful_working_dir):
+    try:
+      fileio.makedirs(stateful_working_dir)
+    except Exception:  # pylint: disable=broad-except
+      logging.exception(
+          'Failed to make stateful working dir: %s',
+          stateful_working_dir,
+      )
+      raise
   return stateful_working_dir
 
 
@@ -443,7 +438,7 @@ def get_orchestrator_generated_bcl_dir(
     Path to orchestrator generated bcl root dir, which has the format
     `<node_dir>/.system/orchestrator_generated_bcl`
   """
-  node_dir = _get_node_dir(pipeline_runtime_spec, node_id)
+  node_dir = get_node_dir(pipeline_runtime_spec, node_id)
   orchestrator_generated_bcl_dir = os.path.join(
       node_dir, _SYSTEM, _ORCHESTRATOR_GENERATED_BCL_DIR
   )

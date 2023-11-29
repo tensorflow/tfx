@@ -582,6 +582,10 @@ message NodeExecutionOptions {
   // Maximum time in seconds before failing an execution. Only supported
   // in the internal orchestrator. Default to 0 which means never timeout.
   uint32 execution_timeout_sec = 7;
+  // If True, the previous content in the existing stateful working dir will be
+  // reused upon execution retries. If False, previous content will be wiped out
+  // and not reused.
+  bool reuse_state_working_dir = 10;
 
   // Fine-grained trigger configuration for the ASYNC execution mode.
   message AsyncTrigger {

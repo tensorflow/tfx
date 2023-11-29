@@ -22,6 +22,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx import version
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import constants
@@ -32,6 +33,7 @@ from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.experimental.core.testing import test_dynamic_exec_properties_pipeline
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import placeholder_pb2
@@ -614,7 +616,19 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         ),
     )
 
-  def test_register_execution_from_existing_execution(self):
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='reuse_stateful_working_dir',
+          reuse_stateful_working_dir=True,
+      ),
+      dict(
+          testcase_name='not_reuse_stateful_working_dir',
+          reuse_stateful_working_dir=False,
+      ),
+  )
+  def test_register_execution_from_existing_execution(
+      self, reuse_stateful_working_dir
+  ):
     with self._mlmd_connection as m:
       # Put contexts.
       context_type = metadata_store_pb2.ContextType(name='my_ctx_type')
@@ -648,14 +662,39 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       failed_execution.custom_properties[
           task_gen_utils
           ._EXTERNAL_EXECUTION_INDEX].int_value = 1
+      failed_execution.custom_properties[
+          constants.STATEFUL_WORKING_DIR_INDEX
+      ].string_value = 'mocked-failed-index'
       failed_execution.custom_properties['should_not_be_copied'].int_value = 1
       failed_execution = execution_lib.put_execution(
           m,
           failed_execution,
           contexts,
           input_artifacts=input_and_param.input_artifacts)
-
+      # Create stateful working dir.
+      mocked_node_dir = os.path.join(
+          self.create_tempdir().full_path, self._example_gen.node_info.id
+      )
+      failed_stateful_working_dir = (
+          outputs_utils.get_stateful_working_directory(
+              mocked_node_dir, failed_execution
+          )
+      )
+      self._example_gen.execution_options.reuse_state_working_dir = (
+          reuse_stateful_working_dir
+      )
       # Register a retry execution from a failed execution.
+      mocked_new_uuid = 'mocked-new-uuid'
+      self.enter_context(
+          mock.patch.object(
+              outputs_utils.uuid, 'uuid4', return_value=mocked_new_uuid
+          )
+      )
+      self.enter_context(
+          mock.patch.object(
+              outputs_utils, 'get_node_dir', return_value=mocked_node_dir
+          )
+      )
       [retry_execution] = (
           task_gen_utils.register_executions_from_existing_executions(
               m,
@@ -673,6 +712,26 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
               task_gen_utils._EXTERNAL_EXECUTION_INDEX],
           failed_execution.custom_properties[
               task_gen_utils._EXTERNAL_EXECUTION_INDEX])
+      if reuse_stateful_working_dir:
+        self.assertEqual(
+            retry_execution.custom_properties[
+                constants.STATEFUL_WORKING_DIR_INDEX
+            ],
+            failed_execution.custom_properties[
+                constants.STATEFUL_WORKING_DIR_INDEX
+            ],
+        )
+        self.assertTrue(fileio.exists(failed_stateful_working_dir))
+      else:
+        self.assertEqual(
+            data_types_utils.get_metadata_value(
+                retry_execution.custom_properties[
+                    constants.STATEFUL_WORKING_DIR_INDEX
+                ]
+            ),
+            mocked_new_uuid,
+        )
+        self.assertFalse(fileio.exists(failed_stateful_working_dir))
       self.assertEqual(
           retry_execution.custom_properties['ph_property'].string_value,
           'foo_value',

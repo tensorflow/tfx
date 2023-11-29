@@ -32,6 +32,7 @@ class NodeExecutionOptions:
   success_optional: bool = False
   max_execution_retries: int = 0
   execution_timeout_sec: int = 0
+  reuse_stateful_working_dir: bool = False
 
   # This is an experimental feature to enable "end nodes" in a pipeline to
   # support resource lifetimes. If this field is set then the node which this

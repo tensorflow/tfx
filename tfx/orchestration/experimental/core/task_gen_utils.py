@@ -97,7 +97,7 @@ def generate_task_from_execution(
       executor_output_uri=outputs_resolver.get_executor_output_uri(
           execution.id),
       stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-          execution.id),
+          execution),
       tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
       pipeline=pipeline,
       cancel_type=cancel_type)
@@ -557,8 +557,31 @@ def register_executions_from_existing_executions(
         exec_properties=combined_exec_properties,
         execution_name=str(uuid.uuid4()),
     )
+    if node.execution_options.reuse_state_working_dir:
+      stateful_working_dir_index = data_types_utils.get_metadata_value(
+          existing_execution.custom_properties[
+              constants.STATEFUL_WORKING_DIR_INDEX
+          ]
+      )
+    else:
+      # Remove the previous stateful working dir if it exists.
+      node_dir = outputs_utils.get_node_dir(
+          pipeline.runtime_spec, node.node_info.id
+      )
+      outputs_utils.remove_stateful_working_dir(
+          outputs_utils.get_stateful_working_directory(
+              node_dir, existing_execution
+          )
+      )
+      stateful_working_dir_index = (
+          outputs_utils.get_stateful_working_dir_index()
+      )
     # Only copy necessary custom_properties from the failed/canceled execution.
     # LINT.IfChange(new_execution_custom_properties)
+    data_types_utils.set_metadata_value(
+        new_execution.custom_properties[constants.STATEFUL_WORKING_DIR_INDEX],
+        stateful_working_dir_index,
+    )
     new_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].CopyFrom(
         existing_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX]
     )
@@ -615,9 +638,13 @@ def register_executions(
         execution_name=str(uuid.uuid4()),
     )
     # LINT.IfChange(execution_custom_properties)
+    data_types_utils.set_metadata_value(
+        execution.custom_properties[constants.STATEFUL_WORKING_DIR_INDEX],
+        outputs_utils.get_stateful_working_dir_index(),
+    )
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
-    executions.append(execution)
     # LINT.ThenChange(:new_execution_custom_properties)
+    executions.append(execution)
 
   if len(executions) == 1:
     return [
@@ -921,7 +948,7 @@ def generate_tasks_from_one_input(
               execution.id
           ),
           stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-              execution.id
+              execution
           ),
           tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
           pipeline=pipeline,

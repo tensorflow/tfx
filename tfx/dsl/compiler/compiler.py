@@ -256,6 +256,8 @@ class Compiler:
       node.execution_options.node_success_optional = node_execution_options.success_optional
       node.execution_options.max_execution_retries = node_execution_options.max_execution_retries
       node.execution_options.execution_timeout_sec = node_execution_options.execution_timeout_sec
+      node.execution_options.reuse_state_working_dir = (
+          node_execution_options.reuse_stateful_working_dir)
       if node_execution_options.lifetime_start:
         node.execution_options.resource_lifetime.lifetime_start = (
             node_execution_options.lifetime_start
