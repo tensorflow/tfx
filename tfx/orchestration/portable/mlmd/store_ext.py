@@ -16,8 +16,7 @@
 All public functions should accepts the first parameter of MetadataStore.
 """
 import collections
-import itertools
-from typing import Callable, Dict, List, Optional, Sequence, Union
+from typing import Optional, List, Sequence, Union, Callable, Dict
 
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
@@ -40,52 +39,6 @@ def _maybe_clause(clause: Optional[str]) -> List[str]:
   return [clause] if clause is not None else []
 
 
-def _get_node_live_artifacts(
-    store: mlmd.MetadataStore,
-    *,
-    pipeline_id: str,
-    node_id: str,
-    pipeline_run_id: Optional[str] = None,
-) -> List[mlmd.proto.Artifact]:
-  """Gets all LIVE node artifacts.
-
-  Args:
-    store: A MetadataStore object.
-    pipeline_id: The pipeline ID.
-    node_id: The node ID.
-    pipeline_run_id: The pipeline run ID that the node belongs to. Only
-      artifacts from the specified pipeline run are returned if specified.
-
-  Returns:
-    A list of LIVE artifacts of the given pipeline node.
-  """
-  artifact_state_filter_query = (
-      f'state = {mlmd.proto.Artifact.State.Name(mlmd.proto.Artifact.LIVE)}'
-  )
-  node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
-  node_filter_query = q.And([
-      f'contexts_0.type = "{constants.NODE_CONTEXT_TYPE_NAME}"',
-      f'contexts_0.name = "{node_context_name}"',
-  ])
-
-  artifact_filter_query = q.And([
-      node_filter_query,
-      artifact_state_filter_query,
-  ])
-
-  if pipeline_run_id:
-    artifact_filter_query.append(
-        q.And([
-            f'contexts_1.type = "{constants.PIPELINE_RUN_CONTEXT_TYPE_NAME}"',
-            f'contexts_1.name = "{pipeline_run_id}"',
-        ])
-    )
-
-  return store.get_artifacts(
-      list_options=mlmd.ListOptions(filter_query=str(artifact_filter_query))
-  )
-
-
 def get_node_executions(
     store: mlmd.MetadataStore,
     *,
@@ -96,12 +49,8 @@ def get_node_executions(
     is_asc: bool = True,
     limit: Optional[int] = None,
     execution_states: Optional[List['mlmd.proto.Execution.State']] = None,
-    min_last_update_time_since_epoch: Optional[int] = None,
 ) -> List[mlmd.proto.Execution]:
   """Gets all successful node executions."""
-  # TODO(b/301507304): Relax constraint on execution states:
-  # If `execution_states` is unspecified or empty, the query should consider all
-  # execution states.
   if not execution_states:
     execution_states = [
         mlmd.proto.Execution.COMPLETE,
@@ -124,10 +73,6 @@ def get_node_executions(
             f'contexts_1.name = "{pipeline_run_id}"',
         ])
     )
-  if min_last_update_time_since_epoch:
-    node_executions_query.append(
-        f'last_update_time_since_epoch >= {min_last_update_time_since_epoch}'
-    )
   return store.get_executions(
       list_options=mlmd.ListOptions(
           filter_query=str(node_executions_query),
@@ -138,7 +83,69 @@ def get_node_executions(
   )
 
 
-# TODO(b/301507304): Integrate this function into garbage_collection module.
+def get_output_artifacts_from_execution_ids(
+    store: mlmd.MetadataStore,
+    *,
+    execution_ids: Sequence[int],
+    artifact_filter: Optional[_ArtifactPredicate] = None,
+) -> List[mlmd.proto.Artifact]:
+  """Gets artifacts associated with OUTPUT events from execution IDs.
+
+  Args:
+    store: A MetadataStore object.
+    execution_ids: A list of Execution IDs.
+    artifact_filter: Optional artifact predicate to apply.
+
+  Returns:
+    A list of output artifacts of the given executions.
+  """
+  events = store.get_events_by_execution_ids(execution_ids)
+  output_events = [e for e in events if event_lib.is_valid_output_event(e)]
+  artifact_ids = {e.artifact_id for e in output_events}
+  result = store.get_artifacts_by_id(artifact_ids)
+  if artifact_filter is not None:
+    result = [a for a in result if artifact_filter(a)]
+  return result
+
+
+def get_live_output_artifacts_of_node(
+    store: mlmd.MetadataStore,
+    *,
+    pipeline_id: str,
+    node_id: str,
+) -> List[mlmd.proto.Artifact]:
+  """Get LIVE output artifacts of the given node.
+
+  This is a 2-hop query with 2 MLMD API calls:
+  1. get_executions() to get node executions.
+  3. get_artifacts() to get associated output artifacts.
+
+  Args:
+    store: A MetadataStore object.
+    pipeline_id: A pipeline ID.
+    node_id: A node ID.
+
+  Returns:
+    A list of output artifacts from the given node.
+  """
+  # First query: Get all successful executions of the node.
+  node_executions = get_node_executions(
+      store,
+      pipeline_id=pipeline_id,
+      node_id=node_id,
+  )
+  if not node_executions:
+    return []
+
+  # Second query: Get all output artifacts associated with the executions from
+  # the first query.
+  return get_output_artifacts_from_execution_ids(
+      store,
+      execution_ids=_ids(node_executions),
+      artifact_filter=lambda a: a.state == mlmd.proto.Artifact.LIVE,
+  )
+
+
 def get_live_output_artifacts_of_node_by_output_key(
     store: mlmd.MetadataStore,
     *,
@@ -182,33 +189,7 @@ def get_live_output_artifacts_of_node_by_output_key(
   Returns:
     A mapping from output key to all output artifacts from the given node.
   """
-  # Step 1: Get LIVE artifacts attributed to node with `node_id`.
-  live_artifacts = _get_node_live_artifacts(
-      store,
-      pipeline_id=pipeline_id,
-      node_id=node_id,
-      pipeline_run_id=pipeline_run_id,
-  )
-  if not live_artifacts:
-    return {}
-
-  # Step 2: Get executions associated with node that created `live_artifacts`
-  # ordered by execution creation time in descending order.
-  # These executions should satisfy the constraint:
-  # min (execution update time) >= min (artifact create time)
-  min_live_artifact_create_time = min(
-      [a.create_time_since_epoch for a in live_artifacts], default=0
-  )
-
-  # Within one transaction that updates both artifacts and execution, the
-  # timestamp of execution is larger or equal than that of the artifacts.
-  # Apply time skew for the artifacts created before cl/574333630 is rolled out.
-  # TODO(b/275231956): Remove the following 2 lines if we are sure that there
-  # are no more artifacts older than the timestamp.
-  if min_live_artifact_create_time < 1700985600000:  # Nov 26, 2023 12:00:00 AM
-    min_live_artifact_create_time -= 24 * 3600 * 1000
-
-  executions_ordered_by_desc_creation_time = get_node_executions(
+  node_executions_ordered_by_desc_creation_time = get_node_executions(
       store,
       pipeline_id=pipeline_id,
       node_id=node_id,
@@ -217,90 +198,44 @@ def get_live_output_artifacts_of_node_by_output_key(
       is_asc=False,
       limit=execution_limit,
       execution_states=execution_states,
-      min_last_update_time_since_epoch=min_live_artifact_create_time,
   )
-  if not executions_ordered_by_desc_creation_time:
+  if not node_executions_ordered_by_desc_creation_time:
     return {}
 
-  # Step 3: Get output events by executions obtained in step 2.
-  events_by_executions = store.get_events_by_execution_ids(
-      _ids(executions_ordered_by_desc_creation_time)
+  all_events = store.get_events_by_execution_ids(
+      _ids(node_executions_ordered_by_desc_creation_time)
   )
-  output_events = [
-      e for e in events_by_executions if event_lib.is_valid_output_event(e)
-  ]
+  output_events = [e for e in all_events if event_lib.is_valid_output_event(e)]
 
-  # Step 4: Construct and return `output_artifacts_by_output_key` from events.
-  #
-  # Create a mapping from execution_id to an empty list first to make sure
-  # iteration orders of output_events_by_execution_id and
-  # output_artifacts_map_by_execution_id are both in desc order of execution's
-  # creation time.
-  #
+  output_artifact_ids = [e.artifact_id for e in output_events]
+  output_artifacts = store.get_artifacts_by_id(output_artifact_ids)
+
+  # Create a mapping from exec_id to an empty list first to make sure iteration
+  # orders of events_by_exec_id and output_artifacts_map_by_exec_id are
+  # both in desc order of execution's creation time.
   # The desc order is guaranteed by execution_ids and dict is guaranteed to be
   # iterated in the insertion order of keys.
-  output_events_by_execution_id = {
-      execution.id: [] for execution in executions_ordered_by_desc_creation_time
+  events_by_exec_id = {
+      exec.id: [] for exec in node_executions_ordered_by_desc_creation_time
   }
-  for event in output_events:
-    output_events_by_execution_id[event.execution_id].append(event)
+  for e in output_events:
+    events_by_exec_id[e.execution_id].append(e)
 
-  artifact_ids_by_output_key_map_by_execution_id = {}
-  for exec_id, events in output_events_by_execution_id.items():
-    output_artifacts_map = event_lib.reconstruct_artifact_id_multimap(events)
-    artifact_ids_by_output_key_map_by_execution_id[exec_id] = (
-        output_artifacts_map
+  output_artifacts_map_by_exec_id = {}
+  for exec_id, events in events_by_exec_id.items():
+    output_artifacts_map = event_lib.reconstruct_artifact_multimap(
+        output_artifacts, events
     )
+    output_artifacts_map_by_exec_id[exec_id] = output_artifacts_map
 
   output_artifacts_by_output_key = collections.defaultdict(list)
-
-  # Keep only LIVE output artifacts when constructing the result.
-  live_artifacts_by_id = {a.id: a for a in live_artifacts}
   for (
-      artifact_ids_by_output_key
-  ) in artifact_ids_by_output_key_map_by_execution_id.values():
-    for output_key, artifact_ids in artifact_ids_by_output_key.items():
+      exec_id,
+      output_artifacts_map,
+  ) in output_artifacts_map_by_exec_id.items():
+    for output_key, artifact_list in output_artifacts_map.items():
       live_output_artifacts = [
-          live_artifacts_by_id[artifact_id]
-          for artifact_id in artifact_ids
-          if artifact_id in live_artifacts_by_id
+          a for a in artifact_list if a.state == mlmd.proto.Artifact.LIVE
       ]
       output_artifacts_by_output_key[output_key].append(live_output_artifacts)
   return output_artifacts_by_output_key
-
-
-def get_live_output_artifacts_of_node(
-    store: mlmd.MetadataStore,
-    *,
-    pipeline_id: str,
-    node_id: str,
-) -> List[mlmd.proto.Artifact]:
-  """Gets LIVE output artifacts of the given node.
-
-  The function query is composed of 3 MLMD API calls:
-  1. Call get_artifacts() to get LIVE artifacts attributed to the given node.
-  2. Call get_executions() to get executions that created artifacts from step 1.
-  3. Call get_events_by_execution_ids() and filter artifacts on whether they are
-  output artifacts of executions from step 2.
-
-  Args:
-    store: A MetadataStore object.
-    pipeline_id: A pipeline ID.
-    node_id: A node ID.
-
-  Returns:
-    A list of output artifacts from the given node.
-  """
-  live_output_artifacts_of_node_by_output_key = (
-      get_live_output_artifacts_of_node_by_output_key(
-          store, pipeline_id=pipeline_id, node_id=node_id
-      )
-  )
-  live_output_artifacts = list()
-  for (
-      nested_artifact_lists
-  ) in live_output_artifacts_of_node_by_output_key.values():
-    live_output_artifacts.extend(
-        itertools.chain.from_iterable(nested_artifact_lists)
-    )
-  return live_output_artifacts

@@ -68,6 +68,7 @@ def make_pipeline_sdk_required_install_packages():
       'google-api-python-client>=1.8,<2',
       # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
       'jinja2>=2.7.3,<4',
+      'werkzeug<3',
       # typing-extensions allows consistent & future-proof interface for typing.
       # Since kfp<2 uses typing-extensions<4, lower bound is the latest 3.x, and
       # upper bound is <5 as the semver started from 4.0 according to their doc.
@@ -111,7 +112,7 @@ def make_required_install_packages():
       'tensorflow-model-analysis'
       + select_constraint(
           default='>=0.45.0,<0.46.0',
-          nightly='>=0.46.0.dev',
+          nightly='<0.46.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master',
       ),
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3',
@@ -133,7 +134,7 @@ def make_required_install_packages():
 def make_extra_packages_airflow():
   """Prepare extra packages needed for Apache Airflow orchestrator."""
   return [
-      'apache-airflow[mysql]>=1.10.14,<3',
+      'apache-airflow[mysql]>=2.4',
   ]
 
 
