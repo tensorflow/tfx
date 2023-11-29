@@ -639,13 +639,13 @@ def _encode_value_like(
   return result
 
 
-@attr.s(eq=False)
+@attr.define(eq=False)
 class _ComparisonPredicate(Predicate):
   """Represents a comparison between two placeholders."""
 
-  compare_op = attr.ib(type=_CompareOp)
-  left = attr.ib(type=ValueLikeType)
-  right = attr.ib(type=ValueLikeType)
+  compare_op: _CompareOp
+  left: ValueLikeType
+  right: ValueLikeType
 
   def encode(
       self, component_spec: Optional[Any] = None
@@ -668,11 +668,11 @@ class _ComparisonPredicate(Predicate):
       yield from self.right.traverse()
 
 
-@attr.s(eq=False)
+@attr.define(eq=False)
 class _NotPredicate(Predicate):
   """Represents a logical negation."""
 
-  value = attr.ib(type=Predicate)
+  value: Predicate
 
   def encode(
       self, component_spec: Optional[Any] = None
@@ -693,13 +693,13 @@ class _NotPredicate(Predicate):
     yield from self.value.traverse()
 
 
-@attr.s(eq=False)
+@attr.define(eq=False)
 class _BinaryLogicalPredicate(Predicate):
   """Represents a boolean logical expression with exactly two arguments."""
 
-  logical_op = attr.ib(type=placeholder_pb2.BinaryLogicalOperator.Operation)
-  left = attr.ib(type=Predicate)
-  right = attr.ib(type=Predicate)
+  logical_op: placeholder_pb2.BinaryLogicalOperator.Operation
+  left: Predicate
+  right: Predicate
 
   def encode(
       self, component_spec: Optional[Any] = None
