@@ -111,6 +111,10 @@ nodes {
       }
     }
     downstream_nodes: "Resolver.example_gen_resolver"
+    execution_options {
+      caching_options {
+      }
+    }
   }
 }
 nodes {

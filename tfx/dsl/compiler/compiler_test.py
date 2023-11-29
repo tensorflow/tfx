@@ -29,6 +29,7 @@ from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler.testdata import additional_properties_test_pipeline_async
 from tfx.dsl.compiler.testdata import channel_union_pipeline
 from tfx.dsl.compiler.testdata import composable_pipeline
+from tfx.dsl.compiler.testdata import composable_pipeline_async
 from tfx.dsl.compiler.testdata import conditional_pipeline
 from tfx.dsl.compiler.testdata import consumer_pipeline
 from tfx.dsl.compiler.testdata import consumer_pipeline_different_project
@@ -117,25 +118,30 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     with open(_golden_path(filename)) as f:
       return text_format.ParseLines(f, pipeline_pb2.Pipeline())
 
-  @unittest.skipIf(tf.__version__ < "2",
-                   "Large proto comparison has a bug not fixed with TF < 2.")
-  @parameterized.named_parameters(*_get_test_cases_params([
-      additional_properties_test_pipeline_async,
-      iris_pipeline_sync,
-      iris_pipeline_async,
-      conditional_pipeline,
-      foreach_pipeline,
-      channel_union_pipeline,
-      pipeline_root_placeholder,
-      dynamic_exec_properties_pipeline,
-      pipeline_with_annotations,
-      composable_pipeline,
-      resolver_function_pipeline,
-      optional_and_allow_empty_pipeline,
-      consumer_pipeline,
-      external_artifacts_pipeline,
-      consumer_pipeline_different_project,
-  ]))
+  @unittest.skipIf(
+      tf.__version__ < "2",
+      "Large proto comparison has a bug not fixed with TF < 2.",
+  )
+  @parameterized.named_parameters(
+      *_get_test_cases_params([
+          additional_properties_test_pipeline_async,
+          iris_pipeline_sync,
+          iris_pipeline_async,
+          conditional_pipeline,
+          foreach_pipeline,
+          channel_union_pipeline,
+          pipeline_root_placeholder,
+          dynamic_exec_properties_pipeline,
+          pipeline_with_annotations,
+          composable_pipeline,
+          composable_pipeline_async,
+          resolver_function_pipeline,
+          optional_and_allow_empty_pipeline,
+          consumer_pipeline,
+          external_artifacts_pipeline,
+          consumer_pipeline_different_project,
+      ])
+  )
   def testCompile(
       self,
       pipeline_module: types.ModuleType,

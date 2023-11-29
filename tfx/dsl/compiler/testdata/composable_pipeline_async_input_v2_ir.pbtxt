@@ -2,7 +2,7 @@
 # proto-message: Pipeline
 #
 # This file contains the IR of an example pipeline
-# tfx/dsl/compiler/testdata/composable_pipeline.py
+# tfx/dsl/compiler/testdata/composable_pipeline_async.py
 
 pipeline_info {
   id: "composable-pipeline"
@@ -61,17 +61,6 @@ nodes {
           }
           contexts {
             type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
-              }
-            }
-          }
-          contexts {
-            type {
               name: "node"
             }
             name {
@@ -82,7 +71,8 @@ nodes {
           }
         }
         execution_options {
-          caching_options {}
+          caching_options {
+          }
         }
       }
     }
@@ -130,17 +120,6 @@ nodes {
             name {
               field_value {
                 string_value: "composable-pipeline"
-              }
-            }
-          }
-          contexts {
-            type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
               }
             }
           }
@@ -280,17 +259,6 @@ nodes {
           }
           contexts {
             type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
-              }
-            }
-          }
-          contexts {
-            type {
               name: "node"
             }
             name {
@@ -343,17 +311,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -468,17 +425,6 @@ nodes {
           }
           contexts {
             type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
-              }
-            }
-          }
-          contexts {
-            type {
               name: "node"
             }
             name {
@@ -531,17 +477,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -654,17 +589,6 @@ nodes {
           }
           contexts {
             type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
-              }
-            }
-          }
-          contexts {
-            type {
               name: "node"
             }
             name {
@@ -717,17 +641,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -794,17 +707,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -992,17 +894,6 @@ nodes {
           }
           contexts {
             type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
-              }
-            }
-          }
-          contexts {
-            type {
               name: "node"
             }
             name {
@@ -1037,17 +928,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -1096,17 +976,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -1169,9 +1038,16 @@ nodes {
         upstream_nodes: "data-ingestion-pipeline"
         downstream_nodes: "Trainer"
         execution_options {
-          caching_options {}
-          strategy: LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED
-          max_execution_retries: 10
+          caching_options {
+          }
+          async_trigger {
+            input_triggers {
+              key: "schema"
+              value {
+                no_trigger: true
+              }
+            }
+          }
         }
       }
     }
@@ -1220,17 +1096,6 @@ nodes {
             name {
               field_value {
                 string_value: "composable-pipeline"
-              }
-            }
-          }
-          contexts {
-            type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
               }
             }
           }
@@ -1288,17 +1153,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -1365,17 +1219,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -1513,17 +1356,6 @@ nodes {
           }
           contexts {
             type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
-              }
-            }
-          }
-          contexts {
-            type {
               name: "node"
             }
             name {
@@ -1576,17 +1408,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -1691,17 +1512,6 @@ nodes {
       }
       contexts {
         type {
-          name: "pipeline_run"
-        }
-        name {
-          runtime_parameter {
-            name: "pipeline-run-id"
-            type: STRING
-          }
-        }
-      }
-      contexts {
-        type {
           name: "node"
         }
         name {
@@ -1736,17 +1546,6 @@ nodes {
               name {
                 field_value {
                   string_value: "composable-pipeline"
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "pipeline_run"
-              }
-              name {
-                runtime_parameter {
-                  name: "pipeline-run-id"
-                  type: STRING
                 }
               }
             }
@@ -1795,17 +1594,6 @@ nodes {
               name {
                 field_value {
                   string_value: "composable-pipeline"
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "pipeline_run"
-              }
-              name {
-                runtime_parameter {
-                  name: "pipeline-run-id"
-                  type: STRING
                 }
               }
             }
@@ -1883,7 +1671,6 @@ nodes {
     downstream_nodes: "validate-and-push-pipeline"
     execution_options {
       caching_options {
-        enable_cache: true
       }
     }
   }
@@ -1942,17 +1729,6 @@ nodes {
           }
           contexts {
             type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
-              }
-            }
-          }
-          contexts {
-            type {
               name: "node"
             }
             name {
@@ -1964,7 +1740,7 @@ nodes {
         }
         inputs {
           inputs {
-            key: "_Evaluator.blessing"
+            key: "blessing"
             value {
               channels {
                 producer_node_query {
@@ -1977,17 +1753,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -2035,17 +1800,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -2099,17 +1853,6 @@ nodes {
                 }
                 context_queries {
                   type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
-                    }
-                  }
-                }
-                context_queries {
-                  type {
                     name: "node"
                   }
                   name {
@@ -2143,7 +1886,7 @@ nodes {
                               index_op {
                                 expression {
                                   placeholder {
-                                    key: "_Evaluator.blessing"
+                                    key: "blessing"
                                   }
                                 }
                               }
@@ -2165,6 +1908,16 @@ nodes {
           }
         }
         outputs {
+          outputs {
+            key: "blessing"
+            value {
+              artifact_spec {
+                type {
+                  name: "ModelBlessing"
+                }
+              }
+            }
+          }
           outputs {
             key: "examples"
             value {
@@ -2206,7 +1959,8 @@ nodes {
         downstream_nodes: "Pusher"
         downstream_nodes: "infra-validator-pipeline"
         execution_options {
-          caching_options {}
+          caching_options {
+          }
         }
       }
     }
@@ -2292,17 +2046,6 @@ nodes {
               }
               contexts {
                 type {
-                  name: "pipeline_run"
-                }
-                name {
-                  runtime_parameter {
-                    name: "pipeline-run-id"
-                    type: STRING
-                  }
-                }
-              }
-              contexts {
-                type {
                   name: "node"
                 }
                 name {
@@ -2355,17 +2098,6 @@ nodes {
                       name {
                         field_value {
                           string_value: "composable-pipeline"
-                        }
-                      }
-                    }
-                    context_queries {
-                      type {
-                        name: "pipeline_run"
-                      }
-                      name {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
                         }
                       }
                     }
@@ -2437,17 +2169,6 @@ nodes {
                     }
                     context_queries {
                       type {
-                        name: "pipeline_run"
-                      }
-                      name {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
-                        }
-                      }
-                    }
-                    context_queries {
-                      type {
                         name: "node"
                       }
                       name {
@@ -2507,7 +2228,9 @@ nodes {
             upstream_nodes: "validate-and-push-pipeline_begin"
             downstream_nodes: "InfraValidator"
             execution_options {
-              caching_options {}
+              caching_options {
+              }
+              execution_timeout_sec: 87654321
             }
           }
         }
@@ -2583,17 +2306,6 @@ nodes {
                 name {
                   field_value {
                     string_value: "composable-pipeline"
-                  }
-                }
-              }
-              contexts {
-                type {
-                  name: "pipeline_run"
-                }
-                name {
-                  runtime_parameter {
-                    name: "pipeline-run-id"
-                    type: STRING
                   }
                 }
               }
@@ -2679,17 +2391,6 @@ nodes {
                       name {
                         field_value {
                           string_value: "composable-pipeline"
-                        }
-                      }
-                    }
-                    context_queries {
-                      type {
-                        name: "pipeline_run"
-                      }
-                      name {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
                         }
                       }
                     }
@@ -2783,17 +2484,6 @@ nodes {
                       name {
                         field_value {
                           string_value: "composable-pipeline"
-                        }
-                      }
-                    }
-                    context_queries {
-                      type {
-                        name: "pipeline_run"
-                      }
-                      name {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
                         }
                       }
                     }
@@ -2934,17 +2624,6 @@ nodes {
               }
               contexts {
                 type {
-                  name: "pipeline_run"
-                }
-                name {
-                  runtime_parameter {
-                    name: "pipeline-run-id"
-                    type: STRING
-                  }
-                }
-              }
-              contexts {
-                type {
                   name: "node"
                 }
                 name {
@@ -3025,17 +2704,6 @@ nodes {
                       name {
                         field_value {
                           string_value: "composable-pipeline"
-                        }
-                      }
-                    }
-                    context_queries {
-                      type {
-                        name: "pipeline_run"
-                      }
-                      name {
-                        runtime_parameter {
-                          name: "pipeline-run-id"
-                          type: STRING
                         }
                       }
                     }
@@ -3165,17 +2833,6 @@ nodes {
           }
           contexts {
             type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
-              }
-            }
-          }
-          contexts {
-            type {
               name: "node"
             }
             name {
@@ -3220,17 +2877,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -3296,17 +2942,6 @@ nodes {
                   name {
                     field_value {
                       string_value: "composable-pipeline"
-                    }
-                  }
-                }
-                context_queries {
-                  type {
-                    name: "pipeline_run"
-                  }
-                  name {
-                    runtime_parameter {
-                      name: "pipeline-run-id"
-                      type: STRING
                     }
                   }
                 }
@@ -3496,17 +3131,6 @@ nodes {
           }
           contexts {
             type {
-              name: "pipeline_run"
-            }
-            name {
-              runtime_parameter {
-                name: "pipeline-run-id"
-                type: STRING
-              }
-            }
-          }
-          contexts {
-            type {
               name: "node"
             }
             name {
@@ -3567,14 +3191,8 @@ runtime_spec {
       }
     }
   }
-  pipeline_run_id {
-    runtime_parameter {
-      name: "pipeline-run-id"
-      type: STRING
-    }
-  }
 }
-execution_mode: SYNC
+execution_mode: ASYNC
 deployment_config {
   [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
     executor_specs {

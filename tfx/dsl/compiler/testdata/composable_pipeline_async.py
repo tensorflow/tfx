@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test composable pipeline for tfx.dsl.compiler.compiler."""
+"""Test composable pipeline in outer async pipeline for tfx.dsl.compiler.compiler."""
 import os
 
 import tensorflow_model_analysis as tfma
@@ -31,7 +31,6 @@ from tfx.orchestration import pipeline
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel
 
 
@@ -101,16 +100,24 @@ def infra_validator_pipeline(examples: channel.BaseChannel,
       outputs={"blessing": infra_validator.outputs["blessing"]})
 
 
-def validate_and_push_pipeline(examples: channel.BaseChannel,
-                               model: channel.BaseChannel,
-                               serving_model_dir: str) -> pipeline.Pipeline:
+def validate_and_push_pipeline(
+    examples: channel.BaseChannel,
+    model: channel.BaseChannel,
+    blessing: channel.BaseChannel,
+    serving_model_dir: str,
+) -> pipeline.Pipeline:
   """An input-only test composable pipeline with conditional."""
   pipeline_inputs = pipeline.PipelineInputs({
       "examples": examples,
-      "model": model
+      "model": model,
+      "blessing": blessing,
   })
   infra_validator = infra_validator_pipeline(pipeline_inputs.inputs["examples"],
                                              pipeline_inputs.inputs["model"])
+  infra_validator.node_execution_options = utils.NodeExecutionOptions(
+      execution_timeout_sec=87654321
+  )
+
   with conditional.Cond(
       ph.logical_and(infra_validator.outputs["blessing"].future()[0].value == 1,
                      pipeline_inputs.inputs["model"].future()[0].uri != "")):  # pylint: disable=g-explicit-bool-comparison
@@ -138,11 +145,9 @@ def create_test_pipeline():
 
   data_ingestion = data_ingestion_pipeline(data_path)
 
-  training = training_pipeline(data_ingestion.outputs["examples"],
-                               data_ingestion.outputs["schema"])
-  training.node_execution_options = utils.NodeExecutionOptions(
-      max_execution_retries=10,
-      trigger_strategy=pipeline_pb2.NodeExecutionOptions.TriggerStrategy.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED,
+  training = training_pipeline(
+      data_ingestion.outputs["examples"],
+      data_ingestion.outputs["schema"].no_trigger(),
   )
 
   eval_config = tfma.EvalConfig(
@@ -168,13 +173,16 @@ def create_test_pipeline():
 
   with conditional.Cond(evaluator.outputs["blessing"].future()[0].value == 1):
     validate_and_push = validate_and_push_pipeline(
-        data_ingestion.outputs["examples"], training.outputs["model"],
-        serving_model_dir)
+        data_ingestion.outputs["examples"],
+        training.outputs["model"],
+        evaluator.outputs["blessing"],
+        serving_model_dir,
+    )
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[data_ingestion, training, evaluator, validate_and_push],
-      enable_cache=True,
       beam_pipeline_args=["--my_testing_beam_pipeline_args=foo"],
-      execution_mode=pipeline.ExecutionMode.SYNC)
+      execution_mode=pipeline.ExecutionMode.ASYNC,
+  )

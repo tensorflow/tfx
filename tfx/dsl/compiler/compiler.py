@@ -86,6 +86,16 @@ class Compiler:
       # Sort node ids so that compiler generates consistent results.
       node.upstream_nodes.extend(sorted(upstreams))
 
+    # Set node execution options based on pipeline-level NodeExecutionOptions.
+    # Because _compile_pipeline_begin_node may be called if either the pipeline
+    # is a subpipeline OR the pipeline has inputs we can *only* pass in the
+    # parent context if this begin node is for a subpipeline.
+    if pipeline_ctx.is_subpipeline:
+      execution_options_ctx = pipeline_ctx.parent
+    else:
+      execution_options_ctx = pipeline_ctx
+    _set_node_execution_options(node, p, execution_options_ctx, p.enable_cache)
+
     # PipelineBegin node's downstream nodes are the nodes in the inner pipeline
     # that consumes pipeline's input channels.
     result = set()
@@ -230,47 +240,8 @@ class Compiler:
     # Sort node ids so that compiler generates consistent results.
     node.downstream_nodes.extend(sorted(downstreams))
 
-    # Step 8: Node execution options
-    node.execution_options.caching_options.enable_cache = enable_cache
-    node_execution_options = tfx_node.node_execution_options
-    if node_execution_options:
-      assert isinstance(node_execution_options,
-                        execution_options_utils.NodeExecutionOptions)
-      if (node_execution_options.trigger_strategy or
-          node_execution_options.success_optional
-         ) and not pipeline_ctx.is_sync_mode:
-        raise ValueError("Node level triggering strategies and success "
-                         "optionality are only used in SYNC pipelines.")
-      if (
-          node_execution_options.trigger_strategy
-          == pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS
-          and not node_execution_options.lifetime_start
-      ):
-        raise ValueError(
-            f"Node {node.node_info.id} has the trigger strategy"
-            " LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS set but no"
-            " lifetime_start. In order to use the trigger strategy the node"
-            " must have a lifetime_start."
-        )
-      node.execution_options.strategy = node_execution_options.trigger_strategy
-      node.execution_options.node_success_optional = node_execution_options.success_optional
-      node.execution_options.max_execution_retries = node_execution_options.max_execution_retries
-      node.execution_options.execution_timeout_sec = node_execution_options.execution_timeout_sec
-      if node_execution_options.lifetime_start:
-        node.execution_options.resource_lifetime.lifetime_start = (
-            node_execution_options.lifetime_start
-        )
-
-    if pipeline_ctx.is_async_mode:
-      input_triggers = node.execution_options.async_trigger.input_triggers
-      for input_key, input_channel in tfx_node.inputs.items():
-        if isinstance(input_channel.input_trigger, channel_types.NoTrigger):
-          input_triggers[input_key].no_trigger = True
-        if isinstance(input_channel.input_trigger,
-                      channel_types.TriggerByProperty):
-          input_triggers[input_key].trigger_by_property.property_keys.extend(
-              input_channel.input_trigger.property_keys
-          )
+    # Step 8: Node execution options and triggers.
+    _set_node_execution_options(node, tfx_node, pipeline_ctx, enable_cache)
 
     # Step 9: Per-node platform config
     if isinstance(tfx_node, base_component.BaseComponent):
@@ -542,6 +513,59 @@ def _set_node_parameters(node: pipeline_pb2.PipelineNode,
         raise ValueError(
             "Component {} got unsupported parameter {} with type {}.".format(
                 tfx_node.id, key, type(value))) from e
+
+
+def _set_node_execution_options(
+    node: pipeline_pb2.PipelineNode,
+    tfx_node: base_node.BaseNode,
+    pipeline_ctx: compiler_context.PipelineContext,
+    enable_cache: bool,
+):
+  """Compiles and sets NodeExecutionOptions of a pipeline node."""
+  options_proto = pipeline_pb2.NodeExecutionOptions()
+  options_proto.caching_options.enable_cache = enable_cache
+  options_py = tfx_node.node_execution_options
+  if options_py:
+    assert isinstance(options_py, execution_options_utils.NodeExecutionOptions)
+    if (
+        options_py.trigger_strategy or options_py.success_optional
+    ) and not pipeline_ctx.is_sync_mode:
+      raise ValueError(
+          "Node level triggering strategies and success "
+          "optionality are only used in SYNC pipelines."
+      )
+    if (
+        options_py.trigger_strategy
+        == pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS
+        and not options_py.lifetime_start
+    ):
+      raise ValueError(
+          f"Node {node.node_info.id} has the trigger strategy"
+          " LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS set but no"
+          " lifetime_start. In order to use the trigger strategy the node"
+          " must have a lifetime_start."
+      )
+    options_proto.strategy = options_py.trigger_strategy
+    options_proto.node_success_optional = options_py.success_optional
+    options_proto.max_execution_retries = options_py.max_execution_retries
+    options_proto.execution_timeout_sec = options_py.execution_timeout_sec
+    if options_py.lifetime_start:
+      options_proto.resource_lifetime.lifetime_start = options_py.lifetime_start
+  node.execution_options.CopyFrom(options_proto)
+
+  # TODO: b/310726801 - We should throw an error if this is an invalid
+  # configuration.
+  if pipeline_ctx.is_async_mode:
+    input_triggers = node.execution_options.async_trigger.input_triggers
+    for input_key, input_channel in tfx_node.inputs.items():
+      if isinstance(input_channel.input_trigger, channel_types.NoTrigger):
+        input_triggers[input_key].no_trigger = True
+      if isinstance(
+          input_channel.input_trigger, channel_types.TriggerByProperty
+      ):
+        input_triggers[input_key].trigger_by_property.property_keys.extend(
+            input_channel.input_trigger.property_keys
+        )
 
 
 def _find_runtime_upstream_node_ids(

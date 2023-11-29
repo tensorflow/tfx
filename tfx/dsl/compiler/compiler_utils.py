@@ -154,6 +154,7 @@ def _component_has_task_dependency(node: base_node.BaseNode) -> bool:
   return bool(all_deps - data_deps)
 
 
+# TODO: b/313927200 - This should not treat Cond as a task dependency.
 def has_task_dependency(tfx_pipeline: pipeline.Pipeline) -> bool:
   """Checks if a pipeline contains task dependency."""
   return any(_component_has_task_dependency(node)
