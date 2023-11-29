@@ -19,6 +19,7 @@ from typing import Type, TypeVar
 
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder as ph
+from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import standard_component_specs
 
@@ -53,7 +54,7 @@ class PlaceholderTest(tf.test.TestCase):
     # needs to use an instance of placeholder after calling to this function,
     # we can consider returning placeholder_copy.
     del placeholder
-    self.assertProtoEquals(placeholder_copy.encode(), expected_pb)
+    self.assertProtoEquals(expected_pb, placeholder_copy.encode())
 
   def testArtifactUriWithDefault0Index(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -416,6 +417,7 @@ class PlaceholderTest(tf.test.TestCase):
   def testListConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         ph.to_list([ph.input('model').uri,
+                    'foo',
                     ph.exec_property('random_str')]) +
         ph.to_list([ph.input('another_model').uri]), """
         operator {
@@ -437,6 +439,11 @@ class PlaceholderTest(tf.test.TestCase):
                     }
                   }
                 }
+              }
+            }
+            expressions {
+              value {
+                string_value: "foo"
               }
             }
             expressions {
@@ -537,8 +544,8 @@ class PlaceholderTest(tf.test.TestCase):
     placeholder = ph.exec_property('splits_config').analyze[0]
     component_spec = standard_component_specs.TransformSpec
     self.assertProtoEquals(
-        placeholder.encode(component_spec),
         load_testdata('proto_placeholder_operator.pbtxt'),
+        placeholder.encode(component_spec),
     )
 
   def testConcatWithSelfReferences(self):
@@ -889,8 +896,8 @@ class PlaceholderTest(tf.test.TestCase):
         ph.ProtoSerializationFormat.JSON)
     component_spec = standard_component_specs.TransformSpec
     self.assertProtoEquals(
-        placeholder.encode(component_spec),
         load_testdata('proto_placeholder_serialization_operator.pbtxt'),
+        placeholder.encode(component_spec),
     )
 
   def testExecInvocation(self):
@@ -963,6 +970,64 @@ class PlaceholderTest(tf.test.TestCase):
       # Iterate over a placeholder by mistake.
       for _ in p:
         break
+
+
+class EncodeValueLikeTest(tf.test.TestCase):
+
+  def testEncodesPlaceholder(self):
+    self.assertProtoEquals(
+        """
+        placeholder {
+          type: EXEC_PROPERTY
+          key: "foo"
+        }
+        """,
+        placeholder_base.encode_value_like(ph.exec_property('foo')),
+    )
+
+  def testEncodesInt(self):
+    self.assertProtoEquals(
+        """
+        value {
+          int_value: 42
+        }
+        """,
+        placeholder_base.encode_value_like(42),
+    )
+
+  def testEncodesFloat(self):
+    self.assertProtoEquals(
+        """
+        value {
+          double_value: 42.42
+        }
+        """,
+        placeholder_base.encode_value_like(42.42),
+    )
+
+  def testEncodesString(self):
+    self.assertProtoEquals(
+        """
+        value {
+          string_value: "foo"
+        }
+        """,
+        placeholder_base.encode_value_like('foo'),
+    )
+
+  def testEncodesBool(self):
+    self.assertProtoEquals(
+        """
+        value {
+          bool_value: true
+        }
+        """,
+        placeholder_base.encode_value_like(True),
+    )
+
+  def testFailsOnInvalidInput(self):
+    with self.assertRaises(ValueError):
+      placeholder_base.encode_value_like(self)
 
 
 if __name__ == '__main__':

@@ -47,8 +47,7 @@ from google.protobuf import message
 types = Any  # To resolve circular dependency caused by type annotations.
 
 # TODO(b/190409099): Support RuntimeParameter.
-# TODO(pke) Add bool to ValueType?
-ValueType = Union[int, float, str]
+ValueType = Union[int, float, str, bool]
 ValueLikeType = Union[ValueType, 'Placeholder']
 
 
@@ -283,7 +282,7 @@ def logical_or(left: Predicate, right: Predicate) -> Predicate:
 
 
 def to_list(
-    input_placeholders: List[Placeholder],
+    input_placeholders: List[ValueLikeType],
 ) -> ListPlaceholder:
   """Returns a ListPlaceholder representing a list of input placeholders."""
   return ListPlaceholder(input_placeholders)
@@ -322,7 +321,7 @@ class ListPlaceholder(Placeholder):
   Prefer to use ph.to_list() to create ListPlaceholder.
   """
 
-  def __init__(self, input_placeholders: List[Placeholder]):
+  def __init__(self, input_placeholders: List[ValueLikeType]):
     """Initializes the class. Consider this private."""
     super().__init__(expected_type=list)
     self._input_placeholders = input_placeholders
@@ -354,7 +353,8 @@ class ListPlaceholder(Placeholder):
     """Yields all placeholders under and including this one."""
     yield from super().traverse()
     for p in self._input_placeholders:
-      yield from p.traverse()
+      if isinstance(p, Placeholder):
+        yield from p.traverse()
 
   def encode(
       self, component_spec: Optional[Type['types.ComponentSpec']] = None
@@ -363,7 +363,7 @@ class ListPlaceholder(Placeholder):
     result.operator.list_concat_op.SetInParent()
     expressions = result.operator.list_concat_op.expressions
     for input_placeholder in self._input_placeholders:
-      expressions.append(input_placeholder.encode(component_spec))
+      expressions.append(encode_value_like(input_placeholder, component_spec))
     return result
 
 
@@ -475,7 +475,7 @@ class _ConcatOperator(Placeholder):
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.concat_op.expressions.extend(
-        [_encode_value_like(item) for item in self._items]
+        [encode_value_like(item) for item in self._items]
     )
     return result
 
@@ -620,7 +620,7 @@ class _CompareOp(enum.Enum):
   GREATER_THAN = placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN
 
 
-def _encode_value_like(
+def encode_value_like(
     x: ValueLikeType, component_spec: Optional[Any] = None
 ) -> placeholder_pb2.PlaceholderExpression:
   """Encodes x to a placeholder expression proto."""
@@ -628,7 +628,9 @@ def _encode_value_like(
   if isinstance(x, Placeholder):
     return x.encode(component_spec)
   result = placeholder_pb2.PlaceholderExpression()
-  if isinstance(x, int):
+  if isinstance(x, bool):
+    result.value.bool_value = x
+  elif isinstance(x, int):
     result.value.int_value = x
   elif isinstance(x, float):
     result.value.double_value = x
@@ -653,10 +655,10 @@ class _ComparisonPredicate(Predicate):
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.compare_op.op = self.compare_op.value
     result.operator.compare_op.lhs.CopyFrom(
-        _encode_value_like(self.left, component_spec)
+        encode_value_like(self.left, component_spec)
     )
     result.operator.compare_op.rhs.CopyFrom(
-        _encode_value_like(self.right, component_spec)
+        encode_value_like(self.right, component_spec)
     )
     return result
 
