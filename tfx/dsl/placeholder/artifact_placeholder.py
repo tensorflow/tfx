@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Type, Union
+from typing import Any, Optional, Type
 
 from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
@@ -89,12 +89,13 @@ class ArtifactPlaceholder(placeholder_base.Placeholder):
       self,
       key: str,
       is_input: bool,
-      index: Optional[Union[int, str]] = None,
+      index: Optional[int] = None,
   ):
     """Initializes the class. Consider this private."""
     # This should be tfx.types.Artifact, but it can't be due to a circular
     # dependency. See placeholder_base.py for details. TODO(b/191610358).
     super().__init__(expected_type=None)
+    assert index is None or isinstance(index, int)
     self._key = key
     self._is_input = is_input
     self._index = index
@@ -124,7 +125,7 @@ class ArtifactPlaceholder(placeholder_base.Placeholder):
       raise ValueError('Calling ph.output(..).value is not supported.')
     return _ArtifactValueOperator(self)
 
-  def __getitem__(self, index: Union[int, str]) -> ArtifactPlaceholder:
+  def __getitem__(self, index: int) -> ArtifactPlaceholder:
     assert self._index is None
     return ArtifactPlaceholder(self._key, self._is_input, index)
 

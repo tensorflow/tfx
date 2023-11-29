@@ -728,7 +728,7 @@ class ChannelWrappedPlaceholder(artifact_placeholder.ArtifactPlaceholder):
       self,
       channel: BaseChannel,
       key: Optional[str] = None,
-      index: Optional[Union[int, str]] = None,
+      index: Optional[int] = None,
   ):
     super().__init__(is_input=True, key=key, index=index)
     self.channel = channel
@@ -748,7 +748,7 @@ class ChannelWrappedPlaceholder(artifact_placeholder.ArtifactPlaceholder):
     """
     self._key = key
 
-  def __getitem__(self, index: Union[int, str]) -> ChannelWrappedPlaceholder:
+  def __getitem__(self, index: int) -> ChannelWrappedPlaceholder:
     if self._index is not None:
       raise ValueError(
           'Do not call [0] or [...] twice on a .future() placeholder'
