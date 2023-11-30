@@ -47,8 +47,7 @@ from google.protobuf import message
 types = Any  # To resolve circular dependency caused by type annotations.
 
 # TODO(b/190409099): Support RuntimeParameter.
-# TODO(pke) Add bool to ValueType?
-ValueType = Union[int, float, str]
+ValueType = Union[int, float, str, bool]
 ValueLikeType = Union[ValueType, 'Placeholder']
 
 
@@ -628,7 +627,9 @@ def encode_value_like(
   if isinstance(x, Placeholder):
     return x.encode(component_spec)
   result = placeholder_pb2.PlaceholderExpression()
-  if isinstance(x, int):
+  if isinstance(x, bool):
+    result.value.bool_value = x
+  elif isinstance(x, int):
     result.value.int_value = x
   elif isinstance(x, float):
     result.value.double_value = x

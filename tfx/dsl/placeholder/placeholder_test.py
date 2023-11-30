@@ -1009,6 +1009,16 @@ class EncodeValueLikeTest(tf.test.TestCase):
         placeholder_base.encode_value_like('foo'),
     )
 
+  def testEncodesBool(self):
+    self.assertProtoEquals(
+        """
+        value {
+          bool_value: true
+        }
+        """,
+        placeholder_base.encode_value_like(True),
+    )
+
   def testFailsOnInvalidInput(self):
     with self.assertRaises(ValueError):
       placeholder_base.encode_value_like(self)
