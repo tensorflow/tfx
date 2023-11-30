@@ -475,7 +475,7 @@ class _ConcatOperator(Placeholder):
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.concat_op.expressions.extend(
-        [_encode_value_like(item) for item in self._items]
+        [encode_value_like(item) for item in self._items]
     )
     return result
 
@@ -620,7 +620,7 @@ class _CompareOp(enum.Enum):
   GREATER_THAN = placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN
 
 
-def _encode_value_like(
+def encode_value_like(
     x: ValueLikeType, component_spec: Optional[Any] = None
 ) -> placeholder_pb2.PlaceholderExpression:
   """Encodes x to a placeholder expression proto."""
@@ -653,10 +653,10 @@ class _ComparisonPredicate(Predicate):
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.compare_op.op = self.compare_op.value
     result.operator.compare_op.lhs.CopyFrom(
-        _encode_value_like(self.left, component_spec)
+        encode_value_like(self.left, component_spec)
     )
     result.operator.compare_op.rhs.CopyFrom(
-        _encode_value_like(self.right, component_spec)
+        encode_value_like(self.right, component_spec)
     )
     return result
 

@@ -19,6 +19,7 @@ from typing import Type, TypeVar
 
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder as ph
+from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import standard_component_specs
 
@@ -963,6 +964,54 @@ class PlaceholderTest(tf.test.TestCase):
       # Iterate over a placeholder by mistake.
       for _ in p:
         break
+
+
+class EncodeValueLikeTest(tf.test.TestCase):
+
+  def testEncodesPlaceholder(self):
+    self.assertProtoEquals(
+        """
+        placeholder {
+          type: EXEC_PROPERTY
+          key: "foo"
+        }
+        """,
+        placeholder_base.encode_value_like(ph.exec_property('foo')),
+    )
+
+  def testEncodesInt(self):
+    self.assertProtoEquals(
+        """
+        value {
+          int_value: 42
+        }
+        """,
+        placeholder_base.encode_value_like(42),
+    )
+
+  def testEncodesFloat(self):
+    self.assertProtoEquals(
+        """
+        value {
+          double_value: 42.42
+        }
+        """,
+        placeholder_base.encode_value_like(42.42),
+    )
+
+  def testEncodesString(self):
+    self.assertProtoEquals(
+        """
+        value {
+          string_value: "foo"
+        }
+        """,
+        placeholder_base.encode_value_like('foo'),
+    )
+
+  def testFailsOnInvalidInput(self):
+    with self.assertRaises(ValueError):
+      placeholder_base.encode_value_like(self)
 
 
 if __name__ == '__main__':
