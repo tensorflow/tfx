@@ -53,7 +53,7 @@ class PlaceholderTest(tf.test.TestCase):
     # needs to use an instance of placeholder after calling to this function,
     # we can consider returning placeholder_copy.
     del placeholder
-    self.assertProtoEquals(placeholder_copy.encode(), expected_pb)
+    self.assertProtoEquals(expected_pb, placeholder_copy.encode())
 
   def testArtifactUriWithDefault0Index(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -537,8 +537,8 @@ class PlaceholderTest(tf.test.TestCase):
     placeholder = ph.exec_property('splits_config').analyze[0]
     component_spec = standard_component_specs.TransformSpec
     self.assertProtoEquals(
-        placeholder.encode(component_spec),
         load_testdata('proto_placeholder_operator.pbtxt'),
+        placeholder.encode(component_spec),
     )
 
   def testConcatWithSelfReferences(self):
@@ -889,8 +889,8 @@ class PlaceholderTest(tf.test.TestCase):
         ph.ProtoSerializationFormat.JSON)
     component_spec = standard_component_specs.TransformSpec
     self.assertProtoEquals(
-        placeholder.encode(component_spec),
         load_testdata('proto_placeholder_serialization_operator.pbtxt'),
+        placeholder.encode(component_spec),
     )
 
   def testExecInvocation(self):
