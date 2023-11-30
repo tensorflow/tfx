@@ -16,12 +16,28 @@
 from typing import Any, Callable, Mapping, Optional, Type
 
 from tfx import types
+from tfx.dsl.component.experimental import utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import executor_spec as base_executor_spec
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.types import component_spec
 from tfx.types.system_executions import SystemExecution
+from tfx.utils import name_utils
 
-from google.protobuf import message
+
+def _convert_function_to_python_executable_spec(
+    fn: Optional[Callable[..., Any]] = None
+) -> Optional[executable_spec_pb2.PythonClassExecutableSpec]:
+  """Validates and converts execution function to PythonClassExecutableSpec."""
+  if fn is None:
+    return None
+  utils.assert_is_top_level_func(fn)
+  function_path = name_utils.get_full_name(
+      fn, strict_check=True
+  )
+  return executable_spec_pb2.PythonClassExecutableSpec(
+      class_path=function_path
+  )
 
 
 def create_tfx_component_class(
@@ -38,8 +54,9 @@ def create_tfx_component_class(
     ] = None,
     type_annotation: Optional[Type[SystemExecution]] = None,
     default_init_args: Optional[Mapping[str, Any]] = None,
-    pre_execution_spec: Optional[message.Message] = None,
-    post_execution_spec: Optional[message.Message] = None,
+    # pre_execution and post_execution are not supported in OSS.
+    pre_execution: Optional[Callable[..., Any]] = None,
+    post_execution: Optional[Callable[..., Any]] = None,
     base_class: Type[
         base_component.BaseComponent
     ] = base_component.BaseComponent,
@@ -55,6 +72,14 @@ def create_tfx_component_class(
           TYPE_ANNOTATION=type_annotation,
       ),
   )
+
+  try:
+    pre_execution_spec, post_execution_spec = [
+        _convert_function_to_python_executable_spec(fn)
+        for fn in (pre_execution, post_execution)
+    ]
+  except ValueError as e:
+    raise ValueError(f'Invalid execution hook function of {name}') from e
 
   def tfx_component_class_init(self, **kwargs):
     arguments = {}
