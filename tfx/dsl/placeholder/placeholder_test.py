@@ -417,6 +417,7 @@ class PlaceholderTest(tf.test.TestCase):
   def testListConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         ph.to_list([ph.input('model').uri,
+                    'foo',
                     ph.exec_property('random_str')]) +
         ph.to_list([ph.input('another_model').uri]), """
         operator {
@@ -438,6 +439,11 @@ class PlaceholderTest(tf.test.TestCase):
                     }
                   }
                 }
+              }
+            }
+            expressions {
+              value {
+                string_value: "foo"
               }
             }
             expressions {

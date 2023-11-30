@@ -282,7 +282,7 @@ def logical_or(left: Predicate, right: Predicate) -> Predicate:
 
 
 def to_list(
-    input_placeholders: List[Placeholder],
+    input_placeholders: List[ValueLikeType],
 ) -> ListPlaceholder:
   """Returns a ListPlaceholder representing a list of input placeholders."""
   return ListPlaceholder(input_placeholders)
@@ -321,7 +321,7 @@ class ListPlaceholder(Placeholder):
   Prefer to use ph.to_list() to create ListPlaceholder.
   """
 
-  def __init__(self, input_placeholders: List[Placeholder]):
+  def __init__(self, input_placeholders: List[ValueLikeType]):
     """Initializes the class. Consider this private."""
     super().__init__(expected_type=list)
     self._input_placeholders = input_placeholders
@@ -353,7 +353,8 @@ class ListPlaceholder(Placeholder):
     """Yields all placeholders under and including this one."""
     yield from super().traverse()
     for p in self._input_placeholders:
-      yield from p.traverse()
+      if isinstance(p, Placeholder):
+        yield from p.traverse()
 
   def encode(
       self, component_spec: Optional[Type['types.ComponentSpec']] = None
@@ -362,7 +363,7 @@ class ListPlaceholder(Placeholder):
     result.operator.list_concat_op.SetInParent()
     expressions = result.operator.list_concat_op.expressions
     for input_placeholder in self._input_placeholders:
-      expressions.append(input_placeholder.encode(component_spec))
+      expressions.append(encode_value_like(input_placeholder, component_spec))
     return result
 
 
