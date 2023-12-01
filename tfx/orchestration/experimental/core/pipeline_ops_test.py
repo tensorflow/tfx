@@ -28,6 +28,7 @@ from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
+from tfx.orchestration.experimental.core import constants as execution_constants
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
@@ -321,7 +322,17 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
               pipeline.runtime_spec.snapshot_settings.base_pipeline_run_strategy.base_run_id,
           )
 
-  def test_revive_pipeline_run(self):
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'clear_previous_pipeline_run_content',
+          'clear_previous_pipeline_run_content': True,
+      },
+      {
+          'testcase_name': 'reuse_previous_pipeline_run_content',
+          'clear_previous_pipeline_run_content': False,
+      },
+  )
+  def test_revive_pipeline_run(self, clear_previous_pipeline_run_content):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
       pipeline_id = pipeline.pipeline_info.id
@@ -413,7 +424,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # run.
       expected_pipeline = copy.deepcopy(pipeline)
       with pipeline_ops.revive_pipeline_run(
-          m, pipeline_id=pipeline_id, pipeline_run_id=run_id
+          m,
+          pipeline_id=pipeline_id,
+          pipeline_run_id=run_id,
+          clear_previous_pipeline_run_content=clear_previous_pipeline_run_content,
       ) as pipeline_state_run3:
         self.assertEqual(
             pipeline_state_run3.get_node_state(trainer_node_uid).state,
@@ -425,6 +439,18 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         )
         self.assertEqual(expected_pipeline, pipeline_state_run3.pipeline)
         pipeline_state_run3.is_active()
+        if clear_previous_pipeline_run_content:
+          self.assertTrue(
+              pipeline_state_run3.execution.custom_properties.get(
+                  execution_constants.CLEAR_PREVIOUS_PIPELINE_RUN_CONTENT
+              ).bool_value,
+          )
+        else:
+          self.assertIsNone(
+              pipeline_state_run3.execution.custom_properties.get(
+                  execution_constants.CLEAR_PREVIOUS_PIPELINE_RUN_CONTENT
+              )
+          )
 
   def test_revive_pipeline_run_with_updated_ir(self):
     with self._mlmd_connection as m:
