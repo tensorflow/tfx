@@ -637,27 +637,9 @@ message NodeExecutionOptions {
   }
 
   ResourceLifetime resource_lifetime = 9;
-
-  // Which part of the component lifecycle should be applied to this component.
-  // By default there are three stages to a component lifecycle:
-  // 1. Launch (eg; job up)
-  // 2. Monitor (eg; while job_not_failed: ...)
-  // 3. Cleanup (eg; if stopped: job down)
-  enum RunMode {
-    // With DEFAULT all three stages are run.
-    DEFAULT = 0;
-    // Only the "Launch" stage is run, leaving a hanging job if no cleanup node
-    // is provided for this node.
-    // NOTE: this is intended to be used with "cleanup" nodes which are a system
-    // node that can automatically cleanup jobs produced from a LAUNCH_ONLY node
-    // by using the output artifact of the LAUNCH_ONLY node which has custom
-    // properties containing the necessary information to bring down the jobs.
-    LAUNCH_ONLY = 1;
-  }
-
-  RunMode run_mode = 10;
 }
 
+// Pipeline node definition.
 message PipelineNode {
   // Basic info of a pipeline node.
   NodeInfo node_info = 1;

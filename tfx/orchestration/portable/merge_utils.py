@@ -44,6 +44,11 @@ def _merge_output_artifact(
   updated_artifact = types.Artifact(original_artifact.artifact_type)
   updated_artifact.set_mlmd_artifact(updated_artifact_proto)
 
+  # Keep custom properties that only exist in original_artifact.
+  for key, val in original_artifact.mlmd_artifact.custom_properties.items():
+    if key not in updated_artifact_proto.custom_properties.keys():
+      updated_artifact_proto.custom_properties[key].CopyFrom(val)
+
   # Ensure the updated artifact has a consistent ID with the original.
   if original_artifact.mlmd_artifact.HasField('id'):
     updated_artifact_proto.id = original_artifact.mlmd_artifact.id
