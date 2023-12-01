@@ -47,8 +47,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
       execution_result: Optional[execution_result_pb2.ExecutionResult] = None
   ) -> None:
     assert status.code != status_lib.Code.OK
-    _remove_temporary_task_dirs(
-        stateful_working_dir=task.stateful_working_dir, tmp_dir=task.tmp_dir)
+    _remove_temporary_task_dirs(tmp_dir=task.tmp_dir)
     if status.code == status_lib.Code.CANCELLED and execution_result is None:
       # Mark the execution as cancelled only if the task was cancelled by the
       # task scheduler, and not by the executor.
@@ -69,12 +68,18 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
         error_msg=status.message,
         execution_result=execution_result)
 
+  logging.warning('yhh: inside publish_execution_results_for_task!')
+  logging.warning('yhh: task = %s', task)
+  logging.warning('yhh: result = %s', result)
+  logging.warning('yhh: result.status = %s', result.status)
+
   if result.status.code != status_lib.Code.OK:
     _update_state(result.status)
     return
 
   if isinstance(result.output, ts.ExecutorNodeOutput):
     executor_output = result.output.executor_output
+    logging.warning('yhh: executor_output = %s', executor_output)
     if executor_output is not None:
       if executor_output.execution_result.code != status_lib.Code.OK:
         _update_state(
@@ -152,9 +157,7 @@ def publish_execution_results(
       execution_state = proto.Execution.CANCELED
     else:
       execution_state = proto.Execution.FAILED
-    _remove_temporary_task_dirs(
-        stateful_working_dir=execution_info.stateful_working_dir,
-        tmp_dir=execution_info.tmp_dir)
+    _remove_temporary_task_dirs(tmp_dir=execution_info.tmp_dir)
     node_uid = task_lib.NodeUid(
         pipeline_uid=task_lib.PipelineUid.from_pipeline_id_and_run_id(
             pipeline_id=execution_info.pipeline_info.id,
@@ -215,7 +218,9 @@ def _update_execution_state_in_mlmd(
 def _remove_temporary_task_dirs(stateful_working_dir: str = '',
                                 tmp_dir: str = '') -> None:
   """Removes temporary directories created for the task."""
+  logging.warning('yhh: stateful_working_dir = %s', stateful_working_dir)
   if stateful_working_dir:
+    logging.warning('yhh: stateful_working_dir is NOT empty.')
     try:
       fileio.rmtree(stateful_working_dir)
     except fileio.NotFoundError:
