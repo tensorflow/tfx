@@ -19,6 +19,7 @@ from typing import Callable, Dict, List, Mapping, Optional, Set
 
 from absl import logging
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -130,6 +131,12 @@ class _Generator:
     self._pipeline_state = pipeline_state
     with self._pipeline_state:
       self._node_state_by_node_uid = self._pipeline_state.get_node_states_dict()
+      should_clear = self._pipeline_state.execution.custom_properties.get(
+          constants.CLEAR_PREVIOUS_PIPELINE_RUN_CONTENT
+      )
+      self._clear_previous_pipeline_run_content = (
+          should_clear is not None and should_clear.bool_value
+      )
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
@@ -469,8 +476,14 @@ class _Generator:
         task_lib.UpdateNodeStateTask(
             node_uid=node_uid, state=pstate.NodeState.RUNNING))
     tasks.append(
-        task_gen_utils.generate_task_from_execution(self._mlmd_handle,
-                                                    self._pipeline, node, e))
+        task_gen_utils.generate_task_from_execution(
+            self._mlmd_handle,
+            self._pipeline,
+            node,
+            e,
+            clear_previous_content=self._clear_previous_pipeline_run_content,
+        )
+    )
     return tasks
 
   def _generate_tasks_from_resolved_inputs(

@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.post_execution_utils."""
 import os
+import tempfile
 
 from absl.testing import parameterized
 from absl.testing.absltest import mock
@@ -43,6 +44,7 @@ class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
+    self.stateful_working_dir = tempfile.mkdtemp()
     metadata_path = os.path.join(self.tmp_dir, 'metadata', 'metadata.db')
     connection_config = metadata.sqlite_metadata_connection_config(
         metadata_path)
@@ -72,10 +74,14 @@ class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
 
     execution_invocation = execution_invocation_pb2.ExecutionInvocation(
         execution_properties=data_types_utils.build_metadata_value_dict(
-            {'foo_arg': 'haha'}),
+            {'foo_arg': 'haha'}
+        ),
         output_dict=data_types_utils.build_artifact_struct_dict(
-            {'example': [self.example_artifact]}),
-        execution_id=execution.id)
+            {'example': [self.example_artifact]}
+        ),
+        execution_id=execution.id,
+        stateful_working_dir=self.stateful_working_dir,
+    )
     return data_types.ExecutionInfo.from_proto(execution_invocation)
 
   @parameterized.named_parameters(
@@ -101,6 +107,7 @@ class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
     [execution] = self.mlmd_handle.store.get_executions()
 
     self.assertEqual(execution.last_known_state, expected_execution_state)
+    self.assertTrue(fileio.exists(self.stateful_working_dir))
 
   @mock.patch.object(execution_publish_utils, 'publish_succeeded_execution')
   def test_publish_execution_results_succeeded_execution(self, mock_publish):
@@ -121,6 +128,7 @@ class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
         contexts=[],
         output_artifacts=execution_info.output_dict,
         executor_output=executor_output)
+    self.assertFalse(fileio.exists(self.stateful_working_dir))
 
   @mock.patch.object(event_observer, 'notify')
   def test_publish_execution_results_for_task_with_alerts(self, mock_notify):
