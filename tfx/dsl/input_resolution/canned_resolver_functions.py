@@ -19,20 +19,74 @@ from absl import logging
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution.ops import ops
 from tfx.types import artifact
+from tfx.types import channel as channel_type
 
 
 @resolver_function.resolver_function
-def latest_created(artifacts, n: int = 1):
+def latest_created(
+    artifacts,
+    n: int = 1,
+    return_dict: bool = False,
+):
   """Returns the n latest createst artifacts, ties broken by artifact id.
+
+  Example Usage:
+
+  # InfraValidation on the latest Model artifact.
+  infra_validator = InfraValidator(
+      model=latest_created(trainer.outputs['model']),
+      examples=example_gen.outputs['examples'],
+  )
+
+  # DistributionValidator on the latest 2 Statistics artifacts.
+  with ForEach(
+      latest_created(
+          statistics_gen.outputs['model'],
+          n=2,
+          return_dict=True,
+      )
+  ) as each_statistics_dict:
+    distribution_validator = DistributionValidator(
+        baseline_statistics=each_statistics_dict['0'],
+        statistics=each_statistics_dict['1'],
+        ...,
+    )
+
+  NOTE: If return_dict = True, and:
+    1. If n > len(artifats), then the keys from "len(artifats)", ..., "n - 1"
+      will have empty lists as values.
+    2. If n < len(artifats), then only the first n latest artifacts will be
+      considered.
 
   Args:
     artifacts: The artifacts to filter.
     n: The number of latest artifacts to return, must be > 0.
+    return_dict: Whether to return a dict of artifacts, or a list. Let a_0 be
+      the nth oldest created artifact and a_{n-1} be the latest created
+      artifact. If True, then {'0': [a_0], '1': [a_1], ..., 'n - 1': [a_{n-1}]}
+      will be returned. Else, [a_0, a_1, ..., a_{n-1}] will be returned.
 
   Returns:
-    The n latest artifacts.
+    The n latest artifacts, either as a list or a dict.
   """
-  return ops.LatestCreateTime(artifacts, n=n)
+  resolved_artifacts = ops.LatestCreateTime(artifacts, n=n)
+
+  if return_dict:
+    return ops.ListToDict(resolved_artifacts, n=n)
+
+  return resolved_artifacts
+
+
+@latest_created.output_type_inferrer
+def _infer_latest_created_type(
+    artifacts: channel_type.BaseChannel,
+    n: int = 1,
+    return_dict: bool = False,
+):
+  if return_dict:
+    return {str(i): artifacts.type for i in range(n)}
+  else:
+    return artifacts.type
 
 
 @resolver_function.resolver_function

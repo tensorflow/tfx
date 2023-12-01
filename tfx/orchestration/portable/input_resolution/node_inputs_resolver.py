@@ -323,6 +323,7 @@ def _resolve_input_graph_ref(
       mlmd_handle, node_inputs.input_graphs[graph_id])
   for partition, input_dict in _join_artifacts(resolved, graph_input_keys):
     result = graph_fn(input_dict)
+    print(result)
     if graph_output_type == _DataType.ARTIFACT_LIST:
       # result == [Artifact()]
       resolved[input_key].append((partition, _filter_live(result)))

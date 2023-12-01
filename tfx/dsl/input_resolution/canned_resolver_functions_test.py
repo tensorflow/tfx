@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.canned_resolver_functions."""
 
-from typing import Sequence
+from typing import Dict, Sequence
 
 import tensorflow as tf
 from tfx import types
@@ -23,6 +23,7 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration import pipeline
 from tfx.orchestration.portable import inputs_utils
+from tfx.types import artifact as artifact_types
 from tfx.types import channel_utils
 from tfx.types import resolved_channel
 
@@ -68,6 +69,21 @@ class CannedResolverFunctionsTest(
           contexts=[self.mlmd_context],
       )
 
+  def _insert_n_artifacts_into_mlmd(
+      self,
+      n: int,
+      artifact_type: str = 'DummyArtifact',
+  ) -> Sequence[metadata_store_pb2.Artifact]:
+    """Inserts n artifacts into MLMD."""
+    mlmd_artifacts = [
+        self.put_artifact(
+            artifact_type=artifact_type,
+        )
+        for _ in range(n)
+    ]
+    self._add_executions_into_mlmd(mlmd_artifacts)
+    return mlmd_artifacts
+
   def _insert_artifacts_into_mlmd(
       self,
       spans: Sequence[int],
@@ -102,6 +118,19 @@ class CannedResolverFunctionsTest(
           resolved_artifact, mlmd_artifact, check_span_and_version
       )
 
+  def assertArtifactDictEqual(
+      self,
+      actual: Dict[str, Sequence[artifact_types.Artifact]],
+      expected: Dict[str, Sequence[metadata_store_pb2.Artifact]],
+  ):
+    self.assertEqual(actual.keys(), expected.keys())
+    mlmd_artifact_dict = {
+        key: [artifact.mlmd_artifact for artifact in artifacts]
+        for key, artifacts in actual.items()
+    }
+    for key, artifacts in mlmd_artifact_dict.items():
+      self.assertResolvedAndMLMDArtifactListEqual(artifacts, expected[key])
+
   def testLatestCreatedResolverFn_E2E(self):
     channel = canned_resolver_functions.latest_created(
         channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
@@ -109,20 +138,9 @@ class CannedResolverFunctionsTest(
     )
     pipeline_node = test_utils.compile_inputs({'x': channel})
 
-    # Populate the MLMD database with DummyArtifacts to test the input
-    # resolution end to end.
-    mlmd_artifact_1 = self.put_artifact('DummyArtifact')
-    mlmd_artifact_2 = self.put_artifact('DummyArtifact')
-    mlmd_artifact_3 = self.put_artifact('DummyArtifact')
-
-    for mlmd_artifact in [mlmd_artifact_1, mlmd_artifact_2, mlmd_artifact_3]:
-      self.put_execution(
-          'ProducerNode',
-          inputs={},
-          outputs={'x': [mlmd_artifact]},
-          contexts=[self.mlmd_context],
-      )
-
+    [_, mlmd_artifact_2, mlmd_artifact_3] = self._insert_n_artifacts_into_mlmd(
+        3
+    )
     resolved = inputs_utils.resolve_input_artifacts(
         pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
     )
@@ -134,6 +152,45 @@ class CannedResolverFunctionsTest(
     expected_artifacts = [mlmd_artifact_2, mlmd_artifact_3]
     self.assertResolvedAndMLMDArtifactListEqual(
         actual_artifacts, expected_artifacts
+    )
+
+  def testLatestCreatedResolverFn_ReturnDict(self):
+    artifact_dict = canned_resolver_functions.latest_created(
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
+        n=2,
+        return_dict=True,
+    )
+    pipeline_node = test_utils.compile_inputs(artifact_dict)
+
+    [_, mlmd_artifact_2, mlmd_artifact_3] = self._insert_n_artifacts_into_mlmd(
+        3
+    )
+    resolved_artifact_dict = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )[0]
+
+    self.assertArtifactDictEqual(
+        resolved_artifact_dict, {'0': [mlmd_artifact_2], '1': [mlmd_artifact_3]}
+    )
+
+  def testLatestCreatedResolverFn_ReturnDict_EmptyValues(self):
+    artifact_dict = canned_resolver_functions.latest_created(
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
+        n=2,
+        return_dict=True,
+    )
+    pipeline_node = test_utils.compile_inputs(artifact_dict)
+
+    [mlmd_artifact_1] = self._insert_n_artifacts_into_mlmd(1)
+    resolved_artifact_dict = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )[0]
+    self.assertArtifactDictEqual(
+        resolved_artifact_dict,
+        {
+            '0': [mlmd_artifact_1],
+            '1': [],
+        },
     )
 
   def testLatestVersionFn_E2E(self):
