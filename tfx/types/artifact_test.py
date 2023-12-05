@@ -75,6 +75,7 @@ _MyArtifact2 = artifact._ArtifactType(  # pylint: disable=invalid-name
             artifact.Property(type=artifact.PropertyType.JSON_VALUE),
         'string1': artifact.Property(type=artifact.PropertyType.STRING),
         'string2': artifact.Property(type=artifact.PropertyType.STRING),
+        'bool1': artifact.Property(type=artifact.PropertyType.BOOLEAN),
     })
 
 _mlmd_artifact_type = metadata_store_pb2.ArtifactType()
@@ -90,6 +91,7 @@ json_format.Parse(
             'string2': 'STRING',
             'proto1': 'PROTO',
             'proto2': 'PROTO',
+            'bool1': 'BOOLEAN',
         }
     }),
     _mlmd_artifact_type)
@@ -343,12 +345,15 @@ class ArtifactTest(tf.test.TestCase):
       self.assertEqual('', my_artifact.string2)
       my_artifact.string1 = '111'
       my_artifact.string2 = '222'
+      self.assertEqual(False, my_artifact.bool1)
+      my_artifact.bool1 = True
       self.assertEqual(my_artifact.int1, 111)
       self.assertEqual(my_artifact.int2, 222)
       self.assertEqual(my_artifact.float1, 111.1)
       self.assertEqual(my_artifact.float2, 222.2)
       self.assertEqual(my_artifact.string1, '111')
       self.assertEqual(my_artifact.string2, '222')
+      self.assertEqual(my_artifact.bool1, True)
       self.assertProtoEquals(my_artifact.proto1,
                              struct_pb2.Value(string_value='pb1'))
       self.assertProtoEquals(my_artifact.proto2, struct_pb2.Value(null_value=0))
@@ -560,6 +565,10 @@ class ArtifactTest(tf.test.TestCase):
           }
         }
         , artifact_type: name: "MyTypeName2"
+        properties {
+          key: "bool1"
+          value: BOOLEAN
+        }
         properties {
           key: "float1"
           value: DOUBLE
@@ -873,6 +882,10 @@ class ArtifactTest(tf.test.TestCase):
         }
         , artifact_type: name: "MyTypeName2"
         properties {
+          key: "bool1"
+          value: BOOLEAN
+        }
+        properties {
           key: "float1"
           value: DOUBLE
         }
@@ -980,6 +993,10 @@ class ArtifactTest(tf.test.TestCase):
         }
         , artifact_type: name: "MyTypeName2"
         properties {
+          key: "bool1"
+          value: BOOLEAN
+        }
+        properties {
           key: "float1"
           value: DOUBLE
         }
@@ -1078,6 +1095,10 @@ class ArtifactTest(tf.test.TestCase):
           }
         }
         , artifact_type: name: "MyTypeName2"
+        properties {
+          key: "bool1"
+          value: BOOLEAN
+        }
         properties {
           key: "float1"
           value: DOUBLE
