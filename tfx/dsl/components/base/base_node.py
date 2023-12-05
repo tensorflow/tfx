@@ -165,11 +165,11 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
   ):
     self._node_execution_options = node_execution_options
 
-  def with_execution_options(
+  def with_node_execution_options(
       self,
       node_execution_options: utils.NodeExecutionOptions
   ) -> 'BaseNode':
-    self.execution_options = node_execution_options
+    self.node_execution_options = node_execution_options
     return self
 
   @doc_controls.do_not_doc_in_subclasses
