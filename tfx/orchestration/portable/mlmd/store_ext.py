@@ -21,7 +21,6 @@ from typing import Callable, Dict, List, Optional, Sequence, Union
 
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
-from tfx.orchestration.experimental.core import constants as orchestration_constants
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import filter_query_builder as q
 
@@ -206,7 +205,7 @@ def get_live_output_artifacts_of_node_by_output_key(
   # Apply time skew for the artifacts created before cl/574333630 is rolled out.
   # TODO(b/275231956): Remove the following 2 lines if we are sure that there
   # are no more artifacts older than the timestamp.
-  if min_live_artifact_create_time < orchestration_constants.TIME_SKEW_DATE:
+  if min_live_artifact_create_time < 1700985600000:  # Nov 26, 2023 12:00:00 AM
     min_live_artifact_create_time -= 24 * 3600 * 1000
 
   executions_ordered_by_desc_creation_time = get_node_executions(

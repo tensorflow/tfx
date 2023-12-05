@@ -143,7 +143,8 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           updated_artifacts={},
           expected_merged_artifacts={
               'key': [_tfx_artifact(uri='foo/bar')],
-          }),
+          },
+      ),
       dict(
           testcase_name='WithoutKeyInUpdatedArtifactsPreservesOriginal',
           original_artifacts={
@@ -156,7 +157,8 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           expected_merged_artifacts={
               'key1': [_tfx_artifact(uri='/a/1')],
               'key2': [_tfx_artifact(uri='/a/2')],
-          }),
+          },
+      ),
       dict(
           testcase_name='AppliesUpdatedProperties',
           original_artifacts={
@@ -171,9 +173,12 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           },
           expected_merged_artifacts={
               'key1': [
-                  _tfx_artifact(uri='/a/1', custom_properties={'bar': 'foo'})
+                  _tfx_artifact(
+                      uri='/a/1', custom_properties={'bar': 'foo', 'foo': 'bar'}
+                  )
               ],
-          }),
+          },
+      ),
       dict(
           testcase_name='RuntimeResolvedUriIsRemovedFromOriginalDict',
           original_artifacts={
@@ -186,7 +191,8 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           expected_merged_artifacts={
               'key1': [_tfx_artifact(uri='/a/1')],
               'key2': [],
-          }),
+          },
+      ),
       dict(
           testcase_name='RuntimeResolvedUriIsRemovedFromUpdatedDict',
           original_artifacts={
@@ -200,7 +206,8 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           expected_merged_artifacts={
               'key1': [_tfx_artifact(uri='/a/1')],
               'key2': [],
-          }),
+          },
+      ),
       dict(
           testcase_name='ReusesOriginalIdIfUriMatchesUpdatedArtifact',
           original_artifacts={
@@ -211,16 +218,17 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
               'key1': [_tfx_artifact(uri='/x/1', artifact_id=1)],
               'key2': [
                   _tfx_artifact(uri='/x/2/a', artifact_id=2),
-                  _tfx_artifact(uri='/x/2/b')
+                  _tfx_artifact(uri='/x/2/b'),
               ],
           },
           expected_merged_artifacts={
               'key1': [_tfx_artifact(uri='/x/1', artifact_id=1)],
               'key2': [
                   _tfx_artifact(uri='/x/2/a'),
-                  _tfx_artifact(uri='/x/2/b')
+                  _tfx_artifact(uri='/x/2/b'),
               ],
-          }),
+          },
+      ),
       dict(
           testcase_name='UpdatedDictOmitsArtifactInListIsOmittedInResult',
           original_artifacts={
@@ -234,7 +242,8 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           expected_merged_artifacts={
               'key1': [_tfx_artifact(uri='/x/1')],
               'key2': [],
-          }),
+          },
+      ),
   ])
   def testMergeOutputArtifacts(
       self, original_artifacts: typing_utils.ArtifactMultiMap,
