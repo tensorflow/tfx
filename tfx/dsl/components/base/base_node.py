@@ -20,6 +20,7 @@ from tfx.dsl.components.base import base_driver
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
 from tfx.dsl.context_managers import dsl_context_registry
+from tfx.dsl.experimental.node_execution_options import utils
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
@@ -68,7 +69,7 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._id = None
-    self._node_execution_options = None
+    self._node_execution_options: Optional[utils.NodeExecutionOptions] = None
     dsl_context_registry.get().put_node(self)
 
   @doc_controls.do_not_doc_in_subclasses
@@ -153,13 +154,23 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
 
   @property
   @doc_controls.do_not_doc_in_subclasses
-  def node_execution_options(self):
+  def node_execution_options(self) -> Optional[utils.NodeExecutionOptions]:
     return self._node_execution_options
 
   @node_execution_options.setter
   @doc_controls.do_not_doc_in_subclasses
-  def node_execution_options(self, node_execution_options):
+  def node_execution_options(
+      self,
+      node_execution_options: utils.NodeExecutionOptions
+  ):
     self._node_execution_options = node_execution_options
+
+  def with_execution_options(
+      self,
+      node_execution_options: utils.NodeExecutionOptions
+  ) -> 'BaseNode':
+    self.execution_options = node_execution_options
+    return self
 
   @doc_controls.do_not_doc_in_subclasses
   def add_upstream_node(self, upstream_node):
