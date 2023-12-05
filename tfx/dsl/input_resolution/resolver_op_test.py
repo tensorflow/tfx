@@ -178,6 +178,10 @@ class ResolverOpTest(tf.test.TestCase):
     result = Bar.create()
     self.assertEqual(result.bar, 'bar')
 
+  def testOpProperty_NoneValueIsDropped(self):
+    bar = Bar(DUMMY_INPUT_NODE, bar=None)
+    self.assertEmpty(bar.kwargs)
+
   def testOpProperty_TypeCheckOnSet(self):
     foo = Foo.create(foo=42)
     with self.assertRaises(TypeError):
