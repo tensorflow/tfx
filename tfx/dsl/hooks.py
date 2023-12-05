@@ -15,7 +15,7 @@
 """DSL for composing execution hooks."""
 
 import abc
-from typing import Optional
+from typing import Optional, Union
 import attr
 
 from tfx.orchestration import data_types_utils
@@ -24,7 +24,7 @@ from tfx.proto.orchestration import execution_hook_pb2
 from ml_metadata.proto import metadata_store_pb2
 
 
-_PrimitiveFlagValueType = int | float | str | bool
+_PrimitiveFlagValueType = Union[int, float, str, bool]
 
 
 class PreExecutionOutput(abc.ABC):

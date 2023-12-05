@@ -40,6 +40,7 @@ sh_binary(
         "//tfx/proto:tuner_pb2.py",
         "//tfx/proto/orchestration:driver_output_pb2.py",
         "//tfx/proto/orchestration:executable_spec_pb2.py",
+        "//tfx/proto/orchestration:execution_hook_pb2.py",
         "//tfx/proto/orchestration:execution_invocation_pb2.py",
         "//tfx/proto/orchestration:execution_result_pb2.py",
         "//tfx/proto/orchestration:execution_watcher_pb2.py",

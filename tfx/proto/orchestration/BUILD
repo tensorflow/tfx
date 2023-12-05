@@ -100,6 +100,15 @@ tfx_py_proto_library(
 )
 
 tfx_py_proto_library(
+    name = "execution_hook_py_pb2",
+    srcs = ["execution_hook.proto"],
+    deps = [
+        ":placeholder_py_pb2",
+        "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
+    ],
+)
+
+tfx_py_proto_library(
     name = "run_state_py_pb2",
     srcs = ["run_state.proto"],
 )
