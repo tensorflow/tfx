@@ -37,6 +37,18 @@ if sys.version_info >= (3, 10):
 else:
   _UNION_ORIGINS = (typing.Union,)
 
+CONTAINER_ORIGINS = (
+    list,
+    set,
+    frozenset,
+    typing.List,
+    collections.abc.Iterable,
+    collections.abc.Sequence,
+    collections.abc.MutableSequence,
+    collections.abc.Collection,
+    collections.abc.Container,
+)
+
 
 # This is intentionally not public as it aims for the annotations resolver only
 # for `is_compatible`.
@@ -120,16 +132,7 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
       elif inspect.isclass(subtype):
         return inspect.isclass(value) and issubclass(value, subtype)
     # List[T], Set[T], FrozenSet[T], Iterable[T], Sequence[T], MutableSeuence[T]
-    elif maybe_origin in (
-        list,
-        set,
-        frozenset,
-        collections.abc.Iterable,
-        collections.abc.Sequence,
-        collections.abc.MutableSequence,
-        collections.abc.Collection,
-        collections.abc.Container,
-    ):
+    elif maybe_origin in CONTAINER_ORIGINS:
       if not isinstance(value, maybe_origin):
         return False
       if not maybe_args:
