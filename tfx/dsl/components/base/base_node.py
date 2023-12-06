@@ -14,6 +14,7 @@
 """Base class for TFX nodes."""
 
 import abc
+import copy
 from typing import Any, Dict, Optional, Type
 
 from tfx.dsl.components.base import base_driver
@@ -163,13 +164,13 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
       self,
       node_execution_options: utils.NodeExecutionOptions
   ):
-    self._node_execution_options = node_execution_options
+    self._node_execution_options = copy.deepcopy(node_execution_options)
 
-  def with_execution_options(
+  def with_node_execution_options(
       self,
       node_execution_options: utils.NodeExecutionOptions
   ) -> 'BaseNode':
-    self.execution_options = node_execution_options
+    self.node_execution_options = node_execution_options
     return self
 
   @doc_controls.do_not_doc_in_subclasses
