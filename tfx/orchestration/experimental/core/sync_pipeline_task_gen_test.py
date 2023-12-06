@@ -1232,56 +1232,59 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertIsInstance(update_node_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(update_node_task.state, pstate.NodeState.RUNNING)
 
-  def test_lazy_execution(self):
+  def _setup_for_chore_pipeline(self):
     pipeline = self._make_pipeline(
         self._pipeline_root, str(uuid.uuid4()), pipeline_type='chore'
     )
     self._pipeline = pipeline
-    eg_1 = test_utils.get_node(pipeline, 'my_example_gen_1')
-    eg_2 = test_utils.get_node(pipeline, 'my_example_gen_2')
-    chore_a = test_utils.get_node(pipeline, 'chore_a')
-    chore_b = test_utils.get_node(pipeline, 'chore_b')
-    chore_c = test_utils.get_node(pipeline, 'chore_c')
-    chore_d = test_utils.get_node(pipeline, 'chore_d')
-    chore_e = test_utils.get_node(pipeline, 'chore_e')
-    chore_f = test_utils.get_node(pipeline, 'chore_f')
-    chore_g = test_utils.get_node(pipeline, 'chore_g')
+    self.eg_1 = test_utils.get_node(pipeline, 'my_example_gen_1')
+    self.eg_2 = test_utils.get_node(pipeline, 'my_example_gen_2')
+    self.chore_a = test_utils.get_node(pipeline, 'chore_a')
+    self.chore_b = test_utils.get_node(pipeline, 'chore_b')
+    self.chore_c = test_utils.get_node(pipeline, 'chore_c')
+    self.chore_d = test_utils.get_node(pipeline, 'chore_d')
+    self.chore_e = test_utils.get_node(pipeline, 'chore_e')
+    self.chore_f = test_utils.get_node(pipeline, 'chore_f')
+    self.chore_g = test_utils.get_node(pipeline, 'chore_g')
+
+  def test_lazy_execution(self):
+    self._setup_for_chore_pipeline()
 
     # chore_a and chore_b can execute way earlier but should wait for chore_f
-    chore_a.execution_options.strategy = (
+    self.chore_a.execution_options.strategy = (
         pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED
     )
-    chore_b.execution_options.strategy = (
+    self.chore_b.execution_options.strategy = (
         pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED
     )
 
     # chore_d and chore_e are on the same level so they should execute at the
     # same time Also use LAZILY_ALL_UPSTREAM_NODES_COMPLETED to check both
     # strategies can work in the happy path.
-    chore_d.execution_options.strategy = (
+    self.chore_d.execution_options.strategy = (
         pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED
     )
-    chore_e.execution_options.strategy = (
+    self.chore_e.execution_options.strategy = (
         pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED
     )
 
     # chore_g is terminal and should execute normally.
-    chore_g.execution_options.strategy = (
+    self.chore_g.execution_options.strategy = (
         pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED
     )
 
-    test_utils.fake_example_gen_run(self._mlmd_connection, eg_1, 1, 1)
-    test_utils.fake_example_gen_run(self._mlmd_connection, eg_2, 1, 1)
+    test_utils.fake_example_gen_run(self._mlmd_connection, self.eg_1, 1, 1)
+    test_utils.fake_example_gen_run(self._mlmd_connection, self.eg_2, 1, 1)
 
-    self._run_next(False, expect_nodes=[chore_d, chore_e])
-    self._run_next(False, expect_nodes=[chore_f, chore_g])
+    self._run_next(False, expect_nodes=[self.chore_d, self.chore_e])
+    self._run_next(False, expect_nodes=[self.chore_f, self.chore_g])
 
     # Need to wait a cycle for chore_f to get marked as succesful.
     # TODO(kmonte): Figure out how to avoid this.
     self._run_next(False, expect_nodes=[])
-    self._run_next(False, expect_nodes=[chore_a])
-    self._run_next(False, expect_nodes=[chore_b])
-    self._run_next(False, expect_nodes=[chore_c])
+    self._run_next(False, expect_nodes=[self.chore_a])
+    self._run_next(False, expect_nodes=[self.chore_b])
+    self._run_next(False, expect_nodes=[self.chore_c])
 
   def test_generate_tasks_for_node(self):
     pipeline = self._make_pipeline(
@@ -1404,8 +1407,64 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
             'foobar error',
         )
 
+    self._run_next(False, expect_nodes=[])
     self._run_next(False, expect_nodes=[self.end_a])
     # Pipeline should fail due to chore_a having failed.
+    [finalize_task] = self._generate(False, True)
+    self.assertEqual(status_lib.Code.UNAVAILABLE, finalize_task.status.code)
+    self.assertEqual('foobar error', finalize_task.status.message)
+
+  def test_trigger_strategy_lifetime_end_with_start_node_not_upstream_of_failure(
+      self,
+  ):
+    self._setup_for_chore_pipeline()
+
+    self.chore_c.execution_options.strategy = (
+        pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS
+    )
+    self.chore_c.execution_options.resource_lifetime.lifetime_start = (
+        'my_example_gen_1'
+    )
+
+    test_utils.fake_example_gen_run(self._mlmd_connection, self.eg_1, 1, 1)
+    test_utils.fake_example_gen_run(self._mlmd_connection, self.eg_2, 1, 1)
+
+    [_, chore_d_task, _] = self._generate_and_test(
+        False,
+        num_initial_executions=2,
+        num_tasks_generated=3,
+        num_new_executions=3,
+        num_active_executions=3,
+        ignore_update_node_state_tasks=True,
+    )
+    self.assertEqual(
+        task_lib.NodeUid.from_node(self._pipeline, self.chore_d),
+        chore_d_task.node_uid,
+    )
+
+    # Fail chore_d execution
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, chore_d_task.execution_id
+      ) as chore_d_exec:
+        chore_d_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+        data_types_utils.set_metadata_value(
+            chore_d_exec.custom_properties[constants.EXECUTION_ERROR_CODE_KEY],
+            status_lib.Code.UNAVAILABLE,
+        )
+        data_types_utils.set_metadata_value(
+            chore_d_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+            'foobar error',
+        )
+
+    self._run_next(False, expect_nodes=[self.chore_a, self.chore_e])
+    self._run_next(False, expect_nodes=[self.chore_b])
+
+    # chore_c should run as all of its subgraph ancestors succeeded, failed,
+    # or became unrunnable.
+    self._run_next(False, expect_nodes=[self.chore_c])
+
+    # Pipeline should fail due to chore_d having failed.
     [finalize_task] = self._generate(False, True)
     self.assertEqual(status_lib.Code.UNAVAILABLE, finalize_task.status.code)
     self.assertEqual('foobar error', finalize_task.status.message)

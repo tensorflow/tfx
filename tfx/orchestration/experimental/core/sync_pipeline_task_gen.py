@@ -152,6 +152,7 @@ class _Generator:
     failed_nodes_dict: Dict[str, status_lib.Status] = {}
     finalize_pipeline_task = None
     lazily_evaluated_node_ids = set()
+
     # Loop over all nodes before deciding scheduling so we have full knowledge
     # of all the completed/lazy nodes.
     for layer in layers:
@@ -171,6 +172,12 @@ class _Generator:
         elif node_state.is_failure():
           failed_nodes_dict[node_id] = node_state.status
 
+    # Collect nodes that cannot be run because they have a failed ancestor.
+    unrunnable_node_ids = _unrunnable_nodes(
+        self._node_proto_view_by_node_id,
+        set(failed_nodes_dict.keys()),
+    )
+
     for layer_nodes in layers:
       for node in layer_nodes:
         node_id = node.node_info.id
@@ -183,6 +190,7 @@ class _Generator:
             successful_node_ids,
             failed_nodes_dict,
             lazily_evaluated_node_ids,
+            unrunnable_node_ids
         ):
           continue
         tasks = self._generate_tasks_for_node(node)
@@ -220,19 +228,22 @@ class _Generator:
       result.append(finalize_pipeline_task)
       return result
 
-    # Collect nodes that cannot be run because they have a failed ancestor.
-    unrunnable_descendant_ids = set()
-    for node_id in failed_nodes_dict:
-      unrunnable_descendant_ids |= _unrunnable_descendants(
-          self._node_proto_view_by_node_id,
-          node_id,
-          set(failed_nodes_dict.keys()),
-      )
+    # Because we can find newly failed nodes from UpdateNodeStateTask
+    # recompute all unrunnable nodes so we can fail the pipeline in this
+    # loop.
+    # Note that because we only ever append to failed_nodes_dict this set
+    # is guaranteed to contain at least the unrunnable nodes we originally
+    # computed.
+    unrunnable_node_ids = _unrunnable_nodes(
+        self._node_proto_view_by_node_id,
+        set(failed_nodes_dict.keys()),
+    )
+
     # Nodes that are still runnable have neither succeeded nor failed, don't
     # have a failed ancestor, or have a triggering strategy that ignores
     # upstream failures.
     runnable_node_ids = self._node_proto_view_by_node_id.keys() - (
-        unrunnable_descendant_ids
+        unrunnable_node_ids
         | successful_node_ids
         | failed_nodes_dict.keys()
     )
@@ -245,7 +256,7 @@ class _Generator:
           ' failed nodes: %s, unrunnable nodes: %s.',
           successful_node_ids,
           failed_nodes_dict.keys(),
-          unrunnable_descendant_ids,
+          unrunnable_node_ids,
       )
       if failed_nodes_dict:
         result.append(self._abort_task(failed_nodes_dict))
@@ -583,6 +594,7 @@ class _Generator:
       self,
       node: node_proto_view.NodeProtoView,
       successful_node_ids: Set[str],
+      unrunnable_node_ids: Set[str],
       failed_nodes_dict: Mapping[str, status_lib.Status],
   ) -> bool:
     """Returns `True` if all upstream nodes are either COMPLETE or unrunnable."""
@@ -597,22 +609,12 @@ class _Generator:
     if start_node not in successful_node_ids:
       return False
 
-    failed_nodes = set(failed_nodes_dict.keys())
-
     # Otherwise, the end node should run if none of its upstream nodes are
-    # runnable, find *all* unrunnable nodes for the pipeline.
-    unrunnable_nodes = set()
-    for upstream_node in node.upstream_nodes:
-      if upstream_node in failed_nodes_dict:
-        unrunnable_nodes |= _unrunnable_descendants(
-            self._node_proto_view_by_node_id,
-            upstream_node,
-            failed_nodes,
-        )
+    # runnable.
 
     # All nodes not in this set are runnable.
     complete_or_unrunnable_nodes = (
-        successful_node_ids | unrunnable_nodes | failed_nodes
+        successful_node_ids | unrunnable_node_ids | failed_nodes_dict.keys()
     )
 
     # Any potentially runnable upstream nodes are the upstream nodes that are
@@ -638,6 +640,7 @@ class _Generator:
       successful_node_ids: Set[str],
       failed_nodes_dict: Dict[str, status_lib.Status],
       lazily_evaluated_node_ids: Set[str],
+      unrunnable_node_ids: Set[str],
   ) -> bool:
     """Returns `True` if the node's Trigger Strategy is satisfied."""
     if node.execution_options.strategy in (
@@ -661,7 +664,7 @@ class _Generator:
     ):
       node_trigger_strategy_satisfied = (
           self._lifetime_end_when_subgraph_cannot_progress(
-              node, successful_node_ids, failed_nodes_dict
+              node, successful_node_ids, unrunnable_node_ids, failed_nodes_dict
           )
       )
     else:
@@ -689,6 +692,7 @@ class _Generator:
             successful_or_lazy_node_ids,
             failed_nodes_dict,
             lazily_evaluated_node_ids,
+            unrunnable_node_ids
         )
         any_downstream_node_otherwise_ready |= downstream_trigger
         if any_downstream_node_otherwise_ready:
@@ -767,23 +771,27 @@ def _node_by_id(
   return result
 
 
-# TODO(b/308963693): Get all unrunnable nodes at once.
-def _unrunnable_descendants(
+def _unrunnable_nodes(
     node_by_id: Mapping[str, node_proto_view.NodeProtoView],
-    failed_node_id: str,
     failed_node_ids: Set[str],
 ) -> Set[str]:
-  """Returns node_ids of all unrunnable descendants of the given failed node_id."""
-  queue = collections.deque()
-  for node_with_upstream_failure in node_by_id[failed_node_id].downstream_nodes:
-    # Nodes with a upstream success optional trigger strategy can make progress
-    # despite a failed upstream node.
-    if (
-        node_by_id[node_with_upstream_failure].execution_options.strategy
-        not in _UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES
-    ):
-      queue.append(node_with_upstream_failure)
+  """Returns node_ids of all unrunnable descendant nodes for each member of the given failed_node_ids set."""
+
   unrunnable = set()
+  queue = collections.deque()
+
+  for failed_node_id in failed_node_ids:
+    for node_with_upstream_failure in node_by_id[
+        failed_node_id
+    ].downstream_nodes:
+      # Nodes with a upstream success optional trigger strategy can make
+      # progress despite a failed upstream node.
+      if (
+          node_by_id[node_with_upstream_failure].execution_options.strategy
+          not in _UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES
+      ):
+        queue.append(node_with_upstream_failure)
+
   while queue:
     q_node_id = queue.popleft()
     node = node_by_id[q_node_id]
@@ -794,12 +802,12 @@ def _unrunnable_descendants(
         and not (start_node in failed_node_ids or start_node in unrunnable)
     ):
       logging.info(
-          '%s is an end node that may still be run since its start node %s was'
-          ' neither failed nor unrunnable. Not marking the end node nor its'
-          ' descendants as unrunnable due to the failure of %s.',
+          '%s is an end node that may still be run since its start node %s'
+          ' was neither failed nor unrunnable. Not marking the end node nor'
+          ' its descendants as unrunnable due to the failures of %s.',
           q_node_id,
           start_node,
-          failed_node_id,
+          ', '.join(failed_node_ids),
       )
       continue
     if q_node_id not in unrunnable:
