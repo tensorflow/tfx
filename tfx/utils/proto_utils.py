@@ -100,12 +100,10 @@ def _create_proto_instance_from_name(
   return message_type()
 
 
-def deserialize_proto_message(
-    serialized_message: str,
-    message_name: str,
-    file_descriptors: Optional[descriptor_pb2.FileDescriptorSet] = None
-) -> ProtoMessage:
-  """Converts serialized pb message string to its original message."""
+def get_pool_with_descriptors(
+    file_descriptors: Optional[descriptor_pb2.FileDescriptorSet] = None,
+) -> descriptor_pool.DescriptorPool:
+  """Adds the given files to the default descriptor pool and returns it."""
   pool = descriptor_pool.Default()
   if file_descriptors:
     for file_descriptor in file_descriptors.file:
@@ -118,15 +116,27 @@ def deserialize_proto_message(
         if 'A file with this name is already in the pool' in str(e):
           continue
         raise
+  return pool
 
+
+def deserialize_proto_message(
+    serialized_message: str,
+    message_name: str,
+    file_descriptors: Optional[descriptor_pb2.FileDescriptorSet] = None,
+) -> ProtoMessage:
+  """Converts serialized pb message string to its original message."""
+  pool = get_pool_with_descriptors(file_descriptors)
   proto_instance = _create_proto_instance_from_name(message_name, pool)
   return json_format.Parse(
       serialized_message, proto_instance, descriptor_pool=pool)
 
 
-def unpack_proto_any(any_proto: any_pb2.Any) -> ProtoMessage:
+def unpack_proto_any(
+    any_proto: any_pb2.Any,
+    pool: Optional[descriptor_pool.DescriptorPool] = None,
+) -> ProtoMessage:
   """Unpacks a google.protobuf.Any message into its concrete type."""
-  pool = descriptor_pool.Default()
+  pool = pool or descriptor_pool.Default()
   message_name = any_proto.type_url.split('/')[-1]
   proto_instance = _create_proto_instance_from_name(message_name, pool)
   any_proto.Unpack(proto_instance)

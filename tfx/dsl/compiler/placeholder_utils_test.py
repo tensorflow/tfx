@@ -15,6 +15,7 @@
 
 import base64
 import itertools
+import os
 import re
 
 from absl.testing import parameterized
@@ -33,6 +34,7 @@ from tfx.utils import proto_utils
 from google.protobuf import descriptor_pb2
 from google.protobuf import descriptor_pool
 from google.protobuf import json_format
+from google.protobuf import message_factory
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
@@ -663,6 +665,86 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), expected_result)
 
+  def testCreateDict(self):
+    placeholder_expression = """
+      operator {
+        create_dict_op {
+          entries {
+            key {
+              value {
+                string_value: "plain_key"
+              }
+            }
+            value {
+              operator {
+                artifact_property_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "examples"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                  key: "version"
+                }
+              }
+            }
+          }
+          entries {
+            key {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".stateful_working_dir"
+                }
+              }
+            }
+            value {
+              value {
+                string_value: "plain_value"
+              }
+            }
+          }
+          entries {
+            key {
+              value {
+                string_value: "dropped_because_evaluates_to_none"
+              }
+            }
+            value {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "does_not_exist"
+              }
+            }
+          }
+        }
+      }
+    """
+    pb = text_format.Parse(
+        placeholder_expression, placeholder_pb2.PlaceholderExpression()
+    )
+    expected_result = {
+        "plain_key": 42,
+        "test_stateful_working_dir": "plain_value",
+    }
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context
+        ),
+        expected_result,
+    )
+
   def testProtoExecPropertyMessageFieldTextFormat(self):
     # Access a message type proto field
     placeholder_expression = """
@@ -1200,6 +1282,34 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     )
     self.assertSetEqual(actual_types, set(ph_types))
 
+  def testGetTypesOfCreateProtoOperator(self):
+    ph_types = placeholder_pb2.Placeholder.Type.values()
+    expressions = " ".join(f"""
+          fields: {{
+            key: "field_{_ph_type_to_str(ph_type)}"
+            value: {{
+              placeholder: {{
+                type: {ph_type}
+                key: 'baz'
+              }}
+            }}
+          }}
+        """ for ph_type in ph_types)
+    placeholder_expression = text_format.Parse(
+        f"""
+          operator {{
+            create_proto_op {{
+              {expressions}
+            }}
+          }}
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    actual_types = placeholder_utils.get_all_types_in_placeholder_expression(
+        placeholder_expression
+    )
+    self.assertSetEqual(actual_types, set(ph_types))
+
   def testGetsOperatorsFromProtoReflection(self):
     self.assertSetEqual(
         placeholder_utils.get_unary_operator_names(),
@@ -1671,6 +1781,60 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             nested_pb_2, resolution_context), True)
 
+  def testCreateProtoOp(self):
+    # Note: This test case is relatively basic and doesn't cover all corner
+    # cases, because those are already covered by the cross-module test in
+    # dsl/placeholder/proto_placeholder_test.py.
+    #
+    # This is part two of a two-part unit test.
+    # dsl/placeholder/placeholder_test.py already asserts that the DSL results
+    # in the PlaceholderExpression stored in testdata. This test here asserts
+    # that the same PlaceholderExpression can be resolved even when the
+    # respective proto (SplitConfig) is not provided as a dependency in the
+    # binary (a vital precondition for this test), i.e. it verifies that the
+    # CreateProtoOperator.file_descriptors are sufficient to create the proto:
+    with self.assertRaises(KeyError):
+      descriptor_pool.Default().FindMessageTypeByName(
+          "tfx.components.transform.SplitsConfig"
+      )
+
+    # Load the IR representation that the DSL would have produced.
+    # This should be a binary proto, not text proto, because it allows parsing
+    # Any fields with unknown proto types inside before their descriptors are
+    # loaded dynamically.
+    test_pb_filepath = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),  # Basically: ../
+        "placeholder/testdata/create_proto_placeholder.binarypb",
+    )
+    with open(test_pb_filepath, "rb") as f:
+      placeholder_expression = placeholder_pb2.PlaceholderExpression()
+      placeholder_expression.ParseFromString(f.read())
+
+    actual = placeholder_utils.resolve_placeholder_expression(
+        placeholder_expression,
+        placeholder_utils.ResolutionContext(
+            exec_info=data_types.ExecutionInfo()
+        ),
+    )
+
+    # Now the proto descriptor should be in the default pool:
+    pool = descriptor_pool.Default()
+    message_descriptor = pool.FindMessageTypeByName(
+        "tfx.components.transform.SplitsConfig"
+    )
+    self.assertIsNotNone(message_descriptor)
+
+    # And we can use it to parse the result (without having to link the proto):
+    factory = message_factory.MessageFactory(pool)
+    proto_class = factory.GetPrototype(message_descriptor)
+    self.assertProtoEquals(
+        """
+        analyze: "foo"
+        analyze: "bar"
+        """,
+        text_format.Parse(actual, proto_class()),
+    )
+
   def testDebugPlaceholder(self):
     pb = text_format.Parse(
         """
@@ -1890,6 +2054,140 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(
         re.sub(r"\s+", "", actual_debug_str),
         re.sub(r"\s+", "", expected_debug_str_pretty))
+
+  def testDebugCreateDictPlaceholder(self):
+    pb = text_format.Parse(
+        """
+      operator {
+        create_dict_op {
+          entries {
+            key {
+              value {
+                string_value: "key_1"
+              }
+            }
+            value {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "channel_1"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          entries {
+            key {
+              value {
+                string_value: "key_2"
+              }
+            }
+            value {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "channel_2"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    self.assertEqual(
+        placeholder_utils.debug_str(pb),
+        "to_dict({"
+        '"key_1"=input("channel_1")[0].value, '
+        '"key_2"=input("channel_2")[0].value})',
+    )
+
+  def testDebugCreateProtoPlaceholder(self):
+    pb = text_format.Parse(
+        """
+      operator {
+        create_proto_op {
+          base {
+            [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+          }
+          fields {
+            key: "field_1"
+            value {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "channel_1"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          fields {
+            key: "field_2"
+            value {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "channel_2"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    self.assertEqual(
+        placeholder_utils.debug_str(pb),
+        "CreateProto("
+        'type_url: "type.googleapis.com/tfx.orchestration.ExecutionInvocation",'
+        ' field_1=input("channel_1")[0].value,'
+        ' field_2=input("channel_2")[0].value)',
+    )
 
 
 if __name__ == "__main__":
