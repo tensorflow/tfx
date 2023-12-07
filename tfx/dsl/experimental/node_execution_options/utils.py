@@ -32,6 +32,12 @@ class NodeExecutionOptions:
   success_optional: bool = False
   max_execution_retries: int = 0
   execution_timeout_sec: int = 0
+  # This feature enable users to choose if they want to reuse or reset the
+  # stateful working dir from the previously failed execution. If set False
+  # (which is the default), previous stateful working dir (if exists) will be
+  # reused. If set True, previous stateful working dir will NOT be reused and a
+  # new stateful working dir will be created for every new execution.
+  reset_stateful_working_dir: bool = False
 
   # This is an experimental feature to enable "end nodes" in a pipeline to
   # support resource lifetimes. If this field is set then the node which this

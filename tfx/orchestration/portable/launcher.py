@@ -441,7 +441,8 @@ class Launcher:
               execution_output_uri=(
                   self._output_resolver.get_executor_output_uri(execution.id)),
               stateful_working_dir=(
-                  self._output_resolver.get_stateful_working_directory()),
+                  self._output_resolver.get_stateful_working_directory(
+                      execution)),
               tmp_dir=self._output_resolver.make_tmp_dir(execution.id)),
           execution_metadata=execution,
           contexts=contexts,

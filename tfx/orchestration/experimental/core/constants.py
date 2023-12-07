@@ -16,6 +16,7 @@
 EXECUTION_ERROR_CODE_KEY = '__execution_error_code__'
 EXECUTION_ERROR_MSG_KEY = '__execution_error_msg__'
 EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY = '__execution_start_time__'
+STATEFUL_WORKING_DIR_INDEX = '__stateful_working_dir_index__'
 # LINT.IfChange(backfill_token)
 BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY = '__backfill_token__'
 # LINT.ThenChange()

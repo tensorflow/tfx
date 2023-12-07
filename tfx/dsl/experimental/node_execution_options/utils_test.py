@@ -58,6 +58,7 @@ class UtilsTest(tf.test.TestCase):
         max_execution_retries=-1,
         execution_timeout_sec=100,
         lifetime_start="foo",
+        reset_stateful_working_dir=True,
     )
     self.assertEqual(
         component.node_execution_options,
@@ -67,6 +68,7 @@ class UtilsTest(tf.test.TestCase):
             max_execution_retries=0,
             execution_timeout_sec=100,
             lifetime_start="foo",
+            reset_stateful_working_dir=True,
         ),
     )
     component.node_execution_options = None

@@ -139,6 +139,12 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
             }
           }
           custom_properties {
+            key: "__stateful_working_dir_index__"
+            value {
+              string_value: "mocked-index-123"
+            }
+          }
+          custom_properties {
             key: "artifact_uri"
             value {
               string_value: "my_url"
