@@ -266,3 +266,11 @@ def get_view(
     return ComposablePipelineProtoView(pipeline_or_node)
 
   raise ValueError(f'Got unknown pipeline or node type: {pipeline_or_node}.')
+
+
+# TODO: b/270960179 - Migrate all usages of pipeline_state.get_all_nodes here.
+def get_view_for_all_in(
+    pipeline: pipeline_pb2.Pipeline,
+) -> Sequence[NodeProtoView]:
+  """Returns the views of nodes or inner pipelines in the given pipeline."""
+  return [get_view(pipeline_or_node) for pipeline_or_node in pipeline.nodes]

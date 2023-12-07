@@ -205,7 +205,19 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
     sub_pipeline_node = input_pipeline.nodes.add()
     sub_pipeline_node.sub_pipeline.pipeline_info.id = 'my_subpipeline'
+    begin_node = sub_pipeline_node.sub_pipeline.nodes.add()
     node_a = sub_pipeline_node.sub_pipeline.nodes.add()
+    end_node = sub_pipeline_node.sub_pipeline.nodes.add()
+
+    begin_node.pipeline_node.node_info.id = 'my_subpipeline_begin'
+    begin_node.pipeline_node.node_info.type.name = (
+        'tfx.orchestration.pipeline.Pipeline_begin'
+    )
+    end_node.pipeline_node.node_info.id = 'my_subpipeline_end'
+    end_node.pipeline_node.node_info.type.name = (
+        'tfx.orchestration.pipeline.Pipeline_end'
+    )
+    end_node.pipeline_node.node_info.id = 'my_subpipeline_end'
     node_a.pipeline_node.node_info.id = 'a'
 
     with self.assertRaisesRegex(

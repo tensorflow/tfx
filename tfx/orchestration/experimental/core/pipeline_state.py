@@ -44,6 +44,7 @@ from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import metadata_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import run_state_pb2
+from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 from tfx.utils import status as status_lib
 
@@ -1268,6 +1269,11 @@ def pipeline_id_from_orchestrator_context(
   return context.name
 
 
+@deprecation_utils.deprecated(
+    None,
+    'pipeline_state.get_all_nodes has been deprecated in favor of'
+    ' node_proto_view.get_view_for_all_in which has identical behavior.',
+)
 @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_all_nodes(
     pipeline: pipeline_pb2.Pipeline) -> List[node_proto_view.NodeProtoView]:

@@ -16,13 +16,14 @@
 import collections
 import concurrent.futures
 import enum
-from typing import Collection, Dict, Final, List, Mapping, Optional, Set, Tuple
+from typing import Collection, Dict, Final, List, Mapping, Optional, OrderedDict, Sequence, Set, Tuple
 import uuid
 
 from absl import logging
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -105,14 +106,15 @@ def mark_pipeline(
     ValueError: If from_nodes/to_nodes contain node_ids not in the pipeline.
     ValueError: If pipeline is not topologically sorted.
   """
+  nodes = node_proto_view.get_view_for_all_in(pipeline)
   _ensure_sync_pipeline(pipeline)
-  _ensure_no_subpipeline_nodes(pipeline)
-  _ensure_no_partial_run_marks(pipeline)
+  _ensure_no_subpipeline_nodes(nodes)
+  _ensure_no_partial_run_marks(nodes)
   _ensure_not_full_run(from_nodes, to_nodes)
-  _ensure_no_missing_nodes(pipeline, from_nodes, to_nodes)
-  _ensure_topologically_sorted(pipeline)
+  _ensure_no_missing_nodes(nodes, from_nodes, to_nodes)
+  _ensure_topologically_sorted(nodes)
 
-  node_map = make_ordered_node_map(pipeline)
+  node_map = make_ordered_node_map(nodes)
 
   from_node_ids = from_nodes or node_map.keys()
   to_node_ids = to_nodes or node_map.keys()
@@ -173,9 +175,11 @@ def snapshot(mlmd_handle: metadata.Metadata,
   logging.info('Artifact reuse complete.')
 
 
-def _pick_snapshot_node(node_map: Mapping[str, pipeline_pb2.PipelineNode],
-                        nodes_to_run: Set[str],
-                        nodes_to_reuse: Set[str]) -> Optional[str]:
+def _pick_snapshot_node(
+    node_map: Mapping[str, node_proto_view.NodeProtoView],
+    nodes_to_run: Set[str],
+    nodes_to_reuse: Set[str],
+) -> Optional[str]:
   """Returns node_id to perform snapshot, or None if snapshot is unnecessary."""
   if not nodes_to_reuse:
     return None
@@ -185,10 +189,14 @@ def _pick_snapshot_node(node_map: Mapping[str, pipeline_pb2.PipelineNode],
   return None
 
 
-def _mark_nodes(node_map: Mapping[str, pipeline_pb2.PipelineNode],
-                nodes_to_run: Set[str], nodes_required_to_reuse: Set[str],
-                nodes_to_reuse: Set[str], nodes_requiring_snapshot: Set[str],
-                snapshot_node: Optional[str]):
+def _mark_nodes(
+    node_map: Mapping[str, node_proto_view.NodeProtoView],
+    nodes_to_run: Set[str],
+    nodes_required_to_reuse: Set[str],
+    nodes_to_reuse: Set[str],
+    nodes_requiring_snapshot: Set[str],
+    snapshot_node: Optional[str],
+):
   """Mark nodes."""
   for node_id, node in node_map.items():  # assumes topological order
     if node_id in nodes_to_run:
@@ -220,23 +228,26 @@ def _ensure_sync_pipeline(pipeline: pipeline_pb2.Pipeline):
         f'{pipeline_pb2.Pipeline.ExecutionMode.Name(pipeline.execution_mode)}')
 
 
-def _ensure_no_subpipeline_nodes(pipeline: pipeline_pb2.Pipeline):
+def _ensure_no_subpipeline_nodes(
+    nodes: Sequence[node_proto_view.NodeProtoView],
+):
   """Raises ValueError if the pipeline contains a sub-pipeline.
 
   If the pipeline comes from the compiler, it should already be
   flattened. This is just in case the IR proto was created in another way.
 
   Args:
-    pipeline: The input pipeline.
+    nodes: The nodes of the pipeline.
 
   Raises:
     ValueError: If the pipeline contains a sub-pipeline.
   """
-  for pipeline_or_node in pipeline.nodes:
-    if pipeline_or_node.HasField('sub_pipeline'):
+  for node in nodes:
+    if isinstance(node, node_proto_view.ComposablePipelineProtoView):
       raise ValueError(
           'Pipeline filtering not supported for pipelines with sub-pipelines. '
-          f'sub-pipeline found: {pipeline_or_node}')
+          f'sub-pipeline found: {node.node_info.id}'
+      )
 
 
 def _ensure_not_full_run(from_nodes: Optional[Collection[str]] = None,
@@ -246,19 +257,22 @@ def _ensure_not_full_run(from_nodes: Optional[Collection[str]] = None,
     raise ValueError('Both from_nodes and to_nodes are empty.')
 
 
-def _ensure_no_partial_run_marks(pipeline: pipeline_pb2.Pipeline):
+def _ensure_no_partial_run_marks(
+    nodes: Sequence[node_proto_view.NodeProtoView],
+):
   """Raises ValueError if the pipeline is already marked for partial run."""
-  for node in pipeline.nodes:
-    if node.pipeline_node.execution_options.HasField('partial_run_option'):
+  for node in nodes:
+    if node.execution_options.HasField('partial_run_option'):
       raise ValueError('Pipeline has already been marked for partial run.')
 
 
-def _ensure_no_missing_nodes(pipeline: pipeline_pb2.Pipeline,
-                             from_nodes: Optional[Collection[str]] = None,
-                             to_nodes: Optional[Collection[str]] = None):
+def _ensure_no_missing_nodes(
+    nodes: Sequence[node_proto_view.NodeProtoView],
+    from_nodes: Optional[Collection[str]] = None,
+    to_nodes: Optional[Collection[str]] = None,
+):
   """Raises ValueError if there are from_nodes/to_nodes not in the pipeline."""
-  all_node_ids = set(node.pipeline_node.node_info.id
-                     for node in pipeline.nodes)
+  all_node_ids = set(node.node_info.id for node in nodes)
   missing_nodes = (set(from_nodes or []) | set(to_nodes or [])) - all_node_ids
   if missing_nodes:
     raise ValueError(
@@ -266,7 +280,9 @@ def _ensure_no_missing_nodes(pipeline: pipeline_pb2.Pipeline,
         f'are not present in the pipeline. Valid nodes are {all_node_ids}.')
 
 
-def _ensure_topologically_sorted(pipeline: pipeline_pb2.Pipeline):
+def _ensure_topologically_sorted(
+    nodes: Sequence[node_proto_view.NodeProtoView],
+):
   """Raises ValueError if nodes are not topologically sorted.
 
   If the pipeline comes from the compiler, it should already be
@@ -274,15 +290,14 @@ def _ensure_topologically_sorted(pipeline: pipeline_pb2.Pipeline):
   created in another way.
 
   Args:
-    pipeline: The input pipeline.
+    nodes: The input nodes.
 
   Raises:
     ValueError: If the pipeline is not topologically sorted.
   """
   # Upstream check
   visited = set()
-  for pipeline_or_node in pipeline.nodes:
-    node = pipeline_or_node.pipeline_node
+  for node in nodes:
     for upstream_node in node.upstream_nodes:
       if upstream_node not in visited:
         raise ValueError(
@@ -292,8 +307,7 @@ def _ensure_topologically_sorted(pipeline: pipeline_pb2.Pipeline):
     visited.add(node.node_info.id)
   # Downstream check
   visited.clear()
-  for pipeline_or_node in reversed(pipeline.nodes):
-    node = pipeline_or_node.pipeline_node
+  for node in reversed(nodes):
     for downstream_node in node.downstream_nodes:
       if downstream_node not in visited:
         raise ValueError(
@@ -304,26 +318,28 @@ def _ensure_topologically_sorted(pipeline: pipeline_pb2.Pipeline):
 
 
 def make_ordered_node_map(
-    pipeline: pipeline_pb2.Pipeline
-) -> 'collections.OrderedDict[str, pipeline_pb2.PipelineNode]':
+    nodes: Sequence[node_proto_view.NodeProtoView],
+) -> OrderedDict[str, node_proto_view.NodeProtoView]:
   """Prepares the Pipeline proto for DAG traversal.
 
   Args:
-    pipeline: The input Pipeline proto, which must already be topologically
-      sorted.
+    nodes: The input nodes, which must be sorted topologically.
 
   Returns:
     An OrderedDict that maps node_ids to PipelineNodes.
   """
   result = collections.OrderedDict()
-  for pipeline_or_node in pipeline.nodes:
-    node_id = pipeline_or_node.pipeline_node.node_info.id
-    result[node_id] = pipeline_or_node.pipeline_node
+  for node in nodes:
+    node_id = node.node_info.id
+    result[node_id] = node
   return result
 
 
-def _traverse(node_map: Mapping[str, pipeline_pb2.PipelineNode],
-              direction: _Direction, start_nodes: Collection[str]) -> Set[str]:
+def _traverse(
+    node_map: Mapping[str, node_proto_view.NodeProtoView],
+    direction: _Direction,
+    start_nodes: Collection[str],
+) -> Set[str]:
   """Traverses a DAG from start_nodes, either upstream or downstream.
 
   Args:
@@ -352,9 +368,11 @@ def _traverse(node_map: Mapping[str, pipeline_pb2.PipelineNode],
 
 
 def compute_nodes_to_run(
-    node_map: 'collections.OrderedDict[str, pipeline_pb2.PipelineNode]',
-    from_node_ids: Collection[str], to_node_ids: Collection[str],
-    skip_node_ids: Collection[str]) -> Set[str]:
+    node_map: OrderedDict[str, node_proto_view.NodeProtoView],
+    from_node_ids: Collection[str],
+    to_node_ids: Collection[str],
+    skip_node_ids: Collection[str],
+) -> Set[str]:
   """Returns the set of nodes between from_node_ids and to_node_ids."""
   ancestors_of_to_nodes = _traverse(node_map, _Direction.UPSTREAM, to_node_ids)
   descendents_of_from_nodes = _traverse(node_map, _Direction.DOWNSTREAM,
@@ -367,8 +385,10 @@ def compute_nodes_to_run(
 
 
 def _compute_nodes_to_reuse(
-    node_map: Mapping[str, pipeline_pb2.PipelineNode], nodes_to_run: Set[str],
-    skip_snapshot_node_ids: Set[str]) -> Tuple[Set[str], Set[str]]:
+    node_map: Mapping[str, node_proto_view.NodeProtoView],
+    nodes_to_run: Set[str],
+    skip_snapshot_node_ids: Set[str],
+) -> Tuple[Set[str], Set[str]]:
   """Returns the set of node ids whose output artifacts are to be reused.
 
     Only upstream nodes of nodes_to_run are required to be reused to reflect
@@ -392,9 +412,11 @@ def _compute_nodes_to_reuse(
   return nodes_required_to_reuse, nodes_to_reuse
 
 
-def _compute_nodes_requiring_snapshot(node_map: Mapping[
-    str, pipeline_pb2.PipelineNode], nodes_to_run: Set[str],
-                                      nodes_to_reuse: Set[str]) -> Set[str]:
+def _compute_nodes_requiring_snapshot(
+    node_map: Mapping[str, node_proto_view.NodeProtoView],
+    nodes_to_run: Set[str],
+    nodes_to_reuse: Set[str],
+) -> Set[str]:
   """Returns the set of nodes to run that depend on a node to reuse."""
   result = set()
   for node_id, node in node_map.items():
@@ -511,13 +533,13 @@ def _reuse_pipeline_run_artifacts(
 
   reuse_nodes = [
       node
-      for node in marked_pipeline.nodes
-      if _should_attempt_to_reuse_artifact(node.pipeline_node.execution_options)
+      for node in node_proto_view.get_view_for_all_in(marked_pipeline)
+      if _should_attempt_to_reuse_artifact(node.execution_options)
   ]
   with concurrent.futures.ThreadPoolExecutor() as executor:
     futures = {}
     for node in reuse_nodes:
-      node_id = node.pipeline_node.node_info.id
+      node_id = node.node_info.id
       futures[node_id] = (
           node,
           executor.submit(
@@ -530,7 +552,7 @@ def _reuse_pipeline_run_artifacts(
       try:
         future.result()
       except Exception as err:  # pylint: disable=broad-except
-        if _reuse_artifact_required(node.pipeline_node.execution_options):
+        if _reuse_artifact_required(node.execution_options):
           # Raise error only if failed to reuse artifacts required.
           raise
         err_str = str(err)
