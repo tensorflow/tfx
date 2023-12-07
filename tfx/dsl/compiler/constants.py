@@ -41,3 +41,7 @@ PIPELINE_END_NODE_SUFFIX = "_end"
 
 # Channel name for LaunchOnly artifacts
 LAUNCH_ONLY_CHANNEL_NAME = "launch_only"
+
+# Key for the execution property of a JobCleanup node where the Launch Only
+# component id is stored.
+JOB_CLEANUP_LAUNCHER_EXEC_PROP = "launcher_component"
