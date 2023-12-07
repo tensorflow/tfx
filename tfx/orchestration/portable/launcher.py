@@ -439,13 +439,19 @@ class Launcher:
               output_dict=output_artifacts,
               exec_properties=exec_properties,
               execution_output_uri=(
-                  self._output_resolver.get_executor_output_uri(execution.id)),
+                  self._output_resolver.get_executor_output_uri(execution.id)
+              ),
               stateful_working_dir=(
-                  self._output_resolver.get_stateful_working_directory()),
-              tmp_dir=self._output_resolver.make_tmp_dir(execution.id)),
+                  self._output_resolver.get_stateful_working_directory(
+                      execution
+                  )
+              ),
+              tmp_dir=self._output_resolver.make_tmp_dir(execution.id),
+          ),
           execution_metadata=execution,
           contexts=contexts,
-          is_execution_needed=True)
+          is_execution_needed=True,
+      )
 
   def _build_execution_info(self, **kwargs: Any) -> data_types.ExecutionInfo:
     # pytype: disable=wrong-arg-types

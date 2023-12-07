@@ -648,6 +648,9 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       failed_execution.custom_properties[
           task_gen_utils
           ._EXTERNAL_EXECUTION_INDEX].int_value = 1
+      failed_execution.custom_properties[
+          constants.STATEFUL_WORKING_DIR_INDEX
+      ].string_value = 'mocked-index-123'
       failed_execution.custom_properties['should_not_be_copied'].int_value = 1
       failed_execution = execution_lib.put_execution(
           m,
@@ -673,6 +676,14 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
               task_gen_utils._EXTERNAL_EXECUTION_INDEX],
           failed_execution.custom_properties[
               task_gen_utils._EXTERNAL_EXECUTION_INDEX])
+      self.assertEqual(
+          retry_execution.custom_properties[
+              constants.STATEFUL_WORKING_DIR_INDEX
+          ],
+          failed_execution.custom_properties[
+              constants.STATEFUL_WORKING_DIR_INDEX
+          ],
+      )
       self.assertEqual(
           retry_execution.custom_properties['ph_property'].string_value,
           'foo_value',
