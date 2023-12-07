@@ -130,6 +130,9 @@ class _ResolverOpMeta(abc.ABCMeta):
       An OpNode instance that represents the operator call.
     """
     args = cls._check_and_transform_args(args)
+    # Drop None value from kwargs as current ResolverOp serialization only
+    # supports ml_metadata.Value which does not include None type.
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
     cls._check_kwargs(kwargs)
     return OpNode(
         op_type=cls,
