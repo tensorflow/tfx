@@ -19,6 +19,7 @@ from absl import logging
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution.ops import ops
 from tfx.types import artifact
+from tfx.types import channel as channel_types
 
 
 @resolver_function.resolver_function
@@ -50,13 +51,15 @@ def latest_version(artifacts, n: int = 1):
 
 
 @resolver_function.resolver_function
-def static_range(artifacts,
-                 *,
-                 start_span_number: int = -1,
-                 end_span_number: int = -1,
-                 keep_all_versions: bool = False,
-                 exclude_span_numbers: Sequence[int] = (),
-                 min_spans: Optional[int] = None):
+def static_range(
+    artifacts,
+    *,
+    start_span_number: int = -1,
+    end_span_number: int = -1,
+    keep_all_versions: bool = False,
+    exclude_span_numbers: Sequence[int] = (),
+    min_spans: Optional[int] = None,
+):
   """Returns artifacts with spans in [start_span, end_span] inclusive.
 
   This resolver function is based on the span-version semantics, which only
@@ -123,10 +126,12 @@ def static_range(artifacts,
       artifacts,
       start_span=start_span_number,
       end_span=end_span_number,
-      keep_all_versions=keep_all_versions)
+      keep_all_versions=keep_all_versions,
+  )
   if exclude_span_numbers:
     resolved_artifacts = ops.ExcludeSpans(
-        resolved_artifacts, denylist=exclude_span_numbers)
+        resolved_artifacts, denylist=exclude_span_numbers
+    )
 
   if min_spans is None:
     # We check that start_span_number and end_span_number are positive to ensure
@@ -167,14 +172,16 @@ def static_range(artifacts,
 
 
 @resolver_function.resolver_function
-def rolling_range(artifacts,
-                  *,
-                  start_span_number: int = 0,
-                  num_spans: int = 1,
-                  skip_num_recent_spans: int = 0,
-                  keep_all_versions: bool = False,
-                  exclude_span_numbers: Sequence[int] = (),
-                  min_spans: Optional[int] = None):
+def rolling_range(
+    artifacts,
+    *,
+    start_span_number: int = 0,
+    num_spans: int = 1,
+    skip_num_recent_spans: int = 0,
+    keep_all_versions: bool = False,
+    exclude_span_numbers: Sequence[int] = (),
+    min_spans: Optional[int] = None,
+):
   """Returns artifacts with spans in a rolling range.
 
   A rolling range covers the latest (largest) spans. It's calculated in the
@@ -261,10 +268,12 @@ def rolling_range(artifacts,
       min_span=start_span_number,
       n=num_spans,
       skip_last_n=skip_num_recent_spans,
-      keep_all_versions=keep_all_versions)
+      keep_all_versions=keep_all_versions,
+  )
   if exclude_span_numbers:
     resolved_artifacts = ops.ExcludeSpans(
-        resolved_artifacts, denylist=exclude_span_numbers)
+        resolved_artifacts, denylist=exclude_span_numbers
+    )
 
   if min_spans is None:
     logging.warning(
@@ -368,9 +377,11 @@ def latest_pipeline_run_outputs(pipeline, output_keys: Sequence[str] = ()):
     if output_key not in pipeline.outputs:
       raise ValueError(
           f'Output key {output_key} does not exist in pipeline {pipeline.id}. '
-          f'Available: {list(pipeline.outputs)}')
+          f'Available: {list(pipeline.outputs)}'
+      )
   return ops.LatestPipelineRunOutputs(
-      pipeline_name=pipeline.pipeline_name, output_keys=output_keys)
+      pipeline_name=pipeline.pipeline_name, output_keys=output_keys
+  )
 
 
 @latest_pipeline_run_outputs.output_type_inferrer
@@ -396,13 +407,15 @@ def _infer_latest_pipeline_run_type(pipeline, output_keys: Sequence[str] = ()):
 
 
 @resolver_function.resolver_function(unwrap_dict_key='window')
-def sequential_rolling_range(artifacts,
-                             *,
-                             start_span_number: Optional[int] = None,
-                             num_spans: int = 1,
-                             skip_num_recent_spans: int = 0,
-                             keep_all_versions: bool = False,
-                             exclude_span_numbers: Sequence[int] = ()):
+def sequential_rolling_range(
+    artifacts,
+    *,
+    start_span_number: Optional[int] = None,
+    num_spans: int = 1,
+    skip_num_recent_spans: int = 0,
+    keep_all_versions: bool = False,
+    exclude_span_numbers: Sequence[int] = (),
+):
   """Returns artifacts with spans in a sequential rolling range.
 
   Sequential rolling range is a sliding window on the oldest consecutive spans.
@@ -478,7 +491,8 @@ def sequential_rolling_range(artifacts,
       first_span=start_span_number if start_span_number is not None else -1,
       skip_last_n=skip_num_recent_spans,
       keep_all_versions=keep_all_versions,
-      denylist=exclude_span_numbers)
+      denylist=exclude_span_numbers,
+  )
 
   return ops.SlidingWindow(resolved_artifacts, window_size=num_spans)
 
@@ -605,3 +619,91 @@ def filter_custom_property_equal(
       property_value=value,
       is_custom_property=True,
   )
+
+
+@resolver_function.resolver_function
+def _slice(artifacts, **kwargs):
+  # It's important to not pass the None value which cannot be serialized to IR.
+  kwargs = {k: v for k, v in kwargs.items() if v is not None}
+  return ops.Slice(artifacts, **kwargs)
+
+
+def pick(channel: channel_types.BaseChannel, i: int, /):
+  """Pick an i'th artifact from channel.
+
+  Like in python, negative indexing is allowed.
+
+  If the index is out of range, in synchronous pipeline it raises an error and
+  the component would not get executed. In asynchronous pipeline, it will wait
+  until the input length is sufficient to handle the index.
+
+  Usage:
+
+  ```python
+  # In asynchronous pipeline
+  with ForEach(example_gen.outputs['examples']) as each_example:
+    statistics_gen = StatisticsGen(examples=each_example)
+
+  stats = statistics_gen.outputs['statistics']
+  validator = DistributionValidator(
+      base_statistics=pick(stats, 0),
+      statistics=pick(stats, 1),
+  )
+  ```
+
+  Args:
+    channel: A channel instance (e.g. `my_component.outputs['x']`).
+    i: An index to pick. Can be negative.
+
+  Returns:
+    A channel that represents `inputs[i]`.
+  """
+  return _slice(channel, start=i, stop=(i + 1) or None, min_count=1)
+
+
+def slice(  # pylint: disable=redefined-builtin
+    channel: channel_types.BaseChannel,
+    /,
+    start: Optional[int] = None,
+    stop: Optional[int] = None,
+    min_count: Optional[int] = None,
+):
+  """Pick slice(start, stop) of the input artifacts.
+
+  Like in python, negative indexing is allowed.
+
+  If the range is larger than the number of artifacts in the channel, then like
+  in python slice, the result would be truncated to the available values. You
+  can use min_count to ensure the range has enough values. In synchronous
+  pipeline, it is an error if the min_count is not met. In asynchronous
+  pipeline, it will wait until min_count is met.
+
+  None value in the start or stop index means beginning and the end of the range
+  respectively. For example, `pick_range(x, start=-2, end=None)` means `x[-2:]`.
+
+  Usage:
+
+  ```python
+  # In asynchronous pipeline
+  last_week_before_yesterday = pick_range(
+      example_gen.outputs['examples'], start=-7, stop=-1
+  )
+  with ForEach(last_week_before_yesterday) as each_example:
+    evaluator = Evaluator(example=each_example, model=latest_model)
+  ```
+
+  Args:
+    channel: A channel instance (e.g. `my_component.outputs['x']`).
+    start: A start index (inclusive) of the range. Can be negative.
+    stop: A stop index (exclusive) of the range. Can be negative.
+    min_count: A minimum number of values the range should contain. When
+      specified, synchronous (DAG) pipeline will fail if the min_count is not
+      met. Asynchronous (continuous) pipeine will wait until min_count is met.
+
+  Returns:
+    A channel that represents `inputs[start:stop]` slice range.
+  """
+  # Slice(start=None, stop=None) is a no-op and we can return the input as is.
+  if start is None and stop is None:
+    return channel
+  return _slice(channel, start=start, stop=stop, min_count=min_count)

@@ -23,6 +23,7 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration import pipeline
 from tfx.orchestration.portable import inputs_utils
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.types import channel_utils
 from tfx.types import resolved_channel
 
@@ -494,6 +495,52 @@ class CannedResolverFunctionsTest(
     self.assertEqual(
         actual_artifacts[0].custom_properties['purity'].int_value, 2
     )
+
+  def testPickResolverFn_E2E(self):
+    spans = [0, 1, 2]
+    versions = [0, 0, 0]
+    self._insert_artifacts_into_mlmd(spans, versions)
+    xs = channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact)
+
+    for i in range(-3, 3):
+      with self.subTest(i=i):
+        x = canned_resolver_functions.pick(xs, i)
+        pipeline_node = test_utils.compile_inputs({'x': x})
+        resolved = inputs_utils.resolve_input_artifacts(
+            pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+        )
+        self.assertLen(resolved, 1)
+        self.assertEqual(resolved[0]['x'][0].span, spans[i])
+
+  def testPickResolverFn_OutOfIndex_E2E(self):
+    self._insert_artifacts_into_mlmd([0], [0])
+    xs = channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact)
+    out_of_index = canned_resolver_functions.pick(xs, 999)
+    pipeline_node = test_utils.compile_inputs({'x': out_of_index})
+
+    with self.assertRaises(exceptions.InsufficientInputError):
+      inputs_utils.resolve_input_artifacts(
+          pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+      )
+
+  def testSliceResolverFn_E2E(self):
+    spans = [0, 1, 2]
+    versions = [0, 0, 0]
+    self._insert_artifacts_into_mlmd(spans, versions)
+    xs = channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact)
+
+    for start in (-4, -3, -2, -1, 0, 1, 2, 3, 4, None):
+      for stop in (-4, -3, -2, -1, 0, 1, 2, 3, 4, None):
+        with self.subTest(start=start, stop=stop):
+          x = canned_resolver_functions.slice(xs, start=start, stop=stop)
+          pipeline_node = test_utils.compile_inputs({'x': x})
+          resolved = inputs_utils.resolve_input_artifacts(
+              pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+          )
+          self.assertLen(resolved, 1)
+          self.assertEqual(
+              [x.span for x in resolved[0]['x']], spans[start:stop]
+          )
 
   def testResolverFnContext(self):
     channel = canned_resolver_functions.latest_created(
