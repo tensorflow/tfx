@@ -640,14 +640,17 @@ def pick(channel: channel_types.BaseChannel, i: int, /):
   Usage:
 
   ```python
-  # In asynchronous pipeline
+  # In ASYNC pipeline:
   with ForEach(example_gen.outputs['examples']) as each_example:
     statistics_gen = StatisticsGen(examples=each_example)
 
-  stats = statistics_gen.outputs['statistics']
+  latest_statistics_pair = latest_created(
+      statistics_gen.outputs['statistics'], n=2
+  )
   validator = DistributionValidator(
-      base_statistics=pick(stats, 0),
-      statistics=pick(stats, 1),
+      baseline_statistics=pick(latest_statistics_pair, 0),
+      statistics=pick(latest_statistics_pair, 1),
+      ...
   )
   ```
 
@@ -707,3 +710,45 @@ def slice(  # pylint: disable=redefined-builtin
   if start is None and stop is None:
     return channel
   return _slice(channel, start=start, stop=stop, min_count=min_count)
+
+
+@resolver_function.resolver_function(unwrap_dict_key='window')
+def sliding_window(channel: channel_types.BaseChannel, window_size: int):
+  """Returns artifacts with a sliding window applied.
+
+  For example, for a channel with artifacts [A, B, C, D] and window_size = 2,
+  [[A, B], [B, C], [C, D]] will be returned. Note, the stride is set to 1
+  by default.
+
+  For Examples artifacts, sequential_rolling_range() should be used instead.
+
+  Because sliding_window() returns multiple windows, it must be used
+  together with ForEach.
+
+  Usage:
+
+  ```python
+  # In ASYNC pipeline:
+  with ForEach(
+      sliding_window(statistics_gen.outputs['statistics'], window=2)
+  ) as statistics_pair:
+    distribution_validator = DistributionValidator(
+        baseline_statistics=pick(statistics_pair, 0),
+        statistics=pick(statistics_pair, 1),
+        ...
+    )
+  ```
+
+  Args:
+    channel: A channel instance (e.g. `my_component.outputs['x']`).
+    window_size: The length of the sliding window, must be > 0.
+
+  Returns:
+    Artifacts with a sliding window applied.
+  """
+  return ops.SlidingWindow(channel, window_size=window_size)
+
+
+@sliding_window.output_type_inferrer
+def _infer_sliding_window_type(channel: channel_types.BaseChannel, **kwargs):  # pylint: disable=unused-argument
+  return {'window': channel.type}
