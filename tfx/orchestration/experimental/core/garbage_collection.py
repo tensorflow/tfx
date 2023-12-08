@@ -35,11 +35,6 @@ _KeepOrder = (garbage_collection_policy_pb2.GarbageCollectionPolicy.
               KeepPropertyValueGroups.Grouping.KeepOrder)
 
 
-# TODO(kmonte): Change to ExceptionGroup once python 3.11 becomes available.
-class ArtifactCleanupError(Exception):
-  """Raised when garbage collection fails."""
-
-
 def _get_output_artifacts_for_node(
     mlmd_handle: metadata.Metadata,
     node_uid: task_lib.NodeUid) -> List[metadata_store_pb2.Artifact]:
