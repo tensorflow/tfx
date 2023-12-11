@@ -43,6 +43,9 @@ from tfx.dsl.compiler.testdata import optional_and_allow_empty_pipeline
 from tfx.dsl.compiler.testdata import pipeline_root_placeholder
 from tfx.dsl.compiler.testdata import pipeline_with_annotations
 from tfx.dsl.compiler.testdata import resolver_function_pipeline
+from tfx.dsl.components.common import resolver
+from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
+from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact
 from tfx.types import channel
@@ -230,6 +233,22 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     expected_pb = self._get_pipeline_ir(
         "conditional_pipeline_input_v2_ir.pbtxt")
     self.assertProtoEquals(expected_pb, result_holder[0])
+
+  def testCompile_ResolverNodeInAsyncPipeline_ThrowsError(self):
+    resolver_node = resolver.Resolver(
+        strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy
+    )
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name="fake_name",
+        execution_mode=pipeline.ExecutionMode.ASYNC,
+        components=[resolver_node],
+    )
+    dsl_compiler = compiler.Compiler()
+
+    with self.assertRaisesRegex(
+        ValueError, "Resolver nodes can not be used in ASYNC mode."
+    ):
+      dsl_compiler.compile(test_pipeline)
 
 
 if __name__ == "__main__":

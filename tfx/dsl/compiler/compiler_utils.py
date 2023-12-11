@@ -161,6 +161,11 @@ def has_task_dependency(tfx_pipeline: pipeline.Pipeline) -> bool:
              for node in tfx_pipeline.components)
 
 
+def has_resolver_node(tfx_pipeline: pipeline.Pipeline) -> bool:
+  """Checks if a pipeline contains Resolver node (not resolver function)."""
+  return any(is_resolver(node) for node in tfx_pipeline.components)
+
+
 def pipeline_begin_node_type_name(p: pipeline.Pipeline) -> str:
   """Builds the type name of a Pipeline Begin node."""
   return f"{p.type}{constants.PIPELINE_BEGIN_NODE_SUFFIX}"

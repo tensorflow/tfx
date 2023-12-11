@@ -101,6 +101,16 @@ class CompilerUtilsTest(tf.test.TestCase):
     example_gen = CsvExampleGen(input_base="data_path")
     self.assertFalse(compiler_utils.is_resolver(example_gen))
 
+  def testHasResolverNode(self):
+    resolver_node = resolver.Resolver(
+        strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy
+    )
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name="fake_name",
+        components=[resolver_node],
+    )
+    self.assertTrue(compiler_utils.has_resolver_node(test_pipeline))
+
   def testIsImporter(self):
     impt = importer.Importer(
         source_uri="uri/to/schema", artifact_type=standard_artifacts.Schema)
