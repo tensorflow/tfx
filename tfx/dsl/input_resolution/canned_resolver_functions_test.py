@@ -523,6 +523,33 @@ class CannedResolverFunctionsTest(
           pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
       )
 
+  def testSlidingWindowResolverFn_E2E(self):
+    mlmd_artifacts = self._insert_artifacts_into_mlmd([0, 1, 2], [0, 0, 0])
+
+    with for_each.ForEach(
+        canned_resolver_functions.sliding_window(
+            channel_utils.artifact_query(
+                artifact_type=test_utils.DummyArtifact
+            ),
+            window_size=2,
+        )
+    ) as artifact_pair:
+      inputs = {'x': artifact_pair}
+    pipeline_node = test_utils.compile_inputs(inputs)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
+    self.assertLen(resolved, 2)
+
+    expected_spans = [[0, 1], [1, 2]]
+    for i, artifacts in enumerate(resolved):
+      actual_artifacts = [r.mlmd_artifact for r in artifacts['x']]
+      expected_artifacts = [mlmd_artifacts[j] for j in expected_spans[i]]
+      self.assertResolvedAndMLMDArtifactListEqual(
+          actual_artifacts, expected_artifacts
+      )
+
   def testSliceResolverFn_E2E(self):
     spans = [0, 1, 2]
     versions = [0, 0, 0]
