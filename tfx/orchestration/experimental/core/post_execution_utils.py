@@ -34,6 +34,7 @@ from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import status as status_lib
 from tfx.utils import typing_utils
 
+from google.protobuf import text_format
 from ml_metadata import proto
 
 
@@ -97,10 +98,12 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
                                                        task.node_uid,
                                                        task.get_node())
     if constants.COMPONENT_GENERATED_ALERTS_KEY in execution.custom_properties:
-      alerts_proto = component_generated_alert_pb2.ComponentGeneratedAlertList()
-      execution.custom_properties[
-          constants.COMPONENT_GENERATED_ALERTS_KEY
-      ].proto_value.Unpack(alerts_proto)
+      alerts_proto = text_format.Parse(
+          execution.custom_properties[
+              constants.COMPONENT_GENERATED_ALERTS_KEY
+          ].string_value,
+          component_generated_alert_pb2.ComponentGeneratedAlertList(),
+      )
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline=task.pipeline)
 
       for alert in alerts_proto.component_generated_alert_list:

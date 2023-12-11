@@ -36,6 +36,7 @@ from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
 from tfx.utils import test_case_utils as tu
 
+from google.protobuf import text_format
 from ml_metadata import proto
 
 
@@ -145,9 +146,11 @@ class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
             alert_body='test_alert_body',
         )
     )
+    component_generated_alerts_str = text_format.MessageToString(
+        component_generated_alerts)
     executor_output.execution_properties[
         constants.COMPONENT_GENERATED_ALERTS_KEY
-    ].proto_value.Pack(component_generated_alerts)
+    ].string_value = component_generated_alerts_str
 
     [execution] = self.mlmd_handle.store.get_executions()
 
