@@ -183,48 +183,27 @@ class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
 
   def testGetUpdatedExecutorOutput(self):
     execution_info = data_types.ExecutionInfo()
-    artifacts = [_MyArtifact() for _ in range(9)]
+    artifacts = [_MyArtifact() for _ in range(5)]
     execution_info.output_dict = {
         'input': [artifacts[0]],
     }
     execution_info.output_dict = {
-        'output1': [
-            artifacts[1]
-        ],  # Not in the original executor_output, not modified from the hook_fn
-        'output2': [
-            artifacts[2]
-        ],  # Not in the original executor_output, modified from the hook_fn
-        'output3': [
-            artifacts[3]
-        ],  # Is in the original executor_output, not modified from the hook_fn
-        'output4': [
-            artifacts[4]
-        ],  # Is in the original executor_output, modified from the hook_fn
+        'output1': [artifacts[1]],
+        'output2': [artifacts[2]],
     }
-    executor_output = execution_result_pb2.ExecutorOutput(
-        output_artifacts={
-            'output3': execution_result_pb2.ExecutorOutput.ArtifactList(
-                artifacts=[artifacts[5].mlmd_artifact]
-            ),
-            'output4': execution_result_pb2.ExecutorOutput.ArtifactList(
-                artifacts=[artifacts[6].mlmd_artifact]
-            ),
-        },
-    )
     updated_hook_fn_kwargs = {
-        'output2': artifacts[7],
-        'output4': [artifacts[8]],
+        'output1': artifacts[3],
+        'output2': [artifacts[4]],
     }
     new_executor_output = (
         python_execution_binary_utils.get_updated_executor_output(
-            execution_info, executor_output, updated_hook_fn_kwargs
+            execution_info, updated_hook_fn_kwargs
         )
     )
     self._assert_artifact_map_equals(
         {
-            'output2': [artifacts[7]],
-            'output3': [artifacts[5]],
-            'output4': [artifacts[8]],
+            'output1': [artifacts[3]],
+            'output2': [artifacts[4]],
         },
         new_executor_output.output_artifacts,
     )

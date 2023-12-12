@@ -13,7 +13,8 @@
 # limitations under the License.
 """Utils for TFX component types. Intended for internal usage only."""
 
-from typing import Any, Callable, Mapping, Optional, Type
+import inspect
+from typing import Any, Callable, Mapping, Optional, Type, Union
 
 from tfx import types
 from tfx.dsl.component.experimental import utils
@@ -23,6 +24,7 @@ from tfx.proto.orchestration import executable_spec_pb2
 from tfx.types import component_spec
 from tfx.types.system_executions import SystemExecution
 from tfx.utils import name_utils
+from tfx.utils import pure_typing_utils
 
 
 def _convert_function_to_python_executable_spec(
@@ -38,6 +40,71 @@ def _convert_function_to_python_executable_spec(
   return executable_spec_pb2.PythonClassExecutableSpec(
       class_path=function_path
   )
+
+
+def _type_check_execution_function_args(
+    spec: component_spec.ComponentSpec,
+    execution_hook_fn: Optional[Callable[..., Any]] = None,
+) -> None:
+  """Validates execution hook function args with the type check."""
+  if execution_hook_fn is None:
+    return
+
+  channel_parameters = {}
+  for parameters in (spec.INPUTS, spec.OUTPUTS):
+    channel_parameters.update(parameters)
+  signature = inspect.signature(execution_hook_fn)
+
+  optional_type_annotations = lambda inner_type: [
+      Optional[inner_type],
+      Union[inner_type, None],
+  ]
+  container_type_annotations = lambda inner_type: [
+      origin[inner_type] for origin in pure_typing_utils.CONTAINER_ORIGINS
+  ]
+
+  # Execution function type check.
+  for param_name in signature.parameters:
+    param_type = signature.parameters[param_name].annotation
+    if param_type is inspect.Signature.empty:
+      raise TypeError(
+          f'Execution hook function arg "{param_name}" should be annotated.'
+      )
+
+    if param_name in channel_parameters:
+      channel = channel_parameters[param_name]
+
+      allowed_param_types = [
+          *container_type_annotations(channel.type),
+          *optional_type_annotations(channel.type),
+      ]
+      if not channel.optional:
+        allowed_param_types.append(channel.type)
+      # TODO(wssong): We should care for AsyncOutputArtifact type annotation for
+      # channels with is_async=True (go/tflex-list-output).
+
+      if param_type not in allowed_param_types:
+        raise TypeError(
+            f'Execution hook function arg "{param_name}: {param_type}" type is'
+            f' not compatible with the component spec "{channel}".'
+        )
+    elif param_name in spec.PARAMETERS:
+      exec_prop = spec.PARAMETERS[param_name]
+
+      allowed_param_types = optional_type_annotations(exec_prop.type)
+      if not exec_prop.optional:
+        allowed_param_types.append(exec_prop.type)
+
+      if param_type not in allowed_param_types:
+        raise TypeError(
+            f'Execution hook function arg "{param_name}: {param_type}" type is'
+            f' not compatible with the component spec "{exec_prop}".'
+        )
+    else:
+      raise AttributeError(
+          f'Execution hook function arg "{param_name}: {param_type}" is not'
+          ' provided from the component spec.'
+      )
 
 
 def create_tfx_component_class(
@@ -73,6 +140,8 @@ def create_tfx_component_class(
       ),
   )
 
+  for fn in (pre_execution, post_execution):
+    _type_check_execution_function_args(tfx_component_spec_class, fn)
   try:
     pre_execution_spec, post_execution_spec = [
         _convert_function_to_python_executable_spec(fn)
