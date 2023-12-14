@@ -14,15 +14,13 @@
 r"""Shared IR serialization logic used by TFleX python executor binary."""
 
 import base64
-import copy
-from typing import Any, List, Mapping, Sequence, Union
+from typing import Union
 
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_invocation_pb2
 from tfx.proto.orchestration import metadata_pb2
-from tfx.types import artifact
 
 
 def deserialize_execution_info(
@@ -87,22 +85,3 @@ def serialize_execution_info(execution_info: data_types.ExecutionInfo) -> str:
   execution_info_proto = execution_info.to_proto()
   return base64.b64encode(
       execution_info_proto.SerializeToString()).decode('ascii')
-
-
-def _ensure_artifact_list(
-    value: Union[artifact.Artifact, Sequence[artifact.Artifact]]
-) -> List[artifact.Artifact]:
-  """Ensures value is a list of artifacts."""
-  return [value] if isinstance(value, artifact.Artifact) else list(value)
-
-
-def patch_execution_info(
-    execution_info: data_types.ExecutionInfo,
-    hook_fn_kwargs: Mapping[str, Any],
-) -> data_types.ExecutionInfo:
-  """Gets updated execution invocation by running a pre-execution hook function."""
-  result = copy.deepcopy(execution_info)
-  for key, value in hook_fn_kwargs.items():
-    if key in result.output_dict:
-      result.output_dict[key] = _ensure_artifact_list(value)
-  return result

@@ -158,29 +158,6 @@ class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
 
     self.assertProtoEquals(rehydrated_connection_config, connection_config)
 
-  def testPatchExecutionInfo(self):
-    execution_info = data_types.ExecutionInfo()
-    artifacts = [_MyArtifact() for _ in range(4)]
-    execution_info.input_dict = {
-        'input0': [artifacts[0]],
-    }
-    execution_info.output_dict = {
-        'output0': [artifacts[1]],
-        'output1': [artifacts[2]],
-    }
-    updated_hook_fn_kwargs = {
-        'output1': [artifacts[3]],
-    }
-    new_execution_info = (
-        python_execution_binary_utils.patch_execution_info(
-            execution_info, updated_hook_fn_kwargs
-        )
-    )
-    self._assert_artifact_map_equals(
-        {'output0': [artifacts[1]], 'output1': [artifacts[3]]},
-        new_execution_info.output_dict,
-    )
-
 
 if __name__ == '__main__':
   tf.test.main()
