@@ -17,23 +17,22 @@ import base64
 import copy
 from typing import Any, List, Mapping, Sequence, Union
 
-from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_invocation_pb2
-from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import metadata_pb2
 from tfx.types import artifact
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 def deserialize_execution_info(
     execution_info_b64: str) -> data_types.ExecutionInfo:
   """De-serializes the ExecutionInfo class from a url safe base64 encoded binary string."""
-  execution_info_proto = execution_invocation_pb2.ExecutionInvocation.FromString(
-      base64.urlsafe_b64decode(execution_info_b64))
+  execution_info_proto = (
+      execution_invocation_pb2.ExecutionInvocation.FromString(
+          base64.urlsafe_b64decode(execution_info_b64)
+      )
+  )
   return data_types.ExecutionInfo.from_proto(execution_info_proto)
 
 
@@ -66,7 +65,10 @@ def serialize_mlmd_connection_config(
   mlmd_wrapper = metadata_pb2.MLMDConnectionConfig()
   for name, descriptor in (
       metadata_pb2.MLMDConnectionConfig.DESCRIPTOR.fields_by_name.items()):
-    if descriptor.message_type.full_name == connection_config.DESCRIPTOR.full_name:
+    if (
+        descriptor.message_type.full_name
+        == connection_config.DESCRIPTOR.full_name
+    ):
       getattr(mlmd_wrapper, name).CopyFrom(connection_config)
       break
   return base64.b64encode(mlmd_wrapper.SerializeToString()).decode('ascii')
@@ -87,56 +89,20 @@ def serialize_execution_info(execution_info: data_types.ExecutionInfo) -> str:
       execution_info_proto.SerializeToString()).decode('ascii')
 
 
-def ensure_artifact_list(
+def _ensure_artifact_list(
     value: Union[artifact.Artifact, Sequence[artifact.Artifact]]
 ) -> List[artifact.Artifact]:
   """Ensures value is a list of artifacts."""
   return [value] if isinstance(value, artifact.Artifact) else list(value)
 
 
-def convert_to_mlmd_artifact_list(
-    value: Union[artifact.Artifact, Sequence[artifact.Artifact]]
-) -> List[metadata_store_pb2.Artifact]:
-  """Convert tfx.Artifacts to MLMD Artifacts."""
-  return (
-      [value.mlmd_artifact]
-      if isinstance(value, artifact.Artifact)
-      else [v.mlmd_artifact for v in value]
-  )
-
-
-def get_updated_execution_invocation(
-    original_execution_invocation: data_types.ExecutionInfo,
+def patch_execution_info(
+    execution_info: data_types.ExecutionInfo,
     hook_fn_kwargs: Mapping[str, Any],
 ) -> data_types.ExecutionInfo:
   """Gets updated execution invocation by running a pre-execution hook function."""
-  execution_invocation = copy.deepcopy(original_execution_invocation)
+  result = copy.deepcopy(execution_info)
   for key, value in hook_fn_kwargs.items():
-    if key in execution_invocation.output_dict:
-      execution_invocation.output_dict[key] = ensure_artifact_list(value)
-  return execution_invocation
-
-
-def get_updated_executor_output(
-    original_execution_invocation: data_types.ExecutionInfo,
-    original_execution_output: execution_result_pb2.ExecutorOutput,
-    hook_fn_kwargs: Mapping[str, Any],
-) -> execution_result_pb2.ExecutorOutput:
-  """Gets updated executor output by running a post-execution hook function."""
-  result = execution_result_pb2.ExecutorOutput()
-  result.CopyFrom(original_execution_output)
-  output_artifacts = data_types_utils.unpack_executor_output_artifacts(
-      original_execution_output.output_artifacts
-  )
-  for key, value in hook_fn_kwargs.items():
-    if (
-        key in original_execution_invocation.output_dict
-        or key in output_artifacts
-    ):
-      output_artifacts[key] = convert_to_mlmd_artifact_list(value)
-
-  result.output_artifacts.clear()
-  for key, value in output_artifacts.items():
-    result.output_artifacts[key].artifacts.extend(value)
-
+    if key in result.output_dict:
+      result.output_dict[key] = _ensure_artifact_list(value)
   return result
