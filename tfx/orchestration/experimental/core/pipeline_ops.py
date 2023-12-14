@@ -1162,12 +1162,19 @@ def _wait_for_predicate(
   )
 
 
+def filter_by_pipeline_uid(
+    pipeline_uid: task_lib.PipelineUid,
+) -> Callable[[pstate.PipelineState], bool]:
+  """Returns filter_fn for orchestrate for the given pipeline_uid."""
+  return lambda p: p.pipeline_uid == pipeline_uid
+
+
 @_pipeline_op()
 def orchestrate(
     mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     task_queue: tq.TaskQueue,
     service_job_manager: service_jobs.ServiceJobManager,
-    pipeline_uid: Optional[task_lib.PipelineUid] = None,
+    filter_fn: Optional[Callable[[pstate.PipelineState], bool]] = None,
 ) -> bool:
   """Performs a single iteration of the orchestration loop.
 
@@ -1180,10 +1187,9 @@ def orchestrate(
     task_queue: A `TaskQueue` instance into which any tasks will be enqueued.
     service_job_manager: A `ServiceJobManager` instance for handling service
       jobs.
-    pipeline_uid: Pipeline Uid of a specific pipeline run to be orchestrated.
-      The pipeline Uid consists of pipeline name and run id. If provided, it
-      will only orchestrate the given pipeline run. If not, it will orchestrate
-      all active pipeline runs in MLMD.
+    filter_fn: Callable to filter pipelines to be orchestrated. Only active
+      pipeline runs for which the filter_fn returns True will be orchestrated.
+      If not provided, all active pipeline runs will be orchestrated.
 
   Returns:
     Whether there are any active pipelines to run.
@@ -1191,21 +1197,13 @@ def orchestrate(
   Raises:
     status_lib.StatusNotOkError: If error generating tasks.
   """
-  if pipeline_uid is None:
-    pipeline_states = pstate.PipelineState.load_all_active(
-        mlmd_connection_manager.primary_mlmd_handle
-    )
-  else:
-    pipeline_states = []
-    try:
-      pipeline_state = pstate.PipelineState.load(
-          mlmd_connection_manager.primary_mlmd_handle,
-          pipeline_uid=pipeline_uid,
-      )
-      pipeline_states.append(pipeline_state)
-    except status_lib.StatusNotOkError as e:
-      if e.code != status_lib.Code.NOT_FOUND:
-        raise e
+  if filter_fn is None:
+    filter_fn = lambda _: True
+
+  all_pipeline_states = pstate.PipelineState.load_all_active(
+      mlmd_connection_manager.primary_mlmd_handle
+  )
+  pipeline_states = [s for s in all_pipeline_states if filter_fn(s)]
   if not pipeline_states:
     logging.info('No active pipelines to run.')
     return False
