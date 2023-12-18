@@ -108,7 +108,6 @@ def mark_pipeline(
   """
   nodes = node_proto_view.get_view_for_all_in(pipeline)
   _ensure_sync_pipeline(pipeline)
-  _ensure_no_subpipeline_nodes(nodes)
   _ensure_no_partial_run_marks(nodes)
   _ensure_not_full_run(from_nodes, to_nodes)
   _ensure_no_missing_nodes(nodes, from_nodes, to_nodes)
@@ -226,28 +225,6 @@ def _ensure_sync_pipeline(pipeline: pipeline_pb2.Pipeline):
         'Pipeline filtering is only supported for SYNC execution modes; '
         'found pipeline with execution mode: '
         f'{pipeline_pb2.Pipeline.ExecutionMode.Name(pipeline.execution_mode)}')
-
-
-def _ensure_no_subpipeline_nodes(
-    nodes: Sequence[node_proto_view.NodeProtoView],
-):
-  """Raises ValueError if the pipeline contains a sub-pipeline.
-
-  If the pipeline comes from the compiler, it should already be
-  flattened. This is just in case the IR proto was created in another way.
-
-  Args:
-    nodes: The nodes of the pipeline.
-
-  Raises:
-    ValueError: If the pipeline contains a sub-pipeline.
-  """
-  for node in nodes:
-    if isinstance(node, node_proto_view.ComposablePipelineProtoView):
-      raise ValueError(
-          'Pipeline filtering not supported for pipelines with sub-pipelines. '
-          f'sub-pipeline found: {node.node_info.id}'
-      )
 
 
 def _ensure_not_full_run(from_nodes: Optional[Collection[str]] = None,
@@ -536,6 +513,9 @@ def _reuse_pipeline_run_artifacts(
       for node in node_proto_view.get_view_for_all_in(marked_pipeline)
       if _should_attempt_to_reuse_artifact(node.execution_options)
   ]
+  logging.info(
+      'Reusing nodes: %s', [n.node_info.id for n in reuse_nodes]
+  )
   with concurrent.futures.ThreadPoolExecutor() as executor:
     futures = {}
     for node in reuse_nodes:
@@ -544,7 +524,7 @@ def _reuse_pipeline_run_artifacts(
           node,
           executor.submit(
               artifact_recycler.reuse_node_outputs,
-              node_id=node_id,
+              node=node
           ),
       )
 
@@ -628,6 +608,7 @@ class _ArtifactRecycler:
           if ctx.type_id == pipeline_run_type_id
       }
     else:
+      logging.info('No child contexts found. Falling back to previous logic.')
       # The parent-child relationship between pipeline and pipeline run contexts
       # is set up after the partial run feature is available to users. For
       # existing pipelines, we need to fall back to the previous logic.
@@ -637,7 +618,6 @@ class _ArtifactRecycler:
               constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
           )
       }
-
     if base_run_id:
       if base_run_id in pipeline_run_contexts:
         return pipeline_run_contexts[base_run_id]
@@ -659,22 +639,34 @@ class _ArtifactRecycler:
     )
     return sorted_run_contexts[-1]
 
-  def _get_node_context(self, node_id: str) -> metadata_store_pb2.Context:
-    node_context_name = compiler_utils.node_context_name(
-        self._pipeline_name, node_id
-    )
-    node_context = self._node_context_by_name.get(node_context_name)
+  def _get_node_context(
+      self, node: node_proto_view.NodeProtoView
+  ) -> metadata_store_pb2.Context:
+    """Returns node context for node."""
+    node_id = node.node_info.id
+    # Return the end node context if we want to reuse a subpipeline. We do this
+    # because nodes dependent on a subpipeline use the subpipeline's end node
+    # to get their aritfacts from, so we reuse those artifacts.
+    if isinstance(node, node_proto_view.ComposablePipelineProtoView):
+      context_name = compiler_utils.end_node_context_name_from_subpipeline_id(
+          node_id
+      )
+    else:
+      context_name = compiler_utils.node_context_name(
+          self._pipeline_name, node_id
+      )
+    node_context = self._node_context_by_name.get(context_name)
     if node_context is None:
-      raise LookupError(f'node context {node_context_name} not found in MLMD.')
+      raise LookupError(f'node context {context_name} not found in MLMD.')
     return node_context
 
   def _get_successful_executions(
-      self, node_id: str
+      self, node: node_proto_view.NodeProtoView
   ) -> List[metadata_store_pb2.Execution]:
     """Gets all successful Executions of a given node in a given pipeline run.
 
     Args:
-      node_id: The node whose Executions to query.
+      node: The node whose Executions to query.
 
     Returns:
       All successful executions for that node at that run_id.
@@ -682,7 +674,8 @@ class _ArtifactRecycler:
     Raises:
       LookupError: If no successful Execution was found.
     """
-    node_context = self._get_node_context(node_id)
+    node_context = self._get_node_context(node)
+    node_id = node.node_info.id
     if not self._base_run_context:
       raise LookupError(
           f'No previous run is found for {node_id}. '
@@ -710,14 +703,14 @@ class _ArtifactRecycler:
   def _cache_and_publish(
       self,
       existing_executions: List[metadata_store_pb2.Execution],
-      node_id: str,
+      node: node_proto_view.NodeProtoView,
   ):
     """Creates and publishes cache executions."""
     if not existing_executions:
       return
 
     # Check if there are any previous attempts to cache and publish.
-    node_context = self._get_node_context(node_id)
+    node_context = self._get_node_context(node)
     cached_execution_contexts = [
         self._pipeline_context,
         node_context,
@@ -728,11 +721,10 @@ class _ArtifactRecycler:
             self._mlmd, contexts=[node_context, self._new_pipeline_run_context]
         )
     )
-
     if not prev_cache_executions:
-      new_executions = []
+      new_cached_executions = []
       for e in existing_executions:
-        new_executions.append(
+        new_cached_executions.append(
             execution_lib.prepare_execution(
                 metadata_handle=self._mlmd,
                 execution_type=metadata_store_pb2.ExecutionType(id=e.type_id),
@@ -741,15 +733,17 @@ class _ArtifactRecycler:
             )
         )
     else:
-      new_executions = [
+      new_cached_executions = [
           e
           for e in prev_cache_executions
           if e.last_known_state != metadata_store_pb2.Execution.CACHED
       ]
-
-    if not new_executions:
+    logging.info(
+        'New cached executions to be published: %s', new_cached_executions
+    )
+    if not new_cached_executions:
       return
-    if len(new_executions) != len(existing_executions):
+    if len(new_cached_executions) != len(existing_executions):
       raise RuntimeError(
           'The number of new executions is not the same as the number of'
           ' existing executions.'
@@ -762,7 +756,7 @@ class _ArtifactRecycler:
     execution_publish_utils.publish_cached_executions(
         self._mlmd,
         contexts=cached_execution_contexts,
-        executions=new_executions,
+        executions=new_cached_executions,
         output_artifacts_maps=output_artifacts_maps,
     )
 
@@ -782,7 +776,7 @@ class _ArtifactRecycler:
         child_id=self._new_pipeline_run_context.id,
     )
 
-  def reuse_node_outputs(self, node_id: str):
+  def reuse_node_outputs(self, node: node_proto_view.NodeProtoView):
     """Makes the outputs of `node_id` available to new_pipeline_run_id."""
-    previous_executions = self._get_successful_executions(node_id)
-    self._cache_and_publish(previous_executions, node_id)
+    previous_executions = self._get_successful_executions(node)
+    self._cache_and_publish(previous_executions, node)

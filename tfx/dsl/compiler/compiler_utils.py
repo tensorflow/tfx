@@ -191,6 +191,12 @@ def pipeline_end_node_id_from_pipeline_id(pipeline_id: str) -> str:
   return f"{pipeline_id}{constants.PIPELINE_END_NODE_SUFFIX}"
 
 
+def end_node_context_name_from_subpipeline_id(subpipeline_id: str) -> str:
+  """Builds the end_node context name of a composable pipeline."""
+  end_node_id = pipeline_end_node_id_from_pipeline_id(subpipeline_id)
+  return node_context_name(subpipeline_id, end_node_id)
+
+
 def node_context_name(pipeline_context_name: str, node_id: str):
   """Defines the name used to reference a node context in MLMD."""
   return f"{pipeline_context_name}.{node_id}"
