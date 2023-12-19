@@ -5,6 +5,8 @@
 *  Dropped python 3.8 support.
 *  Extend GetPipelineRunExecutions, GetPipelineRunArtifacts APIs to support
    filtering by execution create_time, type.
+*  ExampleValidator now supports anomalies alert generation. Users can use their
+   own toolkits to extract and process the alerts from the execution parameter.
 
 ## Breaking Changes
 
