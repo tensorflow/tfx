@@ -93,26 +93,28 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
       nodes_requiring_snapshot: Set[str],
       nodes_to_skip: Set[str],
       nodes_required_to_reuse: Set[str],
-      nodes_optional_to_reuse: Optional[Set[str]] = None):
+      nodes_optional_to_reuse: Optional[Set[str]] = None,
+  ):
     for pipeline_or_node in pipeline.nodes:
-      match (which := pipeline_or_node.WhichOneof('node')):
-        case 'pipeline_node':
-          node = pipeline_or_node
-        case 'sub_pipeline':
-          # Create a "node view" for subpipelines.
-          node = pipeline_pb2.Pipeline.PipelineOrNode()
-          node.pipeline_node.node_info.id = (
-              pipeline_or_node.sub_pipeline.pipeline_info.id
-          )
-          node.pipeline_node.execution_options.CopyFrom(
-              pipeline_or_node.sub_pipeline.nodes[
-                  0
-              ].pipeline_node.execution_options
-          )
-        case _:
-          raise ValueError(
-              f'node_or_node must be PipelineNode or Pipeline, but got {which}'
-          )
+      node_type = pipeline_or_node.WhichOneof('node')
+      if node_type == 'pipeline_node':
+        node = pipeline_or_node
+      elif node_type == 'sub_pipeline':
+        # Create a "node view" for subpipelines.
+        node = pipeline_pb2.Pipeline.PipelineOrNode()
+        node.pipeline_node.node_info.id = (
+            pipeline_or_node.sub_pipeline.pipeline_info.id
+        )
+        node.pipeline_node.execution_options.CopyFrom(
+            pipeline_or_node.sub_pipeline.nodes[
+                0
+            ].pipeline_node.execution_options
+        )
+      else:
+        raise ValueError(
+            'pipeline_or_node must be PipelineNode or Pipeline, but got'
+            f' {node_type} instead.'
+        )
       with self.subTest(f'For node {node.pipeline_node.node_info.id}'):
         try:
           node_id = node.pipeline_node.node_info.id
