@@ -5,6 +5,8 @@
 *  Dropped python 3.8 support.
 *  Extend GetPipelineRunExecutions, GetPipelineRunArtifacts APIs to support
    filtering by execution create_time, type.
+*  `ph.create_proto()` allows constructing proto-valued placeholders, e.g. for
+   larger config protos fed to a component.
 
 ## Breaking Changes
 

@@ -15,6 +15,7 @@ syntax = "proto3";
 
 package tfx.orchestration;
 
+import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "ml_metadata/proto/metadata_store.proto";
 
@@ -47,6 +48,8 @@ message PlaceholderExpressionOperator {
     ArtifactPropertyOperator artifact_property_op = 10;
     ListSerializationOperator list_serialization_op = 11;
     ListConcatOperator list_concat_op = 12;
+    CreateDictOperator create_dict_op = 13;
+    CreateProtoOperator create_proto_op = 14;
   }
 }
 
@@ -251,6 +254,34 @@ message ListSerializationOperator {
 message ListConcatOperator {
   // Required. The list of placeholders to be encoded.
   repeated PlaceholderExpression expressions = 1;
+}
+
+// CreateDictOperator encodes a dict (aka. map) of placeholders.
+message CreateDictOperator {
+  // Required. The list of dict entries to be encoded.
+  repeated DictEntry entries = 1;
+  message DictEntry {
+    PlaceholderExpression key = 1;  // Must evaluate to a string.
+    PlaceholderExpression value = 2;
+  }
+}
+
+// CreateProtoOperator creates a new proto message based on placeholder fields.
+message CreateProtoOperator {
+  // Required. The base message, which may have some of its fields populated.
+  // This also determines the type of the produced proto message.
+  google.protobuf.Any base = 1;
+  // Optional. Additional proto fields to populate based on sub-placeholders:
+  // * For scalar fields, this must set PlaceholderExpression.value.
+  // * For sub-message fields, this must set
+  //   PlaceholderExpression.operator.create_proto_op.
+  // * For repeated fields, this must set
+  //   PlaceholderExpression.operator.list_concat_op.
+  // * For map<> fields, this must set
+  //   PlaceholderExpression.operator.create_dict_op.
+  map<string, PlaceholderExpression> fields = 2;
+  // Additional descriptors needed to create the proto.
+  google.protobuf.FileDescriptorSet file_descriptors = 3;
 }
 
 // Placeholder is an inseparable unit in a placeholder expression that

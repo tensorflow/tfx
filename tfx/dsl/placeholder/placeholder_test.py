@@ -20,11 +20,31 @@ from typing import Type, TypeVar
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.dsl.placeholder import placeholder_base
+from tfx.dsl.placeholder import proto_placeholder
+from tfx.proto import transform_pb2
+from tfx.proto.orchestration import execution_invocation_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import standard_component_specs
 
 from google.protobuf import message
 from google.protobuf import text_format
+from ml_metadata.proto import metadata_store_pb2
+
+
+_ExecutionInvocation = ph.create_proto(
+    execution_invocation_pb2.ExecutionInvocation
+)
+_PipelineInfo = ph.create_proto(pipeline_pb2.PipelineInfo)
+_PipelineNode = ph.create_proto(pipeline_pb2.PipelineNode)
+_MetadataStoreValue = ph.create_proto(metadata_store_pb2.Value)
+_StructuralRuntimeParameter = ph.create_proto(
+    pipeline_pb2.StructuralRuntimeParameter
+)
+_StringOrRuntimeParameter = ph.create_proto(
+    pipeline_pb2.StructuralRuntimeParameter.StringOrRuntimeParameter
+)
+_UpdateOptions = ph.create_proto(pipeline_pb2.UpdateOptions)
 
 
 _P = TypeVar('_P', bound=message.Message)
@@ -42,8 +62,11 @@ def load_testdata(
 
 class PlaceholderTest(tf.test.TestCase):
 
-  def _assert_placeholder_pb_equal_and_deepcopyable(self, placeholder,
-                                                    expected_pb_str):
+  def _assert_placeholder_pb_equal_and_deepcopyable(
+      self,
+      placeholder: ph.Placeholder,
+      expected_pb_str: str,
+  ):
     """This function will delete the original copy of placeholder."""
     # Due to inclusion in types like ExecutableSpec, placeholders need to by
     # deepcopy()-able.
@@ -54,7 +77,15 @@ class PlaceholderTest(tf.test.TestCase):
     # needs to use an instance of placeholder after calling to this function,
     # we can consider returning placeholder_copy.
     del placeholder
-    self.assertProtoEquals(expected_pb, placeholder_copy.encode())
+
+    encoded_placeholder = placeholder_copy.encode()
+
+    # Clear out the descriptors, which we don't want to assert (too verbose).
+    create_proto_op = encoded_placeholder.operator.create_proto_op
+    if create_proto_op.HasField('file_descriptors'):
+      create_proto_op.ClearField('file_descriptors')
+
+    self.assertProtoEquals(expected_pb, encoded_placeholder)
 
   def testArtifactUriWithDefault0Index(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -416,10 +447,11 @@ class PlaceholderTest(tf.test.TestCase):
 
   def testListConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.to_list([ph.input('model').uri,
-                    'foo',
-                    ph.exec_property('random_str')]) +
-        ph.to_list([ph.input('another_model').uri]), """
+        ph.to_list(
+            [ph.input('model').uri, 'foo', ph.exec_property('random_str')]
+        )
+        + ph.to_list([ph.input('another_model').uri]),
+        """
         operator {
           list_concat_op {
             expressions {
@@ -471,10 +503,10 @@ class PlaceholderTest(tf.test.TestCase):
                 }
               }
             }
-
           }
         }
-    """)
+    """,
+    )
 
   def testListConcatAndSerialize(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -539,6 +571,99 @@ class PlaceholderTest(tf.test.TestCase):
           }
         }
     """)
+
+  def testCreateDictWithConcat(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.to_dict([
+            ('fookey', ph.input('model').uri),
+            (ph.exec_property('random_str'), 'barvalue'),
+        ])
+        + ph.to_dict({
+            'anotherkey': ph.input('another_model').uri,
+            'droppedkey': None,
+        }),
+        """
+        operator {
+          create_dict_op {
+            entries {
+              key {
+                value {
+                  string_value: "fookey"
+                }
+              }
+              value {
+                operator {
+                  artifact_uri_op {
+                    expression {
+                      operator {
+                        index_op {
+                          expression {
+                            placeholder {
+                              type: INPUT_ARTIFACT
+                              key: "model"
+                            }
+                          }
+                          index: 0
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            entries {
+              key {
+                placeholder {
+                  type: EXEC_PROPERTY
+                  key: "random_str"
+                }
+              }
+              value {
+                value {
+                  string_value: "barvalue"
+                }
+              }
+            }
+            entries {
+              key {
+                value {
+                  string_value: "anotherkey"
+                }
+              }
+              value {
+                operator {
+                  artifact_uri_op {
+                    expression {
+                      operator {
+                        index_op {
+                          expression {
+                            placeholder {
+                              type: INPUT_ARTIFACT
+                              key: "another_model"
+                            }
+                          }
+                          index: 0
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+    """,
+    )
+
+  def testDictEmpty(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.to_dict({}),
+        """
+        operator {
+          create_dict_op {}
+        }
+    """,
+    )
 
   def testProtoOperatorDescriptor(self):
     placeholder = ph.exec_property('splits_config').analyze[0]
@@ -939,6 +1064,514 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testCreateProtoPlaceholder_Empty(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_BaseOnly(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(
+            execution_invocation_pb2.ExecutionInvocation(tmp_dir='/foo')
+        ),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {
+                tmp_dir: "/foo"
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_FieldOnly(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(tmp_dir='/foo'),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "tmp_dir"
+              value {
+                value {
+                  string_value: "/foo"
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_FieldPlaceholder(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(tmp_dir=ph.exec_property('foo')),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "tmp_dir"
+              value {
+                placeholder {
+                  type: EXEC_PROPERTY
+                  key: "foo"
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_RejectsUndefinedField(self):
+    with self.assertRaisesRegex(ValueError, 'Unknown field undefined_field.*'):
+      _ExecutionInvocation(undefined_field=ph.exec_property('foo'))
+
+  def testCreateProtoPlaceholder_OtherFieldTypes(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _MetadataStoreValue(
+            int_value=42,
+            double_value=42.42,
+            string_value='foo42',
+            bool_value=True,
+        ),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/ml_metadata.Value] {}
+            }
+            fields {
+              key: "int_value"
+              value {
+                value {
+                  int_value: 42
+                }
+              }
+            }
+            fields {
+              key: "double_value"
+              value {
+                value {
+                  double_value: 42.42
+                }
+              }
+            }
+            fields {
+              key: "string_value"
+              value {
+                value {
+                  string_value: "foo42"
+                }
+              }
+            }
+            fields {
+              key: "bool_value"
+              value {
+                value {
+                  bool_value: true
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_EnumField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _UpdateOptions(reload_policy=pipeline_pb2.UpdateOptions.ALL),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.UpdateOptions] {}
+            }
+            fields {
+              key: "reload_policy"
+              value {
+                value {
+                  int_value: 0
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_EnumFieldPlaceholder(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _UpdateOptions(reload_policy=ph.exec_property('foo')),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.UpdateOptions] {}
+            }
+            fields {
+              key: "reload_policy"
+              value {
+                placeholder {
+                  type: EXEC_PROPERTY
+                  key: "foo"
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_RejectsSubmessageIntoScalarField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected scalar value for.*tmp_dir.*'
+    ):
+      _ExecutionInvocation(tmp_dir=_PipelineInfo())
+    with self.assertRaisesRegex(
+        ValueError, 'Expected scalar value for.*tmp_dir.*'
+    ):
+      _ExecutionInvocation(tmp_dir=pipeline_pb2.PipelineInfo())
+
+  def testCreateProtoPlaceholder_RejectsWrongScalarType(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected .*str.* for .*tmp_dir.*got 42'
+    ):
+      _ExecutionInvocation(tmp_dir=42)
+
+  def testCreateProtoPlaceholder_SubmessagePlaceholder(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(
+            pipeline_info=_PipelineInfo(id=ph.exec_property('foo'))
+        ),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "pipeline_info"
+              value {
+                operator {
+                  create_proto_op {
+                    base {
+                      [type.googleapis.com/tfx.orchestration.PipelineInfo] {}
+                    }
+                    fields {
+                      key: "id"
+                      value {
+                        placeholder {
+                          type: EXEC_PROPERTY
+                          key: "foo"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_RejectsScalarValueForSubmessageField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected submessage .*pipeline_info.*'
+    ):
+      _ExecutionInvocation(pipeline_info='this is not a submessage')
+
+  def testCreateProtoPlaceholder_RejectsWrongTypeForSubmessageField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected message of type .*PipelineInfo.*pipeline_info.*'
+    ):
+      _ExecutionInvocation(pipeline_info=_PipelineNode())
+    with self.assertRaisesRegex(
+        ValueError, 'Expected message of type .*PipelineInfo.*pipeline_info.*'
+    ):
+      _ExecutionInvocation(pipeline_info=pipeline_pb2.PipelineNode())
+
+  def testCreateProtoPlaceholder_RepeatedStringField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _PipelineNode(
+            upstream_nodes=['A', ph.exec_property('foo'), 'B'],
+        ),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.PipelineNode] {}
+            }
+            fields {
+              key: "upstream_nodes"
+              value {
+                operator {
+                  list_concat_op {
+                    expressions {
+                      value {
+                        string_value: "A"
+                      }
+                    }
+                    expressions {
+                      placeholder {
+                        type: EXEC_PROPERTY
+                        key: "foo"
+                      }
+                    }
+                    expressions {
+                      value {
+                        string_value: "B"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_RepeatedSubmessageField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _StructuralRuntimeParameter(
+            parts=[
+                _StringOrRuntimeParameter(constant_value='A'),
+                _StringOrRuntimeParameter(
+                    constant_value=ph.exec_property('foo')
+                ),
+                _StringOrRuntimeParameter(constant_value='B'),
+            ],
+        ),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.StructuralRuntimeParameter] {}
+            }
+            fields {
+              key: "parts"
+              value {
+                operator {
+                  list_concat_op {
+                    expressions {
+                      operator {
+                        create_proto_op {
+                          base {
+                            [type.googleapis.com/tfx.orchestration.StructuralRuntimeParameter.StringOrRuntimeParameter] {}
+                          }
+                          fields {
+                            key: "constant_value"
+                            value {
+                              value {
+                                string_value: "A"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    expressions {
+                      operator {
+                        create_proto_op {
+                          base {
+                            [type.googleapis.com/tfx.orchestration.StructuralRuntimeParameter.StringOrRuntimeParameter] {}
+                          }
+                          fields {
+                            key: "constant_value"
+                            value {
+                              placeholder {
+                                type: EXEC_PROPERTY
+                                key: "foo"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    expressions {
+                      operator {
+                        create_proto_op {
+                          base {
+                            [type.googleapis.com/tfx.orchestration.StructuralRuntimeParameter.StringOrRuntimeParameter] {}
+                          }
+                          fields {
+                            key: "constant_value"
+                            value {
+                              value {
+                                string_value: "B"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_RejectsScalarValueForRepeatedField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected list input for repeated field .*upstream_nodes.*'
+    ):
+      _PipelineNode(upstream_nodes='this is not a list')
+
+  def testCreateProtoPlaceholder_MapWithStringValueField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(
+            extra_flags={'a': 'A', 'foo': ph.exec_property('foo')},
+        ),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "extra_flags"
+              value {
+                operator {
+                  create_dict_op {
+                    entries {
+                      key {
+                        value {
+                          string_value: "a"
+                        }
+                      }
+                      value {
+                        value {
+                          string_value: "A"
+                        }
+                      }
+                    }
+                    entries {
+                      key {
+                        value {
+                          string_value: "foo"
+                        }
+                      }
+                      value {
+                        placeholder {
+                          type: EXEC_PROPERTY
+                          key: "foo"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_MapWithSubmessageValueField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(
+            execution_properties={
+                'fookey': _MetadataStoreValue(
+                    string_value=ph.exec_property('fooprop')
+                ),
+                'dropped': None,
+            },
+        ),
+        """
+        operator {
+          create_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "execution_properties"
+              value {
+                operator {
+                  create_dict_op {
+                    entries {
+                      key {
+                        value {
+                          string_value: "fookey"
+                        }
+                      }
+                      value {
+                        operator {
+                          create_proto_op {
+                            base {
+                              [type.googleapis.com/ml_metadata.Value] {}
+                            }
+                            fields {
+                              key: "string_value"
+                              value {
+                                placeholder {
+                                  type: EXEC_PROPERTY
+                                  key: "fooprop"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testCreateProtoPlaceholder_RejectsScalarValueForMapField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected dict.*input for map field.*extra_flags.*'
+    ):
+      _ExecutionInvocation(extra_flags='this is not a dict')
+
+  def testCreateProtoPlaceholder_RejectsNonStringKeyForMapField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected string.*for dict key.*extra_flags.*'
+    ):
+      _ExecutionInvocation(extra_flags={42: 43})
+
+  def testCreateProtoPlaceholder_GeneratesSplitConfig(self):
+    # This is part one of a two-part test. This generates the
+    # PlaceholderExpression including the proto descriptors for SplitConfig.
+    # Part two is in proto_placeholder_test, where that descriptor isn't linked
+    # into the default descriptor pool, so that the descriptors must be loaded
+    # from the PlaceholderExpression.
+    # The two parts are connected through the testdata file.
+    placeholder = ph.create_proto(transform_pb2.SplitsConfig)(
+        analyze=['foo', 'bar']
+    ).serialize(ph.ProtoSerializationFormat.TEXT_FORMAT)
+    self.assertProtoEquals(
+        load_testdata('create_proto_placeholder.pbtxt'),
+        placeholder.encode(),
+    )
+
   def testTraverse(self):
     p = ('google/' + ph.runtime_info('platform_config').user + '/' +
          ph.output('model').uri + '/model/' + '0/' +
@@ -961,6 +1594,27 @@ class PlaceholderTest(tf.test.TestCase):
     self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
     self.assertIn(ph.ListPlaceholder, ph_types)
     self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+
+  def testDictTraverse(self):
+    p = ph.to_dict([
+        ('key1', ph.runtime_info('platform_config').user),
+        (ph.output('model').uri, ph.exec_property('version')),
+    ])
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
+    self.assertIn(ph.DictPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+
+  def testCreateProtoTraverse(self):
+    p = _ExecutionInvocation(tmp_dir=ph.exec_property('foo'))
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(proto_placeholder.CreateProtoPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertNotIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+    self.assertNotIn(ph.RuntimeInfoPlaceholder, ph_types)
 
   def testIterate(self):
     p = ph.input('model')
