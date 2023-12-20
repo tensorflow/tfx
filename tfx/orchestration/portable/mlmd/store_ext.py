@@ -17,7 +17,7 @@ All public functions should accepts the first parameter of MetadataStore.
 """
 import collections
 import itertools
-from typing import Callable, Dict, List, Optional, Sequence, Union
+from typing import Callable, Mapping, Optional, Sequence, Union
 
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
@@ -37,7 +37,7 @@ def _ids(values: Sequence[_Metadata]) -> Sequence[int]:
   return [v.id for v in values]
 
 
-def _maybe_clause(clause: Optional[str]) -> List[str]:
+def _maybe_clause(clause: Optional[str]) -> Sequence[str]:
   return [clause] if clause is not None else []
 
 
@@ -47,7 +47,7 @@ def _get_node_live_artifacts(
     pipeline_id: str,
     node_id: str,
     pipeline_run_id: Optional[str] = None,
-) -> List[mlmd.proto.Artifact]:
+) -> Sequence[mlmd.proto.Artifact]:
   """Gets all LIVE node artifacts.
 
   Args:
@@ -96,10 +96,32 @@ def get_node_executions(
     order_by: mlmd.OrderByField = mlmd.OrderByField.ID,
     is_asc: bool = True,
     limit: Optional[int] = None,
-    execution_states: Optional[List['mlmd.proto.Execution.State']] = None,
+    execution_states: Optional[Sequence['mlmd.proto.Execution.State']] = None,
     min_last_update_time_since_epoch: Optional[int] = None,
-) -> List[mlmd.proto.Execution]:
-  """Gets all successful node executions."""
+) -> Sequence[mlmd.proto.Execution]:
+  """Gets all node executions.
+
+  Args:
+    store: A MetadataStore object.
+    pipeline_id: The pipeline ID.
+    node_id: The node ID.
+    pipeline_run_id: The pipeline run ID that the node belongs to. Only
+      executions from the specified pipeline run are returned if specified.
+    order_by: The field of execution to order results by.
+    is_asc: If True, the results will be returned in the ascending order. If
+      False, the result will be returned in the descending order.
+    limit: Maximum number of latest executions from which live output artifacts
+      will be returned.
+    execution_states: The MLMD execution state(s) to pull LIVE artifacts from.
+      If not specified or is empty, will consider MLMD execution states in
+      [COMPLETE, CACHED].
+    min_last_update_time_since_epoch: The minimum update time of MLMD executions
+      in the format of milliseconds since the unix epoch. If not specified, will
+      consider all MLMD executions.
+
+  Returns:
+    A list of executions of the given pipeline node.
+  """
   # TODO(b/301507304): Relax constraint on execution states:
   # If `execution_states` is unspecified or empty, the query should consider all
   # execution states.
@@ -109,29 +131,35 @@ def get_node_executions(
         mlmd.proto.Execution.CACHED,
     ]
   node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
-  state_query = [
-      f'last_known_state = {mlmd.proto.Execution.State.Name(s)}'
-      for s in execution_states
-  ]
-  node_executions_query = q.And([
-      f'contexts_0.type = "{constants.NODE_CONTEXT_TYPE_NAME}"',
-      f'contexts_0.name = "{node_context_name}"',
-      q.Or(state_query),
-  ])
+
+  node_executions_filter_queries = []
+  node_executions_filter_queries.append(
+      q.And([
+          f'contexts_0.type = "{constants.NODE_CONTEXT_TYPE_NAME}"',
+          f'contexts_0.name = "{node_context_name}"',
+      ])
+  )
   if pipeline_run_id:
-    node_executions_query.append(
+    node_executions_filter_queries.append(
         q.And([
             f'contexts_1.type = "{constants.PIPELINE_RUN_CONTEXT_TYPE_NAME}"',
             f'contexts_1.name = "{pipeline_run_id}"',
         ])
     )
+
+  states_str = ','.join(
+      [mlmd.proto.Execution.State.Name(state) for state in execution_states]
+  )
+  states_filter_query = f'last_known_state IN ({states_str})'
+  node_executions_filter_queries.append(states_filter_query)
+
   if min_last_update_time_since_epoch:
-    node_executions_query.append(
+    node_executions_filter_queries.append(
         f'last_update_time_since_epoch >= {min_last_update_time_since_epoch}'
     )
   return store.get_executions(
       list_options=mlmd.ListOptions(
-          filter_query=str(node_executions_query),
+          filter_query=str(q.And(node_executions_filter_queries)),
           order_by=order_by,
           is_asc=is_asc,
           limit=limit,
@@ -147,8 +175,8 @@ def get_live_output_artifacts_of_node_by_output_key(
     node_id: str,
     pipeline_run_id: Optional[str] = None,
     execution_limit: Optional[int] = None,
-    execution_states: Optional[List['mlmd.proto.Execution.State']] = None,
-) -> Dict[str, List[List[mlmd.proto.Artifact]]]:
+    execution_states: Optional[Sequence['mlmd.proto.Execution.State']] = None,
+) -> Mapping[str, Sequence[Sequence[mlmd.proto.Artifact]]]:
   """Get LIVE output artifacts of the given node grouped by output key.
 
   The LIVE output artifacts associated with an output key are represented as a
@@ -178,7 +206,8 @@ def get_live_output_artifacts_of_node_by_output_key(
     execution_limit: Maximum number of latest executions from which live output
       artifacts will be returned.
     execution_states: The MLMD execution state(s) to pull LIVE artifacts from.
-      Defaults to [COMPLETE, CACHED].
+      If not specified or is empty, will consider MLMD execution states in
+      [COMPLETE, CACHED].
 
   Returns:
     A mapping from output key to all output artifacts from the given node.
@@ -275,7 +304,7 @@ def get_live_output_artifacts_of_node(
     *,
     pipeline_id: str,
     node_id: str,
-) -> List[mlmd.proto.Artifact]:
+) -> Sequence[mlmd.proto.Artifact]:
   """Gets LIVE output artifacts of the given node.
 
   The function query is composed of 3 MLMD API calls:
