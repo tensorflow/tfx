@@ -3269,8 +3269,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           mlmd_connection_manager,
           task_queue,
           service_jobs.DummyServiceJobManager(),
-          pipeline_uid=task_lib.PipelineUid.from_pipeline_id_and_run_id(
-              pipeline_id='pipeline1', pipeline_run_id='run0'
+          filter_fn=pipeline_ops.filter_by_pipeline_uid(
+              task_lib.PipelineUid.from_pipeline_id_and_run_id(
+                  pipeline_id='pipeline1', pipeline_run_id='run0'
+              )
           ),
       )
 
