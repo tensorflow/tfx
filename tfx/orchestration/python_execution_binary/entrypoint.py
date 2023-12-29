@@ -24,6 +24,7 @@ from absl import flags
 from absl import logging
 from tfx.orchestration.python_execution_binary import python_execution_binary_utils
 from tfx.orchestration.python_execution_binary import python_execution_lib
+from tfx.orchestration.python_execution_binary import system_flags
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.utils import import_utils
 
@@ -31,9 +32,6 @@ from google.protobuf import text_format
 
 FLAGS = flags.FLAGS
 
-EXECUTION_INVOCATION_FLAG = flags.DEFINE_string(
-    'tfx_execution_info_b64', None, 'url safe base64 encoded binary '
-    'tfx.orchestration.ExecutionInvocation proto')
 EXECUTABLE_SPEC_FLAG = flags.DEFINE_string(
     'tfx_python_class_executable_spec_b64', None,
     'tfx.orchestration.executable_spec.PythonClassExecutableSpec proto')
@@ -67,7 +65,6 @@ def _import_class_path(
 
 
 def main(_):
-  flags.mark_flag_as_required(EXECUTION_INVOCATION_FLAG.name)
   flags.mark_flags_as_mutual_exclusive(
       (EXECUTABLE_SPEC_FLAG.name, BEAM_EXECUTABLE_SPEC_FLAG.name),
       required=True)
@@ -81,11 +78,9 @@ def main(_):
         EXECUTABLE_SPEC_FLAG.value, with_beam=False
     )
   # Eagerly import class path from executable spec such that all artifact
-  # references are resolved.
+  # references are resolved. This should come before parsing execution_info.
   _import_class_path(executable_spec)
-  execution_info = python_execution_binary_utils.deserialize_execution_info(
-      EXECUTION_INVOCATION_FLAG.value
-  )
+  execution_info = system_flags.parse_execution_info()
   logging.info('execution_info = %r\n', execution_info)
   logging.info(
       'executable_spec = %s\n', text_format.MessageToString(executable_spec)
