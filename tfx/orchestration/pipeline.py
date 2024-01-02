@@ -15,7 +15,7 @@
 
 import copy
 import enum
-from typing import Any, Collection, Dict, Iterator, List, Optional, Tuple, Union, cast
+from typing import Any, Collection, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 import warnings
 
 from tfx.dsl.compiler import constants
@@ -247,20 +247,22 @@ class Pipeline(base_node.BaseNode):
     platform_config: Pipeline level platform config, in proto form.
   """
 
-  def __init__(self,
-               pipeline_name: str,
-               pipeline_root: Optional[Union[str, ph.Placeholder]] = '',
-               metadata_connection_config: Optional[
-                   metadata.ConnectionConfigType] = None,
-               components: Optional[List[base_node.BaseNode]] = None,
-               enable_cache: bool = False,
-               beam_pipeline_args: Optional[List[Union[str,
-                                                       ph.Placeholder]]] = None,
-               platform_config: Optional[message.Message] = None,
-               execution_mode: ExecutionMode = ExecutionMode.SYNC,
-               inputs: Optional[PipelineInputs] = None,
-               outputs: Optional[Dict[str, channel.OutputChannel]] = None,
-               **kwargs):
+  def __init__(
+      self,
+      pipeline_name: str,
+      pipeline_root: Optional[Union[str, ph.Placeholder]] = '',
+      metadata_connection_config: Optional[
+          metadata.ConnectionConfigType
+      ] = None,
+      components: Iterable[base_node.BaseNode] = (),
+      enable_cache: bool = False,
+      beam_pipeline_args: Optional[List[Union[str, ph.Placeholder]]] = None,
+      platform_config: Optional[message.Message] = None,
+      execution_mode: ExecutionMode = ExecutionMode.SYNC,
+      inputs: Optional[PipelineInputs] = None,
+      outputs: Optional[Dict[str, channel.OutputChannel]] = None,
+      **kwargs,
+  ):
     """Initialize pipeline.
 
     Args:
@@ -368,7 +370,7 @@ class Pipeline(base_node.BaseNode):
   def components(self, components: List[base_node.BaseNode]):
     self._set_components(components)
 
-  def _set_components(self, components: List[base_node.BaseNode]) -> None:
+  def _set_components(self, components: Iterable[base_node.BaseNode]) -> None:
     """Set a full list of components of the pipeline."""
     self._check_mutable()
 
