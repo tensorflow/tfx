@@ -1725,6 +1725,17 @@ def _orchestrate_active_pipeline(
   pipeline = pipeline_state.pipeline
   with pipeline_state:
     assert pipeline_state.is_active()
+    if pipeline_state.pipeline_decode_error is not None:
+      pipeline_state.initiate_stop(
+          status_lib.Status(
+              code=status_lib.Code.INTERNAL,
+              message=(
+                  'Pipeline aborted due to failure to load pipeline IR: '
+                  f'{str(pipeline_state.pipeline_decode_error)}'
+              ),
+          )
+      )
+      return
     if pipeline_state.get_pipeline_execution_state() != (
         metadata_store_pb2.Execution.RUNNING
     ):

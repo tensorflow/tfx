@@ -423,19 +423,40 @@ class PipelineState:
     pipeline: The pipeline proto associated with this `PipelineState` object.
       TODO(b/201294315): Fix self.pipeline going out of sync with the actual
       pipeline proto stored in the underlying MLMD execution in some cases.
+    pipeline_decode_error: If not None, we failed to decode the pipeline proto
+      from the MLMD execution.
     execution: The underlying execution in MLMD.
     execution_id: Id of the underlying execution in MLMD.
     pipeline_uid: Unique id of the pipeline.
+    pipeline_run_id: pipeline_run_id in case of sync pipeline, `None` otherwise.
   """
 
-  def __init__(self, mlmd_handle: metadata.Metadata,
-               pipeline: pipeline_pb2.Pipeline, execution_id: int):
+  def __init__(
+      self,
+      mlmd_handle: metadata.Metadata,
+      execution: metadata_store_pb2.Execution,
+      pipeline_id: str,
+  ):
     """Constructor. Use one of the factory methods to initialize."""
     self.mlmd_handle = mlmd_handle
     # TODO(b/201294315): Fix self.pipeline going out of sync with the actual
     # pipeline proto stored in the underlying MLMD execution in some cases.
-    self.pipeline = pipeline
-    self.execution_id = execution_id
+    try:
+      self.pipeline = _get_pipeline_from_orchestrator_execution(execution)  # pytype: disable=name-error
+      self.pipeline_decode_error = None
+    except Exception as e:  # pylint: disable=broad-except
+      logging.exception('Failed to load pipeline IR')
+      self.pipeline = pipeline_pb2.Pipeline()
+      self.pipeline_decode_error = e
+    self.execution_id = execution.id
+    self.pipeline_run_id = None
+    if _PIPELINE_RUN_ID in execution.custom_properties:
+      self.pipeline_run_id = execution.custom_properties[
+          _PIPELINE_RUN_ID
+      ].string_value
+    self.pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(
+        pipeline_id, self.pipeline_run_id
+    )
 
     # Only set within the pipeline state context.
     self._mlmd_execution_atomic_op_context = None
@@ -578,9 +599,7 @@ class PipelineState:
     _active_pipelines_exist = True
     logging.info('Pipeline start, set active_pipelines_exist=True.')
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
-    pipeline_state = cls(
-        mlmd_handle=mlmd_handle, pipeline=pipeline, execution_id=execution.id
-    )
+    pipeline_state = cls(mlmd_handle, execution, pipeline_uid.pipeline_id)
     event_observer.notify(
         event_observer.PipelineStarted(
             pipeline_uid=pipeline_uid, pipeline_state=pipeline_state
@@ -704,8 +723,8 @@ class PipelineState:
 
     return cls(
         mlmd_handle,
-        _get_pipeline_from_orchestrator_execution(executions[0]),
-        executions[0].id,
+        executions[0],
+        pipeline_id,
     )
 
   @classmethod
@@ -742,21 +761,10 @@ class PipelineState:
               execution.custom_properties.get(_PIPELINE_RUN_ID)))
       if matching_pipeline_uid and pipeline_uid != matching_pipeline_uid:
         continue
-      pipeline = _get_pipeline_from_orchestrator_execution(execution)
       result.append(
-          (pipeline_uid, PipelineState(mlmd_handle, pipeline, execution.id)))
+          (pipeline_uid, PipelineState(mlmd_handle, execution, pipeline_id))
+      )
     return result
-
-  @property
-  def pipeline_uid(self) -> task_lib.PipelineUid:
-    return task_lib.PipelineUid.from_pipeline(self.pipeline)
-
-  @property
-  def pipeline_run_id(self) -> Optional[str]:
-    """Returns pipeline_run_id in case of sync pipeline, `None` otherwise."""
-    if self.pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
-      return self.pipeline.runtime_spec.pipeline_run_id.field_value.string_value
-    return None
 
   @property
   def execution(self) -> metadata_store_pb2.Execution:
@@ -1139,8 +1147,14 @@ class PipelineView:
 
   @property
   def pipeline(self) -> pipeline_pb2.Pipeline:
-    if not self._pipeline:
-      self._pipeline = _get_pipeline_from_orchestrator_execution(self.execution)
+    if self._pipeline is None:
+      try:
+        self._pipeline = _get_pipeline_from_orchestrator_execution(
+            self.execution
+        )
+      except Exception:  # pylint: disable=broad-except
+        logging.exception('Failed to load pipeline IR for %s', self.pipeline_id)
+        self._pipeline = pipeline_pb2.Pipeline()
     return self._pipeline
 
   @property
@@ -1506,18 +1520,12 @@ def _retrieve_pipeline_exec_mode(
   """Returns pipeline execution mode given pipeline-level execution."""
   pipeline_exec_mode = _get_metadata_value(
       execution.custom_properties.get(_PIPELINE_EXEC_MODE))
-  if pipeline_exec_mode is None:
-    # Retrieve execution mode from pipeline IR for backward compatibility (this
-    # is more expensive and requires parsing the proto).
-    return _get_pipeline_from_orchestrator_execution(execution).execution_mode
-  elif pipeline_exec_mode == _PIPELINE_EXEC_MODE_SYNC:
+  if pipeline_exec_mode == _PIPELINE_EXEC_MODE_SYNC:
     return pipeline_pb2.Pipeline.SYNC
   elif pipeline_exec_mode == _PIPELINE_EXEC_MODE_ASYNC:
     return pipeline_pb2.Pipeline.ASYNC
   else:
-    raise RuntimeError(
-        f'Unable to determine pipeline execution mode from pipeline execution {execution}'
-    )
+    return pipeline_pb2.Pipeline.EXECUTION_MODE_UNSPECIFIED
 
 
 def _log_pipeline_execution_state_change(
