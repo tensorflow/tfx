@@ -363,8 +363,7 @@ class Boolean(ValueArtifact):
 
   def encode(self, value: bool):
     if not isinstance(value, bool):
-      raise TypeError('Expecting bytes but got value %s of type %s' %
-                      (str(value), type(value)))
+      raise TypeError(f'Expecting bytes but got value {str(value)} of type {type(value)}')
     return b'1' if value else b'0'
 
   def decode(self, serialized_value: bytes):
@@ -380,8 +379,7 @@ class Integer(ValueArtifact):
 
   def encode(self, value: int) -> bytes:
     if not isinstance(value, int):
-      raise TypeError('Expecting int but got value %s of type %s' %
-                      (str(value), type(value)))
+      raise TypeError(f'Expecting int but got value {str(value)} of type {type(value)}')
     return str(value).encode('utf-8')
 
   def decode(self, serialized_value: bytes) -> int:
