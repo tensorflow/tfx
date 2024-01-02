@@ -404,8 +404,7 @@ class Float(ValueArtifact):
 
   def encode(self, value: float) -> bytes:
     if not isinstance(value, float):
-      raise TypeError('Expecting float but got value %s of type %s' %
-                      (str(value), type(value)))
+      raise TypeError(f'Expecting float but got value {str(value)} of type {type(value)}')
     if math.isinf(value) or math.isnan(value):
       logging.warning(
           '! The number "%s" may be unsupported by non-python components.',
