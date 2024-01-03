@@ -13,101 +13,15 @@
 # limitations under the License.
 """Utilities for working with MLMD state."""
 
-import collections
 import contextlib
 import copy
-import threading
-import typing
-from typing import Callable, Iterator, MutableMapping, Optional
+from typing import Callable, Iterator, Optional
 
-import cachetools
 from tfx.orchestration import metadata
 
 from google.protobuf.internal import containers
+import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
-
-
-class _LocksManager:
-  """Class for managing value based locking."""
-
-  def __init__(self):
-    self._main_lock = threading.Lock()
-    self._locks: MutableMapping[typing.Hashable, threading.Lock] = {}
-    self._refcounts = collections.defaultdict(int)
-
-  @contextlib.contextmanager
-  def lock(self, value: typing.Hashable) -> Iterator[None]:
-    """Context manager for input value based locking.
-
-    Only one thread can enter the context for a given value.
-
-    Args:
-      value: Value of any hashable type.
-
-    Yields:
-      Nothing.
-    """
-    with self._main_lock:
-      lock = self._locks.setdefault(value, threading.Lock())
-      self._refcounts[value] += 1
-    try:
-      with lock:
-        yield
-    finally:
-      with self._main_lock:
-        self._refcounts[value] -= 1
-        if self._refcounts[value] <= 0:
-          del self._refcounts[value]
-          del self._locks[value]
-
-
-class _ExecutionCache:
-  """Read-through / write-through cache for MLMD executions."""
-
-  def __init__(self):
-    self._cache: MutableMapping[
-        int, metadata_store_pb2.Execution] = cachetools.LRUCache(maxsize=1024)
-    self._lock = threading.Lock()
-
-  def get_execution(self, mlmd_handle: metadata.Metadata,
-                    execution_id: int) -> metadata_store_pb2.Execution:
-    """Gets execution either from cache or, upon cache miss, from MLMD."""
-    with self._lock:
-      execution = self._cache.get(execution_id)
-    if not execution:
-      executions = mlmd_handle.store.get_executions_by_id([execution_id])
-      if executions:
-        execution = executions[0]
-        with self._lock:
-          self._cache[execution_id] = execution
-    if not execution:
-      raise ValueError(f'Execution not found for execution id: {execution_id}')
-    return execution
-
-  def put_execution(self, mlmd_handle: metadata.Metadata,
-                    execution: metadata_store_pb2.Execution,
-                    field_mask_paths: Optional[list[str]] = None) -> None:
-    """Writes execution to MLMD and updates cache."""
-    mlmd_handle.store.put_executions([execution], field_mask_paths)
-    # The execution is fetched from MLMD again to ensure that the in-memory
-    # value of `last_update_time_since_epoch` of the execution is same as the
-    # one stored in MLMD.
-    [execution] = mlmd_handle.store.get_executions_by_id([execution.id])
-    with self._lock:
-      self._cache[execution.id] = execution
-
-  def evict(self, execution_id: int) -> None:
-    """Evicts execution with the given execution_id from the cache if one exists."""
-    self._cache.pop(execution_id, None)
-
-  def clear_cache(self):
-    """Clears underlying cache; MLMD is untouched."""
-    with self._lock:
-      self._cache.clear()
-
-
-_execution_cache = _ExecutionCache()
-_execution_id_locks = _LocksManager()
 
 
 @contextlib.contextmanager
@@ -145,15 +59,18 @@ def mlmd_execution_atomic_op(
     RuntimeError: If execution id is changed within the context.
     ValueError: If execution having given execution id is not found in MLMD.
   """
-  with _execution_id_locks.lock(execution_id):
-    execution = _execution_cache.get_execution(mlmd_handle, execution_id)
+  with mlmd.execution_id_locks.lock(execution_id):
+    execution = mlmd.execution_cache.get_execution(
+        mlmd_handle.store, execution_id
+    )
     execution_copy = copy.deepcopy(execution)
     yield execution_copy
     if execution != execution_copy:
       if execution.id != execution_copy.id:
         raise RuntimeError(
             'Execution id should not be changed within mlmd_execution_atomic_op'
-            ' context.')
+            ' context.'
+        )
 
       # Orchestrator code will only update top-level fields and properties/
       # custom properties with diffs.
@@ -168,15 +85,18 @@ def mlmd_execution_atomic_op(
 
       # Make a copy before writing to cache as the yielded `execution_copy`
       # object may be modified even after exiting the contextmanager.
-      _execution_cache.put_execution(
-          mlmd_handle,
+      mlmd.execution_cache.put_execution(
+          mlmd_handle.store,
           copy.deepcopy(execution_copy),
           get_field_mask_paths(execution, execution_copy),
       )
       if on_commit is not None:
         pre_commit_execution = copy.deepcopy(execution)
         post_commit_execution = copy.deepcopy(
-            _execution_cache.get_execution(mlmd_handle, execution_copy.id))
+            mlmd.execution_cache.get_execution(
+                mlmd_handle.store, execution_copy.id
+            )
+        )
         on_commit(pre_commit_execution, post_commit_execution)
 
 
@@ -195,14 +115,14 @@ def evict_from_cache(execution_id: int) -> Iterator[None]:
   Yields:
     Nothing
   """
-  with _execution_id_locks.lock(execution_id):
-    _execution_cache.evict(execution_id)
+  with mlmd.execution_id_locks.lock(execution_id):
+    mlmd.execution_cache.evict([execution_id])
     yield
 
 
 def clear_in_memory_state():
   """Clears cached state. Useful in tests."""
-  _execution_cache.clear_cache()
+  mlmd.execution_cache.clear_cache()
 
 
 def get_field_mask_paths(

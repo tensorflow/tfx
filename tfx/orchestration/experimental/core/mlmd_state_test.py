@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.mlmd_state."""
 
-from concurrent import futures
 import os
 import threading
 
@@ -22,6 +21,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import test_utils
 
+import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -59,47 +59,6 @@ def _write_test_execution(mlmd_handle):
       [metadata_store_pb2.Execution(type_id=execution_type_id)])
   [execution] = mlmd_handle.store.get_executions_by_id([execution_id])
   return execution
-
-
-class LocksManagerTest(test_utils.TfxTest):
-
-  def test_locking_different_values(self):
-    locks = mlmd_state._LocksManager()
-    barrier = threading.Barrier(3)
-
-    def _func(value):
-      with locks.lock(value):
-        barrier.wait()
-        self.assertDictEqual({0: 1, 1: 1, 2: 1}, locks._refcounts)
-        barrier.wait()
-
-    futs = []
-    with futures.ThreadPoolExecutor(max_workers=3) as pool:
-      for i in range(3):
-        futs.append(pool.submit(_func, i))
-
-    # Raises any exceptions raised in the threads.
-    for fut in futs:
-      fut.result()
-    self.assertEmpty(locks._refcounts)
-
-  def test_locking_same_value(self):
-    locks = mlmd_state._LocksManager()
-    barrier = threading.Barrier(3, timeout=3.0)
-
-    def _func():
-      with locks.lock(1):
-        barrier.wait()
-
-    futs = []
-    with futures.ThreadPoolExecutor(max_workers=3) as pool:
-      for _ in range(3):
-        futs.append(pool.submit(_func))
-
-    with self.assertRaises(threading.BrokenBarrierError):
-      for fut in futs:
-        fut.result()
-    self.assertEmpty(locks._refcounts)
 
 
 class MlmdStateTest(test_utils.TfxTest):
@@ -152,8 +111,7 @@ class MlmdStateTest(test_utils.TfxTest):
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
                        execution.last_known_state)
       # Test that in-memory state is also in sync.
-      self.assertEqual(execution,
-                       mlmd_state._execution_cache._cache[execution.id])
+      self.assertEqual(execution, mlmd.execution_cache._cache[execution.id])
       # Test that on_commit callback was invoked.
       self.assertTrue(event_on_commit.is_set())
       # Sanity checks that the updated execution is yielded in the next call.
@@ -177,14 +135,15 @@ class MlmdStateTest(test_utils.TfxTest):
       # Test that execution is in cache.
       self.assertEqual(
           expected_execution,
-          mlmd_state._execution_cache._cache.get(expected_execution.id))
+          mlmd.execution_cache._cache.get(expected_execution.id),
+      )
       # Evict from cache and test.
       with mlmd_state.evict_from_cache(expected_execution.id):
         self.assertIsNone(
-            mlmd_state._execution_cache._cache.get(expected_execution.id))
+            mlmd.execution_cache._cache.get(expected_execution.id)
+        )
       # Execution should stay evicted.
-      self.assertIsNone(
-          mlmd_state._execution_cache._cache.get(expected_execution.id))
+      self.assertIsNone(mlmd.execution_cache._cache.get(expected_execution.id))
       # Evicting a non-existent execution should not raise any errors.
       with mlmd_state.evict_from_cache(expected_execution.id):
         pass
