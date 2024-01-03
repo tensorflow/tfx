@@ -55,7 +55,8 @@ class ExecutionContext:
   frontend_url: Optional[str] = None
   # LINT.ThenChange(../../../proto/orchestration/execution_invocation.proto)
 
-  def __init__(self, exec_info: data_types.ExecutionInfo):
+  def __init__(self, exec_info: data_types.ExecutionInfo, **unused_kwargs):
+    del unused_kwargs
     self.execution_id = exec_info.execution_id
     self.stateful_working_dir = exec_info.stateful_working_dir
     self.tmp_dir = exec_info.tmp_dir
