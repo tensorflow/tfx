@@ -307,7 +307,8 @@ def garbage_collect_artifacts(
     else:
       # If no exception then mark as DELETED.
       artifact.state = metadata_store_pb2.Artifact.State.DELETED
-    mlmd_handle.store.put_artifacts(artifacts)
+
+  mlmd_handle.store.put_artifacts(artifacts)
 
 
 def run_garbage_collection_for_node(
