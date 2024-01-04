@@ -19,7 +19,8 @@ Experimental: no backwards compatibility guarantees.
 import copy
 import functools
 import types
-from typing import Any, Dict, List, Optional, Type
+import typing
+from typing import Any, Callable, Dict, List, Optional, Type
 
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
@@ -270,10 +271,29 @@ class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
         ))
 
 
+@typing.overload
+def component(func: types.FunctionType, /) -> Any:
+  ...
+
+
+@typing.overload
+def component(
+    *,
+    component_annotation: Optional[
+        type[system_executions.SystemExecution]
+    ] = None,
+    use_beam: bool = False,
+) -> Callable[[types.FunctionType], Any]:
+  ...
+
+
 def component(
     func: Optional[types.FunctionType] = None,
-    component_annotation: Optional[Type[
-        system_executions.SystemExecution]] = None,
+    /,
+    *,
+    component_annotation: Optional[
+        Type[system_executions.SystemExecution]
+    ] = None,
     use_beam: bool = False,
 ) -> Any:
   """Decorator: creates a component from a typehint-annotated Python function.

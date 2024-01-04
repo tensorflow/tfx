@@ -21,6 +21,7 @@
 *   The `placeholder.RuntimeInfoKey` enumeration was removed. Just hard-code the
     appropriate string values in your code, and reference the new `Literal` type
     `placeholder.RuntimeInfoKeys` if you want to ensure correctness.
+*   Arguments to `@component` must now be passed as kwargs.
 
 ### For Pipeline Authors
 

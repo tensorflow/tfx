@@ -446,14 +446,14 @@ class ComponentDecoratorTest(tf.test.TestCase):
         'of type BeamComponentParameter[beam.Pipeline] with '
         'default value None when use_beam=True.',
     ):
-      component(_verify_beam_pipeline_arg, use_beam=True)(a=1)
+      component(use_beam=True)(_verify_beam_pipeline_arg)(a=1)
 
   def testBeamPipelineDefaultIsNotNoneFails(self):
     with self.assertRaisesWithLiteralMatch(
         ValueError, 'The default value for BeamComponentParameter must be None.'
     ):
-      component(
-          _verify_beam_pipeline_arg_non_none_default_value, use_beam=True
+      component(use_beam=True)(
+          _verify_beam_pipeline_arg_non_none_default_value
       )(a=1)
 
   def testBeamExecutionSuccess(self):
