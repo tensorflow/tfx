@@ -181,7 +181,7 @@ represented as tensors. The input to the `preprocessing_fn` is determined by the
 schema. A [`Schema` proto](https://github.com/tensorflow/metadata/blob/master/tensorflow_metadata/proto/v0/schema.proto#L72)
 is eventually converted to a "feature spec" (sometimes called a
 "parsing spec") that is used for data parsing, see more details about the
-conversion logic [here](https://github.com/tensorflow/metadata/blob/master/tfx_bsl/docs/schema_interpretation.md).
+conversion logic [here](https://github.com/tensorflow/tfx-bsl/blob/master/google3/third_party/py/tfx_bsl/opensource_only/g3doc/schema_interpretation.md).
 
 ## Using TensorFlow Transform to handle string labels
 
