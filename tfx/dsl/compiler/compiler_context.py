@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import collections
-from typing import Optional, List, Set, Iterable, Dict
+from typing import Dict, Iterable, List, Optional, Set
 
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.components.base import base_node

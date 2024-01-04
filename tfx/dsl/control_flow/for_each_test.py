@@ -99,7 +99,7 @@ class ForEachTest(test_case_utils.TfxTest):
           b = B(aa=a.outputs['aa'])  # Should use loop var "aa" directly.
 
   def testForEach_MultipleNodes_NotImplemented(self):
-    with self.assertRaises(NotImplementedError):
+    with self.assertRaises(ValueError):
       a = A()
       with for_each.ForEach(a.outputs['aa']) as aa:
         b = B(aa=aa)
@@ -125,15 +125,52 @@ class ForEachTest(test_case_utils.TfxTest):
     context2 = dsl_context_registry.get().get_contexts(c2)[-1]
     self.assertNotEqual(context1, context2)
 
-  # TODO(b/247709394): This should be removed once subpipelines are supported.
-  def testForEach_Subpipeline_NotImplemented(self):
+  def testForEach_Subpipeline(self):
     a = A()
-    with self.assertRaises(NotImplementedError):
+    with for_each.ForEach(a.outputs['aa']) as aa:
+      p_in = pipeline_lib.PipelineInputs({'aa': aa})
+      b = B(aa=p_in.inputs['aa'])
+      c = C(aa=b.outputs['aa'])
+      nested_p_in = pipeline_lib.PipelineInputs({'aa': b.outputs['aa']})
+      nested_c = C(aa=nested_p_in.inputs['aa'])
+      nested_pipeline = pipeline_lib.Pipeline(
+          pipeline_name='bar',
+          components=[nested_c],
+          inputs=nested_p_in,
+          outputs={},
+      )
+      pipeline_lib.Pipeline(
+          pipeline_name='foo',
+          components=[b, c, nested_pipeline],
+          inputs=p_in,
+          outputs={},
+      )
+
+  def testForEach_SubpipelineAndAdditionalNodes_Throws(self):
+    a = A()
+    with self.assertRaises(ValueError):
       with for_each.ForEach(a.outputs['aa']) as aa:
         p_in = pipeline_lib.PipelineInputs({'aa': aa})
         b = B(aa=p_in.inputs['aa'])
         pipeline_lib.Pipeline(
-            pipeline_name='foo', components=b, inputs=p_in, outputs={}
+            pipeline_name='foo', components=[b], inputs=p_in, outputs={}
+        )
+        C(aa=b.outputs['aa'])
+
+  def testForEach_MultipleSubpipelines_Throws(self):
+    a = A()
+    with self.assertRaises(ValueError):
+      with for_each.ForEach(a.outputs['aa']) as aa:
+        foo_p_in = pipeline_lib.PipelineInputs({'aa': aa})
+        b = B(aa=foo_p_in.inputs['aa'])
+        pipeline_lib.Pipeline(
+            pipeline_name='foo', components=[b], inputs=foo_p_in, outputs={}
+        )
+
+        bar_p_in = pipeline_lib.PipelineInputs({'aa': aa})
+        c = C(aa=bar_p_in.inputs['aa'])
+        pipeline_lib.Pipeline(
+            pipeline_name='bar', components=[c], inputs=bar_p_in, outputs={}
         )
 
 
