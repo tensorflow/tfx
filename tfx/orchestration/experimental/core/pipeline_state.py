@@ -513,10 +513,16 @@ class PipelineState:
 
     # Disallow running concurrent async pipelines regardless of whether
     # concurrent pipeline runs are enabled.
-    if pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC and active_pipeline_executions:
+    if (
+        pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC
+        and active_pipeline_executions
+    ):
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.ALREADY_EXISTS,
-          message=f'Cannot run an async pipeline concurrently when another pipeline with id {pipeline_uid.pipeline_id} is active.'
+          message=(
+              'Cannot run an async pipeline concurrently when another '
+              f'pipeline with id {pipeline_uid.pipeline_id} is active.'
+          ),
       )
 
     if env.get_env().concurrent_pipeline_runs_enabled():
@@ -525,7 +531,10 @@ class PipelineState:
       if active_async_pipeline_executions:
         raise status_lib.StatusNotOkError(
             code=status_lib.Code.ALREADY_EXISTS,
-            message=f'Cannot run a sync pipeline concurrently when an async pipeline with id {pipeline_uid.pipeline_id} is active.'
+            message=(
+                'Cannot run a sync pipeline concurrently when an async '
+                f'pipeline with id {pipeline_uid.pipeline_id} is active.'
+            ),
         )
       # If concurrent runs are enabled, before starting a sync pipeline run,
       # ensure there isn't another active sync pipeline that shares the run id.
@@ -536,13 +545,20 @@ class PipelineState:
               _PIPELINE_RUN_ID)) == pipeline_uid.pipeline_run_id:
             raise status_lib.StatusNotOkError(
                 code=status_lib.Code.ALREADY_EXISTS,
-                message=f'Another pipeline run having pipeline id {pipeline_uid.pipeline_id} and run id {pipeline_uid.pipeline_run_id} is already active.'
+                message=(
+                    'Another pipeline run having pipeline id'
+                    f' {pipeline_uid.pipeline_id} and run id'
+                    f' {pipeline_uid.pipeline_run_id} is already active.'
+                ),
             )
     else:
       if active_pipeline_executions:
         raise status_lib.StatusNotOkError(
             code=status_lib.Code.ALREADY_EXISTS,
-            message=f'Another pipeline run having pipeline id {pipeline_uid.pipeline_id} is already active.'
+            message=(
+                'Another pipeline run having pipeline id '
+                f'{pipeline_uid.pipeline_id} is already active.'
+            ),
         )
 
     # TODO(b/254161062): Consider disallowing pipeline exec mode change for the
@@ -1439,7 +1455,10 @@ def _get_node_states_dict(
   if state_type not in [_NODE_STATES, _PREVIOUS_NODE_STATES]:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.INVALID_ARGUMENT,
-        message=f'Expected state_type is {_NODE_STATES} or {_PREVIOUS_NODE_STATES}, got {state_type}.'
+        message=(
+            f'Expected state_type is {_NODE_STATES} or '
+            f'{_PREVIOUS_NODE_STATES}, got {state_type}.'
+        ),
     )
   node_states_json = _get_metadata_value(
       pipeline_execution.custom_properties.get(state_type))
@@ -1489,8 +1508,11 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
   previous_node_states_dict = {}
   reused_pipeline_node_states_dict = reused_pipeline_view.get_node_states_dict(
   ) if reused_pipeline_view else {}
-  reused_pipeline_previous_node_states_dict = reused_pipeline_view.get_previous_node_states_dict(
-  ) if reused_pipeline_view else {}
+  reused_pipeline_previous_node_states_dict = (
+      reused_pipeline_view.get_previous_node_states_dict()
+      if reused_pipeline_view
+      else {}
+  )
   for node in get_all_nodes(pipeline):
     node_id = node.node_info.id
     if node.execution_options.HasField('skip'):
