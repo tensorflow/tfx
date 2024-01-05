@@ -57,3 +57,14 @@ message NodeFilterOptions {
   // If not set, will consider all MLMD nodes regardless of their types.
   repeated string types = 3;
 }
+
+message PipelineGroup {
+  // The owner of pipeline group.
+  // If not specified, the pipeline group annotation will not be considered as
+  // valid.
+  string owner = 1;
+  // The name of pipeline group.
+  // If not specified, the pipeline group annotation will not be considered as
+  // valid.
+  string name = 2;
+}
