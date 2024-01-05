@@ -86,7 +86,9 @@ class PipelineContext:
     while ctx and ctx.pipeline:
       result.append(ctx.pipeline)
       ctx = ctx.parent
+    # pytype: disable=bad-return-type  # b/319125077
     return result[::-1]
+    # pytype: enable=bad-return-type
 
   def _add_implicit_dependency(self, parent_id: str, child_id: str) -> None:
     self._implicit_upstream_nodes[child_id].add(parent_id)
