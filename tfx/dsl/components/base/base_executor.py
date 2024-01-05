@@ -23,13 +23,6 @@ from tfx.dsl.io import fileio
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
-try:
-  import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
-  _BeamPipeline = beam.Pipeline
-except ModuleNotFoundError:
-  beam = None
-  _BeamPipeline = Any
-
 
 class BaseExecutor(abc.ABC):
   """Abstract TFX executor class."""
