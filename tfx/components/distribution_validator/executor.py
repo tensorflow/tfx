@@ -43,6 +43,7 @@ ARTIFACT_PROPERTY_BLESSED_KEY = 'blessed'
 # Values for blessing results.
 BLESSED_VALUE = 1
 NOT_BLESSED_VALUE = 0
+NO_BASELINE_STATS = 2
 
 _COMPARISON_ANOMALY_TYPES = frozenset([
     anomalies_pb2.AnomalyInfo.Type.COMPARATOR_CONTROL_DATA_MISSING,
@@ -204,13 +205,32 @@ class Executor(base_executor.BaseExecutor):
         or []
     )
     include_splits = set((test, base) for test, base in include_splits_list)
+    blessed_value_dict = {}
+
+    anomalies_artifact = artifact_utils.get_single_instance(
+        output_dict[standard_component_specs.ANOMALIES_KEY]
+    )
 
     test_statistics = artifact_utils.get_single_instance(
         input_dict[standard_component_specs.STATISTICS_KEY]
     )
-    baseline_statistics = artifact_utils.get_single_instance(
-        input_dict[standard_component_specs.BASELINE_STATISTICS_KEY]
-    )
+    if input_dict[standard_component_specs.BASELINE_STATISTICS_KEY]:
+      baseline_statistics = artifact_utils.get_single_instance(
+          input_dict[standard_component_specs.BASELINE_STATISTICS_KEY]
+      )
+    else:
+      logging.warning(
+          'No baseline statistics found. Rubber stamping distribution'
+          ' validation for all splits.'
+      )
+      for split in artifact_utils.decode_split_names(
+          test_statistics.split_names
+      ):
+        blessed_value_dict[split] = NO_BASELINE_STATS
+      anomalies_artifact.set_json_value_custom_property(
+          ARTIFACT_PROPERTY_BLESSED_KEY, blessed_value_dict
+      )
+      return
 
     config = exec_properties.get(
         standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY
@@ -251,9 +271,6 @@ class Executor(base_executor.BaseExecutor):
             )
         )
 
-    anomalies_artifact = artifact_utils.get_single_instance(
-        output_dict[standard_component_specs.ANOMALIES_KEY]
-    )
     anomalies_artifact.split_names = artifact_utils.encode_split_names(
         ['%s_%s' % (test, baseline) for test, baseline in split_pairs]
     )
@@ -269,7 +286,6 @@ class Executor(base_executor.BaseExecutor):
           )
       )
     current_stats_span = test_statistics.span
-    blessed_value_dict = {}
     for test_split, baseline_split in split_pairs:
       split_pair = '%s_%s' % (test_split, baseline_split)
       logging.info('Processing split pair %s', split_pair)

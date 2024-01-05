@@ -405,12 +405,77 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         {'train_eval': anomalies_blessed_value},
     )
 
+  def testMissBaselineStats(self):
+
+    validation_config = text_format.Parse(
+        """
+      default_slice_config: {
+        feature: {
+            path: {
+                step: 'parent_feature'
+                step: 'value_feature'
+            }
+            distribution_comparator: {
+              jensen_shannon_divergence: {
+                  threshold: 0.0
+              }
+            }
+        }
+      }""", distribution_validator_pb2.DistributionValidatorConfig())
+
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+
+    stats_artifact = standard_artifacts.ExampleStatistics()
+    stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
+    stats_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
+    input_dict = {
+        standard_component_specs.STATISTICS_KEY: [stats_artifact],
+        standard_component_specs.BASELINE_STATISTICS_KEY: [],
+    }
+    # The analyzed splits are set for this test to get a single result proto.
+    exec_properties = {
+        # List needs to be serialized before being passed into Do function.
+        standard_component_specs.INCLUDE_SPLIT_PAIRS_KEY:
+            json_utils.dumps([('train', 'eval')]),
+        standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY:
+            validation_config,
+        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY:
+            None,
+    }
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    validation_output = standard_artifacts.ExampleAnomalies()
+    validation_output.uri = os.path.join(output_data_dir, 'output')
+
+    output_dict = {
+        standard_component_specs.ANOMALIES_KEY: [validation_output],
+    }
+
+    distribution_validator_executor = executor.Executor()
+    distribution_validator_executor.Do(input_dict, output_dict, exec_properties)
+
+    self.assertEqual(
+        validation_output.get_json_value_custom_property(
+            executor.ARTIFACT_PROPERTY_BLESSED_KEY
+        ),
+        {
+            'train': executor.NO_BASELINE_STATS,
+            'eval': executor.NO_BASELINE_STATS,
+        },
+    )
+
   def testStructData(self):
     source_data_dir = FLAGS.test_tmpdir
     stats_artifact = standard_artifacts.ExampleStatistics()
     stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
     stats_artifact.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
+        ['train', 'eval']
+    )
 
     struct_stats_train = text_format.Parse(
         """

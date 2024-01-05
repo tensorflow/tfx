@@ -35,17 +35,25 @@ class DistributionValidator(base_component.BaseComponent):
   Also supports running custom validations between two datasets using an
   optional SQL-based config.
   """
+
   SPEC_CLASS = standard_component_specs.DistributionValidatorSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(self,
-               statistics: types.BaseChannel,
-               baseline_statistics: types.BaseChannel,
-               config: distribution_validator_pb2.DistributionValidatorConfig,
-               include_split_pairs: Optional[List[Tuple[str, str]]] = None,
-               custom_validation_config: Optional[
-                   custom_validation_config_pb2.CustomValidationConfig] = None):
+  def __init__(
+      self,
+      statistics: types.BaseChannel,
+      baseline_statistics: types.BaseChannel,
+      config: distribution_validator_pb2.DistributionValidatorConfig,
+      include_split_pairs: Optional[List[Tuple[str, str]]] = None,
+      custom_validation_config: Optional[
+          custom_validation_config_pb2.CustomValidationConfig
+      ] = None,
+  ):
     """Construct a DistributionValidation component.
+
+    DistributionValidator compares the statistics with baseline_statistics. When
+    baseline_statistics not available during cold start or due to other
+    reasons, DistributionValidator will rubber stamp.
 
     Args:
       statistics: A BaseChannel of type `standard_artifacts.ExampleStatistics`.
