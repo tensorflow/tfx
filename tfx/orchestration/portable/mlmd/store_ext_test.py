@@ -38,24 +38,19 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
 
   def testGetNodeExecutions(self):
     c = self.put_context('node', 'my-pipeline.my-node')
-    self.put_execution('E', last_known_state='UNKNOWN', contexts=[c])
-    self.put_execution('E', last_known_state='NEW', contexts=[c])
+    e1 = self.put_execution('E', last_known_state='UNKNOWN', contexts=[c])
+    e2 = self.put_execution('E', last_known_state='NEW', contexts=[c])
     e3 = self.put_execution('E', last_known_state='RUNNING', contexts=[c])
     e4 = self.put_execution('E', last_known_state='COMPLETE', contexts=[c])
     e5 = self.put_execution('E', last_known_state='FAILED', contexts=[c])
     e6 = self.put_execution('E', last_known_state='CACHED', contexts=[c])
     e7 = self.put_execution('E', last_known_state='CANCELED', contexts=[c])
 
-    result = store_ext.get_node_executions(
-        self.store, pipeline_id='my-pipeline', node_id='my-node'
-    )
-    self.assertEqual(_ids(result), _ids([e4, e6]))
-
-    with self.subTest('With execution limit'):
+    with self.subTest('With execution_states unspecified'):
       result = store_ext.get_node_executions(
-          self.store, pipeline_id='my-pipeline', node_id='my-node', limit=1
+          self.store, pipeline_id='my-pipeline', node_id='my-node'
       )
-      self.assertEqual(_ids(result), _ids([e4]))
+      self.assertEqual(_ids(result), _ids([e1, e2, e3, e4, e5, e6, e7]))
 
     with self.subTest('Bad pipeline_id'):
       result = store_ext.get_node_executions(
@@ -203,7 +198,7 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
         contexts=[c1, c2],
     )
 
-    with self.subTest('With execution limit=None'):
+    with self.subTest('With execution_states unspecified'):
       result = store_ext.get_live_output_artifacts_of_node_by_output_key(
           self.store,
           pipeline_id='my-pipeline',
@@ -213,25 +208,21 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
       self.assertDictEqual(
           result, {'y': [[y5], [y3, y4], [y1]], 'z': [[], [z2], [z1]]}
       )
-    with self.subTest('With execution limit=2'):
+
+    with self.subTest('With execution_states=[COMPLETE, CACHED]'):
       result = store_ext.get_live_output_artifacts_of_node_by_output_key(
           self.store,
           pipeline_id='my-pipeline',
           node_id='my-node',
-          pipeline_run_id='run-20230413',
-          execution_limit=2,
-      )
-      self.assertDictEqual(result, {'y': [[y5], [y3, y4]], 'z': [[], [z2]]})
-    with self.subTest('With execution limit=0'):
-      result = store_ext.get_live_output_artifacts_of_node_by_output_key(
-          self.store,
-          pipeline_id='my-pipeline',
-          node_id='my-node',
-          pipeline_run_id='run-20230413',
-          execution_limit=0,
+          pipeline_run_id='',
+          execution_states=[
+              metadata_store_pb2.Execution.COMPLETE,
+              metadata_store_pb2.Execution.CACHED,
+          ],
       )
       self.assertDictEqual(
-          result, {'y': [[y5], [y3, y4], [y1]], 'z': [[], [z2], [z1]]}
+          result,
+          {'y': [[y5], [y3, y4], [y1]], 'z': [[], [z2], [z1]]},
       )
 
   def testGetLiveOutputArtifactsOfNodeByOutputKeyAsync(self):
@@ -249,6 +240,7 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
     x1 = self.put_artifact('X')
     x2 = self.put_artifact('X')
     x3 = self.put_artifact('X')
+    # Intermediate artifact
     x4 = self.put_artifact('X')
 
     y1 = self.put_artifact('Y')
@@ -256,11 +248,13 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
     y3 = self.put_artifact('Y')
     y4 = self.put_artifact('Y')
     y5 = self.put_artifact('Y')
+    # Intermediate artifact
     y6 = self.put_artifact('Y')
 
     z1 = self.put_artifact('Z')
     z2 = self.put_artifact('Z')
     z3 = self.put_artifact('Z', state='ABANDONED')
+    # Intermediate artifact
     z4 = self.put_artifact('Z')
 
     self.put_execution(
@@ -284,6 +278,8 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
         outputs={'y': [y5], 'z': [z3]},
         contexts=[c1],
     )
+    # A special case for intermediate artifacts, which can be LIVE even the
+    # execution is FAILED.
     self.put_execution(
         'E',
         last_known_state='FAILED',
@@ -292,7 +288,7 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
         contexts=[c1],
     )
 
-    with self.subTest('With execution limit=None'):
+    with self.subTest('With execution_states unspecified'):
       result = store_ext.get_live_output_artifacts_of_node_by_output_key(
           self.store,
           pipeline_id='my-pipeline',
@@ -300,29 +296,8 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
           pipeline_run_id='',
       )
       self.assertDictEqual(
-          result, {'y': [[y5], [y3, y4], [y1]], 'z': [[], [z2], [z1]]}
-      )
-
-    with self.subTest('With execution limit=2'):
-      result = store_ext.get_live_output_artifacts_of_node_by_output_key(
-          self.store,
-          pipeline_id='my-pipeline',
-          node_id='my-node',
-          pipeline_run_id='',
-          execution_limit=2,
-      )
-      self.assertDictEqual(result, {'y': [[y5], [y3, y4]], 'z': [[], [z2]]})
-
-    with self.subTest('With execution limit=0'):
-      result = store_ext.get_live_output_artifacts_of_node_by_output_key(
-          self.store,
-          pipeline_id='my-pipeline',
-          node_id='my-node',
-          pipeline_run_id='',
-          execution_limit=0,
-      )
-      self.assertDictEqual(
-          result, {'y': [[y5], [y3, y4], [y1]], 'z': [[], [z2], [z1]]}
+          result,
+          {'y': [[y6], [y5], [y3, y4], [y1]], 'z': [[z4], [], [z2], [z1]]},
       )
 
     with self.subTest('With execution_states=[COMPLETE, CACHED, FAILED]'):
