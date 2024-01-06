@@ -225,6 +225,24 @@ class ValidateExecPropertyPlaceholderTest(tf.test.TestCase):
         + "/somefile.txt",
     )
 
+  def test_rejects_input_artifact_placeholder(self):
+    with self.assertRaisesRegex(
+        ValueError, ".*testkey.*input placeholder.*someartifact.*"
+    ):
+      compiler_utils.validate_exec_property_placeholder(
+          "testkey", ph.input("someartifact").uri
+      )
+    with self.assertRaisesRegex(
+        ValueError, ".*testkey.*input placeholder.*someartifact.*"
+    ):
+      compiler_utils.validate_exec_property_placeholder(
+          "testkey",
+          ph.execution_invocation().pipeline_run_id
+          + "foo"
+          + ph.input("someartifact").uri
+          + "/somefile.txt",
+      )
+
   def test_rejects_output_artifact_placeholder(self):
     with self.assertRaisesRegex(
         ValueError, ".*testkey.*output placeholder.*someartifact.*"
