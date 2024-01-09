@@ -20,7 +20,7 @@ import copy
 import functools
 import types
 import typing
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Type
 
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
@@ -148,7 +148,9 @@ def _assign_returned_values(
 
 
 class BaseFunctionalComponent(base_component.BaseComponent):
-  pass
+  # Can be used for platform-specific additional information attached to this
+  # component class.
+  platform_classlevel_extensions: ClassVar[Any] = None
 
 
 class _SimpleComponent(BaseFunctionalComponent):
