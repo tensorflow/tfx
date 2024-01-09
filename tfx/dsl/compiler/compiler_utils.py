@@ -288,6 +288,14 @@ def output_spec_from_channel(channel: types.BaseChannel,
   # Compile OutputSpec.artifact_spec.additional_custom_parameters.
   for property_name, property_value in (
       output_channel.additional_custom_properties.items()):
+    # Ensure no duplicate names between properties and custom properties.
+    if property_name in artifact_type.properties:
+      raise ValueError(
+          f"Node {node_id} has a property name conflict: '{property_name}' is"
+          f" already used in {artifact_type.name}'s properties. Please change"
+          " this custom property to a different name."
+      )
+
     value_field = result.artifact_spec.additional_custom_properties[
         property_name].field_value
     try:

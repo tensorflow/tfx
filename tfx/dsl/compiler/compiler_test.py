@@ -181,6 +181,27 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(TypeError, "Expected INT but given STRING"):
       dsl_compiler.compile(test_pipeline)
 
+  def testCompileAdditionalCustomPropertyNameConflictError(self):
+    dsl_compiler = compiler.Compiler()
+    test_pipeline = (
+        additional_properties_test_pipeline_async.create_test_pipeline()
+    )
+    custom_producer = next(
+        c
+        for c in test_pipeline.components
+        if isinstance(
+            c, additional_properties_test_pipeline_async.CustomProducer
+        )
+    )
+    custom_producer.outputs["stats"].additional_custom_properties["span"] = 123
+    with self.assertRaisesRegex(
+        ValueError,
+        f"Node {custom_producer.id} has a property name conflict: 'span'"
+        " is already used in ExampleStatistics's properties. Please change this"
+        " custom property to a different name.",
+    ):
+      dsl_compiler.compile(test_pipeline)
+
   def testCompileDynamicExecPropTypeError(self):
     dsl_compiler = compiler.Compiler()
     test_pipeline = dynamic_exec_properties_pipeline.create_test_pipeline()
