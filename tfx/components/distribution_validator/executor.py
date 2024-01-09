@@ -14,7 +14,7 @@
 """TFX DistributionValidator executor."""
 
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from absl import logging
 import tensorflow_data_validation as tfdv
@@ -23,13 +23,17 @@ from tensorflow_data_validation.utils import schema_util
 from tfx import types
 from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.dsl.components.base import base_executor
+from tfx.orchestration.experimental.core import component_generated_alert_pb2
+from tfx.orchestration.experimental.core import constants
 from tfx.proto import distribution_validator_pb2
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 from tfx.utils import monitoring_utils
 from tfx.utils import writer_utils
 
+from google.protobuf import any_pb2
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
@@ -171,15 +175,52 @@ def _add_anomalies_for_missing_comparisons(
   return anomalies
 
 
+def _generate_alerts_info_proto(
+    anomaly_info: anomalies_pb2.AnomalyInfo,
+    split_pair: str
+) -> list[component_generated_alert_pb2.ComponentGeneratedAlertInfo]:
+  """Generates a list of ComponentGeneratedAlertInfo from AnomalyInfo."""
+  result = []
+  for reason in anomaly_info.reason:
+    result.append(
+        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+            alert_name=(
+                f'[{split_pair}] {reason.short_description}'
+            ),
+            alert_body=f'[{split_pair}] {reason.description}',
+        )
+    )
+  return result
+
+
+def _create_anomalies_alerts(
+    anomalies: anomalies_pb2.Anomalies,
+    split_pair: str,
+) -> list[component_generated_alert_pb2.ComponentGeneratedAlertInfo]:
+  """Creates an alert for each anomaly in the anomalies artifact."""
+  result = []
+  # Information about dataset-level anomalies, such as "High num examples in
+  # current dataset versus the previous span."
+  if anomalies.HasField('dataset_anomaly_info'):
+    result.extend(
+        _generate_alerts_info_proto(anomalies.dataset_anomaly_info, split_pair)
+    )
+  # Information about feature-level anomalies, such as "High Linfty distance
+  # between current and previous."
+  for _, info in anomalies.anomaly_info.items():
+    result.extend(_generate_alerts_info_proto(info, split_pair))
+  return result
+
+
 class Executor(base_executor.BaseExecutor):
   """DistributionValidator component executor."""
 
   def Do(
       self,
-      input_dict: Dict[str, List[types.Artifact]],
-      output_dict: Dict[str, List[types.Artifact]],
+      input_dict: Dict[str, list[types.Artifact]],
+      output_dict: Dict[str, list[types.Artifact]],
       exec_properties: Dict[str, Any],
-  ) -> None:
+  ) -> execution_result_pb2.ExecutorOutput:
     """DistributionValidator executor entrypoint.
 
     This checks for changes in data distributions from one dataset to another,
@@ -191,7 +232,8 @@ class Executor(base_executor.BaseExecutor):
       exec_properties: A dict of execution properties.
 
     Returns:
-      None
+      ExecutionResult proto with anomalies and the component generated alerts
+      execution property set with anomalies alerts, if any.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
@@ -206,6 +248,7 @@ class Executor(base_executor.BaseExecutor):
     )
     include_splits = set((test, base) for test, base in include_splits_list)
     blessed_value_dict = {}
+    executor_output = execution_result_pb2.ExecutorOutput()
 
     anomalies_artifact = artifact_utils.get_single_instance(
         output_dict[standard_component_specs.ANOMALIES_KEY]
@@ -230,7 +273,10 @@ class Executor(base_executor.BaseExecutor):
       anomalies_artifact.set_json_value_custom_property(
           ARTIFACT_PROPERTY_BLESSED_KEY, blessed_value_dict
       )
-      return
+      executor_output.output_artifacts[
+          standard_component_specs.ANOMALIES_KEY
+      ].artifacts.append(anomalies_artifact.mlmd_artifact)
+      return executor_output
 
     config = exec_properties.get(
         standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY
@@ -286,6 +332,7 @@ class Executor(base_executor.BaseExecutor):
           )
       )
     current_stats_span = test_statistics.span
+    alerts = component_generated_alert_pb2.ComponentGeneratedAlertList()
     for test_split, baseline_split in split_pairs:
       split_pair = '%s_%s' % (test_split, baseline_split)
       logging.info('Processing split pair %s', split_pair)
@@ -328,8 +375,26 @@ class Executor(base_executor.BaseExecutor):
           current_stats_span,
           validation_metrics_artifact,
       )
+      alerts.component_generated_alert_list.extend(
+          _create_anomalies_alerts(anomalies, split_pair)
+      )
 
     # Set blessed custom property for Anomalies Artifact
     anomalies_artifact.set_json_value_custom_property(
         ARTIFACT_PROPERTY_BLESSED_KEY, blessed_value_dict
     )
+
+    executor_output.output_artifacts[
+        standard_component_specs.ANOMALIES_KEY
+        ].artifacts.append(anomalies_artifact.mlmd_artifact)
+
+    # Set component generated alerts execution property in ExecutorOutput if
+    # any anomalies alerts exist.
+    if alerts.component_generated_alert_list:
+      any_proto = any_pb2.Any()
+      any_proto.Pack(alerts)
+      executor_output.execution_properties[
+          constants.COMPONENT_GENERATED_ALERTS_KEY
+      ].proto_value.CopyFrom(any_proto)
+
+    return executor_output
