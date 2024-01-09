@@ -122,14 +122,16 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
     example_gen_node_uid = task_lib.NodeUid.from_node(self._pipeline,
                                                       self._example_gen)
     pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
-    self._produce_examples(is_external=True)
+    expected_to_be_garbage_collected = self._produce_examples(is_external=True)
     # The example should not be garbage collected because it is external.
     self.assertArtifactIdsEqual(
-        [],
+        [expected_to_be_garbage_collected],
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
-            self._metadata, example_gen_node_uid, self._example_gen))
+            self._metadata, example_gen_node_uid, self._example_gen
+        ),
+    )
 
-  def test_artifacts_external_not_counted_for_policy(self):
+  def test_artifacts_external_counted_for_policy(self):
     policy = garbage_collection_policy_pb2.GarbageCollectionPolicy(
         keep_most_recently_published=garbage_collection_policy_pb2
         .GarbageCollectionPolicy.KeepMostRecentlyPublished(num_artifacts=1))
@@ -139,10 +141,10 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
                                                       self._example_gen)
     pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
 
-    expected_to_be_garbage_collected = self._produce_examples()
+    expected_to_be_garbage_collected = self._produce_examples(is_external=True)
     self._produce_examples(
-    )  # Most recent one except the externals should not be garbage collected
-    self._produce_examples(is_external=True)  # Should not be garbage collected
+        is_external=True
+    )  # Most recent one should not be garbage collected.
     self.assertArtifactIdsEqual(
         [expected_to_be_garbage_collected],
         garbage_collection.get_artifacts_to_garbage_collect_for_node(
@@ -192,17 +194,45 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
     examples = example_gen_output['examples']
     examples_protos = self._metadata.store.get_artifacts_by_id(
         [e.id for e in examples])
+
     garbage_collection.garbage_collect_artifacts(self._metadata,
                                                  examples_protos)
+
     remove.assert_called_once_with(examples[0].uri)
     self.assertEqual(
         metadata_store_pb2.Artifact.State.DELETED,
-        self._metadata.store.get_artifacts_by_id([e.id for e in examples
-                                                 ])[0].state)
+        self._metadata.store.get_artifacts_by_id([examples[0].id])[0].state,
+    )
 
+  @mock.patch.object(garbage_collection, '_delete_artifact_uri', autospec=True)
+  def test_garbage_collect_external_artifacts(self, mock_delete_artifact_uri):
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+    example_gen_execution = test_utils.fake_example_gen_run_with_handle(
+        self._metadata, self._example_gen, span=0, version=0, is_external=True
+    )
+    example_gen_output = self._metadata.get_outputs_of_execution(
+        example_gen_execution.id
+    )
+    examples = example_gen_output['examples']
+    examples_protos = self._metadata.store.get_artifacts_by_id(
+        [e.id for e in examples]
+    )
+
+    garbage_collection.garbage_collect_artifacts(
+        self._metadata, examples_protos
+    )
+
+    mock_delete_artifact_uri.assert_not_called()
+    self.assertEqual(
+        metadata_store_pb2.Artifact.State.DELETED,
+        self._metadata.store.get_artifacts_by_id([examples[0].id])[0].state,
+    )
+
+  @mock.patch.object(fileio, 'exists')
   def test_garbage_collect_artifacts_does_not_throw_and_marks_deleted_when_not_found(
-      self,
+      self, mock_exists
   ):
+    mock_exists.return_value = False
     test_dir = self.create_tempdir()
     pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
     example_gen_execution = test_utils.fake_example_gen_run_with_handle(
@@ -222,6 +252,8 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
         self._metadata, examples_protos
     )
 
+    mock_exists.assert_called_once()
+
     # Also make sure the artifacts are still marked as DELETED.
     final_artifacts = self._metadata.store.get_artifacts_by_id(
         [e.id for e in examples]
@@ -231,10 +263,12 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(artifact.state, metadata_store_pb2.Artifact.DELETED)
 
   @mock.patch.object(fileio, 'remove')
+  @mock.patch.object(fileio, 'exists')
   def test_garbage_collect_artifacts_does_not_throw_or_mark_deleted_when_permission_denied(
-      self, remove
+      self, mock_exists, mock_remove
   ):
-    remove.side_effect = PermissionError('permission denied')
+    mock_exists.return_value = True
+    mock_remove.side_effect = PermissionError('permission denied')
     pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
     example_gen_execution = test_utils.fake_example_gen_run_with_handle(
         self._metadata, self._example_gen, span=0, version=0

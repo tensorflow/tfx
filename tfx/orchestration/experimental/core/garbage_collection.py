@@ -91,16 +91,6 @@ def _artifacts_not_in_use(
   return [a for a in artifacts if a.id not in in_use_artifact_ids]
 
 
-def _artifacts_not_external(
-    artifacts: Sequence[metadata_store_pb2.Artifact],
-) -> Sequence[metadata_store_pb2.Artifact]:
-  """Filters out external artifacts."""
-  return [
-      artifact for artifact in artifacts
-      if _get_property_value(artifact, 'is_external') != 1
-  ]
-
-
 def _artifacts_to_garbage_collect_for_policy(
     artifacts: Sequence[metadata_store_pb2.Artifact],
     policy: garbage_collection_policy_pb2.GarbageCollectionPolicy,
@@ -210,7 +200,6 @@ def _artifacts_to_garbage_collect(
 ) -> Sequence[metadata_store_pb2.Artifact]:
   """Returns artifacts that should be garbage collected."""
   result = artifacts
-  result = _artifacts_not_external(result)
   result = _artifacts_to_garbage_collect_for_policy(result, policy)
   result = (
       garbage_collection_extensions.artifacts_not_in_use_in_pipeline_groups(
@@ -219,6 +208,54 @@ def _artifacts_to_garbage_collect(
   )
   result = _artifacts_not_in_use(mlmd_handle, result, events)
   return result
+
+
+def _is_artifact_external(artifact: metadata_store_pb2.Artifact) -> bool:
+  """Returns True if an artifact is external to the pipeline."""
+  return _get_property_value(artifact, 'is_external') == 1
+
+
+def _delete_artifact_uri(artifact: metadata_store_pb2.Artifact) -> bool:
+  """Deletes the artifact's URI and returns True if it can be marked as DELETED.
+
+  Args:
+    artifact: The artifact containing the URI to delete.
+
+  Returns:
+    True: If the URI is deleted or does not exist. In this case we can safely
+      mark the artifact as DELETED in MLMD.
+    False: If deleting the artifact URI fails.
+  """
+  logging.info('Deleting URI %s', artifact.uri)
+
+  try:
+    if fileio.isdir(artifact.uri):
+      fileio.rmtree(artifact.uri)
+    else:
+      fileio.remove(artifact.uri)
+    return True
+
+  # TODO(kmonte): See if there's some fileio exception list we can catch.
+  except Exception:  # pylint: disable=broad-exception-caught
+    # If an exception is raised during deletion, there are several cases:
+    #
+    # Case 1: The artifact URI does not exist (if it has been TTL'd off disk,
+    # etc.), and in this case the artifact should still be marked as DELETED.
+    #
+    # Case 2: The artifact URI exists but removing it still fails (if permission
+    # is denied, etc.), and in this case the artifact should not be marked as
+    # DELETED.
+    #
+    # Note that even in Case 2, `fileio` may still raise a FileNotFoundError. So
+    # instead of catching FileNotFoundError, we check if the URI does not exit.
+    if not fileio.exists(artifact.uri):
+      logging.exception(
+          'URI %s not found for artifact %s', artifact.uri, artifact
+      )
+      return True
+
+    logging.exception('Failed to delete artifact %s', artifact)
+    return False
 
 
 def get_artifacts_to_garbage_collect_for_node(
@@ -288,35 +325,22 @@ def garbage_collect_artifacts(
   if not artifacts:
     return
   for artifact in artifacts:
-    logging.info('Deleting URI %s', artifact.uri)
-    # There are cases where the artifact URI has been TTL'd off disk, and in
-    # that case we want to mark it as DELETED still. However removing the URI
-    # may still fail (if permission is denied), in which case the artifact
-    # should not be marked for deletion.
-    # In the case that GC fails for a specific artifact we catch the Exception
-    # so that we can mark the other artifacts as DELETED in MLMD.
-    try:
-      if fileio.isdir(artifact.uri):
-        fileio.rmtree(artifact.uri)
-      else:
-        fileio.remove(artifact.uri)
-    except fileio.NotFoundError as e:
-      logging.exception(
-          'URI %s not found: %s for artifact %s', artifact.uri, e, artifact
-      )
+    if _is_artifact_external(artifact):
+      # To garbage collect external artifacts, only mark the artifacts as
+      # DELETED in MLMD.
+      logging.info('Mark external artifact %s as DELETED in MLMD', artifact)
       artifact.state = metadata_store_pb2.Artifact.State.DELETED
-    # TODO(kmonte): See if there's some fileio exception list we can catch.
-    except Exception as e:  # pylint: disable=broad-exception-caught
-      # Don't mark artifact as DELETED if we fail for some reason other than
-      # FileNotFound.
-      logging.exception('Failed to delete artifact %s: %s', artifact, e)
     else:
-      # If no exception then mark as DELETED.
-      artifact.state = metadata_store_pb2.Artifact.State.DELETED
+      # To garbage collect internal artifacts, delete the URIs and mark the
+      # artifacts as DELETED in MLMD if deleting the URIs is successful.
+      if _delete_artifact_uri(artifact):
+        logging.info('Mark internal artifact %s as DELETED in MLMD', artifact)
+        artifact.state = metadata_store_pb2.Artifact.State.DELETED
 
   mlmd_handle.store.put_artifacts(artifacts)
 
 
+# TODO(b/301507304): Invoke it in `publish_external_output_artifacts()`
 def run_garbage_collection_for_node(
     mlmd_handle: metadata.Metadata,
     node_uid: task_lib.NodeUid,
@@ -340,5 +364,5 @@ def run_garbage_collection_for_node(
         artifacts,
     )
     garbage_collect_artifacts(mlmd_handle, artifacts)
-  except Exception as e:  # pylint: disable=broad-exception-caught
-    logging.exception('Garbage collection for node %s failed %s', node_uid, e)
+  except Exception:  # pylint: disable=broad-exception-caught
+    logging.exception('Garbage collection for node %s failed', node_uid)
