@@ -134,9 +134,9 @@ class _Generator:
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
     self._fail_fast = fail_fast
-    self._node_proto_view_by_node_id: Dict[
+    self._node_proto_view_by_node_id: collections.OrderedDict[
         str, node_proto_view.NodeProtoView
-    ] = {}
+    ] = collections.OrderedDict()
 
   def generate_tasks_for_node(
       self, node: node_proto_view.NodeProtoView
@@ -772,7 +772,7 @@ def _node_by_id(
 
 
 def _unrunnable_nodes(
-    node_by_id: Mapping[str, node_proto_view.NodeProtoView],
+    node_by_id: collections.OrderedDict[str, node_proto_view.NodeProtoView],
     failed_node_ids: Set[str],
 ) -> Set[str]:
   """Returns node_ids of all unrunnable descendant nodes for each member of the given failed_node_ids set."""
@@ -813,4 +813,18 @@ def _unrunnable_nodes(
     if q_node_id not in unrunnable:
       queue.extend(node_by_id[q_node_id].downstream_nodes)
       unrunnable.add(q_node_id)
+
+  # Lazy nodes whose descendents are all unrunnable are also unrunnable, so we
+  # need to add them here.
+  # We go over the dictionary in reverse order so that lazy nodes that are
+  # downstream of other lazy nodes are checked in (reverse) order.
+  for node_id, node in reversed(node_by_id.items()):
+    if (
+        node.execution_options.strategy in _LAZY_TRIGGER_STRATEGIES
+        and node.downstream_nodes
+        and all(
+            downstream in unrunnable for downstream in node.downstream_nodes
+        )
+    ):
+      unrunnable.add(node_id)
   return unrunnable

@@ -1286,6 +1286,64 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self._run_next(False, expect_nodes=[self.chore_b])
     self._run_next(False, expect_nodes=[self.chore_c])
 
+  def test_lazy_nodes_are_unrunnable_if_downstream_are_unrunnable(self):
+    self._setup_for_chore_pipeline()
+    # chore_a and chore_b can execute way earlier but should wait for chore_f
+    self.chore_a.execution_options.strategy = (
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED
+    )
+    self.chore_b.execution_options.strategy = (
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED
+    )
+    test_utils.fake_example_gen_run(self._mlmd_connection, self.eg_1, 1, 1)
+    test_utils.fake_example_gen_run(self._mlmd_connection, self.eg_2, 1, 1)
+    self._run_next(False, expect_nodes=[self.chore_d, self.chore_e])
+
+    [chore_f_task, chore_g_task] = self._generate_and_test(
+        False,
+        num_initial_executions=4,
+        num_tasks_generated=2,
+        num_new_executions=2,
+        num_active_executions=2,
+        ignore_update_node_state_tasks=True,
+    )
+    self.assertEqual(
+        task_lib.NodeUid.from_node(self._pipeline, self.chore_g),
+        chore_g_task.node_uid,
+    )
+    self.assertEqual(
+        task_lib.NodeUid.from_node(self._pipeline, self.chore_f),
+        chore_f_task.node_uid,
+    )
+    # G can succeed.
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, chore_g_task.execution_id
+      ) as chore_g_exec:
+        chore_g_exec.last_known_state = (
+            metadata_store_pb2.Execution.State.COMPLETE
+        )
+
+    # F must fail, leaving C as unrunnable.
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, chore_f_task.execution_id
+      ) as chore_f_exec:
+        chore_f_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+        data_types_utils.set_metadata_value(
+            chore_f_exec.custom_properties[constants.EXECUTION_ERROR_CODE_KEY],
+            status_lib.Code.UNAVAILABLE,
+        )
+        data_types_utils.set_metadata_value(
+            chore_f_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+            'foobar error',
+        )
+
+    # Pipeline should fail due to there there being no more unrunnable nodes.
+    [finalize_task] = self._generate(False, True)
+    self.assertEqual(status_lib.Code.UNAVAILABLE, finalize_task.status.code)
+    self.assertEqual('foobar error', finalize_task.status.message)
+
   def test_generate_tasks_for_node(self):
     pipeline = self._make_pipeline(
         self._pipeline_root, str(uuid.uuid4()), pipeline_type='chore'
