@@ -147,7 +147,11 @@ def _assign_returned_values(
   return result
 
 
-class _SimpleComponent(base_component.BaseComponent):
+class BaseFunctionalComponent(base_component.BaseComponent):
+  pass
+
+
+class _SimpleComponent(BaseFunctionalComponent):
   """Component whose constructor generates spec instance from arguments."""
 
   def __init__(self, *unused_args, **kwargs):
@@ -441,8 +445,14 @@ def component(
     EnvironmentError: if the current Python interpreter is not Python 3.
   """
   if func is None:
+    # Python decorators with arguments in parentheses result in two function
+    # calls. The first function call supplies the kwargs and the second supplies
+    # the decorated function. Here we forward the kwargs to the second call.
     return functools.partial(
-        component, component_annotation=component_annotation, use_beam=use_beam)
+        component,
+        component_annotation=component_annotation,
+        use_beam=use_beam,
+    )
 
   utils.assert_is_top_level_func(func)
 
