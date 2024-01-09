@@ -29,6 +29,7 @@ from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.orchestration.portable.mlmd import store_ext
 from tfx.proto.orchestration import garbage_collection_policy_pb2
 
+from tfx.orchestration.experimental.core import garbage_collection_extensions
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -211,6 +212,11 @@ def _artifacts_to_garbage_collect(
   result = artifacts
   result = _artifacts_not_external(result)
   result = _artifacts_to_garbage_collect_for_policy(result, policy)
+  result = (
+      garbage_collection_extensions.artifacts_not_in_use_in_pipeline_groups(
+          mlmd_handle, policy.keep_if_used_in_pipeline_groups, result
+      )
+  )
   result = _artifacts_not_in_use(mlmd_handle, result, events)
   return result
 
