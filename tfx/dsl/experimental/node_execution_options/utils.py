@@ -30,7 +30,7 @@ class NodeExecutionOptions:
   trigger_strategy: pipeline_pb2.NodeExecutionOptions.TriggerStrategy = (
       pipeline_pb2.NodeExecutionOptions.TRIGGER_STRATEGY_UNSPECIFIED)
   success_optional: bool = False
-  max_execution_retries: int = 0
+  max_execution_retries: Optional[int] = None
   execution_timeout_sec: int = 0
   # This feature enable users to choose if they want to reuse or reset the
   # stateful working dir from the previously failed execution. If set False
@@ -52,4 +52,5 @@ class NodeExecutionOptions:
   lifetime_start: Optional[str] = None
 
   def __post_init__(self):
-    self.max_execution_retries = max(self.max_execution_retries, 0)
+    if self.max_execution_retries is not None:
+      self.max_execution_retries = max(self.max_execution_retries, 0)

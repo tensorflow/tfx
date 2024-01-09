@@ -858,6 +858,64 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         )
         self.assertEmpty(unprocessed_inputs)
 
+  def test_get_unprocessed_inputs_with_retry_limit(self):
+    with self._mlmd_connection as m:
+      # Fake one output of self._example_gen.
+      otu.fake_upstream_node_run(
+          m,
+          self._example_gen,
+          fake_result='Tflex rocks.',
+          tmp_path=self.create_tempfile().full_path,
+      )
+      contexts = m.store.get_contexts()
+      artifact_types = m.store.get_artifact_types()
+      artifacts = artifact_utils.deserialize_artifacts(
+          artifact_types[0], m.store.get_artifacts()
+      )
+      input_and_param = task_gen_utils.InputAndParam(
+          input_artifacts={'examples': artifacts}
+      )
+      resolved_info_for_transform = task_gen_utils.ResolvedInfo(
+          contexts=contexts,
+          input_and_params=[input_and_param],
+      )
+
+      # Set the maximum retry of self._transform to 2.
+      self._transform.execution_options.max_execution_retries = 2
+
+      # Simulate that self._transform failed the first time.
+      execution = otu.fake_start_node_with_handle(
+          m, self._transform, input_artifacts={'examples': artifacts}
+      )
+      otu.fake_finish_node_with_handle(
+          m, self._transform, execution.id, success=False
+      )
+      unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+          m, resolved_info_for_transform, self._transform
+      )
+      self.assertLen(unprocessed_inputs, 1)
+
+      # Simulate that self._transform retry twice.
+      execution = otu.fake_start_node_with_handle(
+          m, self._transform, input_artifacts={'examples': artifacts}
+      )
+      otu.fake_finish_node_with_handle(
+          m, self._transform, execution.id, success=False
+      )
+      execution = otu.fake_start_node_with_handle(
+          m, self._transform, input_artifacts={'examples': artifacts}
+      )
+      otu.fake_finish_node_with_handle(
+          m, self._transform, execution.id, success=False
+      )
+
+      # Since self._transform has retried twice, we won't try it again, so the
+      # unprocessed_inputs is empty.
+      unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+          m, resolved_info_for_transform, self._transform
+      )
+      self.assertEmpty(unprocessed_inputs)
+
   def test_get_unprocessed_inputs_no_trigger(self):
     # Set the example_gen to transform node as NO_TRIGGER.
     input_trigger = (

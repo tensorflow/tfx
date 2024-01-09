@@ -387,12 +387,12 @@ class _Generator:
       # Retry if under retry limit or already STARTING. STARTING is set upstream
       # so we should respect it here. See b/277257906.
       elif (
-          node.execution_options.max_execution_retries
+          node.execution_options.HasField('max_execution_retries')
+          and node.execution_options.max_execution_retries
           >= task_gen_utils.get_num_of_failures_from_failed_execution(
               node_executions, failed_executions[0]
           )
-          or node_state.state == pstate.NodeState.STARTING
-      ):
+      ) or node_state.state == pstate.NodeState.STARTING:
         [retry_execution] = (
             task_gen_utils.register_executions_from_existing_executions(
                 self._mlmd_handle, self._pipeline, node, failed_executions

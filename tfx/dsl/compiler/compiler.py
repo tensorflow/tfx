@@ -556,7 +556,8 @@ def _set_node_execution_options(
       )
     options_proto.strategy = options_py.trigger_strategy
     options_proto.node_success_optional = options_py.success_optional
-    options_proto.max_execution_retries = options_py.max_execution_retries
+    if options_py.max_execution_retries is not None:
+      options_proto.max_execution_retries = options_py.max_execution_retries
     options_proto.execution_timeout_sec = options_py.execution_timeout_sec
     options_proto.reset_stateful_working_dir = (
         options_py.reset_stateful_working_dir

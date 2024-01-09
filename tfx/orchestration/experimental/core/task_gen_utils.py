@@ -15,6 +15,7 @@
 
 import collections
 import itertools
+import json
 import textwrap
 from typing import Callable, Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple, Type
 import uuid
@@ -736,7 +737,6 @@ def get_unprocessed_inputs(
           f' {min(max_timestamp_in_each_input, default=0)}'
       ],
   )
-  logging.info('Fetched %d successful executions.', len(executions))
 
   # Gets the processed inputs.
   processed_inputs: List[Dict[str, Tuple[int, ...]]] = []
@@ -759,6 +759,60 @@ def get_unprocessed_inputs(
         if k not in ignore_keys
     }
     processed_inputs.append(ids_by_key)
+
+  if node.execution_options.HasField('max_execution_retries'):
+    max_execution_retries = node.execution_options.max_execution_retries
+    logging.info(
+        'Node %s has retry limit of %d.',
+        node.node_info.id,
+        max_execution_retries,
+    )
+    failed_executions = get_executions(
+        metadata_handle,
+        node,
+        additional_filters=[
+            (
+                'create_time_since_epoch >='
+                f' {min(max_timestamp_in_each_input, default=0)}'
+            ),
+            'last_known_state = FAILED',
+        ],
+    )
+    events = metadata_handle.store.get_events_by_execution_ids(
+        [e.id for e in failed_executions]
+    )
+
+    failed_execution_count = collections.defaultdict(int)
+    for execution in failed_executions:
+      input_events = [
+          e
+          for e in events
+          if e.type == metadata_store_pb2.Event.INPUT
+          and event_lib.is_valid_input_event(e)
+          and e.execution_id == execution.id
+      ]
+      artifact_ids_by_key = event_lib.reconstruct_artifact_id_multimap(
+          input_events
+      )
+      # Filters out the keys starting with '_' and the keys should be ingored.
+      artifact_ids_by_key = {
+          k: tuple(sorted(v))
+          for k, v in artifact_ids_by_key.items()
+          if k not in ignore_keys
+      }
+
+      encoded_input = json.dumps(artifact_ids_by_key, sort_keys=True)
+      failed_execution_count[encoded_input] += 1
+      # If the number of retries of an input is larger or equal to the limit, we
+      # consider it as processed and will not process it again.
+      if failed_execution_count[encoded_input] == max_execution_retries + 1:
+        logging.info(
+            'Node %s has retry limit of %d. It has reached the retry limit.',
+            node.node_info.id,
+            max_execution_retries,
+        )
+        if artifact_ids_by_key not in processed_inputs:
+          processed_inputs.append(artifact_ids_by_key)
 
   if not processed_inputs:
     return resolved_info.input_and_params

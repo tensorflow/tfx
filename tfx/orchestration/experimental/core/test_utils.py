@@ -259,7 +259,8 @@ def fake_start_node_with_handle(
 
 
 def fake_finish_node_with_handle(
-    mlmd_handle, node, execution_id) -> Optional[typing_utils.ArtifactMultiMap]:
+    mlmd_handle, node, execution_id, success=True
+) -> Optional[typing_utils.ArtifactMultiMap]:
   """Simulates finishing an execution of the given node."""
   if node.HasField('outputs'):
     output_key, output_value = next(iter(node.outputs.outputs.items()))
@@ -269,10 +270,17 @@ def fake_finish_node_with_handle(
   else:
     output_artifacts = None
   contexts = context_lib.prepare_contexts(mlmd_handle, node.contexts)
-  output_dict, _ = execution_publish_utils.publish_succeeded_execution(
-      mlmd_handle, execution_id, contexts, output_artifacts
-  )
-  return output_dict
+
+  if success:
+    output_dict, _ = execution_publish_utils.publish_succeeded_execution(
+        mlmd_handle, execution_id, contexts, output_artifacts
+    )
+    return output_dict
+  else:
+    execution_publish_utils.publish_failed_execution(
+        mlmd_handle, contexts, execution_id
+    )
+    return None
 
 
 def create_exec_node_task(
