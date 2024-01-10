@@ -19,6 +19,7 @@ from typing import Callable, Dict, List, Mapping, Optional, Set
 
 from absl import logging
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -426,7 +427,11 @@ class _Generator:
           )
       )
       with mlmd_state.mlmd_execution_atomic_op(
-          mlmd_handle=self._mlmd_handle, execution_id=new_executions[0].id
+          mlmd_handle=self._mlmd_handle,
+          execution_id=new_executions[0].id,
+          on_commit=event_observer.make_notify_execution_state_change_fn(
+              node_uid
+          ),
       ) as execution:
         execution.last_known_state = metadata_store_pb2.Execution.RUNNING
 
@@ -473,7 +478,12 @@ class _Generator:
     tasks = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
     with mlmd_state.mlmd_execution_atomic_op(
-        mlmd_handle=self._mlmd_handle, execution_id=execution.id) as e:
+        mlmd_handle=self._mlmd_handle,
+        execution_id=execution.id,
+        on_commit=event_observer.make_notify_execution_state_change_fn(
+            node_uid
+        ),
+    ) as e:
       e.last_known_state = metadata_store_pb2.Execution.RUNNING
 
     tasks.append(
