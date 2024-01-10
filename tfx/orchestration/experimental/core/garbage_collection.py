@@ -340,7 +340,6 @@ def garbage_collect_artifacts(
   mlmd_handle.store.put_artifacts(artifacts)
 
 
-# TODO(b/301507304): Invoke it in `publish_external_output_artifacts()`
 def run_garbage_collection_for_node(
     mlmd_handle: metadata.Metadata,
     node_uid: task_lib.NodeUid,
