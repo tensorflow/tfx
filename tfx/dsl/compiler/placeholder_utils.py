@@ -344,9 +344,12 @@ class _ExpressionResolver:
     if value is None:
       raise NullDereferenceError(op.expression)
     if isinstance(value, str):
-      return base64.urlsafe_b64encode(value.encode()).decode("ascii")
-    elif isinstance(value, bytes):
-      return base64.urlsafe_b64encode(value).decode("ascii")
+      value = value.encode()
+    if isinstance(value, bytes):
+      if op.is_standard_b64:
+        return base64.b64encode(value).decode("ascii")
+      else:
+        return base64.urlsafe_b64encode(value).decode("ascii")
     else:
       raise ValueError(
           f"Failed to Base64 encode {value} of type {type(value)}.")

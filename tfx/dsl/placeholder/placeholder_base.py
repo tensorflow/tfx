@@ -144,9 +144,9 @@ class Placeholder(abc.ABC):
         'Did you miss the ending `,` in your tuple?'
     )
 
-  def b64encode(self) -> _Base64EncodeOperator:
+  def b64encode(self, url_safe: bool = True) -> _Base64EncodeOperator:
     """Encodes the value with URL-safe Base64 encoding."""
-    return _Base64EncodeOperator(self)
+    return _Base64EncodeOperator(self, url_safe)
 
   def serialize(
       self,
@@ -231,7 +231,7 @@ class Predicate(Placeholder):
     # Unlike Placeholders, Predicates cannot be added.
     raise NotImplementedError
 
-  def b64encode(self):
+  def b64encode(self, url_safe: bool = True):
     # Unlike Placeholders, Predicates cannot be b64encoded.
     raise NotImplementedError
 
@@ -599,8 +599,9 @@ class _Base64EncodeOperator(UnaryPlaceholderOperator):
   Placeholder object instead.
   """
 
-  def __init__(self, value: Placeholder):
+  def __init__(self, value: Placeholder, url_safe: bool):
     super().__init__(value, expected_type=str)
+    self._url_safe = url_safe
 
   def encode(
       self, component_spec: Optional[Type['types.ComponentSpec']] = None
@@ -609,6 +610,7 @@ class _Base64EncodeOperator(UnaryPlaceholderOperator):
     result.operator.base64_encode_op.expression.CopyFrom(
         self._value.encode(component_spec)
     )
+    result.operator.base64_encode_op.is_standard_b64 = not self._url_safe
     return result
 
 

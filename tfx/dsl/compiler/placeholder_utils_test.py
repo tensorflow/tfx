@@ -974,8 +974,14 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual("tfx.orchestration.ExecutionInvocation",
                      message_descriptor.full_name)
 
-  def testBase64EncodeOperator(self):
-    placeholder_expression = """
+  @parameterized.named_parameters(
+      ("_with_url_safe_b64", False),
+      ("_with_standard_b64", True),
+  )
+  def testBase64EncodeOperator(self, standard_b64):
+    standard_b64_str = "true" if standard_b64 else "false"
+    placeholder_expression = (
+        """
       operator {
         base64_encode_op {
           expression {
@@ -998,19 +1004,50 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
                     }
                   }
                 }
-                index: 0
+                index: 2
               }
             }
           }
+          is_standard_b64: """ + standard_b64_str + """
         }
       }
     """
+    )
     pb = text_format.Parse(placeholder_expression,
                            placeholder_pb2.PlaceholderExpression())
+    serving_spec_with_different_encoded_vals = self._serving_spec
+    # Add this new tag so that we have different base64 encoded and base64
+    # url-safe encoded values.
+    new_tag = "?x=1test?"
+    serving_spec_with_different_encoded_vals.tensorflow_serving.tags.append(
+        new_tag
+    )
+    new_resolution_context = self._resolution_context
+    new_resolution_context.exec_info.exec_properties["proto_property"] = (
+        proto_utils.proto_to_json(serving_spec_with_different_encoded_vals)
+    )
+    base64_urlsafe_encoded = base64.urlsafe_b64encode(new_tag.encode()).decode(
+        "ASCII"
+    )
+    base64_encoded = base64.b64encode(new_tag.encode()).decode("ASCII")
+    if standard_b64:
+      expected = base64_encoded
+      not_expected = base64_urlsafe_encoded
+    else:
+      expected = base64_urlsafe_encoded
+      not_expected = base64_encoded
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
-            pb, self._resolution_context),
-        base64.urlsafe_b64encode(b"latest").decode("ASCII"))
+            pb, new_resolution_context
+        ),
+        expected,
+    )
+    self.assertNotEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, new_resolution_context
+        ),
+        not_expected,
+    )
 
   def _assert_serialized_proto_b64encode_eq(self, serialize_format, expected):
     placeholder_expression = """

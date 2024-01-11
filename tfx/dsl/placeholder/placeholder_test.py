@@ -66,7 +66,7 @@ class PlaceholderTest(tf.test.TestCase):
       expected_pb_str: str,
   ):
     """This function will delete the original copy of placeholder."""
-    # Due to inclusion in types like ExecutableSpec, placeholders need to by
+    # Due to inclusion in types like ExecutableSpec, placeholders need to be
     # deepcopy()-able.
     placeholder_copy = copy.deepcopy(placeholder)
     expected_pb = text_format.Parse(expected_pb_str,
@@ -953,9 +953,10 @@ class PlaceholderTest(tf.test.TestCase):
           }
     """)
 
-  def testBase64EncodeOperator(self):
+  def testBase64EncodeOperatorUrlSafe(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.exec_property('str_value').b64encode(), """
+        ph.exec_property('str_value').b64encode(),
+        """
         operator {
           base64_encode_op {
             expression {
@@ -964,9 +965,29 @@ class PlaceholderTest(tf.test.TestCase):
                 key: "str_value"
               }
             }
+            is_standard_b64: false
           }
         }
-    """)
+    """,
+    )
+
+  def testBase64EncodeOperator(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.exec_property('str_value').b64encode(url_safe=False),
+        """
+        operator {
+          base64_encode_op {
+            expression {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "str_value"
+              }
+            }
+            is_standard_b64: true
+          }
+        }
+    """,
+    )
 
   def testMakeProtoPlaceholder_Empty(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
