@@ -242,7 +242,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
     yield from super().traverse()
     for value in self._fields.values():
       if isinstance(value, placeholder_base.Placeholder):
-        yield value
+        yield from value.traverse()
 
   def _lift_up_descriptors(
       self, op: placeholder_pb2.MakeProtoOperator

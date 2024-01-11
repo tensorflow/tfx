@@ -1420,13 +1420,19 @@ class PlaceholderTest(tf.test.TestCase):
     self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
 
   def testMakeProtoTraverse(self):
-    p = _ExecutionInvocation(tmp_dir=ph.exec_property('foo'))
+    p = _ExecutionInvocation(
+        tmp_dir=ph.exec_property('foo'),
+        pipeline_info=ph.make_proto(
+            pipeline_pb2.PipelineInfo(),
+            id=ph.runtime_info('pipeline_platform_config').project_name,
+        ),
+    )
     ph_types = [type(x) for x in p.traverse()]
     self.assertIn(proto_placeholder.MakeProtoPlaceholder, ph_types)
     self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
     self.assertNotIn(ph.ArtifactPlaceholder, ph_types)
     self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
-    self.assertNotIn(ph.RuntimeInfoPlaceholder, ph_types)
+    self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
 
   def testIterate(self):
     p = ph.input('model')
