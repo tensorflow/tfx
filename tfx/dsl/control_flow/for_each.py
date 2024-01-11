@@ -13,7 +13,7 @@
 # limitations under the License.
 """Module for `ForEach` context manager."""
 
-from typing import Union, cast, Any
+from typing import Any, Union, cast
 
 from tfx.dsl.context_managers import dsl_context_manager
 from tfx.dsl.control_flow import for_each_internal

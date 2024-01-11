@@ -13,11 +13,14 @@
 # limitations under the License.
 """Internal shared classes for ForEach."""
 
-from typing import Any, Sequence, Callable, Dict, TypeVar, Generic
+import collections
+from typing import Any, Callable, Dict, Generic, Sequence, TypeVar
 
 import attr
 from tfx.dsl.context_managers import dsl_context
+from tfx.orchestration import pipeline
 from tfx.types import channel as channel_types
+
 
 # Avoid cyclic dependency
 _BaseNode = Any
@@ -38,21 +41,41 @@ class ForEachContext(dsl_context.DslContext):
   def __eq__(self, other: Any) -> bool:
     return other is self
 
+  def _validate_all_nodes(self, containing_nodes: Sequence[_BaseNode]):
+    """Validates that all nodes are in a pipeline."""
+    found_nodes = collections.Counter()
+
+    # This block filters out any node contained in a pipeline that is also in
+    # containing_nodes.
+    for node in containing_nodes:
+      found_nodes[node.id] += 1
+      if isinstance(node, pipeline.Pipeline):
+        for node in node.components:
+          found_nodes[node.id] -= 1
+
+    # There should be one remaining node
+    remaining_nodes = [node for node in found_nodes if found_nodes[node] != 0]
+
+    # TODO: b/247709394 - Enforce that one component must be provided.
+    if len(remaining_nodes) > 1:
+      raise ValueError(
+          'Multiple nodes are only allowed in a ForEach if they are all in a'
+          f' subpipeline. Found {remaining_nodes} which are not.'
+      )
+
+  # TODO(b/237363715): Raise if containing nodes does not use loop variable
+  # neither directly nor indirectly.
   def validate(self, containing_nodes: Sequence[_BaseNode]):
     for parent in self.ancestors:
       if isinstance(parent, ForEachContext):
         raise NotImplementedError('Nested ForEach block is not supported yet.')
 
-    if len(containing_nodes) > 1:
-      raise NotImplementedError(
-          'Cannot define more than one component within ForEach yet.')
-
-    # TODO(b/237363715): Raise if contaning nodes does not use loop variable
-    # neither directly nor indirectly.
+    self._validate_all_nodes(containing_nodes)
 
 
 _ChannelDict = Dict[str, channel_types.BaseChannel]
 LoopVar = TypeVar('LoopVar')
+_ForEach = TypeVar('_ForEach', bound=ForEachContext)
 
 
 class Loopable(Generic[LoopVar]):
@@ -67,7 +90,7 @@ class Loopable(Generic[LoopVar]):
   """
 
   def __init__(
-      self, loop_var_factory: Callable[[ForEachContext], LoopVar]):
+      self, loop_var_factory: Callable[[_ForEach], LoopVar]):
     if not callable(loop_var_factory):
       raise ValueError(f'{loop_var_factory} is not callable.')
     self._loop_var_factory = loop_var_factory
