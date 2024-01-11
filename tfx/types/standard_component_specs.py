@@ -63,6 +63,7 @@ MODULE_PATH_KEY = 'module_path'
 BASELINE_MODEL_KEY = 'baseline_model'
 EVALUATION_KEY = 'evaluation'
 MODEL_SUBFOLDER_KEY = 'model_subfolder'
+ADD_SPLIT_NAME_KEY = 'add_split_name'
 # Key for infra_validator
 SERVING_SPEC_KEY = 'serving_spec'
 VALIDATION_SPEC_KEY = 'validation_spec'
@@ -160,22 +161,20 @@ class EvaluatorSpec(ComponentSpec):
   """Evaluator component spec."""
 
   PARAMETERS = {
-      EVAL_CONFIG_KEY:
-          ExecutionParameter(type=tfma.EvalConfig, optional=True),
+      EVAL_CONFIG_KEY: ExecutionParameter(type=tfma.EvalConfig, optional=True),
       # TODO(b/181911822): Deprecated, use eval_config.slicing_specs.
-      FEATURE_SLICING_SPEC_KEY:
-          ExecutionParameter(
-              type=evaluator_pb2.FeatureSlicingSpec, optional=True),
+      FEATURE_SLICING_SPEC_KEY: ExecutionParameter(
+          type=evaluator_pb2.FeatureSlicingSpec, optional=True
+      ),
       # This parameter is experimental: its interface and functionality may
       # change at any time.
-      FAIRNESS_INDICATOR_THRESHOLDS_KEY:
-          ExecutionParameter(type=str, optional=True),
-      EXAMPLE_SPLITS_KEY:
-          ExecutionParameter(type=str, optional=True),
-      MODULE_FILE_KEY:
-          ExecutionParameter(type=str, optional=True),
-      MODULE_PATH_KEY:
-          ExecutionParameter(type=str, optional=True),
+      FAIRNESS_INDICATOR_THRESHOLDS_KEY: ExecutionParameter(
+          type=str, optional=True
+      ),
+      EXAMPLE_SPLITS_KEY: ExecutionParameter(type=str, optional=True),
+      ADD_SPLIT_NAME_KEY: ExecutionParameter(type=bool, optional=True),
+      MODULE_FILE_KEY: ExecutionParameter(type=str, optional=True),
+      MODULE_PATH_KEY: ExecutionParameter(type=str, optional=True),
   }
   INPUTS = {
       EXAMPLES_KEY:
