@@ -15,7 +15,6 @@
 
 import base64
 import itertools
-import os
 import re
 
 from absl.testing import parameterized
@@ -34,7 +33,6 @@ from tfx.utils import proto_utils
 from google.protobuf import descriptor_pb2
 from google.protobuf import descriptor_pool
 from google.protobuf import json_format
-from google.protobuf import message_factory
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
@@ -1700,60 +1698,6 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
             nested_pb_2, resolution_context), True)
-
-  def testMakeProtoOp(self):
-    # Note: This test case is relatively basic and doesn't cover all corner
-    # cases, because those are already covered by the cross-module test in
-    # dsl/placeholder/proto_placeholder_test.py.
-    #
-    # This is part two of a two-part unit test.
-    # dsl/placeholder/placeholder_test.py already asserts that the DSL results
-    # in the PlaceholderExpression stored in testdata. This test here asserts
-    # that the same PlaceholderExpression can be resolved even when the
-    # respective proto (SplitConfig) is not provided as a dependency in the
-    # binary (a vital precondition for this test), i.e. it verifies that the
-    # MakeProtoOperator.file_descriptors are sufficient to construct the proto:
-    with self.assertRaises(KeyError):
-      descriptor_pool.Default().FindMessageTypeByName(
-          "tfx.components.transform.SplitsConfig"
-      )
-
-    # Load the IR representation that the DSL would have produced.
-    # This should be a binary proto, not text proto, because it allows parsing
-    # Any fields with unknown proto types inside before their descriptors are
-    # loaded dynamically.
-    test_pb_filepath = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),  # Basically: ../
-        "placeholder/testdata/make_proto_placeholder.binarypb",
-    )
-    with open(test_pb_filepath, "rb") as f:
-      placeholder_expression = placeholder_pb2.PlaceholderExpression()
-      placeholder_expression.ParseFromString(f.read())
-
-    actual = placeholder_utils.resolve_placeholder_expression(
-        placeholder_expression,
-        placeholder_utils.ResolutionContext(
-            exec_info=data_types.ExecutionInfo()
-        ),
-    )
-
-    # Now the proto descriptor should be in the default pool:
-    pool = descriptor_pool.Default()
-    message_descriptor = pool.FindMessageTypeByName(
-        "tfx.components.transform.SplitsConfig"
-    )
-    self.assertIsNotNone(message_descriptor)
-
-    # And we can use it to parse the result (without having to link the proto):
-    factory = message_factory.MessageFactory(pool)
-    proto_class = factory.GetPrototype(message_descriptor)
-    self.assertProtoEquals(
-        """
-        analyze: "foo"
-        analyze: "bar"
-        """,
-        text_format.Parse(actual, proto_class()),
-    )
 
   def testDebugPlaceholder(self):
     pb = text_format.Parse(
