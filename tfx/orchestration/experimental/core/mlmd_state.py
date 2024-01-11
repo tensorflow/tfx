@@ -20,7 +20,6 @@ import threading
 import typing
 from typing import Callable, Iterator, MutableMapping, Optional
 
-import cachetools
 from tfx.orchestration import metadata
 
 from google.protobuf.internal import containers
@@ -61,52 +60,6 @@ class _LocksManager:
           del self._locks[value]
 
 
-class _ExecutionCache:
-  """Read-through / write-through cache for MLMD executions."""
-
-  def __init__(self):
-    self._cache: MutableMapping[
-        int, metadata_store_pb2.Execution] = cachetools.LRUCache(maxsize=1024)
-    self._lock = threading.Lock()
-
-  def get_execution(self, mlmd_handle: metadata.Metadata,
-                    execution_id: int) -> metadata_store_pb2.Execution:
-    """Gets execution either from cache or, upon cache miss, from MLMD."""
-    with self._lock:
-      execution = self._cache.get(execution_id)
-    if not execution:
-      executions = mlmd_handle.store.get_executions_by_id([execution_id])
-      if executions:
-        execution = executions[0]
-        with self._lock:
-          self._cache[execution_id] = execution
-    if not execution:
-      raise ValueError(f'Execution not found for execution id: {execution_id}')
-    return execution
-
-  def put_execution(self, mlmd_handle: metadata.Metadata,
-                    execution: metadata_store_pb2.Execution,
-                    field_mask_paths: Optional[list[str]] = None) -> None:
-    """Writes execution to MLMD and updates cache."""
-    mlmd_handle.store.put_executions([execution], field_mask_paths)
-    # The execution is fetched from MLMD again to ensure that the in-memory
-    # value of `last_update_time_since_epoch` of the execution is same as the
-    # one stored in MLMD.
-    [execution] = mlmd_handle.store.get_executions_by_id([execution.id])
-    with self._lock:
-      self._cache[execution.id] = execution
-
-  def evict(self, execution_id: int) -> None:
-    """Evicts execution with the given execution_id from the cache if one exists."""
-    self._cache.pop(execution_id, None)
-
-  def clear_cache(self):
-    """Clears underlying cache; MLMD is untouched."""
-    with self._lock:
-      self._cache.clear()
-
-
-_execution_cache = _ExecutionCache()
 _execution_id_locks = _LocksManager()
 
 
@@ -146,7 +99,10 @@ def mlmd_execution_atomic_op(
     ValueError: If execution having given execution id is not found in MLMD.
   """
   with _execution_id_locks.lock(execution_id):
-    execution = _execution_cache.get_execution(mlmd_handle, execution_id)
+    executions = mlmd_handle.store.get_executions_by_id([execution_id])
+    if not executions:
+      raise ValueError(f'Execution not found for execution id: {execution_id}')
+    execution = executions[0]
     execution_copy = copy.deepcopy(execution)
     yield execution_copy
     if execution != execution_copy:
@@ -168,41 +124,9 @@ def mlmd_execution_atomic_op(
 
       # Make a copy before writing to cache as the yielded `execution_copy`
       # object may be modified even after exiting the contextmanager.
-      _execution_cache.put_execution(
-          mlmd_handle,
-          copy.deepcopy(execution_copy),
-          get_field_mask_paths(execution, execution_copy),
-      )
+      mlmd_handle.store.put_executions([copy.deepcopy(execution_copy)])
       if on_commit is not None:
-        pre_commit_execution = copy.deepcopy(execution)
-        post_commit_execution = copy.deepcopy(
-            _execution_cache.get_execution(mlmd_handle, execution_copy.id))
-        on_commit(pre_commit_execution, post_commit_execution)
-
-
-@contextlib.contextmanager
-def evict_from_cache(execution_id: int) -> Iterator[None]:
-  """Context manager for mutating an MLMD execution using cache unaware functions.
-
-  It is preferable to use `mlmd_execution_atomic_op` for mutating MLMD
-  executions but sometimes it may be necessary to use third party functions
-  which are not cache aware. Such functions should be invoked within this
-  context for proper locking and cache eviction to prevent stale entries.
-
-  Args:
-    execution_id: Id of the execution to be evicted from cache.
-
-  Yields:
-    Nothing
-  """
-  with _execution_id_locks.lock(execution_id):
-    _execution_cache.evict(execution_id)
-    yield
-
-
-def clear_in_memory_state():
-  """Clears cached state. Useful in tests."""
-  _execution_cache.clear_cache()
+        on_commit(copy.deepcopy(execution), copy.deepcopy(execution_copy))
 
 
 def get_field_mask_paths(

@@ -2220,23 +2220,21 @@ def publish_intermediate_artifact(
         # REFERENCE artifact.
         index=len(mlmd_protos.intermediate_artifacts),
     )
-    # TODO(b/262040844): Instead of directly using the context manager here, we
-    # should consider creating and using wrapper functions.
-    with mlmd_state.evict_from_cache(execution_id):
-      [execution] = mlmd_handle.store.get_executions_by_id([execution_id])
-      # Link the Execution to the Artifact with an OUTPUT Event edge.
-      mlmd_handle.store.put_execution(
-          execution=execution,
-          artifact_and_events=[(intermediate_artifact, event)],
-          contexts=contexts,
-          reuse_context_if_already_exist=True,
-          reuse_artifact_if_already_exist_by_external_id=True,
-          # Intermediate artifacts are published after the execution is created.
-          # We need to set force_update_time to True, to ensuer
-          # last_update_time_since_epoch is updated whenevery we publish new
-          # intermediate artifacts.
-          force_update_time=True,
-      )
+
+    [execution] = mlmd_handle.store.get_executions_by_id([execution_id])
+    # Link the Execution to the Artifact with an OUTPUT Event edge.
+    mlmd_handle.store.put_execution(
+        execution=execution,
+        artifact_and_events=[(intermediate_artifact, event)],
+        contexts=contexts,
+        reuse_context_if_already_exist=True,
+        reuse_artifact_if_already_exist_by_external_id=True,
+        # Intermediate artifacts are published after the execution is created.
+        # We need to set force_update_time to True, to ensuer
+        # last_update_time_since_epoch is updated whenevery we publish new
+        # intermediate artifacts.
+        force_update_time=True,
+    )
 
   except mlmd_errors.StatusError as e:
     raise status_lib.StatusNotOkError(code=e.error_code, message=str(e))
