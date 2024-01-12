@@ -77,6 +77,12 @@ def _test_pipeline(
   return pipeline
 
 
+def _get_node_states_dict(
+    execution: metadata_store_pb2.Execution,
+) -> dict[str, pstate.NodeState]:
+  return pstate.NodeStatesProxy(execution).get()
+
+
 class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   def setUp(self):
@@ -1516,7 +1522,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       )
 
       # Check that all the node states are STOPPED.
-      node_states_dict = pstate._get_node_states_dict(execution)
+      node_states_dict = _get_node_states_dict(execution)
       self.assertLen(node_states_dict, 4)
       self.assertSetEqual(
           set([pstate.NodeState.STOPPED]),
@@ -1675,7 +1681,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       )
 
       # Check that all the node states are STOPPED.
-      node_states_dict = pstate._get_node_states_dict(execution)
+      node_states_dict = _get_node_states_dict(execution)
       self.assertLen(node_states_dict, 3)
       self.assertEqual(
           node_states_dict['PairedStart'].state, pstate.NodeState.COMPLETE
@@ -1771,7 +1777,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       # Check that the node states are STARTED.
       [execution] = m.store.get_executions_by_id([pipeline_state.execution_id])
-      node_states_dict = pstate._get_node_states_dict(execution)
+      node_states_dict = _get_node_states_dict(execution)
       self.assertLen(node_states_dict, 4)
       self.assertSetEqual(
           set([pstate.NodeState.STARTED]),
@@ -1992,7 +1998,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       # Check that the node states are STARTED.
       [execution] = m.store.get_executions_by_id([pipeline_state.execution_id])
-      node_states_dict = pstate._get_node_states_dict(execution)
+      node_states_dict = _get_node_states_dict(execution)
       self.assertLen(node_states_dict, 4)
       self.assertSetEqual(
           set([pstate.NodeState.STARTED]),

@@ -1513,9 +1513,53 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
             pipeline_state_run1.pipeline_uid,
         )
 
-  @mock.patch.object(pstate, 'time')
-  def test_save_node_states_dict(self, mock_time):
-    mock_time.time.return_value = time.time()
+
+class NodeStatesProxyTest(test_utils.TfxTest):
+
+  def setUp(self):
+    super().setUp()
+    # This is needed because NodeState includes a timestamp at creation.
+    self.mock_time = self.enter_context(
+        mock.patch.object(pstate, 'time', autospec=True)
+    )
+    self.mock_time.time.return_value = time.time()
+
+  def test_get_with_invalid_state_type(self):
+    proxy = pstate.NodeStatesProxy(metadata_store_pb2.Execution)
+    with self.assertRaises(status_lib.StatusNotOkError):
+      proxy.get('invalid_state_type')
+
+  def test_get_and_set(self):
+    node_states_running = {
+        'some_node': pstate.NodeState(
+            state=pstate.NodeState.RUNNING,
+        )
+    }
+    node_states_complete = {
+        'some_node': pstate.NodeState(
+            state=pstate.NodeState.COMPLETE,
+        )
+    }
+    execution = metadata_store_pb2.Execution()
+    proxy = pstate.NodeStatesProxy(execution)
+    self.assertEmpty(proxy.get())
+    proxy.set(node_states_running)
+    self.assertEqual(proxy.get(), node_states_running)
+    # Underlying execution isn't updated yet.
+    self.assertEmpty(execution.custom_properties)
+    proxy.set(node_states_complete)
+    # Cache is updated even without save().
+    self.assertEqual(proxy.get(), node_states_complete)
+    proxy.save()
+    # Now the underlying execution should be updated.
+    self.assertEqual(
+        data_types_utils.get_metadata_value(
+            execution.custom_properties[pstate._NODE_STATES]
+        ),
+        json_utils.dumps(node_states_complete),
+    )
+
+  def test_save_with_max_str_len(self):
     state_record_1 = pstate.StateRecord(
         state='STARTED',
         backfill_token='token-1',
@@ -1534,7 +1578,9 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
     }
     with TestEnv(None, 20):
       execution = metadata_store_pb2.Execution()
-      pstate._save_node_states_dict(execution, node_states)
+      proxy = pstate.NodeStatesProxy(execution)
+      proxy.set(node_states)
+      proxy.save()
       self.assertEqual(
           data_types_utils.get_metadata_value(
               execution.custom_properties[pstate._NODE_STATES]
@@ -1543,7 +1589,9 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
       )
     with TestEnv(None, 2000):
       execution = metadata_store_pb2.Execution()
-      pstate._save_node_states_dict(execution, node_states)
+      proxy = pstate.NodeStatesProxy(execution)
+      proxy.set(node_states)
+      proxy.save()
       self.assertEqual(
           data_types_utils.get_metadata_value(
               execution.custom_properties[pstate._NODE_STATES]

@@ -22,7 +22,7 @@ import json
 import os
 import threading
 import time
-from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Set, Tuple
 import uuid
 
 from absl import logging
@@ -273,6 +273,81 @@ class NodeState(json_utils.Jsonable):
         lambda s: is_node_state_running(s.state), include_current_state=True)
 
 
+class NodeStatesProxy:
+  """Proxy for reading and updating deserialized NodeState dicts from Execution.
+
+  This proxy contains an internal write-back cache. Changes are not saved back
+  to the `Execution` until `save()` is called; cache would not be updated if
+  changes were made outside of the proxy, either.
+  """
+
+  def __init__(self, execution: metadata_store_pb2.Execution):
+    self._custom_properties = execution.custom_properties
+    self._deserialized_cache: Dict[str, Dict[str, NodeState]] = {}
+    self._changed_state_types: Set[str] = set()
+
+  def get(self, state_type: str = _NODE_STATES) -> Dict[str, NodeState]:
+    """Gets node states dict from pipeline execution with the specified type."""
+    if state_type not in [_NODE_STATES, _PREVIOUS_NODE_STATES]:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(
+              f'Expected state_type is {_NODE_STATES} or'
+              f' {_PREVIOUS_NODE_STATES}, got {state_type}.'
+          ),
+      )
+    if state_type not in self._deserialized_cache:
+      node_states_json = _get_metadata_value(
+          self._custom_properties.get(state_type)
+      )
+      self._deserialized_cache[state_type] = (
+          json_utils.loads(node_states_json) if node_states_json else {}
+      )
+    return self._deserialized_cache[state_type]
+
+  def set(
+      self, node_states: Dict[str, NodeState], state_type: str = _NODE_STATES
+  ) -> None:
+    """Sets node states dict with the specified type."""
+    self._deserialized_cache[state_type] = node_states
+    self._changed_state_types.add(state_type)
+
+  def save(self) -> None:
+    """Saves all changed node states dicts to pipeline execution."""
+    max_mlmd_str_value_len = env.get_env().max_mlmd_str_value_length()
+
+    for state_type in self._changed_state_types:
+      node_states = self._deserialized_cache[state_type]
+      node_states_json = json_utils.dumps(node_states)
+
+      # Removes state history from node states if it's too large to avoid
+      # hitting MLMD limit.
+      if (
+          max_mlmd_str_value_len
+          and len(node_states_json) > max_mlmd_str_value_len
+      ):
+        logging.info(
+            'Node states length %d is too large (> %d); Removing state history'
+            ' from it.',
+            len(node_states_json),
+            max_mlmd_str_value_len,
+        )
+        node_states_no_history = {}
+        for node, old_state in node_states.items():
+          new_state = copy.deepcopy(old_state)
+          new_state.state_history.clear()
+          node_states_no_history[node] = new_state
+        node_states_json = json_utils.dumps(node_states_no_history)
+        logging.info(
+            'Node states length after removing state history: %d',
+            len(node_states_json),
+        )
+
+      data_types_utils.set_metadata_value(
+          self._custom_properties[state_type], node_states_json
+      )
+
+
 def is_node_state_success(state: str) -> bool:
   return state in (NodeState.COMPLETE, NodeState.SKIPPED,
                    NodeState.SKIPPED_PARTIAL_RUN)
@@ -462,6 +537,7 @@ class PipelineState:
     self._mlmd_execution_atomic_op_context = None
     self._execution: Optional[metadata_store_pb2.Execution] = None
     self._on_commit_callbacks: List[Callable[[], None]] = []
+    self._node_states_proxy: Optional[NodeStatesProxy] = None
 
   @classmethod
   @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
@@ -920,7 +996,7 @@ class PipelineState:
           code=status_lib.Code.INVALID_ARGUMENT,
           message=(f'Node {node_uid} does not belong to the pipeline '
                    f'{self.pipeline_uid}'))
-    node_states_dict = _get_node_states_dict(self._execution)
+    node_states_dict = self._node_states_proxy.get()
     node_state = node_states_dict.setdefault(node_uid.node_id, NodeState())
     old_state = copy.deepcopy(node_state)
     yield node_state
@@ -933,7 +1009,7 @@ class PipelineState:
                             self.pipeline_run_id, old_state, node_state)
       ])
     if old_state != node_state:
-      _save_node_states_dict(self._execution, node_states_dict)
+      self._node_states_proxy.set(node_states_dict)
 
   def get_node_state(self,
                      node_uid: task_lib.NodeUid,
@@ -945,13 +1021,13 @@ class PipelineState:
           code=status_lib.Code.INVALID_ARGUMENT,
           message=(f'Node {node_uid} does not belong to the pipeline '
                    f'{self.pipeline_uid}'))
-    node_states_dict = _get_node_states_dict(self._execution, state_type)
+    node_states_dict = self._node_states_proxy.get(state_type)
     return node_states_dict.get(node_uid.node_id, NodeState())
 
   def get_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
     """Gets all node states of the pipeline."""
     self._check_context()
-    node_states_dict = _get_node_states_dict(self._execution, _NODE_STATES)
+    node_states_dict = self._node_states_proxy.get()
     result = {}
     for node in get_all_nodes(self.pipeline):
       node_uid = task_lib.NodeUid.from_node(self.pipeline, node)
@@ -961,8 +1037,7 @@ class PipelineState:
   def get_previous_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
     """Gets all node states of the pipeline from previous run."""
     self._check_context()
-    node_states_dict = _get_node_states_dict(self._execution,
-                                             _PREVIOUS_NODE_STATES)
+    node_states_dict = self._node_states_proxy.get(_PREVIOUS_NODE_STATES)
     result = {}
     for node in get_all_nodes(self.pipeline):
       node_uid = task_lib.NodeUid.from_node(self.pipeline, node)
@@ -1032,9 +1107,11 @@ class PipelineState:
     execution = mlmd_execution_atomic_op_context.__enter__()
     self._mlmd_execution_atomic_op_context = mlmd_execution_atomic_op_context
     self._execution = execution
+    self._node_states_proxy = NodeStatesProxy(execution)
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
+    self._node_states_proxy.save()
     mlmd_execution_atomic_op_context = self._mlmd_execution_atomic_op_context
     self._mlmd_execution_atomic_op_context = None
     self._execution = None
@@ -1057,6 +1134,7 @@ class PipelineView:
     self.pipeline_id = pipeline_id
     self.context = context
     self.execution = execution
+    self._node_states_proxy = NodeStatesProxy(execution)
     self._pipeline = None  # lazily set
 
   @classmethod
@@ -1219,7 +1297,7 @@ class PipelineView:
   def get_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to current run state."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
+    node_states_dict = self._node_states_proxy.get()
     for node in get_all_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
       result[node.node_info.id] = node_state.to_run_state()
@@ -1228,7 +1306,7 @@ class PipelineView:
   def get_node_run_states_history(
       self) -> Dict[str, List[run_state_pb2.RunState]]:
     """Returns the history of node run states and timestamps."""
-    node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
+    node_states_dict = self._node_states_proxy.get()
     result = {}
     for node in get_all_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
@@ -1238,8 +1316,7 @@ class PipelineView:
   def get_previous_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to previous run state."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution,
-                                             _PREVIOUS_NODE_STATES)
+    node_states_dict = self._node_states_proxy.get(_PREVIOUS_NODE_STATES)
     for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in node_states_dict:
         continue
@@ -1250,8 +1327,7 @@ class PipelineView:
   def get_previous_node_run_states_history(
       self) -> Dict[str, List[run_state_pb2.RunState]]:
     """Returns a dict mapping node id to previous run state and timestamps."""
-    prev_node_states_dict = _get_node_states_dict(self.execution,
-                                                  _PREVIOUS_NODE_STATES)
+    prev_node_states_dict = self._node_states_proxy.get(_PREVIOUS_NODE_STATES)
     result = {}
     for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in prev_node_states_dict:
@@ -1268,7 +1344,7 @@ class PipelineView:
   def get_node_states_dict(self) -> Dict[str, NodeState]:
     """Returns a dict mapping node id to node state."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
+    node_states_dict = self._node_states_proxy.get()
     for node in get_all_nodes(self.pipeline):
       result[node.node_info.id] = node_states_dict.get(node.node_info.id,
                                                        NodeState())
@@ -1277,8 +1353,7 @@ class PipelineView:
   def get_previous_node_states_dict(self) -> Dict[str, NodeState]:
     """Returns a dict mapping node id to node state in previous run."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution,
-                                             _PREVIOUS_NODE_STATES)
+    node_states_dict = self._node_states_proxy.get(_PREVIOUS_NODE_STATES)
     for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in node_states_dict:
         continue
@@ -1448,55 +1523,6 @@ def _base64_decode_update_options(
   return result
 
 
-def _get_node_states_dict(
-    pipeline_execution: metadata_store_pb2.Execution,
-    state_type: Optional[str] = _NODE_STATES) -> Dict[str, NodeState]:
-  """Gets node states dict from pipeline execution with specified type."""
-  if state_type not in [_NODE_STATES, _PREVIOUS_NODE_STATES]:
-    raise status_lib.StatusNotOkError(
-        code=status_lib.Code.INVALID_ARGUMENT,
-        message=(
-            f'Expected state_type is {_NODE_STATES} or '
-            f'{_PREVIOUS_NODE_STATES}, got {state_type}.'
-        ),
-    )
-  node_states_json = _get_metadata_value(
-      pipeline_execution.custom_properties.get(state_type))
-  return json_utils.loads(node_states_json) if node_states_json else {}
-
-
-def _save_node_states_dict(pipeline_execution: metadata_store_pb2.Execution,
-                           node_states: Dict[str, NodeState],
-                           state_type: Optional[str] = _NODE_STATES) -> None:
-  """Saves node states dict to pipeline execution with specified type."""
-  node_states_json = json_utils.dumps(node_states)
-  max_mlmd_str_value_len = env.get_env().max_mlmd_str_value_length()
-
-  # Removes state history from node states if it's too large to avoid hitting
-  # MLMD limit.
-  if max_mlmd_str_value_len and len(node_states_json) > max_mlmd_str_value_len:
-    logging.info(
-        'Node states length %d is too large (> %d); Removing state history'
-        ' from it.',
-        len(node_states_json),
-        max_mlmd_str_value_len,
-    )
-    node_states_no_history = {}
-    for node, old_state in node_states.items():
-      new_state = copy.deepcopy(old_state)
-      new_state.state_history.clear()
-      node_states_no_history[node] = new_state
-    node_states_json = json_utils.dumps(node_states_no_history)
-    logging.info(
-        'Node states length after removing state history: %d',
-        len(node_states_json),
-    )
-
-  data_types_utils.set_metadata_value(
-      pipeline_execution.custom_properties[state_type], node_states_json
-  )
-
-
 def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
                               reused_pipeline_view: PipelineView,
                               execution: metadata_store_pb2.Execution) -> None:
@@ -1529,11 +1555,12 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
                   node_id, NodeState())
         else:
           previous_node_states_dict[node_id] = reused_node_state
+  node_states_proxy = NodeStatesProxy(execution)
   if node_states_dict:
-    _save_node_states_dict(execution, node_states_dict, _NODE_STATES)
+    node_states_proxy.set(node_states_dict, _NODE_STATES)
   if previous_node_states_dict:
-    _save_node_states_dict(execution, previous_node_states_dict,
-                           _PREVIOUS_NODE_STATES)
+    node_states_proxy.set(previous_node_states_dict, _PREVIOUS_NODE_STATES)
+  node_states_proxy.save()
 
 
 def _retrieve_pipeline_exec_mode(
