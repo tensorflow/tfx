@@ -1057,6 +1057,9 @@ class PipelineView:
     self.pipeline_id = pipeline_id
     self.context = context
     self.execution = execution
+    self.pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(
+        pipeline_id, self.pipeline_run_id
+    )
     self._pipeline = None  # lazily set
 
   @classmethod
@@ -1264,6 +1267,21 @@ class PipelineView:
     """Returns custom property value from the pipeline execution."""
     return _get_metadata_value(
         self.execution.custom_properties.get(property_key))
+
+  def get_node_state(
+      self, node_uid: task_lib.NodeUid, state_type: Optional[str] = _NODE_STATES
+  ) -> NodeState:
+    """Gets node state of a specified node."""
+    if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(
+              f'Node {node_uid} does not belong to the pipeline '
+              f'{self.pipeline_uid}'
+          ),
+      )
+    node_states_dict = _get_node_states_dict(self.execution, state_type)
+    return node_states_dict.get(node_uid.node_id, NodeState())
 
   def get_node_states_dict(self) -> Dict[str, NodeState]:
     """Returns a dict mapping node id to node state."""
