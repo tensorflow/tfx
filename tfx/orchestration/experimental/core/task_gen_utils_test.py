@@ -139,18 +139,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           metadata_store_pb2.Execution.State.FAILED,
       )
       self.assertLen(task_gen_utils.get_executions(m, self._example_gen), 3)
-      succeeded_executions = task_gen_utils.get_executions(
-          m, self._example_gen, want_successful=True
-      )
-      self.assertLen(succeeded_executions, 2)
-      self.assertEqual(
-          metadata_store_pb2.Execution.State.COMPLETE,
-          succeeded_executions[0].last_known_state,
-      )
-      self.assertEqual(
-          metadata_store_pb2.Execution.State.COMPLETE,
-          succeeded_executions[1].last_known_state,
-      )
 
   def test_get_executions_only_active(self):
     with self._mlmd_connection as m:
@@ -581,6 +569,41 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertLen(m.store.get_executions_by_context(context_1.id), 2)
       self.assertLen(m.store.get_executions_by_context(context_2.id), 2)
 
+  def test_register_executions_with_stateful_working_dir_index(self):
+    with self._mlmd_connection as m:
+      context_type = metadata_store_pb2.ContextType(name='my_ctx_type')
+      context_type_id = m.store.put_context_type(context_type)
+      context = metadata_store_pb2.Context(
+          name='context', type_id=context_type_id
+      )
+      m.store.put_contexts([context])
+
+      # Registers an execution with STATEFUL_WORKING_DIR_INDEX.
+      task_gen_utils.register_executions(
+          m,
+          execution_type=metadata_store_pb2.ExecutionType(name='my_ex_type'),
+          contexts=[context],
+          input_and_params=[
+              task_gen_utils.InputAndParam(
+                  input_artifacts={
+                      'input_example': [standard_artifacts.Examples()]
+                  },
+                  exec_properties={
+                      constants.STATEFUL_WORKING_DIR_INDEX: 'test_index'
+                  },
+              ),
+          ],
+      )
+
+      executions = m.store.get_executions()
+      self.assertLen(executions, 1)
+      self.assertEqual(
+          executions[0]
+          .custom_properties[constants.STATEFUL_WORKING_DIR_INDEX]
+          .string_value,
+          'test_index',
+      )
+
   def test_get_executions_num_of_failure(self):
     failed_execution = metadata_store_pb2.Execution(
         last_known_state=metadata_store_pb2.Execution.FAILED)
@@ -852,9 +875,10 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         self.assertEqual(
             m.store.get_executions.call_args[1]['list_options'].filter_query,
             "(contexts_0.type = 'node') AND (contexts_0.name ="
-            " 'my_pipeline.my_transform') AND ((last_known_state = COMPLETE) OR"
-            ' (last_known_state = CACHED)) AND (create_time_since_epoch >='
-            f' {artifacts[-1].mlmd_artifact.create_time_since_epoch})',
+            " 'my_pipeline.my_transform') AND (create_time_since_epoch >="
+            f' {artifacts[-1].mlmd_artifact.create_time_since_epoch}) AND'
+            ' ((last_known_state = COMPLETE)'
+            ' OR (last_known_state = CACHED) OR (last_known_state = FAILED))',
         )
         self.assertEmpty(unprocessed_inputs)
 
@@ -890,9 +914,11 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       otu.fake_finish_node_with_handle(
           m, self._transform, execution.id, success=False
       )
+      self.assertIsNone(input_and_param.exec_properties)
       unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
           m, resolved_info_for_transform, self._transform
       )
+      self.assertIsNotNone(unprocessed_inputs[0].exec_properties)
       self.assertLen(unprocessed_inputs, 1)
 
       # Simulate that self._transform retry twice.

@@ -16,8 +16,9 @@
 import collections
 import itertools
 import json
+import sys
 import textwrap
-from typing import Callable, Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple, Type
+from typing import Callable, Dict, Iterable, List, MutableMapping, Optional, Sequence, Type
 import uuid
 
 from absl import logging
@@ -292,8 +293,8 @@ def generate_resolved_info(
 def get_executions(
     metadata_handle: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
+    # TODO(b/258535669) remove want_active and use additional_filters
     want_active: bool = False,
-    want_successful: bool = False,
     limit: Optional[int] = None,
     backfill_token: str = '',
     additional_filters: Optional[List[str]] = None,
@@ -309,9 +310,6 @@ def get_executions(
     want_active: If set to true, only active executions are returned. Otherwise,
       all executions are returned. Active executions mean executions with NEW or
       RUNNING last_known_state.
-    want_successful: If set to true, only successful executions are returned.
-      Otherwise, all executions are returned. successful executions mean
-      executions with COMPLETE or CACHED last_known_state.
     limit: limit the number of executions return by the function. Executions are
       ordered descendingly by CREATE_TIME, so the newest executions will return.
     backfill_token: If non-empty, only executions with custom property
@@ -352,24 +350,9 @@ def get_executions(
         ])
     )
 
-  # If both want_active and want_successful are true, return both active and
-  # successful executions.
-  if want_active and want_successful:
-    filter_query.append(
-        q.Or([
-            'last_known_state = NEW',
-            'last_known_state = RUNNING',
-            'last_known_state = COMPLETE',
-            'last_known_state = CACHED',
-        ])
-    )
-  elif want_active:
+  if want_active:
     filter_query.append(
         q.Or(['last_known_state = NEW', 'last_known_state = RUNNING'])
-    )
-  elif want_successful:
-    filter_query.append(
-        q.Or(['last_known_state = COMPLETE', 'last_known_state = CACHED'])
     )
 
   if backfill_token:
@@ -633,9 +616,16 @@ def register_executions(
         execution_name=str(uuid.uuid4()),
     )
     # LINT.IfChange(execution_custom_properties)
+    dir_index = None
+    if input_and_param.exec_properties:
+      dir_index = input_and_param.exec_properties.get(
+          constants.STATEFUL_WORKING_DIR_INDEX
+      )
     data_types_utils.set_metadata_value(
         execution.custom_properties[constants.STATEFUL_WORKING_DIR_INDEX],
-        outputs_utils.get_stateful_working_dir_index(),
+        dir_index
+        if dir_index
+        else outputs_utils.get_stateful_working_dir_index(),
     )
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     # LINT.ThenChange(:new_execution_custom_properties)
@@ -731,15 +721,22 @@ def get_unprocessed_inputs(
   executions = get_executions(
       metadata_handle,
       node,
-      want_successful=True,
       additional_filters=[
-          'create_time_since_epoch >='
-          f' {min(max_timestamp_in_each_input, default=0)}'
+          (
+              'create_time_since_epoch >='
+              f' {min(max_timestamp_in_each_input, default=0)}'
+          ),
+          q.Or([
+              'last_known_state = COMPLETE',
+              'last_known_state = CACHED',
+              'last_known_state = FAILED',
+          ]),
       ],
   )
 
-  # Gets the processed inputs.
-  processed_inputs: List[Dict[str, Tuple[int, ...]]] = []
+  # Get the successful and failed executions, and group them by input.
+  successful_executions_by_input = collections.defaultdict(list)
+  failed_executions_by_input = collections.defaultdict(list)
   events = metadata_handle.store.get_events_by_execution_ids(
       [e.id for e in executions]
   )
@@ -751,71 +748,18 @@ def get_unprocessed_inputs(
         and event_lib.is_valid_input_event(e)
         and e.execution_id == execution.id
     ]
-    ids_by_key = event_lib.reconstruct_artifact_id_multimap(input_events)
+    input_ids_by_key = event_lib.reconstruct_artifact_id_multimap(input_events)
     # Filters out the keys starting with '_' and the keys should be ingored.
-    ids_by_key = {
+    input_ids_by_key = {
         k: tuple(sorted(v))
-        for k, v in ids_by_key.items()
+        for k, v in input_ids_by_key.items()
         if k not in ignore_keys
     }
-    processed_inputs.append(ids_by_key)
-
-  if node.execution_options.HasField('max_execution_retries'):
-    max_execution_retries = node.execution_options.max_execution_retries
-    logging.info(
-        'Node %s has retry limit of %d.',
-        node.node_info.id,
-        max_execution_retries,
-    )
-    failed_executions = get_executions(
-        metadata_handle,
-        node,
-        additional_filters=[
-            (
-                'create_time_since_epoch >='
-                f' {min(max_timestamp_in_each_input, default=0)}'
-            ),
-            'last_known_state = FAILED',
-        ],
-    )
-    events = metadata_handle.store.get_events_by_execution_ids(
-        [e.id for e in failed_executions]
-    )
-
-    failed_execution_count = collections.defaultdict(int)
-    for execution in failed_executions:
-      input_events = [
-          e
-          for e in events
-          if e.type == metadata_store_pb2.Event.INPUT
-          and event_lib.is_valid_input_event(e)
-          and e.execution_id == execution.id
-      ]
-      artifact_ids_by_key = event_lib.reconstruct_artifact_id_multimap(
-          input_events
-      )
-      # Filters out the keys starting with '_' and the keys should be ingored.
-      artifact_ids_by_key = {
-          k: tuple(sorted(v))
-          for k, v in artifact_ids_by_key.items()
-          if k not in ignore_keys
-      }
-
-      encoded_input = json.dumps(artifact_ids_by_key, sort_keys=True)
-      failed_execution_count[encoded_input] += 1
-      # If the number of retries of an input is larger or equal to the limit, we
-      # consider it as processed and will not process it again.
-      if failed_execution_count[encoded_input] == max_execution_retries + 1:
-        logging.info(
-            'Node %s has retry limit of %d. It has reached the retry limit.',
-            node.node_info.id,
-            max_execution_retries,
-        )
-        if artifact_ids_by_key not in processed_inputs:
-          processed_inputs.append(artifact_ids_by_key)
-
-  if not processed_inputs:
-    return resolved_info.input_and_params
+    encoded_input = json.dumps(input_ids_by_key, sort_keys=True)
+    if execution_lib.is_execution_successful(execution):
+      successful_executions_by_input[encoded_input].append(execution)
+    elif execution_lib.is_execution_failed(execution):
+      failed_executions_by_input[encoded_input].append(execution)
 
   # Some input artifacts are from external pipelines, so we need to find out the
   # external_id to id mapping in the local db.
@@ -839,6 +783,10 @@ def get_unprocessed_inputs(
       return []
 
   # Finds out the unprocessed inputs.
+  # By default, the retry limit in async pipeline is infinite.
+  retry_limit = sys.maxsize
+  if node.execution_options.HasField('max_execution_retries'):
+    retry_limit = node.execution_options.max_execution_retries
   unprocessed_inputs = []
   for input_and_param in resolved_info.input_and_params:
     resolved_input_ids_by_key = collections.defaultdict(list)
@@ -859,10 +807,32 @@ def get_unprocessed_inputs(
         if k not in ignore_keys
     }
 
-    for processed in processed_inputs:
-      if processed == resolved_input_ids_by_key:
-        break
-    else:
+    encoded_input = json.dumps(resolved_input_ids_by_key, sort_keys=True)
+    if len(failed_executions_by_input[encoded_input]) >= retry_limit + 1:
+      # This input has failed and has also reached its retry limit.
+      logging.info(
+          'Node %s has reach retry limit of %d.',
+          node.node_info.id,
+          retry_limit,
+      )
+    elif encoded_input not in successful_executions_by_input:
+      # This input should be processed.
+      # If the previous stateful_working_dir_index should be reused, save the
+      # index into input_and_param.exec_properties
+      if (
+          not node.execution_options.reset_stateful_working_dir
+          and failed_executions_by_input[encoded_input]
+      ):
+        failed_executions = failed_executions_by_input[encoded_input]
+        failed_executions = execution_lib.sort_executions_newest_to_oldest(
+            failed_executions
+        )
+        last_failed_execution = failed_executions[0]
+        if input_and_param.exec_properties is None:
+          input_and_param.exec_properties = {}
+        input_and_param.exec_properties[
+            constants.STATEFUL_WORKING_DIR_INDEX
+        ] = outputs_utils.get_stateful_working_dir_index(last_failed_execution)
       unprocessed_inputs.append(input_and_param)
 
   return unprocessed_inputs
