@@ -340,6 +340,8 @@ class Pipeline(base_node.BaseNode):
     if components:
       self._set_components(components)
 
+    self._tflex_mpm_version = ''
+
   def _check_mutable(self):
     if self._finalized:
       raise RuntimeError('Cannot mutate Pipeline after finalize.')
@@ -365,6 +367,10 @@ class Pipeline(base_node.BaseNode):
   def components(self):
     """A deterministic list of logical components that are deduped and topologically sorted."""
     return self._components
+
+  @property
+  def tflex_mpm_version(self) -> str:
+    return self._tflex_mpm_version
 
   @components.setter
   def components(self, components: List[base_node.BaseNode]):

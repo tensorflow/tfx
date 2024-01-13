@@ -58,10 +58,7 @@ class TaxiPipelineLocalEndToEndTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotEmpty(outputs)
     for output in outputs:
       execution = fileio.listdir(os.path.join(component_path, output))
-      if output == '.system/stateful_working_dir':
-        self.assertEmpty(execution)
-      else:
-        self.assertLen(execution, 1)
+      self.assertLen(execution, 1)
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('CsvExampleGen')

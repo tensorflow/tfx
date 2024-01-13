@@ -14,7 +14,6 @@
 """TaskManager manages the execution and cancellation of tasks."""
 
 from concurrent import futures
-import datetime
 import sys
 import textwrap
 import threading
@@ -23,7 +22,6 @@ import typing
 from typing import Dict, List, Optional
 
 from absl import logging
-import pytz
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
@@ -99,23 +97,9 @@ class _SchedulerWrapper:
           self.task_scheduler.mlmd_handle,
           self.task_scheduler.task.execution_id,
       ) as execution:
-        if execution.custom_properties.get(
+        execution.custom_properties[
             constants.EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY
-        ):
-          start_timestamp = execution.custom_properties[
-              constants.EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY
-          ].int_value
-          logging.info(
-              'Execution %s was already started at %s',
-              execution.id,
-              datetime.datetime.fromtimestamp(
-                  start_timestamp, pytz.timezone('US/Pacific')
-              ).strftime('%Y-%m-%d %H:%M:%S %Z'),
-          )
-        else:
-          execution.custom_properties[
-              constants.EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY
-          ].int_value = int(time.time())
+        ].int_value = int(time.time())
       try:
         return self.task_scheduler.schedule()
       finally:
