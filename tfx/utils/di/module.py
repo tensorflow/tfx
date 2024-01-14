@@ -14,7 +14,7 @@
 """Module for DependencyModule."""
 
 import inspect
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 from tfx.utils import pure_typing_utils
 from tfx.utils.di import errors
@@ -32,12 +32,12 @@ class DependencyModule:
   def add_provider(self, provider: providers.Provider):
     self._providers.append(provider)
 
-  def provide_value(
-      self,
-      value: Any,
-      *,
-      name: Optional[str] = None,
-  ) -> None:
+  def provide_value(self, value: Any) -> None:
+    """Convenience method to add ValueProvider."""
+    self.add_provider(providers.ValueProvider(value))
+
+  def provide_named_value(self, name: str, value: Any) -> None:
+    """Convenience method to add ValueProvider with name."""
     self.add_provider(providers.ValueProvider(value, name=name))
 
   def provide_class(
@@ -46,6 +46,7 @@ class DependencyModule:
       *,
       singleton: bool = False,
   ) -> None:
+    """Convenience method to add ClassProvider."""
     provider = providers.ClassProvider(cls)
     if singleton:
       provider = providers.SingletonProvider(provider)
@@ -54,6 +55,7 @@ class DependencyModule:
   def provide_named_class(
       self, name: str, cls: type[Any], *, singleton: bool = False
   ) -> None:
+    """Convenience method to add NamedClassProvider."""
     provider = providers.NamedClassProvider(name, cls)
     if singleton:
       provider = providers.SingletonProvider(provider)
@@ -76,6 +78,7 @@ class DependencyModule:
     return f(**kwargs)
 
   def get(self, name: str, type_hint: Any):
+
     for provider in self._providers:
       if provider.match(name, type_hint):
         try:

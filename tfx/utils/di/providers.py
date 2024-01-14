@@ -63,7 +63,7 @@ class Provider(abc.ABC, Generic[_T]):
 class ValueProvider(Provider[_T]):
   """Simple provider for the singleton value."""
 
-  def __init__(self, value: _T, *, name: Optional[str]):
+  def __init__(self, value: _T, *, name: Optional[str] = None):
     self._value = value
     self._name = name
 
