@@ -445,10 +445,11 @@ class PlaceholderTest(tf.test.TestCase):
 
   def testListConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.to_list([ph.input('model').uri,
-                    'foo',
-                    ph.exec_property('random_str')]) +
-        ph.to_list([ph.input('another_model').uri]), """
+        ph.to_list(
+            [ph.input('model').uri, 'foo', ph.exec_property('random_str')]
+        )
+        + ph.to_list([ph.input('another_model').uri]),
+        """
         operator {
           list_concat_op {
             expressions {
@@ -500,10 +501,10 @@ class PlaceholderTest(tf.test.TestCase):
                 }
               }
             }
-
           }
         }
-    """)
+    """,
+    )
 
   def testListConcatAndSerialize(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -568,6 +569,108 @@ class PlaceholderTest(tf.test.TestCase):
           }
         }
     """)
+
+  def testMakeDict(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        placeholder_base.make_dict({
+            'anotherkey': ph.input('another_model').uri,
+            'droppedkey': None,
+        }),
+        """
+        operator {
+          make_dict_op {
+            entries {
+              key {
+                value {
+                  string_value: "anotherkey"
+                }
+              }
+              value {
+                operator {
+                  artifact_uri_op {
+                    expression {
+                      operator {
+                        index_op {
+                          expression {
+                            placeholder {
+                              type: INPUT_ARTIFACT
+                              key: "another_model"
+                            }
+                          }
+                          index: 0
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+    """,
+    )
+
+  def testMakeDictWithTupleListInput(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        placeholder_base.make_dict([
+            ('fookey', ph.input('model').uri),
+            (ph.exec_property('random_str'), 'barvalue'),
+            ('droppedkey', None),
+        ]),
+        """
+        operator {
+          make_dict_op {
+            entries {
+              key {
+                value {
+                  string_value: "fookey"
+                }
+              }
+              value {
+                operator {
+                  artifact_uri_op {
+                    expression {
+                      operator {
+                        index_op {
+                          expression {
+                            placeholder {
+                              type: INPUT_ARTIFACT
+                              key: "model"
+                            }
+                          }
+                          index: 0
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            entries {
+              key {
+                placeholder {
+                  type: EXEC_PROPERTY
+                  key: "random_str"
+                }
+              }
+              value {
+                value {
+                  string_value: "barvalue"
+                }
+              }
+            }
+          }
+        }
+    """,
+    )
+
+  def testDictEmpty(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        placeholder_base.make_dict({}), 'operator { make_dict_op {} }'
+    )
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        placeholder_base.make_dict([]), 'operator { make_dict_op {} }'
+    )
 
   def testProtoOperatorDescriptor(self):
     placeholder = ph.exec_property('splits_config').analyze[0]
@@ -1504,6 +1607,18 @@ class PlaceholderTest(tf.test.TestCase):
     self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
     self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
     self.assertIn(ph.ListPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+
+  def testDictTraverse(self):
+    p = placeholder_base.make_dict([
+        ('key1', ph.runtime_info('platform_config').user),
+        (ph.output('model').uri, ph.exec_property('version')),
+    ])
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
+    self.assertIn(placeholder_base.DictPlaceholder, ph_types)
     self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
 
   def testMakeProtoTraverse(self):

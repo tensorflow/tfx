@@ -19,7 +19,7 @@ import abc
 import enum
 import functools
 import typing
-from typing import Any, Iterator, List, Optional, Sequence, Type, Union
+from typing import Any, Iterator, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
@@ -364,6 +364,76 @@ class ListPlaceholder(Placeholder):
     expressions = result.operator.list_concat_op.expressions
     for input_placeholder in self._input_placeholders:
       expressions.append(encode_value_like(input_placeholder, component_spec))
+    return result
+
+
+def make_dict(
+    entries: Union[
+        Mapping[str, Union[ValueLikeType, None]],
+        Sequence[Tuple[Union[str, Placeholder], Union[ValueLikeType, None]]],
+    ],
+) -> DictPlaceholder:
+  """Returns a DictPlaceholder representing a dict of input placeholders.
+
+  Args:
+    entries: A mapping that will become the final dict after running placeholder
+      resolution on each of the values. Values that resolve to None are dropped.
+      If you also want placeholders in the keys, you need to pass the dict as a
+      sequence of (k,v) tuples, whereby the key placeholder must evaluate to a
+      string.
+
+  Returns:
+    A placeholder that will resolve to a dict with the given entries.
+  """
+  if isinstance(entries, Mapping):
+    entries = entries.items()
+  return DictPlaceholder(entries)
+
+
+class DictPlaceholder(Placeholder):
+  """Dict of multiple Placeholders. None values are dropped.
+
+  Prefer to use ph.make_dict() to create DictPlaceholder.
+  """
+
+  def __init__(
+      self,
+      entries: Sequence[
+          Tuple[Union[str, Placeholder], Union[ValueLikeType, None]]
+      ],
+  ):
+    """Initializes the class. Consider this private."""
+    super().__init__(expected_type=dict)
+    self._entries = entries
+
+  def __add__(self, right: DictPlaceholder) -> DictPlaceholder:
+    raise NotImplementedError('Add operator not supported for DictPlaceholders')
+
+  def __radd__(self, left: DictPlaceholder) -> DictPlaceholder:
+    raise NotImplementedError('Add operator not supported for DictPlaceholders')
+
+  def traverse(self) -> Iterator[Placeholder]:
+    """Yields all placeholders under and including this one."""
+    yield from super().traverse()
+    for key, value in self._entries:
+      if isinstance(key, Placeholder):
+        yield from key.traverse()
+      if isinstance(value, Placeholder):
+        yield from value.traverse()
+
+  def encode(
+      self, component_spec: Optional[Type['types.ComponentSpec']] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    result = placeholder_pb2.PlaceholderExpression()
+    result.operator.make_dict_op.SetInParent()
+    entries = result.operator.make_dict_op.entries
+    for key, value in self._entries:
+      if value is None:
+        continue  # Drop None values
+      entries.add(
+          key=encode_value_like(key, component_spec),
+          value=encode_value_like(value, component_spec),
+      )
     return result
 
 

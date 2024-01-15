@@ -663,6 +663,86 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), expected_result)
 
+  def testMakeDict(self):
+    placeholder_expression = """
+      operator {
+        make_dict_op {
+          entries {
+            key {
+              value {
+                string_value: "plain_key"
+              }
+            }
+            value {
+              operator {
+                artifact_property_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "examples"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                  key: "version"
+                }
+              }
+            }
+          }
+          entries {
+            key {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".stateful_working_dir"
+                }
+              }
+            }
+            value {
+              value {
+                string_value: "plain_value"
+              }
+            }
+          }
+          entries {
+            key {
+              value {
+                string_value: "dropped_because_evaluates_to_none"
+              }
+            }
+            value {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "does_not_exist"
+              }
+            }
+          }
+        }
+      }
+    """
+    pb = text_format.Parse(
+        placeholder_expression, placeholder_pb2.PlaceholderExpression()
+    )
+    expected_result = {
+        "plain_key": 42,
+        "test_stateful_working_dir": "plain_value",
+    }
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context
+        ),
+        expected_result,
+    )
+
   def testProtoExecPropertyMessageFieldTextFormat(self):
     # Access a message type proto field
     placeholder_expression = """
@@ -1955,6 +2035,75 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(
         re.sub(r"\s+", "", actual_debug_str),
         re.sub(r"\s+", "", expected_debug_str_pretty))
+
+  def testDebugMakeDictPlaceholder(self):
+    pb = text_format.Parse(
+        """
+      operator {
+        make_dict_op {
+          entries {
+            key {
+              value {
+                string_value: "key_1"
+              }
+            }
+            value {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "channel_1"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          entries {
+            key {
+              value {
+                string_value: "key_2"
+              }
+            }
+            value {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "channel_2"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    self.assertEqual(
+        placeholder_utils.debug_str(pb),
+        "make_dict({"
+        '"key_1": input("channel_1")[0].value, '
+        '"key_2": input("channel_2")[0].value})',
+    )
 
   def testDebugMakeProtoPlaceholder(self):
     pb = text_format.Parse(

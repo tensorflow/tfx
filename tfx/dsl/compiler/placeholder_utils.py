@@ -380,12 +380,39 @@ class _ExpressionResolver:
   @_register(placeholder_pb2.ListConcatOperator)
   def _resolve_list_concat_operator(
       self, op: placeholder_pb2.ListConcatOperator) -> List[Any]:
+    """Evaluates the list concat operator."""
     result = []
     for sub_expression in op.expressions:
       value = self.resolve(sub_expression)
       if value is None:
         raise NullDereferenceError(sub_expression)
       result.append(value)
+    return result
+
+  @_register(placeholder_pb2.MakeDictOperator)
+  def _resolve_make_dict_operator(
+      self, op: placeholder_pb2.MakeDictOperator
+  ) -> Dict[str, Any]:
+    """Evaluates the make dict operator."""
+    result = {}
+    for entry in op.entries:
+      try:
+        key = self.resolve(entry.key)
+      except NullDereferenceError as e:
+        raise ValueError("A key resolved to None") from e
+      if not isinstance(key, str):
+        raise ValueError(f"Expected string for dict key, got {key!r}.")
+
+      try:
+        value = self.resolve(entry.value)
+        if value is not None:
+          result[key] = value
+      except NullDereferenceError:
+        logging.info(
+            "Dropping key %r from placeholer dict because it evaluated to None",
+            key,
+        )
+        pass  # Drop None values.
     return result
 
   @_register(placeholder_pb2.ProtoOperator)
@@ -706,6 +733,13 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
     if operator_name == "list_concat_op":
       expression_str = ", ".join(debug_str(e) for e in operator_pb.expressions)
       return f"to_list([{expression_str}])"
+
+    if operator_name == "make_dict_op":
+      expression_str = ", ".join(
+          f"{debug_str(entry.key)}: {debug_str(entry.value)}"
+          for entry in operator_pb.entries
+      )
+      return f"make_dict({{{expression_str}}})"
 
     if operator_name == "make_proto_op":
       expression_str = ", ".join(
