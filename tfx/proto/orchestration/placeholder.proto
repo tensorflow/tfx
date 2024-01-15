@@ -280,6 +280,8 @@ message MakeProtoOperator {
   //   PlaceholderExpression.operator.make_proto_op.
   // * For repeated fields, this must set
   //   PlaceholderExpression.operator.list_concat_op.
+  // * For map<> fields, this must set
+  //   PlaceholderExpression.operator.make_dict_op.
   map<string, PlaceholderExpression> fields = 2;
   // Additional descriptors needed to construct the proto.
   google.protobuf.FileDescriptorSet file_descriptors = 3;

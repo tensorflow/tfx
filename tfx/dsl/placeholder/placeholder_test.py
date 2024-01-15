@@ -33,6 +33,7 @@ from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
 
+_DictNode = functools.partial(ph.make_proto, pipeline_pb2.InputGraph.DictNode())
 _ExecutionInvocation = functools.partial(
     ph.make_proto, execution_invocation_pb2.ExecutionInvocation()
 )
@@ -1552,6 +1553,124 @@ class PlaceholderTest(tf.test.TestCase):
         }
         """,
     )
+
+  def testMakeProtoPlaceholder_MapWithStringValueField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _DictNode(
+            node_ids={'a': 'A', 'foo': ph.exec_property('foo')},
+        ),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.InputGraph.DictNode] {}
+            }
+            fields {
+              key: "node_ids"
+              value {
+                operator {
+                  make_dict_op {
+                    entries {
+                      key {
+                        value {
+                          string_value: "a"
+                        }
+                      }
+                      value {
+                        value {
+                          string_value: "A"
+                        }
+                      }
+                    }
+                    entries {
+                      key {
+                        value {
+                          string_value: "foo"
+                        }
+                      }
+                      value {
+                        placeholder {
+                          type: EXEC_PROPERTY
+                          key: "foo"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testMakeProtoPlaceholder_MapWithSubmessageValueField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(
+            execution_properties={
+                'fookey': ph.make_proto(
+                    metadata_store_pb2.Value(),
+                    string_value=ph.exec_property('fooprop'),
+                ),
+                'dropped': None,
+            },
+        ),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "execution_properties"
+              value {
+                operator {
+                  make_dict_op {
+                    entries {
+                      key {
+                        value {
+                          string_value: "fookey"
+                        }
+                      }
+                      value {
+                        operator {
+                          make_proto_op {
+                            base {
+                              [type.googleapis.com/ml_metadata.Value] {}
+                            }
+                            fields {
+                              key: "string_value"
+                              value {
+                                placeholder {
+                                  type: EXEC_PROPERTY
+                                  key: "fooprop"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testMakeProtoPlaceholder_RejectsScalarValueForMapField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected dict.*input for map field.*node_ids.*'
+    ):
+      _DictNode(node_ids='this is not a dict')
+
+  def testMakeProtoPlaceholder_RejectsNonStringKeyForMapField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected string.*for dict key.*node_ids.*'
+    ):
+      _DictNode(node_ids={42: 43})
 
   def testMakeProtoPlaceholder_GeneratesSplitConfig(self):
     # This is part one of a two-part test. This generates the

@@ -474,6 +474,162 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, metadata_store_pb2.Value),
     )
 
+  def testMakeProtoPlaceholder_MapFieldScalarValue(self):
+    actual = resolve(
+        _ExecutionInvocation(
+            extra_flags={
+                'fookey': 'foovalue',
+                'barkey': 'barvalue',
+            }
+        )
+    )
+    self.assertProtoEquals(
+        """
+        extra_flags {
+          key: "fookey"
+          value: "foovalue"
+        }
+        extra_flags {
+          key: "barkey"
+          value: "barvalue"
+        }
+        """,
+        parse_text_proto(actual),
+    )
+
+  def testMakeProtoPlaceholder_MapFieldScalarPlaceholderValue(self):
+    actual = resolve(
+        _ExecutionInvocation(
+            extra_flags={
+                'fookey': ph.execution_invocation().pipeline_run_id,
+                'barkey': 'bar-' + ph.execution_invocation().pipeline_run_id,
+            }
+        )
+    )
+    self.assertProtoEquals(
+        """
+        extra_flags {
+          key: "fookey"
+          value: "test-run-id"
+        }
+        extra_flags {
+          key: "barkey"
+          value: "bar-test-run-id"
+        }
+        """,
+        parse_text_proto(actual),
+    )
+
+  def testMakeProtoPlaceholder_MapFieldScalarNoneValue(self):
+    actual = resolve(
+        _ExecutionInvocation(
+            extra_flags={
+                'fookey': ph.exec_property('reload_policy'),  # Will be None.
+                'barkey': None,
+                'notnone': 'this is not none',
+            }
+        ),
+        exec_properties={},  # Intentionally empty.
+    )
+    self.assertProtoEquals(
+        """
+        extra_flags {
+          key: "notnone"
+          value: "this is not none"
+        }
+        """,
+        parse_text_proto(actual),
+    )
+
+  def testMakeProtoPlaceholder_MapFieldSubmessageValue(self):
+    actual = resolve(
+        _ExecutionInvocation(
+            execution_properties={
+                'fookey': _MetadataStoreValue(
+                    string_value=ph.execution_invocation().pipeline_run_id
+                ),
+                'barkey': metadata_store_pb2.Value(int_value=42),
+            }
+        )
+    )
+    self.assertProtoEquals(
+        """
+        execution_properties {
+          key: "fookey"
+          value {
+            string_value: "test-run-id"
+          }
+        }
+        execution_properties {
+          key: "barkey"
+          value {
+            int_value: 42
+          }
+        }
+        """,
+        parse_text_proto(actual),
+    )
+
+  def testMakeProtoPlaceholder_MapFieldSubmessageNoneValue(self):
+    actual = resolve(
+        _ExecutionInvocation(
+            execution_properties={
+                'fookey': ph.exec_property('reload_policy'),  # Will be None.
+                'barkey': metadata_store_pb2.Value(int_value=42),
+            }
+        ),
+        exec_properties={},  # Intentionally empty.
+    )
+    self.assertProtoEquals(
+        """
+        execution_properties {
+          key: "barkey"
+          value {
+            int_value: 42
+          }
+        }
+        """,
+        parse_text_proto(actual),
+    )
+
+  def testMakeProtoPlaceholder_MapFieldPlaceholderKey(self):
+    actual = resolve(
+        _ExecutionInvocation(
+            extra_flags=[
+                (ph.execution_invocation().pipeline_run_id, 'foovalue'),
+            ]
+        )
+    )
+    self.assertProtoEquals(
+        """
+        extra_flags {
+          key: "test-run-id"
+          value: "foovalue"
+        }
+        """,
+        parse_text_proto(actual),
+    )
+
+  def testMakeProtoPlaceholder_RejectsMapFieldScalarNoneKey(self):
+    with self.assertRaises(ValueError):
+      resolve(
+          _ExecutionInvocation(
+              extra_flags=[(
+                  ph.exec_property('reload_policy'),  # Will be None.
+                  'foo',
+              )]
+          ),
+          exec_properties={},  # Intentionally empty.
+      )
+    with self.assertRaises(ValueError):
+      resolve(_ExecutionInvocation(extra_flags={None: 'foo'}))
+
+  def testMakeProtoPlaceholder_MapFieldScalarValueEmpty(self):
+    actual = resolve(_ExecutionInvocation(extra_flags={}))
+    self.assertProtoEquals('', parse_text_proto(actual))
+    actual = resolve(_ExecutionInvocation(extra_flags=[]))
+    self.assertProtoEquals('', parse_text_proto(actual))
+
   def testMakeProtoPlaceholder_PlusItemGetter(self):
     actual = resolve(
         _ExecutionInvocation(

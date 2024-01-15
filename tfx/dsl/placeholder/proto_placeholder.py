@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import Generic, Iterator, List, Optional, Type, TypeVar, Union
+from typing import Dict, Generic, Iterator, List, Optional, Tuple, Type, TypeVar, Union
 
 from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
@@ -62,7 +62,7 @@ def make_proto(
   becomes a string.
 
   Limitations:
-  * Map fields are not yet supported.
+  * Map fields only support string/placeholder keys, not integral types.
   * MessageSet is not yet supported.
   * Proto extension fields are not supported.
   * `bytes` fields can only populated through Python `str` values, so their
@@ -80,9 +80,11 @@ def make_proto(
       the values may contain placeholders. These fields are merged on top of the
       fields present already in the `base_message`. Just like when constructing
       regular protos, repeated fields must be passed as lists and map fields
-      must be passed as dicts. However, the values of these fields may be passed
-      as placeholders. In particular, other MakeProtoPlaceholder instances can
-      be passed to populate sub-message fields.
+      must be passed either as dicts (if all keys are plain strings) or as lists
+      of (key,value) tuples if some of the keys are placeholders. In all cases,
+      the values can be placeholders or plain values (strings, protos) matching
+      the respective field type. In particular, other MakeProtoPlaceholder
+      instances can be passed to populate sub-message fields.
 
   Returns:
     A placeholder that, at runtime, will evaluate to a proto message of the
@@ -105,11 +107,14 @@ _InputValues = Union[  # The values users may pass (we convert to _PlainValues).
 # These are for the outer values of a field (so repeated is a list):
 _FieldValues = Union[  # The values we use internally.
     _PlainValues,  # singular (optional or required) field
-    List[_PlainValues],  # repeated field
+    placeholder_base.ListPlaceholder,  # repeated field
+    placeholder_base.DictPlaceholder,  # map field
 ]
 _InputFieldValues = Union[  # The values users may pass.
     _InputValues,  # singular (optional or required) field
     List[_InputValues],  # repeated field
+    Dict[str, _InputValues],  # map field with plain keys
+    List[Tuple[Union[str, placeholder_base.Placeholder], _InputValues]],  # map
     None,  # Users may pass None to optional fields.
 ]
 _PROTO_TO_PY_TYPE = {
@@ -163,9 +168,46 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
     )
     field_name = f'{message_name}.{descriptor.name}'
 
-    if descriptor.label == descriptor_lib.FieldDescriptor.LABEL_REPEATED:
-      if descriptor.has_options and descriptor.GetOptions().map_entry:
-        raise ValueError('Map fields are not yet supported.')
+    if (  # If it's a map<> field.
+        descriptor.message_type
+        and descriptor.message_type.has_options
+        and descriptor.message_type.GetOptions().map_entry
+    ):
+      if value is None:
+        return None
+      if isinstance(value, dict):
+        value = value.items()
+      elif not isinstance(value, list):
+        raise ValueError(
+            'Expected dict[k,v] or list[tuple[k, v]] input for map field '
+            f'{field_name}, got {value!r}.'
+        )
+      entries: List[
+          Tuple[Union[str, placeholder_base.Placeholder], _PlainValues]
+      ] = []
+      for entry_key, entry_value in value:
+        if not isinstance(
+            entry_key, (str, placeholder_base.Placeholder)
+        ) or isinstance(
+            entry_key,
+            (
+                MakeProtoPlaceholder,
+                placeholder_base.ListPlaceholder,
+                placeholder_base.DictPlaceholder,
+            ),
+        ):
+          raise ValueError(
+              'Expected string (placeholder) for dict key of map field '
+              f'{field_name}, got {entry_key!r}.'
+          )
+        value_descriptor = descriptor.message_type.fields_by_name['value']
+        entry_value = self._validate_and_transform_value(
+            f'{field_name}.value', value_descriptor, entry_value
+        )
+        if entry_value is not None:
+          entries.append((entry_key, entry_value))
+      return placeholder_base.make_dict(entries)
+    elif descriptor.label == descriptor_lib.FieldDescriptor.LABEL_REPEATED:
       if value is None or isinstance(value, placeholder_base.Placeholder):
         return value  # pytype: disable=bad-return-type
       if not isinstance(value, list):
@@ -254,8 +296,14 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
     """Moves+deduplicates descriptors from sub-messages to the given `op`."""
     known_descriptors = {fd.name for fd in op.file_descriptors.file}
     for field_value in op.fields.values():
-      if field_value.operator.WhichOneof('operator_type') == 'list_concat_op':
+      operator_type = field_value.operator.WhichOneof('operator_type')
+      if operator_type == 'list_concat_op':
         sub_expressions = field_value.operator.list_concat_op.expressions
+      elif operator_type == 'make_dict_op':
+        entries = field_value.operator.make_dict_op.entries
+        sub_expressions = [entry.key for entry in entries] + [
+            entry.value for entry in entries
+        ]
       else:
         sub_expressions = [field_value]
       for sub_expression in sub_expressions:

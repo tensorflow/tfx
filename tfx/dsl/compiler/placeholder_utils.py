@@ -511,6 +511,18 @@ class _ExpressionResolver:
     # intermediate value.
     return value
 
+  def _assign_proto_message(
+      self, out_msg: message.Message, new_value: message.Message
+  ):
+    """Assigns the new_value to the out_msg, even if it's of Any type."""
+    # This comparison uses the full_name string instead of the object itself
+    # because some environments load multiple different instances of the
+    # Any proto.
+    if out_msg.DESCRIPTOR.full_name == any_pb2.Any.DESCRIPTOR.full_name:
+      cast(any_pb2.Any, out_msg).Pack(new_value)
+    else:
+      out_msg.MergeFrom(new_value)
+
   @_register(placeholder_pb2.MakeProtoOperator)
   def _resolve_make_proto_operator(
       self, op: placeholder_pb2.MakeProtoOperator
@@ -540,22 +552,37 @@ class _ExpressionResolver:
         continue
 
       # Then write the resolved value into the output proto.
-      if descriptor.label == descriptor_lib.FieldDescriptor.LABEL_REPEATED:
+      if (  # If it's a map<> field.
+          descriptor.message_type
+          and descriptor.message_type.has_options
+          and descriptor.message_type.GetOptions().map_entry
+      ):
+        if not isinstance(value, dict):
+          raise ValueError(
+              f"Expected dict value for field {field_name}, but the "
+              f"placeholder resolved to {value!r}"
+          )
+        out_dict = getattr(result, key)
+        for k, v in value.items():
+          if isinstance(v, message.Message):
+            self._assign_proto_message(out_dict[k], v)
+          else:
+            out_dict[k] = v
+      elif descriptor.label == descriptor_lib.FieldDescriptor.LABEL_REPEATED:
         if not isinstance(value, list):
           raise ValueError(
               f"Expected list value for field {field_name}, but the placeholder"
               f" resolved to {value!r}"
           )
-        getattr(result, key).extend(value)
+        out_list = getattr(result, key)
+        for item in value:
+          if item is not None:
+            if isinstance(item, message.Message):
+              self._assign_proto_message(out_list.add(), item)
+            else:
+              out_list.append(item)
       elif descriptor.type == descriptor_lib.FieldDescriptor.TYPE_MESSAGE:
-        out_msg: message.Message = getattr(result, key)
-        # This comparison uses the full_name string instead of the object itself
-        # because some environments load multiple different instances of the
-        # Any proto.
-        if out_msg.DESCRIPTOR.full_name == any_pb2.Any.DESCRIPTOR.full_name:
-          cast(any_pb2.Any, out_msg).Pack(value)
-        else:
-          out_msg.MergeFrom(value)
+        self._assign_proto_message(getattr(result, key), value)
       elif descriptor.type == descriptor_lib.FieldDescriptor.TYPE_ENUM:
         if isinstance(value, str):
           value = descriptor.enum_type.values_by_name[value].number
