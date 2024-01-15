@@ -26,7 +26,32 @@
 *   The `placeholder.RuntimeInfoKey` enumeration was removed. Just hard-code the
     appropriate string values in your code, and reference the new `Literal` type
     `placeholder.RuntimeInfoKeys` if you want to ensure correctness.
-*   Arguments to `@component` must now be passed as kwargs.
+*   Arguments to `@component` must now be passed as kwargs and its return type
+    is changed from being a `Type` to just being a callable that returns a new
+    instance (like the type's initializer). This will allow us to instead return
+    a factory function (which is not a `Type`) in future. For a given
+    `@component def C()`, this means:
+    *   You should not use `C` as a type anymore. For instance, replace
+        `isinstance(foo, C)` with something else. Depending on your use case, if
+        you just want to know whether it's a component, then use
+        `isinstance(foo, tfx.types.BaseComponent)` or
+        `isinstance(foo, tfx.types.BaseFunctionalComponent)`.
+        If you want to know _which_ component it is, check its `.id` instead.
+        Existing such checks will break type checking today and may additionally
+        break at runtime in future, if we migrate to a factory function.
+    *   You can continue to use `C.test_call()` like before, and it will
+        continue to be supported in future.
+    *   Any type declarations using `foo: C` break and must be replaced with
+        `foo: tfx.types.BaseComponent` or
+        `foo: tfx.types.BaseFunctionalComponent`.
+    *   Any references to static class members like `C.EXECUTOR_SPEC` breaks
+        type checking today and should be migrated away from. In particular, for
+        `.EXECUTOR_SPEC.executor_class().Do()` in unit tests, use `.test_call()`
+        instead.
+    *   If your code previously asserted a wrong type declaration on `C`, this
+        can now lead to (justified) type checking errors that were previously
+        hidden due to `C` being of type `Any`.
+
 
 ### For Pipeline Authors
 

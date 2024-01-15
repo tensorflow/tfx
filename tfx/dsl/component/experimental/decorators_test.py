@@ -26,6 +26,7 @@ from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import _SimpleBeamComponent
 from tfx.dsl.component.experimental.decorators import _SimpleComponent
+from tfx.dsl.component.experimental.decorators import BaseFunctionalComponent
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
@@ -413,6 +414,16 @@ class ComponentDecoratorTest(tf.test.TestCase):
         ValueError,
         'expects arguments to be passed as keyword arguments'):
       _injector_1(9, 'secret')
+
+  def testReturnsCorrectTypes(self):
+    """Ensure the expected types are returned."""
+    # The BaseFunctionalComponentFactory protocol isn't runtime-checkable, but
+    # we can instead check that we can access its members:
+    self.assertIsNotNone(_injector_1.test_call)
+    self.assertIsNone(_injector_1.platform_classlevel_extensions)
+
+    instance = _injector_1(foo=9, bar='secret')
+    self.assertIsInstance(instance, BaseFunctionalComponent)
 
   def testNoBeamPipelineWhenUseBeamIsTrueFails(self):
     with self.assertRaisesWithLiteralMatch(

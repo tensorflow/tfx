@@ -20,7 +20,7 @@ import copy
 import functools
 import types
 import typing
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Type
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Protocol, Type, Union
 
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
@@ -148,9 +148,24 @@ def _assign_returned_values(
 
 
 class BaseFunctionalComponent(base_component.BaseComponent):
+  """Base class for functional components."""
   # Can be used for platform-specific additional information attached to this
   # component class.
   platform_classlevel_extensions: ClassVar[Any] = None
+
+
+class BaseFunctionalComponentFactory(Protocol):
+  """Serves to declare the return type below."""
+
+  platform_classlevel_extensions: Any = None
+
+  def __call__(self, *args: Any, **kwargs: Any) -> BaseFunctionalComponent:
+    """This corresponds to BaseFunctionalComponent.__init__."""
+    ...
+
+  def test_call(self, *args: Any, **kwargs: Any) -> Any:
+    """This corresponds to the static BaseFunctionalComponent.test_call()."""
+    ...
 
 
 class _SimpleComponent(BaseFunctionalComponent):
@@ -278,7 +293,7 @@ class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
 
 
 @typing.overload
-def component(func: types.FunctionType, /) -> Any:
+def component(func: types.FunctionType, /) -> BaseFunctionalComponentFactory:
   ...
 
 
@@ -289,7 +304,7 @@ def component(
         type[system_executions.SystemExecution]
     ] = None,
     use_beam: bool = False,
-) -> Callable[[types.FunctionType], Any]:
+) -> Callable[[types.FunctionType], BaseFunctionalComponentFactory]:
   ...
 
 
@@ -301,7 +316,10 @@ def component(
         Type[system_executions.SystemExecution]
     ] = None,
     use_beam: bool = False,
-) -> Any:
+) -> Union[
+    BaseFunctionalComponentFactory,
+    Callable[[types.FunctionType], BaseFunctionalComponentFactory],
+]:
   """Decorator: creates a component from a typehint-annotated Python function.
 
   This decorator creates a component based on typehint annotations specified for
@@ -440,8 +458,16 @@ def component(
       tfx-pipeline-wise beam_pipeline_args.
 
   Returns:
-    `base_component.BaseComponent` or `base_component.BaseBeamComponent`
-      subclass for the given component executor function.
+    An object that:
+    1. you can call like the initializer of a subclass of
+      `base_component.BaseComponent` (or `base_component.BaseBeamComponent`).
+    2. has a test_call() member function for unit testing the inner
+       implementation of the component.
+    Today, the returned object is literally a subclass of BaseComponent, so it
+    can be used as a `Type` e.g. in isinstance() checks. But you must not rely
+    on this, as we reserve the right to reserve a different kind of object in
+    future, which _only_ satisfies the two criteria (1.) and (2.) above
+    without being a `Type` itself.
 
   Raises:
     EnvironmentError: if the current Python interpreter is not Python 3.
@@ -467,7 +493,7 @@ def component(
                      'BeamComponentParameter[beam.Pipeline] with '
                      'default value None when use_beam=True.')
 
-  return utils.create_component_class(
+  component_class = utils.create_component_class(
       func=func,
       arg_defaults=arg_defaults,
       arg_formats=arg_formats,
@@ -490,3 +516,4 @@ def component(
       json_compatible_outputs=return_json_typehints,
       return_values_optionality=returned_values,
   )
+  return typing.cast(BaseFunctionalComponentFactory, component_class)
