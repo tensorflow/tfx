@@ -18,7 +18,7 @@ import enum
 import functools
 import os
 import re
-from typing import Any, Callable, Dict, List, Set, Union
+from typing import Any, Callable, Dict, List, Set, Union, cast
 
 from absl import logging
 import attr
@@ -31,6 +31,7 @@ from tfx.types import value_artifact
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
+from google.protobuf import any_pb2
 from google.protobuf import descriptor as descriptor_lib
 from google.protobuf import json_format
 from google.protobuf import message
@@ -520,7 +521,14 @@ class _ExpressionResolver:
           )
         getattr(result, key).extend(value)
       elif descriptor.type == descriptor_lib.FieldDescriptor.TYPE_MESSAGE:
-        getattr(result, key).MergeFrom(value)
+        out_msg: message.Message = getattr(result, key)
+        # This comparison uses the full_name string instead of the object itself
+        # because some environments load multiple different instances of the
+        # Any proto.
+        if out_msg.DESCRIPTOR.full_name == any_pb2.Any.DESCRIPTOR.full_name:
+          cast(any_pb2.Any, out_msg).Pack(value)
+        else:
+          out_msg.MergeFrom(value)
       elif descriptor.type == descriptor_lib.FieldDescriptor.TYPE_ENUM:
         if isinstance(value, str):
           value = descriptor.enum_type.values_by_name[value].number

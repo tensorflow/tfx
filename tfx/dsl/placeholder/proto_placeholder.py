@@ -21,6 +21,7 @@ from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.utils import proto_utils
 
+from google.protobuf import any_pb2
 from google.protobuf import descriptor as descriptor_lib
 from google.protobuf import message
 
@@ -62,7 +63,7 @@ def make_proto(
 
   Limitations:
   * Map fields are not yet supported.
-  * Any/MessageSet is not yet supported.
+  * MessageSet is not yet supported.
   * Proto extension fields are not supported.
   * `bytes` fields can only populated through Python `str` values, so their
     contents must be valid strings and can't contain arbitrary bytes.
@@ -214,7 +215,10 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
       ):
         # The proto placeholder knows exactly which proto type it will resolve
         # to. So we can verify that it's the right one.
-        if descriptor.message_type != submsg_type.DESCRIPTOR:
+        if descriptor.message_type.full_name not in (
+            submsg_type.DESCRIPTOR.full_name,
+            any_pb2.Any.DESCRIPTOR.full_name,
+        ):
           raise ValueError(
               f'Expected message of type {descriptor.message_type.full_name} '
               f'for field {field_name}, got {submsg_type.DESCRIPTOR.full_name}.'

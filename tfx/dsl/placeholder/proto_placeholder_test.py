@@ -418,6 +418,62 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.StructuralRuntimeParameter),
     )
 
+  def testMakeProtoPlaceholder_AnySubmessageBareMessage(self):
+    actual = resolve(
+        _MetadataStoreValue(
+            proto_value=pipeline_pb2.PipelineNode(
+                upstream_nodes=['foo', 'bar'],
+            )
+        )
+    )
+    self.assertProtoEquals(
+        """
+        proto_value {
+          [type.googleapis.com/tfx.orchestration.PipelineNode] {
+            upstream_nodes: "foo"
+            upstream_nodes: "bar"
+          }
+        }
+        """,
+        parse_text_proto(actual, metadata_store_pb2.Value),
+    )
+
+  def testMakeProtoPlaceholder_AnySubmessagePlaceholder(self):
+    actual = resolve(
+        _MetadataStoreValue(
+            # We can directly assign a message of any type and it will pack it.
+            proto_value=ph.make_proto(
+                pipeline_pb2.PipelineNode(),
+                upstream_nodes=[
+                    ph.execution_invocation().pipeline_run_id + '-foo',
+                ],
+            )
+        )
+    )
+    self.assertProtoEquals(
+        """
+        proto_value {
+          [type.googleapis.com/tfx.orchestration.PipelineNode] {
+            upstream_nodes: "test-run-id-foo"
+          }
+        }
+        """,
+        parse_text_proto(actual, metadata_store_pb2.Value),
+    )
+
+  def testMakeProtoPlaceholder_NonePlaceholderIntoAnySubmessage(self):
+    actual = resolve(
+        _MetadataStoreValue(proto_value=ph.execution_invocation().pipeline_node)
+    )
+    self.assertProtoEquals(
+        """
+        proto_value {
+          [type.googleapis.com/tfx.orchestration.PipelineNode] {}
+        }
+        """,
+        parse_text_proto(actual, metadata_store_pb2.Value),
+    )
+
   def testMakeProtoPlaceholder_PlusItemGetter(self):
     actual = resolve(
         _ExecutionInvocation(

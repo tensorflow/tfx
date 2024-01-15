@@ -25,5 +25,5 @@ from tfx.dsl.placeholder.runtime_placeholders import environment_variable, Envir
 from tfx.dsl.placeholder.runtime_placeholders import execution_invocation, ExecInvocationPlaceholder
 from tfx.dsl.placeholder.runtime_placeholders import exec_property, ExecPropertyPlaceholder
 from tfx.dsl.placeholder.runtime_placeholders import runtime_info, RuntimeInfoPlaceholder, RuntimeInfoKeys
-from tfx.dsl.placeholder.proto_placeholder import make_proto
+from tfx.dsl.placeholder.proto_placeholder import make_proto, MakeProtoPlaceholder
 from tfx.types.channel import ChannelWrappedPlaceholder

@@ -1402,6 +1402,54 @@ class PlaceholderTest(tf.test.TestCase):
           pipeline_pb2.PipelineNode(), upstream_nodes='this is not a list'
       )
 
+  def testMakeProtoPlaceholder_AnySubmessage(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_proto(
+            metadata_store_pb2.Value(),
+            # We can directly assign a message of any type and it will pack it.
+            proto_value=ph.make_proto(
+                pipeline_pb2.PipelineNode(),
+                upstream_nodes=[ph.exec_property('foo')],
+            ),
+        ),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/ml_metadata.Value] {}
+            }
+            fields {
+              key: "proto_value"
+              value {
+                operator {
+                  make_proto_op {
+                    base {
+                      [type.googleapis.com/tfx.orchestration.PipelineNode] {}
+                    }
+                    fields {
+                      key: "upstream_nodes"
+                      value {
+                        operator {
+                          list_concat_op {
+                            expressions {
+                              placeholder {
+                                type: EXEC_PROPERTY
+                                key: "foo"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
   def testMakeProtoPlaceholder_GeneratesSplitConfig(self):
     # This is part one of a two-part test. This generates the
     # PlaceholderExpression including the proto descriptors for SplitConfig.
@@ -1416,6 +1464,24 @@ class PlaceholderTest(tf.test.TestCase):
         load_testdata('make_proto_placeholder.pbtxt'),
         placeholder.encode(),
     )
+
+  def testMakeProtoPlaceholder_IncludesAnyDescriptors(self):
+    expression = ph.make_proto(
+        metadata_store_pb2.Value(),
+        # We can directly assign a message of any type and it will pack it.
+        proto_value=ph.make_proto(
+            pipeline_pb2.PipelineNode(),
+            upstream_nodes=[ph.exec_property('foo')],
+        ),
+    ).encode()
+
+    described_message_types = set()
+    for file in expression.operator.make_proto_op.file_descriptors.file:
+      for message_type in file.message_type:
+        described_message_types.add(f'{file.package}.{message_type.name}')
+
+    self.assertIn('ml_metadata.Value', described_message_types)
+    self.assertIn('tfx.orchestration.PipelineNode', described_message_types)
 
   def testTraverse(self):
     p = ('google/' + ph.runtime_info('platform_config').user + '/' +
