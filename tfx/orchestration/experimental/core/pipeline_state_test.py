@@ -1525,7 +1525,7 @@ class NodeStatesProxyTest(test_utils.TfxTest):
     self.mock_time.time.return_value = time.time()
 
   def test_get_with_invalid_state_type(self):
-    proxy = pstate.NodeStatesProxy(metadata_store_pb2.Execution)
+    proxy = pstate._NodeStatesProxy(metadata_store_pb2.Execution)
     with self.assertRaises(status_lib.StatusNotOkError):
       proxy.get('invalid_state_type')
 
@@ -1541,7 +1541,7 @@ class NodeStatesProxyTest(test_utils.TfxTest):
         )
     }
     execution = metadata_store_pb2.Execution()
-    proxy = pstate.NodeStatesProxy(execution)
+    proxy = pstate._NodeStatesProxy(execution)
     self.assertEmpty(proxy.get())
     proxy.set(node_states_running)
     self.assertEqual(proxy.get(), node_states_running)
@@ -1578,7 +1578,7 @@ class NodeStatesProxyTest(test_utils.TfxTest):
     }
     with TestEnv(None, 20):
       execution = metadata_store_pb2.Execution()
-      proxy = pstate.NodeStatesProxy(execution)
+      proxy = pstate._NodeStatesProxy(execution)
       proxy.set(node_states)
       proxy.save()
       self.assertEqual(
@@ -1589,7 +1589,7 @@ class NodeStatesProxyTest(test_utils.TfxTest):
       )
     with TestEnv(None, 2000):
       execution = metadata_store_pb2.Execution()
-      proxy = pstate.NodeStatesProxy(execution)
+      proxy = pstate._NodeStatesProxy(execution)
       proxy.set(node_states)
       proxy.save()
       self.assertEqual(
