@@ -220,7 +220,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
         item = self._validate_and_transform_value(field_name, descriptor, item)
         if item is not None:
           items.append(item)
-      return placeholder_base.to_list(items)
+      return placeholder_base.make_list(items)
     else:
       return self._validate_and_transform_value(field_name, descriptor, value)
 

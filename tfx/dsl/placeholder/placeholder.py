@@ -18,7 +18,7 @@
 # pylint: disable=g-multiple-import,g-importing-member,unused-import,g-bad-import-order,redefined-builtin
 from tfx.dsl.placeholder.placeholder_base import Placeholder, Predicate, ListPlaceholder
 from tfx.dsl.placeholder.placeholder_base import logical_not, logical_and, logical_or
-from tfx.dsl.placeholder.placeholder_base import join, to_list
+from tfx.dsl.placeholder.placeholder_base import join, make_list
 from tfx.dsl.placeholder.placeholder_base import ListSerializationFormat, ProtoSerializationFormat
 from tfx.dsl.placeholder.artifact_placeholder import ArtifactPlaceholder, input, output
 from tfx.dsl.placeholder.runtime_placeholders import environment_variable, EnvironmentVariablePlaceholder
@@ -27,3 +27,6 @@ from tfx.dsl.placeholder.runtime_placeholders import exec_property, ExecProperty
 from tfx.dsl.placeholder.runtime_placeholders import runtime_info, RuntimeInfoPlaceholder, RuntimeInfoKeys
 from tfx.dsl.placeholder.proto_placeholder import make_proto, MakeProtoPlaceholder
 from tfx.types.channel import ChannelWrappedPlaceholder
+
+# TODO(b/266800844): Remove to_list alias after migrating clients.
+to_list = make_list

@@ -281,7 +281,7 @@ def logical_or(left: Predicate, right: Predicate) -> Predicate:
   )
 
 
-def to_list(
+def make_list(
     input_placeholders: List[ValueLikeType],
 ) -> ListPlaceholder:
   """Returns a ListPlaceholder representing a list of input placeholders."""
@@ -318,7 +318,7 @@ def join(
 class ListPlaceholder(Placeholder):
   """List of multiple Placeholders.
 
-  Prefer to use ph.to_list() to create ListPlaceholder.
+  Prefer to use ph.make_list() to create ListPlaceholder.
   """
 
   def __init__(self, input_placeholders: List[ValueLikeType]):

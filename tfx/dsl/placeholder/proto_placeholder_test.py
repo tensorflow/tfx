@@ -386,7 +386,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
   def testMakeProtoPlaceholder_EmptyListPlaceholderIntoRepeatedField(self):
     actual = resolve(
         ph.make_proto(
-            pipeline_pb2.PipelineNode(), upstream_nodes=ph.to_list([])
+            pipeline_pb2.PipelineNode(), upstream_nodes=ph.make_list([])
         )
     )
     self.assertProtoEquals('', parse_text_proto(actual))

@@ -51,6 +51,7 @@
     *   If your code previously asserted a wrong type declaration on `C`, this
         can now lead to (justified) type checking errors that were previously
         hidden due to `C` being of type `Any`.
+*   `ph.to_list()` was renamed to `ph.make_list()` for consistency.
 
 
 ### For Pipeline Authors

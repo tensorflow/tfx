@@ -446,10 +446,10 @@ class PlaceholderTest(tf.test.TestCase):
 
   def testListConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.to_list(
+        ph.make_list(
             [ph.input('model').uri, 'foo', ph.exec_property('random_str')]
         )
-        + ph.to_list([ph.input('another_model').uri]),
+        + ph.make_list([ph.input('another_model').uri]),
         """
         operator {
           list_concat_op {
@@ -509,9 +509,10 @@ class PlaceholderTest(tf.test.TestCase):
 
   def testListConcatAndSerialize(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.to_list([ph.input('model').uri,
-                    ph.exec_property('random_str')
-                   ]).serialize_list(ph.ListSerializationFormat.JSON), """
+        ph.make_list(
+            [ph.input('model').uri, ph.exec_property('random_str')]
+        ).serialize_list(ph.ListSerializationFormat.JSON),
+        """
         operator {
           list_serialization_op {
             expression {
@@ -548,17 +549,21 @@ class PlaceholderTest(tf.test.TestCase):
             serialization_format: JSON
           }
         }
-    """)
+    """,
+    )
 
   def testListEmpty(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.to_list([]), """
+        ph.make_list([]),
+        """
         operator {
           list_concat_op {}
         }
-    """)
+    """,
+    )
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.to_list([]) + ph.to_list([ph.exec_property('random_str')]), """
+        ph.make_list([]) + ph.make_list([ph.exec_property('random_str')]),
+        """
         operator {
           list_concat_op {
             expressions {
@@ -569,7 +574,8 @@ class PlaceholderTest(tf.test.TestCase):
             }
           }
         }
-    """)
+    """,
+    )
 
   def testMakeDict(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -1716,7 +1722,7 @@ class PlaceholderTest(tf.test.TestCase):
     self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
 
   def testListTraverse(self):
-    p = ph.to_list([
+    p = ph.make_list([
         ph.runtime_info('platform_config').user,
         ph.output('model').uri,
         ph.exec_property('version'),
