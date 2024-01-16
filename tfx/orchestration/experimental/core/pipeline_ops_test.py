@@ -80,7 +80,7 @@ def _test_pipeline(
 def _get_node_states_dict(
     execution: metadata_store_pb2.Execution,
 ) -> dict[str, pstate.NodeState]:
-  return pstate._NodeStatesProxy(execution).get()
+  return pstate.NodeStatesProxy(execution).get()
 
 
 class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
