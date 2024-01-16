@@ -51,6 +51,11 @@ class NodeExecutionOptions:
   # If you want to use this feature please contact kmonte@ first.
   lifetime_start: Optional[str] = None
 
+  # TFX only, do not set manually.
+  _run_mode: pipeline_pb2.NodeExecutionOptions.RunMode = (
+      pipeline_pb2.NodeExecutionOptions.RunMode.DEFAULT
+  )
+
   def __post_init__(self):
     if self.max_execution_retries is not None:
       self.max_execution_retries = max(self.max_execution_retries, 0)

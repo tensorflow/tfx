@@ -59,6 +59,7 @@ class UtilsTest(tf.test.TestCase):
         execution_timeout_sec=100,
         lifetime_start="foo",
         reset_stateful_working_dir=True,
+        _run_mode=pipeline_pb2.NodeExecutionOptions.RunMode.LAUNCH_ONLY,
     )
     self.assertEqual(
         component.node_execution_options,
@@ -69,6 +70,7 @@ class UtilsTest(tf.test.TestCase):
             execution_timeout_sec=100,
             lifetime_start="foo",
             reset_stateful_working_dir=True,
+            _run_mode=pipeline_pb2.NodeExecutionOptions.RunMode.LAUNCH_ONLY,
         ),
     )
     component.node_execution_options = None
