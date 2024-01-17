@@ -95,21 +95,12 @@ def make_proto(
 
 
 # These are for the inner values of a field (whether repeated or not):
-_PlainValues = Union[  # The values we use internally.
-    placeholder_base.ValueType,  # explicit value
-    placeholder_base.Placeholder,  # placeholdered value
-]
-_InputValues = Union[  # The values users may pass (we convert to _PlainValues).
-    _PlainValues,
+_InputValues = Union[  # The values users may supply to us.
+    placeholder_base.ValueLikeType,
     message.Message,  # Users may pass in submessage fields as a plain proto.
     None,  # Users may pass None to optional fields.
 ]
 # These are for the outer values of a field (so repeated is a list):
-_FieldValues = Union[  # The values we use internally.
-    _PlainValues,  # singular (optional or required) field
-    placeholder_base.ListPlaceholder,  # repeated field
-    placeholder_base.DictPlaceholder,  # map field
-]
 _InputFieldValues = Union[  # The values users may pass.
     _InputValues,  # singular (optional or required) field
     List[_InputValues],  # repeated field
@@ -150,7 +141,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
     """Initializes the class. Consider this private."""
     super().__init__(expected_type=type(base_message))
     self._base_message = base_message
-    self._fields = {}
+    self._fields: Dict[str, placeholder_base.ValueLikeType] = {}
     for key, value in kwargs.items():
       value = self._validate_and_transform_field(key, value)
       if value is not None:
@@ -158,7 +149,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
 
   def _validate_and_transform_field(
       self, field: str, value: _InputFieldValues
-  ) -> Optional[_FieldValues]:
+  ) -> Optional[placeholder_base.ValueLikeType]:
     """Validates the given value and transforms it to what encode() needs."""
     message_name = self._base_message.DESCRIPTOR.full_name
     if field not in self._base_message.DESCRIPTOR.fields_by_name:
@@ -183,7 +174,10 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
             f'{field_name}, got {value!r}.'
         )
       entries: List[
-          Tuple[Union[str, placeholder_base.Placeholder], _PlainValues]
+          Tuple[
+              Union[str, placeholder_base.Placeholder],
+              placeholder_base.ValueLikeType,
+          ]
       ] = []
       for entry_key, entry_value in value:
         if not isinstance(
@@ -215,7 +209,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
             f'Expected list input for repeated field {field_name}, got '
             f'{value!r}.'
         )
-      items: List[_PlainValues] = []
+      items: List[placeholder_base.ValueLikeType] = []
       for item in value:
         item = self._validate_and_transform_value(field_name, descriptor, item)
         if item is not None:
@@ -229,7 +223,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
       field_name: str,
       descriptor: descriptor_lib.FieldDescriptor,
       value: _InputValues,
-  ) -> Optional[_PlainValues]:
+  ) -> Optional[placeholder_base.ValueLikeType]:
     if value is None:
       if descriptor.label == descriptor_lib.FieldDescriptor.LABEL_OPTIONAL:
         return None
