@@ -1771,16 +1771,16 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         task_queue.task_done(task)
         self.assertIsInstance(task, task_lib.CancelNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
-        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.PAUSE_EXEC)
+        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.CANCEL_EXEC)
 
       self.assertTrue(task_queue.is_empty())
 
-      # Check that the node states are STARTED.
+      # Check that the node states are STARTING.
       [execution] = m.store.get_executions_by_id([pipeline_state.execution_id])
       node_states_dict = _get_node_states_dict(execution)
       self.assertLen(node_states_dict, 4)
       self.assertSetEqual(
-          set([pstate.NodeState.STARTED]),
+          set([pstate.NodeState.STARTING]),
           set(n.state for n in node_states_dict.values()),
       )
 
@@ -1846,7 +1846,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         task_queue.task_done(task)
         self.assertIsInstance(task, task_lib.CancelNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
-        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.PAUSE_EXEC)
+        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.CANCEL_EXEC)
 
       # Pipeline should no longer be in update-initiated state but be active.
       with pipeline_state:
@@ -1955,21 +1955,21 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                   pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                   node_id='Transform',
               ),
-              cancel_type=task_lib.NodeCancelType.PAUSE_EXEC,
+              cancel_type=task_lib.NodeCancelType.CANCEL_EXEC,
           ),
           test_utils.create_exec_node_task(
               node_uid=task_lib.NodeUid(
                   pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                   node_id='Trainer',
               ),
-              cancel_type=task_lib.NodeCancelType.PAUSE_EXEC,
+              cancel_type=task_lib.NodeCancelType.CANCEL_EXEC,
           ),
           test_utils.create_exec_node_task(
               node_uid=task_lib.NodeUid(
                   pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                   node_id='Evaluator',
               ),
-              cancel_type=task_lib.NodeCancelType.PAUSE_EXEC,
+              cancel_type=task_lib.NodeCancelType.CANCEL_EXEC,
           ),
           None,
           None,
@@ -1992,7 +1992,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         task_queue.task_done(task)
         self.assertIsInstance(task, task_lib.ExecNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
-        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.PAUSE_EXEC)
+        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.CANCEL_EXEC)
 
       self.assertTrue(task_queue.is_empty())
 
@@ -2001,7 +2001,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       node_states_dict = _get_node_states_dict(execution)
       self.assertLen(node_states_dict, 4)
       self.assertSetEqual(
-          set([pstate.NodeState.STARTED]),
+          set([pstate.NodeState.STARTING]),
           set(n.state for n in node_states_dict.values()),
       )
 

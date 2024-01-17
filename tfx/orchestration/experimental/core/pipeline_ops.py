@@ -1355,30 +1355,32 @@ def _cancel_node(
     if service_job_manager.stop_node_services(
         pipeline_state, node.node_info.id
     ):
-      # Do not cancel active executions for node reload.
-      if not pause:
-        logging.info(
-            'Canceling active executions for pure service node: %s', node_uid
-        )
-        active_executions = task_gen_utils.get_executions(
-            mlmd_handle,
-            node,
-            additional_filters=['last_known_state IN (NEW, RUNNING)'],
-        )
-        _cancel_executions(active_executions, mlmd_handle, node_uid)
+      logging.info(
+          'Canceling active executions for pure service node: %s', node_uid
+      )
+      active_executions = task_gen_utils.get_executions(
+          mlmd_handle,
+          node,
+          additional_filters=['last_known_state IN (NEW, RUNNING)'],
+      )
+      _cancel_executions(active_executions, mlmd_handle, node_uid)
       return True
     else:
       return False
-  if _maybe_enqueue_cancellation_task(
-      mlmd_handle, pipeline_state, node, task_queue, pause=pause
-  ):
+
+  is_cancellation_task_enqueued = _maybe_enqueue_cancellation_task(
+      mlmd_handle, pipeline_state, node, task_queue
+  )
+  if is_cancellation_task_enqueued and not pause:
     return False
+
   if service_job_manager.is_mixed_service_node(
       pipeline_state, node.node_info.id
   ):
     return service_job_manager.stop_node_services(
         pipeline_state, node.node_info.id
     )
+
   return True
 
 
@@ -1704,7 +1706,7 @@ def _orchestrate_update_initiated_pipeline(
         node_uid = task_lib.NodeUid.from_node(pipeline, node)
         with pipeline_state.node_state_update_context(node_uid) as node_state:
           if node_state.state == pstate.NodeState.PAUSED:
-            node_state.update(pstate.NodeState.STARTED)
+            node_state.update(pstate.NodeState.STARTING)
 
       pipeline_state.apply_pipeline_update()
 
@@ -1938,7 +1940,6 @@ def _maybe_enqueue_cancellation_task(
     pipeline_state: pstate.PipelineState,
     node: node_proto_view.NodeProtoView,
     task_queue: tq.TaskQueue,
-    pause: bool = False,
 ) -> bool:
   """Enqueues a node cancellation task if not already stopped.
 
@@ -1956,8 +1957,6 @@ def _maybe_enqueue_cancellation_task(
     node: The node to cancel.
     task_queue: A `TaskQueue` instance into which any cancellation tasks will be
       enqueued.
-    pause: Whether the cancellation is to pause the node rather than cancelling
-      the execution.
 
   Returns:
     `True` if a cancellation task was enqueued. `False` if node is already
@@ -1967,37 +1966,32 @@ def _maybe_enqueue_cancellation_task(
   pipeline = pipeline_state.pipeline
   node_uid = task_lib.NodeUid.from_node(pipeline, node)
 
-  # If not pause, change all NEW executions to CANCELED
-  if not pause:
-    for execution in executions:
-      if execution.last_known_state == metadata_store_pb2.Execution.NEW:
-        with mlmd_state.mlmd_execution_atomic_op(
-            mlmd_handle=mlmd_handle,
-            execution_id=execution.id,
-            on_commit=event_observer.make_notify_execution_state_change_fn(
-                node_uid
-            ),
-        ) as execution:
-          execution.last_known_state = metadata_store_pb2.Execution.CANCELED
+  # Changes all NEW executions to CANCELED.
+  for execution in executions:
+    if execution.last_known_state == metadata_store_pb2.Execution.NEW:
+      with mlmd_state.mlmd_execution_atomic_op(
+          mlmd_handle=mlmd_handle,
+          execution_id=execution.id,
+          on_commit=event_observer.make_notify_execution_state_change_fn(
+              node_uid
+          ),
+      ) as execution:
+        execution.last_known_state = metadata_store_pb2.Execution.CANCELED
 
   exec_node_task_id = task_lib.exec_node_task_id_from_node(pipeline, node)
-  cancel_type = (
-      task_lib.NodeCancelType.PAUSE_EXEC
-      if pause
-      else task_lib.NodeCancelType.CANCEL_EXEC
-  )
+  cancel_type = task_lib.NodeCancelType.CANCEL_EXEC
   if task_queue.contains_task_id(exec_node_task_id):
     task_queue.enqueue(
         task_lib.CancelNodeTask(node_uid=node_uid, cancel_type=cancel_type)
     )
-    return not pause
+    return True
 
   exec_node_task = task_gen_utils.generate_cancel_task_from_running_execution(
       mlmd_handle, pipeline, node, executions, cancel_type=cancel_type
   )
   if exec_node_task:
     task_queue.enqueue(exec_node_task)
-    return not pause
+    return True
 
   return False
 

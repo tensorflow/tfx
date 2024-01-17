@@ -50,13 +50,11 @@ def _test_exec_node_task(node_id, pipeline_id, pipeline=None):
   return test_utils.create_exec_node_task(node_uid, pipeline=pipeline)
 
 
-def _test_cancel_node_task(node_id, pipeline_id, pause=False):
+def _test_cancel_node_task(node_id, pipeline_id):
   node_uid = task_lib.NodeUid(
       pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
       node_id=node_id)
-  cancel_type = (
-      task_lib.NodeCancelType.PAUSE_EXEC
-      if pause else task_lib.NodeCancelType.CANCEL_EXEC)
+  cancel_type = task_lib.NodeCancelType.CANCEL_EXEC
   return task_lib.CancelNodeTask(node_uid=node_uid, cancel_type=cancel_type)
 
 
@@ -179,8 +177,7 @@ class TaskManagerTest(test_utils.TfxTest):
       pusher_exec_task = _test_exec_node_task(
           'Pusher', 'test-pipeline', pipeline=self._pipeline)
       task_queue.enqueue(pusher_exec_task)
-      task_queue.enqueue(
-          _test_cancel_node_task('Pusher', 'test-pipeline', pause=True))
+      task_queue.enqueue(_test_cancel_node_task('Pusher', 'test-pipeline'))
 
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
@@ -218,10 +215,9 @@ class TaskManagerTest(test_utils.TfxTest):
             mlmd_handle=mock.ANY, task=evaluator_exec_task, result=result_ok),
     ],
                                   any_order=True)
-    # It is expected that publish is not called for Pusher because it was
-    # cancelled with pause=True so there must be only 3 calls.
-    self.assertLen(mock_publish.mock_calls, 3)
-    self.assertLen(mock_record_state_change_time.mock_calls, 3)
+
+    self.assertLen(mock_publish.mock_calls, 4)
+    self.assertLen(mock_record_state_change_time.mock_calls, 4)
 
   @mock.patch.object(pstate, 'record_state_change_time')
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
