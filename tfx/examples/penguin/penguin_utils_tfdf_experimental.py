@@ -67,7 +67,7 @@ import tensorflow_decision_forests as tfdf
 import tensorflow_transform as tft
 from tfx import v1 as tfx
 from tfx.examples.penguin import penguin_utils_base as base
-
+from tfx.keras_lib import tf_keras
 from tfx_bsl.public import tfxio
 
 # TFX Transform will call this function.
@@ -152,7 +152,7 @@ def _get_hyperparameters() -> kt.HyperParameters:
   return hp
 
 
-def _make_keras_model(hparams: kt.HyperParameters) -> tf.keras.Model:
+def _make_keras_model(hparams: kt.HyperParameters) -> tf_keras.Model:
   """Creates a TF-DF Keras model.
 
   Args:

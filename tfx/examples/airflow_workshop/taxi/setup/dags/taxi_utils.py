@@ -28,7 +28,9 @@ import tensorflow as tf
 import tensorflow_transform as tft  # Step 4
 from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx.keras_lib import tf_keras
 from tfx_bsl.tfxio import dataset_options
+
 
 # Categorical features are assumed to each have a maximum value in the dataset.
 _MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
@@ -298,7 +300,7 @@ def _input_fn(file_pattern: List[str], data_accessor: DataAccessor,
       tf_transform_output.transformed_metadata.schema).repeat()
 
 
-def _build_keras_model(hidden_units: List[int] = None) -> tf.keras.Model:
+def _build_keras_model(hidden_units: List[int] = None) -> tf_keras.Model:
   """Creates a DNN Keras model for classifying taxi data.
 
   Args:
@@ -360,36 +362,36 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units):
   # Keras needs the feature definitions at compile time.
   # TODO(b/139081439): Automate generation of input layers from FeatureColumn.
   input_layers = {
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype=tf.float32)
+      colname: tf_keras.layers.Input(name=colname, shape=(), dtype=tf.float32)
       for colname in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
   }
   input_layers.update({
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+      colname: tf_keras.layers.Input(name=colname, shape=(), dtype='int32')
       for colname in _transformed_names(_VOCAB_FEATURE_KEYS)
   })
   input_layers.update({
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+      colname: tf_keras.layers.Input(name=colname, shape=(), dtype='int32')
       for colname in _transformed_names(_BUCKET_FEATURE_KEYS)
   })
   input_layers.update({
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+      colname: tf_keras.layers.Input(name=colname, shape=(), dtype='int32')
       for colname in _transformed_names(_CATEGORICAL_FEATURE_KEYS)
   })
 
   # TODO(b/161952382): Replace with Keras premade models and
   # Keras preprocessing layers.
-  deep = tf.keras.layers.DenseFeatures(deep_columns)(input_layers)
+  deep = tf_keras.layers.DenseFeatures(deep_columns)(input_layers)
   for numnodes in dnn_hidden_units:
-    deep = tf.keras.layers.Dense(numnodes)(deep)
-  wide = tf.keras.layers.DenseFeatures(wide_columns)(input_layers)
+    deep = tf_keras.layers.Dense(numnodes)(deep)
+  wide = tf_keras.layers.DenseFeatures(wide_columns)(input_layers)
 
-  output = tf.keras.layers.Dense(1)(tf.keras.layers.concatenate([deep, wide]))
+  output = tf_keras.layers.Dense(1)(tf_keras.layers.concatenate([deep, wide]))
 
-  model = tf.keras.Model(input_layers, output)
+  model = tf_keras.Model(input_layers, output)
   model.compile(
-      loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
-      optimizer=tf.keras.optimizers.Adam(lr=0.001),
-      metrics=[tf.keras.metrics.BinaryAccuracy()])
+      loss=tf_keras.losses.BinaryCrossentropy(from_logits=True),
+      optimizer=tf_keras.optimizers.Adam(lr=0.001),
+      metrics=[tf_keras.metrics.BinaryAccuracy()])
   model.summary(print_fn=absl.logging.info)
   return model
 
@@ -433,7 +435,7 @@ def run_fn(fn_args: TrainerFnArgs):
   batch_log_callback = LambdaCallback(on_batch_end=batch_output)
 
   # Write logs to path
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+  tensorboard_callback = tf_keras.callbacks.TensorBoard(
       log_dir=fn_args.model_run_dir, update_freq='batch')
 
   model.fit(

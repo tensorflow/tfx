@@ -13,13 +13,14 @@
 # limitations under the License.
 """Configurable fine-tuning BERT models for various tasks."""
 
-from typing import Optional, List, Union
+from typing import List, Optional, Union
 
 import tensorflow as tf
-import tensorflow.keras as keras
+from tensorflow import keras
+from tfx.keras_lib import tf_keras
 
 
-def build_bert_classifier(bert_layer: tf.keras.layers.Layer,
+def build_bert_classifier(bert_layer: tf_keras.layers.Layer,
                           max_len: int,
                           num_classes: int,
                           dropout: float = 0.1,
@@ -58,23 +59,23 @@ def build_bert_classifier(bert_layer: tf.keras.layers.Layer,
 
 
 def compile_bert_classifier(
-    model: tf.keras.Model,
-    loss: tf.keras.losses.Loss = tf.keras.losses.SparseCategoricalCrossentropy(
+    model: tf_keras.Model,
+    loss: tf_keras.losses.Loss = tf_keras.losses.SparseCategoricalCrossentropy(
         from_logits=True),
     learning_rate: float = 2e-5,
-    metrics: Optional[List[Union[str, tf.keras.metrics.Metric]]] = None):
+    metrics: Optional[List[Union[str, tf_keras.metrics.Metric]]] = None):
   """Compile the BERT classifier using suggested parameters.
 
   Args:
     model: A keras model. Most likely the output of build_bert_classifier.
-    loss: tf.keras.losses. The suggested loss function expects integer labels
+    loss: tf_keras.losses. The suggested loss function expects integer labels
       (e.g. 0, 1, 2). If the labels are one-hot encoded, consider using
-      tf.keras.lossesCategoricalCrossEntropy with from_logits set to true.
+      tf_keras.lossesCategoricalCrossEntropy with from_logits set to true.
     learning_rate: Suggested learning rate to be used in
-      tf.keras.optimizer.Adam. The three suggested learning_rates for
+      tf_keras.optimizer.Adam. The three suggested learning_rates for
       fine-tuning are [2e-5, 3e-5, 5e-5].
     metrics: Default None will use ['sparse_categorical_accuracy']. An array of
-      strings or tf.keras.metrics.
+      strings or tf_keras.metrics.
 
   Returns:
     None.
@@ -83,17 +84,17 @@ def compile_bert_classifier(
     metrics = ["sparse_categorical_accuracy"]
 
   model.compile(
-      optimizer=tf.keras.optimizers.Adam(learning_rate),
+      optimizer=tf_keras.optimizers.Adam(learning_rate),
       loss=loss,
       metrics=metrics)
 
 
 def build_and_compile_bert_classifier(
-    bert_layer: tf.keras.layers.Layer,
+    bert_layer: tf_keras.layers.Layer,
     max_len: int,
     num_classes: int,
     learning_rate: float = 5e-5,
-    metrics: Optional[List[Union[str, tf.keras.metrics.Metric]]] = None):
+    metrics: Optional[List[Union[str, tf_keras.metrics.Metric]]] = None):
   """Build and compile keras BERT classification model.
 
   Apart from the necessary inputs, use default/suggested parameters in build
@@ -105,10 +106,10 @@ def build_and_compile_bert_classifier(
     num_classes: Number of unique classes in the labels. Determines the output
       shape of the classification layer.
     learning_rate: Suggested learning rate to be used in
-      tf.keras.optimizer.Adam. The three suggested learning_rates for
+      tf_keras.optimizer.Adam. The three suggested learning_rates for
       fine-tuning are [2e-5, 3e-5,5e-5]
     metrics: Default None will use ['sparse_categorical_accuracy']. An array of
-      strings or tf.keras.metrics.
+      strings or tf_keras.metrics.
 
   Returns:
       A compiled keras BERT Classification model.

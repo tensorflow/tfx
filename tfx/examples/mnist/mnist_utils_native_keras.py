@@ -22,6 +22,7 @@ import tensorflow_transform as tft
 
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.examples.mnist import mnist_utils_native_keras_base as base
+from tfx.keras_lib import tf_keras
 
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
@@ -73,7 +74,7 @@ def run_fn(fn_args: FnArgs):
     model = base.build_keras_model()
 
   # Write logs to path
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+  tensorboard_callback = tf_keras.callbacks.TensorBoard(
       log_dir=fn_args.model_run_dir, update_freq='epoch')
 
   model.fit(

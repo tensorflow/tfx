@@ -23,6 +23,7 @@ import absl
 import tensorflow as tf
 import tensorflow_transform as tft
 from tfx.components.trainer.fn_args_utils import DataAccessor
+from tfx.keras_lib import tf_keras
 from tfx_bsl.tfxio import dataset_options
 
 # MNIST dataset consists of an image of the handwritten digits,
@@ -59,7 +60,7 @@ def input_fn(file_pattern: List[str],
       tf_transform_output.transformed_metadata.schema).repeat()
 
 
-def build_keras_model() -> tf.keras.Model:
+def build_keras_model() -> tf_keras.Model:
   """Creates a DNN Keras model for classifying MNIST data.
 
   Returns:
@@ -67,18 +68,18 @@ def build_keras_model() -> tf.keras.Model:
   """
   # The model below is built with Sequential API, please refer to
   # https://www.tensorflow.org/guide/keras/overview for all API options.
-  model = tf.keras.Sequential()
+  model = tf_keras.Sequential()
   model.add(
-      tf.keras.layers.InputLayer(
+      tf_keras.layers.InputLayer(
           input_shape=(784,), name=transformed_name(IMAGE_KEY)))
-  model.add(tf.keras.layers.Dense(64, activation='relu'))
-  model.add(tf.keras.layers.Dropout(0.2))
-  model.add(tf.keras.layers.Dense(64, activation='relu'))
-  model.add(tf.keras.layers.Dropout(0.2))
-  model.add(tf.keras.layers.Dense(10))
+  model.add(tf_keras.layers.Dense(64, activation='relu'))
+  model.add(tf_keras.layers.Dropout(0.2))
+  model.add(tf_keras.layers.Dense(64, activation='relu'))
+  model.add(tf_keras.layers.Dropout(0.2))
+  model.add(tf_keras.layers.Dense(10))
   model.compile(
-      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-      optimizer=tf.keras.optimizers.RMSprop(lr=0.0015),
+      loss=tf_keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+      optimizer=tf_keras.optimizers.RMSprop(lr=0.0015),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
   return model

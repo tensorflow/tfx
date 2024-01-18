@@ -30,6 +30,7 @@ from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter
 from tfx.components.trainer.rewriting import rewriter_factory
 from tfx.dsl.io import fileio
+from tfx.keras_lib import tf_keras
 from tfx_bsl.tfxio import dataset_options
 
 from tflite_support import metadata_schema_py_generated as _metadata_fb
@@ -148,7 +149,7 @@ def _input_fn(file_pattern: List[str],
   return dataset
 
 
-def _freeze_model_by_percentage(model: tf.keras.Model, percentage: float):
+def _freeze_model_by_percentage(model: tf_keras.Model, percentage: float):
   """Freeze part of the model based on specified percentage.
 
   Args:
@@ -174,7 +175,7 @@ def _freeze_model_by_percentage(model: tf.keras.Model, percentage: float):
       layer.trainable = True
 
 
-def _build_keras_model() -> tf.keras.Model:
+def _build_keras_model() -> tf_keras.Model:
   """Creates a Image classification model with MobileNet backbone.
 
   Returns:
@@ -186,7 +187,7 @@ def _build_keras_model() -> tf.keras.Model:
   # layer for CIFAR10 later. We use average pooling at the last convolution
   # layer to get a 1D vector for classifcation, which is consistent with the
   # origin MobileNet setup
-  base_model = tf.keras.applications.MobileNet(
+  base_model = tf_keras.applications.MobileNet(
       input_shape=(224, 224, 3),
       include_top=False,
       weights='imagenet',
@@ -195,20 +196,20 @@ def _build_keras_model() -> tf.keras.Model:
 
   # We add a Dropout layer at the top of MobileNet backbone we just created to
   # prevent overfiting, and then a Dense layer to classifying CIFAR10 objects
-  model = tf.keras.Sequential([
-      tf.keras.layers.InputLayer(
+  model = tf_keras.Sequential([
+      tf_keras.layers.InputLayer(
           input_shape=(224, 224, 3), name=_transformed_name(_IMAGE_KEY)),
       base_model,
-      tf.keras.layers.Dropout(0.1),
-      tf.keras.layers.Dense(10)
+      tf_keras.layers.Dropout(0.1),
+      tf_keras.layers.Dense(10)
   ])
 
   # Freeze the whole MobileNet backbone to first train the top classifer only
   _freeze_model_by_percentage(base_model, 1.0)
 
   model.compile(
-      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-      optimizer=tf.keras.optimizers.RMSprop(lr=_CLASSIFIER_LEARNING_RATE),
+      loss=tf_keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+      optimizer=tf_keras.optimizers.RMSprop(lr=_CLASSIFIER_LEARNING_RATE),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
 
@@ -235,7 +236,7 @@ def preprocessing_fn(inputs):
       dtype=tf.uint8)
   # image_features = tf.cast(image_features, tf.float32)
   image_features = tf.image.resize(image_features, [224, 224])
-  image_features = tf.keras.applications.mobilenet.preprocess_input(
+  image_features = tf_keras.applications.mobilenet.preprocess_input(
       image_features)
 
   outputs[_transformed_name(_IMAGE_KEY)] = image_features
@@ -329,7 +330,7 @@ def run_fn(fn_args: FnArgs):
 
   absl.logging.info('Tensorboard logging to {}'.format(fn_args.model_run_dir))
   # Write logs to path
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+  tensorboard_callback = tf_keras.callbacks.TensorBoard(
       log_dir=fn_args.model_run_dir, update_freq='epoch')
 
   # Our training regime has two phases: we first freeze the backbone and train
@@ -356,7 +357,7 @@ def run_fn(fn_args: FnArgs):
   # We need to recompile the model because layer properties have changed
   model.compile(
       loss='sparse_categorical_crossentropy',
-      optimizer=tf.keras.optimizers.RMSprop(lr=_FINETUNE_LEARNING_RATE),
+      optimizer=tf_keras.optimizers.RMSprop(lr=_FINETUNE_LEARNING_RATE),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
 

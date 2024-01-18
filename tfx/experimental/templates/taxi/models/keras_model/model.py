@@ -23,6 +23,7 @@ import tensorflow_transform as tft
 
 from tfx.experimental.templates.taxi.models import features
 from tfx.experimental.templates.taxi.models.keras_model import constants
+from tfx.keras_lib import tf_keras
 from tfx_bsl.public import tfxio
 
 
@@ -107,18 +108,18 @@ def _build_keras_model(hidden_units, learning_rate):
     A keras Model.
   """
   real_valued_columns = [
-      tf.feature_column.numeric_column(key, shape=())
+      tf.feature_column.numeric_column(key, shape=())  # pylint: disable=g-deprecated-tf-checker
       for key in features.transformed_names(features.DENSE_FLOAT_FEATURE_KEYS)
   ]
   categorical_columns = [
-      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
+      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension,g-deprecated-tf-checker
           key,
           num_buckets=features.VOCAB_SIZE + features.OOV_SIZE,
           default_value=0)
       for key in features.transformed_names(features.VOCAB_FEATURE_KEYS)
   ]
   categorical_columns += [
-      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
+      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension,g-deprecated-tf-checker
           key,
           num_buckets=num_buckets,
           default_value=0) for key, num_buckets in zip(
@@ -126,7 +127,7 @@ def _build_keras_model(hidden_units, learning_rate):
               features.BUCKET_FEATURE_BUCKET_COUNT)
   ]
   categorical_columns += [
-      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
+      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension,g-deprecated-tf-checker
           key,
           num_buckets=num_buckets,
           default_value=0) for key, num_buckets in zip(
@@ -134,7 +135,7 @@ def _build_keras_model(hidden_units, learning_rate):
               features.CATEGORICAL_FEATURE_MAX_VALUES)
   ]
   indicator_column = [
-      tf.feature_column.indicator_column(categorical_column)
+      tf.feature_column.indicator_column(categorical_column)  # pylint: disable=g-deprecated-tf-checker
       for categorical_column in categorical_columns
   ]
 
@@ -164,40 +165,40 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units,
   # Keras needs the feature definitions at compile time.
   # TODO(b/139081439): Automate generation of input layers from FeatureColumn.
   input_layers = {
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype=tf.float32)
+      colname: tf_keras.layers.Input(name=colname, shape=(), dtype=tf.float32)
       for colname in features.transformed_names(
           features.DENSE_FLOAT_FEATURE_KEYS)
   }
   input_layers.update({
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+      colname: tf_keras.layers.Input(name=colname, shape=(), dtype='int32')
       for colname in features.transformed_names(features.VOCAB_FEATURE_KEYS)
   })
   input_layers.update({
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+      colname: tf_keras.layers.Input(name=colname, shape=(), dtype='int32')
       for colname in features.transformed_names(features.BUCKET_FEATURE_KEYS)
   })
   input_layers.update({
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32') for
+      colname: tf_keras.layers.Input(name=colname, shape=(), dtype='int32') for
       colname in features.transformed_names(features.CATEGORICAL_FEATURE_KEYS)
   })
 
   # TODO(b/161952382): Replace with Keras premade models and
   # Keras preprocessing layers.
-  deep = tf.keras.layers.DenseFeatures(deep_columns)(input_layers)
+  deep = tf_keras.layers.DenseFeatures(deep_columns)(input_layers)
   for numnodes in dnn_hidden_units:
-    deep = tf.keras.layers.Dense(numnodes)(deep)
-  wide = tf.keras.layers.DenseFeatures(wide_columns)(input_layers)
+    deep = tf_keras.layers.Dense(numnodes)(deep)
+  wide = tf_keras.layers.DenseFeatures(wide_columns)(input_layers)
 
-  output = tf.keras.layers.Dense(
+  output = tf_keras.layers.Dense(
       1, activation='sigmoid')(
-          tf.keras.layers.concatenate([deep, wide]))
+          tf_keras.layers.concatenate([deep, wide]))
   output = tf.squeeze(output, -1)
 
-  model = tf.keras.Model(input_layers, output)
+  model = tf_keras.Model(input_layers, output)
   model.compile(
       loss='binary_crossentropy',
-      optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-      metrics=[tf.keras.metrics.BinaryAccuracy()])
+      optimizer=tf_keras.optimizers.Adam(learning_rate=learning_rate),
+      metrics=[tf_keras.metrics.BinaryAccuracy()])
   model.summary(print_fn=logging.info)
   return model
 
@@ -224,7 +225,7 @@ def run_fn(fn_args):
         learning_rate=constants.LEARNING_RATE)
 
   # Write logs to path
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+  tensorboard_callback = tf_keras.callbacks.TensorBoard(
       log_dir=fn_args.model_run_dir, update_freq='epoch')
 
   model.fit(

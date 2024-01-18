@@ -43,6 +43,7 @@ _LAZY_TRIGGER_STRATEGIES = frozenset({
 _UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES = frozenset({
     pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
     pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+    pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS,
 })
 
 
@@ -192,18 +193,7 @@ class _Generator:
             unrunnable_node_ids
         ):
           continue
-        logging.info(
-            '[SyncPipelineTaskGenerator._generate_tasks_for_node] generating'
-            ' tasks for node %s',
-            node.node_info.id,
-        )
         tasks = self._generate_tasks_for_node(node)
-        logging.info(
-            '[SyncPipelineTaskGenerator._generate_tasks_for_node] generated'
-            ' tasks for node %s: %s',
-            node.node_info.id,
-            [t.task_id for t in tasks],
-        )
         for task in tasks:
           if isinstance(task, task_lib.UpdateNodeStateTask):
             if pstate.is_node_state_success(
@@ -285,6 +275,11 @@ class _Generator:
   def _generate_tasks_for_node(
       self, node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates list of tasks for the given node."""
+    logging.info(
+        '[SyncPipelineTaskGenerator._generate_tasks_for_node] invoked for'
+        ' node %s',
+        node.node_info.id,
+    )
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
     node_id = node.node_info.id
     result = []
@@ -652,7 +647,10 @@ class _Generator:
       unrunnable_node_ids: Set[str],
   ) -> bool:
     """Returns `True` if the node's Trigger Strategy is satisfied."""
-    if node.execution_options.strategy in _UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES:
+    if node.execution_options.strategy in (
+        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+    ):
       node_trigger_strategy_satisfied = self._upstream_nodes_completed(
           node, successful_node_ids, failed_nodes_dict
       )

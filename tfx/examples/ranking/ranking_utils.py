@@ -18,6 +18,7 @@ import tensorflow_ranking as tfr
 import tensorflow_transform as tft
 from tfx.examples.ranking import features
 from tfx.examples.ranking import struct2tensor_parsing_utils
+from tfx.keras_lib import tf_keras
 from tfx_bsl.public import tfxio
 
 
@@ -81,7 +82,7 @@ def run_fn(trainer_fn_args):
   model.summary()
   log_dir = trainer_fn_args.model_run_dir
   # Write logs to path
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+  tensorboard_callback = tf_keras.callbacks.TensorBoard(
       log_dir=log_dir, update_freq='epoch')
   model.fit(
       train_dataset,
@@ -130,14 +131,14 @@ def _input_fn(file_patterns,
 def _preprocess_keras_inputs(context_keras_inputs, example_keras_inputs,
                              tf_transform_output, hparams):
   """Preprocesses the inputs, including vocab lookup and embedding."""
-  lookup_layer = tf.keras.layers.experimental.preprocessing.StringLookup(
+  lookup_layer = tf_keras.layers.experimental.preprocessing.StringLookup(
       max_tokens=(
           tf_transform_output.vocabulary_size_by_name('shared_vocab') + 1),
       vocabulary=tf_transform_output.vocabulary_file_by_name('shared_vocab'),
       num_oov_indices=1,
       oov_token='[UNK#]',
       mask_token=None)
-  embedding_layer = tf.keras.layers.Embedding(
+  embedding_layer = tf_keras.layers.Embedding(
       input_dim=(
           tf_transform_output.vocabulary_size_by_name('shared_vocab') + 1),
       output_dim=hparams['embedding_dimension'],
@@ -169,7 +170,7 @@ def _preprocess_keras_inputs(context_keras_inputs, example_keras_inputs,
   return preprocessed_context_features, preprocessed_example_features, mask
 
 
-def _create_ranking_model(tf_transform_output, hparams) -> tf.keras.Model:
+def _create_ranking_model(tf_transform_output, hparams) -> tf_keras.Model:
   """Creates a Keras ranking model."""
   context_feature_specs, example_feature_specs, _ = features.get_features()
   context_keras_inputs, example_keras_inputs = (
@@ -202,28 +203,28 @@ def _create_ranking_model(tf_transform_output, hparams) -> tf.keras.Model:
 
   # Concatenate flattened context and example features along `list_size` dim.
   context_input = [
-      tf.keras.layers.Flatten()(flattened_context_features[name])
+      tf_keras.layers.Flatten()(flattened_context_features[name])
       for name in sorted(flattened_context_features)
   ]
   example_input = [
-      tf.keras.layers.Flatten()(flattened_example_features[name])
+      tf_keras.layers.Flatten()(flattened_example_features[name])
       for name in sorted(flattened_example_features)
   ]
   input_layer = tf.concat(context_input + example_input, 1)
-  dnn = tf.keras.Sequential()
+  dnn = tf_keras.Sequential()
   if hparams['use_batch_norm']:
     dnn.add(
-        tf.keras.layers.BatchNormalization(
+        tf_keras.layers.BatchNormalization(
             momentum=hparams['batch_norm_moment']))
   for layer_size in hparams['hidden_layer_dims']:
-    dnn.add(tf.keras.layers.Dense(units=layer_size))
+    dnn.add(tf_keras.layers.Dense(units=layer_size))
     if hparams['use_batch_norm']:
-      dnn.add(tf.keras.layers.BatchNormalization(
+      dnn.add(tf_keras.layers.BatchNormalization(
           momentum=hparams['batch_norm_moment']))
-    dnn.add(tf.keras.layers.Activation(activation=tf.nn.relu))
-    dnn.add(tf.keras.layers.Dropout(rate=hparams['dropout_rate']))
+    dnn.add(tf_keras.layers.Activation(activation=tf.nn.relu))
+    dnn.add(tf_keras.layers.Dropout(rate=hparams['dropout_rate']))
 
-  dnn.add(tf.keras.layers.Dense(units=1))
+  dnn.add(tf_keras.layers.Dense(units=1))
 
   # Since argspec inspection is expensive, for keras layer,
   # layer_obj._call_spec.arg_names is a property that uses cached argspec for
@@ -242,7 +243,7 @@ def _create_ranking_model(tf_transform_output, hparams) -> tf.keras.Model:
   else:
     logits = restore_list(dnn(input_layer), mask)
 
-  model = tf.keras.Model(
+  model = tf_keras.Model(
       inputs={
           **context_keras_inputs,
           **example_keras_inputs
@@ -250,7 +251,7 @@ def _create_ranking_model(tf_transform_output, hparams) -> tf.keras.Model:
       outputs=logits,
       name='dnn_ranking_model')
   model.compile(
-      optimizer=tf.keras.optimizers.Adagrad(
+      optimizer=tf_keras.optimizers.Adagrad(
           learning_rate=hparams['learning_rate']),
       loss=tfr.keras.losses.get(hparams['loss']),
       metrics=tfr.keras.metrics.default_keras_metrics())

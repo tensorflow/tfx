@@ -27,6 +27,7 @@ from tensorflow_transform.tf_metadata import schema_utils
 from tfx import v1 as tfx
 from tfx.experimental.templates.penguin.models import constants
 from tfx.experimental.templates.penguin.models import features
+from tfx.keras_lib import tf_keras
 from tfx_bsl.public import tfxio
 
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -141,7 +142,7 @@ def _input_fn(file_pattern: List[str],
       schema).repeat()
 
 
-def _build_keras_model(feature_list: List[str]) -> tf.keras.Model:
+def _build_keras_model(feature_list: List[str]) -> tf_keras.Model:
   """Creates a DNN Keras model for classifying penguin data.
 
   Args:
@@ -211,7 +212,7 @@ def run_fn(fn_args: tfx.components.FnArgs):
     model = _build_keras_model(feature_list)
 
   # Write logs to path
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+  tensorboard_callback = tf_keras.callbacks.TensorBoard(
       log_dir=fn_args.model_run_dir, update_freq='epoch')
 
   model.fit(
