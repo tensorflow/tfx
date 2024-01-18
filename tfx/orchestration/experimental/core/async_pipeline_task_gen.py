@@ -230,7 +230,9 @@ class _Generator:
     # Gets the active executions. If the active executions exist, generates a
     # task from the oldest active execution.
     active_executions = task_gen_utils.get_executions(
-        metadata_handle, node, want_active=True
+        metadata_handle,
+        node,
+        additional_filters=['last_known_state IN (NEW, RUNNING)'],
     )
     oldest_active_execution = task_gen_utils.get_oldest_active_execution(
         active_executions
@@ -376,7 +378,7 @@ class _Generator:
         logging.exception(
             'InputResolutionError raised when resolving input artifacts for'
             ' node %s. Setting node to STARTED state with status code'
-            ' UNAVALIABLE.',
+            ' UNAVAILABLE.',
             node.node_info.id,
         )
         result.append(

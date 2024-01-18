@@ -1361,7 +1361,9 @@ def _cancel_node(
             'Canceling active executions for pure service node: %s', node_uid
         )
         active_executions = task_gen_utils.get_executions(
-            mlmd_handle, node, want_active=True
+            mlmd_handle,
+            node,
+            additional_filters=['last_known_state IN (NEW, RUNNING)'],
         )
         _cancel_executions(active_executions, mlmd_handle, node_uid)
       return True
@@ -1862,7 +1864,9 @@ def _orchestrate_active_pipeline(
         )
         node = _filter_by_node_id(node_infos, node_id).node
         active_executions = task_gen_utils.get_executions(
-            mlmd_connection_manager.primary_mlmd_handle, node, want_active=True
+            mlmd_connection_manager.primary_mlmd_handle,
+            node,
+            additional_filters=['last_known_state IN (NEW, RUNNING)'],
         )
         _cancel_executions(
             active_executions,

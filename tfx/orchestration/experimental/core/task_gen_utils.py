@@ -293,8 +293,6 @@ def generate_resolved_info(
 def get_executions(
     metadata_handle: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
-    # TODO(b/258535669) remove want_active and use additional_filters
-    want_active: bool = False,
     limit: Optional[int] = None,
     backfill_token: str = '',
     additional_filters: Optional[List[str]] = None,
@@ -307,9 +305,6 @@ def get_executions(
   Args:
     metadata_handle: A handler to access MLMD db.
     node: The pipeline node for which to obtain executions.
-    want_active: If set to true, only active executions are returned. Otherwise,
-      all executions are returned. Active executions mean executions with NEW or
-      RUNNING last_known_state.
     limit: limit the number of executions return by the function. Executions are
       ordered descendingly by CREATE_TIME, so the newest executions will return.
     backfill_token: If non-empty, only executions with custom property
@@ -348,11 +343,6 @@ def get_executions(
             f"contexts_{i}.type = '{context_type}'",
             f"contexts_{i}.name = '{context_name}'",
         ])
-    )
-
-  if want_active:
-    filter_query.append(
-        q.Or(['last_known_state = NEW', 'last_known_state = RUNNING'])
     )
 
   if backfill_token:
@@ -749,7 +739,7 @@ def get_unprocessed_inputs(
         and e.execution_id == execution.id
     ]
     input_ids_by_key = event_lib.reconstruct_artifact_id_multimap(input_events)
-    # Filters out the keys starting with '_' and the keys should be ingored.
+    # Filters out the keys starting with '_' and the keys should be ignored.
     input_ids_by_key = {
         k: tuple(sorted(v))
         for k, v in input_ids_by_key.items()
@@ -800,7 +790,7 @@ def get_unprocessed_inputs(
           )
       resolved_input_ids_by_key[key] = tuple(resolved_input_ids_by_key[key])
 
-    # Filters out the keys starting with '_' and the keys should be ingored.
+    # Filters out the keys starting with '_' and the keys should be ignored.
     resolved_input_ids_by_key = {
         k: tuple(sorted(v))
         for k, v in resolved_input_ids_by_key.items()

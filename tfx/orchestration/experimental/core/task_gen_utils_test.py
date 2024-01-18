@@ -170,13 +170,25 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       # pipeline.
       self.assertCountEqual(
           active_eg_execs[0:2],
-          task_gen_utils.get_executions(m, self._example_gen, want_active=True),
+          task_gen_utils.get_executions(
+              m,
+              self._example_gen,
+              additional_filters=['last_known_state IN (NEW, RUNNING)'],
+          ),
       )
       self.assertEmpty(
-          task_gen_utils.get_executions(m, self._transform, want_active=True)
+          task_gen_utils.get_executions(
+              m,
+              self._transform,
+              additional_filters=['last_known_state IN (NEW, RUNNING)'],
+          )
       )
       self.assertEmpty(
-          task_gen_utils.get_executions(m, self._trainer, want_active=True)
+          task_gen_utils.get_executions(
+              m,
+              self._trainer,
+              additional_filters=['last_known_state IN (NEW, RUNNING)'],
+          )
       )
 
   def test_get_executions_only_active_with_backfill_token(self):
@@ -263,7 +275,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           task_gen_utils.get_executions(
               m,
               self._example_gen,
-              want_active=True,
+              additional_filters=['last_known_state IN (NEW, RUNNING)'],
               backfill_token=backfill_token_1,
           ),
       )
@@ -272,7 +284,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           task_gen_utils.get_executions(
               m,
               self._example_gen,
-              want_active=True,
+              additional_filters=['last_known_state IN (NEW, RUNNING)'],
               backfill_token=backfill_token_2,
           ),
       )
