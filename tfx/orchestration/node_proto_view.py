@@ -227,9 +227,12 @@ class ComposablePipelineProtoView(NodeProtoView):
 
   @property
   def execution_options(self) -> pipeline_pb2.NodeExecutionOptions:
-    # A composable pipeline, when viewed as a node, stores execution options in
-    # its PipelineBegin node's execution options.
-    return self._begin_node.execution_options
+    # TODO: b/320535460 - remove this check and only ever return
+    # Pipeline.execution_options once binary is released.
+    if self._pipeline.HasField('execution_options'):
+      return self._pipeline.execution_options
+    else:
+      return self._begin_node.execution_options
 
   def HasField(self, field_name: str) -> bool:  # pylint: disable=invalid-name
     # Despite the proto method is named `HasField`, it actually means is set or
