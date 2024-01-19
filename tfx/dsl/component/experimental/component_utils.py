@@ -23,8 +23,18 @@ from tfx.dsl.components.base import executor_spec as base_executor_spec
 from tfx.orchestration.portable.execution import context
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.types import component_spec
+from tfx.types import standard_artifacts
 from tfx.types.system_executions import SystemExecution
 from tfx.utils import name_utils
+
+
+_VALUE_ARTIFACT_TO_TYPE = {
+    standard_artifacts.Integer: int,
+    standard_artifacts.Float: float,
+    standard_artifacts.String: str,
+    standard_artifacts.Bytes: bytes,
+    standard_artifacts.Boolean: bool,
+}
 
 
 def _convert_function_to_python_executable_spec(
@@ -70,6 +80,14 @@ def _type_check_execution_function_params(
       allowed_param_types = [list[channel.type], Optional[channel.type]]
       if not channel.optional:
         allowed_param_types.append(channel.type)
+
+      # Value Artifact input can be annotated as a primitive type.
+      primitive_type = _VALUE_ARTIFACT_TO_TYPE.get(channel.type, None)
+      if param_name in spec.INPUTS and primitive_type is not None:
+        allowed_param_types.append(Optional[primitive_type])
+        if not channel.optional:
+          allowed_param_types.append(primitive_type)
+
       # TODO(wssong): We should care for AsyncOutputArtifact type annotation for
       # channels with is_async=True (go/tflex-list-output).
 

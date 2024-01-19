@@ -29,6 +29,7 @@ from tfx.utils.di import errors
 _Example = standard_artifacts.Examples
 _Model = standard_artifacts.Model
 _Artifact = artifact.Artifact
+_Integer = standard_artifacts.Integer
 
 
 def _create_artifact(
@@ -153,7 +154,7 @@ class ExecutionEnvironTest(parameterized.TestCase, test_utils.TfxTest):
         errors.InvalidTypeHintError,
         'Unsupported annotation: <class \'str\'>'
     ):
-      self._environ.strict_get('single_artifact_input', str)
+      self._environ.strict_get('single_artifact_output', str)
 
   def test_strict_get_raises_error_when_type_not_strictly_matched(self):
     with self.assertRaisesWithLiteralMatch(

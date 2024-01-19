@@ -14,12 +14,13 @@
 """Tests for tfx.orchestration.portable.execution.di_providers."""
 
 from collections.abc import Sequence
-from typing import Optional
+from typing import Any, Optional
 
 import tensorflow as tf
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.execution import di_providers
 from tfx.types import artifact as artifact_lib
+from tfx.types import standard_artifacts
 from tfx.utils.di import errors
 from tfx.utils.di import module
 
@@ -41,6 +42,16 @@ class IAmAlsoFoo(artifact_lib.Artifact):
 
 class Bar(artifact_lib.Artifact):
   TYPE_NAME = 'Bar'
+
+
+def _value_artifact(
+    artifact_type: type[standard_artifacts.ValueArtifact], value: Any
+):
+  artifact = artifact_type()
+  artifact.read = lambda: None  # Make artifact.read() to be a no-op.
+  artifact.write = lambda _: None  # Make artifact.write() to be a no-op.
+  artifact.value = value
+  return artifact
 
 
 class ProvidersTest(tf.test.TestCase):
@@ -131,6 +142,58 @@ class ProvidersTest(tf.test.TestCase):
       self.assertEqual(m.get('zero', None), [])
       self.assertEqual(m.get('one', None), [Foo(1)])
       self.assertEqual(m.get('two', None), [Foo(1), Foo(2)])
+
+  def testFlatExecutionInfoProvider_ValueArtifactPrimitiveType(self):
+    m = module.DependencyModule()
+    m.add_provider(
+        di_providers.FlatExecutionInfoProvider(
+            ['empty', 'int', 'float', 'str', 'bytes', 'bool', 'many', 'out']
+        )
+    )
+    m.provide_value(
+        data_types.ExecutionInfo(
+            input_dict={
+                'empty': [],
+                'int': [_value_artifact(standard_artifacts.Integer, 1)],
+                'float': [_value_artifact(standard_artifacts.Float, 2.5)],
+                'str': [_value_artifact(standard_artifacts.String, 'hello')],
+                'bytes': [_value_artifact(standard_artifacts.Bytes, b'world')],
+                'bool': [_value_artifact(standard_artifacts.Boolean, True)],
+                'many': [
+                    _value_artifact(standard_artifacts.Integer, 1),
+                    _value_artifact(standard_artifacts.Integer, 2),
+                ],
+            },
+            output_dict={
+                'out': [_value_artifact(standard_artifacts.Integer, 3)],
+            },
+        )
+    )
+
+    with self.subTest('From input dict'):
+      self.assertEqual(m.get('int', int), 1)
+      self.assertEqual(m.get('float', float), 2.5)
+      self.assertEqual(m.get('str', str), 'hello')
+      self.assertEqual(m.get('bytes', bytes), b'world')
+      self.assertEqual(m.get('bool', bool), True)
+
+    with self.subTest('Optional input dict'):
+      self.assertEqual(m.get('int', Optional[int]), 1)
+      self.assertEqual(m.get('float', Optional[float]), 2.5)
+      self.assertEqual(m.get('str', Optional[str]), 'hello')
+      self.assertEqual(m.get('bytes', Optional[bytes]), b'world')
+      self.assertEqual(m.get('bool', Optional[bool]), True)
+      self.assertIsNone(m.get('empty', Optional[int]))
+
+    with self.subTest('Unsupported primitive type'):
+      with self.assertRaises(errors.InvalidTypeHintError):
+        m.get('empty', int)
+      with self.assertRaises(errors.InvalidTypeHintError):
+        m.get('many', int)
+
+    with self.subTest('Unsupported output dict'):
+      with self.assertRaises(errors.InvalidTypeHintError):
+        m.get('out', int)
 
   def testFlatExecutionInfoProvider_ExecProperty_StrictTypeCheck(self):
     m = module.DependencyModule()
