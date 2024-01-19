@@ -15,9 +15,10 @@
 """DSL for composing execution hooks."""
 
 import abc
+from collections.abc import Mapping, Sequence
 from typing import Optional, Union
-import attr
 
+import attr
 from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import execution_hook_pb2
 
@@ -25,6 +26,10 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 _PrimitiveFlagValueType = Union[int, float, str, bool]
+_FlagMap = Union[
+    Sequence[tuple[str, _PrimitiveFlagValueType]],
+    Mapping[str, _PrimitiveFlagValueType],
+]
 
 
 class PreExecutionOutput(abc.ABC):
@@ -43,9 +48,15 @@ def _to_value(
   return result
 
 
+def _iterate_flags(
+    flags: _FlagMap,
+) -> Sequence[tuple[str, _PrimitiveFlagValueType]]:
+  return list(flags.items()) if isinstance(flags, Mapping) else flags
+
+
 @attr.define
 class BinaryComponentPreOutput(PreExecutionOutput):
-  flags: Optional[list[tuple[str, _PrimitiveFlagValueType]]] = None
+  flags: Optional[_FlagMap] = None
   extra_flags: Optional[list[_PrimitiveFlagValueType]] = None
   # TODO(wssong): Add experimental_flags
 
@@ -55,7 +66,7 @@ class BinaryComponentPreOutput(PreExecutionOutput):
             execution_hook_pb2.PreExecutionOutput.Flag(
                 name=key, value=_to_value(value)
             )
-            for key, value in self.flags or []
+            for key, value in _iterate_flags(self.flags or [])
         ],
         extra_flags=[_to_value(value) for value in self.extra_flags or []],
     )
@@ -63,21 +74,21 @@ class BinaryComponentPreOutput(PreExecutionOutput):
 
 @attr.define
 class BCLComponentPreOutput(PreExecutionOutput):
-  vars: Optional[dict[str, _PrimitiveFlagValueType]] = None
+  vars: Optional[_FlagMap] = None
   # TODO(wssong): Add experimental_flags
 
   def encode(self) -> execution_hook_pb2.PreExecutionOutput:
     return execution_hook_pb2.PreExecutionOutput(
         vars={
             key: _to_value(value)
-            for key, value in (self.vars or {}).items()
+            for key, value in _iterate_flags(self.vars or [])
         },
     )
 
 
 @attr.define
 class XManagerComponentPreOutput(PreExecutionOutput):
-  flags: Optional[list[tuple[str, _PrimitiveFlagValueType]]] = None
+  flags: Optional[_FlagMap] = None
   # TODO(wssong): Add experimental_flags
 
   def encode(self) -> execution_hook_pb2.PreExecutionOutput:
@@ -86,6 +97,6 @@ class XManagerComponentPreOutput(PreExecutionOutput):
             execution_hook_pb2.PreExecutionOutput.Flag(
                 name=key, value=_to_value(value)
             )
-            for key, value in self.flags or []
+            for key, value in _iterate_flags(self.flags or [])
         ],
     )

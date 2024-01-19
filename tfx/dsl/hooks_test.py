@@ -14,17 +14,23 @@
 
 """DSL for composing execution hooks tests."""
 
+from absl.testing import parameterized
 import tensorflow as tf
+
 from tfx.dsl import hooks
 from tfx.proto.orchestration import execution_hook_pb2
 from google.protobuf import json_format
 
 
-class HooksTest(tf.test.TestCase):
+class HooksTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_encode_binary_component_pre_output(self):
+  @parameterized.parameters(
+      dict(flags=[('flag_key', 'flag_value')]),
+      dict(flags={'flag_key': 'flag_value'}),
+  )
+  def test_encode_binary_component_pre_output(self, flags: hooks._FlagMap):
     pre_output = hooks.BinaryComponentPreOutput(
-        flags=[('flag_key', 'flag_value')], extra_flags=['extra_flag_value']
+        flags=flags, extra_flags=['extra_flag_value']
     )
     self.assertProtoEquals(
         pre_output.encode(),
@@ -40,10 +46,12 @@ class HooksTest(tf.test.TestCase):
         ),
     )
 
-  def test_encode_bcl_component_pre_output(self):
-    pre_output = hooks.BCLComponentPreOutput(
-        vars={'var_key': 'var_value'},
-    )
+  @parameterized.parameters(
+      dict(bcl_vars=[('var_key', 'var_value')]),
+      dict(bcl_vars={'var_key': 'var_value'}),
+  )
+  def test_encode_bcl_component_pre_output(self, bcl_vars: hooks._FlagMap):
+    pre_output = hooks.BCLComponentPreOutput(vars=bcl_vars)
     self.assertProtoEquals(
         pre_output.encode(),
         json_format.ParseDict(
@@ -52,10 +60,12 @@ class HooksTest(tf.test.TestCase):
         ),
     )
 
-  def test_encode_xmanager_component_pre_output(self):
-    pre_output = hooks.XManagerComponentPreOutput(
-        flags=[('flag_key', 'flag_value')]
-    )
+  @parameterized.parameters(
+      dict(flags=[('flag_key', 'flag_value')]),
+      dict(flags={'flag_key': 'flag_value'}),
+  )
+  def test_encode_xmanager_component_pre_output(self, flags: hooks._FlagMap):
+    pre_output = hooks.XManagerComponentPreOutput(flags=flags)
     self.assertProtoEquals(
         pre_output.encode(),
         json_format.ParseDict(
