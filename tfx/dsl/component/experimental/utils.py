@@ -17,7 +17,9 @@ import enum
 import inspect
 import sys
 import types
+import typing
 from typing import Any, Dict, Optional, Type
+
 from tfx import types as tfx_types
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
@@ -25,6 +27,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.types import artifact
 from tfx.types import component_spec
 from tfx.types import system_executions
+import typing_extensions
 
 
 class ArgFormats(enum.Enum):
@@ -149,6 +152,13 @@ def assert_is_top_level_func(func: types.FunctionType) -> None:
         ' level. It cannot be used to construct a component for a function'
         ' defined in a nested class or function closure.'
     )
+
+
+def is_typeddict(tp: Any) -> bool:
+  if sys.version_info >= (3, 10):
+    return typing.is_typeddict(tp)  # pytype: disable=not-supported-yet
+  else:
+    return typing_extensions.is_typeddict(tp)
 
 
 def _create_component_spec_class(
