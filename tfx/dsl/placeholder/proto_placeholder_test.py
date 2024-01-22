@@ -15,7 +15,7 @@
 
 import base64
 import functools
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Optional, TypeVar
 
 import tensorflow as tf
 from tfx.dsl.compiler import placeholder_utils
@@ -43,7 +43,7 @@ _P = TypeVar('_P', bound=message.Message)
 
 
 def resolve(
-    p: ph.Placeholder, exec_properties: Optional[Dict[str, Any]] = None
+    p: ph.Placeholder, exec_properties: Optional[dict[str, Any]] = None
 ) -> Any:
   """Resolves the given placeholder."""
   if isinstance(p, proto_placeholder.MakeProtoPlaceholder):
@@ -62,7 +62,7 @@ def resolve(
 
 def parse_text_proto(
     textproto: str,
-    proto_class: Type[_P] = execution_invocation_pb2.ExecutionInvocation,
+    proto_class: type[_P] = execution_invocation_pb2.ExecutionInvocation,
 ) -> _P:
   """Parses and returns a textproto."""
   return text_format.Parse(textproto, proto_class())

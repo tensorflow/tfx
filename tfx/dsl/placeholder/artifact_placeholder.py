@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Type
+from typing import Any, Optional
 
 from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
@@ -136,7 +136,7 @@ class ArtifactPlaceholder(placeholder_base.Placeholder):
     return _PropertyOperator(self, key, is_custom_property=True)
 
   def encode(
-      self, component_spec: Optional[Any] = None
+      self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
     del component_spec
     result = placeholder_pb2.PlaceholderExpression()
@@ -163,7 +163,7 @@ class _ArtifactUriOperator(placeholder_base.UnaryPlaceholderOperator):
     self._split = split
 
   def encode(
-      self, component_spec: Optional[Type['_types.ComponentSpec']] = None
+      self, component_spec: Optional[type['_types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.artifact_uri_op.expression.CopyFrom(
@@ -185,7 +185,7 @@ class _ArtifactValueOperator(placeholder_base.UnaryPlaceholderOperator):
     self._split = split
 
   def encode(
-      self, component_spec: Optional[Type['_types.ComponentSpec']] = None
+      self, component_spec: Optional[type['_types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.artifact_value_op.expression.CopyFrom(
@@ -211,7 +211,7 @@ class _PropertyOperator(placeholder_base.UnaryPlaceholderOperator):
     self._is_custom_property = is_custom_property
 
   def encode(
-      self, component_spec: Optional[Type['_types.ComponentSpec']] = None
+      self, component_spec: Optional[type['_types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.artifact_property_op.expression.CopyFrom(

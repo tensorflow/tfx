@@ -16,7 +16,7 @@
 import copy
 import functools
 import os
-from typing import Type, TypeVar
+from typing import TypeVar
 
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder as ph
@@ -50,7 +50,7 @@ _P = TypeVar('_P', bound=message.Message)
 
 
 def load_testdata(
-    filename: str, proto_class: Type[_P] = placeholder_pb2.PlaceholderExpression
+    filename: str, proto_class: type[_P] = placeholder_pb2.PlaceholderExpression
 ) -> _P:
   test_pb_filepath = os.path.join(
       os.path.dirname(__file__), 'testdata', filename

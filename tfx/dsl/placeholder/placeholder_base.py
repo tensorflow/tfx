@@ -18,8 +18,9 @@ from __future__ import annotations
 import abc
 import enum
 import functools
+import types
 import typing
-from typing import Any, Iterator, List, Mapping, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Iterator, Mapping, Optional, Sequence, Union
 
 import attr
 from tfx.proto.orchestration import placeholder_pb2
@@ -185,7 +186,7 @@ class Placeholder(abc.ABC):
 
   @abc.abstractmethod
   def encode(
-      self, component_spec: Optional[Type['types.ComponentSpec']] = None
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     """Do not call this as a Tflex user.
 
@@ -282,7 +283,7 @@ def logical_or(left: Predicate, right: Predicate) -> Predicate:
 
 
 def make_list(
-    input_placeholders: List[ValueLikeType],
+    input_placeholders: list[ValueLikeType],
 ) -> ListPlaceholder:
   """Returns a ListPlaceholder representing a list of input placeholders."""
   return ListPlaceholder(input_placeholders)
@@ -321,7 +322,7 @@ class ListPlaceholder(Placeholder):
   Prefer to use ph.make_list() to create ListPlaceholder.
   """
 
-  def __init__(self, input_placeholders: List[ValueLikeType]):
+  def __init__(self, input_placeholders: list[ValueLikeType]):
     """Initializes the class. Consider this private."""
     super().__init__(expected_type=list)
     self._input_placeholders = input_placeholders
@@ -357,7 +358,7 @@ class ListPlaceholder(Placeholder):
         yield from p.traverse()
 
   def encode(
-      self, component_spec: Optional[Type['types.ComponentSpec']] = None
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.list_concat_op.SetInParent()
@@ -370,7 +371,7 @@ class ListPlaceholder(Placeholder):
 def make_dict(
     entries: Union[
         Mapping[str, Union[ValueLikeType, None]],
-        Sequence[Tuple[Union[str, Placeholder], Union[ValueLikeType, None]]],
+        Sequence[tuple[Union[str, Placeholder], Union[ValueLikeType, None]]],
     ],
 ) -> DictPlaceholder:
   """Returns a DictPlaceholder representing a dict of input placeholders.
@@ -399,7 +400,7 @@ class DictPlaceholder(Placeholder):
   def __init__(
       self,
       entries: Sequence[
-          Tuple[Union[str, Placeholder], Union[ValueLikeType, None]]
+          tuple[Union[str, Placeholder], Optional[ValueLikeType]]
       ],
   ):
     """Initializes the class. Consider this private."""
@@ -422,7 +423,7 @@ class DictPlaceholder(Placeholder):
         yield from value.traverse()
 
   def encode(
-      self, component_spec: Optional[Type['types.ComponentSpec']] = None
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.make_dict_op.SetInParent()
@@ -469,7 +470,7 @@ class ListSerializationFormat(enum.Enum):
 
 
 def _is_maybe_subclass(
-    test_type: Optional[Type[Any]], parent_type: Type[Any]
+    test_type: Optional[type[Any]], parent_type: type[Any]
 ) -> bool:
   """Like issubclass(), but supports Union types on the sub-class side.
 
@@ -510,7 +511,7 @@ class _IndexOperator(UnaryPlaceholderOperator):
     self._index = index
 
   def encode(
-      self, component_spec: Optional[Type['types.ComponentSpec']] = None
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.index_op.expression.CopyFrom(
@@ -530,7 +531,7 @@ class _ConcatOperator(Placeholder):
   Placeholder objects instead.
   """
 
-  def __init__(self, items: List[Union[str, Placeholder]]):
+  def __init__(self, items: list[Union[str, Placeholder]]):
     super().__init__(expected_type=str)
     self._items = items
 
@@ -541,7 +542,7 @@ class _ConcatOperator(Placeholder):
     return _ConcatOperator([left] + self._items)
 
   def encode(
-      self, component_spec: Optional[Type['types.ComponentSpec']] = None
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.concat_op.expressions.extend(
@@ -601,7 +602,7 @@ class _ProtoOperator(UnaryPlaceholderOperator):
     )
 
   def encode(
-      self, component_spec: Optional[Type['types.ComponentSpec']] = None
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     op = result.operator.proto_op
@@ -653,7 +654,7 @@ class _ListSerializationOperator(UnaryPlaceholderOperator):
     self._serialization_format = serialization_format
 
   def encode(
-      self, component_spec: Optional[Type['types.ComponentSpec']] = None
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     op = result.operator.list_serialization_op
@@ -674,7 +675,7 @@ class _Base64EncodeOperator(UnaryPlaceholderOperator):
     self._url_safe = url_safe
 
   def encode(
-      self, component_spec: Optional[Type['types.ComponentSpec']] = None
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.base64_encode_op.expression.CopyFrom(
@@ -693,7 +694,7 @@ class _CompareOp(enum.Enum):
 
 
 def encode_value_like(
-    x: ValueLikeType, component_spec: Optional[Any] = None
+    x: ValueLikeType, component_spec: Any = None
 ) -> placeholder_pb2.PlaceholderExpression:
   """Encodes x to a placeholder expression proto."""
 
@@ -722,7 +723,7 @@ class _ComparisonPredicate(Predicate):
   right: ValueLikeType
 
   def encode(
-      self, component_spec: Optional[Any] = None
+      self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.compare_op.op = self.compare_op.value
@@ -749,7 +750,7 @@ class _NotPredicate(Predicate):
   value: Predicate
 
   def encode(
-      self, component_spec: Optional[Any] = None
+      self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
     if isinstance(self.value, _NotPredicate):  # not(not(foo)) becomes foo
       return self.value.value.encode(component_spec)
@@ -776,7 +777,7 @@ class _BinaryLogicalPredicate(Predicate):
   right: Predicate
 
   def encode(
-      self, component_spec: Optional[Any] = None
+      self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.operator.binary_logical_op.op = self.logical_op

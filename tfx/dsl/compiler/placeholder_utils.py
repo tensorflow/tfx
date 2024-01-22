@@ -18,7 +18,7 @@ import enum
 import functools
 import os
 import re
-from typing import Any, Callable, Dict, List, Set, Union, cast
+from typing import Any, Callable, Union, cast
 
 from absl import logging
 import attr
@@ -166,7 +166,7 @@ def _resolve_and_ensure_boolean(
 
 # Dictionary of registered placeholder operators,
 # maps from operator proto type names to actual operator functions.
-_PLACEHOLDER_OPERATORS: Dict[str, Callable[..., Any]] = {}
+_PLACEHOLDER_OPERATORS: dict[str, Callable[..., Any]] = {}
 
 
 def _register(op_proto):
@@ -379,7 +379,7 @@ class _ExpressionResolver:
 
   @_register(placeholder_pb2.ListConcatOperator)
   def _resolve_list_concat_operator(
-      self, op: placeholder_pb2.ListConcatOperator) -> List[Any]:
+      self, op: placeholder_pb2.ListConcatOperator) -> list[Any]:
     """Evaluates the list concat operator."""
     result = []
     for sub_expression in op.expressions:
@@ -392,7 +392,7 @@ class _ExpressionResolver:
   @_register(placeholder_pb2.MakeDictOperator)
   def _resolve_make_dict_operator(
       self, op: placeholder_pb2.MakeDictOperator
-  ) -> Dict[str, Any]:
+  ) -> dict[str, Any]:
     """Evaluates the make dict operator."""
     result = {}
     for entry in op.entries:
@@ -781,7 +781,7 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
 
 
 @functools.lru_cache(maxsize=1)
-def _get_all_operators() -> Dict[str, Set[str]]:
+def _get_all_operators() -> dict[str, set[str]]:
   """Returns fields contained within operator_type messages, by field name."""
   return {
       op: set(f.name for f in desc.message_type.fields)
@@ -790,7 +790,7 @@ def _get_all_operators() -> Dict[str, Set[str]]:
 
 
 @functools.lru_cache(maxsize=1)
-def get_unary_operator_names() -> Set[str]:
+def get_unary_operator_names() -> set[str]:
   """Returns all unary placeholder operators."""
   return {
       op
@@ -800,13 +800,13 @@ def get_unary_operator_names() -> Set[str]:
 
 
 @functools.lru_cache(maxsize=1)
-def get_binary_operator_names() -> Set[str]:
+def get_binary_operator_names() -> set[str]:
   """Returns all binary placeholder operators."""
   return {op for op, fields in _get_all_operators().items() if "lhs" in fields}
 
 
 @functools.lru_cache(maxsize=1)
-def get_nary_operator_names() -> Set[str]:
+def get_nary_operator_names() -> set[str]:
   """Returns all n-ary placeholder operators."""
   return {
       op
@@ -817,7 +817,7 @@ def get_nary_operator_names() -> Set[str]:
 
 def get_all_types_in_placeholder_expression(
     placeholder: placeholder_pb2.PlaceholderExpression,
-) -> Set["placeholder_pb2.Placeholder.Type"]:
+) -> set["placeholder_pb2.Placeholder.Type"]:
   """Returns all Placeholder.Type contained in a PlaceholderExpression."""
   if placeholder.HasField("placeholder"):
     return {placeholder.placeholder.type}

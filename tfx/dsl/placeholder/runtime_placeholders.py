@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Union
 
 from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
@@ -125,7 +125,7 @@ class ExecPropertyPlaceholder(placeholder_base.Placeholder):
     return self._key
 
   def encode(
-      self, component_spec: Optional[Any] = None
+      self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.placeholder.type = placeholder_pb2.Placeholder.Type.EXEC_PROPERTY
@@ -147,7 +147,7 @@ class RuntimeInfoPlaceholder(placeholder_base.Placeholder):
     self._key = key
 
   def encode(
-      self, component_spec: Optional[Any] = None
+      self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.placeholder.type = placeholder_pb2.Placeholder.Type.RUNTIME_INFO
@@ -187,7 +187,7 @@ class EnvironmentVariablePlaceholder(placeholder_base.Placeholder):
     self._key = key
 
   def encode(
-      self, component_spec: Optional[Any] = None
+      self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     result.placeholder.type = (

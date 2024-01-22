@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Generic, Iterator, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Generic, Iterator, Optional, TypeVar, Union
 
 from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
@@ -103,9 +103,9 @@ _InputValues = Union[  # The values users may supply to us.
 # These are for the outer values of a field (so repeated is a list):
 _InputFieldValues = Union[  # The values users may pass.
     _InputValues,  # singular (optional or required) field
-    List[_InputValues],  # repeated field
-    Dict[str, _InputValues],  # map field with plain keys
-    List[Tuple[Union[str, placeholder_base.Placeholder], _InputValues]],  # map
+    list[_InputValues],  # repeated field
+    dict[str, _InputValues],  # map field with plain keys
+    list[tuple[Union[str, placeholder_base.Placeholder], _InputValues]],  # map
     None,  # Users may pass None to optional fields.
 ]
 _PROTO_TO_PY_TYPE = {
@@ -141,7 +141,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
     """Initializes the class. Consider this private."""
     super().__init__(expected_type=type(base_message))
     self._base_message = base_message
-    self._fields: Dict[str, placeholder_base.ValueLikeType] = {}
+    self._fields: dict[str, placeholder_base.ValueLikeType] = {}
     for key, value in kwargs.items():
       value = self._validate_and_transform_field(key, value)
       if value is not None:
@@ -173,8 +173,8 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
             'Expected dict[k,v] or list[tuple[k, v]] input for map field '
             f'{field_name}, got {value!r}.'
         )
-      entries: List[
-          Tuple[
+      entries: list[
+          tuple[
               Union[str, placeholder_base.Placeholder],
               placeholder_base.ValueLikeType,
           ]
@@ -209,7 +209,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
             f'Expected list input for repeated field {field_name}, got '
             f'{value!r}.'
         )
-      items: List[placeholder_base.ValueLikeType] = []
+      items: list[placeholder_base.ValueLikeType] = []
       for item in value:
         item = self._validate_and_transform_value(field_name, descriptor, item)
         if item is not None:
@@ -313,7 +313,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
           sub_op.ClearField('file_descriptors')
 
   def encode(
-      self, component_spec: Optional[Type['_types.ComponentSpec']] = None
+      self, component_spec: Optional[type['_types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
     result = placeholder_pb2.PlaceholderExpression()
     op = result.operator.make_proto_op
