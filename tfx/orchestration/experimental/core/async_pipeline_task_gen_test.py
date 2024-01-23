@@ -675,7 +675,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
           transform_node
       ) as node_state:
         node_state.update(
-            pstate.NodeState.STARTING,
+            pstate.NodeState.STARTED,
             backfill_token='backfill-20221215-180505-123456',
         )
     if throw_error:
@@ -694,23 +694,15 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
             " ['tfx.orchestration.portable.input_resolution.exceptions.InputResolutionError\\n']"
         )
 
-        [update_transform_task, failed_transform_task, update_trainer_task] = (
+        [failed_transform_task, update_trainer_task] = (
             self._generate_and_test(
                 use_task_queue,
                 num_initial_executions=3,
-                num_tasks_generated=3,
+                num_tasks_generated=2,
                 num_new_executions=0,
                 num_active_executions=0,
                 expected_exec_nodes=[],
             )
-        )
-        self.assertIsInstance(
-            update_transform_task, task_lib.UpdateNodeStateTask
-        )
-        self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
-        self.assertEqual(
-            'backfill-20221215-180505-123456',
-            update_transform_task.backfill_token,
         )
         self.assertIsInstance(
             failed_transform_task, task_lib.UpdateNodeStateTask
@@ -734,26 +726,15 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     # Trainer will just be updated to STARTED state, since there are no new
     # inputs.
     [
-        update_transform_to_started_task,
         update_transform_to_running_task,
         exec_transform_task,
     ] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=3,
-        num_tasks_generated=3,
+        num_tasks_generated=2,
         num_new_executions=1,
         num_active_executions=1,
         expected_exec_nodes=[self._transform],
-    )
-    self.assertIsInstance(
-        update_transform_to_started_task, task_lib.UpdateNodeStateTask
-    )
-    self.assertEqual(
-        pstate.NodeState.STARTED, update_transform_to_started_task.state
-    )
-    self.assertEqual(
-        'backfill-20221215-180505-123456',
-        update_transform_to_started_task.backfill_token,
     )
     self.assertIsInstance(
         update_transform_to_running_task, task_lib.UpdateNodeStateTask
@@ -812,26 +793,20 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
           transform_node
       ) as node_state:
         node_state.update(
-            pstate.NodeState.STARTING,
+            pstate.NodeState.STARTED,
             backfill_token='backfill-20221215-180505-123456',
         )
 
     # Transform should stop immediately, since it sees the previous backfill
     # execution.
-    [update_transform_to_started_task, update_transform_to_stopped_task] = (
+    [update_transform_to_stopped_task] = (
         self._generate_and_test(
             use_task_queue,
             num_initial_executions=5,
-            num_tasks_generated=2,
+            num_tasks_generated=1,
             num_new_executions=0,
             num_active_executions=0,
         )
-    )
-    self.assertIsInstance(
-        update_transform_to_started_task, task_lib.UpdateNodeStateTask
-    )
-    self.assertEqual(
-        pstate.NodeState.STARTED, update_transform_to_started_task.state
     )
     self.assertIsInstance(
         update_transform_to_stopped_task, task_lib.UpdateNodeStateTask
@@ -852,32 +827,21 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
           transform_node
       ) as node_state:
         node_state.update(
-            pstate.NodeState.STARTING,
+            pstate.NodeState.STARTED,
             backfill_token='backfill-20221215-192233-234567',
         )
 
     # Transform tasks should be generated as it will start a new backfill.
     [
-        update_transform_to_started_task,
         update_transform_to_running_task,
         exec_transform_task,
     ] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=5,
-        num_tasks_generated=3,
+        num_tasks_generated=2,
         num_new_executions=1,
         num_active_executions=1,
         expected_exec_nodes=[self._transform],
-    )
-    self.assertIsInstance(
-        update_transform_to_started_task, task_lib.UpdateNodeStateTask
-    )
-    self.assertEqual(
-        pstate.NodeState.STARTED, update_transform_to_started_task.state
-    )
-    self.assertEqual(
-        'backfill-20221215-192233-234567',
-        update_transform_to_started_task.backfill_token,
     )
     self.assertIsInstance(
         update_transform_to_running_task, task_lib.UpdateNodeStateTask
@@ -926,7 +890,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
           example_gen_node
       ) as node_state:
         node_state.update(
-            pstate.NodeState.STARTING,
+            pstate.NodeState.STARTED,
             backfill_token=backfill_token,
         )
     # Generate a RUNNING task for ExampleGen backfill.

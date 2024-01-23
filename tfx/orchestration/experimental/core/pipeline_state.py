@@ -116,6 +116,7 @@ class NodeState(json_utils.Jsonable):
     status: Status of the node in state STOPPING or STOPPED.
   """
 
+  # TODO(b/322026340): Remove STARTING NodeState altogether.
   STARTING = 'starting'  # Pending work before state can change to STARTED.
   STARTED = 'started'  # Node is ready for execution.
   STOPPING = 'stopping'  # Pending work before state can change to STOPPED.

@@ -295,14 +295,8 @@ class _Generator:
 
     with self._pipeline_state:
       node_state = self._pipeline_state.get_node_state(node_uid)
-    if (
-        not backfill_token and node_state.state != pstate.NodeState.STARTED
-    ) or (backfill_token and node_state.state == pstate.NodeState.STARTING):
+    if not backfill_token and node_state.state != pstate.NodeState.STARTED:
       # If there is no active execution, change the node state to STARTED.
-      #
-      # For backfill mode, only make the transition if the current state
-      # is STARTING. This is to avoid transitioning to STARTED state when the
-      # backfill is complete.
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid,

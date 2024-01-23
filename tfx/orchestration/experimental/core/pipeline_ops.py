@@ -315,7 +315,7 @@ def initiate_node_start(
   ) as pipeline_state:
     with pipeline_state.node_state_update_context(node_uid) as node_state:
       if node_state.is_startable():
-        node_state.update(pstate.NodeState.STARTING)
+        node_state.update(pstate.NodeState.STARTED)
   return pipeline_state
 
 
@@ -368,7 +368,7 @@ def initiate_node_backfill(
             random.randint(0, 999999),
         )
         node_state.update(
-            pstate.NodeState.STARTING, backfill_token=backfill_token
+            pstate.NodeState.STARTED, backfill_token=backfill_token
         )
       else:
         raise status_lib.StatusNotOkError(
@@ -936,7 +936,7 @@ def _recursively_revive_pipelines(
         [node.node_id for node in nodes_to_start],
     )
     for node_uid in nodes_to_start:
-      new_node_state = pstate.NodeState.STARTING
+      new_node_state = pstate.NodeState.STARTED
       node = node_by_name[node_uid.node_id]
       # Subpipelines are represented in their parent pipeline as node,
       # so to revive the full pipeline in place we need to peer into the
@@ -955,7 +955,7 @@ def _recursively_revive_pipelines(
         # ${SUBPIPELINE_ID}_${PARENT_PIPELINE_ID}_${SUBPIPELINE_EXECUTION_ID}
         # So we need to determine the execution id for the pipeline so it can
         # be revived. If there's no execution found then assume it hasn't been
-        # run so it can be marked as STARTING.
+        # run so it can be marked as STARTED.
         latest_execution_set = task_gen_utils.get_latest_executions_set(
             task_gen_utils.get_executions(mlmd_handle, node)
         )
@@ -966,7 +966,7 @@ def _recursively_revive_pipelines(
         )
         if not latest_execution_set:
           logging.info(
-              'No executions found for subpipeline %s, marking as STARTING',
+              'No executions found for subpipeline %s, marking as STARTED',
               node.node_info.id,
           )
         # TODO(b/247709394): After b/247709394, get_latest_executions_set may

@@ -423,7 +423,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       ) as pipeline_state_run3:
         self.assertEqual(
             pipeline_state_run3.get_node_state(trainer_node_uid).state,
-            pstate.NodeState.STARTING,
+            pstate.NodeState.STARTED,
         )
         self.assertEqual(
             pipeline_state_run3.get_node_state(example_gen_node_uid).state,
@@ -486,7 +486,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       ) as pipeline_state_run2:
         self.assertEqual(
             pipeline_state_run2.get_node_state(example_gen_node_uid).state,
-            pstate.NodeState.STARTING,
+            pstate.NodeState.STARTED,
         )
         self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
         pipeline_state_run2.is_active()
@@ -599,10 +599,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
             node_states_dict[example_gen_uid].state, pstate.NodeState.COMPLETE
         )
         self.assertEqual(
-            node_states_dict[sub_pipeline_uid].state, pstate.NodeState.STARTING
+            node_states_dict[sub_pipeline_uid].state, pstate.NodeState.STARTED
         )
         self.assertEqual(
-            node_states_dict[transform_uid].state, pstate.NodeState.STARTING
+            node_states_dict[transform_uid].state, pstate.NodeState.STARTED
         )
 
       # Stop pipeline again.
@@ -695,7 +695,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
             node_states_dict[stats_gen_uid].state, pstate.NodeState.COMPLETE
         )
         self.assertEqual(
-            node_states_dict[schema_gen_uid].state, pstate.NodeState.STARTING
+            node_states_dict[schema_gen_uid].state, pstate.NodeState.STARTED
         )
 
   @mock.patch.object(partial_run_utils, 'snapshot')
@@ -1202,7 +1202,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         node_state = pipeline_state.get_node_state(trainer_node_uid)
-        self.assertEqual(pstate.NodeState.STARTING, node_state.state)
+        self.assertEqual(pstate.NodeState.STARTED, node_state.state)
         self.assertNotEqual('', node_state.backfill_token)
 
   def test_stop_node_wait_for_inactivation(self):
@@ -1236,7 +1236,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Restart node.
       with pipeline_ops.initiate_node_start(m, node_uid) as pipeline_state:
         node_state = pipeline_state.get_node_state(node_uid)
-        self.assertEqual(pstate.NodeState.STARTING, node_state.state)
+        self.assertEqual(pstate.NodeState.STARTED, node_state.state)
 
   def test_stop_node_wait_for_inactivation_timeout(self):
     pipeline = test_async_pipeline.create_pipeline()
@@ -2595,7 +2595,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         with pipeline_state.node_state_update_context(
             transform_node_uid
         ) as node_state:
-          node_state.update(pstate.NodeState.STARTING)
+          node_state.update(pstate.NodeState.STARTED)
         with pipeline_state.node_state_update_context(
             trainer_node_uid
         ) as node_state:

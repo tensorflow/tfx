@@ -384,15 +384,19 @@ class _Generator:
                 error_msg=error_msg,
             )
         )
-      # Retry if under retry limit or already STARTING. STARTING is set upstream
+      # Retry if under retry limit or if STARTED. STARTED is set upstream
       # so we should respect it here. See b/277257906.
       elif (
-          node.execution_options.HasField('max_execution_retries')
-          and node.execution_options.max_execution_retries
-          >= task_gen_utils.get_num_of_failures_from_failed_execution(
-              node_executions, failed_executions[0]
+          (
+              node.execution_options.HasField('max_execution_retries')
+              and node.execution_options.max_execution_retries
+              >= task_gen_utils.get_num_of_failures_from_failed_execution(
+                  node_executions, failed_executions[0]
+              )
           )
-      ) or node_state.state == pstate.NodeState.STARTING:
+          or node_state.state == pstate.NodeState.STARTED
+          or node_state.state == pstate.NodeState.STARTING
+      ):
         [retry_execution] = (
             task_gen_utils.register_executions_from_existing_executions(
                 self._mlmd_handle, self._pipeline, node, failed_executions
@@ -412,13 +416,16 @@ class _Generator:
         )
       return result
 
-    # Restarts canceled node, if the node state is STARTING.
+    # Restarts canceled node, if the node state is STARTED.
     canceled_executions = [
         e for e in latest_executions_set
         if execution_lib.is_execution_canceled(e)
     ]
     logging.info('canceled executions: %s', canceled_executions)
-    if canceled_executions and node_state.state == pstate.NodeState.STARTING:
+    if canceled_executions and (
+        node_state.state == pstate.NodeState.STARTED
+        or node_state.state == pstate.NodeState.STARTING
+    ):
       logging.info('restarting node %s', node.node_info.id)
       new_executions = (
           task_gen_utils.register_executions_from_existing_executions(

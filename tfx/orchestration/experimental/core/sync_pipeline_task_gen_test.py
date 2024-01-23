@@ -25,6 +25,7 @@ from tfx.dsl.compiler import constants as compiler_constants
 from tfx.orchestration import data_types_utils
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import mlmd_state
+from tfx.orchestration.experimental.core import pipeline_ops
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
@@ -847,16 +848,16 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
             stats_gen_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
             'manually stopped')
 
-    # Change state of node to STARTING.
+    # Change state of node to STARTED.
     with self._mlmd_connection as m:
       pipeline_state = test_utils.get_or_create_pipeline_state(
           m, self._pipeline)
       with pipeline_state:
         with pipeline_state.node_state_update_context(node_uid) as node_state:
-          node_state.update(pstate.NodeState.STARTING)
+          node_state.update(pstate.NodeState.STARTED)
 
     # New execution should be created for any previously canceled node when the
-    # node state is STARTING.
+    # node state is STARTED.
     [update_node_state_task, stats_gen_task] = self._generate_and_test(
         False,
         num_initial_executions=2,
@@ -930,14 +931,14 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
           executions[1].last_known_state, metadata_store_pb2.Execution.CANCELED
       )
 
-    # Changes node state of StatsGen to STARTING.
+    # Changes node state of StatsGen to STARTED.
     with self._mlmd_connection as m:
       pipeline_state = test_utils.get_or_create_pipeline_state(m, pipeline)
       with pipeline_state:
         with pipeline_state.node_state_update_context(
             stats_gen_node_uid
         ) as node_state:
-          node_state.update(pstate.NodeState.STARTING)
+          node_state.update(pstate.NodeState.STARTED)
 
     # 1 new executions should be created for stats_gen.
     [stats_gen_task] = self._generate_and_test(
@@ -1172,8 +1173,8 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
     self.assertEqual(status_lib.Code.UNKNOWN, finalize_task.status.code)
 
-  def test_component_retry_when_node_is_starting(self):
-    """Tests component retry when node is STARTING."""
+  def test_component_retry_when_node_is_started(self):
+    """Tests component retry when node is STARTED."""
     test_utils.fake_example_gen_run(
         self._mlmd_connection, self._example_gen, 1, 1
     )
@@ -1212,16 +1213,16 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
       ) as ev_exec:
         ev_exec.last_known_state = metadata_store_pb2.Execution.FAILED
 
-    # Change state of node to STARTING.
+    # Change state of node to STARTED.
     with self._mlmd_connection as m:
       pipeline_state = test_utils.get_or_create_pipeline_state(
           m, self._pipeline
       )
       with pipeline_state:
         with pipeline_state.node_state_update_context(node_uid) as node_state:
-          node_state.update(pstate.NodeState.STARTING)
+          node_state.update(pstate.NodeState.STARTED)
 
-    # It should generate a ExecNodeTask due to state being STARTING.
+    # It should generate a ExecNodeTask due to state being STARTED.
     [update_node_task, exec_node_task] = self._generate(
         False, False, fail_fast=True
     )
@@ -1526,6 +1527,67 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     [finalize_task] = self._generate(False, True)
     self.assertEqual(status_lib.Code.UNAVAILABLE, finalize_task.status.code)
     self.assertEqual('foobar error', finalize_task.status.message)
+
+  def test_retry_with_pre_revive_executions(self):
+    self._setup_for_resource_lifetime_pipeline()
+
+    test_utils.fake_example_gen_run(self._mlmd_connection, self.start_a, 1, 1)
+    self.start_b.execution_options.node_success_optional = True
+
+    # Generate tasks for start_b and worker, and mark both as failed.
+    for idx, next_node in enumerate([self.start_b, self.worker]):
+      [next_node_task] = self._generate_and_test(
+          False,
+          num_initial_executions=1 + idx,
+          num_tasks_generated=1,
+          num_new_executions=1,
+          num_active_executions=1,
+          ignore_update_node_state_tasks=True,
+      )
+      self.assertEqual(
+          task_lib.NodeUid.from_node(self._pipeline, next_node),
+          next_node_task.node_uid,
+      )
+      with self._mlmd_connection as m:
+        with mlmd_state.mlmd_execution_atomic_op(
+            m, next_node_task.execution_id
+        ) as next_node_exec:
+          next_node_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+
+    self._run_next(False, expect_nodes=[self.end_b])
+    self._run_next(False, expect_nodes=[self.end_a])
+    [finalize_task_1] = self._generate(False, True)
+    self.assertIsInstance(finalize_task_1, task_lib.FinalizePipelineTask)
+
+    # Mark pipeline as failed.
+    with self._mlmd_connection as m:
+      pipeline_state = pstate.PipelineState.load(
+          m, task_lib.PipelineUid.from_pipeline(self._pipeline)
+      )
+      with pipeline_state:
+        pipeline_state.execution.last_known_state = (
+            metadata_store_pb2.Execution.FAILED
+        )
+      pipeline_id = pipeline_state.pipeline_uid.pipeline_id
+      pipeline_run_id = pipeline_state.pipeline_run_id
+
+    # Pipeline revive should start the failed nodes: start_b and worker.
+    with pipeline_ops.revive_pipeline_run(
+        m, pipeline_id, pipeline_run_id
+    ) as revive_pipeline_state:
+      for node in [self.start_b, self.worker]:
+        node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+        self.assertEqual(
+            revive_pipeline_state.get_node_state(node_uid).state,
+            pstate.NodeState.STARTED,
+        )
+
+    # Because the pipeline has been revived, the previous failed executions
+    # should not prevent re-execution of start_b and worker.
+    self._run_next(False, expect_nodes=[self.start_b])
+    self._run_next(False, expect_nodes=[self.worker])
+    [finalize_task_2] = self._generate(False, True)
+    self.assertIsInstance(finalize_task_2, task_lib.FinalizePipelineTask)
 
 
 if __name__ == '__main__':
