@@ -14,6 +14,7 @@
 """This module defines a generic Launcher for all TFleX nodes."""
 
 import sys
+import traceback
 from typing import Any, Dict, List, Mapping, Optional, Type, TypeVar
 
 from absl import logging
@@ -461,7 +462,7 @@ class Launcher:
       self, code: int, msg: Optional[str] = None
   ) -> execution_result_pb2.ExecutorOutput:
     if msg is None:
-      msg = str(sys.exc_info())
+      msg = '\n'.join(traceback.format_exception(*sys.exc_info()))
     return execution_result_pb2.ExecutorOutput(
         execution_result=execution_result_pb2.ExecutionResult(
             code=code, result_message=msg))

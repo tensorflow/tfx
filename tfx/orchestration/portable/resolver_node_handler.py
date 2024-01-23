@@ -13,6 +13,7 @@
 # limitations under the License.
 """This module defines the handler for resolver node."""
 import sys
+import traceback
 from typing import Any, Dict, Optional
 
 from absl import logging
@@ -150,7 +151,7 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
       self, code: int, msg: Optional[str] = None
   ) -> execution_result_pb2.ExecutorOutput:
     if msg is None:
-      msg = str(sys.exc_info())
+      msg = '\n'.join(traceback.format_exception(*sys.exc_info()))
     return execution_result_pb2.ExecutorOutput(
         execution_result=execution_result_pb2.ExecutionResult(
             code=code, result_message=msg))

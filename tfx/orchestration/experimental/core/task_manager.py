@@ -19,6 +19,7 @@ import sys
 import textwrap
 import threading
 import time
+import traceback
 import typing
 from typing import Dict, List, Optional
 
@@ -320,7 +321,9 @@ class TaskManager:
       else:
         status = status_lib.Status(
             code=status_lib.Code.UNKNOWN,
-            message=str(sys.exc_info()),
+            message=''.join(
+                traceback.format_exception(*sys.exc_info(), limit=1),
+            )
         )
       result = ts.TaskSchedulerResult(status=status)
     logging.info(
