@@ -274,7 +274,9 @@ class StepBuilderTest(tf.test.TestCase):
             component_defs=component_defs,
             deployment_config=pipeline_pb2.PipelineDeploymentConfig(),
             dynamic_exec_properties=dynamic_exec_properties,
-            dsl_context_reg=dsl_context_registry.get()).build())
+            dsl_context_reg=pipeline.dsl_context_registry,
+        ).build()
+    )
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_dynamic_execution_properties_upstream_component_spec.pbtxt',
@@ -295,7 +297,9 @@ class StepBuilderTest(tf.test.TestCase):
             component_defs=component_defs,
             deployment_config=pipeline_pb2.PipelineDeploymentConfig(),
             dynamic_exec_properties=dynamic_exec_properties,
-            dsl_context_reg=dsl_context_registry.get()).build())
+            dsl_context_reg=pipeline.dsl_context_registry,
+        ).build()
+    )
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_dynamic_execution_properties_downstream_component_task.pbtxt',
@@ -317,7 +321,7 @@ class StepBuilderTest(tf.test.TestCase):
           component_defs=component_defs,
           deployment_config=pipeline_pb2.PipelineDeploymentConfig(),
           dynamic_exec_properties=dynamic_exec_properties,
-          dsl_context_reg=dsl_context_registry.get(),
+          dsl_context_reg=pipeline.dsl_context_registry,
       ).build()
 
   def testBuildLatestBlessedModelStrategySucceed(self):

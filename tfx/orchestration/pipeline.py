@@ -289,6 +289,13 @@ class Pipeline(base_node.BaseNode):
       )
     self.pipeline_name = pipeline_name
 
+    # Registry extraction should come before super().__init__() which put self
+    # to the active DslContextRegistry.
+    self._dsl_context_registry = kwargs.pop('dsl_context_registry', None)
+    if self._dsl_context_registry is None:
+      parent_reg = dsl_context_registry.get()
+      self._dsl_context_registry = parent_reg.extract_for_pipeline(components)
+
     # Initialize pipeline as a node.
     super().__init__()
 
@@ -322,18 +329,6 @@ class Pipeline(base_node.BaseNode):
 
     self.additional_pipeline_args = kwargs.pop(  # pylint: disable=g-missing-from-attributes
         'additional_pipeline_args', {})
-
-    reg = kwargs.pop('dsl_context_registry', None)
-    if reg:
-      if not isinstance(reg, dsl_context_registry.DslContextRegistry):
-        raise ValueError('dsl_context_registry must be DslContextRegistry type '
-                         f'but got {reg}')
-      self._dsl_context_registry = reg
-    else:
-      self._dsl_context_registry = dsl_context_registry.get()
-      if self._dsl_context_registry.get_contexts(self):
-        self._dsl_context_registry = (
-            self._dsl_context_registry.extract_for_pipeline(self))
 
     # TODO(b/216581002): Use self._dsl_context_registry to obtain components.
     self._components = []
@@ -377,7 +372,7 @@ class Pipeline(base_node.BaseNode):
     deduped_components = set(components)
     for upstream_component, component in enumerate_implicit_dependencies(
         list(deduped_components),
-        registry=self.dsl_context_registry,
+        registry=self._dsl_context_registry,
         pipeline=self,
     ):
       component.add_upstream_node(upstream_component)
@@ -403,6 +398,7 @@ class Pipeline(base_node.BaseNode):
 
   def _persist_dsl_context_registry(self):
     """Persist the DslContextRegistry to the pipeline."""
+    assert self._dsl_context_registry is not None
     self._dsl_context_registry = copy.copy(self._dsl_context_registry)
     self._dsl_context_registry.finalize()
 
@@ -470,7 +466,7 @@ def enumerate_implicit_dependencies(
           f'{component.type}. Try setting a different node_id using '
           '`.with_id()`.'
       )
-    if pipeline and component.id == pipeline.id:
+    if pipeline and component.id == pipeline.pipeline_name:
       raise RuntimeError(
           f'node id {component.id} is the same as its enclosing pipeline id.'
           'Try setting a different node_id using `.with_id()`.'
@@ -483,8 +479,11 @@ def enumerate_implicit_dependencies(
     for exec_property in component.exec_properties.values():
       if isinstance(exec_property, ph.Placeholder):
         channels.extend(channel_utils.get_dependent_channels(exec_property))
-    for predicate in conditional.get_predicates(component, registry):
-      channels.extend(channel_utils.get_dependent_channels(predicate))
+    if component in registry.all_nodes:
+      # Backward compatibility; component might not be part of the current
+      # pipeline registry in the case
+      for predicate in conditional.get_predicates(component, registry):
+        channels.extend(channel_utils.get_dependent_channels(predicate))
 
     pipeline_component_ids = set(
         (component.id for component in pipeline.components)

@@ -95,6 +95,10 @@ class PipelineContext:
     self._implicit_downstream_nodes[parent_id].add(child_id)
 
   def _collect_conditional_dependency(self, here: base_node.BaseNode) -> None:
+    # TODO: b/321881540 - Should raise error if the node does not exist in the
+    # registry.
+    if here not in self.dsl_context_registry.all_nodes:
+      return
     for predicate in conditional.get_predicates(here,
                                                 self.dsl_context_registry):
       for chnl in channel_utils.get_dependent_channels(predicate):

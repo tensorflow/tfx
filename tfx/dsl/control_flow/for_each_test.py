@@ -125,16 +125,14 @@ class ForEachTest(test_case_utils.TfxTest):
     context2 = dsl_context_registry.get().get_contexts(c2)[-1]
     self.assertNotEqual(context1, context2)
 
-  # TODO(b/247709394): This should be removed once subpipelines are supported.
-  def testForEach_Subpipeline_NotImplemented(self):
+  def testForEach_Subpipeline(self):
     a = A()
-    with self.assertRaises(NotImplementedError):
-      with for_each.ForEach(a.outputs['aa']) as aa:
-        p_in = pipeline_lib.PipelineInputs({'aa': aa})
-        b = B(aa=p_in.inputs['aa'])
-        pipeline_lib.Pipeline(
-            pipeline_name='foo', components=b, inputs=p_in, outputs={}
-        )
+    with for_each.ForEach(a.outputs['aa']) as aa:
+      p_in = pipeline_lib.PipelineInputs({'aa': aa})
+      b = B(aa=p_in.inputs['aa'])
+      pipeline_lib.Pipeline(
+          pipeline_name='foo', components=[b], inputs=p_in, outputs={}
+      )
 
 
 if __name__ == '__main__':

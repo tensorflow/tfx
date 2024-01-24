@@ -709,6 +709,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
     )
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
+    instance_1 = _injector_4()
     instance_2 = _json_compat_check_component(
         a=instance_1.outputs['d'],
         b=instance_1.outputs['e'],

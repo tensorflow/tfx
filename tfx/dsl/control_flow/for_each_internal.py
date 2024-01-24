@@ -45,7 +45,9 @@ class ForEachContext(dsl_context.DslContext):
 
     if len(containing_nodes) > 1:
       raise NotImplementedError(
-          'Cannot define more than one component within ForEach yet.')
+          'Cannot define more than one component within ForEach yet. Got'
+          f' {[n.id for n in containing_nodes]}'
+      )
 
     # TODO(b/237363715): Raise if contaning nodes does not use loop variable
     # neither directly nor indirectly.

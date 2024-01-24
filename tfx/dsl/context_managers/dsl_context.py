@@ -67,3 +67,6 @@ class DslContext:
 
   def __hash__(self):
     return hash(id(self))
+
+  def __str__(self) -> str:
+    return self.__class__.__qualname__
