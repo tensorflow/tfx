@@ -274,14 +274,12 @@ class NodeState(json_utils.Jsonable):
         lambda s: is_node_state_running(s.state), include_current_state=True)
 
 
-class _NodeStatesProxy:
+class NodeStatesProxy:
   """Proxy for reading and updating deserialized NodeState dicts from Execution.
 
   This proxy contains an internal write-back cache. Changes are not saved back
   to the `Execution` until `save()` is called; cache would not be updated if
-  changes were made outside of the proxy, either. This is primarily used to
-  reduce JSON serialization/deserialization overhead for getting node state
-  execution property from pipeline execution.
+  changes were made outside of the proxy, either.
   """
 
   def __init__(self, execution: metadata_store_pb2.Execution):
@@ -540,7 +538,7 @@ class PipelineState:
     self._mlmd_execution_atomic_op_context = None
     self._execution: Optional[metadata_store_pb2.Execution] = None
     self._on_commit_callbacks: List[Callable[[], None]] = []
-    self._node_states_proxy: Optional[_NodeStatesProxy] = None
+    self._node_states_proxy: Optional[NodeStatesProxy] = None
 
   @classmethod
   @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
@@ -1110,7 +1108,7 @@ class PipelineState:
     execution = mlmd_execution_atomic_op_context.__enter__()
     self._mlmd_execution_atomic_op_context = mlmd_execution_atomic_op_context
     self._execution = execution
-    self._node_states_proxy = _NodeStatesProxy(execution)
+    self._node_states_proxy = NodeStatesProxy(execution)
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
@@ -1137,7 +1135,7 @@ class PipelineView:
     self.pipeline_id = pipeline_id
     self.context = context
     self.execution = execution
-    self._node_states_proxy = _NodeStatesProxy(execution)
+    self._node_states_proxy = NodeStatesProxy(execution)
     self._pipeline = None  # lazily set
 
   @classmethod
@@ -1558,7 +1556,7 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
                   node_id, NodeState())
         else:
           previous_node_states_dict[node_id] = reused_node_state
-  node_states_proxy = _NodeStatesProxy(execution)
+  node_states_proxy = NodeStatesProxy(execution)
   if node_states_dict:
     node_states_proxy.set(node_states_dict, _NODE_STATES)
   if previous_node_states_dict:

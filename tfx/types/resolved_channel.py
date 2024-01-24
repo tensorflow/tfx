@@ -17,8 +17,7 @@ The main purpose of this module is to break the cyclic import dependency.
 """
 
 import dataclasses
-
-from typing import Any, Optional, Type, Set, Sequence, Mapping
+from typing import Any, Mapping, Optional, Sequence, Set, Type
 
 from tfx.dsl.control_flow import for_each_internal
 from tfx.dsl.input_resolution import resolver_op
