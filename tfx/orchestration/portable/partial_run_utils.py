@@ -688,10 +688,15 @@ class _ArtifactRecycler:
             self._mlmd, contexts=[node_context, self._base_run_context]
         )
     )
-    prev_successful_executions = [
-        e for e in all_associated_executions
-        if execution_lib.is_execution_successful(e)
-    ]
+
+    if node.execution_options.node_success_optional:
+      prev_successful_executions = all_associated_executions
+    else:
+      prev_successful_executions = [
+          e
+          for e in all_associated_executions
+          if execution_lib.is_execution_successful(e)
+      ]
     if not prev_successful_executions:
       raise LookupError(
           f'No previous successful executions found for node_id {node_id} in '
