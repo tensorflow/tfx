@@ -14,7 +14,7 @@
 """Module for ResolverFunction."""
 import contextlib
 import inspect
-from typing import Callable, Type, Union, Mapping, Any, Optional, Sequence, cast, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Type, Union, cast, overload
 
 from tfx.dsl.control_flow import for_each_internal
 from tfx.dsl.input_resolution import resolver_op
