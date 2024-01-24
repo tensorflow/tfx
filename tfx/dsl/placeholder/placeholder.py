@@ -27,6 +27,3 @@ from tfx.dsl.placeholder.runtime_placeholders import exec_property, ExecProperty
 from tfx.dsl.placeholder.runtime_placeholders import runtime_info, RuntimeInfoPlaceholder, RuntimeInfoKeys
 from tfx.dsl.placeholder.proto_placeholder import make_proto, MakeProtoPlaceholder
 from tfx.types.channel import ChannelWrappedPlaceholder
-
-# TODO(b/266800844): Remove to_list alias after migrating clients.
-to_list = make_list
