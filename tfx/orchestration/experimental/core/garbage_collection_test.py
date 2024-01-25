@@ -228,6 +228,33 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
         self._metadata.store.get_artifacts_by_id([examples[0].id])[0].state,
     )
 
+  @mock.patch.object(fileio, 'remove')
+  def test_garbage_collect_artifacts_output_of_failed_executions(self, remove):
+    pipeline_ops.initiate_pipeline_start(self._metadata, self._pipeline)
+    example_gen_execution = test_utils.fake_example_gen_run_with_handle(
+        self._metadata, self._example_gen, span=0, version=0
+    )
+    example_gen_output = self._metadata.get_outputs_of_execution(
+        example_gen_execution.id
+    )
+    examples = example_gen_output['examples']
+    examples_protos = self._metadata.store.get_artifacts_by_id(
+        [e.id for e in examples]
+    )
+    example_gen_execution.last_known_state = metadata_store_pb2.Execution.FAILED
+    self._metadata.store.put_execution(
+        example_gen_execution, artifact_and_events=[], contexts=[]
+    )
+    garbage_collection.garbage_collect_artifacts(
+        self._metadata, examples_protos
+    )
+
+    remove.assert_called_once_with(examples[0].uri)
+    self.assertEqual(
+        metadata_store_pb2.Artifact.State.DELETED,
+        self._metadata.store.get_artifacts_by_id([examples[0].id])[0].state,
+    )
+
   @mock.patch.object(fileio, 'exists')
   def test_garbage_collect_artifacts_does_not_throw_and_marks_deleted_when_not_found(
       self, mock_exists

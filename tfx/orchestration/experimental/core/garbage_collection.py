@@ -46,6 +46,13 @@ def _get_live_output_artifacts_for_node(
           mlmd_handle.store,
           pipeline_id=node_uid.pipeline_uid.pipeline_id,
           node_id=node_uid.node_id,
+          execution_states=[
+              metadata_store_pb2.Execution.COMPLETE,
+              metadata_store_pb2.Execution.CACHED,
+              metadata_store_pb2.Execution.FAILED,
+              metadata_store_pb2.Execution.RUNNING,
+              metadata_store_pb2.Execution.CANCELED,
+          ],
       )
   )
   return {
