@@ -146,9 +146,17 @@ class ProvidersTest(tf.test.TestCase):
   def testFlatExecutionInfoProvider_ValueArtifactPrimitiveType(self):
     m = module.DependencyModule()
     m.add_provider(
-        di_providers.FlatExecutionInfoProvider(
-            ['empty', 'int', 'float', 'str', 'bytes', 'bool', 'many', 'out']
-        )
+        di_providers.FlatExecutionInfoProvider([
+            'empty',
+            'int',
+            'float',
+            'str',
+            'bytes',
+            'bool',
+            'jsonable',
+            'many',
+            'out',
+        ])
     )
     m.provide_value(
         data_types.ExecutionInfo(
@@ -159,6 +167,11 @@ class ProvidersTest(tf.test.TestCase):
                 'str': [_value_artifact(standard_artifacts.String, 'hello')],
                 'bytes': [_value_artifact(standard_artifacts.Bytes, b'world')],
                 'bool': [_value_artifact(standard_artifacts.Boolean, True)],
+                'jsonable': [
+                    _value_artifact(
+                        standard_artifacts.JsonValue, {'hello': 'world'}
+                    )
+                ],
                 'many': [
                     _value_artifact(standard_artifacts.Integer, 1),
                     _value_artifact(standard_artifacts.Integer, 2),
@@ -176,6 +189,9 @@ class ProvidersTest(tf.test.TestCase):
       self.assertEqual(m.get('str', str), 'hello')
       self.assertEqual(m.get('bytes', bytes), b'world')
       self.assertEqual(m.get('bool', bool), True)
+      self.assertDictEqual(
+          m.get('jsonable', dict[str, str]), {'hello': 'world'}
+      )
 
     with self.subTest('Optional input dict'):
       self.assertEqual(m.get('int', Optional[int]), 1)

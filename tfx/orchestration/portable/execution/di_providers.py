@@ -15,8 +15,9 @@
 
 from collections.abc import Container, MutableSequence, Sequence
 import inspect
-from typing import Any, Callable, TypeVar, get_args, get_origin
+from typing import Any, Callable, TypeVar, get_args, get_origin, Optional
 
+from tfx.dsl.component.experimental import json_compat
 from tfx.orchestration.portable import data_types
 from tfx.types import artifact
 from tfx.types import standard_artifacts
@@ -51,6 +52,16 @@ def _is_valid_artifact_type(artifact_type: Any) -> bool:
       and issubclass(artifact_type, _TfxArtifact)
       and artifact_type.TYPE_NAME
   )
+
+
+def _try_infer(
+    type_hint: Any,
+) -> Optional[type[standard_artifacts.ValueArtifact]]:
+  if type_hint in _PRIMITIVE_TO_ARTIFACT:
+    return _PRIMITIVE_TO_ARTIFACT[type_hint]
+  elif json_compat.is_json_compatible(type_hint):
+    return standard_artifacts.JsonValue
+  return None
 
 
 def _deserialize_artifact(
@@ -133,9 +144,12 @@ def _transform_artifacts(
           f' Optional[{artifact_type.__name__}] annotation instead.'
       )
 
-  # Primitive type_hint for a value artifact
-  if is_input and unwrapped_type in _PRIMITIVE_TO_ARTIFACT:
-    artifact_type: type[_TfxArtifact] = _PRIMITIVE_TO_ARTIFACT[unwrapped_type]
+  # Primitive or jsonable type_hint for a value artifact
+  if (
+      is_input
+      and (artifact_type := _try_infer(unwrapped_type))
+      is not None
+  ):
     artifacts = _deserialize_artifact(artifact_type, artifacts)
     if is_opt and not artifacts:
       return None
@@ -144,8 +158,8 @@ def _transform_artifacts(
       return artifacts[0].value
     else:
       raise errors.InvalidTypeHintError(
-          f'type_hint = {type_hint} but got {len(artifacts)} artifacts. Please'
-          ' use a single value artifact for primitive types.'
+          f'type_hint = {type_hint} but got {len(artifacts)} artifacts.'
+          ' Please use a single value artifact for primitive types.'
       )
 
   raise errors.InvalidTypeHintError(f'Unsupported annotation: {type_hint}')
