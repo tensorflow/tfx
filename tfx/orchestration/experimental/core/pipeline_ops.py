@@ -1837,45 +1837,47 @@ def _orchestrate_active_pipeline(
   tasks = generator.generate(pipeline_state)
   logging.info('Generated tasks: %s', [t.task_id for t in tasks])
 
-  # If nodes reach a terminal state, call stop_node_services for pure/mixed
-  # service nodes, and cancel active executions.
+  # Call stop_node_services for pure / mixed service nodes which reached a
+  # terminal state.
   for task in tasks:
     if not isinstance(task, task_lib.UpdateNodeStateTask):
+      continue
+    node_id = task.node_uid.node_id
+    if not (
+        service_job_manager.is_pure_service_node(pipeline_state, node_id)
+        or service_job_manager.is_mixed_service_node(pipeline_state, node_id)
+    ):
       continue
     if not (
         pstate.is_node_state_success(task.state)
         or pstate.is_node_state_failure(task.state)
     ):
       continue
-
-    node_id = task.node_uid.node_id
-    if service_job_manager.is_pure_service_node(
-        pipeline_state, node_id
-    ) or service_job_manager.is_mixed_service_node(pipeline_state, node_id):
-      logging.info('Stopping services for node: %s', task.node_uid)
-      if not service_job_manager.stop_node_services(pipeline_state, node_id):
-        logging.warning(
-            'Ignoring failure to stop services for node %s which is in'
-            ' state %s',
+    logging.info('Stopping services for node: %s', task.node_uid)
+    if service_job_manager.stop_node_services(pipeline_state, node_id):
+      if service_job_manager.is_pure_service_node(
+          pipeline_state, node_id
+      ) and pstate.is_node_state_failure(task.state):
+        logging.info(
+            'Canceling active executions for pure service node: %s',
             task.node_uid,
-            task.state,
         )
-
-    if pstate.is_node_state_failure(task.state):
-      logging.info(
-          'Canceling active executions for failed node: %s',
+        node = _filter_by_node_id(node_infos, node_id).node
+        active_executions = task_gen_utils.get_executions(
+            mlmd_connection_manager.primary_mlmd_handle,
+            node,
+            additional_filters=['last_known_state IN (NEW, RUNNING)'],
+        )
+        _cancel_executions(
+            active_executions,
+            mlmd_connection_manager.primary_mlmd_handle,
+            task.node_uid,
+        )
+    else:
+      logging.warning(
+          'Ignoring failure to stop services for node %s which is in state %s',
           task.node_uid,
-      )
-      node = _filter_by_node_id(node_infos, node_id).node
-      active_executions = task_gen_utils.get_executions(
-          mlmd_connection_manager.primary_mlmd_handle,
-          node,
-          additional_filters=['last_known_state IN (NEW, RUNNING)'],
-      )
-      _cancel_executions(
-          active_executions,
-          mlmd_connection_manager.primary_mlmd_handle,
-          task.node_uid,
+          task.state,
       )
 
   with pipeline_state:
@@ -1887,6 +1889,10 @@ def _orchestrate_active_pipeline(
         ) as node_state:
           node_state.update(task.state, task.status, task.backfill_token)
 
+    tasks = [
+        t for t in tasks if not isinstance(t, task_lib.UpdateNodeStateTask)
+    ]
+
     # If there are still nodes in state STARTING, change them to STARTED.
     for node in pstate.get_all_nodes(pipeline_state.pipeline):
       node_uid = task_lib.NodeUid.from_node(pipeline_state.pipeline, node)
@@ -1894,9 +1900,6 @@ def _orchestrate_active_pipeline(
         if node_state.state == pstate.NodeState.STARTING:
           node_state.update(pstate.NodeState.STARTED)
 
-    tasks = [
-        t for t in tasks if not isinstance(t, task_lib.UpdateNodeStateTask)
-    ]
     for task in tasks:
       if isinstance(task, task_lib.ExecNodeTask):
         task_queue.enqueue(task)

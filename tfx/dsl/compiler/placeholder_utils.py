@@ -650,7 +650,8 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
   """
   if expression.HasField("value"):
     value_field_name = expression.value.WhichOneof("value")
-    return f"\"{getattr(expression.value, value_field_name)}\""
+    value = getattr(expression.value, value_field_name)
+    return f'"{value}"' if isinstance(value, str) else repr(value)
 
   if expression.HasField("placeholder"):
     placeholder_pb = expression.placeholder
