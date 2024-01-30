@@ -181,8 +181,7 @@ def get_live_output_artifacts_of_node_by_output_key(
     pipeline_run_id: The pipeline run ID that the node belongs to. Only
       artifacts from the specified pipeline run are returned if specified.
     execution_states: The MLMD execution state(s) to pull LIVE artifacts from.
-      If not specified or is empty, will consider MLMD execution states in
-      [COMPLETE, CACHED].
+      If not specified or is empty, will consider all MLMD execution states.
 
   Returns:
     A mapping from output key to all output artifacts from the given node.
