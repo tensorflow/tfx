@@ -752,22 +752,6 @@ def _topsorted_layers(
           lambda node: [node_by_id[n] for n in node.downstream_nodes]))
 
 
-def _terminal_node_ids(layers: List[List[node_proto_view.NodeProtoView]],
-                       skipped_node_ids: Set[str]) -> Set[str]:
-  """Returns nodes across all layers that have no downstream nodes to run."""
-  terminal_node_ids: Set[str] = set()
-  for layer_nodes in layers:
-    for node in layer_nodes:
-      # Ignore skipped nodes.
-      if node.node_info.id in skipped_node_ids:
-        continue
-      if not node.downstream_nodes or all(
-          downstream_node in skipped_node_ids
-          for downstream_node in node.downstream_nodes):
-        terminal_node_ids.add(node.node_info.id)
-  return terminal_node_ids
-
-
 def _node_by_id(
     pipeline: pipeline_pb2.Pipeline
 ) -> Dict[str, node_proto_view.NodeProtoView]:

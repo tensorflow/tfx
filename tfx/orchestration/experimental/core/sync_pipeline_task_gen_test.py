@@ -357,20 +357,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         when task queue is empty (for eg: due to orchestrator restart).
       fail_fast: If `True`, pipeline is aborted immediately if any node fails.
     """
-    # Check the expected terminal nodes.
-    layers = sptg._topsorted_layers(self._pipeline)
-    self.assertEqual(
-        {
-            self._example_validator.node_info.id,
-            self._chore_b.node_info.id,
-            # evaluator execution will be skipped as it is run conditionally and
-            # the condition always evaluates to False in the current test.
-            self._evaluator.node_info.id,
-        },
-        sptg._terminal_node_ids(layers, {}))
-
     # Start executing the pipeline:
-
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
 
@@ -445,16 +432,6 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         expected_skipped_node_ids, sptg._skipped_node_ids(node_states_dict)
     )
 
-    layers = sptg._topsorted_layers(self._pipeline)
-    # All downstream nodes of trainer are marked as skipped, so it's considered
-    # a terminal node.
-    self.assertEqual(
-        {
-            self._trainer.node_info.id,
-            self._example_validator.node_info.id,
-        }, sptg._terminal_node_ids(layers, expected_skipped_node_ids))
-
-    # Start executing the pipeline:
     test_utils.fake_cached_example_gen_run(self._mlmd_connection,
                                            self._example_gen)
     self._run_next(False, expect_nodes=[self._stats_gen])
@@ -511,23 +488,6 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     }
     self.assertEqual(
         expected_skipped_node_ids, sptg._skipped_node_ids(node_states_dict)
-    )
-    layers = sptg._topsorted_layers(self._pipeline)
-
-    # Check that parent nodes of terminal skipped nodes are terminal
-    expected_terminal_nodes = {'my_transform', 'my_example_validator'}
-    self.assertSetEqual(
-        expected_terminal_nodes,
-        sptg._terminal_node_ids(layers, expected_skipped_node_ids),
-    )
-    # All downstream nodes of transform are marked as skipped, so it's
-    # considered a terminal node.
-    self.assertEqual(
-        {
-            self._transform.node_info.id,
-            self._example_validator.node_info.id,
-        },
-        sptg._terminal_node_ids(layers, expected_skipped_node_ids),
     )
 
     # Start executing the pipeline:
@@ -959,14 +919,6 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     Args:
       evaluate: Whether to run the conditional evaluator.
     """
-    # Check the expected terminal nodes.
-    layers = sptg._topsorted_layers(self._pipeline)
-    self.assertEqual(
-        {
-            self._example_validator.node_info.id,
-            self._chore_b.node_info.id,
-            self._evaluator.node_info.id,
-        }, sptg._terminal_node_ids(layers, {}))
 
     # Start executing the pipeline:
 
