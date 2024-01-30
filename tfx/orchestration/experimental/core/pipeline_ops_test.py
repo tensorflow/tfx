@@ -2569,8 +2569,11 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           node_state.state, manual_task_scheduler.ManualNodeState.COMPLETED
       )
 
+  @mock.patch.object(pipeline_ops, '_cancel_executions')
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
-  def test_update_node_state_tasks_handling(self, mock_sync_task_gen):
+  def test_update_node_state_tasks_handling(
+      self, mock_sync_task_gen, mock_cancel_executions
+  ):
     with self._mlmd_cm as mlmd_connection_manager:
       m = mlmd_connection_manager.primary_mlmd_handle
       pipeline = _test_pipeline(
@@ -2622,7 +2625,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
               ),
           ],
       ]
-
       task_queue = tq.TaskQueue()
       pipeline_ops.orchestrate(
           mlmd_connection_manager,
@@ -2630,6 +2632,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           service_jobs.DummyServiceJobManager(),
       )
       self.assertEqual(1, mock_sync_task_gen.return_value.generate.call_count)
+      self.assertEqual(1, mock_cancel_executions.call_count)
 
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
         self.assertEqual(
@@ -2718,9 +2721,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         node_state = pipeline_state.get_node_state(transform_node_uid)
         self.assertEqual(pstate.NodeState.STOPPING, node_state.state)
 
+  @mock.patch.object(pipeline_ops, '_cancel_executions')
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   def test_stop_node_services_called_for_mixed_service_node_in_terminal_state(
-      self, task_gen
+      self, task_gen, mock_cancel_executions
   ):
     with self._mlmd_cm as mlmd_connection_manager:
       m = mlmd_connection_manager.primary_mlmd_handle
@@ -2748,6 +2752,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self._mock_service_job_manager.stop_node_services.assert_called_once_with(
           mock.ANY, 'Transform'
       )
+      self.assertEqual(1, mock_cancel_executions.call_count)
 
       # Load pipeline state and verify Transform node state.
       with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
