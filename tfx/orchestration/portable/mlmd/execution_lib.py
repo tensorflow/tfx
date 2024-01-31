@@ -281,6 +281,9 @@ def put_execution(
     output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
     input_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event.INPUT,
     output_event_type: metadata_store_pb2.Event.Type = metadata_store_pb2.Event.OUTPUT,
+    reuse_context_if_already_exist: bool = True,
+    reuse_artifact_if_already_exist_by_external_id: bool = True,
+    force_reuse_context: bool = True,
 ) -> metadata_store_pb2.Execution:
   """Writes an execution-centric subgraph to MLMD.
 
@@ -301,6 +304,12 @@ def put_execution(
       argument.
     input_event_type: The type of the input event, default to be INPUT.
     output_event_type: The type of the output event, default to be OUTPUT.
+    reuse_context_if_already_exist: You should not need this. If MLMD should
+      re-use and update an existing context, if it exists.
+    reuse_artifact_if_already_exist_by_external_id: You should not need this. If
+      MLMD should re-use and update an existing artifact, if it exists.
+    force_reuse_context: You should not need this. If all contexts should be
+      re-used.
 
   Returns:
     An MLMD execution that is written to MLMD, with id populated.
@@ -328,9 +337,9 @@ def put_execution(
           execution=execution,
           artifact_and_events=artifact_and_events,
           contexts=contexts,
-          reuse_context_if_already_exist=True,
-          reuse_artifact_if_already_exist_by_external_id=True,
-          force_reuse_context=True,
+          reuse_context_if_already_exist=reuse_context_if_already_exist,
+          reuse_artifact_if_already_exist_by_external_id=reuse_artifact_if_already_exist_by_external_id,
+          force_reuse_context=force_reuse_context,
       )
   )
   execution.id = execution_id
