@@ -533,10 +533,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     self.assertIsInstance(update_examplegen, task_lib.UpdateNodeStateTask)
     self.assertEqual(status_lib.Code.UNKNOWN, update_examplegen.status.code)
     self.assertEqual(
-        'associated service job failed; node uid:'
-        " NodeUid(pipeline_uid=PipelineUid(pipeline_id='my_pipeline',"
-        " pipeline_run_id=None), node_id='my_example_gen'); error message:"
-        ' foobar error',
+        'service job failed; error message: foobar error',
         update_examplegen.status.message,
     )
     self.assertIsInstance(update_transform, task_lib.UpdateNodeStateTask)

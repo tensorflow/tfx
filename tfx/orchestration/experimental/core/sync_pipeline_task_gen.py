@@ -299,10 +299,7 @@ class _Generator:
         # TODO(b/205642811): Mark all pending executions as either failed (if
         # active) or canceled (if new), and delete the the executions temporary
         # and output directories.
-        error_msg = (
-            f'service job failed; node uid: {node_uid}; error message:'
-            f' {service_status.msg}'
-        )
+        error_msg = f'service job failed; error message: {service_status.msg}'
         result.append(
             self._update_node_state_to_failed_task(
                 node_uid,

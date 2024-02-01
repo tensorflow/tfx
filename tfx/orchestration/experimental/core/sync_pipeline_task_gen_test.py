@@ -646,15 +646,11 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         status_lib.Code.UNKNOWN, update_node_state_task.status.code
     )
     self.assertEqual(
-        'service job failed; node uid:'
-        " NodeUid(pipeline_uid=PipelineUid(pipeline_id='my_pipeline',"
-        " pipeline_run_id=None), node_id='my_example_gen'); error message:"
-        ' foobar error',
+        'service job failed; error message: foobar error',
         update_node_state_task.status.message,
     )
     self.assertIsInstance(finalize_task, task_lib.FinalizePipelineTask)
     self.assertEqual(status_lib.Code.UNKNOWN, finalize_task.status.code)
-    self.assertRegex(finalize_task.status.message, 'my_example_gen')
 
   def test_node_success(self):
     """Tests task generation when a node execution succeeds."""

@@ -147,10 +147,7 @@ class _Generator:
               self._pipeline_state, node_id
           )
         elif service_status.code != service_jobs.ServiceStatusCode.RUNNING:
-          error_msg = (
-              f'associated service job failed; node uid: {node_uid}; error'
-              f' message: {service_status.msg}'
-          )
+          error_msg = f'service job failed; error message: {service_status.msg}'
           result.append(
               task_lib.UpdateNodeStateTask(
                   node_uid=node_uid,
