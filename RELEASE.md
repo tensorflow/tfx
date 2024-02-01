@@ -65,6 +65,7 @@
 * Fixed a synchronization bug in google_cloud_ai_platform tuner.
 * Print best tuning trials only from the chief worker of google_cloud_ai_platform tuner.
 * Add a kpf dependency in the docker-image extra packages.
+* Fix BigQueryExampleGen failure without custom_config.
 
 ## Dependency Updates
 | Package Name | Version Constraints | Previously (in `v1.14.0`) | Comments |
