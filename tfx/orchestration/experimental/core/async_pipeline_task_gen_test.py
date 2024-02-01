@@ -348,7 +348,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2,
                                     1)
 
-    # Generate once, two executions for Transform is generated.
+    # Generate once, 1 execution for Transform is generated.
     [
         update_example_gen_task,
         update_transform_task,
@@ -358,8 +358,8 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         use_task_queue,
         num_initial_executions=2,
         num_tasks_generated=4,
-        num_new_executions=2,
-        num_active_executions=2,
+        num_new_executions=1,
+        num_active_executions=1,
         expected_exec_nodes=[self._transform],
     )
     self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
@@ -380,17 +380,23 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
 
     # Generate again, an execution for Trainer is generated.
     [
-        update_transform_task, exec_transform_task, update_trainer_task,
-        exec_trainer_task
+        update_transform_task_1,
+        update_transform_task_2,
+        exec_transform_task,
+        update_trainer_task,
+        exec_trainer_task,
     ] = self._generate_and_test(
         use_task_queue,
-        num_initial_executions=4,
-        num_tasks_generated=4,
-        num_new_executions=1,
+        num_initial_executions=3,
+        num_tasks_generated=5,
+        num_new_executions=2,
         num_active_executions=2,
-        expected_exec_nodes=[self._transform, self._trainer])
-    self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(pstate.NodeState.RUNNING, update_transform_task.state)
+        expected_exec_nodes=[self._transform, self._trainer],
+    )
+    self.assertIsInstance(update_transform_task_1, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task_1.state)
+    self.assertIsInstance(update_transform_task_2, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.RUNNING, update_transform_task_2.state)
     self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
     self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.RUNNING, update_trainer_task.state)

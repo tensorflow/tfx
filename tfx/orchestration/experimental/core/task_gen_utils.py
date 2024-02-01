@@ -18,7 +18,7 @@ import itertools
 import json
 import sys
 import textwrap
-from typing import Callable, Dict, Iterable, List, MutableMapping, Optional, Sequence, Type
+from typing import Any, Callable, Dict, Iterable, List, MutableMapping, Optional, Sequence, Type
 import uuid
 
 from absl import logging
@@ -671,7 +671,7 @@ def get_unprocessed_inputs(
     metadata_handle: metadata.Metadata,
     resolved_info: ResolvedInfo,
     node: node_proto_view.NodeProtoView,
-) -> List[InputAndParam]:
+) -> List[List[Any]]:
   """Get a list of unprocessed input from resolved_info.
 
   Args:
@@ -683,8 +683,8 @@ def get_unprocessed_inputs(
   Returns:
     A list of InputAndParam that have not been processed.
   """
-  if not resolved_info.input_and_params:
-    return []
+  if not resolved_info or not resolved_info.input_and_params:
+    return [[], []]
 
   # Finds out the keys that should be ignored.
   input_triggers = node.execution_options.async_trigger.input_triggers
@@ -770,14 +770,15 @@ def get_unprocessed_inputs(
       pass
     except Exception as e:  # pylint:disable=broad-except
       logging.exception('Error when getting artifacts by external ids: %s', e)
-      return []
+      return [[], []]
 
   # Finds out the unprocessed inputs.
   # By default, the retry limit in async pipeline is infinite.
   retry_limit = sys.maxsize
   if node.execution_options.HasField('max_execution_retries'):
     retry_limit = node.execution_options.max_execution_retries
-  unprocessed_inputs = []
+  unprocessed_new_inputs = []
+  failed_executions_for_retry = []
   for input_and_param in resolved_info.input_and_params:
     resolved_input_ids_by_key = collections.defaultdict(list)
     for key, artifacts in input_and_param.input_artifacts.items():
@@ -798,34 +799,29 @@ def get_unprocessed_inputs(
     }
 
     encoded_input = json.dumps(resolved_input_ids_by_key, sort_keys=True)
-    if len(failed_executions_by_input[encoded_input]) >= retry_limit + 1:
+    if successful_executions_by_input[encoded_input]:
+      # The input has been processed.
+      continue
+    elif len(failed_executions_by_input[encoded_input]) >= retry_limit + 1:
       # This input has failed and has also reached its retry limit.
       logging.info(
           'Node %s has reach retry limit of %d.',
           node.node_info.id,
           retry_limit,
       )
-    elif encoded_input not in successful_executions_by_input:
-      # This input should be processed.
-      # If the previous stateful_working_dir_index should be reused, save the
-      # index into input_and_param.exec_properties
-      if (
-          not node.execution_options.reset_stateful_working_dir
-          and failed_executions_by_input[encoded_input]
-      ):
-        failed_executions = failed_executions_by_input[encoded_input]
-        failed_executions = execution_lib.sort_executions_newest_to_oldest(
-            failed_executions
-        )
-        last_failed_execution = failed_executions[0]
-        if input_and_param.exec_properties is None:
-          input_and_param.exec_properties = {}
-        input_and_param.exec_properties[
-            constants.STATEFUL_WORKING_DIR_INDEX
-        ] = outputs_utils.get_stateful_working_dir_index(last_failed_execution)
-      unprocessed_inputs.append(input_and_param)
+    elif failed_executions_by_input[encoded_input]:
+      # This input has failed before, we should try it again.
+      failed_executions = failed_executions_by_input[encoded_input]
+      failed_executions = execution_lib.sort_executions_newest_to_oldest(
+          failed_executions
+      )
+      last_failed_execution = failed_executions[0]
+      failed_executions_for_retry.append(last_failed_execution)
+    else:
+      # The input has never been processed before, and there is no active execution.
+      unprocessed_new_inputs.append(input_and_param)
 
-  return unprocessed_inputs
+  return [unprocessed_new_inputs, failed_executions_for_retry]
 
 
 def interpret_status_from_failed_execution(

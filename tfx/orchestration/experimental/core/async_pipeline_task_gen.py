@@ -449,46 +449,80 @@ class _Generator:
 
     if backfill_token:
       # For backfills, ignore all previous executions.
-      unprocessed_inputs = resolved_info.input_and_params
-    else:
-      unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-          metadata_handle, resolved_info, node
-      )
-    if not unprocessed_inputs:
-      return result
-
-    for input_and_param in unprocessed_inputs:
-      if backfill_token:
+      unprocessed_new_inputs = resolved_info.input_and_params
+      failed_executions_for_retry = []
+      for input_and_param in unprocessed_new_inputs:
         input_and_param.exec_properties[
             constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
         ] = backfill_token
+    else:
+      unprocessed_new_inputs, failed_executions_for_retry = (
+          task_gen_utils.get_unprocessed_inputs(
+              metadata_handle, resolved_info, node
+          )
+      )
 
     execution_state_change_fn = (
         event_observer.make_notify_execution_state_change_fn(node_uid)
     )
-    executions = task_gen_utils.register_executions(
-        metadata_handle=metadata_handle,
-        execution_type=node.node_info.type,
-        contexts=resolved_info.contexts,
-        input_and_params=unprocessed_inputs,
-    )
 
-    for execution in executions:
-      execution_state_change_fn(None, execution)
+    if backfill_token:
+      # For backfill, we have to register all executions in one transaction.
+      executions = task_gen_utils.register_executions(
+          metadata_handle=metadata_handle,
+          execution_type=node.node_info.type,
+          contexts=resolved_info.contexts,
+          input_and_params=unprocessed_new_inputs,
+      )
+      result.extend(
+          task_gen_utils.generate_tasks_from_one_input(
+              metadata_handle=metadata_handle,
+              node=node,
+              execution=executions[0],
+              input_and_param=unprocessed_new_inputs[0],
+              contexts=resolved_info.contexts,
+              pipeline=self._pipeline,
+              execution_node_state=pstate.NodeState.RUNNING,
+              backfill_token=backfill_token,
+              execution_commit_fn=execution_state_change_fn,
+          )
+      )
+    elif failed_executions_for_retry:
+      retry_execution = (
+          task_gen_utils.register_executions_from_existing_executions(
+              metadata_handle,
+              self._pipeline,
+              node,
+              failed_executions_for_retry[0],
+          )
+      )[0]
+      execution_state_change_fn(None, retry_execution)
+      result.append(
+          task_gen_utils.generate_task_from_execution(
+              self._mlmd_handle, self._pipeline, node, retry_execution
+          )
+      )
+    elif unprocessed_new_inputs:
+      executions = task_gen_utils.register_executions(
+          metadata_handle=metadata_handle,
+          execution_type=node.node_info.type,
+          contexts=resolved_info.contexts,
+          input_and_params=[unprocessed_new_inputs[0]],
+      )
+      result.extend(
+          task_gen_utils.generate_tasks_from_one_input(
+              metadata_handle=metadata_handle,
+              node=node,
+              execution=executions[0],
+              input_and_param=unprocessed_new_inputs[0],
+              contexts=resolved_info.contexts,
+              pipeline=self._pipeline,
+              execution_node_state=pstate.NodeState.RUNNING,
+              backfill_token=backfill_token,
+              execution_commit_fn=execution_state_change_fn,
+          )
+      )
 
-    result.extend(
-        task_gen_utils.generate_tasks_from_one_input(
-            metadata_handle=metadata_handle,
-            node=node,
-            execution=executions[0],
-            input_and_param=unprocessed_inputs[0],
-            contexts=resolved_info.contexts,
-            pipeline=self._pipeline,
-            execution_node_state=pstate.NodeState.RUNNING,
-            backfill_token=backfill_token,
-            execution_commit_fn=execution_state_change_fn,
-        )
-    )
     return result
 
   def _ensure_node_services_if_pure(

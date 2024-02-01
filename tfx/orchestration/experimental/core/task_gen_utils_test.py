@@ -824,7 +824,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         resolved_info = task_gen_utils.ResolvedInfo(
             contexts=contexts, input_and_params=[]
         )
-        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+        unprocessed_inputs, _ = task_gen_utils.get_unprocessed_inputs(
             m, resolved_info, self._transform
         )
         self.assertEmpty(unprocessed_inputs)
@@ -861,7 +861,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             'get_executions',
             wraps=m.store.get_executions,
         ).start()
-        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+        unprocessed_inputs, _ = task_gen_utils.get_unprocessed_inputs(
             m, resolved_info_for_transform, self._transform
         )
         m.store.get_executions.assert_called_once()
@@ -880,7 +880,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             m, self._transform, input_artifacts={'examples': artifacts}
         )
         otu.fake_finish_node_with_handle(m, self._transform, execution.id)
-        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+        unprocessed_inputs, _ = task_gen_utils.get_unprocessed_inputs(
             m, resolved_info_for_transform, self._transform
         )
         m.store.get_executions.assert_called_once()
@@ -927,11 +927,14 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           m, self._transform, execution.id, success=False
       )
       self.assertIsNone(input_and_param.exec_properties)
-      unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-          m, resolved_info_for_transform, self._transform
+      unprocessed_inputs, failed_executions_for_retry = (
+          task_gen_utils.get_unprocessed_inputs(
+              m, resolved_info_for_transform, self._transform
+          )
       )
-      self.assertIsNotNone(unprocessed_inputs[0].exec_properties)
-      self.assertLen(unprocessed_inputs, 1)
+      self.assertEmpty(unprocessed_inputs)
+      self.assertLen(failed_executions_for_retry, 1)
+      self.assertEqual(failed_executions_for_retry[0].id, execution.id)
 
       # Simulate that self._transform retry twice.
       execution = otu.fake_start_node_with_handle(
@@ -949,7 +952,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
       # Since self._transform has retried twice, we won't try it again, so the
       # unprocessed_inputs is empty.
-      unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+      unprocessed_inputs, _ = task_gen_utils.get_unprocessed_inputs(
           m, resolved_info_for_transform, self._transform
       )
       self.assertEmpty(unprocessed_inputs)
@@ -970,7 +973,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         node_proto_view.get_view(self._transform),
         self._pipeline,
     )
-    unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+    unprocessed_inputs, _ = task_gen_utils.get_unprocessed_inputs(
         self._mlmd_connection,
         resolved_info,
         self._transform,
