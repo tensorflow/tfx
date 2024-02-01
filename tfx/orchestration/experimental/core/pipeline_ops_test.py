@@ -1750,10 +1750,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_ops.orchestrate(
           mlmd_connection_manager, task_queue, self._mock_service_job_manager
       )
-
-      # stop_node_services should be called for ExampleGen and Transform.
+      # stop_node_services should be called for ExampleGen.
       self._mock_service_job_manager.stop_node_services.assert_has_calls(
-          [mock.call(mock.ANY, 'ExampleGen'), mock.call(mock.ANY, 'Transform')]
+          [mock.call(mock.ANY, 'ExampleGen')]
       )
       self._mock_service_job_manager.reset_mock()
 
@@ -1771,11 +1770,18 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         task_queue.task_done(task)
         self.assertIsInstance(task, task_lib.CancelNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
-        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.PAUSE_EXEC)
-
+        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.CANCEL_EXEC)
       self.assertTrue(task_queue.is_empty())
 
-      # Check that the node states are STARTED.
+      pipeline_ops.orchestrate(
+          mlmd_connection_manager, task_queue, self._mock_service_job_manager
+      )
+      # stop_node_services should be called for Transform.
+      self._mock_service_job_manager.stop_node_services.assert_has_calls(
+          [mock.call(mock.ANY, 'Transform')]
+      )
+
+      # Check that the node states are STARTING.
       [execution] = m.store.get_executions_by_id([pipeline_state.execution_id])
       node_states_dict = _get_node_states_dict(execution)
       self.assertLen(node_states_dict, 4)
@@ -1825,12 +1831,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_ops.orchestrate(
           mlmd_connection_manager, task_queue, self._mock_service_job_manager
       )
-
       # stop_node_services should not be called for ExampleGen since it is not
       # reloaded according to the options.
-      self._mock_service_job_manager.stop_node_services.assert_has_calls(
-          [mock.call(mock.ANY, 'Transform')]
-      )
+      self._mock_service_job_manager.stop_node_services.assert_not_called()
 
       # Simulate completion of all the exec node tasks except evaluator.
       for node_id in ('Transform', 'Trainer', 'Evaluator'):
@@ -1846,7 +1849,14 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         task_queue.task_done(task)
         self.assertIsInstance(task, task_lib.CancelNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
-        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.PAUSE_EXEC)
+        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.CANCEL_EXEC)
+
+      pipeline_ops.orchestrate(
+          mlmd_connection_manager, task_queue, self._mock_service_job_manager
+      )
+      self._mock_service_job_manager.stop_node_services.assert_has_calls(
+          [mock.call(mock.ANY, 'Transform')]
+      )
 
       # Pipeline should no longer be in update-initiated state but be active.
       with pipeline_state:
@@ -1955,33 +1965,33 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                   pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                   node_id='Transform',
               ),
-              cancel_type=task_lib.NodeCancelType.PAUSE_EXEC,
+              cancel_type=task_lib.NodeCancelType.CANCEL_EXEC,
           ),
           test_utils.create_exec_node_task(
               node_uid=task_lib.NodeUid(
                   pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                   node_id='Trainer',
               ),
-              cancel_type=task_lib.NodeCancelType.PAUSE_EXEC,
+              cancel_type=task_lib.NodeCancelType.CANCEL_EXEC,
           ),
           test_utils.create_exec_node_task(
               node_uid=task_lib.NodeUid(
                   pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
                   node_id='Evaluator',
               ),
-              cancel_type=task_lib.NodeCancelType.PAUSE_EXEC,
+              cancel_type=task_lib.NodeCancelType.CANCEL_EXEC,
           ),
           None,
           None,
           None,
       ]
+
       pipeline_ops.orchestrate(
           mlmd_connection_manager, task_queue, self._mock_service_job_manager
       )
-
-      # stop_node_services should be called for ExampleGen and Transform.
+      # stop_node_services should be called for ExampleGen.
       self._mock_service_job_manager.stop_node_services.assert_has_calls(
-          [mock.call(mock.ANY, 'ExampleGen'), mock.call(mock.ANY, 'Transform')]
+          [mock.call(mock.ANY, 'ExampleGen')]
       )
       self._mock_service_job_manager.reset_mock()
 
@@ -1992,11 +2002,18 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         task_queue.task_done(task)
         self.assertIsInstance(task, task_lib.ExecNodeTask)
         self.assertEqual(node_id, task.node_uid.node_id)
-        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.PAUSE_EXEC)
-
+        self.assertEqual(task.cancel_type, task_lib.NodeCancelType.CANCEL_EXEC)
       self.assertTrue(task_queue.is_empty())
 
-      # Check that the node states are STARTED.
+      pipeline_ops.orchestrate(
+          mlmd_connection_manager, task_queue, self._mock_service_job_manager
+      )
+      # stop_node_services should be called for Transform.
+      self._mock_service_job_manager.stop_node_services.assert_has_calls(
+          [mock.call(mock.ANY, 'Transform')]
+      )
+
+      # Check that the node states are STARTING.
       [execution] = m.store.get_executions_by_id([pipeline_state.execution_id])
       node_states_dict = _get_node_states_dict(execution)
       self.assertLen(node_states_dict, 4)

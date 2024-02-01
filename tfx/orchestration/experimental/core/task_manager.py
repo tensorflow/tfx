@@ -86,11 +86,8 @@ class _SchedulerWrapper:
     self.task_scheduler = task_scheduler
     self._active_scheduler_counter = active_scheduler_counter
     self.cancel_requested = threading.Event()
-    self.pause_requested = threading.Event()
     if task_scheduler.task.cancel_type is not None:
       self.cancel_requested.set()
-      if task_scheduler.task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC:
-        self.pause_requested.set()
 
   def schedule(self) -> ts.TaskSchedulerResult:
     """Runs task scheduler."""
@@ -126,8 +123,6 @@ class _SchedulerWrapper:
     """Cancels task scheduler."""
     logging.info('Cancelling task scheduler: %s', self.task_scheduler)
     self.cancel_requested.set()
-    if cancel_task.cancel_type == task_lib.NodeCancelType.PAUSE_EXEC:
-      self.pause_requested.set()
     self.task_scheduler.cancel(cancel_task=cancel_task)
 
   def __str__(self) -> str:
@@ -331,27 +326,22 @@ class TaskManager:
         result.status,
         scheduler,
     )
-    # If the node was paused, we do not complete the execution as it is expected
-    # that a new ExecNodeTask would be issued for resuming the execution.
-    if not (
-        scheduler.pause_requested.is_set()
-        and result.status.code == status_lib.Code.CANCELLED
-    ):
-      try:
-        post_execution_utils.publish_execution_results_for_task(
-            mlmd_handle=self._mlmd_handle, task=task, result=result
-        )
-      except Exception as e:  # pylint: disable=broad-except
-        logging.exception(
-            (
-                'Attempting to mark execution (id: %s) as FAILED after failure'
-                ' to publish task scheduler execution results: %s'
-            ),
-            task.execution_id,
-            result,
-        )
-        self._fail_execution(task.execution_id, status_lib.Code.UNKNOWN, str(e))
-      pipeline_state.record_state_change_time()
+
+    try:
+      post_execution_utils.publish_execution_results_for_task(
+          mlmd_handle=self._mlmd_handle, task=task, result=result
+      )
+    except Exception as e:  # pylint: disable=broad-except
+      logging.exception(
+          (
+              'Attempting to mark execution (id: %s) as FAILED after failure'
+              ' to publish task scheduler execution results: %s'
+          ),
+          task.execution_id,
+          result,
+      )
+      self._fail_execution(task.execution_id, status_lib.Code.UNKNOWN, str(e))
+    pipeline_state.record_state_change_time()
     with self._tm_lock:
       del self._scheduler_by_node_uid[task.node_uid]
       self._task_queue.task_done(task)
