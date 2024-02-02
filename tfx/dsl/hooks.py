@@ -16,15 +16,17 @@
 
 import abc
 from collections.abc import Mapping, Sequence
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 
 import attr
 from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import execution_hook_pb2
+from tfx.utils import json_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
 
+_ValueType = Union[int, float, str, bool, json_utils.JsonableType]
 _PrimitiveFlagValueType = Union[int, float, str, bool]
 _FlagMap = Union[
     Sequence[tuple[str, _PrimitiveFlagValueType]],
@@ -100,3 +102,7 @@ class XManagerComponentPreOutput(PreExecutionOutput):
             for key, value in _iterate_flags(self.flags or [])
         ],
     )
+
+
+PreExecutionFunction = Callable[..., Optional[PreExecutionOutput]]
+PostExecutionFunction = Callable[..., Optional[Mapping[str, _ValueType]]]
