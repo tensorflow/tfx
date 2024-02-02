@@ -20,6 +20,8 @@ from typing import Optional
 
 from tfx.proto.orchestration import pipeline_pb2
 
+TriggerStrategy = pipeline_pb2.NodeExecutionOptions.TriggerStrategy
+
 
 @dataclasses.dataclass
 class NodeExecutionOptions:
@@ -27,8 +29,9 @@ class NodeExecutionOptions:
 
   Currently only apply in experimental orchestrator.
   """
-  trigger_strategy: pipeline_pb2.NodeExecutionOptions.TriggerStrategy = (
-      pipeline_pb2.NodeExecutionOptions.TRIGGER_STRATEGY_UNSPECIFIED)
+  trigger_strategy: TriggerStrategy = (
+      TriggerStrategy.ALL_UPSTREAM_NODES_SUCCEEDED
+  )
   success_optional: bool = False
   max_execution_retries: Optional[int] = None
   execution_timeout_sec: int = 0

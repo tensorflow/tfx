@@ -2230,6 +2230,7 @@ nodes {
             execution_options {
               caching_options {
               }
+              strategy: ALL_UPSTREAM_NODES_SUCCEEDED
               execution_timeout_sec: 87654321
             }
           }
