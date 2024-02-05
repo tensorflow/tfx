@@ -207,9 +207,9 @@ def filter_artifacts_by_span(
 
   result = []
   version_time_and_id = lambda a: (  # pylint: disable=g-long-lambda
-      a.version,
-      a.mlmd_artifact.create_time_since_epoch,
-      a.id,
+      getattr(a, 'version'),
+      getattr(getattr(a, 'mlmd_artifact'), 'create_time_since_epoch'),
+      getattr(a, 'id'),
   )
   for span in sorted(spans):
     if keep_all_versions:
