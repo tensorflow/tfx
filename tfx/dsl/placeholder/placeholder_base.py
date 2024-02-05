@@ -316,6 +316,21 @@ def join(
   return functools.reduce(joiner, placeholders)
 
 
+def join_path(
+    *args: str | Placeholder,
+) -> Placeholder:
+  """Runs os.path.join() on placeholder arguments.
+
+  Args:
+    *args: (Placeholders that resolve to) strings which will be passed to
+      os.path.join().
+
+  Returns:
+    A placeholder that will resolve to the joined path.
+  """
+  return _JoinPathOperator(*args)
+
+
 class ListPlaceholder(Placeholder):
   """List of multiple Placeholders.
 
@@ -555,6 +570,35 @@ class _ConcatOperator(Placeholder):
     for item in self._items:
       if isinstance(item, Placeholder):
         yield from item.traverse()
+
+
+class _JoinPathOperator(Placeholder):
+  """JoinPath Operator runs os.path.join() on the given arguments.
+
+  Do not instantiate directly, use ph.join_path() instead.
+  """
+
+  def __init__(
+      self,
+      *args: str | Placeholder,
+  ):
+    super().__init__(expected_type=str)
+    self._args = args
+
+  def traverse(self) -> Iterator[Placeholder]:
+    yield self
+    for arg in self._args:
+      if isinstance(arg, Placeholder):
+        yield from arg.traverse()
+
+  def encode(
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    result = placeholder_pb2.PlaceholderExpression()
+    op = result.operator.join_path_op
+    for arg in self._args:
+      op.args.append(encode_value_like(arg, component_spec))
+    return result
 
 
 class _ProtoOperator(UnaryPlaceholderOperator):

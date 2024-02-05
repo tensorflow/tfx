@@ -260,6 +260,54 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), "/tmp/Split-train/1")
 
+  def testJoinPath(self):
+    placeholder_expression = text_format.Parse(
+        """
+        operator {
+          join_path_op {
+            args {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".stateful_working_dir"
+                }
+              }
+            }
+            args {
+              value {
+                string_value: "foo"
+              }
+            }
+            args {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".pipeline_info"
+                  proto_field_path: ".id"
+                }
+              }
+            }
+          }
+        }
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    resolved_str = placeholder_utils.resolve_placeholder_expression(
+        placeholder_expression, self._resolution_context
+    )
+    self.assertEqual(
+        resolved_str,
+        "test_stateful_working_dir/foo/test_pipeline_id",
+    )
+
   def testArtifactProperty(self):
     placeholder_expression = """
       operator {
@@ -1204,6 +1252,52 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(
         placeholder_utils.debug_str(another_pb),
         "exec_property(\"serving_spec\").tensorflow_serving.serialize(TEXT_FORMAT)"
+    )
+
+  def testDebugJoinPath(self):
+    placeholder_expression = text_format.Parse(
+        """
+        operator {
+          join_path_op {
+            args {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".stateful_working_dir"
+                }
+              }
+            }
+            args {
+              value {
+                string_value: "foo"
+              }
+            }
+            args {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".pipeline_info"
+                  proto_field_path: ".id"
+                }
+              }
+            }
+          }
+        }
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    self.assertEqual(
+        placeholder_utils.debug_str(placeholder_expression),
+        'join_path(execution_invocation().stateful_working_dir, "foo", '
+        "execution_invocation().pipeline_info.id)",
     )
 
   def testGetAllTypesInPlaceholderExpressionFails(self):

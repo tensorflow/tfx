@@ -925,6 +925,40 @@ class PlaceholderTest(tf.test.TestCase):
             }
           }""")
 
+  def testJoinPath(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.join_path(ph.output('model').uri, 'foo.txt'),
+        """
+        operator {
+          join_path_op {
+            args {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            args {
+              value {
+                string_value: "foo.txt"
+              }
+            }
+          }
+        }
+        """,
+    )
+
   def testComplicatedConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         'google/' + ph.output('model').uri + '/model/' + '0/' +
@@ -1745,6 +1779,18 @@ class PlaceholderTest(tf.test.TestCase):
     self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
     self.assertIn(placeholder_base.DictPlaceholder, ph_types)
     self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+
+  def testJoinPathTraverse(self):
+    p = ph.join_path(
+        ph.output('model').uri,
+        ph.exec_property('subdir'),
+        'test.txt',
+    )
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+    self.assertNotIn(ph.RuntimeInfoPlaceholder, ph_types)
 
   def testMakeProtoTraverse(self):
     p = _ExecutionInvocation(

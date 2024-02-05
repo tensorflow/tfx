@@ -39,6 +39,7 @@ message PlaceholderExpressionOperator {
     ArtifactUriOperator artifact_uri_op = 1;
     ArtifactValueOperator artifact_value_op = 2;
     ConcatOperator concat_op = 3;
+    JoinPathOperator join_path_op = 15;
     IndexOperator index_op = 4;
     ProtoOperator proto_op = 5;
     Base64EncodeOperator base64_encode_op = 6;
@@ -92,6 +93,12 @@ message ArtifactValueOperator {
 message ConcatOperator {
   // Required. The placeholders to be concatenated.
   repeated PlaceholderExpression expressions = 1;
+}
+
+// JoinPathOperator calls os.path.join(*args).
+// JoinPathOperator: List[str] -> str
+message JoinPathOperator {
+  repeated PlaceholderExpression args = 1;
 }
 
 // IndexOperator extracts an element at the index if the PlaceholderExpression
