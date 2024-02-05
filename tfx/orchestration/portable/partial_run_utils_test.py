@@ -14,6 +14,7 @@
 """Tests for tfx.orchestration.portable.partial_run_utils."""
 
 from collections.abc import Sequence
+import concurrent.futures
 from typing import Dict, List, Mapping, Optional, Set, Tuple, Union
 from unittest import mock
 
@@ -165,7 +166,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
           else:
             raise ValueError(
                 f'node_id {node_id} appears in neither nodes_to_run '
-                'nor nodes_to_skip.'
+                f'nor nodes_to_skip. In pipeline {pipeline.pipeline_info.id}'
             )
         except AssertionError:
           logging.exception(
@@ -634,7 +635,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     self._checkNodeExecutionOptions(
         input_pipeline,
         snapshot_node='b',
-        nodes_to_run=set(['b', 'c', 'd']),
+        nodes_to_run=set(['b', 'c']),
         nodes_requiring_snapshot=set(['b']),
         nodes_to_skip=set(['a']),
         nodes_required_to_reuse=set(['a']),
@@ -1596,13 +1597,25 @@ class PartialRunTest(absltest.TestCase):
     with metadata.Metadata(self.metadata_config) as m:
       with self.assertRaisesRegex(ValueError,
                                   'Unable to infer new pipeline run id.'):
-        partial_run_utils._reuse_pipeline_run_artifacts(
-            m, pipeline_pb_run_2, base_run_id='run_1')
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+          partial_run_utils._reuse_pipeline_run_artifacts(
+              m,
+              executor,
+              partial_run_utils._ReuseRunArtifactOpts(
+                  pipeline_pb_run_2, base_run_id='run_1'
+              ),
+          )
 
     # Check that once the user provides the new_run_id, it still works.
     with metadata.Metadata(self.metadata_config) as m:
-      partial_run_utils._reuse_pipeline_run_artifacts(
-          m, pipeline_pb_run_2, base_run_id='run_1', new_run_id='run_2')
+      with concurrent.futures.ThreadPoolExecutor() as executor:
+        partial_run_utils._reuse_pipeline_run_artifacts(
+            m,
+            executor,
+            partial_run_utils._ReuseRunArtifactOpts(
+                pipeline_pb_run_2, 'run_1', 'run_2'
+            ),
+        )
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline_pb_run_2, {constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'run_2'})
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
@@ -1664,9 +1677,14 @@ class PartialRunTest(absltest.TestCase):
     with metadata.Metadata(self.metadata_config) as m:
       with self.assertRaisesRegex(ValueError,
                                   'Conflicting new pipeline run ids found.'):
-        partial_run_utils._reuse_pipeline_run_artifacts(
-            m, pipeline_pb_run_2, base_run_id='run_1',
-            new_run_id='run_3')  # <-- user error here
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+          partial_run_utils._reuse_pipeline_run_artifacts(
+              m,
+              executor,
+              partial_run_utils._ReuseRunArtifactOpts(
+                  pipeline_pb_run_2, 'run_1', 'run_3'  # <-- user error here
+              ),
+          )
 
   def testReusePipelineArtifacts_SeparateBranches(self):
     """Tests partial run with separate branches."""

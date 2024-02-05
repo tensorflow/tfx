@@ -15,7 +15,9 @@
 
 import collections
 import concurrent.futures
+import dataclasses
 import enum
+import time
 from typing import Collection, Dict, Final, List, Mapping, Optional, OrderedDict, Sequence, Set, Tuple
 import uuid
 
@@ -24,6 +26,7 @@ from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
+from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -36,6 +39,12 @@ _default_snapshot_settings = pipeline_pb2.SnapshotSettings()
 _default_snapshot_settings.latest_pipeline_run_strategy.SetInParent()
 _REUSE_ARTIFACT_REQUIRED = pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
 _REUSE_ARTIFACT_OPTIONAL = pipeline_pb2.NodeExecutionOptions.Skip.OPTIONAL
+
+# Empty pipeline just for creating begine/end node type names
+_EMPTY_PIPELINE = tfx_pipeline.Pipeline('unused')
+
+_BEGIN_NODE_TYPE = compiler_utils.pipeline_begin_node_type_name(_EMPTY_PIPELINE)
+_END_NODE_TYPE = compiler_utils.pipeline_end_node_type_name(_EMPTY_PIPELINE)
 
 
 def latest_pipeline_snapshot_settings() -> pipeline_pb2.SnapshotSettings:
@@ -61,8 +70,7 @@ def mark_pipeline(
     to_nodes: Optional[Collection[str]] = None,
     skip_nodes: Optional[Collection[str]] = None,
     skip_snapshot_nodes: Optional[Collection[str]] = None,
-    snapshot_settings: pipeline_pb2
-    .SnapshotSettings = _default_snapshot_settings,
+    snapshot_settings: pipeline_pb2.SnapshotSettings = _default_snapshot_settings,
 ) -> pipeline_pb2.Pipeline:
   """Modifies the Pipeline IR in place, in preparation for partial run.
 
@@ -70,6 +78,10 @@ def mark_pipeline(
   additional information needed for partial runs, such as which nodes to run,
   which nodes to skip, which node is responsible for performing the snapshot,
   as well as the snapshot settings.
+
+  TODO: b/320535460 - Update this once indexing into subpipeline is complete.
+  If a subpipeline is marked, then all nodes contained within it will receive
+  the same mark as well.
 
   The set of nodes to be run is the set of nodes between from_nodes and to_nodes
   -- i.e., the set of nodes that are reachable by traversing downstream from
@@ -89,8 +101,8 @@ def mark_pipeline(
       on nodes that cannot be skipped, then it is still marked to run for
       pipeline result correctness. If None, does not force-skip any node.
     skip_snapshot_nodes: **MOST USERS DO NOT NEED THIS.** Use this to force
-      marking snapshot as OPTIONAL for a skipped node. Setting this field can
-      be dangerous -- it can cause following partial runs to behave incorrectly
+      marking snapshot as OPTIONAL for a skipped node. Setting this field can be
+      dangerous -- it can cause following partial runs to behave incorrectly
       with missing cached executions.
     snapshot_settings: Settings needed to perform the snapshot step. Defaults to
       using LATEST_PIPELINE_RUN strategy.
@@ -100,7 +112,6 @@ def mark_pipeline(
 
   Raises:
     ValueError: If pipeline's execution_mode is not SYNC.
-    ValueError: If pipeline contains a sub-pipeline.
     ValueError: If pipeline was already marked for partial run.
     ValueError: If both from_nodes and to_nodes are empty.
     ValueError: If from_nodes/to_nodes contain node_ids not in the pipeline.
@@ -133,6 +144,63 @@ def mark_pipeline(
   return pipeline
 
 
+@dataclasses.dataclass
+class _ReuseRunArtifactOpts:
+  marked_pipeline: pipeline_pb2.Pipeline
+  base_run_id: Optional[str] = None
+  new_run_id: Optional[str] = None
+  is_subpipeline_run: bool = False
+  new_parent_pipeline_run_ids: Sequence[str] = dataclasses.field(
+      default_factory=list
+  )
+  parent_pipeline_ids: Sequence[str] = dataclasses.field(default_factory=list)
+
+
+def _collect_all_pipelines_to_resuse(
+    pipeline: pipeline_pb2.Pipeline,
+    base_run_id: str,
+    is_subpipeline: bool = False,
+    new_parent_pipeline_run_ids: Sequence[str] = (),
+    parent_pipeline_ids: Sequence[str] = (),
+) -> Sequence['_ReuseRunArtifactOpts']:
+  """Recursively generates all _ReuseRunArtifactOpts for a partial run."""
+
+  reuse_artifact_opts = []
+  if is_subpipeline:
+    run_id_to_resuse = f'{pipeline.pipeline_info.id}_{base_run_id}'
+    # The first element of new_parent_pipeline_run_ids is always the top level
+    # run id, which subpipeline run ids are named based on.
+    new_run_id = f'{pipeline.pipeline_info.id}_{new_parent_pipeline_run_ids[0]}'
+  else:
+    run_id_to_resuse = base_run_id
+    new_run_id = pipeline.runtime_spec.pipeline_run_id.field_value.string_value
+  reuse_artifact_opts.append(
+      _ReuseRunArtifactOpts(
+          marked_pipeline=pipeline,
+          base_run_id=run_id_to_resuse,
+          is_subpipeline_run=is_subpipeline,
+          new_parent_pipeline_run_ids=new_parent_pipeline_run_ids,
+          parent_pipeline_ids=parent_pipeline_ids,
+      )
+  )
+  for node in node_proto_view.get_view_for_all_in(pipeline):
+    if not isinstance(node, node_proto_view.ComposablePipelineProtoView):
+      continue
+    if should_attempt_to_reuse_artifact(node.execution_options):
+      reuse_artifact_opts.extend(
+          _collect_all_pipelines_to_resuse(
+              node.raw_proto(),
+              base_run_id,
+              is_subpipeline=True,
+              new_parent_pipeline_run_ids=list(new_parent_pipeline_run_ids)
+              + [new_run_id],
+              parent_pipeline_ids=list(parent_pipeline_ids)
+              + [pipeline.pipeline_info.id],
+          )
+      )
+  return reuse_artifact_opts
+
+
 def snapshot(mlmd_handle: metadata.Metadata,
              pipeline: pipeline_pb2.Pipeline,
              base_run_id: Optional[str] = None) -> None:
@@ -153,10 +221,10 @@ def snapshot(mlmd_handle: metadata.Metadata,
   """
   # Avoid unnecessary snapshotting step if no node needs to reuse any artifacts.
   if not any(
-      _should_attempt_to_reuse_artifact(node.pipeline_node.execution_options)
-      for node in pipeline.nodes):
+      should_attempt_to_reuse_artifact(node.pipeline_node.execution_options)
+      for node in pipeline.nodes
+  ):
     return
-
   snapshot_settings = pipeline.runtime_spec.snapshot_settings
   logging.info('snapshot_settings: %s', snapshot_settings)
   if not base_run_id:
@@ -169,9 +237,18 @@ def snapshot(mlmd_handle: metadata.Metadata,
       logging.info('Using latest_pipeline_run_strategy.')
     else:
       raise ValueError('artifact_reuse_strategy not set in SnapshotSettings.')
+  reuse_artifact_opts = _collect_all_pipelines_to_resuse(
+      pipeline,
+      base_run_id,
+  )
+  start_time = time.time()
   logging.info('Preparing to reuse artifacts.')
-  _reuse_pipeline_run_artifacts(mlmd_handle, pipeline, base_run_id=base_run_id)
-  logging.info('Artifact reuse complete.')
+  with concurrent.futures.ThreadPoolExecutor() as executor:
+    for opts in reuse_artifact_opts:
+      _reuse_pipeline_run_artifacts(mlmd_handle, executor, opts)
+  logging.info(
+      'Artifact reuse complete. Took: %.1f seconds', time.time() - start_time
+  )
 
 
 def _pick_snapshot_node(
@@ -196,7 +273,7 @@ def _mark_nodes(
     nodes_requiring_snapshot: Set[str],
     snapshot_node: Optional[str],
 ):
-  """Mark nodes."""
+  """Marks nodes, will mark all nodes of a subpipeline as SKIPPED if the subpipeline is skipped."""
   for node_id, node in node_map.items():  # assumes topological order
     if node_id in nodes_to_run:
       node.execution_options.run.perform_snapshot = (node_id == snapshot_node)
@@ -211,6 +288,28 @@ def _mark_nodes(
     else:
       node.execution_options.skip.reuse_artifacts_mode = (
           pipeline_pb2.NodeExecutionOptions.Skip.NEVER)
+    if node.execution_options.WhichOneof(
+        'partial_run_option'
+    ) == 'skip' and isinstance(
+        node, node_proto_view.ComposablePipelineProtoView
+    ):
+      logging.info(
+          'marking all of the containing nodes withing subpipeline %s with %s'
+          ' because it should be skipped.',
+          node.node_info.id,
+          node.execution_options,
+      )
+      to_process = collections.deque([node])
+      skip_options = node.execution_options.skip
+      while to_process:
+        node_to_mark = to_process.popleft()
+        node_to_mark.execution_options.skip.CopyFrom(skip_options)
+        if isinstance(
+            node_to_mark, node_proto_view.ComposablePipelineProtoView
+        ):
+          to_process.extend(
+              node_proto_view.get_view_for_all_in(node_to_mark.raw_proto())
+          )
 
 
 class _Direction(enum.Enum):
@@ -275,23 +374,33 @@ def _ensure_topologically_sorted(
   # Upstream check
   visited = set()
   for node in nodes:
+    visited.add(node.node_info.id)
+    # Do not add begin nodes upstream nodes as they are outside the scope of
+    # the subpipeline.
+    if node.node_info.type.name == _BEGIN_NODE_TYPE:
+      continue
     for upstream_node in node.upstream_nodes:
       if upstream_node not in visited:
         raise ValueError(
             'Input pipeline is not topologically sorted. '
             f'node {node.node_info.id} has upstream_node {upstream_node}, but '
-            f'{upstream_node} does not appear before {node.node_info.id}')
-    visited.add(node.node_info.id)
+            f'{upstream_node} does not appear before {node.node_info.id}'
+        )
   # Downstream check
   visited.clear()
   for node in reversed(nodes):
+    visited.add(node.node_info.id)
+    # Do not add end nodes downstream nodes as they are outside the scope of
+    # the subpipeline.
+    if node.node_info.type.name == _END_NODE_TYPE:
+      continue
     for downstream_node in node.downstream_nodes:
       if downstream_node not in visited:
         raise ValueError(
             'Input pipeline is not topologically sorted. '
             f'node {node.node_info.id} has downstream_node {downstream_node}, '
-            f'but {downstream_node} does not appear after {node.node_info.id}')
-    visited.add(node.node_info.id)
+            f'but {downstream_node} does not appear after {node.node_info.id}'
+        )
 
 
 def make_ordered_node_map(
@@ -337,6 +446,13 @@ def _traverse(
       if current_node_id in result:
         continue
       result.add(current_node_id)
+      # Do not add the upstream nodes of begin nodes or the downstream nodes of
+      # end nodes as they are outside the scope of the subpipeline.
+      if node_map[current_node_id].node_info.type.name in (
+          _BEGIN_NODE_TYPE,
+          _END_NODE_TYPE,
+      ):
+        continue
       if direction == _Direction.UPSTREAM:
         stack.extend(node_map[current_node_id].upstream_nodes)
       elif direction == _Direction.DOWNSTREAM:
@@ -452,8 +568,10 @@ def _get_validated_new_run_id(pipeline: pipeline_pb2.Pipeline,
   return str(inferred_new_run_id or new_run_id)
 
 
-def _should_attempt_to_reuse_artifact(
-    execution_options: pipeline_pb2.NodeExecutionOptions):
+def should_attempt_to_reuse_artifact(
+    execution_options: pipeline_pb2.NodeExecutionOptions,
+):
+  """Returns whether to attempt to reuse artifacts for a node."""
   return execution_options.HasField('skip') and (
       execution_options.skip.reuse_artifacts or
       execution_options.skip.reuse_artifacts_mode == _REUSE_ARTIFACT_OPTIONAL or
@@ -469,9 +587,8 @@ def _reuse_artifact_required(
 
 def _reuse_pipeline_run_artifacts(
     metadata_handle: metadata.Metadata,
-    marked_pipeline: pipeline_pb2.Pipeline,
-    base_run_id: Optional[str] = None,
-    new_run_id: Optional[str] = None,
+    executor: concurrent.futures.ThreadPoolExecutor,
+    opts: _ReuseRunArtifactOpts,
 ):
   """Reuses the output Artifacts from a previous pipeline run.
 
@@ -484,15 +601,11 @@ def _reuse_pipeline_run_artifacts(
 
   Args:
     metadata_handle: A handler to access MLMD store.
-    marked_pipeline: The output of mark_pipeline function.
-    base_run_id: The pipeline_run_id where the output artifacts were produced.
-      Defaults to the latest previous pipeline run to use as base_run_id.
-    new_run_id: The pipeline_run_id to associate those output artifacts with.
-      This function will always attempt to infer the new run id from
-      `full_pipeline`'s IR. If not found, it would use the provided
-      `new_run_id`. If found, and `new_run_id` is provided, it would verify that
-      it is the same as the inferred run id, and raise an error if they are not
-      the same.
+    executor: A ThreadPoolExecutor so that concurrent rpcs can be sent.
+      _reuse_pipeline_run_artifacts must be called from within the executor
+      context.
+    opts: _ReuseRunARtifactOpts containing the information to reuse artifacts
+      for a given run.
 
   Raises:
     ValueError: If `marked_pipeline` does not contain a pipeline run id, and
@@ -500,49 +613,53 @@ def _reuse_pipeline_run_artifacts(
     ValueError: If `marked_pipeline` does contain a pipeline run id, and
       `new_run_id` is provided, but they are not the same.
   """
-  validated_new_run_id = _get_validated_new_run_id(marked_pipeline, new_run_id)
+  validated_new_run_id = _get_validated_new_run_id(
+      opts.marked_pipeline, opts.new_run_id
+  )
   artifact_recycler = _ArtifactRecycler(
       metadata_handle,
-      pipeline_name=marked_pipeline.pipeline_info.id,
+      pipeline_name=opts.marked_pipeline.pipeline_info.id,
       new_run_id=validated_new_run_id,
-      base_run_id=base_run_id,
+      base_run_id=opts.base_run_id,
+      is_subpipeline=opts.is_subpipeline_run,
+      new_parent_pipeline_run_ids=opts.new_parent_pipeline_run_ids,
+      parent_pipeline_ids=opts.parent_pipeline_ids,
   )
 
   reuse_nodes = [
       node
-      for node in node_proto_view.get_view_for_all_in(marked_pipeline)
-      if _should_attempt_to_reuse_artifact(node.execution_options)
+      for node in node_proto_view.get_view_for_all_in(opts.marked_pipeline)
+      if should_attempt_to_reuse_artifact(node.execution_options)
   ]
   logging.info(
       'Reusing nodes: %s', [n.node_info.id for n in reuse_nodes]
   )
-  with concurrent.futures.ThreadPoolExecutor() as executor:
-    futures = {}
-    for node in reuse_nodes:
-      node_id = node.node_info.id
-      futures[node_id] = (
-          node,
-          executor.submit(
-              artifact_recycler.reuse_node_outputs,
-              node=node
-          ),
-      )
 
-    for node_id, (node, future) in futures.items():
-      try:
-        future.result()
-      except Exception as err:  # pylint: disable=broad-except
-        if _reuse_artifact_required(node.execution_options):
-          # Raise error only if failed to reuse artifacts required.
-          raise
-        err_str = str(err)
-        if 'No previous successful exe' in err_str or 'node context' in err_str:
-          # This is mostly due to no previous execution of the node, so the
-          # error is safe to suppress.
-          logging.info(err_str)
-        else:
-          logging.warning('Failed to reuse artifacts for node %s. Due to %s',
-                          node_id, err_str)
+  # Must already be within the `executor` context.
+  futures = {}
+  for node in reuse_nodes:
+    node_id = node.node_info.id
+    futures[node_id] = (
+        node,
+        executor.submit(artifact_recycler.reuse_node_outputs, node=node),
+    )
+
+  for node_id, (node, future) in futures.items():
+    try:
+      future.result()
+    except Exception as err:  # pylint: disable=broad-except
+      if _reuse_artifact_required(node.execution_options):
+        # Raise error only if failed to reuse artifacts required.
+        raise
+      err_str = str(err)
+      if 'No previous successful exe' in err_str or 'node context' in err_str:
+        # This is mostly due to no previous execution of the node, so the
+        # error is safe to suppress.
+        logging.info(err_str)
+      else:
+        logging.warning(
+            'Failed to reuse artifacts for node %s. Due to %s', node_id, err_str
+        )
   artifact_recycler.put_parent_context()
 
 
@@ -560,6 +677,9 @@ class _ArtifactRecycler:
       pipeline_name: str,
       new_run_id: str,
       base_run_id: Optional[str] = None,
+      is_subpipeline: bool = False,
+      new_parent_pipeline_run_ids: Sequence[str] = (),
+      parent_pipeline_ids: Sequence[str] = (),
   ):
     self._mlmd = metadata_handle
     self._pipeline_name: Final[str] = pipeline_name
@@ -579,6 +699,47 @@ class _ArtifactRecycler:
             parent_contexts=[self._pipeline_context],
         )
     )
+    self._new_parent_pipeline_runs_contexts: Final[
+        list[metadata_store_pb2.Context]
+    ] = [
+        context_lib.register_context_if_not_exists(
+            self._mlmd,
+            context_type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
+            context_name=parent_run_id,
+            parent_contexts=[self._pipeline_context],
+        )
+        for parent_run_id in new_parent_pipeline_run_ids
+    ]
+
+    self._parent_pipeline_contexts: Final[list[metadata_store_pb2.Context]] = [
+        context_lib.register_context_if_not_exists(
+            self._mlmd,
+            context_type_name=constants.PIPELINE_CONTEXT_TYPE_NAME,
+            context_name=parent_pipeline_name,
+        )
+        for parent_pipeline_name in parent_pipeline_ids
+    ]
+
+    if is_subpipeline:
+      pipeline_run_context = self._mlmd.store.get_context_by_type_and_name(
+          type_name=constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
+          context_name=base_run_id,
+      )
+      if pipeline_run_context is None:
+        raise LookupError(f'pipeline_run_id {base_run_id} not found in MLMD.')
+      subpipeline_executions = self._mlmd.store.get_executions_by_context(
+          context_id=pipeline_run_context.id
+      )
+      # For now, assume that we want to only re-use the first subpipeline
+      # execution. This should be safe since partial run on subpipeline in a
+      # ForEach is not supported.
+      # TODO: b/323912217 - chose a specific execution.
+      base_run_id = f'{base_run_id}_{subpipeline_executions[0].id}'
+      logging.info(
+          'Using subpipeline artifact recycling for %s. Base run id: %s',
+          self._pipeline_name,
+          base_run_id,
+      )
 
     self._base_run_context: Final[metadata_store_pb2.Context] = (
         self._get_base_pipeline_run_context(base_run_id)
@@ -716,11 +877,15 @@ class _ArtifactRecycler:
 
     # Check if there are any previous attempts to cache and publish.
     node_context = self._get_node_context(node)
-    cached_execution_contexts = [
-        self._pipeline_context,
-        node_context,
-        self._new_pipeline_run_context,
-    ]
+    cached_execution_contexts = (
+        [
+            self._pipeline_context,
+            node_context,
+            self._new_pipeline_run_context,
+        ]
+        + self._new_parent_pipeline_runs_contexts
+        + self._parent_pipeline_contexts
+    )
     prev_cache_executions = (
         execution_lib.get_executions_associated_with_all_contexts(
             self._mlmd, contexts=[node_context, self._new_pipeline_run_context]

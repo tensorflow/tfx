@@ -13,6 +13,7 @@
 # limitations under the License.
 """Pipeline-level operations."""
 
+import collections
 import contextlib
 import copy
 import dataclasses
@@ -181,6 +182,50 @@ def initiate_pipeline_start(
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT, message=str(e)
       )
+    else:
+      # Find all subpipelines in the parent pipeline.
+      to_process = collections.deque([])
+      for node in pipeline.nodes:
+        if node.WhichOneof(
+            'node'
+        ) == 'sub_pipeline' and partial_run_utils.should_attempt_to_reuse_artifact(
+            node.sub_pipeline.nodes[0].pipeline_node.execution_options
+        ):
+          to_process.append(node.sub_pipeline)
+      subpipelines = []
+      while to_process:
+        subpipeline = to_process.popleft()
+        subpipelines.append(subpipeline)
+        to_process.extend(
+            node.sub_pipeline
+            for node in subpipeline.nodes
+            if node.WhichOneof('node') == 'sub_pipeline'
+        )
+      logging.info(
+          'Found subpipelines: %s', [s.pipeline_info.id for s in subpipelines]
+      )
+      # Add a new pipeline run for every subpipeline in the partial run.
+      for subpipeline in subpipelines:
+        reused_subpipeline_view = _load_reused_pipeline_view(
+            mlmd_handle, subpipeline, partial_run_option.snapshot_settings
+        )
+        # TODO: b/323912217 - Support putting multiple subpipeline executions
+        # into MLMD to handle the ForEach case.
+        with pstate.PipelineState.new(
+            mlmd_handle,
+            subpipeline,
+            pipeline_run_metadata,
+            reused_subpipeline_view,
+        ) as subpipeline_state:
+          # TODO: b/320535460 - The new pipeline run should not be stopped if
+          # there are still nodes to run in it.
+          logging.info('Subpipeline execution cached for partial run.')
+          subpipeline_state.initiate_stop(
+              status_lib.Status(
+                  code=status_lib.Code.OK,
+                  message='Subpipeline execution cached for partial run.',
+              )
+          )
   if pipeline.runtime_spec.HasField('snapshot_settings'):
     try:
       base_run_id = (
