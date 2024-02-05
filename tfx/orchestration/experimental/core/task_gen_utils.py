@@ -436,16 +436,18 @@ def get_num_of_failures_from_failed_execution(
   return len(failed_executions)
 
 
-def get_oldest_active_execution(
-    executions: Iterable[metadata_store_pb2.Execution]
+def get_next_active_execution_to_run(
+    executions: Sequence[metadata_store_pb2.Execution],
 ) -> Optional[metadata_store_pb2.Execution]:
-  """Returns the oldest active execution or `None` if no active executions exist.
+  """Returns next active execution to run or `None` if no active executions exist.
+
+  The active execution with lowest index will be returned.
 
   Args:
     executions: A list of executions
 
   Returns:
-    Execution if the oldest active execution exist or `None` if not exist.
+    An active execution or `None` if there is no active execution.
   """
   active_executions = [
       e for e in executions if execution_lib.is_execution_active(e)
@@ -453,25 +455,11 @@ def get_oldest_active_execution(
   if not active_executions:
     return None
 
-  # TODO(b/291772909): Simpliy the sort logic after orchestrator will only see
-  # active executions with _EXTERNAL_EXECUTION_INDEX.
-  if all(
-      [
-          e.custom_properties.get(_EXTERNAL_EXECUTION_INDEX)
-          for e in active_executions
-      ]
-  ):
-    sorted_active_executions = sorted(
-        active_executions,
-        key=lambda e: (  # pylint: disable=g-long-lambda
-            e.create_time_since_epoch,
-            e.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value,
-        ),
-    )
-  else:
-    sorted_active_executions = sorted(
-        active_executions, key=lambda e: e.create_time_since_epoch
-    )
+  # Sorts active executions by index.
+  sorted_active_executions = sorted(
+      active_executions,
+      key=lambda e: e.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value,
+  )
   return sorted_active_executions[0]
 
 

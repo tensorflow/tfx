@@ -231,13 +231,13 @@ class _Generator:
         node,
         additional_filters=['last_known_state IN (NEW, RUNNING)'],
     )
-    oldest_active_execution = task_gen_utils.get_oldest_active_execution(
-        active_executions
+    next_active_execution_to_run = (
+        task_gen_utils.get_next_active_execution_to_run(active_executions)
     )
-    if oldest_active_execution:
+    if next_active_execution_to_run:
       if backfill_token:
         if (
-            oldest_active_execution.custom_properties[
+            next_active_execution_to_run.custom_properties[
                 constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
             ].string_value
             != backfill_token
@@ -251,7 +251,7 @@ class _Generator:
               ),
               node.node_info.id,
               backfill_token,
-              oldest_active_execution,
+              next_active_execution_to_run,
           )
           result.append(
               task_lib.UpdateNodeStateTask(
@@ -263,7 +263,7 @@ class _Generator:
                           f'Node {node.node_info.id} has active executions that'
                           f' are not for backfill token {backfill_token}.'
                           ' Oldest active execution was'
-                          f' {oldest_active_execution}'
+                          f' {next_active_execution_to_run}'
                       ),
                   ),
                   backfill_token='',
@@ -273,9 +273,11 @@ class _Generator:
 
       with mlmd_state.mlmd_execution_atomic_op(
           mlmd_handle=self._mlmd_handle,
-          execution_id=oldest_active_execution.id,
+          execution_id=next_active_execution_to_run.id,
           on_commit=event_observer.make_notify_execution_state_change_fn(
-              node_uid)) as execution:
+              node_uid
+          ),
+      ) as execution:
         execution.last_known_state = metadata_store_pb2.Execution.RUNNING
       result.append(
           task_lib.UpdateNodeStateTask(
@@ -285,9 +287,13 @@ class _Generator:
           )
       )
       result.append(
-          task_gen_utils.generate_task_from_execution(self._mlmd_handle,
-                                                      self._pipeline, node,
-                                                      oldest_active_execution))
+          task_gen_utils.generate_task_from_execution(
+              self._mlmd_handle,
+              self._pipeline,
+              node,
+              next_active_execution_to_run,
+          )
+      )
       return result
 
     with self._pipeline_state:
