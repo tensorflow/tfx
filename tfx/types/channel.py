@@ -662,6 +662,20 @@ class PipelineInputChannel(BaseChannel):
       raise ValueError('Pipeline is not available.')
     return {self._pipeline.id}
 
+  # no_trigger only makes semantic sense on ASYNC pipeline, however all
+  # consumers of a PipelineInputs channel must be a SYNC pipeline, so we ban it.
+  def no_trigger(self):
+    raise NotImplementedError(
+        'no_trigger is not implemented for PipelineInputChannel.'
+    )
+
+  # trigger_by_property only makes semantic sense on ASYNC pipeline, however all
+  # consumers of a PipelineInputs channel must be a SYNC pipeline, so we ban it.
+  def trigger_by_property(self, *property_keys: str):
+    raise NotImplementedError(
+        'trigger_by_property is not implemented for PipelineInputChannel.'
+    )
+
 
 class ExternalPipelineChannel(BaseChannel):
   """Channel subtype that is used to get artifacts from external MLMD db."""
