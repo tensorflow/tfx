@@ -62,7 +62,7 @@ def make_pipeline_sdk_required_install_packages():
       ),
       'packaging>=22',
       'portpicker>=1.3.1,<2',
-      'protobuf>=3.20.3,<5',
+      'protobuf>=4,<5',
       'docker>=4.1,<5',
       'google-apitools>=0.5,<1',
       'google-api-python-client>=1.8,<2',
