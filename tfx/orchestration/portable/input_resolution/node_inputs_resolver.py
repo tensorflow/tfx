@@ -153,6 +153,7 @@ result can easily be deduced from this intermediate data.
 import collections
 from typing import Dict, Iterable, List, Mapping, Sequence, Tuple, TypeVar
 
+from absl import logging
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import metadata
@@ -175,7 +176,15 @@ _DataType = pipeline_pb2.InputGraph.DataType
 def _filter_live(
     artifacts: Sequence[types.Artifact]) -> List[types.Artifact]:
   """Filters live artifacts regarding ArtifactGovernance."""
-  return [a for a in artifacts if not governance_utils.is_expired(a)]
+  expired_artifacts = [
+      a.id for a in artifacts if governance_utils.is_expired(a)
+  ]
+  if expired_artifacts:
+    logging.info('The following artifacts are expired : %s',
+                 expired_artifacts)
+    return [a for a in artifacts if a.id not in expired_artifacts]
+
+  return list(artifacts)
 
 
 def _check_cycle(
