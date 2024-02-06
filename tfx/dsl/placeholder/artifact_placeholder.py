@@ -19,6 +19,7 @@ from typing import Any, Optional
 
 from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
+from tfx.types import artifact
 
 _types = placeholder_base.types
 
@@ -90,11 +91,12 @@ class ArtifactPlaceholder(placeholder_base.Placeholder):
       key: str,
       is_input: bool,
       index: Optional[int] = None,
+      expected_type: Optional[_types.Artifact] = None,
   ):
     """Initializes the class. Consider this private."""
     # This should be tfx.types.Artifact, but it can't be due to a circular
     # dependency. See placeholder_base.py for details. TODO(b/191610358).
-    super().__init__(expected_type=None)
+    super().__init__(expected_type=expected_type)
     assert index is None or isinstance(index, int)
     self._key = key
     self._is_input = is_input
@@ -129,8 +131,34 @@ class ArtifactPlaceholder(placeholder_base.Placeholder):
     assert self._index is None
     return ArtifactPlaceholder(self._key, self._is_input, index)
 
+  def __repr__(self) -> str:
+    return ''.join([
+        f'ph.{"input" if self._is_input else "output"}',
+        f'({self.key})' if self._key else '',
+        f'[{self.index}]' if self._key and self._index else '',
+    ])
+
   def property(self, key: str) -> _PropertyOperator:
-    return _PropertyOperator(self, key)
+    expected_type = None
+    if self.expected_type and issubclass(self.expected_type, artifact.Artifact):
+      if self.expected_type.PROPERTIES is not None:
+        if key not in self.expected_type.PROPERTIES:
+          raise KeyError(
+              f'{self!r}: {self.expected_type.__name__} does not have property'
+              f' {key}. Valid properties:'
+              f' {list(self.expected_type.PROPERTIES.keys())}'
+          )
+        prop_def = self.expected_type.PROPERTIES[key]
+        match prop_def.type:
+          case artifact.PropertyType.INT:
+            expected_type = int
+          case artifact.PropertyType.STRING:
+            expected_type = str
+          case artifact.PropertyType.BOOLEAN:
+            expected_type = bool
+          case artifact.PropertyType.FLOAT:
+            expected_type = float
+    return _PropertyOperator(self, key, expected_type=expected_type)
 
   def custom_property(self, key: str) -> _PropertyOperator:
     return _PropertyOperator(self, key, is_custom_property=True)
@@ -205,8 +233,11 @@ class _PropertyOperator(placeholder_base.UnaryPlaceholderOperator):
       value: placeholder_base.Placeholder,
       key: str,
       is_custom_property: bool = False,
+      expected_type: Any = None,
   ):
-    super().__init__(value, expected_type=placeholder_base.ValueType)
+    super().__init__(
+        value, expected_type=expected_type or placeholder_base.ValueType
+    )
     self._key = key
     self._is_custom_property = is_custom_property
 

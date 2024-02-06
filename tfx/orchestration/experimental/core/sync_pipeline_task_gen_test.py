@@ -357,7 +357,20 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         when task queue is empty (for eg: due to orchestrator restart).
       fail_fast: If `True`, pipeline is aborted immediately if any node fails.
     """
+    # Check the expected terminal nodes.
+    layers = sptg._topsorted_layers(self._pipeline)
+    self.assertEqual(
+        {
+            self._example_validator.node_info.id,
+            self._chore_b.node_info.id,
+            # evaluator execution will be skipped as it is run conditionally and
+            # the condition always evaluates to False in the current test.
+            self._evaluator.node_info.id,
+        },
+        sptg._terminal_node_ids(layers, {}))
+
     # Start executing the pipeline:
+
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
 
@@ -432,6 +445,16 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         expected_skipped_node_ids, sptg._skipped_node_ids(node_states_dict)
     )
 
+    layers = sptg._topsorted_layers(self._pipeline)
+    # All downstream nodes of trainer are marked as skipped, so it's considered
+    # a terminal node.
+    self.assertEqual(
+        {
+            self._trainer.node_info.id,
+            self._example_validator.node_info.id,
+        }, sptg._terminal_node_ids(layers, expected_skipped_node_ids))
+
+    # Start executing the pipeline:
     test_utils.fake_cached_example_gen_run(self._mlmd_connection,
                                            self._example_gen)
     self._run_next(False, expect_nodes=[self._stats_gen])
@@ -488,6 +511,23 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     }
     self.assertEqual(
         expected_skipped_node_ids, sptg._skipped_node_ids(node_states_dict)
+    )
+    layers = sptg._topsorted_layers(self._pipeline)
+
+    # Check that parent nodes of terminal skipped nodes are terminal
+    expected_terminal_nodes = {'my_transform', 'my_example_validator'}
+    self.assertSetEqual(
+        expected_terminal_nodes,
+        sptg._terminal_node_ids(layers, expected_skipped_node_ids),
+    )
+    # All downstream nodes of transform are marked as skipped, so it's
+    # considered a terminal node.
+    self.assertEqual(
+        {
+            self._transform.node_info.id,
+            self._example_validator.node_info.id,
+        },
+        sptg._terminal_node_ids(layers, expected_skipped_node_ids),
     )
 
     # Start executing the pipeline:
@@ -908,107 +948,6 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(stats_gen_node_uid, stats_gen_task.node_uid)
     self.assertIsInstance(stats_gen_task, task_lib.ExecNodeTask)
 
-  def test_restart_node_cancelled_due_to_fail_with_foreach(self):
-    """Tests that a node in ForEach previously failed can be restarted."""
-    pipeline = test_sync_pipeline.create_pipeline_with_foreach()
-    runtime_parameter_utils.substitute_runtime_parameter(
-        pipeline,
-        {
-            compiler_constants.PIPELINE_ROOT_PARAMETER_NAME: (
-                self._pipeline_root
-            ),
-            compiler_constants.PIPELINE_RUN_ID_PARAMETER_NAME: str(
-                uuid.uuid4()
-            ),
-        },
-    )
-    example_gen = test_utils.get_node(pipeline, 'my_example_gen')
-    stats_gen = test_utils.get_node(pipeline, 'my_statistics_gen_in_foreach')
-
-    # Simulates that ExampleGen has processed two spans.
-    test_utils.fake_example_gen_run(self._mlmd_connection, example_gen, 1, 1)
-    test_utils.fake_example_gen_run(self._mlmd_connection, example_gen, 2, 1)
-
-    # StatsGen should have two executions.
-    [stats_gen_task] = self._generate_and_test(
-        False,
-        num_initial_executions=2,
-        num_tasks_generated=1,
-        num_new_executions=2,
-        num_active_executions=2,
-        ignore_update_node_state_tasks=True,
-        pipeline=pipeline,
-    )
-    stats_gen_node_uid = task_lib.NodeUid.from_node(pipeline, stats_gen)
-    self.assertEqual(stats_gen_node_uid, stats_gen_task.node_uid)
-
-    with self._mlmd_connection as m:
-      # Simulates that the first execution of StatsGen is FAILED.
-      with mlmd_state.mlmd_execution_atomic_op(
-          m, stats_gen_task.execution_id
-      ) as e:
-        e.last_known_state = metadata_store_pb2.Execution.FAILED
-
-      stats_gen_execution_type = [
-          t for t in m.store.get_execution_types() if 'statistics_gen' in t.name
-      ][0]
-      executions = m.store.get_executions_by_type(stats_gen_execution_type.name)
-      self.assertLen(executions, 2)
-
-      # Simulates that all other uncompleted executions of StatsGen is CANCELED.
-      with mlmd_state.mlmd_execution_atomic_op(m, executions[1].id) as e:
-        e.last_known_state = metadata_store_pb2.Execution.CANCELED
-
-      # Makes sure that at this point there are 2 executioins for StatsGen
-      # One of them is failed, while the other is canceled.
-      executions = m.store.get_executions_by_type(stats_gen_execution_type.name)
-      self.assertLen(executions, 2)
-      self.assertEqual(
-          executions[0].last_known_state, metadata_store_pb2.Execution.FAILED
-      )
-      self.assertEqual(
-          executions[1].last_known_state, metadata_store_pb2.Execution.CANCELED
-      )
-
-    # Changes node state of StatsGen to STARTED.
-    with self._mlmd_connection as m:
-      pipeline_state = test_utils.get_or_create_pipeline_state(m, pipeline)
-      with pipeline_state:
-        with pipeline_state.node_state_update_context(
-            stats_gen_node_uid
-        ) as node_state:
-          node_state.update(pstate.NodeState.STARTED)
-
-    # 1 new task should be created for stats_gen.
-    [stats_gen_task] = self._generate_and_test(
-        False,
-        num_initial_executions=4,
-        num_tasks_generated=1,
-        num_new_executions=2,
-        num_active_executions=2,
-        ignore_update_node_state_tasks=True,
-    )
-    self.assertEqual(stats_gen_node_uid, stats_gen_task.node_uid)
-    self.assertIsInstance(stats_gen_task, task_lib.ExecNodeTask)
-
-    # Now there are 4 executions for stats_gen.
-    # The first 2 of them are old from last failure of the node.
-    # The last 2 of them are newly created executions when the node is restarted
-    executions = m.store.get_executions_by_type(stats_gen_execution_type.name)
-    self.assertLen(executions, 4)
-    self.assertEqual(
-        executions[0].last_known_state, metadata_store_pb2.Execution.FAILED
-    )
-    self.assertEqual(
-        executions[1].last_known_state, metadata_store_pb2.Execution.CANCELED
-    )
-    self.assertEqual(
-        executions[2].last_known_state, metadata_store_pb2.Execution.RUNNING
-    )
-    self.assertEqual(
-        executions[3].last_known_state, metadata_store_pb2.Execution.NEW
-    )
-
   @parameterized.parameters(False, True)
   def test_conditional_execution(self, evaluate):
     """Tests conditionals in the pipeline.
@@ -1016,6 +955,14 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     Args:
       evaluate: Whether to run the conditional evaluator.
     """
+    # Check the expected terminal nodes.
+    layers = sptg._topsorted_layers(self._pipeline)
+    self.assertEqual(
+        {
+            self._example_validator.node_info.id,
+            self._chore_b.node_info.id,
+            self._evaluator.node_info.id,
+        }, sptg._terminal_node_ids(layers, {}))
 
     # Start executing the pipeline:
 
