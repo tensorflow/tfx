@@ -269,7 +269,7 @@ class _Generator:
                   backfill_token='',
               )
           )
-          return []
+          return result
 
       with mlmd_state.mlmd_execution_atomic_op(
           mlmd_handle=self._mlmd_handle,
