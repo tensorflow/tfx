@@ -116,8 +116,6 @@ class NodeState(json_utils.Jsonable):
     status: Status of the node in state STOPPING or STOPPED.
   """
 
-  # TODO(b/322026340): Remove STARTING NodeState altogether.
-  STARTING = 'starting'  # Pending work before state can change to STARTED.
   STARTED = 'started'  # Node is ready for execution.
   STOPPING = 'stopping'  # Pending work before state can change to STOPPED.
   STOPPED = 'stopped'  # Node execution is stopped.
@@ -135,10 +133,19 @@ class NodeState(json_utils.Jsonable):
   state: str = attr.ib(
       default=STARTED,
       validator=attr.validators.in_([
-          STARTING, STARTED, STOPPING, STOPPED, RUNNING, COMPLETE, SKIPPED,
-          SKIPPED_PARTIAL_RUN, PAUSING, PAUSED, FAILED
+          STARTED,
+          STOPPING,
+          STOPPED,
+          RUNNING,
+          COMPLETE,
+          SKIPPED,
+          SKIPPED_PARTIAL_RUN,
+          PAUSING,
+          PAUSED,
+          FAILED,
       ]),
-      on_setattr=attr.setters.validate)
+      on_setattr=attr.setters.validate,
+  )
   backfill_token: str = ''
   status_code: Optional[int] = None
   status_msg: str = ''
@@ -183,12 +190,11 @@ class NodeState(json_utils.Jsonable):
 
   def is_stoppable(self) -> bool:
     """Returns True if the node can be stopped."""
-    return self.state in set(
-        [self.STARTING, self.STARTED, self.RUNNING, self.PAUSED])
+    return self.state in set([self.STARTED, self.RUNNING, self.PAUSED])
 
   def is_pausable(self) -> bool:
     """Returns True if the node can be stopped."""
-    return self.state in set([self.STARTING, self.STARTED, self.RUNNING])
+    return self.state in set([self.STARTED, self.RUNNING])
 
   def is_backfillable(self) -> bool:
     """Returns True if the node can be backfilled."""
@@ -211,14 +217,20 @@ class NodeState(json_utils.Jsonable):
       status_code_value = run_state_pb2.RunState.StatusCodeValue(
           value=self.status_code)
     return run_state_pb2.RunState(
-        state=_NODE_STATE_TO_RUN_STATE_MAP[self.state],
+        state=_NODE_STATE_TO_RUN_STATE_MAP.get(
+            self.state, run_state_pb2.RunState.UNKNOWN
+        ),
         status_code=status_code_value,
         status_msg=self.status_msg,
-        update_time=int(self.last_updated_time * 1000))
+        update_time=int(self.last_updated_time * 1000),
+    )
 
   def to_run_state_history(self) -> List[run_state_pb2.RunState]:
     run_state_history = []
     for state in self.state_history:
+      # STARTING has been deprecated but may still be present in state_history.
+      if state.state == 'starting':
+        continue
       run_state_history.append(
           NodeState(
               state=state.state,
@@ -365,7 +377,6 @@ def is_node_state_running(state: str) -> bool:
 
 
 _NODE_STATE_TO_RUN_STATE_MAP = {
-    NodeState.STARTING: run_state_pb2.RunState.UNKNOWN,
     NodeState.STARTED: run_state_pb2.RunState.READY,
     NodeState.STOPPING: run_state_pb2.RunState.UNKNOWN,
     NodeState.STOPPED: run_state_pb2.RunState.STOPPED,

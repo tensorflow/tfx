@@ -252,8 +252,8 @@ class _Generator:
     # otherwise run our exec_node tasks,
     if not runnable_node_ids:
       logging.info(
-          'No more runnable nodes in pipeline, finalizing. Succesful nodes: %s,'
-          ' failed nodes: %s, unrunnable nodes: %s.',
+          'No more runnable nodes in pipeline, finalizing. Successful nodes:'
+          ' %s, failed nodes: %s, unrunnable nodes: %s.',
           successful_node_ids,
           failed_nodes_dict.keys(),
           unrunnable_node_ids,
@@ -422,9 +422,7 @@ class _Generator:
 
     # Restarts canceled node, if the node state is STARTED.
     logging.info('canceled executions: %s', canceled_executions)
-    if canceled_executions and (
-        node_state.state == pstate.NodeState.STARTED
-    ):
+    if canceled_executions and node_state.state == pstate.NodeState.STARTED:
       logging.info('restarting node %s', node.node_info.id)
       new_executions = (
           task_gen_utils.register_executions_from_existing_executions(

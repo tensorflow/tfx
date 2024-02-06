@@ -1884,13 +1884,6 @@ def _orchestrate_active_pipeline(
         ) as node_state:
           node_state.update(task.state, task.status, task.backfill_token)
 
-    # If there are still nodes in state STARTING, change them to STARTED.
-    for node in pstate.get_all_nodes(pipeline_state.pipeline):
-      node_uid = task_lib.NodeUid.from_node(pipeline_state.pipeline, node)
-      with pipeline_state.node_state_update_context(node_uid) as node_state:
-        if node_state.state == pstate.NodeState.STARTING:
-          node_state.update(pstate.NodeState.STARTED)
-
     tasks = [
         t for t in tasks if not isinstance(t, task_lib.UpdateNodeStateTask)
     ]
