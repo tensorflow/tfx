@@ -537,11 +537,17 @@ def _set_node_execution_options(
   if options_py:
     assert isinstance(options_py, execution_options_utils.NodeExecutionOptions)
     if (
-        options_py.trigger_strategy or options_py.success_optional
-    ) and not pipeline_ctx.is_sync_mode:
+        options_py.trigger_strategy
+        not in (
+            pipeline_pb2.NodeExecutionOptions.TriggerStrategy.TRIGGER_STRATEGY_UNSPECIFIED,
+            pipeline_pb2.NodeExecutionOptions.TriggerStrategy.ALL_UPSTREAM_NODES_SUCCEEDED,
+        )
+        or options_py.success_optional
+        or options_py.lifetime_start
+    ) and pipeline_ctx.is_async_mode:
       raise ValueError(
-          "Node level triggering strategies and success "
-          "optionality are only used in SYNC pipelines."
+          "Node level triggering strategies, success optionality, and resource"
+          " lifetimes are not allowed in ASYNC pipelines."
       )
     if (
         options_py.trigger_strategy
