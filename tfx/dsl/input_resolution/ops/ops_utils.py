@@ -13,6 +13,7 @@
 # limitations under the License.
 """Shared utility functions for ResolverOps."""
 
+import functools
 from typing import Dict, List, Optional, Sequence, Set
 
 from tfx import types
@@ -133,8 +134,8 @@ def validate_input_dict(
 
 def get_valid_artifacts(
     artifacts: Sequence[types.Artifact],
-    property_types: Dict[str,
-                         types.artifact.PropertyType]) -> List[types.Artifact]:
+    property_types: Dict[str, types.artifact.PropertyType],
+) -> List[types.Artifact]:
   """Returns artifacts that have the required property names and types."""
 
   valid_artifacts = []
@@ -143,8 +144,10 @@ def get_valid_artifacts(
       continue
 
     for property_name, property_type in property_types.items():
-      if (property_name not in artifact.PROPERTIES or
-          artifact.PROPERTIES[property_name].type != property_type):
+      if (
+          property_name not in artifact.PROPERTIES
+          or artifact.PROPERTIES[property_name].type != property_type
+      ):
         break
     else:
       valid_artifacts.append(artifact)
@@ -159,6 +162,7 @@ def filter_artifacts_by_span(
     skip_last_n: int = 0,
     keep_all_versions: bool = False,
     min_span: Optional[int] = None,
+    version_sort_keys: Sequence[str] = (),
 ) -> List[types.Artifact]:
   """Filters artifacts by their "span" PROPERTY.
 
@@ -176,6 +180,10 @@ def filter_artifacts_by_span(
     keep_all_versions: If true, all versions of the n spans are returned. Else,
       only the latest version is returned.
     min_span: Minimum span before which no span will be considered.
+    version_sort_keys: List of string artifact attributes to sort or filter the
+      versions witin the spans, applied in order of specification. Nested keys
+      can use '.' separator for e.g. 'mlmd_artifact.create_time_since_epoch'.
+      The default key is version number, create time and id in the same order.
 
   Returns:
     The filtered artifacts.
@@ -205,20 +213,32 @@ def filter_artifacts_by_span(
   for artifact in artifacts:
     artifacts_by_span.setdefault(artifact.span, []).append(artifact)
 
+  if version_sort_keys:
+    # Recursively resolve nested key attributes like
+    # 'mlmd_artifact.create_time_since_epoch' to the form
+    # getattr(getattr(artifact, 'mlmd_artifact'), 'create_time_since_epoch')
+    key = lambda a: (
+        tuple(
+            functools.reduce(getattr, k.split('.'), a)
+            for k in version_sort_keys
+        )
+    )
+  else:
+    # span_descending only applies to sorting by span, but version should
+    # always be sorted in ascending order. By default, latest version is defined
+    # as the largest version and ties are broken by create_time and  id.
+    key = lambda a: (  # pylint: disable=g-long-lambda
+        a.version,
+        a.mlmd_artifact.create_time_since_epoch,
+        a.id,
+    )
+
   result = []
-  version_time_and_id = lambda a: (  # pylint: disable=g-long-lambda
-      a.version,
-      a.mlmd_artifact.create_time_since_epoch,
-      a.id,
-  )
   for span in sorted(spans):
     if keep_all_versions:
-      # span_descending only applies to sorting by span, but version should
-      # always be sorted in ascending order.
-      result.extend(sorted(artifacts_by_span[span], key=version_time_and_id))
+      result.extend(sorted(artifacts_by_span[span], key=key))
     else:
-      # Latest version is defined as the largest version. Ties broken by id.
-      result.append(max(artifacts_by_span[span], key=version_time_and_id))
+      result.append(max(artifacts_by_span[span], key=key))
 
   return result
 
