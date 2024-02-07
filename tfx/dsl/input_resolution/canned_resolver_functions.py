@@ -181,7 +181,6 @@ def rolling_range(
     keep_all_versions: bool = False,
     exclude_span_numbers: Sequence[int] = (),
     min_spans: Optional[int] = None,
-    version_sort_keys: Sequence[str] = (),
 ):
   """Returns artifacts with spans in a rolling range.
 
@@ -201,9 +200,7 @@ def rolling_range(
   sorted_spans[:-skip_num_recent_spans][-num_spans:]
 
   This resolver function is based on the span-version semantics, which only
-  considers the latest version of each span. The version semantics can be
-  optionally changed by providing a list of artifact attributes that can be used
-  to sort versions within a particular span. If you want to keep all versions,
+  considers the latest version of each span. If you want to keep all versions,
   then set keep_all_versions=True. Input artifacts must have both "span" int
   property and "version" int property.
 
@@ -262,11 +259,6 @@ def rolling_range(
     exclude_span_numbers: The span numbers to exclude.
     min_spans: Minimum number of desired example spans in the range. If
       min_spans is None, it is set to num_spans.
-    version_sort_keys: List of string artifact attributes to sort or filter the
-      versions witin the spans, applied in order of specification. Nested keys
-      can use '.' separator for e.g. 'mlmd_artifact.create_time_since_epoch'. It
-      can be used to override the default behavior, which is sort by version
-      number and break ties by create time and id.
 
   Returns:
     Artifacts with spans in the rolling range.
@@ -277,7 +269,6 @@ def rolling_range(
       n=num_spans,
       skip_last_n=skip_num_recent_spans,
       keep_all_versions=keep_all_versions,
-      version_sort_keys=version_sort_keys,
   )
   if exclude_span_numbers:
     resolved_artifacts = ops.ExcludeSpans(
