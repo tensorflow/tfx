@@ -37,7 +37,7 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
   def setUp(self):
     super().setUp()
-
+    # some comment
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
