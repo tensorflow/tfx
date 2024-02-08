@@ -209,8 +209,9 @@ def make_extra_packages_flax():
   # Required for the experimental tfx/examples using Flax, e.g.,
   # tfx/examples/penguin.
   return [
-      'jax<1',
-      'jaxlib<1',
+      # TODO(b/324157691): Upgrade jax once we upgrade TF version.
+      'jax<0.4.24',
+      'jaxlib<0.4.24',
       'flax<1',
       'optax<1',
   ]
