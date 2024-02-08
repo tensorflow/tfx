@@ -690,11 +690,7 @@ class _ArtifactRecycler:
     )
 
     if node.execution_options.node_success_optional:
-      prev_successful_executions = [
-          e
-          for e in all_associated_executions
-          if not execution_lib.is_execution_active(e)
-      ]
+      prev_successful_executions = all_associated_executions
     else:
       prev_successful_executions = [
           e
