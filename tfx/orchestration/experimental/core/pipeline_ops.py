@@ -66,6 +66,9 @@ _PIPELINE_OPS_LOCK = threading.RLock()
 # cache misses).
 _IN_MEMORY_PREDICATE_FN_DEFAULT_POLLING_INTERVAL_SECS = 1.0
 
+# A special message indicating that a node is stopped by the command Update.
+_STOPPED_BY_UPDATE = 'Stopped by Update command'
+
 
 def _pipeline_op(lock: bool = True):
   """Decorator factory for pipeline ops."""
@@ -1634,7 +1637,7 @@ def _orchestrate_update_initiated_pipeline(
     pipeline_state: pstate.PipelineState,
 ) -> None:
   """Orchestrates an update-initiated pipeline."""
-  nodes_to_pause = []
+  nodes_to_stop = []
   with pipeline_state:
     update_options = pipeline_state.get_update_options()
     reload_node_ids = (
@@ -1654,18 +1657,20 @@ def _orchestrate_update_initiated_pipeline(
         continue
       node_uid = task_lib.NodeUid.from_node(pipeline, node)
       with pipeline_state.node_state_update_context(node_uid) as node_state:
-        if node_state.is_pausable():
+        if node_state.is_stoppable():
           node_state.update(
-              pstate.NodeState.PAUSING,
-              status_lib.Status(code=status_lib.Code.CANCELLED),
+              pstate.NodeState.STOPPING,
+              status_lib.Status(
+                  code=status_lib.Code.CANCELLED, message=_STOPPED_BY_UPDATE
+              ),
           )
-      if node_state.state == pstate.NodeState.PAUSING:
-        nodes_to_pause.append(node)
+      if node_state.state == pstate.NodeState.STOPPING:
+        nodes_to_stop.append(node)
 
-  # Issue cancellation for nodes_to_pause and gather the ones whose pausing is
+  # Issue cancellation for nodes_to_stop and gather the ones whose STOPPING is
   # complete.
-  paused_nodes = []
-  for node in nodes_to_pause:
+  stopped_nodes = []
+  for node in nodes_to_stop:
     if _cancel_node(
         mlmd_handle,
         task_queue,
@@ -1673,21 +1678,21 @@ def _orchestrate_update_initiated_pipeline(
         pipeline_state,
         node,
     ):
-      paused_nodes.append(node)
+      stopped_nodes.append(node)
 
-  # Change the state of paused nodes to PAUSED.
+  # Change the state of stopped nodes to STOPPED.
   with pipeline_state:
-    for node in paused_nodes:
+    for node in stopped_nodes:
       node_uid = task_lib.NodeUid.from_node(pipeline, node)
       with pipeline_state.node_state_update_context(node_uid) as node_state:
-        node_state.update(pstate.NodeState.PAUSED, node_state.status)
+        node_state.update(pstate.NodeState.STOPPED, node_state.status)
 
-  # If all the pausable nodes have been paused, we can update the node state to
-  # STARTED.
-  all_paused = set(n.node_info.id for n in nodes_to_pause) == set(
-      n.node_info.id for n in paused_nodes
+  # If all the stoppable nodes have been stopped, we can update the node state
+  # to STARTED.
+  all_stopped = set(n.node_info.id for n in nodes_to_stop) == set(
+      n.node_info.id for n in stopped_nodes
   )
-  if all_paused:
+  if all_stopped:
     with pipeline_state:
       pipeline = pipeline_state.pipeline
       for node in pstate.get_all_nodes(pipeline):
@@ -1701,7 +1706,10 @@ def _orchestrate_update_initiated_pipeline(
           continue
         node_uid = task_lib.NodeUid.from_node(pipeline, node)
         with pipeline_state.node_state_update_context(node_uid) as node_state:
-          if node_state.state == pstate.NodeState.PAUSED:
+          if (
+              node_state.state == pstate.NodeState.STOPPED
+              and node_state.status_msg == _STOPPED_BY_UPDATE
+          ):
             node_state.update(pstate.NodeState.STARTED)
 
       pipeline_state.apply_pipeline_update()

@@ -126,6 +126,8 @@ class NodeState(json_utils.Jsonable):
   SKIPPED = 'skipped'
   # Node execution skipped due to partial run.
   SKIPPED_PARTIAL_RUN = 'skipped_partial_run'
+  # b/323371181 Remove pausing and paused when we are sure that no active
+  # pipeline has node state of pausing or paused.
   PAUSING = 'pausing'  # Pending work before state can change to PAUSED.
   PAUSED = 'paused'  # Node was paused and may be resumed in the future.
   FAILED = 'failed'  # Node execution failed due to errors.
@@ -191,10 +193,6 @@ class NodeState(json_utils.Jsonable):
   def is_stoppable(self) -> bool:
     """Returns True if the node can be stopped."""
     return self.state in set([self.STARTED, self.RUNNING, self.PAUSED])
-
-  def is_pausable(self) -> bool:
-    """Returns True if the node can be stopped."""
-    return self.state in set([self.STARTED, self.RUNNING])
 
   def is_backfillable(self) -> bool:
     """Returns True if the node can be backfilled."""
