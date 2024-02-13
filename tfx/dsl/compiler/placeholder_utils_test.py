@@ -265,7 +265,7 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         """
         operator {
           join_path_op {
-            args {
+            expressions {
               operator {
                 proto_op {
                   expression {
@@ -277,12 +277,12 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
                 }
               }
             }
-            args {
+            expressions {
               value {
                 string_value: "foo"
               }
             }
-            args {
+            expressions {
               operator {
                 proto_op {
                   expression {
@@ -1259,7 +1259,7 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         """
         operator {
           join_path_op {
-            args {
+            expressions {
               operator {
                 proto_op {
                   expression {
@@ -1271,12 +1271,12 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
                 }
               }
             }
-            args {
+            expressions {
               value {
                 string_value: "foo"
               }
             }
-            args {
+            expressions {
               operator {
                 proto_op {
                   expression {
@@ -1598,6 +1598,7 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_utils.get_nary_operator_names(),
         {
             "concat_op",
+            "join_path_op",
             "list_concat_op",
         },
     )

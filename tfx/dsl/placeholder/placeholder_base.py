@@ -597,7 +597,7 @@ class _JoinPathOperator(Placeholder):
     result = placeholder_pb2.PlaceholderExpression()
     op = result.operator.join_path_op
     for arg in self._args:
-      op.args.append(encode_value_like(arg, component_spec))
+      op.expressions.append(encode_value_like(arg, component_spec))
     return result
 
 

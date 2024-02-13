@@ -98,7 +98,7 @@ message ConcatOperator {
 // JoinPathOperator calls os.path.join(*args).
 // JoinPathOperator: List[str] -> str
 message JoinPathOperator {
-  repeated PlaceholderExpression args = 1;
+  repeated PlaceholderExpression expressions = 1;
 }
 
 // IndexOperator extracts an element at the index if the PlaceholderExpression

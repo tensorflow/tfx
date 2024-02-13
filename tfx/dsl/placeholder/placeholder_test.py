@@ -931,7 +931,7 @@ class PlaceholderTest(tf.test.TestCase):
         """
         operator {
           join_path_op {
-            args {
+            expressions {
               operator {
                 artifact_uri_op {
                   expression {
@@ -949,7 +949,7 @@ class PlaceholderTest(tf.test.TestCase):
                 }
               }
             }
-            args {
+            expressions {
               value {
                 string_value: "foo.txt"
               }

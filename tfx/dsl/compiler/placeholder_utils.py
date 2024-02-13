@@ -310,7 +310,7 @@ class _ExpressionResolver:
       self, op: placeholder_pb2.JoinPathOperator
   ) -> str:
     """Evaluates the join path operator."""
-    return os.path.join(*[self.resolve(arg) for arg in op.args])
+    return os.path.join(*[self.resolve(arg) for arg in op.expressions])
 
   @_register(placeholder_pb2.IndexOperator)
   def _resolve_index_operator(self, op: placeholder_pb2.IndexOperator) -> Any:
@@ -707,7 +707,9 @@ def debug_str(expression: placeholder_pb2.PlaceholderExpression) -> str:
       return f"({expression_str})"
 
     if operator_name == "join_path_op":
-      sub_expression_str = ", ".join(debug_str(e) for e in operator_pb.args)
+      sub_expression_str = ", ".join(
+          debug_str(e) for e in operator_pb.expressions
+      )
       return f"join_path({sub_expression_str})"
 
     if operator_name == "index_op":
