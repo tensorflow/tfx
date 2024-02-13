@@ -917,14 +917,10 @@ def resume_pipeline(
 
 def _recursively_revive_pipelines(
     mlmd_handle: metadata.Metadata,
-    pipeline_id: str,
-    pipeline_run_id: str,
-    was_running_subpipeline: bool = False,
+    pipeline_state: pstate.PipelineState,
 ) -> pstate.PipelineState:
   """Recursively revives all pipelines, resuing executions if present."""
-  with pstate.PipelineState.load_run(
-      mlmd_handle, pipeline_id=pipeline_id, run_id=pipeline_run_id
-  ) as pipeline_state:
+  with pipeline_state:
     nodes = pstate.get_all_nodes(pipeline_state.pipeline)
     node_by_name = {node.node_info.id: node for node in nodes}
     # TODO(b/272015049): Add support for manager start nodes.
@@ -959,95 +955,105 @@ def _recursively_revive_pipelines(
         # So we need to determine the execution id for the pipeline so it can
         # be revived. If there's no execution found then assume it hasn't been
         # run so it can be marked as STARTED.
+        executions = task_gen_utils.get_executions(mlmd_handle, node)
         latest_execution_set = task_gen_utils.get_latest_executions_set(
-            task_gen_utils.get_executions(mlmd_handle, node)
+            executions
         )
         logging.info(
             'Executions for subpipeline %s: %s',
             node.node_info.id,
-            latest_execution_set,
+            [
+                f'{e.id}: state:'
+                f' {metadata_store_pb2.Execution.State.Name(e.last_known_state)}'
+                for e in latest_execution_set
+            ],
         )
         if not latest_execution_set:
           logging.info(
-              'No executions found for subpipeline %s, marking as STARTED',
+              'No executions found for subpipeline %s, marking as STARTED.',
               node.node_info.id,
           )
-        # TODO(b/247709394): After b/247709394, get_latest_executions_set may
-        # return multiple executions, and we will need to find out which
-        # execution(s) to revive.
-        elif len(latest_execution_set) != 1:
-          raise status_lib.StatusNotOkError(
-              code=status_lib.Code.FAILED_PRECONDITION,
-              message=(
-                  'More than one execution found for subpipeline'
-                  f' {node.node_info.id}, will not try to revive.'
-              ),
-          )
-        elif not execution_lib.is_execution_successful(
-            latest_execution := latest_execution_set[0]
+          new_node_state = pstate.NodeState.STARTED
+        elif all(
+            execution_lib.is_execution_successful(execution)
+            for execution in latest_execution_set
         ):
           logging.info(
-              'Found execution %s in state %s for subpipeline %s, will revive.',
-              latest_execution.id,
-              metadata_store_pb2.Execution.State.Name(
-                  latest_execution.last_known_state
-              ),
-              node.node_info.id,
-          )
-          # Mark the execution and node state as RUNNING so we re-use the
-          # existing execution during task generation.
-          new_node_state = pstate.NodeState.RUNNING
-          with mlmd_state.mlmd_execution_atomic_op(
-              mlmd_handle, latest_execution.id
-          ) as execution:
-            logging.info(
-                'Execution for subpipeline %s: %s',
-                node.node_info.id,
-                execution,
-            )
-            execution.last_known_state = metadata_store_pb2.Execution.State.NEW
-            if execution.custom_properties.get(
-                constants.EXECUTION_ERROR_CODE_KEY
-            ):
-              del execution.custom_properties[
-                  constants.EXECUTION_ERROR_CODE_KEY
-              ]
-            if execution.custom_properties.get(
-                constants.EXECUTION_ERROR_MSG_KEY
-            ):
-              del execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]
-          new_run_id = f'{subpipeline_base_run_id}_{latest_execution.id}'
-          _recursively_revive_pipelines(
-              mlmd_handle,
-              node.node_info.id,
-              new_run_id,
-              was_running_subpipeline=True,
-          )
-        else:
-          logging.info(
-              'The latest execution %s was SUCCESSFUL for %s so will mark'
-              ' pipeline-as-node as SUCCESS and move on.',
-              latest_execution.id,
+              'All executions in subpipeline %s were SUCCESSFUL, will mark as'
+              ' COMPLETE.',
               node.node_info.id,
           )
           new_node_state = pstate.NodeState.COMPLETE
-
+        else:
+          # Mark all subpipeline executions as NEW, and the node state as
+          # RUNNING.
+          new_node_state = pstate.NodeState.RUNNING
+          non_successful_executions = [
+              e
+              for e in latest_execution_set
+              if not execution_lib.is_execution_successful(e)
+          ]
+          for execution in non_successful_executions:
+            # TODO: b/324962451 - Consolidate all subpipeline run naming into a
+            # utility function.
+            new_run_id = f'{subpipeline_base_run_id}_{execution.id}'
+            # Potentially, a subpipeline execution can be CANCELLED but have
+            # never started, for instance if it's in the second iteration of
+            # ForEach. In this case we *do not* want to revive recursively, as
+            # there is no pipeline run started.
+            try:
+              subpipeline_state = pstate.PipelineState.load_run(
+                  mlmd_handle, pipeline_id=node.node_info.id, run_id=new_run_id
+              )
+            except status_lib.StatusNotOkError:
+              logging.info(
+                  'Failed to load run %s of pipeline %s. Assuming there is no'
+                  ' existing run.',
+                  new_run_id,
+                  node.node_info.id,
+              )
+            else:
+              _recursively_revive_pipelines(
+                  mlmd_handle,
+                  subpipeline_state,
+              )
+            # Mark the execution as NEW and the node state as RUNNING so we can
+            # re-use the existing execution during task generation.
+            with mlmd_state.mlmd_execution_atomic_op(
+                mlmd_handle, execution.id
+            ) as execution:
+              logging.info(
+                  'Execution for subpipeline %s: %s. Changing from state %s'
+                  ' to %s.',
+                  node.node_info.id,
+                  execution.id,
+                  metadata_store_pb2.Execution.State.Name(
+                      execution.last_known_state
+                  ),
+                  metadata_store_pb2.Execution.State.Name(
+                      metadata_store_pb2.Execution.State.NEW
+                  ),
+              )
+              execution.last_known_state = (
+                  metadata_store_pb2.Execution.State.NEW
+              )
+              if execution.custom_properties.get(
+                  constants.EXECUTION_ERROR_CODE_KEY
+              ):
+                del execution.custom_properties[
+                    constants.EXECUTION_ERROR_CODE_KEY
+                ]
+              if execution.custom_properties.get(
+                  constants.EXECUTION_ERROR_MSG_KEY
+              ):
+                del execution.custom_properties[
+                    constants.EXECUTION_ERROR_MSG_KEY
+                ]
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         node_state.update(new_node_state)
 
     pipeline_state.initiate_resume()
-    # If this call is for a subpipeline that was running then set it's state
-    # to RUNNING otherwise it will need to be ran, and it should be NEW.
-    new_pipeline_state = (
-        metadata_store_pb2.Execution.State.RUNNING
-        if was_running_subpipeline
-        else metadata_store_pb2.Execution.State.NEW
-    )
-    logging.info(
-        'new_pipeline_state: %s for pipeline: %s',
-        metadata_store_pb2.Execution.State.Name(new_pipeline_state),
-        pipeline_id,
-    )
+    new_pipeline_state = metadata_store_pb2.Execution.State.NEW
     pipeline_state.set_pipeline_execution_state(new_pipeline_state)
     return pipeline_state
 
@@ -1123,10 +1129,10 @@ def revive_pipeline_run(
       pipeline_state.apply_pipeline_update()
       logging.info('Applied update')
 
-  pipeline_state = _recursively_revive_pipelines(
-      mlmd_handle, pipeline_id, pipeline_run_id
+  revived_pipeline_state = _recursively_revive_pipelines(
+      mlmd_handle, pipeline_state
   )
-  return pipeline_state
+  return revived_pipeline_state
 
 
 def _wait_for_predicate(
