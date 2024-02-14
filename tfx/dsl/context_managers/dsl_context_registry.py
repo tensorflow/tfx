@@ -115,6 +115,22 @@ class DslContextRegistry:
     for context in self._active_contexts:
       self._nodes_by_context[context].append(node)
 
+  def remove_nodes(self, node_ids: Iterable[str]) -> None:
+    """Removes nodes from the registry.
+
+    This is only intended to be used for invasive pipeline modification during
+    pipeline lowering and compilation. Do not use it directly.
+
+    Args:
+      node_ids: Node IDs to remove.
+    """
+    self._check_mutable()
+    self._all_nodes = [n for n in self._all_nodes if n.id not in node_ids]
+    for context in self._active_contexts:
+      self._nodes_by_context[context] = [
+          n for n in self._nodes_by_context[context] if n.id not in node_ids
+      ]
+
   def replace_node(self, node_from: _BaseNode, node_to: _BaseNode) -> None:
     """Replaces one node instance to another in a registry."""
     self._check_mutable()
