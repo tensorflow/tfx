@@ -222,6 +222,17 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
+  def testMakeProtoPlaceholder_SubmessageDict(self):
+    actual = resolve(_ExecutionInvocation(pipeline_info=dict(id='foo-id')))
+    self.assertProtoEquals(
+        """
+        pipeline_info {
+          id: "foo-id"
+        }
+        """,
+        parse_text_proto(actual),
+    )
+
   def testMakeProtoPlaceholder_SubmessageMakeProtoPlaceholder(self):
     actual = resolve(
         _ExecutionInvocation(

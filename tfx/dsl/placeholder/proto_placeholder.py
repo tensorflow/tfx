@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import Generic, Iterator, Optional, TypeVar, Union
+from typing import Dict, Generic, Iterator, Mapping, Optional, TypeVar, Union
 
 from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
@@ -24,6 +24,7 @@ from tfx.utils import proto_utils
 from google.protobuf import any_pb2
 from google.protobuf import descriptor as descriptor_lib
 from google.protobuf import message
+from google.protobuf import message_factory
 
 _types = placeholder_base.types
 _T = TypeVar('_T', bound=message.Message)
@@ -97,7 +98,8 @@ def make_proto(
 # These are for the inner values of a field (whether repeated or not):
 _InputValues = Union[  # The values users may supply to us.
     placeholder_base.ValueLikeType,
-    message.Message,  # Users may pass in submessage fields as a plain proto.
+    message.Message,  # Users may pass in submessage fields as a plain proto ...
+    Dict[str, '_InputValues'],  # ... or as a Python dict.
     None,  # Users may pass None to optional fields.
 ]
 # These are for the outer values of a field (so repeated is a list):
@@ -235,6 +237,15 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
     if descriptor.type == descriptor_lib.FieldDescriptor.TYPE_MESSAGE:
       if isinstance(value, message.Message):
         value = MakeProtoPlaceholder(value)
+      elif isinstance(value, Mapping):
+        value = MakeProtoPlaceholder(
+            # TODO(b/323991103):
+            # Switch to using the message_factory.GetMessageClass() function.
+            # See http://yaqs/3936732114019418112 for more context.
+            message_factory.MessageFactory().GetPrototype(
+                descriptor.message_type
+            )(**value)
+        )
       elif (
           not isinstance(value, placeholder_base.Placeholder)
           or not value._is_maybe_proto_valued()  # pylint: disable=protected-access
@@ -275,7 +286,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
       raise ValueError(
           f'Expected {expected_type} for {field_name}, got {value!r}.'
       )
-    return value
+    return value  # pytype: disable=bad-return-type
 
   def traverse(self) -> Iterator[placeholder_base.Placeholder]:
     """Yields all placeholders under and including this one."""
