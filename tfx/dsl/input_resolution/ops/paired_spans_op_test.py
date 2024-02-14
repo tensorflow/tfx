@@ -39,6 +39,10 @@ class PairedSpansOpTest(tf.test.TestCase):
         ops.PairedSpans, args=args, kwargs=kwargs
     )
 
+  def assertSpanVersion(self, artifact, span, version):
+    self.assertEqual(artifact.span, span)
+    self.assertEqual(artifact.version, version)
+
   def assertPairedVersion(self, artifact_dict, span, version) -> None:
     artifacts = [art[0] for art in artifact_dict.values()]
     self.assertTrue(all(x.span == span for x in artifacts))
@@ -60,8 +64,22 @@ class PairedSpansOpTest(tf.test.TestCase):
             'b': _get_artifacts([(0, 0), (0, 1)]),
         },
         keep_all_versions=False,
+        match_version=True,
     )
     self.assertEmpty(actual)
+
+  def test_mismatched_span_latest_version_allowed(self):
+    actual = self._paired_spans(
+        {
+            'a': _get_artifacts([(0, 0)]),
+            'b': _get_artifacts([(0, 0), (0, 1)]),
+        },
+        keep_all_versions=False,
+        match_version=False,
+    )
+    self.assertLen(actual, 1)
+    self.assertSpanVersion(actual[0]['a'][0], 0, 0)
+    self.assertSpanVersion(actual[0]['b'][0], 0, 1)  # Picks latest.
 
   def test_no_common_keys(self):
     actual = self._paired_spans(
@@ -79,6 +97,7 @@ class PairedSpansOpTest(tf.test.TestCase):
             'a': _get_artifacts([(0, 0)]),
             'b': _get_artifacts([(0, 0), (0, 1)]),
         },
+        match_version=True,
         keep_all_versions=True,
     )
     self.assertLen(actual, 1)
@@ -107,6 +126,7 @@ class PairedSpansOpTest(tf.test.TestCase):
             ]),
             'c': _get_artifacts([(0, 0), (0, 1), (1, 1)]),
         },
+        match_version=True,
         keep_all_versions=True,
     )
     self.assertLen(actual, 3)
