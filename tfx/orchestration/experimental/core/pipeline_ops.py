@@ -1845,8 +1845,13 @@ def _orchestrate_active_pipeline(
         ),
     )
 
+  logging.info('Generating tasks for pipeline %s', pipeline_state.pipeline_uid)
   tasks = generator.generate(pipeline_state)
-  logging.info('Generated tasks: %s', [t.task_id for t in tasks])
+  logging.info(
+      'Generated tasks for pipeline %s: %s',
+      pipeline_state.pipeline_uid,
+      [t.task_id for t in tasks],
+  )
 
   # If nodes reach a terminal state, call stop_node_services for pure/mixed
   # service nodes, and cancel active executions.

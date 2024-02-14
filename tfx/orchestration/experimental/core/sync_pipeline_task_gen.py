@@ -193,7 +193,18 @@ class _Generator:
             unrunnable_node_ids
         ):
           continue
+        logging.info(
+            '[SyncPipelineTaskGenerator._generate_tasks_for_node] generating'
+            ' tasks for node %s',
+            node.node_info.id,
+        )
         tasks = self._generate_tasks_for_node(node)
+        logging.info(
+            '[SyncPipelineTaskGenerator._generate_tasks_for_node] generated'
+            ' tasks for node %s: %s',
+            node.node_info.id,
+            [t.task_id for t in tasks],
+        )
         for task in tasks:
           if isinstance(task, task_lib.UpdateNodeStateTask):
             if pstate.is_node_state_success(
@@ -275,11 +286,6 @@ class _Generator:
   def _generate_tasks_for_node(
       self, node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates list of tasks for the given node."""
-    logging.info(
-        '[SyncPipelineTaskGenerator._generate_tasks_for_node] invoked for'
-        ' node %s',
-        node.node_info.id,
-    )
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
     node_id = node.node_info.id
     result = []
