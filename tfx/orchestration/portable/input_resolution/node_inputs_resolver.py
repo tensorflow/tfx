@@ -378,22 +378,20 @@ def _resolve_input_graph_ref(
     if graph_output_type == _DataType.ARTIFACT_LIST:
       # result == [Artifact()]
       resolved[input_key].append((partition, _filter_live(result)))
-      _log_resolved(input_key, resolved[input_key])
     elif graph_output_type == _DataType.ARTIFACT_MULTIMAP:
       # result == {'x': [Artifact()], 'y': [Artifact()]}
       for each_input_key, input_graph_ref in same_graph_inputs.items():
         resolved[each_input_key].append(
-            (partition, _filter_live(result[input_graph_ref.key])))
-        _log_resolved(input_key, resolved[input_key])
+            (partition, _filter_live(result[input_graph_ref.key]))
+        )
     elif graph_output_type == _DataType.ARTIFACT_MULTIMAP_LIST:
       # result == [{'x': [Artifact()]}, {'x': [Artifact()]}]
       for index, each_result in enumerate(result):
         new_partition = partition | {graph_id: index}
         for each_input_key, input_graph_ref in same_graph_inputs.items():
           resolved[each_input_key].append(
-              (new_partition, _filter_live(each_result[input_graph_ref.key])))
-      for each_input_key in same_graph_inputs:
-        _log_resolved(input_key, resolved[each_input_key])
+              (new_partition, _filter_live(each_result[input_graph_ref.key]))
+          )
 
 
 def _resolve_mixed_inputs(
