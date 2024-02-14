@@ -19,14 +19,11 @@ from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import merge_utils
-from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
-
-_RESOLVED_AT_RUNTIME = outputs_utils.RESOLVED_AT_RUNTIME
 
 
 def publish_cached_executions(
