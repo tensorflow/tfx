@@ -174,8 +174,7 @@ class PipelineTest(test_case_utils.TfxTest):
         enable_cache=True,
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=['--runner=PortableRunner'],
-        additional_pipeline_args={})
-
+    )
     self.assertCountEqual(my_pipeline.components[0].downstream_nodes,
                           [component_b])
     self.assertCountEqual(my_pipeline.components[1].upstream_nodes,
@@ -205,13 +204,17 @@ class PipelineTest(test_case_utils.TfxTest):
         pipeline_name='a',
         pipeline_root='b',
         components=[
-            component_d, component_c, component_a, component_b, component_e,
-            component_a
+            component_d,
+            component_c,
+            component_a,
+            component_b,
+            component_e,
+            component_a,
         ],
         enable_cache=True,
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=['--runner=PortableRunner'],
-        additional_pipeline_args={})
+    )
     self.assertCountEqual(
         my_pipeline.components,
         [component_a, component_b, component_c, component_d, component_e])
@@ -376,7 +379,6 @@ class PipelineTest(test_case_utils.TfxTest):
     p = pipeline.Pipeline(
         pipeline_name='a',
         pipeline_root='b',
-        log_root='c',
         components=[
             _make_fake_component_instance(
                 'component_a', _OutputTypeA, {}, {},
@@ -395,7 +397,6 @@ class PipelineTest(test_case_utils.TfxTest):
     p = pipeline.Pipeline(
         pipeline_name='a',
         pipeline_root='b',
-        log_root='c',
         beam_pipeline_args=[expected_args[0]],
         metadata_connection_config=self._metadata_connection_config)
     p.components = [

@@ -53,10 +53,6 @@ def _create_pipeline():
       pipeline_root=pipeline_root,
       metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
       components=components[:2],  # Run two components only to reduce overhead.
-      log_root='/var/tmp/tfx/logs',
-      additional_pipeline_args={
-          'WORKFLOW_ID': pipeline_name,
-      },
   )
 
 

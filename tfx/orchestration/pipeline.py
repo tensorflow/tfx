@@ -21,7 +21,7 @@ import warnings
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.context_managers import dsl_context_registry
+from tfx.dsl.context_managers import dsl_context_registry as dsl_context_registry_lib
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import data_types
@@ -261,7 +261,9 @@ class Pipeline(base_node.BaseNode):
       execution_mode: ExecutionMode = ExecutionMode.SYNC,
       inputs: Optional[PipelineInputs] = None,
       outputs: Optional[Dict[str, channel.OutputChannel]] = None,
-      **kwargs,
+      dsl_context_registry: Optional[
+          dsl_context_registry_lib.DslContextRegistry
+      ] = None,
   ):
     """Initialize pipeline.
 
@@ -281,7 +283,9 @@ class Pipeline(base_node.BaseNode):
       execution_mode: The execution mode of the pipeline, can be SYNC or ASYNC.
       inputs: Optional inputs of a pipeline.
       outputs: Optional outputs of a pipeline.
-      **kwargs: Additional kwargs forwarded as pipeline args.
+      dsl_context_registry: DslContextRegistry to use for this pipeline, if not
+        provided then the current context (potentially a new DslContext) will be
+        used.
     """
     if len(pipeline_name) > _MAX_PIPELINE_NAME_LENGTH:
       raise ValueError(
@@ -291,9 +295,9 @@ class Pipeline(base_node.BaseNode):
 
     # Registry extraction should come before super().__init__() which put self
     # to the active DslContextRegistry.
-    self._dsl_context_registry = kwargs.pop('dsl_context_registry', None)
+    self._dsl_context_registry = dsl_context_registry
     if self._dsl_context_registry is None:
-      parent_reg = dsl_context_registry.get()
+      parent_reg = dsl_context_registry_lib.get()
       self._dsl_context_registry = parent_reg.extract_for_pipeline(components)
 
     # Initialize pipeline as a node.
@@ -327,8 +331,8 @@ class Pipeline(base_node.BaseNode):
 
     self.platform_config = platform_config
 
-    self.additional_pipeline_args = kwargs.pop(  # pylint: disable=g-missing-from-attributes
-        'additional_pipeline_args', {})
+    # TODO: b/324635891 - Remove all references and clean this up.
+    self.additional_pipeline_args = {}
 
     # TODO(b/216581002): Use self._dsl_context_registry to obtain components.
     self._components = []
@@ -346,7 +350,7 @@ class Pipeline(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
-  def dsl_context_registry(self) -> dsl_context_registry.DslContextRegistry:  # pylint: disable=g-missing-from-attributes
+  def dsl_context_registry(self) -> dsl_context_registry_lib.DslContextRegistry:  # pylint: disable=g-missing-from-attributes
     if self._dsl_context_registry is None:
       raise RuntimeError('DslContextRegistry is not persisted yet. Run '
                          'pipeline.finalize() first.')
@@ -435,7 +439,7 @@ class Pipeline(base_node.BaseNode):
 
 def enumerate_implicit_dependencies(
     components: Collection[base_node.BaseNode],
-    registry: dsl_context_registry.DslContextRegistry,
+    registry: dsl_context_registry_lib.DslContextRegistry,
     pipeline: Optional[Pipeline] = None,
 ) -> Iterator[Tuple[base_node.BaseNode, base_node.BaseNode]]:
   """Enumerate component dependencies arising from data deps between them.
