@@ -506,6 +506,7 @@ def _reuse_pipeline_run_artifacts(
       pipeline_name=marked_pipeline.pipeline_info.id,
       new_run_id=validated_new_run_id,
       base_run_id=base_run_id,
+      new_pipeline_run_ir=marked_pipeline,
   )
 
   reuse_nodes = [
@@ -559,6 +560,7 @@ class _ArtifactRecycler:
       metadata_handle: metadata.Metadata,
       pipeline_name: str,
       new_run_id: str,
+      new_pipeline_run_ir: pipeline_pb2.Pipeline,
       base_run_id: Optional[str] = None,
   ):
     self._mlmd = metadata_handle
@@ -589,6 +591,11 @@ class _ArtifactRecycler:
         for ctx in self._mlmd.store.get_contexts_by_type(
             constants.NODE_CONTEXT_TYPE_NAME
         )
+    }
+
+    self._nodes_by_id = {
+        node.node_info.id: node
+        for node in node_proto_view.get_view_for_all_in(new_pipeline_run_ir)
     }
 
   def _get_base_pipeline_run_context(
@@ -689,17 +696,31 @@ class _ArtifactRecycler:
         )
     )
 
-    if node.execution_options.node_success_optional:
+    cache_only_succesful_executions = (
+        not node.execution_options.node_success_optional
+    )
+    for ds in node.downstream_nodes:
+      downstream = self._nodes_by_id[ds]
+      # If a downstream node is upstream optional then we should also cache this
+      # node's failed executions.
+      if downstream.execution_options.strategy in (
+          pipeline_pb2.NodeExecutionOptions.TriggerStrategy.ALL_UPSTREAM_NODES_COMPLETED,
+          pipeline_pb2.NodeExecutionOptions.TriggerStrategy.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+      ):
+        cache_only_succesful_executions = False
+        break
+
+    if cache_only_succesful_executions:
       prev_successful_executions = [
           e
           for e in all_associated_executions
-          if not execution_lib.is_execution_active(e)
+          if execution_lib.is_execution_successful(e)
       ]
     else:
       prev_successful_executions = [
           e
           for e in all_associated_executions
-          if execution_lib.is_execution_successful(e)
+          if not execution_lib.is_execution_active(e)
       ]
     if not prev_successful_executions:
       raise LookupError(
