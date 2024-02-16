@@ -437,18 +437,34 @@ def compile_node_inputs(
   """Compile NodeInputs from BaseNode input channels."""
   # Compile DSL node inputs.
   for input_key, channel in tfx_node.inputs.items():
-    if (compiler_utils.is_resolver(tfx_node) or
-        (isinstance(tfx_node, base_component.BaseComponent) and
-         tfx_node.spec.is_allow_empty_input(input_key))):
+    if compiler_utils.is_resolver(tfx_node):
       min_count = 0
+    elif isinstance(tfx_node, base_component.BaseComponent):
+      spec_param = tfx_node.spec.INPUTS[input_key]
+      if (
+          spec_param.allow_empty_explicitly_set
+          and channel.is_optional is not None
+          and (spec_param.allow_empty != channel.is_optional)
+      ):
+        raise ValueError(
+            f'Node {tfx_node.id} input channel {input_key} allow_empty is set'
+            f' to {spec_param.allow_empty} but the provided channel is'
+            f' {channel.is_optional}. If the component spec explicitly sets'
+            ' allow_empty, then the channel must match.'
+        )
+      elif spec_param.allow_empty or channel.is_optional:
+        min_count = 0
+      else:
+        min_count = 1
     else:
       min_count = 1
-      if isinstance(channel, channel_types.OutputChannel):
-        _validate_min_count(
-            input_key=input_key,
-            min_count=min_count,
-            channel=channel,
-            consumer_node=tfx_node)
+    if isinstance(channel, channel_types.OutputChannel):
+      _validate_min_count(
+          input_key=input_key,
+          min_count=min_count,
+          channel=channel,
+          consumer_node=tfx_node,
+      )
     _compile_input_spec(
         pipeline_ctx=context,
         tfx_node=tfx_node,

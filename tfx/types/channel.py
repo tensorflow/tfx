@@ -42,10 +42,12 @@ from tfx.types.artifact import Artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
+import typing_extensions
 
 from google.protobuf import json_format
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
+
 
 # Property type for artifacts, executions and contexts.
 Property = Union[int, float, str, message.Message]
@@ -113,6 +115,9 @@ class BaseChannel(abc.ABC, Generic[_AT]):
 
   Attributes:
     type: The artifact type class that the Channel takes.
+    is_optional: If this channel is optional (e.g. may trigger components at run
+      time if there are no artifacts in the channel). None if not explicetely
+      set.
   """
 
   def __init__(self, type: Type[_AT]):  # pylint: disable=redefined-builtin
@@ -123,6 +128,28 @@ class BaseChannel(abc.ABC, Generic[_AT]):
     self._artifact_type = type
     self._input_trigger = None
     self._original_channel = None
+    self._is_optional = None
+
+  @property
+  def is_optional(self) -> Optional[bool]:
+    """If this is an "optional" channel. Changes Pipeline *runtime* behavior."""
+    return self._is_optional
+
+  # TODO(kmonte): Update this to Self once we're on 3.11 everywhere
+  def as_optional(self) -> typing_extensions.Self:
+    """Creates an optional version of self.
+
+    By default component input channels are considered required, meaning
+    if the channel does not contain at least 1 artifact, the component
+    will be skipped. Making channel optional disables this requirement and
+    allows componenst to be executed with no artifacts from this channel.
+
+    Returns:
+      A copy of self which is optional.
+    """
+    new_channel = copy.copy(self)
+    new_channel._is_optional = True  # pylint: disable=protected-access
+    return new_channel
 
   @property
   def type(self) -> Type[_AT]:  # pylint: disable=redefined-builtin
