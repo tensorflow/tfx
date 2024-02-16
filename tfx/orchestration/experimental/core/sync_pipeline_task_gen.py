@@ -43,7 +43,6 @@ _LAZY_TRIGGER_STRATEGIES = frozenset({
 _UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES = frozenset({
     pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
     pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
-    pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS,
 })
 
 
@@ -653,10 +652,7 @@ class _Generator:
       unrunnable_node_ids: Set[str],
   ) -> bool:
     """Returns `True` if the node's Trigger Strategy is satisfied."""
-    if node.execution_options.strategy in (
-        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
-        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
-    ):
+    if node.execution_options.strategy in _UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES:
       node_trigger_strategy_satisfied = self._upstream_nodes_completed(
           node, successful_node_ids, failed_nodes_dict
       )

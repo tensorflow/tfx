@@ -1522,6 +1522,58 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(status_lib.Code.UNAVAILABLE, finalize_task.status.code)
     self.assertEqual('foobar error', finalize_task.status.message)
 
+  def test_trigger_strategy_lifetime_end_when_subgraph_cannot_progress_pipeline_fails_when_start_node_fails(
+      self,
+  ):
+    # This test is so that a pipeline will fail if:
+    # 1. There are no nodes using the lifetime (only start and end)
+    # 2. The start node fails.
+    # We only care about start -> start_b -> worker for this case, where
+    # worker.lifetime_start = start_b.
+    self._setup_for_resource_lifetime_pipeline()
+    self.worker.execution_options.resource_lifetime.lifetime_start = (
+        self.start_b.node_info.id
+    )
+
+    # clear out the rest of the nodes - we don't care about them.
+    self.end_b.execution_options.Clear()
+    self.end_a.execution_options.Clear()
+
+    test_utils.fake_example_gen_run(self._mlmd_connection, self.start_a, 1, 1)
+
+    [start_b_task] = self._generate_and_test(
+        False,
+        num_initial_executions=1,
+        num_tasks_generated=1,
+        num_new_executions=1,
+        num_active_executions=1,
+        ignore_update_node_state_tasks=True,
+    )
+    self.assertEqual(
+        task_lib.NodeUid.from_node(self._pipeline, self.start_b),
+        start_b_task.node_uid,
+    )
+    # Fail start_b execution
+    with self._mlmd_connection as m:
+      with mlmd_state.mlmd_execution_atomic_op(
+          m, start_b_task.execution_id
+      ) as start_b_exec:
+        # Fail stats-gen execution.
+        start_b_exec.last_known_state = metadata_store_pb2.Execution.FAILED
+        data_types_utils.set_metadata_value(
+            start_b_exec.custom_properties[constants.EXECUTION_ERROR_CODE_KEY],
+            status_lib.Code.UNAVAILABLE,
+        )
+        data_types_utils.set_metadata_value(
+            start_b_exec.custom_properties[constants.EXECUTION_ERROR_MSG_KEY],
+            'foobar error',
+        )
+
+    # Pipeline should fail due to start_b having failed.
+    [finalize_task] = self._generate(False, True)
+    self.assertEqual(status_lib.Code.UNAVAILABLE, finalize_task.status.code)
+    self.assertEqual('foobar error', finalize_task.status.message)
+
   def test_trigger_strategy_lifetime_end_with_start_node_not_upstream_of_failure(
       self,
   ):
