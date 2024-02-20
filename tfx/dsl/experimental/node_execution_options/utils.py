@@ -42,16 +42,15 @@ class NodeExecutionOptions:
   # new stateful working dir will be created for every new execution.
   reset_stateful_working_dir: bool = False
 
-  # This is an experimental feature to enable "end nodes" in a pipeline to
+  # This is a feature to enable "end nodes" in a pipeline to
   # support resource lifetimes. If this field is set then the node which this
   # NodeExecutionOptions belongs to will run during pipeline finalization if the
-  # "lifetime_start" has run succesfully.
+  # "lifetime_start" node has run succesfully.
   # Pipeline finalization happens when:
   # 1. All nodes in the pipeline completed, this is the "happy path".
   # 2. A user requests for the pipeline to stop
   # 3. A node fails in the pipeline and it cannot continue executing.
   # This should be the id of the node "starting" a lifetime.
-  # If you want to use this feature please contact kmonte@ first.
   lifetime_start: Optional[str] = None
 
   # TFX only, do not set manually.
