@@ -23,6 +23,8 @@ from tfx.dsl.component.experimental import json_compat
 from tfx.types import artifact
 from tfx.utils import deprecation_utils
 
+from google.protobuf import message
+
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
 
@@ -112,7 +114,11 @@ class _PrimitiveTypeGenericMeta(type):
 
   def __getitem__(
       cls: Type['_PrimitiveTypeGeneric'],
-      params: Type[Union[int, float, str, bool, List[Any], Dict[Any, Any]]],
+      params: Type[
+          Union[
+              int, float, str, bool, List[Any], Dict[Any, Any], message.Message
+          ],
+      ],
   ):
     """Metaclass method allowing indexing class (`_PrimitiveTypeGeneric[T]`)."""
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
@@ -123,7 +129,7 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
 
   def __init__(  # pylint: disable=invalid-name
       self,
-      artifact_type: Type[Union[int, float, str, bool]],
+      artifact_type: Type[Union[int, float, str, bool, message.Message]],
       _init_via_getitem=False,
   ):
     if not _init_via_getitem:
@@ -131,7 +137,7 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
       raise ValueError(
           (
               '%s should be instantiated via the syntax `%s[T]`, where T is '
-              '`int`, `float`, `str`, or `bool`.'
+              '`int`, `float`, `str`, `bool` or `proto2.message`.'
           )
           % (class_name, class_name)
       )
@@ -143,7 +149,7 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
     # Check that the given parameter is a primitive type.
     if (
         inspect.isclass(params)
-        and params in (int, float, str, bool)
+        and params in (int, float, str, bool, message.Message)
         or json_compat.is_json_compatible(params)
     ):
       return cls(params, _init_via_getitem=True)
@@ -151,9 +157,9 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
       class_name = cls.__name__
       raise ValueError(
           (
-              'Generic type `%s[T]` expects the single parameter T to be '
-              '`int`, `float`, `str`, `bool` or JSON-compatible types '
-              '(Dict[str, T], List[T]) (got %r instead).'
+              'Generic type `%s[T]` expects the single parameter T to be `int`,'
+              ' `float`, `str`, `bool`, `proto2.message` or JSON-compatible'
+              ' types (Dict[str, T], List[T]) (got %r instead).'
           )
           % (class_name, params)
       )

@@ -85,7 +85,6 @@ SCHEMA_FILE_KEY = 'schema_file'
 # Key for statistics_gen
 STATS_OPTIONS_JSON_KEY = 'stats_options_json'
 SHARDED_STATS_OUTPUT_KEY = 'sharded_stats_output'
-SAMPLE_RATE_BY_SPLIT_KEY = 'sample_rate_by_split'
 # Key for example_gen
 INPUT_BASE_KEY = 'input_base'
 INPUT_CONFIG_KEY = 'input_config'
@@ -107,9 +106,6 @@ MODEL_RUN_KEY = 'model_run'
 PREPROCESSING_FN_KEY = 'preprocessing_fn'
 STATS_OPTIONS_UPDATER_FN_KEY = 'stats_options_updater_fn'
 FORCE_TF_COMPAT_V1_KEY = 'force_tf_compat_v1'
-# TODO(tatp): Make save_options available in TFlex:
-# tfx/tflex/components/transform.py
-SAVE_OPTIONS_KEY = 'save_options'
 SPLITS_CONFIG_KEY = 'splits_config'
 ANALYZER_CACHE_KEY = 'analyzer_cache'
 TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'
@@ -368,8 +364,7 @@ class StatisticsGenSpec(ComponentSpec):
   PARAMETERS = {
       STATS_OPTIONS_JSON_KEY: ExecutionParameter(type=str, optional=True),
       EXCLUDE_SPLITS_KEY: ExecutionParameter(type=str, optional=True),
-      SHARDED_STATS_OUTPUT_KEY: ExecutionParameter(type=bool, optional=True),
-      SAMPLE_RATE_BY_SPLIT_KEY: ExecutionParameter(type=str, optional=True),
+      SHARDED_STATS_OUTPUT_KEY: ExecutionParameter(type=bool, optional=True)
   }
   INPUTS = {
       EXAMPLES_KEY:
