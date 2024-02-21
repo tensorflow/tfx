@@ -158,9 +158,8 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
-      # TODO(b/304892416): Migrate from KFP SDK v1 to v2.
-      'kfp>=1.8.14,<2',
-      'kfp-pipeline-spec>=0.1.10,<0.2',
+      'kfp>=2.6,<3',
+      'kfp-pipeline-spec>=0.3,<0.4',
       'mmh>=2.2,<3',
       'python-snappy>=0.5,<0.6',
       # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
