@@ -739,7 +739,14 @@ class PipelineState:
       than 1 active execution exists for given pipeline uid.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_uid.pipeline_id)
-    uids_and_states = cls._load_from_context(mlmd_handle, context, pipeline_uid)
+
+    if pipeline_uid.pipeline_run_id:
+      uids_and_states = cls._load_from_context(
+          mlmd_handle, context, pipeline_uid
+      )
+    else:
+      uids_and_states = cls._load_from_context(mlmd_handle, context)
+
     if not uids_and_states:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.NOT_FOUND,
