@@ -191,7 +191,7 @@ def initiate_pipeline_start(
       for node in pipeline.nodes:
         # Only add to processing queue if it's a subpipeline that we are going
         # to cache. For subpipelines, the begin node's (nodes[0]) execution
-        # options repersent the subpipeline's execution options.
+        # options represent the subpipeline's execution options.
         if node.WhichOneof(
             'node'
         ) == 'sub_pipeline' and partial_run_utils.should_attempt_to_reuse_artifact(
@@ -816,7 +816,9 @@ def _load_reused_pipeline_view(
         mlmd_handle=mlmd_handle,
         pipeline_id=pipeline_uid.pipeline_id,
         pipeline_run_id=base_run_id,
-        non_active_only=env.get_env().concurrent_pipeline_runs_enabled(),
+        non_active_only=env.get_env().concurrent_pipeline_runs_enabled(
+            pipeline
+        ),
     )
   except status_lib.StatusNotOkError as e:
     if e.code == status_lib.Code.NOT_FOUND:
@@ -893,7 +895,7 @@ def resume_pipeline(
     )
 
   if (
-      env.get_env().concurrent_pipeline_runs_enabled()
+      env.get_env().concurrent_pipeline_runs_enabled(pipeline)
       and not reuse_pipeline_uid.pipeline_run_id
   ):
     raise status_lib.StatusNotOkError(
@@ -1157,7 +1159,7 @@ def revive_pipeline_run(
           code=status_lib.Code.ALREADY_EXISTS,
           message='Cannot revive a live pipeline run.',
       )
-    if not env.get_env().concurrent_pipeline_runs_enabled() and (
+    if not env.get_env().concurrent_pipeline_runs_enabled(pipeline) and (
         all_active := pstate.PipelineState.load_all_active(mlmd_handle)
     ):
       raise status_lib.StatusNotOkError(

@@ -164,7 +164,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
       pipeline_id = pipeline.pipeline_info.id
-      pipeline_run_id = 'run1'
+      run_id = pipeline.runtime_spec.pipeline_run_id.field_value.string_value
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
       node_example_gen = pipeline.nodes.add().pipeline_node
       node_example_gen.node_info.id = 'ExampleGen'
@@ -176,7 +176,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Error if attempt to resume the pipeline when there is no previous run.
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
         pipeline_ops.resume_pipeline(
-            m, pipeline, pipeline_id=pipeline_id, run_id=pipeline_run_id
+            m, pipeline, pipeline_id=pipeline_id, run_id=run_id
         )
       self.assertEqual(
           status_lib.Code.NOT_FOUND, exception_context.exception.code
@@ -186,11 +186,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_state_run1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
 
       # Error if attempt to resume the pipeline when the previous one is active.
-      run_id = 'run1'
-      pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
+      pipeline.runtime_spec.pipeline_run_id.field_value.string_value = run_id
       with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
         pipeline_ops.resume_pipeline(
-            m, pipeline, pipeline_id=pipeline_id, run_id=pipeline_run_id
+            m, pipeline, pipeline_id=pipeline_id, run_id=run_id
         )
       self.assertEqual(
           status_lib.Code.ALREADY_EXISTS, exception_context.exception.code
@@ -216,8 +215,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Only Trainer is marked to run since ExampleGen succeeded in previous
       # run.
       expected_pipeline = copy.deepcopy(pipeline)
-      partial_run_utils.set_latest_pipeline_run_strategy(
-          expected_pipeline.runtime_spec.snapshot_settings
+      partial_run_utils.set_base_pipeline_run_strategy(
+          expected_pipeline.runtime_spec.snapshot_settings, run_id
       )
       expected_pipeline.nodes[
           0
@@ -3083,7 +3082,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline1 = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC, 'run0')
       pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline1)
       self.assertEqual(
-          pipeline_state.pipeline_uid, task_lib.PipelineUid('pipeline')
+          pipeline_state.pipeline_uid, task_lib.PipelineUid('pipeline', 'run0')
       )
 
       # Starting a concurrent run with a different run id is prohibited.
