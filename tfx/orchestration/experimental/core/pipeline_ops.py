@@ -204,7 +204,7 @@ def initiate_pipeline_start(
   )
 
 
-@_pipeline_op(lock=False)
+@_pipeline_op()
 def stop_pipelines(
     mlmd_handle: metadata.Metadata,
     pipeline_uids: List[task_lib.PipelineUid],
@@ -234,29 +234,28 @@ def stop_pipelines(
   logging.info(
       'Received request to stop pipelines; pipeline ids: %s', pipeline_ids_str
   )
-  with _PIPELINE_OPS_LOCK:
-    for pipeline_uid in pipeline_uids:
-      try:
-        with pstate.PipelineState.load(
-            mlmd_handle, pipeline_uid
-        ) as pipeline_state:
-          pipeline_state.initiate_stop(
-              status_lib.Status(
-                  code=status_lib.Code.CANCELLED,
-                  message='Cancellation requested by client.',
-              )
-          )
-          pipeline_states.append(pipeline_state)
-      except status_lib.StatusNotOkError as e:
-        if (
-            e.code == status_lib.Code.NOT_FOUND
-            and ignore_non_existent_or_inactive
-        ):
-          logging.info(
-              'Ignored non-existent or inactive pipeline %s.', pipeline_uid
-          )
-          continue
-        raise e
+  for pipeline_uid in pipeline_uids:
+    try:
+      with pstate.PipelineState.load(
+          mlmd_handle, pipeline_uid
+      ) as pipeline_state:
+        pipeline_state.initiate_stop(
+            status_lib.Status(
+                code=status_lib.Code.CANCELLED,
+                message='Cancellation requested by client.',
+            )
+        )
+        pipeline_states.append(pipeline_state)
+    except status_lib.StatusNotOkError as e:
+      if (
+          e.code == status_lib.Code.NOT_FOUND
+          and ignore_non_existent_or_inactive
+      ):
+        logging.info(
+            'Ignored non-existent or inactive pipeline %s.', pipeline_uid
+        )
+        continue
+      raise e
   logging.info(
       'Waiting for pipelines to be stopped; pipeline ids: %s', pipeline_ids_str
   )
@@ -403,7 +402,7 @@ def _check_nodes_exist(
     )
 
 
-@_pipeline_op(lock=False)
+@_pipeline_op()
 def stop_node(
     mlmd_handle: metadata.Metadata,
     node_uid: task_lib.NodeUid,
@@ -424,20 +423,19 @@ def stop_node(
     status_lib.StatusNotOkError: Failure to stop the node.
   """
   logging.info('Received request to stop node; node uid: %s', node_uid)
-  with _PIPELINE_OPS_LOCK:
-    with pstate.PipelineState.load(
-        mlmd_handle, node_uid.pipeline_uid
-    ) as pipeline_state:
-      _check_nodes_exist([node_uid], pipeline_state.pipeline, 'stop_node')
-      with pipeline_state.node_state_update_context(node_uid) as node_state:
-        if node_state.is_stoppable():
-          node_state.update(
-              pstate.NodeState.STOPPING,
-              status_lib.Status(
-                  code=status_lib.Code.CANCELLED,
-                  message='Cancellation requested by client.',
-              ),
-          )
+  with pstate.PipelineState.load(
+      mlmd_handle, node_uid.pipeline_uid
+  ) as pipeline_state:
+    _check_nodes_exist([node_uid], pipeline_state.pipeline, 'stop_node')
+    with pipeline_state.node_state_update_context(node_uid) as node_state:
+      if node_state.is_stoppable():
+        node_state.update(
+            pstate.NodeState.STOPPING,
+            status_lib.Status(
+                code=status_lib.Code.CANCELLED,
+                message='Cancellation requested by client.',
+            ),
+        )
 
   # Wait until the node is stopped or time out.
   _wait_for_node_inactivation(
