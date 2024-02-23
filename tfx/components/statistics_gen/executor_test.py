@@ -34,11 +34,26 @@ _EXECUTOR_TEST_PARAMS = [
         'testcase_name': 'no_sharded_output',
         'sharded_output': False,
         'custom_split_uri': False,
+        'sample_rate_by_split': 'null',
     },
     {
         'testcase_name': 'custom_split_uri',
         'sharded_output': False,
         'custom_split_uri': True,
+        'sample_rate_by_split': 'null',
+    },
+    {
+        'testcase_name': 'sample_rate_by_split',
+        'sharded_output': False,
+        'custom_split_uri': False,
+        # set a higher sample rate since test data is small
+        'sample_rate_by_split': '{"train": 0.4, "eval": 0.6}',
+    },
+    {
+        'testcase_name': 'sample_rate_split_nonexist',
+        'sharded_output': False,
+        'custom_split_uri': False,
+        'sample_rate_by_split': '{"test": 0.05}',
     },
 ]
 if tfdv.default_sharded_output_supported():
@@ -46,6 +61,7 @@ if tfdv.default_sharded_output_supported():
       'testcase_name': 'yes_sharded_output',
       'sharded_output': True,
       'custom_split_uri': False,
+      'sample_rate_by_split': 'null',
   })
 _TEST_SPAN_NUMBER = 16000
 
@@ -75,7 +91,12 @@ class ExecutorTest(parameterized.TestCase):
     self._validate_stats(stats)
 
   @parameterized.named_parameters(*_EXECUTOR_TEST_PARAMS)
-  def testDo(self, sharded_output: bool, custom_split_uri: bool):
+  def testDo(
+      self,
+      sharded_output: bool,
+      custom_split_uri: bool,
+      sample_rate_by_split: str,
+  ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     output_data_dir = os.path.join(
@@ -108,10 +129,9 @@ class ExecutorTest(parameterized.TestCase):
 
     exec_properties = {
         # List needs to be serialized before being passed into Do function.
-        standard_component_specs.EXCLUDE_SPLITS_KEY:
-            json_utils.dumps(['test']),
-        standard_component_specs.SHARDED_STATS_OUTPUT_KEY:
-            sharded_output,
+        standard_component_specs.EXCLUDE_SPLITS_KEY: json_utils.dumps(['test']),
+        standard_component_specs.SHARDED_STATS_OUTPUT_KEY: sharded_output,
+        standard_component_specs.SAMPLE_RATE_BY_SPLIT_KEY: sample_rate_by_split,
     }
 
     # Create output dict.

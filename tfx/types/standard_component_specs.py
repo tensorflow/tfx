@@ -85,6 +85,7 @@ SCHEMA_FILE_KEY = 'schema_file'
 # Key for statistics_gen
 STATS_OPTIONS_JSON_KEY = 'stats_options_json'
 SHARDED_STATS_OUTPUT_KEY = 'sharded_stats_output'
+SAMPLE_RATE_BY_SPLIT_KEY = 'sample_rate_by_split'
 # Key for example_gen
 INPUT_BASE_KEY = 'input_base'
 INPUT_CONFIG_KEY = 'input_config'
@@ -364,7 +365,8 @@ class StatisticsGenSpec(ComponentSpec):
   PARAMETERS = {
       STATS_OPTIONS_JSON_KEY: ExecutionParameter(type=str, optional=True),
       EXCLUDE_SPLITS_KEY: ExecutionParameter(type=str, optional=True),
-      SHARDED_STATS_OUTPUT_KEY: ExecutionParameter(type=bool, optional=True)
+      SHARDED_STATS_OUTPUT_KEY: ExecutionParameter(type=bool, optional=True),
+      SAMPLE_RATE_BY_SPLIT_KEY: ExecutionParameter(type=str, optional=True),
   }
   INPUTS = {
       EXAMPLES_KEY:
