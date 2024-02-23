@@ -96,6 +96,7 @@ def _convert_to_resource_requirements(
   return k8s_client.V1ResourceRequirements(
       requests=dict(resources.requests),
       limits=dict(resources.limits),
+      claims=dict(resources.claims),
   )
 
 

@@ -189,6 +189,7 @@ message SecretKeySelector {
 message Resources {
   map<string, string> requests = 1;
   map<string, string> limits = 2;
+  map<string, string> claims = 3;
 }
 
 // Specification for validation criteria and thresholds.
