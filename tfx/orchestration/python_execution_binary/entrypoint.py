@@ -41,9 +41,14 @@ MLMD_CONNECTION_CONFIG_FLAG = flags.DEFINE_string(
 
 
 def main(_):
-  flags.mark_flags_as_mutual_exclusive(
-      (EXECUTABLE_SPEC_FLAG.name, BEAM_EXECUTABLE_SPEC_FLAG.name),
-      required=True)
+  mutually_exclusive = (EXECUTABLE_SPEC_FLAG.present) ^ (
+      BEAM_EXECUTABLE_SPEC_FLAG.present
+  )
+  if not mutually_exclusive:
+    raise ValueError(
+        f'Exactly one of {EXECUTABLE_SPEC_FLAG.name} and'
+        f' {BEAM_EXECUTABLE_SPEC_FLAG.name} must be set.'
+    )
 
   if BEAM_EXECUTABLE_SPEC_FLAG.value is not None:
     executable_spec = python_execution_binary_utils.deserialize_executable_spec(
