@@ -54,16 +54,44 @@ def _test_pipeline(
   pipeline = pipeline_pb2.Pipeline()
   pipeline.pipeline_info.id = pipeline_id
   pipeline.execution_mode = execution_mode
-  for node in pipeline_nodes:
-    pipeline.nodes.add().pipeline_node.node_info.id = node
-  pipeline.nodes[0].pipeline_node.parameters.parameters[
-      'param'
-  ].field_value.int_value = param
+  if pipeline_nodes:
+    for node in pipeline_nodes:
+      pipeline.nodes.add().pipeline_node.node_info.id = node
+    pipeline.nodes[0].pipeline_node.parameters.parameters[
+        'param'
+    ].field_value.int_value = param
   if execution_mode == pipeline_pb2.Pipeline.SYNC:
     pipeline.runtime_spec.pipeline_run_id.field_value.string_value = (
         pipeline_run_id
     )
   return pipeline
+
+
+def _add_sub_pipeline(
+    pipeline: pipeline_pb2.Pipeline,
+    sub_pipeline_id,
+    sub_pipeline_nodes: List[str],
+    sub_pipeline_run_id: str,
+):
+  sub_pipeline = pipeline_pb2.Pipeline()
+  sub_pipeline.pipeline_info.id = sub_pipeline_id
+  sub_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
+
+  for node_id in sub_pipeline_nodes:
+    pipeline_or_node = sub_pipeline.nodes.add()
+    pipeline_or_node.pipeline_node.node_info.id = node_id
+    # Top layer pipeline run context
+    context1 = pipeline_or_node.pipeline_node.contexts.contexts.add()
+    context1.type.name = 'pipeline_run'
+    context1.name.field_value.string_value = 'run0'
+    # Current layer pipeline run context
+    context2 = pipeline_or_node.pipeline_node.contexts.contexts.add()
+    context2.type.name = 'pipeline_run'
+    context2.name.field_value.string_value = sub_pipeline_run_id
+  sub_pipeline.runtime_spec.pipeline_run_id.field_value.string_value = (
+      sub_pipeline_run_id
+  )
+  pipeline.nodes.add().sub_pipeline.CopyFrom(sub_pipeline)
 
 
 class NodeStateTest(test_utils.TfxTest):
@@ -235,6 +263,67 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
           pipeline_state.pipeline_uid,
       )
       self.assertTrue(pstate._active_pipelines_exist)
+
+  def test_new_pipeline_state_with_sub_pipelines(self):
+    with self._mlmd_connection as m:
+      pstate._active_pipelines_exist = False
+      pipeline = _test_pipeline('pipeline1')
+      # Add 2 additional layers of sub pipelines. Note that there is no normal
+      # pipeline node in the first pipeline layer.
+      _add_sub_pipeline(
+          pipeline,
+          'sub_pipeline1',
+          sub_pipeline_nodes=['Trainer'],
+          sub_pipeline_run_id='sub_pipeline1_run0',
+      )
+      _add_sub_pipeline(
+          pipeline.nodes[0].sub_pipeline,
+          'sub_pipeline2',
+          sub_pipeline_nodes=['Trainer'],
+          sub_pipeline_run_id='sub_pipeline1_sub_pipeline2_run0',
+      )
+      pipeline_state = pstate.PipelineState.new(m, pipeline)
+
+      # Altogether 2 pipeline run contexts are registered. Sub pipeline 2 run
+      # context is not reigstered because the recursion stops once it finds the
+      # the first normal pipeline node.
+      self.assertLen(m.store.get_contexts_by_type(type_name='pipeline_run'), 2)
+      run_context = m.store.get_context_by_type_and_name(
+          type_name='pipeline_run', context_name='run0'
+      )
+      self.assertIsNotNone(run_context)
+      sub_pipeline_run_context = m.store.get_context_by_type_and_name(
+          type_name='pipeline_run', context_name='sub_pipeline1_run0'
+      )
+      self.assertIsNotNone(sub_pipeline_run_context)
+      with pipeline_state:
+        self.assertProtoPartiallyEquals(
+            run_context,
+            mlmd.proto.Context(
+                id=run_context.id,
+                type_id=run_context.type_id,
+                name='run0',
+                type='pipeline_run',
+            ),
+            ignored_fields=[
+                'create_time_since_epoch',
+                'last_update_time_since_epoch',
+            ],
+        )
+
+        self.assertProtoPartiallyEquals(
+            sub_pipeline_run_context,
+            mlmd.proto.Context(
+                id=sub_pipeline_run_context.id,
+                type_id=sub_pipeline_run_context.type_id,
+                name='sub_pipeline1_run0',
+                type='pipeline_run',
+            ),
+            ignored_fields=[
+                'create_time_since_epoch',
+                'last_update_time_since_epoch',
+            ],
+        )
 
   def test_load_pipeline_state(self):
     with self._mlmd_connection as m:
