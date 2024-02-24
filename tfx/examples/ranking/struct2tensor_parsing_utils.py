@@ -22,10 +22,10 @@ from struct2tensor import path
 from struct2tensor import prensor_util
 from struct2tensor.expression_impl import proto as proto_expr
 import tensorflow as tf
+from tfx.keras_lib import tf_keras
 from tfx_bsl.public import tfxio
 
 from tensorflow_serving.apis import input_pb2
-
 
 _DEFAULT_VALUE_SUFFIX = '_dv'
 _SIZE_FEATURE_NAME = 'example_list_size'
@@ -132,15 +132,15 @@ def create_keras_inputs(context_features,
   context_keras_inputs, example_keras_inputs = {}, {}
   # Create Keras inputs for context features.
   for feature in context_features:
-    context_keras_inputs[feature.name] = tf.keras.Input(
+    context_keras_inputs[feature.name] = tf_keras.Input(
         name=feature.name, shape=(None,), dtype=feature.dtype, ragged=True)
 
   for feature in example_features:
-    example_keras_inputs[feature.name] = tf.keras.Input(
+    example_keras_inputs[feature.name] = tf_keras.Input(
         name=feature.name, shape=(None, None), dtype=feature.dtype, ragged=True)
 
   if size_feature_name is not None:
-    context_keras_inputs[size_feature_name] = tf.keras.Input(
+    context_keras_inputs[size_feature_name] = tf_keras.Input(
         name=size_feature_name, shape=(None,), dtype=tf.int64, ragged=True)
 
   return context_keras_inputs, example_keras_inputs
@@ -295,4 +295,4 @@ def make_ragged_densify_layer():
   Returns:
     A Keras Layer.
   """
-  return tf.keras.layers.Lambda(lambda x: x.to_tensor())
+  return tf_keras.layers.Lambda(lambda x: x.to_tensor())

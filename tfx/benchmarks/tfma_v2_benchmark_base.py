@@ -19,7 +19,6 @@ import time
 
 import apache_beam as beam
 import numpy as np
-import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.evaluators import poisson_bootstrap
@@ -32,6 +31,7 @@ from tensorflow_model_analysis.extractors import unbatch_extractor
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
+from tfx.keras_lib import tf_keras
 from tfx_bsl.coders import example_coder
 from tfx_bsl.tfxio import record_based_tfxio
 from tfx_bsl.tfxio import test_util
@@ -68,7 +68,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     # call before each benchmark.
     if multi_model:
       metric_specs = metric_specs_util.specs_from_metrics(
-          [tf.keras.metrics.AUC(name="auc", num_thresholds=10000)],
+          [tf_keras.metrics.AUC(name="auc", num_thresholds=10000)],
           model_names=["candidate", "baseline"])
       if validation:
         # Only one metric, adding a threshold for all slices.
@@ -100,7 +100,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
       }
     else:
       metric_specs = metric_specs_util.specs_from_metrics(
-          [tf.keras.metrics.AUC(name="auc", num_thresholds=10000)])
+          [tf_keras.metrics.AUC(name="auc", num_thresholds=10000)])
       if validation:
         # Only one metric, adding a threshold for all slices.
         metric_specs[0].metrics[0].threshold.CopyFrom(
@@ -499,7 +499,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         with_confidence_intervals=False,
         multi_model=False,
         metrics_specs=metric_specs_util.specs_from_metrics([
-            tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
+            tf_keras.metrics.AUC(name="auc", num_thresholds=10000),
         ]),
         validation=True)
 
@@ -510,7 +510,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         multi_model=True,
         metrics_specs=metric_specs_util.specs_from_metrics(
             [
-                tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
+                tf_keras.metrics.AUC(name="auc", num_thresholds=10000),
             ],
             model_names=["candidate", "baseline"]),
         validation=True)
@@ -521,12 +521,12 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         with_confidence_intervals=False,
         multi_model=False,
         metrics_specs=metric_specs_util.specs_from_metrics([
-            tf.keras.metrics.BinaryAccuracy(name="accuracy"),
-            tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
-            tf.keras.metrics.AUC(
+            tf_keras.metrics.BinaryAccuracy(name="accuracy"),
+            tf_keras.metrics.AUC(name="auc", num_thresholds=10000),
+            tf_keras.metrics.AUC(
                 name="auc_precison_recall", curve="PR", num_thresholds=10000),
-            tf.keras.metrics.Precision(name="precision"),
-            tf.keras.metrics.Recall(name="recall"),
+            tf_keras.metrics.Precision(name="precision"),
+            tf_keras.metrics.Recall(name="recall"),
             tfma.metrics.MeanLabel(name="mean_label"),
             tfma.metrics.MeanPrediction(name="mean_prediction"),
             tfma.metrics.Calibration(name="calibration"),
@@ -542,12 +542,12 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         with_confidence_intervals=False,
         multi_model=True,
         metrics_specs=metric_specs_util.specs_from_metrics([
-            tf.keras.metrics.BinaryAccuracy(name="accuracy"),
-            tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
-            tf.keras.metrics.AUC(
+            tf_keras.metrics.BinaryAccuracy(name="accuracy"),
+            tf_keras.metrics.AUC(name="auc", num_thresholds=10000),
+            tf_keras.metrics.AUC(
                 name="auc_precison_recall", curve="PR", num_thresholds=10000),
-            tf.keras.metrics.Precision(name="precision"),
-            tf.keras.metrics.Recall(name="recall"),
+            tf_keras.metrics.Precision(name="precision"),
+            tf_keras.metrics.Recall(name="recall"),
             tfma.metrics.MeanLabel(name="mean_label"),
             tfma.metrics.MeanPrediction(name="mean_prediction"),
             tfma.metrics.Calibration(name="calibration"),

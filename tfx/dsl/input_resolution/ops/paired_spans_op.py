@@ -15,12 +15,11 @@
 
 
 import functools
-from typing import Mapping, Sequence
+from typing import Dict, Sequence, Tuple
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
-from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.utils import typing_utils
 
 
@@ -32,17 +31,13 @@ class PairedSpans(
 ):
   """PairedSpans operator."""
 
-  # If true, artifacts are paired based on both `span` and `version` property.
-  # By default, only `span` is considered for the pairing.
-  match_version = resolver_op.Property(type=bool, default=True)
-
   # If true, spans are paired across all versions. If False, only the latest
-  # versioned spans are paired up. Requires match_version to be True.
+  # versioned spans are paired up.
   keep_all_versions = resolver_op.Property(type=bool, default=False)
 
   def _get_artifacts(
       self, artifacts: Sequence[types.Artifact]
-  ) -> Mapping[Sequence[int], types.Artifact]:
+  ) -> Dict[Tuple[int, int], types.Artifact]:
     valid = ops_utils.get_valid_artifacts(
         artifacts, ops_utils.SPAN_AND_VERSION_PROPERTIES
     )
@@ -53,10 +48,7 @@ class PairedSpans(
         n=0,
         keep_all_versions=self.keep_all_versions,
     ):
-      if self.match_version:
-        artifact_dict[(art.span, art.version)] = art
-      else:
-        artifact_dict[(art.span,)] = art
+      artifact_dict[(art.span, art.version)] = art
     return artifact_dict
 
   def apply(self, input_dict: typing_utils.ArtifactMultiMap):
@@ -67,61 +59,27 @@ class PairedSpans(
     example where matching subscripts indicate matching span number and version
     number.
 
-    Notation here is `{artifact_type}:{span}:{version}`
+    Notation here is {artifact}_(span, version)
 
-    >>> PairedSpans({x: [x:0:0, x:0:1, x:1:0, x:2:0],
-                     y: [y:0:0, y:0:1, y:1:0, y:3:0]})
-    [
-        {x: [x:0:1], y: [y:0:1]},
-        {x: [x:1:0], y: [y:1:0]},
-    ]
+      PairedSpans({x: [x_(0,0), x_(0,1), x_(1,0), x_(2,0)],
+                   y: [y_(0,0), y_(0,1), y_(1,0)]})
+        = [{x: [x_(0,0)], y: [y_(0,0)]},
+           {x: [x_(0,1)], y: [y_(0,1)]},
+           {x: [x_(1,0)], y: [y_(1,0)]}]
 
-    Note that the span `0` has two versions, but only the latest version `1` is
-    selected. This is the default semantics of the span & version where only the
-    latest version is considered valid of each span.
+      PairedSpans({x: [x_(0,0), x_(0,1), x_(1,0), x_(2,0)],
+                   y: [y_(0,0), y_(0,1), y_(1,0)]},
+                   keep_all_versions=False)
+        = [{x: [x_(0,1)], y: [y_(0,1)]},
+           {x: [x_(1,0)], y: [y_(1,0)]}]
 
-    If you want to select all versions including the non-latest ones, you can
-    set `keep_all_versions=True`.
 
-    >>> PairedSpans({x: [x:0:0, x:0:1, x:1:0], y: [y:0:0, y:0:1, y:1:0]},
-                    keep_all_versions=True)
-    [
-        {x: [x:0:0], y: [y:0:0]},
-        {x: [x:0:1], y: [y:0:1]},
-        {x: [x:1:0], y: [y:1:0]},
-    ]
-
-    By default, the version property is considered for pairing, meaning that the
-    version should exact match, otherwise it is not considered the pair.
-
-    >>> PairedSpans({x: [x:0:999, x:1:999], y: [y:0:0, y:1:0]})
-    []
-
-    If you do not care about version, and just want to pair artifacts that
-    consider only the span property (and select latest version for each span),
-    you can set `match_version=False`.
-
-    >>> PairedSpans({x: [x:0:999, x:1:999], y: [y:0:0, y:1:0, y:1:1]},
-                    match_version=False)
-    [
-        {x: [x:0:999], y: [y:0:0]},
-        {x: [x:1:999], y: [y:1:1]},
-    ]
-
-    Since `match_version=False` only consideres the latest version of each span,
-    this cannot be used together with `keep_all_versions=True`.
 
     Args:
       input_dict: A dictionary of artifacts.
-
     Returns:
       List of dicts of paired input elements with the same span and version.
     """
-    if self.keep_all_versions and not self.match_version:
-      raise exceptions.InvalidArgument(
-          'keep_all_versions = True requires match_version = True.'
-      )
-
     indexed_latest_artifacts = {
         k: self._get_artifacts(v) for k, v in input_dict.items()
     }

@@ -512,99 +512,46 @@ def _infer_seqential_rolling_range_type(channel, **kwargs):  # pylint: disable=u
 
 
 @resolver_function.resolver_function()
-def paired_spans(
-    artifacts,
-    *,
-    match_version: bool = True,
-    keep_all_versions: bool = False,
-):
+def paired_spans(artifacts, *, keep_all_versions: bool = False):
   """Pairs up Examples from different channels, matching by (span, version).
 
   This enables grouping together Artifacts from separate channels.
 
   Example usage:
 
-  NOTE: Notation here is `{artifact_type}:{span}:{version}`
+  Consider two channels A and B.
 
-  >>> paired_spans({'x': channel([X:0:0, X:0:1, X:1:0, X:2:0]),
-                    'y': channel([Y:0:0, Y:0:1, Y:1:0, Y:3:0])})
-  Loopable([
-      {'x': channel([X:0:1]), 'y': channel([Y:0:1])},
-      {'x': channel([X:1:0]), 'y': channel([Y:1:0])},
-  ])
+  Channel A: [(span 0, version 0), (span 0, version 1), (span 1, version 0)]
+  Channel B: [(span 0, verison 0), (span 0, version 1)]
 
-  Note that the span `0` has two versions, but only the latest version `1` is
-  selected. This is the default semantics of the span & version where only the
-  latest version is considered valid of each span.
+  With keep_all_verisons=True, paired_spans() will give the following output:
 
-  If you want to select all versions including the non-latest ones, you can
-  set `keep_all_versions=True`.
+  [{'channel_a' : [(span 0, version 0)], 'channel_b' : [(span 0, version 0)]},
+   {'channel_a' : [(span 0, version 1)], 'channel_b' : [(span 0, version 1)]}]
 
-  >>> paired_spans({'x': channel([X:0:0, X:0:1, X:1:0]),
-                    'y': channel([Y:0:0, Y:0:1, Y:1:0]},
-                    keep_all_versions=True)
-  Loopable([
-      {'x': channel([X:0:0]), 'y': channel([Y:0:0])},
-      {'x': channel([X:0:1]), 'y': channel([Y:0:1])},
-      {'x': channel([X:1:0]), 'y': channel([Y:1:0])},
-  ])
+  With keep_all_verisons=False, paired_spans() will give the following output:
 
-  By default, the version property is considered for pairing, meaning that the
-  version should exact match, otherwise it is not considered the pair.
+  [{'channel_a' : [(span 0, version 1)], 'channel_b' : [(span 0, version 1)]}]
 
-  >>> paired_spans({'x': channel([X:0:999, X:1:999]),
-                    'y': channel([Y:0:0, Y:1:0])})
-  Loopable([])
+  Since paired_spans() returns a list of dicts, it must be used together
+  with ForEach. For example:
 
-  If you do not care about version, and just want to pair artifacts that
-  consider only the span property (and select latest version for each span),
-  you can set `match_version=False`.
+  with ForEach(paired_spans({'a' : channel_a, 'b' : channel_b})) as paired_dict:
+    component = Component(a=paired_dict['a'], b=paired_dict['b'])
 
-  >>> paired_spans({'x': channel([X:0:999, X:1:999]),
-                    'y': channel([Y:0:0, Y:1:0, Y:1:1])},
-                    match_version=False)
-  Loopable([
-      {'x': channel([X:0:999]), 'y': channel([Y:0:0])},
-      {'x': channel([X:1:999]), 'y': channel([Y:1:1])},
-  ])
-
-  Since `match_version=False` only consideres the latest version of each span,
-  this cannot be used together with `keep_all_versions=True`.
-
-  As `paired_spans` returns a `Loopable`, it must be used together with
-  `ForEach`. For example:
-
-  ```python
-  with ForEach(paired_spans({'a' : channel_a, 'b' : channel_b})) as pair:
-    component = Component(a=pair['a'], b=pair['b'])
-  ```
-
-  NOTE: `paired_spans` can pair Artifacts from N >= 2 channels.
+  Note, paired_spans() can pair Artifacts from N >= 2 channels.
 
   Args:
     artifacts: A dictionary of artifacts.
-    match_version: Whether the version of each span should exactly match.
     keep_all_versions: Whether to pair up all versions of artifacts, or only the
-      latest version. Defaults to False. Requires match_version = True.
+      latest version. Defaults to False.
 
   Returns:
     A list of artifact dicts where each dict has as its key the channel key,
     and as its value has a list with a single artifact having the same span and
     version across the dict.
   """
-  if keep_all_versions and not match_version:
-    raise ValueError('keep_all_versions = True requires match_version = True.')
-
-  # TODO: b/322812375 - Remove kwargs dict handling once orchestrator knows
-  # match_version argument.
-  kwargs = {}
-  if not match_version:
-    kwargs['match_version'] = False
-  return ops.PairedSpans(
-      artifacts,
-      keep_all_versions=keep_all_versions,
-      **kwargs,
-  )
+  return ops.PairedSpans(artifacts, keep_all_versions=keep_all_versions)
 
 
 @resolver_function.resolver_function

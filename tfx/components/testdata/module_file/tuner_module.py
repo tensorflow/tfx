@@ -22,6 +22,7 @@ from tensorflow import keras
 from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.tuner.component import TunerFnResult
+from tfx.keras_lib import tf_keras
 from tfx.utils import io_utils
 from tfx_bsl.tfxio import dataset_options
 
@@ -56,7 +57,7 @@ def _input_fn(file_pattern: List[str],
           batch_size=batch_size, label_key=_LABEL_KEY), schema).repeat()
 
 
-def _build_keras_model(hparams: keras_tuner.HyperParameters) -> tf.keras.Model:
+def _build_keras_model(hparams: keras_tuner.HyperParameters) -> tf_keras.Model:
   """Creates a DNN Keras model for classifying penguin data.
 
   Args:
@@ -76,7 +77,7 @@ def _build_keras_model(hparams: keras_tuner.HyperParameters) -> tf.keras.Model:
   model = keras.Model(inputs=inputs, outputs=outputs)
   model.compile(
       optimizer=keras.optimizers.Adam(hparams.get('learning_rate')),
-      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+      loss=tf_keras.losses.SparseCategoricalCrossentropy(from_logits=True),
       metrics=[keras.metrics.SparseCategoricalAccuracy()])
 
   model.summary(print_fn=absl.logging.info)

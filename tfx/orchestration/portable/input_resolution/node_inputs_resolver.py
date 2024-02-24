@@ -151,8 +151,7 @@ result can easily be deduced from this intermediate data.
 """
 
 import collections
-import textwrap
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, TypeVar
+from typing import Dict, Iterable, List, Mapping, Sequence, Tuple, TypeVar
 
 from absl import logging
 from tfx import types
@@ -172,65 +171,20 @@ from tfx.utils import governance_utils
 
 _T = TypeVar('_T')
 _DataType = pipeline_pb2.InputGraph.DataType
-_Entry = tuple[partition_utils.Partition, list[types.Artifact]]
-
-
-def _format_kwargs(kwargs: Mapping[str, Any]):
-  return ', '.join([f'{k}={v}' for k, v in kwargs.items()])
-
-
-def _format_artifact(artifact: types.Artifact) -> str:
-  type_name = artifact.type_name
-  kwargs = {}
-  if artifact.id:
-    kwargs['id'] = artifact.id
-  else:
-    kwargs['external_id'] = artifact.mlmd_artifact.external_id.rsplit(':')[-1]
-  if artifact.has_property('span'):
-    kwargs['span'] = artifact.span
-  if artifact.has_property('version'):
-    kwargs['version'] = artifact.version
-  return f'{type_name}({_format_kwargs(kwargs)})'
-
-
-def _format_artifacts(artifacts: Sequence[types.Artifact]) -> str:
-  return '[%s]' % ', '.join([_format_artifact(a) for a in artifacts])
-
-
-def _format_entry(entry: _Entry) -> str:
-  part, artifacts = entry
-  if part == partition_utils.NO_PARTITION:
-    part_str = 'NO_PARTITION'
-  else:
-    part_str = _format_kwargs(part)
-  return f'[{part_str}]: {_format_artifacts(artifacts)}'
-
-
-def _format_inputs(inputs: typing_utils.ArtifactMultiMap) -> str:
-  items_str = [
-      f'{k}: {_format_artifacts(artifacts)}' for k, artifacts in inputs.items()
-  ]
-  return '{%s}' % ', '.join(items_str)
-
-
-def _log_resolved(input_key: str, entries: list[_Entry]):
-  if not entries:
-    logging.debug('%s <- []', input_key)
-  else:
-    logging.debug(
-        '%s <- [\n%s\n]',
-        input_key,
-        textwrap.indent('\n'.join(_format_entry(v) for v in entries), '  '),
-    )
 
 
 def _filter_live(
     artifacts: Sequence[types.Artifact]) -> List[types.Artifact]:
   """Filters live artifacts regarding ArtifactGovernance."""
-  live = [a for a in artifacts if not governance_utils.is_expired(a)]
-  if len(live) < len(artifacts):
-    logging.debug('After filter LIVE: %s', _format_artifacts(live))
-  return live
+  expired_artifacts = [
+      a.id for a in artifacts if governance_utils.is_expired(a)
+  ]
+  if expired_artifacts:
+    logging.info('The following artifacts are expired : %s',
+                 expired_artifacts)
+    return [a for a in artifacts if a.id not in expired_artifacts]
+
+  return list(artifacts)
 
 
 def _check_cycle(
@@ -308,6 +262,9 @@ def _topologically_sorted_input_keys(
   return result
 
 
+_Entry = Tuple[partition_utils.Partition, List[types.Artifact]]
+
+
 def _join_artifacts(
     entries_map: Mapping[str, Sequence[_Entry]],
     input_keys: Sequence[str],
@@ -382,16 +339,14 @@ def _resolve_input_graph_ref(
       # result == {'x': [Artifact()], 'y': [Artifact()]}
       for each_input_key, input_graph_ref in same_graph_inputs.items():
         resolved[each_input_key].append(
-            (partition, _filter_live(result[input_graph_ref.key]))
-        )
+            (partition, _filter_live(result[input_graph_ref.key])))
     elif graph_output_type == _DataType.ARTIFACT_MULTIMAP_LIST:
       # result == [{'x': [Artifact()]}, {'x': [Artifact()]}]
       for index, each_result in enumerate(result):
         new_partition = partition | {graph_id: index}
         for each_input_key, input_graph_ref in same_graph_inputs.items():
           resolved[each_input_key].append(
-              (new_partition, _filter_live(each_result[input_graph_ref.key]))
-          )
+              (new_partition, _filter_live(each_result[input_graph_ref.key])))
 
 
 def _resolve_mixed_inputs(
@@ -502,7 +457,6 @@ def resolve(
     # This input_key may have been already resolved while resolving for another
     # input key.
     if input_key in resolved:
-      _log_resolved(input_key, resolved[input_key])
       continue
 
     input_spec = node_inputs.inputs[input_key]
@@ -527,7 +481,6 @@ def resolve(
       raise exceptions.FailedPreconditionError(
           'Exactly one of InputSpec.channels, InputSpec.input_graph_ref, or '
           'InputSpec.mixed_inputs should be set.')
-    _log_resolved(input_key, resolved[input_key])
 
     if input_spec.min_count:
       for _, artifacts in resolved[input_key]:
@@ -548,14 +501,6 @@ def resolve(
   ]
 
   if node_inputs.conditionals:
-    logging.debug(
-        'Before conditional:\n%s',
-        '\n'.join([_format_inputs(inp) for inp in result]),
-    )
     result = _filter_conditionals(result, node_inputs.conditionals)
 
-  logging.debug(
-      'Final result:\n%s',
-      '\n'.join([_format_inputs(inp) for inp in result]),
-  )
   return result

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.canned_resolver_functions."""
 
-from typing import Sequence, Union
+from typing import Sequence
 
 import tensorflow as tf
 from tfx import types
@@ -57,17 +57,6 @@ class CannedResolverFunctionsTest(
                        resolved_artifact.properties['span'])
       self.assertEqual(mlmd_artifact.properties['version'],
                        resolved_artifact.properties['version'])
-
-  def assertSpanVersion(
-      self,
-      artifact: Union[types.Artifact, metadata_store_pb2.Artifact],
-      span: int,
-      version: int,
-  ):
-    if isinstance(artifact, types.Artifact):
-      artifact = artifact.mlmd_artifact
-    self.assertEqual(artifact.properties['span'].int_value, span)
-    self.assertEqual(artifact.properties['version'].int_value, version)
 
   def _add_executions_into_mlmd(
       self, mlmd_artifacts: Sequence[metadata_store_pb2.Artifact]
@@ -404,38 +393,6 @@ class CannedResolverFunctionsTest(
         pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
     )
     self.assertEmpty(resolved)  # Empty resolution implies Skip.
-
-  def testPairedSpans_DefaultArgs(self):
-
-    with for_each.ForEach(
-        canned_resolver_functions.paired_spans({
-            'x': channel_utils.artifact_query(test_utils.DummyArtifact),
-            'examples': channel_utils.artifact_query(test_utils.Examples),
-        })
-    ) as xy:
-      inputs = xy
-
-    compiled_inputs = test_utils.compile_inputs(inputs)
-
-    with self.subTest('keep_all_versions=False'):
-      self._insert_artifacts_into_mlmd([0, 0], [0, 1], 'DummyArtifact')
-      self._insert_artifacts_into_mlmd([0, 0], [0, 1], 'Examples')
-
-      resolved = inputs_utils.resolve_input_artifacts(
-          pipeline_node=compiled_inputs, metadata_handle=self.mlmd_handle
-      )
-
-      self.assertLen(resolved, 1)
-      self.assertSpanVersion(resolved[0]['x'][0], span=0, version=1)
-      self.assertSpanVersion(resolved[0]['examples'][0], span=0, version=1)
-
-    with self.subTest('match_version=True'):
-      # Add one more artifact span=0 version=2
-      self._insert_artifacts_into_mlmd([0], [2], 'DummyArtifact')
-      resolved = inputs_utils.resolve_input_artifacts(
-          pipeline_node=compiled_inputs, metadata_handle=self.mlmd_handle
-      )
-      self.assertEmpty(resolved)
 
   def testPairedInput(self):
     xs = canned_resolver_functions.paired_spans(
