@@ -773,6 +773,81 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         mock_snapshot.assert_called_once()
         self.assertEqual(expected_pipeline, pipeline_state.pipeline)
 
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='cache_subpipeline',
+          run_subpipeline=False,
+      ),
+      dict(
+          testcase_name='run_subpipeline',
+          run_subpipeline=True,
+      ),
+  )
+  @mock.patch.object(partial_run_utils, 'snapshot')
+  def test_initiate_pipeline_start_with_partial_run_and_subpipeline(
+      self, mock_snapshot, run_subpipeline
+  ):
+    with self._mlmd_connection as m:
+      pipeline = test_sync_pipeline.create_pipeline_with_subpipeline()
+      runtime_parameter_utils.substitute_runtime_parameter(
+          pipeline,
+          {
+              constants.PIPELINE_ROOT_PARAMETER_NAME: '/my/pipeline/root',
+              constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'run-0123',
+          },
+      )
+
+      expected_pipeline = copy.deepcopy(pipeline)
+      example_gen = expected_pipeline.nodes[0].pipeline_node
+      subpipeline = expected_pipeline.nodes[1].sub_pipeline
+      subpipeline_begin = subpipeline.nodes[0].pipeline_node
+      transform = expected_pipeline.nodes[2].pipeline_node
+      partial_run_utils.set_latest_pipeline_run_strategy(
+          expected_pipeline.runtime_spec.snapshot_settings
+      )
+
+      skip = pipeline_pb2.NodeExecutionOptions.Skip(
+          reuse_artifacts_mode=pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED
+      )
+      run = pipeline_pb2.NodeExecutionOptions.Run(
+          perform_snapshot=True, depends_on_snapshot=True
+      )
+      example_gen.execution_options.skip.CopyFrom(skip)
+
+      if run_subpipeline:
+        subpipeline_begin.execution_options.run.CopyFrom(run)
+        transform.execution_options.run.depends_on_snapshot = True
+      else:
+        subpipeline_begin.execution_options.skip.CopyFrom(skip)
+        transform.execution_options.run.CopyFrom(run)
+
+      partial_run_option = pipeline_pb2.PartialRun(
+          from_nodes=['sub-pipeline'] if run_subpipeline else ['my_transform'],
+          snapshot_settings=partial_run_utils.latest_pipeline_snapshot_settings(),
+      )
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline, partial_run_option=partial_run_option
+      ) as pipeline_state:
+        mock_snapshot.assert_called_once()
+        self.assertProtoEquals(expected_pipeline, pipeline_state.pipeline)
+
+      if run_subpipeline:
+        # If the subpipeline should be run then we should not have pre-loaded a
+        # run for it.
+        with self.assertRaises(status_lib.StatusNotOkError):
+          pstate.PipelineState.load_run(
+              m, 'sub-pipeline', 'sub-pipeline_run-0123'
+          )
+      else:
+        # Skipped subpipelines should have a run injected so their nodes are
+        # properly marked as cached.
+        with pstate.PipelineState.load_run(
+            m, 'sub-pipeline', 'sub-pipeline_run-0123'
+        ) as subpipeline_state:
+          self.assertEqual(
+              subpipeline_state.stop_initiated_reason().code, status_lib.Code.OK
+          )
+
   @mock.patch.object(partial_run_utils, 'snapshot')
   def test_partial_run_with_previously_failed_nodes(self, mock_snapshot):
     with self._mlmd_connection as m:

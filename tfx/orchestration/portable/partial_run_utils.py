@@ -153,7 +153,7 @@ def snapshot(mlmd_handle: metadata.Metadata,
   """
   # Avoid unnecessary snapshotting step if no node needs to reuse any artifacts.
   if not any(
-      _should_attempt_to_reuse_artifact(node.pipeline_node.execution_options)
+      should_attempt_to_reuse_artifact(node.pipeline_node.execution_options)
       for node in pipeline.nodes):
     return
 
@@ -452,8 +452,9 @@ def _get_validated_new_run_id(pipeline: pipeline_pb2.Pipeline,
   return str(inferred_new_run_id or new_run_id)
 
 
-def _should_attempt_to_reuse_artifact(
+def should_attempt_to_reuse_artifact(
     execution_options: pipeline_pb2.NodeExecutionOptions):
+  """Returns whether artifacts should be reused for the these execution options."""
   return execution_options.HasField('skip') and (
       execution_options.skip.reuse_artifacts or
       execution_options.skip.reuse_artifacts_mode == _REUSE_ARTIFACT_OPTIONAL or
@@ -512,7 +513,7 @@ def _reuse_pipeline_run_artifacts(
   reuse_nodes = [
       node
       for node in node_proto_view.get_view_for_all_in(marked_pipeline)
-      if _should_attempt_to_reuse_artifact(node.execution_options)
+      if should_attempt_to_reuse_artifact(node.execution_options)
   ]
   logging.info(
       'Reusing nodes: %s', [n.node_info.id for n in reuse_nodes]
