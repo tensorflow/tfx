@@ -493,9 +493,9 @@ def _filter_conditionals(
 def resolve(
     handle_like: mlmd_cm.HandleLike,
     node_inputs: pipeline_pb2.NodeInputs,
-) -> List[typing_utils.ArtifactMultiMap]:
+) -> list[typing_utils.ArtifactMultiMap]:
   """Resolve a NodeInputs."""
-  resolved: Dict[str, List[_Entry]] = collections.defaultdict(list)
+  resolved: dict[str, list[_Entry]] = collections.defaultdict(list)
 
   for input_key in _topologically_sorted_input_keys(
       node_inputs.inputs, node_inputs.input_graphs):
@@ -529,15 +529,6 @@ def resolve(
           'InputSpec.mixed_inputs should be set.')
     _log_resolved(input_key, resolved[input_key])
 
-    if input_spec.min_count:
-      for _, artifacts in resolved[input_key]:
-        if len(artifacts) < input_spec.min_count:
-          raise exceptions.InsufficientInputError(
-              'InputSpec min_count has not met: '
-              f'inputs[{input_key}] has min_count = {input_spec.min_count} '
-              f'but only got {len(artifacts)} artifacts. '
-              f'(Artifact IDs: {[a.id for a in artifacts]})')
-
   visible_keys = [
       k for k, input_spec in node_inputs.inputs.items()
       if not input_spec.hidden
@@ -546,16 +537,26 @@ def resolve(
       artifact_map
       for _, artifact_map in _join_artifacts(resolved, visible_keys)
   ]
-
+  logging.debug(
+      'Before conditional:\n%s',
+      '\n'.join([_format_inputs(inp) for inp in result]),
+  )
   if node_inputs.conditionals:
-    logging.debug(
-        'Before conditional:\n%s',
-        '\n'.join([_format_inputs(inp) for inp in result]),
-    )
     result = _filter_conditionals(result, node_inputs.conditionals)
 
   logging.debug(
-      'Final result:\n%s',
+      'After conditional:\n%s',
       '\n'.join([_format_inputs(inp) for inp in result]),
   )
+
+  for artifact_map in result:
+    for key, artifacts in artifact_map.items():
+      if len(artifacts) < node_inputs.inputs[key].min_count:
+        raise exceptions.InsufficientInputError(
+            f'InputSpec min_count has not met: inputs[{key}] has'
+            f' min_count = {node_inputs.inputs[key].min_count} but only got'
+            f' {len(artifacts)} artifacts. (Artifact IDs:'
+            f' {[a.id for a in artifacts]})'
+        )
+
   return result
