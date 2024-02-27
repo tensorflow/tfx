@@ -22,6 +22,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx import version
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable.mlmd import common_utils
@@ -317,6 +318,87 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
       executions = execution_lib.get_executions_associated_with_all_contexts(
           self._mlmd_handle, contexts)
       self.assertCountEqual([execution3.id], [e.id for e in executions])
+
+  def testPutExecutionUpdatesArtifactsAndContexts(self):
+    # Prepares an input artifact. The artifact should be registered in MLMD
+    # before the put_execution call.
+    input_example = standard_artifacts.Examples()
+    input_example.uri = 'example'
+    input_example.set_string_custom_property('example_prop', 'Hello world!')
+    input_example.type_id = common_utils.register_type_if_not_exist(
+        self._mlmd_handle, input_example.artifact_type
+    ).id
+    [input_example.id] = self._mlmd_handle.store.put_artifacts(
+        [input_example.mlmd_artifact]
+    )
+    # Prepares an output artifact.
+    output_model = standard_artifacts.Model()
+    output_model.uri = 'model'
+    output_model.set_int_custom_property('model_prop', 54321)
+    execution = execution_lib.prepare_execution(
+        self._mlmd_handle,
+        metadata_store_pb2.ExecutionType(name='my_execution_type'),
+        exec_properties={'p1': 1, 'p2': '2'},
+        state=metadata_store_pb2.Execution.COMPLETE,
+    )
+    [pipeline_context, node_context] = self._generate_contexts(
+        self._mlmd_handle
+    )
+    data_types_utils.set_metadata_value(
+        pipeline_context.custom_properties['foo'], 'foo_value'
+    )
+    data_types_utils.set_metadata_value(
+        node_context.custom_properties['bar'], 123
+    )
+    execution_lib.put_execution(
+        self._mlmd_handle,
+        execution,
+        [pipeline_context, node_context],
+        input_artifacts={
+            'example': [input_example],
+            'another_example': [input_example],
+        },
+        output_artifacts={'model': [output_model]},
+        reuse_context_if_already_exist=False,
+        reuse_artifact_if_already_exist_by_external_id=False,
+        force_reuse_context=False,
+    )
+
+    [updated_pipeline_context, updated_node_context] = (
+        self._mlmd_handle.store.get_contexts_by_id(
+            [pipeline_context.id, node_context.id]
+        )
+    )
+    self.assertEqual(
+        data_types_utils.get_metadata_value(
+            updated_pipeline_context.custom_properties['foo']
+        ),
+        'foo_value',
+    )
+    self.assertEqual(
+        data_types_utils.get_metadata_value(
+            updated_node_context.custom_properties['bar']
+        ),
+        123,
+    )
+
+    [updated_example, updated_model] = (
+        self._mlmd_handle.store.get_artifacts_by_id(
+            [input_example.id, output_model.id]
+        )
+    )
+    self.assertEqual(
+        data_types_utils.get_metadata_value(
+            updated_example.custom_properties['example_prop']
+        ),
+        'Hello world!',
+    )
+    self.assertEqual(
+        data_types_utils.get_metadata_value(
+            updated_model.custom_properties['model_prop']
+        ),
+        54321,
+    )
 
   def testPutExecutions(self):
     # Prepares input artifacts.

@@ -19,6 +19,8 @@ from typing import Callable, Optional
 
 from absl import flags
 from absl import logging
+from tfx.dsl.compiler import constants as compiler_constants
+from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import pipeline_ops
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -34,6 +36,10 @@ from ml_metadata.proto import metadata_store_pb2
 _POLLING_INTERVAL_SECS = flags.DEFINE_float(
     'subpipeline_scheduler_polling_interval_secs', 10.0,
     'Default polling interval for subpipeline task scheduler.')
+
+# Keys for tagging the subpipeline's execution and pipeline run context in MLMD.
+SUBPIPELINE_CONTEXT_TAG = '__is_subpipeline_context__'
+SUBPIPELINE_EXECUTION_TAG = '__subpipeline_injected_execution__'
 
 
 class SubPipelineTaskScheduler(
@@ -62,7 +68,7 @@ class SubPipelineTaskScheduler(
           self._pipeline_uid.pipeline_id,
           pipeline_run_id=self._pipeline_run_id)
     except status_lib.StatusNotOkError as e:
-      logging.exception(
+      logging.warning(
           'Unable to load run %s for %s, probably new run. %s',
           self._pipeline_run_id,
           self._pipeline_uid.pipeline_id,
@@ -91,9 +97,32 @@ class SubPipelineTaskScheduler(
         execution_type=begin_node.node_info.type,
         state=metadata_store_pb2.Execution.State.COMPLETE,
     )
+    data_types_utils.set_metadata_value(
+        begin_node_execution.custom_properties[SUBPIPELINE_EXECUTION_TAG],
+        True,
+    )
     contexts = context_lib.prepare_contexts(
         metadata_handle=self.mlmd_handle,
         node_contexts=begin_node.contexts,
+    )
+    pipeline_context_type = self.mlmd_handle.store.get_context_type(
+        compiler_constants.PIPELINE_CONTEXT_TYPE_NAME
+    )
+    for context in contexts:
+      if (
+          context.type_id == pipeline_context_type.id
+          and context.name == self._pipeline_uid.pipeline_id
+      ):
+        subpipeline_context = context
+        break
+    else:
+      raise ValueError(
+          'Failed to find the pipeline context for subpipeline:'
+          f' {self._pipeline_uid.pipeline_id}'
+      )
+
+    data_types_utils.set_metadata_value(
+        subpipeline_context.custom_properties[SUBPIPELINE_CONTEXT_TAG], True
     )
     execution_lib.put_execution(
         metadata_handle=self.mlmd_handle,
@@ -102,6 +131,8 @@ class SubPipelineTaskScheduler(
         input_artifacts=input_artifacts,
         output_artifacts=input_artifacts,
         output_event_type=metadata_store_pb2.Event.Type.INTERNAL_OUTPUT,
+        reuse_context_if_already_exist=False,
+        force_reuse_context=False,
     )
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
@@ -113,11 +144,11 @@ class SubPipelineTaskScheduler(
           self._get_pipeline_view() is not None,
       )
     else:
+      # Only create a begin node execution if we need to start the pipeline.
+      # If we don't need to start the pipeline this likely means the pipeline
+      # was already started so the execution should already exist.
+      self._put_begin_node_execution()
       try:
-        # Only create a begin node execution if we need to start the pipeline.
-        # If we don't need to start the pipeline this likely means the pipeline
-        # was already started so the execution should already exist.
-        self._put_begin_node_execution()
         logging.info('[Subpipeline Task Scheduler]: start subpipeline.')
         pipeline_ops.initiate_pipeline_start(self.mlmd_handle,
                                              self._sub_pipeline, None, None)

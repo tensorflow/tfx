@@ -208,6 +208,25 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(status_lib.Code.OK, ts_result[0].status.code)
         self.assertIsInstance(ts_result[0].output, ts.ExecutorNodeOutput)
 
-
+    # Check that Execution and Contexts are marked correctly.
+    pipeline_context = self._mlmd_connection.store.get_context_by_type_and_name(
+        type_name=constants.PIPELINE_CONTEXT_TYPE_NAME,
+        context_name='my_sub_pipeline',
+    )
+    self.assertEqual(
+        pipeline_context.custom_properties[
+            subpipeline_task_scheduler.SUBPIPELINE_CONTEXT_TAG
+        ].string_value,
+        'true',
+    )
+    [begin_node_execution] = self._mlmd_connection.store.get_executions_by_type(
+        'tfx.orchestration.pipeline.Pipeline_begin'
+    )
+    self.assertEqual(
+        begin_node_execution.custom_properties[
+            subpipeline_task_scheduler.SUBPIPELINE_EXECUTION_TAG
+        ].string_value,
+        'true',
+    )
 if __name__ == '__main__':
   tf.test.main()
