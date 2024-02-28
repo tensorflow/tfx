@@ -25,6 +25,8 @@ from tfx.proto import trainer_pb2
 from tfx.proto import transform_pb2
 from tfx.proto import tuner_pb2
 
+from tfx.v1.proto import orchestration
+
 ModelSpec = bulk_inferrer_pb2.ModelSpec
 DataSpec = bulk_inferrer_pb2.DataSpec
 OutputExampleSpec = bulk_inferrer_pb2.OutputExampleSpec
