@@ -126,10 +126,6 @@ class NodeState(json_utils.Jsonable):
   SKIPPED = 'skipped'
   # Node execution skipped due to partial run.
   SKIPPED_PARTIAL_RUN = 'skipped_partial_run'
-  # b/323371181 Remove pausing and paused when we are sure that no active
-  # pipeline has node state of pausing or paused.
-  PAUSING = 'pausing'  # Pending work before state can change to PAUSED.
-  PAUSED = 'paused'  # Node was paused and may be resumed in the future.
   FAILED = 'failed'  # Node execution failed due to errors.
 
   state: str = attr.ib(
@@ -142,8 +138,6 @@ class NodeState(json_utils.Jsonable):
           COMPLETE,
           SKIPPED,
           SKIPPED_PARTIAL_RUN,
-          PAUSING,
-          PAUSED,
           FAILED,
       ]),
       on_setattr=attr.setters.validate,
@@ -187,12 +181,11 @@ class NodeState(json_utils.Jsonable):
 
   def is_startable(self) -> bool:
     """Returns True if the node can be started."""
-    return self.state in set(
-        [self.PAUSED, self.STOPPING, self.STOPPED, self.FAILED])
+    return self.state in set([self.STOPPING, self.STOPPED, self.FAILED])
 
   def is_stoppable(self) -> bool:
     """Returns True if the node can be stopped."""
-    return self.state in set([self.STARTED, self.RUNNING, self.PAUSED])
+    return self.state in set([self.STARTED, self.RUNNING])
 
   def is_backfillable(self) -> bool:
     """Returns True if the node can be backfilled."""
@@ -226,8 +219,13 @@ class NodeState(json_utils.Jsonable):
   def to_run_state_history(self) -> List[run_state_pb2.RunState]:
     run_state_history = []
     for state in self.state_history:
-      # STARTING has been deprecated but may still be present in state_history.
-      if state.state == 'starting':
+      # STARTING, PAUSING and PAUSED has been deprecated but may still be
+      # present in state_history.
+      if (
+          state.state == 'starting'
+          or state.state == 'pausing'
+          or state.state == 'paused'
+      ):
         continue
       run_state_history.append(
           NodeState(
@@ -382,8 +380,6 @@ _NODE_STATE_TO_RUN_STATE_MAP = {
     NodeState.COMPLETE: run_state_pb2.RunState.COMPLETE,
     NodeState.SKIPPED: run_state_pb2.RunState.SKIPPED,
     NodeState.SKIPPED_PARTIAL_RUN: run_state_pb2.RunState.SKIPPED_PARTIAL_RUN,
-    NodeState.PAUSING: run_state_pb2.RunState.UNKNOWN,
-    NodeState.PAUSED: run_state_pb2.RunState.PAUSED,
     NodeState.FAILED: run_state_pb2.RunState.FAILED
 }
 

@@ -110,8 +110,6 @@ class _Generator:
         node_state = self._pipeline_state.get_node_state(node_uid)
         if node_state.state in (pstate.NodeState.STOPPING,
                                 pstate.NodeState.STOPPED,
-                                pstate.NodeState.PAUSING,
-                                pstate.NodeState.PAUSED,
                                 pstate.NodeState.FAILED):
           logging.info('Ignoring node in state \'%s\' for task generation: %s',
                        node_state.state, node_uid)

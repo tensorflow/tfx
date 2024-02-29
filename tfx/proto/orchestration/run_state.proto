@@ -42,7 +42,8 @@ message RunState {
     SKIPPED_PARTIAL_RUN = 8;
 
     // Indicates that any active run is temporarily paused and may be resumed.
-    PAUSED = 5;
+    // (b/323371181) Remove this field
+    PAUSED = 5 [deprecated = true];
 
     // Indicates that the pipeline or node was stopped by an external agent.
     // When stopped, any associated active MLMD executions are cancelled.
