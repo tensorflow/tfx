@@ -98,6 +98,9 @@ class PipelineInputs:
   def __getitem__(self, key) -> channel.PipelineInputChannel:
     return self._wrapped_inputs[key]
 
+  def __contains__(self, key) -> bool:
+    return key in self._wrapped_inputs
+
   @property
   def pipeline(self) -> Optional['Pipeline']:
     return self._pipeline
