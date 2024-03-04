@@ -861,6 +861,18 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             'get_executions',
             wraps=m.store.get_executions,
         ).start()
+
+        # Simulate that self._transform has canceled execution. The canceled
+        # execution should not be consider as processed.
+        execution = otu.fake_start_node_with_handle(
+            m, self._transform, input_artifacts={'examples': artifacts}
+        )
+        otu.fake_finish_node_with_handle(
+            m, self._transform, execution.id, success=False
+        )
+        execution.last_known_state = metadata_store_pb2.Execution.CANCELED
+        m.store.put_executions([execution])
+
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
             m, resolved_info_for_transform, self._transform
         )
@@ -890,7 +902,8 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
             " 'my_pipeline.my_transform') AND (create_time_since_epoch >="
             f' {artifacts[-1].mlmd_artifact.create_time_since_epoch}) AND'
             ' ((last_known_state = COMPLETE)'
-            ' OR (last_known_state = CACHED) OR (last_known_state = FAILED))',
+            ' OR (last_known_state = CACHED) OR (last_known_state = FAILED)'
+            ' OR (last_known_state = CANCELED))',
         )
         self.assertEmpty(unprocessed_inputs)
 

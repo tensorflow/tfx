@@ -594,16 +594,9 @@ def register_executions(
         execution_name=str(uuid.uuid4()),
     )
     # LINT.IfChange(execution_custom_properties)
-    dir_index = None
-    if input_and_param.exec_properties:
-      dir_index = input_and_param.exec_properties.get(
-          constants.STATEFUL_WORKING_DIR_INDEX
-      )
     data_types_utils.set_metadata_value(
         execution.custom_properties[constants.STATEFUL_WORKING_DIR_INDEX],
-        dir_index
-        if dir_index
-        else outputs_utils.get_stateful_working_dir_index(),
+        outputs_utils.get_stateful_working_dir_index(execution),
     )
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
     # LINT.ThenChange(:new_execution_custom_properties)
@@ -717,13 +710,15 @@ def get_unprocessed_inputs(
               'last_known_state = COMPLETE',
               'last_known_state = CACHED',
               'last_known_state = FAILED',
+              'last_known_state = CANCELED',
           ]),
       ],
   )
 
-  # Get the successful and failed executions, and group them by input.
+  # Get the successful, failed and canceled executions, and group them by input.
   successful_executions_by_input = collections.defaultdict(list)
   failed_executions_by_input = collections.defaultdict(list)
+  cancelled_executions_by_input = collections.defaultdict(list)
   events = metadata_handle.store.get_events_by_execution_ids(
       [e.id for e in executions]
   )
@@ -747,6 +742,8 @@ def get_unprocessed_inputs(
       successful_executions_by_input[encoded_input].append(execution)
     elif execution_lib.is_execution_failed(execution):
       failed_executions_by_input[encoded_input].append(execution)
+    elif execution_lib.is_execution_canceled(execution):
+      cancelled_executions_by_input[encoded_input].append(execution)
 
   # Some input artifacts are from external pipelines, so we need to find out the
   # external_id to id mapping in the local db.
@@ -804,22 +801,25 @@ def get_unprocessed_inputs(
       )
     elif encoded_input not in successful_executions_by_input:
       # This input should be processed.
+      failed_or_cancelled_executions = (
+          failed_executions_by_input[encoded_input]
+          + cancelled_executions_by_input[encoded_input]
+      )
       # If the previous stateful_working_dir_index should be reused, save the
       # index into input_and_param.exec_properties
       if (
           not node.execution_options.reset_stateful_working_dir
-          and failed_executions_by_input[encoded_input]
+          and failed_or_cancelled_executions
       ):
-        failed_executions = failed_executions_by_input[encoded_input]
-        failed_executions = execution_lib.sort_executions_newest_to_oldest(
-            failed_executions
-        )
-        last_failed_execution = failed_executions[0]
+        execution_for_retry = execution_lib.sort_executions_newest_to_oldest(
+            failed_or_cancelled_executions
+        )[0]
+
         if input_and_param.exec_properties is None:
           input_and_param.exec_properties = {}
         input_and_param.exec_properties[
             constants.STATEFUL_WORKING_DIR_INDEX
-        ] = outputs_utils.get_stateful_working_dir_index(last_failed_execution)
+        ] = outputs_utils.get_stateful_working_dir_index(execution_for_retry)
       unprocessed_inputs.append(input_and_param)
 
   return unprocessed_inputs
