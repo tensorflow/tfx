@@ -1234,6 +1234,7 @@ def orchestrate(
     task_queue: tq.TaskQueue,
     service_job_manager: service_jobs.ServiceJobManager,
     filter_fn: Optional[Callable[[pstate.PipelineState], bool]] = None,
+    pipeline_states: Optional[list[pstate.PipelineState]] = None,
 ) -> bool:
   """Performs a single iteration of the orchestration loop.
 
@@ -1249,6 +1250,8 @@ def orchestrate(
     filter_fn: Callable to filter pipelines to be orchestrated. Only active
       pipeline runs for which the filter_fn returns True will be orchestrated.
       If not provided, all active pipeline runs will be orchestrated.
+    pipeline_states: A list of PipelineStates, each of PipelieState
+        corresponds to one active pipeline.
 
   Returns:
     Whether there are any active pipelines to run.
@@ -1259,10 +1262,11 @@ def orchestrate(
   if filter_fn is None:
     filter_fn = lambda _: True
 
-  all_pipeline_states = pstate.PipelineState.load_all_active(
-      mlmd_connection_manager.primary_mlmd_handle
-  )
-  pipeline_states = [s for s in all_pipeline_states if filter_fn(s)]
+  if pipeline_states is None:
+    pipeline_states = pstate.PipelineState.load_all_active(
+        mlmd_connection_manager.primary_mlmd_handle
+    )
+  pipeline_states = [s for s in pipeline_states if filter_fn(s)]
   if not pipeline_states:
     logging.info('No active pipelines to run.')
     return False
