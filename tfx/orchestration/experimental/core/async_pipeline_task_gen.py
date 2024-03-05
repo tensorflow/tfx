@@ -35,6 +35,8 @@ from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
 
+_SERVICE_JOB_RETRY_LIMIT = 5
+
 
 class AsyncPipelineTaskGenerator(task_gen.TaskGenerator):
   """Task generator for executing an async pipeline.
@@ -108,62 +110,28 @@ class _Generator:
 
       with self._pipeline_state:
         node_state = self._pipeline_state.get_node_state(node_uid)
-        if node_state.state in (pstate.NodeState.STOPPING,
-                                pstate.NodeState.STOPPED,
-                                pstate.NodeState.FAILED):
+        if node_state.state in (
+            pstate.NodeState.STOPPING,
+            pstate.NodeState.STOPPED,
+        ):
           logging.info('Ignoring node in state \'%s\' for task generation: %s',
                        node_state.state, node_uid)
           continue
 
-      # If this is a pure service node, there is no ExecNodeTask to generate
-      # but we ensure node services and check service status.
-      service_status = self._ensure_node_services_if_pure(
-          node_id, node_state.backfill_token
-      )
-      if service_status is not None:
-        if (
-            node_state.backfill_token
-            and service_status.code == service_jobs.ServiceStatusCode.SUCCESS
-        ):
-          # Transitions ExampleGen node to STOPPED state and service job to
-          # STATE_STOPPED when backfill completes.
-          logging.info(
-              'Stopping ExampleGen: %s ; Backfill with token: %s completed',
-              node_id,
-              node_state.backfill_token,
-          )
-          result.append(
-              task_lib.UpdateNodeStateTask(
-                  node_uid=node_uid,
-                  state=pstate.NodeState.STOPPED,
-                  backfill_token='',
-              )
-          )
-          # The service job already completes with success but we still need to
-          # update the in-memory state.
-          self._service_job_manager.stop_node_services(
-              self._pipeline_state, node_id
-          )
-        elif service_status.code != service_jobs.ServiceStatusCode.RUNNING:
-          error_msg = f'service job failed; error message: {service_status.msg}'
-          result.append(
-              task_lib.UpdateNodeStateTask(
-                  node_uid=node_uid,
-                  state=pstate.NodeState.FAILED,
-                  status=status_lib.Status(
-                      code=status_lib.Code.UNKNOWN, message=error_msg
-                  ),
-                  backfill_token='',
-              )
-          )
-        elif node_state.state != pstate.NodeState.RUNNING:
-          result.append(
-              task_lib.UpdateNodeStateTask(
-                  node_uid=node_uid,
-                  state=pstate.NodeState.RUNNING,
-                  backfill_token=node_state.backfill_token,
-              )
-          )
+      if self._service_job_manager.is_pure_service_node(
+          self._pipeline_state, node_id
+      ):
+        result.extend(
+            self._handle_pure_service_node(node, node_state, self._mlmd_handle)
+        )
+        continue
+
+      if node_state.state in (pstate.NodeState.FAILED):
+        logging.info(
+            "Ignoring node in state '%s' for task generation: %s",
+            node_state.state,
+            node_uid,
+        )
         continue
 
       # For mixed service nodes, we ensure node services and check service
@@ -508,17 +476,6 @@ class _Generator:
     )
     return result
 
-  def _ensure_node_services_if_pure(
-      self, node_id: str, backfill_token: str
-  ) -> Optional[service_jobs.ServiceStatus]:
-    """Calls `ensure_node_services` and returns status if given node is pure service node."""
-    if self._service_job_manager.is_pure_service_node(self._pipeline_state,
-                                                      node_id):
-      return self._service_job_manager.ensure_node_services(
-          self._pipeline_state, node_id, backfill_token
-      )
-    return None
-
   def _ensure_node_services_if_mixed(
       self, node_id: str) -> Optional[service_jobs.ServiceStatus]:
     """Calls `ensure_node_services` and returns status if given node is mixed service node."""
@@ -527,3 +484,99 @@ class _Generator:
       return self._service_job_manager.ensure_node_services(
           self._pipeline_state, node_id)
     return None
+
+  def _handle_pure_service_node(
+      self, node, node_state, metadata_handle
+  ) -> List[task_lib.Task]:
+    """Handle a pure service node.
+
+    Args:
+      node: A pure service node.
+      node_state: State of the node.
+      metadata_handle: A handler to access MLMD db.
+
+    If the number of the latest failure of the pure service node does not reach
+    the limit, this function will ensure that the pure service node is running.
+
+    This function will also generate necessary tasks for the pure service node.
+
+    Returns:
+      Returns a list of `Task`
+    """
+    node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+    node_id = node.node_info.id
+    result = []
+
+    if not self._service_job_manager.is_pure_service_node(
+        self._pipeline_state, node_id
+    ):
+      return result
+
+    # If the number of the latest failure of the pure service node reaches the
+    # limit, don't try to restart the service node.
+    retry_limit = sys.maxsize
+    if node.execution_options.HasField('max_execution_retries'):
+      retry_limit = node.execution_options.max_execution_retries
+    retry_limit = min(retry_limit, _SERVICE_JOB_RETRY_LIMIT)
+    if node_state.state == pstate.NodeState.FAILED:
+      executions = task_gen_utils.get_executions(
+          metadata_handle,
+          node,
+          limit=retry_limit,
+      )
+      if executions and all([
+          e.last_known_state == metadata_store_pb2.Execution.State.FAILED
+          for e in executions
+      ]):
+        return result
+
+    # There is no ExecNodeTask to generate for a pure service node,
+    # but we ensure node services and check service status.
+    service_status = self._service_job_manager.ensure_node_services(
+        self._pipeline_state, node_id, node_state.backfill_token
+    )
+    if (
+        node_state.backfill_token
+        and service_status.code == service_jobs.ServiceStatusCode.SUCCESS
+    ):
+      # Transitions ExampleGen node to STOPPED state and service job to
+      # STATE_STOPPED when backfill completes.
+      logging.info(
+          'Stopping ExampleGen: %s ; Backfill with token: %s completed',
+          node_id,
+          node_state.backfill_token,
+      )
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid,
+              state=pstate.NodeState.STOPPED,
+              backfill_token='',
+          )
+      )
+      # The service job already completes with success but we still need to
+      # update the in-memory state.
+      self._service_job_manager.stop_node_services(
+          self._pipeline_state, node_id
+      )
+    elif service_status.code != service_jobs.ServiceStatusCode.RUNNING:
+      error_msg = f'service job failed; error message: {service_status.msg}'
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid,
+              state=pstate.NodeState.FAILED,
+              status=status_lib.Status(
+                  code=status_lib.Code.UNKNOWN, message=error_msg
+              ),
+              backfill_token='',
+          )
+      )
+    elif node_state.state != pstate.NodeState.RUNNING:
+      result.append(
+          task_lib.UpdateNodeStateTask(
+              node_uid=node_uid,
+              state=pstate.NodeState.RUNNING,
+              backfill_token=node_state.backfill_token,
+          )
+      )
+
+    return result
