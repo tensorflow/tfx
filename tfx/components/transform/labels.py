@@ -34,6 +34,7 @@ CACHE_INPUT_PATH_LABEL = 'cache_input_path'
 # This label is used to determine whether Transform should execute in
 # `tf.compat.v1` mode or not.
 FORCE_TF_COMPAT_V1_LABEL = 'force_tf_compat_v1'
+SAVE_OPTIONS_LABEL = 'save_options'
 
 # Output labels.
 # TODO(b/72214804): Ideally per-set stats and materialization output paths

@@ -107,6 +107,9 @@ MODEL_RUN_KEY = 'model_run'
 PREPROCESSING_FN_KEY = 'preprocessing_fn'
 STATS_OPTIONS_UPDATER_FN_KEY = 'stats_options_updater_fn'
 FORCE_TF_COMPAT_V1_KEY = 'force_tf_compat_v1'
+# TODO(tatp): Make save_options available in TFlex:
+# tfx/tflex/components/transform.py
+SAVE_OPTIONS_KEY = 'save_options'
 SPLITS_CONFIG_KEY = 'splits_config'
 ANALYZER_CACHE_KEY = 'analyzer_cache'
 TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'

@@ -13,6 +13,8 @@
 *  `ph.make_proto()` allows constructing proto-valued placeholders, e.g. for
    larger config protos fed to a component.
 *  `ph.join_path()` is like `os.path.join()` but for placeholders.
+*  Support passing in `experimental_debug_stripper` into the Transform
+   pipeline runner.
 
 ## Breaking Changes
 
