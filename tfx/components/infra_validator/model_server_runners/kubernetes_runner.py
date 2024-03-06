@@ -20,6 +20,7 @@ from typing import Optional
 
 from absl import logging
 from apache_beam.utils import retry
+import kubernetes
 from kubernetes import client as k8s_client
 from kubernetes.client import rest
 
@@ -93,11 +94,17 @@ def _convert_to_kube_env(
 def _convert_to_resource_requirements(
     resources: infra_validator_pb2.Resources
 ) -> k8s_client.V1ResourceRequirements:
-  return k8s_client.V1ResourceRequirements(
-      requests=dict(resources.requests),
-      limits=dict(resources.limits),
-      claims=dict(resources.claims),
-  )
+  if kubernetes.__version__ >= '26.0.0':
+    return k8s_client.V1ResourceRequirements(
+        requests=dict(resources.requests),
+        limits=dict(resources.limits),
+        claims=dict(resources.claims),
+    )
+  else:
+    return k8s_client.V1ResourceRequirements(
+        requests=dict(resources.requests),
+        limits=dict(resources.limits),
+    )
 
 
 class KubernetesRunner(base_runner.BaseModelServerRunner):

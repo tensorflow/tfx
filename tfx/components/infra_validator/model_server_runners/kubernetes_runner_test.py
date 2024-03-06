@@ -17,6 +17,7 @@ import os
 from typing import Any, Dict
 from unittest import mock
 
+import kubernetes
 from kubernetes import client as k8s_client
 from kubernetes.client import rest
 import tensorflow as tf
@@ -212,6 +213,8 @@ class KubernetesRunnerTest(tf.test.TestCase):
             },
         },
     }
+    if kubernetes.__version__ < '26.0.0':
+      k8s_config_dict['serving_pod_overrides']['resources'].pop('claims')
     runner = self._CreateKubernetesRunner(k8s_config_dict=k8s_config_dict)
 
     # Act.
