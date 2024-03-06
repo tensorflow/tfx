@@ -120,8 +120,11 @@ class SubPipelineTaskScheduler(
         # was already started so the execution should already exist.
         self._put_begin_node_execution()
         logging.info('[Subpipeline Task Scheduler]: start subpipeline.')
-        pipeline_ops.initiate_pipeline_start(self.mlmd_handle,
-                                             self._sub_pipeline, None, None)
+        pipeline_ops.initiate_pipeline_start(
+            mlmd_handle=self.mlmd_handle,
+            pipeline=self._sub_pipeline,
+            trace_proto=None,
+        )
       except status_lib.StatusNotOkError as e:
         return task_scheduler.TaskSchedulerResult(status=e.status())
 
