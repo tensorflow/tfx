@@ -206,12 +206,18 @@ class KubernetesRunnerTest(tf.test.TestCase):
                 },
             ],
             'resources': {
+                # TODO(b/328171600): Uncomment when version of kubernetes
+                # is matched with TFX. Kubernetes >= 26 supports 'claims' field,
+                # while TFX is at version 12.
                 'claims': {},
                 'requests': {'memory': '2Gi', 'cpu': '1'},
                 'limits': {'memory': '4Gi', 'cpu': '2'},
             },
         },
     }
+    if not hasattr(k8s_client.V1ResourceRequirements, 'claims'):
+      k8s_config_dict['serving_pod_overrides']['resources'].pop('claims')
+
     runner = self._CreateKubernetesRunner(k8s_config_dict=k8s_config_dict)
 
     # Act.
