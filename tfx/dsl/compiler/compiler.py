@@ -19,6 +19,7 @@ from tfx import types
 from tfx.dsl.compiler import compiler_context
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
+from tfx.dsl.compiler import node_execution_options_utils
 from tfx.dsl.compiler import node_inputs_compiler
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_driver
@@ -531,8 +532,6 @@ def _set_node_execution_options(
     enable_cache: bool,
 ):
   """Compiles and sets NodeExecutionOptions of a pipeline node."""
-  options_proto = pipeline_pb2.NodeExecutionOptions()
-  options_proto.caching_options.enable_cache = enable_cache
   options_py = tfx_node.node_execution_options
   if options_py:
     assert isinstance(options_py, execution_options_utils.NodeExecutionOptions)
@@ -560,17 +559,13 @@ def _set_node_execution_options(
           " lifetime_start. In order to use the trigger strategy the node"
           " must have a lifetime_start."
       )
-    options_proto.strategy = options_py.trigger_strategy
-    options_proto.node_success_optional = options_py.success_optional
-    if options_py.max_execution_retries is not None:
-      options_proto.max_execution_retries = options_py.max_execution_retries
-    options_proto.execution_timeout_sec = options_py.execution_timeout_sec
-    options_proto.run_mode = options_py._run_mode  # pylint: disable=protected-access
-    options_proto.reset_stateful_working_dir = (
-        options_py.reset_stateful_working_dir
+    options_proto = node_execution_options_utils.compile_node_execution_options(
+        options_py
     )
-    if options_py.lifetime_start:
-      options_proto.resource_lifetime.lifetime_start = options_py.lifetime_start
+  else:
+    options_proto = pipeline_pb2.NodeExecutionOptions()
+
+  options_proto.caching_options.enable_cache = enable_cache
   node.execution_options.CopyFrom(options_proto)
 
   # TODO: b/310726801 - We should throw an error if this is an invalid
