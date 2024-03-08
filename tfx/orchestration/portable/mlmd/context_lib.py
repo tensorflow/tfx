@@ -13,9 +13,10 @@
 # limitations under the License.
 """Portable libraries for context related APIs."""
 
-from typing import List, Optional
+from typing import List, Mapping, Optional
 
 from absl import logging
+from tfx import types
 from tfx.dsl.compiler import constants
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
@@ -55,7 +56,8 @@ def _generate_context_proto(
   context_name = data_types_utils.get_value(context_spec.name)
   assert isinstance(context_name, str), 'context name should be string.'
   result = metadata_store_pb2.Context(
-      type_id=context_type.id, name=context_name)
+      type_id=context_type.id, name=context_name
+  )
   for k, v in context_spec.properties.items():
     if k in context_type.properties:
       actual_property_type = data_types_utils.get_metadata_value_type(v)
@@ -63,8 +65,10 @@ def _generate_context_proto(
         data_types_utils.set_metadata_value(result.properties[k], v)
       else:
         raise RuntimeError(
-            'Property type %s different from provided metadata type property type %s for key %s'
-            % (actual_property_type, context_type.properties.get(k), k))
+            'Property type %s different from provided metadata type property'
+            ' type %s for key %s'
+            % (actual_property_type, context_type.properties.get(k), k)
+        )
     else:
       data_types_utils.set_metadata_value(result.custom_properties[k], v)
   return result
@@ -74,6 +78,7 @@ def _register_context_if_not_exist(
     metadata_handle: metadata.Metadata,
     context_spec: pipeline_pb2.ContextSpec,
     parent_contexts: Optional[List[metadata_store_pb2.Context]] = None,
+    custom_properties: Optional[Mapping[str, types.Property]] = None,
 ) -> metadata_store_pb2.Context:
   """Registers a context if not exist, otherwise returns the existing one.
 
@@ -83,7 +88,7 @@ def _register_context_if_not_exist(
       of a context.
     parent_contexts: Optional. If it is provided, will set the new context as a
       child of the parent contexts.
-
+    custom_properties: Optional custom properties of the context.
   Returns:
     An MLMD context.
   """
@@ -101,6 +106,10 @@ def _register_context_if_not_exist(
   context = _generate_context_proto(
       metadata_handle=metadata_handle, context_spec=context_spec
   )
+  for k, v in custom_properties.items():
+    value = pipeline_pb2.Value()
+    value = data_types_utils.set_parameter_value(value, v)
+    context.custom_properties[k].CopyFrom(value.field_value)
   try:
     [context_id] = metadata_handle.store.put_contexts([context])
     context.id = context_id
@@ -163,6 +172,7 @@ def register_context_if_not_exists(
 def prepare_contexts(
     metadata_handle: metadata.Metadata,
     node_contexts: pipeline_pb2.NodeContexts,
+    pipeline_run_metadata: Optional[Mapping[str, types.Property]] = None,
 ) -> List[metadata_store_pb2.Context]:
   """Creates the contexts given specification.
 
@@ -172,6 +182,8 @@ def prepare_contexts(
     metadata_handle: A handler to access MLMD store.
     node_contexts: A pipeline_pb2.NodeContext message that instructs registering
       of the contexts.
+    pipeline_run_metadata: Pipeline run metadata will be attached to the
+      pipeline_run context.
 
   Returns:
     A list of metadata_store_pb2.Context messages.
@@ -196,13 +208,19 @@ def prepare_contexts(
 
     if context_spec.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME:
       parent_contexts = pipeline_contexts
+      custom_properties = {
+          'pipeline_run_metadata': pipeline_run_metadata
+      }
     else:
       parent_contexts = []
+      custom_properties = {}
     context = _register_context_if_not_exist(
         metadata_handle=metadata_handle,
         context_spec=context_spec,
         parent_contexts=parent_contexts,
+        custom_properties=custom_properties,
     )
+    logging.debug('Prepared CONTEXT:\n %s', context)
     result.append(context)
 
   return result

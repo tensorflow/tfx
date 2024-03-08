@@ -690,18 +690,23 @@ class PipelineState:
     # If there are no normal nodes then no contexts are prepared.
     def _prepare_pipeline_node_contexts(
         pipeline: pipeline_pb2.Pipeline,
+        pipeline_run_metadata: Optional[Mapping[str, types.Property]] = None,
     ) -> bool:
       """Prepares contexts for any pipeline node in any sub pipeline layer."""
       for node in pipeline.nodes:
         if node.WhichOneof('node') == 'pipeline_node':
-          context_lib.prepare_contexts(mlmd_handle, node.pipeline_node.contexts)
+          context_lib.prepare_contexts(
+              mlmd_handle, node.pipeline_node.contexts, pipeline_run_metadata
+          )
           return True
         elif node.WhichOneof('node') == 'sub_pipeline':
-          if _prepare_pipeline_node_contexts(node.sub_pipeline):
+          if _prepare_pipeline_node_contexts(
+              node.sub_pipeline, pipeline_run_metadata
+          ):
             return True
       return False
 
-    _prepare_pipeline_node_contexts(pipeline)
+    _prepare_pipeline_node_contexts(pipeline, pipeline_run_metadata)
 
     # update _active_pipelines_exist to be True so orchestrator will keep
     # fetching the latest contexts and execution when orchestrating the pipeline
