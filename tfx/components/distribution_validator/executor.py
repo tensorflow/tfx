@@ -21,6 +21,7 @@ import tensorflow_data_validation as tfdv
 from tensorflow_data_validation.utils import path
 from tensorflow_data_validation.utils import schema_util
 from tfx import types
+from tfx.components.distribution_validator import utils
 from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.dsl.components.base import base_executor
 from tfx.orchestration.experimental.core import component_generated_alert_pb2
@@ -37,6 +38,7 @@ from google.protobuf import any_pb2
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
+
 
 # Default file name for anomalies output.
 DEFAULT_FILE_NAME = 'SchemaDiff.pb'
@@ -176,17 +178,14 @@ def _add_anomalies_for_missing_comparisons(
 
 
 def _generate_alerts_info_proto(
-    anomaly_info: anomalies_pb2.AnomalyInfo,
-    split_pair: str
+    anomaly_info: anomalies_pb2.AnomalyInfo, split_pair: str
 ) -> list[component_generated_alert_pb2.ComponentGeneratedAlertInfo]:
   """Generates a list of ComponentGeneratedAlertInfo from AnomalyInfo."""
   result = []
   for reason in anomaly_info.reason:
     result.append(
         component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-            alert_name=(
-                f'[{split_pair}] {reason.short_description}'
-            ),
+            alert_name=f'[{split_pair}] {reason.short_description}',
             alert_body=f'[{split_pair}] {reason.description}',
         )
     )
@@ -278,9 +277,37 @@ class Executor(base_executor.BaseExecutor):
       ].artifacts.append(anomalies_artifact.mlmd_artifact)
       return executor_output
 
-    config = exec_properties.get(
-        standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY
-    )
+    if (
+        input_dict.get(
+            standard_component_specs.ARTIFACT_DISTRIBUTION_VALIDATOR_CONFIG_KEY
+        )
+        is not None
+        and exec_properties.get(
+            standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY
+        )
+        is not None
+    ):
+      raise ValueError(
+          'artifact_distribution_validator_config and'
+          ' distribution_validator_config are provided at the same time.'
+      )
+    elif (
+        input_dict.get(
+            standard_component_specs.ARTIFACT_DISTRIBUTION_VALIDATOR_CONFIG_KEY
+        )
+        is not None
+    ):
+      config_artifact = artifact_utils.get_single_instance(
+          input_dict[
+              standard_component_specs.ARTIFACT_DISTRIBUTION_VALIDATOR_CONFIG_KEY
+          ]
+      )
+      config = utils.load_config_from_artifact(config_artifact)
+    else:
+      config = exec_properties.get(
+          standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY
+      )
+
     custom_validation_config = exec_properties.get(
         standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY
     )
@@ -309,12 +336,10 @@ class Executor(base_executor.BaseExecutor):
       if missing_split_pairs:
         raise ValueError(
             'Missing split pairs identified in include_split_pairs: %s'
-            % ', '.join(
-                [
-                    '%s_%s' % (test, baseline)
-                    for test, baseline in missing_split_pairs
-                ]
-            )
+            % ', '.join([
+                '%s_%s' % (test, baseline)
+                for test, baseline in missing_split_pairs
+            ])
         )
 
     anomalies_artifact.split_names = artifact_utils.encode_split_names(
@@ -353,9 +378,7 @@ class Executor(base_executor.BaseExecutor):
       anomalies = _get_comparison_only_anomalies(full_anomalies)
       anomalies = _add_anomalies_for_missing_comparisons(anomalies, config)
 
-      if anomalies.anomaly_info or anomalies.HasField(
-          'dataset_anomaly_info'
-      ):
+      if anomalies.anomaly_info or anomalies.HasField('dataset_anomaly_info'):
         blessed_value_dict[split_pair] = NOT_BLESSED_VALUE
       else:
         blessed_value_dict[split_pair] = BLESSED_VALUE
@@ -386,7 +409,7 @@ class Executor(base_executor.BaseExecutor):
 
     executor_output.output_artifacts[
         standard_component_specs.ANOMALIES_KEY
-        ].artifacts.append(anomalies_artifact.mlmd_artifact)
+    ].artifacts.append(anomalies_artifact.mlmd_artifact)
 
     # Set component generated alerts execution property in ExecutorOutput if
     # any anomalies alerts exist.
