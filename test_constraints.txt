@@ -10,3 +10,6 @@
 
 # TODO(b/321609768): Remove pinned Flask-session version after resolving the issue.
 Flask-session<0.6.0
+
+# TODO(b/324157691): Remove pinned Jax version once we upgrade TF.
+jax<0.4.24
