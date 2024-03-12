@@ -27,6 +27,9 @@ class OrchestrationOptions:
       failures.
     deadline_secs: Only applicable to sync pipelines. If non-zero, a pipeline
       run is aborted if the execution duration exceeds deadline_secs seconds.
+    concurrent_enable: Only applicable to sync pipelines. If enable, a pipeline
+      can be run multiple times concurrently.
   """
   fail_fast: bool = False
   deadline_secs: int = 0
+  concurrent_enable: bool = False
