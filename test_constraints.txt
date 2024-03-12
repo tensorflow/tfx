@@ -10,3 +10,5 @@
 
 # TODO(b/321609768): Remove pinned Flask-session version after resolving the issue.
 Flask-session<0.6.0
+
+tensorflow<2.16
