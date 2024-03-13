@@ -77,6 +77,7 @@
 | `packaging` | `>=20,<21` | `>=22` | |
 | `attrs` | `19.3.0,<22` | `19.3.0,<24` | |
 | `google-cloud-bigquery` | `>=2.26.0,<3` | `>=3,<4` | |
+| `tensorflow` | `>=2.15,<2.16` | `>=2.13,<2.14` | |
 | `tensorflow-hub` | `>=0.9.0,<0.14` | `>=0.15.0,<0.16` | |
 ## Documentation Updates
 
