@@ -106,6 +106,12 @@ class _Generator:
       node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
       node_id = node.node_info.id
 
+      logging.info(
+          '[AsyncPipelineTaskGenerator._generate_tasks_for_node] generating'
+          ' tasks for node %s',
+          node_id,
+      )
+
       with self._pipeline_state:
         node_state = self._pipeline_state.get_node_state(node_uid)
         if node_state.state in (pstate.NodeState.STOPPING,
@@ -189,11 +195,6 @@ class _Generator:
           task_lib.exec_node_task_id_from_node(self._pipeline, node)):
         continue
 
-      logging.info(
-          '[AsyncPipelineTaskGenerator._generate_tasks_for_node] generating'
-          ' tasks for node %s',
-          node.node_info.id,
-      )
       tasks = self._generate_tasks_for_node(
           self._mlmd_handle, node, node_state.backfill_token
       )
