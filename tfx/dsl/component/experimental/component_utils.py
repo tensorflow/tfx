@@ -89,14 +89,20 @@ def _type_check_execution_function_params(
       channel = channel_parameters[param_name]
       allowed_param_types = []
 
-      if not issubclass(channel.type, standard_artifacts.ValueArtifact):
+      if param_name in spec.OUTPUTS or not issubclass(
+          channel.type, standard_artifacts.ValueArtifact
+      ):
+        # For output channels, pass through the allowed type
+        # For input channels, pass through non-ValueArtifact types. We handle
+        # ValueArtifact types in the elif branch, because we want to allow users
+        # to specify the associated primitive types (e.g. str) instead.
         allowed_param_types = [
             list[channel.type],
             Optional[channel.type] if channel.optional else channel.type,
         ]
       elif param_name in spec.INPUTS:
         if channel.type in _VALUE_ARTIFACT_TO_TYPE:
-          # Primitvie ValueArtifact input can be annotated as a primitive type.
+          # Primitive ValueArtifact input can be annotated as a primitive type.
           primitive_type = _VALUE_ARTIFACT_TO_TYPE[channel.type]
           allowed_param_types.append(
               Optional[primitive_type] if channel.optional else primitive_type
