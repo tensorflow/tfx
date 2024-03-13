@@ -1237,14 +1237,9 @@ class PipelineView:
     executions = mlmd_handle.store.get_executions_by_context(
         context.id, list_options=list_options, **kwargs
     )
-    if non_active_only:
-      executions = [
-          e for e in executions if not execution_lib.is_execution_active(e)
-      ]
 
     if pipeline_run_id is None and executions:
-      execution = _get_latest_execution(executions)
-      return cls(pipeline_id, context, execution)
+      return cls(pipeline_id, context, executions[0])
 
     for execution in executions:
       if execution.custom_properties[
@@ -1254,7 +1249,7 @@ class PipelineView:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND,
         message=(
-            f'No {non_active_msg}pipeline with run_id {pipeline_run_id} found.'
+            f'No {non_active_msg} pipeline with run_id {pipeline_run_id} found.'
         ),
     )
 
@@ -1500,17 +1495,6 @@ def _get_pipeline_from_orchestrator_execution(
   pipeline_ir = data_types_utils.get_metadata_value(
       execution.properties[_PIPELINE_IR])
   return _PipelineIRCodec.get().decode(pipeline_ir)
-
-
-def _get_latest_execution(
-    executions: List[metadata_store_pb2.Execution]
-) -> metadata_store_pb2.Execution:
-  """gets a single latest execution from the executions."""
-
-  def _get_creation_time(execution):
-    return execution.create_time_since_epoch
-
-  return max(executions, key=_get_creation_time)
 
 
 def _get_orchestrator_context(mlmd_handle: metadata.Metadata, pipeline_id: str,

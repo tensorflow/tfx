@@ -816,6 +816,8 @@ def _load_reused_pipeline_view(
         mlmd_handle=mlmd_handle,
         pipeline_id=pipeline_uid.pipeline_id,
         pipeline_run_id=base_run_id,
+        # If current pipeline run is allowed and base_run_id is not specified,
+        # reuse the most recent completed run.
         non_active_only=env.get_env().concurrent_pipeline_runs_enabled(),
     )
   except status_lib.StatusNotOkError as e:
@@ -840,9 +842,10 @@ def _load_reused_pipeline_view(
 
   if execution_lib.is_execution_active(reused_pipeline_view.execution):
     raise status_lib.StatusNotOkError(
-        code=status_lib.Code.ALREADY_EXISTS,
+        code=status_lib.Code.FAILED_PRECONDITION,
         message=(
-            f'An active pipeline is already running with uid {pipeline_uid}.'
+            'The previous pipeline run'
+            f' {reused_pipeline_view.pipeline_run_id} is still active.'
         ),
     )
 
@@ -853,7 +856,6 @@ def _load_reused_pipeline_view(
 def resume_pipeline(
     mlmd_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
-    pipeline_id: str,
     run_id: Optional[str] = None,
 ) -> pstate.PipelineState:
   """Resumes a pipeline run from previously failed nodes.
@@ -863,7 +865,6 @@ def resume_pipeline(
   Args:
     mlmd_handle: A handle to the MLMD db.
     pipeline: IR of the pipeline to resume.
-    pipeline_id: The id (name) of the pipeline to resume.
     run_id: the run_id of the pipeline run to resume.
 
   Returns:
@@ -876,9 +877,6 @@ def resume_pipeline(
       is not found for resuming. With code 'INVALID_ARGUMENT' if concurrent
       pipeline runs are enabled but pipeline run id is missing.
   """
-  reuse_pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(
-      pipeline_id, run_id
-  )
   logging.info(
       'Received request to resume pipeline; pipeline uid: %s',
       task_lib.PipelineUid.from_pipeline(pipeline),
@@ -894,7 +892,7 @@ def resume_pipeline(
 
   if (
       env.get_env().concurrent_pipeline_runs_enabled()
-      and not reuse_pipeline_uid.pipeline_run_id
+      and not run_id
   ):
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.INVALID_ARGUMENT,
@@ -904,10 +902,10 @@ def resume_pipeline(
         ),
     )
 
-  if reuse_pipeline_uid.pipeline_run_id:
+  if run_id:
     snapshot_settings = pipeline_pb2.SnapshotSettings()
     partial_run_utils.set_base_pipeline_run_strategy(
-        snapshot_settings, reuse_pipeline_uid.pipeline_run_id
+        snapshot_settings, run_id
     )
   else:
     snapshot_settings = partial_run_utils.latest_pipeline_snapshot_settings()
@@ -950,7 +948,9 @@ def resume_pipeline(
     )
   if pipeline.runtime_spec.HasField('snapshot_settings'):
     try:
-      partial_run_utils.snapshot(mlmd_handle, pipeline)
+      partial_run_utils.snapshot(
+          mlmd_handle, pipeline, latest_pipeline_view.pipeline_run_id
+      )
     except ValueError as e:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT, message=str(e)
