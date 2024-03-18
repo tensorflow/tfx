@@ -16,6 +16,8 @@ r"""This module defines the entrypoint for the PythonExecutorOperator in TFX.
 This library is intended to serve as the entrypoint for a binary that packages
 the python executors in a pipeline. The resulting binary is called by the TFX
 launcher and should not be called directly.
+
+Note that this entrypoint is only used in open source projects.
 """
 
 from absl import flags
