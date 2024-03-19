@@ -735,8 +735,8 @@ class PipelineState:
 
     Raises:
       status_lib.StatusNotOkError: With code=NOT_FOUND if no active pipeline
-      with the given pipeline uid exists in MLMD. With code=INTERNAL if more
-      than 1 active execution exists for given pipeline uid.
+      with the given pipeline uid exists in MLMD. With code=FAILED_PRECONDITION
+      if more than 1 active execution exists for given pipeline uid.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_uid.pipeline_id)
     uids_and_states = cls._load_from_context(mlmd_handle, context, pipeline_uid)
@@ -746,7 +746,7 @@ class PipelineState:
           message=f'No active pipeline with uid {pipeline_uid} to load state.')
     if len(uids_and_states) > 1:
       raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INTERNAL,
+          code=status_lib.Code.FAILED_PRECONDITION,
           message=(
               f'Expected 1 but found {len(uids_and_states)} active pipelines '
               f'for pipeline uid: {pipeline_uid}'))
@@ -766,8 +766,8 @@ class PipelineState:
       List of `PipelineState` objects for all active pipelines.
 
     Raises:
-      status_lib.StatusNotOkError: With code=INTERNAL if more than one active
-      pipeline are found with the same pipeline uid.
+      status_lib.StatusNotOkError: With code=FAILED_PRECONDITION if more than
+      one active pipeline are found with the same pipeline uid.
     """
     result = []
     global _active_pipelines_exist
@@ -780,7 +780,7 @@ class PipelineState:
         for pipeline_uid, pipeline_state in uids_and_states:
           if pipeline_uid in active_pipeline_uids:
             raise status_lib.StatusNotOkError(
-                code=status_lib.Code.INTERNAL,
+                code=status_lib.Code.FAILED_PRECONDITION,
                 message=(
                     'Found more than 1 active pipeline for pipeline uid:'
                     f' {pipeline_uid}'
@@ -813,8 +813,8 @@ class PipelineState:
 
     Raises:
       status_lib.StatusNotOkError: With code=NOT_FOUND if no active pipeline
-      with the given pipeline uid exists in MLMD. With code=INTERNAL if more
-      than 1 active execution exists for given pipeline uid.
+      with the given pipeline uid exists in MLMD. With code=INVALID_ARGUEMENT if
+      there is not exactly 1 active execution for given pipeline uid.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_id)
     query = f'custom_properties.pipeline_run_id.string_value = "{run_id}"'
@@ -825,7 +825,7 @@ class PipelineState:
 
     if len(executions) != 1:
       raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INTERNAL,
+          code=status_lib.Code.INVALID_ARGUMENT,
           message=(
               f'Expected 1 but found {len(executions)} pipelines '
               f'for pipeline id: {pipeline_id} with run_id {run_id}'
