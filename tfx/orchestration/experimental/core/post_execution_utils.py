@@ -207,6 +207,7 @@ def _update_execution_state_in_mlmd(
           error_msg)
     if execution_result:
       execution_lib.set_execution_result(execution_result, execution)
+  pipeline_state.record_state_change_time()
 
 
 def remove_temporary_task_dirs(
