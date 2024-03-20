@@ -26,6 +26,7 @@ from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
 from tfx.utils import name_utils
+import typing_extensions
 
 
 def _abstract_property() -> Any:
@@ -128,8 +129,9 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
   def id(self, id: str) -> None:  # pylint: disable=redefined-builtin
     self._id = id
 
+  # TODO(kmonte): Update this to Self once we're on 3.11 everywhere
   @doc_controls.do_not_doc_in_subclasses
-  def with_id(self, id: str) -> 'BaseNode':  # pylint: disable=redefined-builtin
+  def with_id(self, id: str) -> typing_extensions.Self:  # pylint: disable=redefined-builtin
     self._id = id
     return self
 
@@ -166,10 +168,10 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
   ):
     self._node_execution_options = copy.deepcopy(node_execution_options)
 
+  # TODO(kmonte): Update this to Self once we're on 3.11 everywhere
   def with_node_execution_options(
-      self,
-      node_execution_options: utils.NodeExecutionOptions
-  ) -> 'BaseNode':
+      self, node_execution_options: utils.NodeExecutionOptions
+  ) -> typing_extensions.Self:
     self.node_execution_options = node_execution_options
     return self
 
