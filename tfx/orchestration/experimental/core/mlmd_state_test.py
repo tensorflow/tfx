@@ -151,9 +151,6 @@ class MlmdStateTest(test_utils.TfxTest):
       [execution] = m.store.get_executions_by_id([execution.id])
       self.assertEqual(metadata_store_pb2.Execution.CANCELED,
                        execution.last_known_state)
-      # Test that in-memory state is also in sync.
-      self.assertEqual(execution,
-                       mlmd_state._execution_cache._cache[execution.id])
       # Test that on_commit callback was invoked.
       self.assertTrue(event_on_commit.is_set())
       # Sanity checks that the updated execution is yielded in the next call.
@@ -167,27 +164,6 @@ class MlmdStateTest(test_utils.TfxTest):
                                   'Execution not found for execution id'):
         with mlmd_state.mlmd_execution_atomic_op(m, 1):
           pass
-
-  def test_evict_from_cache(self):
-    with self._mlmd_connection as m:
-      expected_execution = _write_test_execution(m)
-      # Load the execution in cache.
-      with mlmd_state.mlmd_execution_atomic_op(m, expected_execution.id):
-        pass
-      # Test that execution is in cache.
-      self.assertEqual(
-          expected_execution,
-          mlmd_state._execution_cache._cache.get(expected_execution.id))
-      # Evict from cache and test.
-      with mlmd_state.evict_from_cache(expected_execution.id):
-        self.assertIsNone(
-            mlmd_state._execution_cache._cache.get(expected_execution.id))
-      # Execution should stay evicted.
-      self.assertIsNone(
-          mlmd_state._execution_cache._cache.get(expected_execution.id))
-      # Evicting a non-existent execution should not raise any errors.
-      with mlmd_state.evict_from_cache(expected_execution.id):
-        pass
 
   def test_get_field_mask_paths(self):
     execution = _create_test_execution(
