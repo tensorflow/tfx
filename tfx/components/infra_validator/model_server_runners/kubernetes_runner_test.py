@@ -31,7 +31,7 @@ from tfx.utils import path_utils
 from google.protobuf import json_format
 
 
-def _CreateServingSpec(payload: Dict[str, Any]):
+def _create_serving_spec(payload: Dict[str, Any]):
   result = infra_validator_pb2.ServingSpec()
   json_format.ParseDict(payload, result)
   return result
@@ -194,30 +194,35 @@ class KubernetesRunnerTest(tf.test.TestCase):
         'service_account_name': 'chocolate-latte',
         'active_deadline_seconds': 123,
         'serving_pod_overrides': {
-            'annotations': {'best_ticker': 'goog'},
-            'env': [
-                {'name': 'TICKER', 'value': 'GOOG'},
-                {'name': 'NAME_ONLY'},
-                {
-                    'name': 'SECRET',
-                    'value_from': {
-                        'secret_key_ref': {'name': 'my_secret', 'key': 'my_key'}
-                    },
-                },
-            ],
-            'resources': {
-                # TODO(b/328171600): Uncomment when version of kubernetes
-                # is matched with TFX. Kubernetes >= 26 supports 'claims' field,
-                # while TFX is at version 12.
-                'claims': {},
-                'requests': {'memory': '2Gi', 'cpu': '1'},
-                'limits': {'memory': '4Gi', 'cpu': '2'},
+            'annotations': {
+                'best_ticker': 'goog'
             },
-        },
+            'env': [{
+                'name': 'TICKER',
+                'value': 'GOOG'
+            }, {
+                'name': 'NAME_ONLY'
+            }, {
+                'name': 'SECRET',
+                'value_from': {
+                    'secret_key_ref': {
+                        'name': 'my_secret',
+                        'key': 'my_key'
+                    }
+                }
+            }],
+            'resources': {
+                'requests': {
+                    'memory': '2Gi',
+                    'cpu': '1'
+                },
+                'limits': {
+                    'memory': '4Gi',
+                    'cpu': '2'
+                },
+            }
+        }
     }
-    if not hasattr(k8s_client.V1ResourceRequirements, 'claims'):
-      k8s_config_dict['serving_pod_overrides']['resources'].pop('claims')
-
     runner = self._CreateKubernetesRunner(k8s_config_dict=k8s_config_dict)
 
     # Act.

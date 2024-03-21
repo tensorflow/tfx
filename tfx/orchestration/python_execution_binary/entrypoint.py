@@ -18,11 +18,15 @@ the python executors in a pipeline. The resulting binary is called by the TFX
 launcher and should not be called directly.
 """
 
+from typing import Union
+
 from absl import flags
 from absl import logging
 from tfx.orchestration.python_execution_binary import python_execution_binary_utils
 from tfx.orchestration.python_execution_binary import python_execution_lib
 from tfx.orchestration.python_execution_binary import system_flags
+from tfx.proto.orchestration import executable_spec_pb2
+from tfx.utils import import_utils
 
 from google.protobuf import text_format
 
@@ -40,15 +44,30 @@ MLMD_CONNECTION_CONFIG_FLAG = flags.DEFINE_string(
     'indicates a driver execution')
 
 
-def main(_):
-  mutually_exclusive = (EXECUTABLE_SPEC_FLAG.present) ^ (
-      BEAM_EXECUTABLE_SPEC_FLAG.present
-  )
-  if not mutually_exclusive:
-    raise ValueError(
-        f'Exactly one of {EXECUTABLE_SPEC_FLAG.name} and'
-        f' {BEAM_EXECUTABLE_SPEC_FLAG.name} must be set.'
+_PythonClassExecutableSpec = executable_spec_pb2.PythonClassExecutableSpec
+_BeamExecutableSpec = executable_spec_pb2.BeamExecutableSpec
+
+
+def _import_class_path(
+    executable_spec: Union[_PythonClassExecutableSpec, _BeamExecutableSpec],
+):
+  """Import the class path from Python or Beam executor spec."""
+  if isinstance(executable_spec, _BeamExecutableSpec):
+    import_utils.import_class_by_path(
+        executable_spec.python_executor_spec.class_path
     )
+  elif isinstance(executable_spec, _PythonClassExecutableSpec):
+    import_utils.import_class_by_path(executable_spec.class_path)
+  else:
+    raise ValueError(
+        f'Executable spec type {type(executable_spec)} is not supported.'
+    )
+
+
+def main(_):
+  flags.mark_flags_as_mutual_exclusive(
+      (EXECUTABLE_SPEC_FLAG.name, BEAM_EXECUTABLE_SPEC_FLAG.name),
+      required=True)
 
   if BEAM_EXECUTABLE_SPEC_FLAG.value is not None:
     executable_spec = python_execution_binary_utils.deserialize_executable_spec(
@@ -60,7 +79,7 @@ def main(_):
     )
   # Eagerly import class path from executable spec such that all artifact
   # references are resolved. This should come before parsing execution_info.
-  python_execution_binary_utils.import_class_path(executable_spec)
+  _import_class_path(executable_spec)
   execution_info = system_flags.parse_execution_info()
   logging.info('execution_info = %r\n', execution_info)
   logging.info(

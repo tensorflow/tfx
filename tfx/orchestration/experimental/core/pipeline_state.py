@@ -126,6 +126,10 @@ class NodeState(json_utils.Jsonable):
   SKIPPED = 'skipped'
   # Node execution skipped due to partial run.
   SKIPPED_PARTIAL_RUN = 'skipped_partial_run'
+  # b/323371181 Remove pausing and paused when we are sure that no active
+  # pipeline has node state of pausing or paused.
+  PAUSING = 'pausing'  # Pending work before state can change to PAUSED.
+  PAUSED = 'paused'  # Node was paused and may be resumed in the future.
   FAILED = 'failed'  # Node execution failed due to errors.
 
   state: str = attr.ib(
@@ -138,6 +142,8 @@ class NodeState(json_utils.Jsonable):
           COMPLETE,
           SKIPPED,
           SKIPPED_PARTIAL_RUN,
+          PAUSING,
+          PAUSED,
           FAILED,
       ]),
       on_setattr=attr.setters.validate,
@@ -181,11 +187,12 @@ class NodeState(json_utils.Jsonable):
 
   def is_startable(self) -> bool:
     """Returns True if the node can be started."""
-    return self.state in set([self.STOPPING, self.STOPPED, self.FAILED])
+    return self.state in set(
+        [self.PAUSED, self.STOPPING, self.STOPPED, self.FAILED])
 
   def is_stoppable(self) -> bool:
     """Returns True if the node can be stopped."""
-    return self.state in set([self.STARTED, self.RUNNING])
+    return self.state in set([self.STARTED, self.RUNNING, self.PAUSED])
 
   def is_backfillable(self) -> bool:
     """Returns True if the node can be backfilled."""
@@ -219,13 +226,8 @@ class NodeState(json_utils.Jsonable):
   def to_run_state_history(self) -> List[run_state_pb2.RunState]:
     run_state_history = []
     for state in self.state_history:
-      # STARTING, PAUSING and PAUSED has been deprecated but may still be
-      # present in state_history.
-      if (
-          state.state == 'starting'
-          or state.state == 'pausing'
-          or state.state == 'paused'
-      ):
+      # STARTING has been deprecated but may still be present in state_history.
+      if state.state == 'starting':
         continue
       run_state_history.append(
           NodeState(
@@ -380,6 +382,8 @@ _NODE_STATE_TO_RUN_STATE_MAP = {
     NodeState.COMPLETE: run_state_pb2.RunState.COMPLETE,
     NodeState.SKIPPED: run_state_pb2.RunState.SKIPPED,
     NodeState.SKIPPED_PARTIAL_RUN: run_state_pb2.RunState.SKIPPED_PARTIAL_RUN,
+    NodeState.PAUSING: run_state_pb2.RunState.UNKNOWN,
+    NodeState.PAUSED: run_state_pb2.RunState.PAUSED,
     NodeState.FAILED: run_state_pb2.RunState.FAILED
 }
 
@@ -677,9 +681,8 @@ class PipelineState:
       )
       _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
 
-    # Find any normal pipeline node (possibly in a subpipeline) and prepare the
-    # contexts, which will register the associated pipeline contexts and
-    # pipeline run ID context.
+    # Find any normal pipeline node and prepare the contexts, which will
+    # register the associated pipeline contexts and pipeline run ID context.
     #
     # We do this so the pipeline contexts and pipeline run ID context are
     # created immediately when the pipeline is started, so we can immediately
@@ -688,20 +691,10 @@ class PipelineState:
     # the contexts to be registered.
     #
     # If there are no normal nodes then no contexts are prepared.
-    def _prepare_pipeline_node_contexts(
-        pipeline: pipeline_pb2.Pipeline,
-    ) -> bool:
-      """Prepares contexts for any pipeline node in any sub pipeline layer."""
-      for node in pipeline.nodes:
-        if node.WhichOneof('node') == 'pipeline_node':
-          context_lib.prepare_contexts(mlmd_handle, node.pipeline_node.contexts)
-          return True
-        elif node.WhichOneof('node') == 'sub_pipeline':
-          if _prepare_pipeline_node_contexts(node.sub_pipeline):
-            return True
-      return False
-
-    _prepare_pipeline_node_contexts(pipeline)
+    for node in pipeline.nodes:
+      if node.WhichOneof('node') == 'pipeline_node':
+        context_lib.prepare_contexts(mlmd_handle, node.pipeline_node.contexts)
+        break
 
     # update _active_pipelines_exist to be True so orchestrator will keep
     # fetching the latest contexts and execution when orchestrating the pipeline
