@@ -841,24 +841,13 @@ def _load_reused_pipeline_view(
     )
 
   if execution_lib.is_execution_active(reused_pipeline_view.execution):
-    if base_run_id and env.get_env().concurrent_pipeline_runs_enabled():
-      # TODO(b/330376413): Ideally we should not allow an active run to be
-      # reused, otherwise the new partial run may end up in an invalid state due
-      # to race condition. But there are users who already depend on this buggy
-      # behavior, so we keep it as is for now.
-      logging.warning(
-          'The base pipeline run %s is still active. The new partial run'
-          ' may end up in an invalid state due to race condition.',
-          base_run_id,
-      )
-    else:
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.FAILED_PRECONDITION,
-          message=(
-              'The base pipeline run'
-              f' {reused_pipeline_view.pipeline_run_id} is still active.'
-          ),
-      )
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.FAILED_PRECONDITION,
+        message=(
+            'The previous pipeline run'
+            f' {reused_pipeline_view.pipeline_run_id} is still active.'
+        ),
+    )
 
   return reused_pipeline_view
 
