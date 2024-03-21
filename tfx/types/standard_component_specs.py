@@ -129,6 +129,8 @@ INCLUDE_SPLIT_PAIRS_KEY = 'include_split_pairs'
 BASELINE_STATISTICS_KEY = 'baseline_statistics'
 DISTRIBUTION_VALIDATOR_CONFIG_KEY = 'distribution_validator_config'
 VALIDATION_METRICS_KEY = 'validation_metrics'
+ARTIFACT_DISTRIBUTION_VALIDATOR_CONFIG_KEY = (
+        'artifact_distribution_validator_config')
 
 
 class BulkInferrerSpec(ComponentSpec):
