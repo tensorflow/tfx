@@ -48,6 +48,8 @@ from tfx.utils import status as status_lib
 from tfx.utils import typing_utils
 
 from tfx.orchestration.experimental.core import deployment_config_utils
+from tfx.utils import tracecontext_pb2
+from tfx.utils import tracing
 import ml_metadata as mlmd
 from ml_metadata import errors
 from ml_metadata.proto import metadata_store_pb2
@@ -68,12 +70,16 @@ class ResolvedInfo:
   input_and_params: List[InputAndParam]
 
 
+@tracing.LocalTraceSpan(
+    'Tflex.Orchestrator.TaskGen', 'generate_task_from_execution'
+)
 def generate_task_from_execution(
     metadata_handle: metadata.Metadata,
     pipeline: pipeline_pb2.Pipeline,
     node: node_proto_view.NodeProtoView,
     execution: metadata_store_pb2.Execution,
     cancel_type: Optional[task_lib.NodeCancelType] = None,
+    trace_parent_proto: Optional[tracecontext_pb2.TraceContextProto] = None,
 ) -> task_lib.Task:
   """Generates `ExecNodeTask` given execution."""
   if not execution_lib.is_execution_active(execution):
@@ -97,12 +103,16 @@ def generate_task_from_execution(
       input_artifacts=input_artifacts,
       output_artifacts=output_artifacts,
       executor_output_uri=outputs_resolver.get_executor_output_uri(
-          execution.id),
+          execution.id
+      ),
       stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-          execution),
+          execution
+      ),
       tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
       pipeline=pipeline,
-      cancel_type=cancel_type)
+      cancel_type=cancel_type,
+      trace_parent_proto=trace_parent_proto,
+  )
 
 
 def generate_cancel_task_from_running_execution(
@@ -879,6 +889,9 @@ def interpret_status_from_failed_execution(
   return status_lib.Status(code=error_code, message=error_msg)
 
 
+@tracing.LocalTraceSpan(
+    'Tflex.Orchestrator.TaskGen', 'generate_tasks_from_one_input'
+)
 def generate_tasks_from_one_input(
     metadata_handle: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
@@ -897,6 +910,7 @@ def generate_tasks_from_one_input(
             None,
         ]
     ] = None,
+    trace_parent_proto: Optional[tracecontext_pb2.TraceContextProto] = None,
 ) -> Sequence[task_lib.Task]:
   """Generates tasks for node an execution.
 
@@ -913,6 +927,8 @@ def generate_tasks_from_one_input(
     backfill_token: The backfill token for the execution, if applicable.
     execution_commit_fn: Optional function to be provided when the new execution
       is updated.
+    trace_parent_proto: An optional trace context proto of which task scheduler
+      will create a child trace context.
 
   Returns:
     A list of tasks for the node. Guaranteed to be in the form of:
@@ -957,6 +973,7 @@ def generate_tasks_from_one_input(
           ),
           tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
           pipeline=pipeline,
+          trace_parent_proto=trace_parent_proto,
       )
   )
   return tasks

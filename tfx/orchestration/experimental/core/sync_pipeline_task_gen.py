@@ -32,6 +32,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 from tfx.utils import topsort
 
+from tfx.utils import tracing
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -129,6 +130,7 @@ class _Generator:
     self._pipeline_state = pipeline_state
     with self._pipeline_state:
       self._node_state_by_node_uid = self._pipeline_state.get_node_states_dict()
+      self._trace_parent_proto = self._pipeline_state.trace_proto
     self._pipeline = pipeline
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
@@ -141,8 +143,13 @@ class _Generator:
       self, node: node_proto_view.NodeProtoView
   ) -> List[task_lib.Task]:
     logging.info('in generate_tasks_for_node')
-    return self._generate_tasks_from_resolved_inputs(node)
+    with tracing.LocalTraceSpan(
+        'Tflex.Orchestrator.SyncPipelineTaskGen',
+        f'generate_tasks_for_node({node.node_info.id})',
+    ):
+      return self._generate_tasks_from_resolved_inputs(node)
 
+  @tracing.LocalTraceSpan('Tflex.Orchestrator.SyncPipelineTaskGen', 'generate')
   def __call__(self) -> List[task_lib.Task]:
     layers = _topsorted_layers(self._pipeline)
     exec_node_tasks = []
@@ -197,7 +204,11 @@ class _Generator:
             ' tasks for node %s',
             node.node_info.id,
         )
-        tasks = self._generate_tasks_for_node(node)
+        with tracing.LocalTraceSpan(
+            'Tflex.Orchestrator.SyncPipelineTaskGen',
+            f'generate_tasks_for_node({node_id})',
+        ):
+          tasks = self._generate_tasks_for_node(node)
         logging.info(
             '[SyncPipelineTaskGenerator._generate_tasks_for_node] generated'
             ' tasks for node %s: %s',
@@ -318,14 +329,18 @@ class _Generator:
         logging.info('Service node successful: %s', node_uid)
         result.append(
             task_lib.UpdateNodeStateTask(
-                node_uid=node_uid, state=pstate.NodeState.COMPLETE))
+                node_uid=node_uid, state=pstate.NodeState.COMPLETE
+            )
+        )
       elif (
           service_status.code == service_jobs.ServiceStatusCode.RUNNING
           and node_state.state != pstate.NodeState.RUNNING
       ):
         result.append(
             task_lib.UpdateNodeStateTask(
-                node_uid=node_uid, state=pstate.NodeState.RUNNING))
+                node_uid=node_uid, state=pstate.NodeState.RUNNING
+            )
+        )
       return result
 
     # For mixed service nodes, we ensure node services and check service
@@ -369,7 +384,9 @@ class _Generator:
       logging.info('Node successful: %s', node_uid)
       result.append(
           task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=pstate.NodeState.COMPLETE))
+              node_uid=node_uid, state=pstate.NodeState.COMPLETE
+          )
+      )
       return result
 
     failed_executions = [
@@ -488,10 +505,18 @@ class _Generator:
 
     tasks.append(
         task_lib.UpdateNodeStateTask(
-            node_uid=node_uid, state=pstate.NodeState.RUNNING))
+            node_uid=node_uid, state=pstate.NodeState.RUNNING
+        )
+    )
     tasks.append(
-        task_gen_utils.generate_task_from_execution(self._mlmd_handle,
-                                                    self._pipeline, node, e))
+        task_gen_utils.generate_task_from_execution(
+            metadata_handle=self._mlmd_handle,
+            pipeline=self._pipeline,
+            node=node,
+            execution=e,
+            trace_parent_proto=self._trace_parent_proto,
+        )
+    )
     return tasks
 
   def _generate_tasks_from_resolved_inputs(
@@ -506,9 +531,12 @@ class _Generator:
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
     try:
-      resolved_info = task_gen_utils.generate_resolved_info(
-          self._mlmd_connection_manager, node, self._pipeline
-      )
+      with tracing.LocalTraceSpan(
+          'Tflex.Orchestrator.SyncPipelineTaskGen', 'generate_resolved_info'
+      ):
+        resolved_info = task_gen_utils.generate_resolved_info(
+            self._mlmd_connection_manager, node, self._pipeline
+        )
       logging.info('Resolved inputs: %s', resolved_info)
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
@@ -543,26 +571,32 @@ class _Generator:
     # manner. Idempotency is guaranteed by the artifact type name.
     # The external artifacts will be copies to local db when we register
     # executions. Idempotency is guaranteed by external_id.
-    updated_external_artifacts = []
-    for input_and_params in resolved_info.input_and_params:
-      for artifacts in input_and_params.input_artifacts.values():
-        updated_external_artifacts.extend(
-            task_gen_utils.update_external_artifact_type(
-                self._mlmd_handle, artifacts
-            )
-        )
-    if updated_external_artifacts:
-      logging.info(
-          'Updated external artifact ids: %s',
-          [a.id for a in updated_external_artifacts],
-      )
 
-    executions = task_gen_utils.register_executions(
-        metadata_handle=self._mlmd_handle,
-        execution_type=node.node_info.type,
-        contexts=resolved_info.contexts,
-        input_and_params=resolved_info.input_and_params,
-    )
+    with tracing.LocalTraceSpan(
+        'Tflex.Orchestrator.SyncPipelineTaskGen', 'update_external_artifacts'
+    ):
+      updated_external_artifacts = []
+      for input_and_params in resolved_info.input_and_params:
+        for artifacts in input_and_params.input_artifacts.values():
+          updated_external_artifacts.extend(
+              task_gen_utils.update_external_artifact_type(
+                  self._mlmd_handle, artifacts
+              )
+          )
+      if updated_external_artifacts:
+        logging.info(
+            'Updated external artifact ids: %s',
+            [a.id for a in updated_external_artifacts],
+        )
+    with tracing.LocalTraceSpan(
+        'Tflex.Orchestrator.SyncPipelineTaskGen', 'register_executions'
+    ):
+      executions = task_gen_utils.register_executions(
+          metadata_handle=self._mlmd_handle,
+          execution_type=node.node_info.type,
+          contexts=resolved_info.contexts,
+          input_and_params=resolved_info.input_and_params,
+      )
 
     result.extend(
         task_gen_utils.generate_tasks_from_one_input(
@@ -573,6 +607,7 @@ class _Generator:
             contexts=resolved_info.contexts,
             pipeline=self._pipeline,
             execution_node_state=pstate.NodeState.RUNNING,
+            trace_parent_proto=self._trace_parent_proto,
         )
     )
     return result
