@@ -67,6 +67,10 @@ class Env(abc.ABC):
   def set_health_status(self, status: status_lib.Status) -> None:
     """Sets orchestrator's overall health status."""
 
+  @abc.abstractmethod
+  def check_if_can_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> None:
+    """Check if this orchestrator is capable of orchestrating the pipeline."""
+
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -95,6 +99,9 @@ class _DefaultEnv(Env):
     return status_lib.Status(code=status_lib.Code.OK)
 
   def set_health_status(self, status: status_lib.Status) -> None:
+    pass
+
+  def check_if_can_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> None:
     pass
 
 

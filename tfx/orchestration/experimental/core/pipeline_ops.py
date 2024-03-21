@@ -138,6 +138,7 @@ def initiate_pipeline_start(
       'Received request to start pipeline; pipeline uid: %s',
       task_lib.PipelineUid.from_pipeline(pipeline),
   )
+  env.get_env().check_if_can_orchestrate(pipeline)
   pipeline = copy.deepcopy(pipeline)
 
   if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC and not (
@@ -290,6 +291,7 @@ def stop_pipelines(
         with pstate.PipelineState.load(
             mlmd_handle, pipeline_uid
         ) as pipeline_state:
+          env.get_env().check_if_can_orchestrate(pipeline_state.pipeline)
           pipeline_state.initiate_stop(
               status_lib.Status(
                   code=status_lib.Code.CANCELLED,
@@ -366,6 +368,7 @@ def initiate_node_start(
   with pstate.PipelineState.load(
       mlmd_handle, node_uid.pipeline_uid
   ) as pipeline_state:
+    env.get_env().check_if_can_orchestrate(pipeline_state.pipeline)
     with pipeline_state.node_state_update_context(node_uid) as node_state:
       if node_state.is_startable():
         node_state.update(pstate.NodeState.STARTED)
@@ -394,6 +397,7 @@ def initiate_node_backfill(
   with pstate.PipelineState.load(
       mlmd_handle, node_uid.pipeline_uid
   ) as pipeline_state:
+    env.get_env().check_if_can_orchestrate(pipeline_state.pipeline)
     if pipeline_state.pipeline.execution_mode != pipeline_pb2.Pipeline.ASYNC:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT,
@@ -478,6 +482,7 @@ def stop_node(
     with pstate.PipelineState.load(
         mlmd_handle, node_uid.pipeline_uid
     ) as pipeline_state:
+      env.get_env().check_if_can_orchestrate(pipeline_state.pipeline)
       _check_nodes_exist([node_uid], pipeline_state.pipeline, 'stop_node')
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         if node_state.is_stoppable():
@@ -509,6 +514,7 @@ def skip_nodes(
     )
   pipeline_uid = pipeline_uids_set.pop()
   with pstate.PipelineState.load(mlmd_handle, pipeline_uid) as pipeline_state:
+    env.get_env().check_if_can_orchestrate(pipeline_state.pipeline)
     _check_nodes_exist(node_uids, pipeline_state.pipeline, 'skip_nodes')
     for node_uid in node_uids:
       with pipeline_state.node_state_update_context(node_uid) as node_state:
@@ -549,6 +555,7 @@ def resume_manual_node(
   with pstate.PipelineState.load(
       mlmd_handle, node_uid.pipeline_uid
   ) as pipeline_state:
+    env.get_env().check_if_can_orchestrate(pipeline_state.pipeline)
     nodes = pstate.get_all_nodes(pipeline_state.pipeline)
     filtered_nodes = [n for n in nodes if n.node_info.id == node_uid.node_id]
     if len(filtered_nodes) != 1:
@@ -630,6 +637,8 @@ def delete_pipeline_run(
     pipeline_view = pstate.PipelineView.load(
         mlmd_handle, pipeline_id, pipeline_run_id
     )
+    # No orchestration is required for delete, so we don't have to check
+    # whether we can orchestrate this pipeline or not.
     if (
         pipeline_view.pipeline_execution_mode
         == pipeline_pb2.Pipeline.ExecutionMode.ASYNC
@@ -717,6 +726,7 @@ def update_pipeline(
   logging.info(
       'Received request to update pipeline; pipeline uid: %s', pipeline_uid
   )
+  env.get_env().check_if_can_orchestrate(pipeline)
   pipeline_state = _initiate_pipeline_update(
       mlmd_handle, pipeline, update_options
   )

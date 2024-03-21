@@ -42,6 +42,9 @@ class _TestEnv(env.Env):
   def set_health_status(self, status: status_lib.Status) -> None:
     raise NotImplementedError()
 
+  def check_if_can_orchestrate(self, pipeline) -> None:
+    raise NotImplementedError()
+
 
 class EnvTest(test_utils.TfxTest):
 
