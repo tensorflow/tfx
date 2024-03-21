@@ -825,9 +825,9 @@ class PipelineState:
 
     if len(executions) != 1:
       raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INVALID_ARGUMENT,
+          code=status_lib.Code.FAILED_PRECONDITION,
           message=(
-              f'Expected 1 but found {len(executions)} pipelines '
+              f'Expected 1 but found {len(executions)} pipeline runs '
               f'for pipeline id: {pipeline_id} with run_id {run_id}'
           ),
       )
@@ -1238,14 +1238,20 @@ class PipelineView:
         context.id, list_options=list_options, **kwargs
     )
 
-    if pipeline_run_id is None and executions:
+    non_active_msg = 'non active ' if non_active_only else ''
+    if executions:
+      if len(executions) != 1:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.FAILED_PRECONDITION,
+            message=(
+                'Expected 1 but found'
+                f' {len(executions)} {non_active_msg}'
+                f' runs for pipeline id: {pipeline_id} with run_id'
+                f' {pipeline_run_id}'
+            ),
+        )
       return cls(pipeline_id, context, executions[0])
 
-    for execution in executions:
-      if execution.custom_properties[
-          _PIPELINE_RUN_ID].string_value == pipeline_run_id:
-        return cls(pipeline_id, context, execution)
-    non_active_msg = 'non active ' if non_active_only else ''
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND,
         message=(
