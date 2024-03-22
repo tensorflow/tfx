@@ -1216,6 +1216,202 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     ].proto_value.Unpack(actual_alerts)
     self.assertEqual(actual_alerts, expected_alerts)
 
+  def testUseArtifactDVConfig(self):
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata'
+    )
+
+    stats_artifact = standard_artifacts.ExampleStatistics()
+    stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
+    stats_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval']
+    )
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName,
+    )
+
+    validation_output = standard_artifacts.ExampleAnomalies()
+    validation_output.uri = os.path.join(output_data_dir, 'output')
+
+    validation_config = text_format.Parse(
+        """
+          default_slice_config: {
+          feature: {
+              path: {
+                  step: 'company'
+              }
+              distribution_comparator: {
+                infinity_norm: {
+                    threshold: 0.0
+                }
+              }
+          }
+        }
+        """,
+        distribution_validator_pb2.DistributionValidatorConfig(),
+    )
+    binary_proto_filepath = os.path.join(
+        output_data_dir, 'test_custom_component', 'DVconfig.pb'
+    )
+    io_utils.write_bytes_file(
+        binary_proto_filepath, validation_config.SerializeToString()
+    )
+    config_artifact = standard_artifacts.Config()
+    config_artifact.uri = os.path.join(output_data_dir, 'test_custom_component')
+
+    input_dict = {
+        standard_component_specs.STATISTICS_KEY: [stats_artifact],
+        standard_component_specs.BASELINE_STATISTICS_KEY: [stats_artifact],
+        standard_component_specs.ARTIFACT_DISTRIBUTION_VALIDATOR_CONFIG_KEY: [
+            config_artifact],
+    }
+
+    # The analyzed splits are set for this test to get a single result proto.
+    exec_properties = {
+        # List needs to be serialized before being passed into Do function.
+        standard_component_specs.INCLUDE_SPLIT_PAIRS_KEY: json_utils.dumps(
+            [('train', 'eval')]
+        ),
+        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY: None,
+    }
+
+    output_dict = {
+        standard_component_specs.ANOMALIES_KEY: [validation_output],
+    }
+
+    distribution_validator_executor = executor.Executor()
+    _ = distribution_validator_executor.Do(
+        input_dict, output_dict, exec_properties
+    )
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train_eval']),
+        validation_output.split_names,
+    )
+
+    distribution_anomalies_path = os.path.join(
+        validation_output.uri, 'SplitPair-train_eval', 'SchemaDiff.pb'
+    )
+    self.assertTrue(fileio.exists(distribution_anomalies_path))
+    distribution_anomalies_bytes = io_utils.read_bytes_file(
+        distribution_anomalies_path
+    )
+    distribution_anomalies = anomalies_pb2.Anomalies()
+    distribution_anomalies.ParseFromString(distribution_anomalies_bytes)
+    expected_anomalies = """anomaly_info {
+          key: "company"
+          value {
+            severity: ERROR
+            reason {
+              type: COMPARATOR_L_INFTY_HIGH
+              short_description: "High Linfty distance between current and previous"
+              description: "The Linfty distance between current and previous is 0.0122771 (up to six significant digits), above the threshold 0. The feature value with maximum difference is: Dispatch Taxi Affiliation"
+            }
+            path {
+              step: "company"
+            }
+          }
+        }
+        anomaly_name_format: SERIALIZED_PATH
+        drift_skew_info {
+          path {
+            step: "company"
+          }
+          drift_measurements {
+            type: L_INFTY
+            value: 0.012277129468474923
+            threshold: 0.0
+          }
+        }
+          """
+    expected_anomalies = text_format.Parse(
+        expected_anomalies, anomalies_pb2.Anomalies()
+    )
+
+    self.assertEqualExceptBaseline(expected_anomalies, distribution_anomalies)
+    self.assertEqual(
+        validation_output.get_json_value_custom_property(
+            executor.ARTIFACT_PROPERTY_BLESSED_KEY
+        ),
+        {'train_eval': 0},
+    )
+
+  def testInvalidArtifactDVConfigAndParameterConfig(self):
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata'
+    )
+
+    stats_artifact = standard_artifacts.ExampleStatistics()
+    stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
+    stats_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval']
+    )
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName,
+    )
+
+    validation_output = standard_artifacts.ExampleAnomalies()
+    validation_output.uri = os.path.join(output_data_dir, 'output')
+
+    validation_config = text_format.Parse(
+        """
+          default_slice_config: {
+          feature: {
+              path: {
+                  step: 'company'
+              }
+              distribution_comparator: {
+                infinity_norm: {
+                    threshold: 0.0
+                }
+              }
+          }
+        }
+        """,
+        distribution_validator_pb2.DistributionValidatorConfig(),
+    )
+    binary_proto_filepath = os.path.join(
+        output_data_dir, 'test_custom_component', 'DVconfig.pb'
+    )
+    io_utils.write_bytes_file(
+        binary_proto_filepath, validation_config.SerializeToString()
+    )
+    config_artifact = standard_artifacts.Config()
+    config_artifact.uri = os.path.join(output_data_dir, 'test_custom_component')
+
+    input_dict = {
+        standard_component_specs.STATISTICS_KEY: [stats_artifact],
+        standard_component_specs.BASELINE_STATISTICS_KEY: [stats_artifact],
+        standard_component_specs.ARTIFACT_DISTRIBUTION_VALIDATOR_CONFIG_KEY: [
+            config_artifact],
+    }
+
+    # The analyzed splits are set for this test to get a single result proto.
+    exec_properties = {
+        # List needs to be serialized before being passed into Do function.
+        standard_component_specs.INCLUDE_SPLIT_PAIRS_KEY: json_utils.dumps(
+            [('train', 'eval')]
+        ),
+        standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY: (
+            validation_config
+        ),
+        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY: None,
+    }
+
+    output_dict = {
+        standard_component_specs.ANOMALIES_KEY: [validation_output],
+    }
+
+    distribution_validator_executor = executor.Executor()
+    with self.assertRaises(ValueError):
+      _ = distribution_validator_executor.Do(
+          input_dict, output_dict, exec_properties
+      )
+
 
 if __name__ == '__main__':
   absltest.main()
