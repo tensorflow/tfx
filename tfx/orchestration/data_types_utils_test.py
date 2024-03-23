@@ -158,10 +158,21 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
             string_value: 'random str'
           }
         """, pipeline_pb2.Value())
-    bool_value = text_format.Parse(
+    bool_value_in_string = text_format.Parse(
         """
           field_value {
             string_value: 'false'
+          }
+          schema {
+            value_type {
+              boolean_type {}
+            }
+          }
+        """, pipeline_pb2.Value())
+    bool_value_in_bool = text_format.Parse(
+        """
+          field_value {
+            bool_value: true
           }
           schema {
             value_type {
@@ -209,7 +220,8 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     value_dict = {
         'int_val': int_value,
         'string_val': string_value,
-        'bool_val': bool_value,
+        'bool_val_in_string': bool_value_in_string,
+        'bool_val_in_bool': bool_value_in_bool,
         'proto_val': proto_value,
         'list_boolean_value': list_boolean_value,
         'list_str_value': list_str_value,
@@ -217,7 +229,8 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     expected_parsed_dict = {
         'int_val': 1,
         'string_val': 'random str',
-        'bool_val': False,
+        'bool_val_in_string': False,
+        'bool_val_in_bool': True,
         'list_boolean_value': [False, True],
         'list_str_value': ['true', 'false', 'random'],
         'proto_val': metadata_store_pb2.Value(string_value='hello')
@@ -322,8 +335,9 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
       ('IntValue', 42, metadata_store_pb2.Value(int_value=42)),
       ('FloatValue', 42.0, metadata_store_pb2.Value(double_value=42.0)),
       ('StrValue', '42', metadata_store_pb2.Value(string_value='42')),
-      ('BooleanValue', True, metadata_store_pb2.Value(string_value='true')),
-      ('ListValue', [1, 2], metadata_store_pb2.Value(string_value='[1, 2]')))
+      ('BooleanValue', True, metadata_store_pb2.Value(bool_value=True)),
+      ('ListValue', [1, 2], metadata_store_pb2.Value(string_value='[1, 2]')),
+  )
   def testSetMetadataValueWithPrimitiveValue(self, value, expected_pb):
     pb = metadata_store_pb2.Value()
     data_types_utils.set_metadata_value(pb, value)
@@ -354,14 +368,16 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     expected_bool = text_format.Parse(
         """
           field_value {
-            string_value: 'true'
+            bool_value: true
           }
           schema {
             value_type {
               boolean_type {}
             }
           }
-        """, pipeline_pb2.Value())
+        """,
+        pipeline_pb2.Value(),
+    )
     self.assertEqual(expected_bool,
                      data_types_utils.set_parameter_value(actual_bool, True))
 
