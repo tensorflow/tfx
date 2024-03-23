@@ -123,6 +123,7 @@ def _build_keras_model() -> keras.Model:
       ])
 
   model.summary(print_fn=absl.logging.info)
+  model.use_legacy_config = True
   return model
 
 
