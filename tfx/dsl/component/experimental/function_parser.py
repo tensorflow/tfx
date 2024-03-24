@@ -20,7 +20,6 @@ Internal use only. No backwards compatibility guarantees.
 # overrides after Python 2 support is removed from TFX.
 
 import inspect
-import sys
 import types
 import typing
 from typing import Any, Dict, NamedTuple, Optional, Type, Union, get_args, get_origin
@@ -30,7 +29,6 @@ from tfx.dsl.component.experimental import json_compat
 from tfx.dsl.component.experimental import utils
 from tfx.types import artifact
 from tfx.types import standard_artifacts
-import typing_extensions
 
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
@@ -55,15 +53,6 @@ _PRIMITIVE_TO_ARTIFACT = {
 _OPTIONAL_PRIMITIVE_MAP = dict((Optional[t], t) for t in _PRIMITIVE_TO_ARTIFACT)
 
 
-def _is_typeddict(tp: Any) -> bool:
-  # TODO(b/297787104): We can just use typing_extensions.is_typeddict which
-  # would handle python version branch together as well.
-  if sys.version_info >= (3, 10):
-    return typing.is_typeddict(tp)  # pytype: disable=not-supported-yet
-  else:
-    return typing_extensions.is_typeddict(tp)
-
-
 def _parse_return_type_kwargs(
     func: types.FunctionType, typehints: Dict[str, Any]
 ) -> Optional[Dict[str, Any]]:
@@ -71,7 +60,7 @@ def _parse_return_type_kwargs(
   return_annotation = typehints.get('return')
   if return_annotation is None:
     return None
-  elif _is_typeddict(return_annotation):
+  elif utils.is_typeddict(return_annotation):
     return typing.get_type_hints(return_annotation)
   elif isinstance(
       return_annotation, annotations.OutputDict
