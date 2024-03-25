@@ -185,21 +185,19 @@ class ExecutorTest(parameterized.TestCase):
       alerts = component_generated_alert_pb2.ComponentGeneratedAlertList()
       alerts.component_generated_alert_list.append(
           component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-              alert_name='Feature does not have enough values.',
+              alert_name='Feature-level anomalies present',
               alert_body=(
-                  'Custom validation triggered anomaly. Query:'
-                  ' feature.string_stats.common_stats.min_num_values > 5 Test'
-                  ' dataset: default slice for feature company in split train.'
+                  'Feature(s) company contain(s) anomalies for split train, '
+                  'span 0. See Anomalies artifact for more details.'
               ),
           )
       )
       alerts.component_generated_alert_list.append(
           component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-              alert_name='Feature does not have enough values.',
+              alert_name='Feature-level anomalies present',
               alert_body=(
-                  'Custom validation triggered anomaly. Query:'
-                  ' feature.string_stats.common_stats.min_num_values > 5 Test'
-                  ' dataset: default slice for feature company in split eval.'
+                  'Feature(s) company contain(s) anomalies for split eval, '
+                  'span 0. See Anomalies artifact for more details.'
               ),
           )
       )
