@@ -585,7 +585,7 @@ def resume_manual_node(
     )
   if len(active_executions) > 1:
     raise status_lib.StatusNotOkError(
-        code=status_lib.Code.INTERNAL,
+        code=status_lib.Code.FAILED_PRECONDITION,
         message=(
             f'Unexpected multiple active executions for manual node: {node_uid}'
         ),
