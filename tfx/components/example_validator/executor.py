@@ -49,6 +49,7 @@ NOT_BLESSED_VALUE = 0
 def _create_anomalies_alerts(
     anomalies: anomalies_pb2.Anomalies,
     split: str,
+    span: int,
 ) -> list[component_generated_alert_pb2.ComponentGeneratedAlertInfo]:
   """Creates an alert for each anomaly in the anomalies artifact."""
   result = []
@@ -57,7 +58,7 @@ def _create_anomalies_alerts(
     result.append(
         component_generated_alert_pb2.ComponentGeneratedAlertInfo(
             alert_name=f'Data missing in split {split}',
-            alert_body=f'Empty input data for {split}.',
+            alert_body=f'Empty input data for split {split}, span {span}.',
         )
     )
   # Information about dataset-level anomalies, such as "Low num examples
@@ -67,19 +68,23 @@ def _create_anomalies_alerts(
         component_generated_alert_pb2.ComponentGeneratedAlertInfo(
             alert_name='Dataset anomalies',
             alert_body=(
-                f'{anomalies.dataset_anomaly_info.description} in split '
-                f'{split}'),
+                f'{anomalies.dataset_anomaly_info.description} in split {split}'
+                f', span {span}.'
+            ),
         )
     )
-  # Information about feature-level anomalies, such as "Some examples have
-  # fewer values than expected."
-  for feature_name, anomaly_info in anomalies.anomaly_info.items():
+  # Information about feature-level anomalies. Generates a single alert for all
+  # anomalous features.
+  features_with_anomalies = list(anomalies.anomaly_info.keys())
+  if features_with_anomalies:
     result.append(
         component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-            alert_name=anomaly_info.short_description,
+            alert_name='Feature-level anomalies present',
             alert_body=(
-                f'{anomaly_info.description} for feature {feature_name} in '
-                f'split {split}.'),
+                f'Feature(s) {", ".join(features_with_anomalies)} contain(s) '
+                f'anomalies for split {split}, span {span}. See Anomalies '
+                f'artifact for more details.'
+            ),
         )
     )
   return result
@@ -175,7 +180,11 @@ class Executor(base_executor.BaseExecutor):
         blessed_value_dict[split] = BLESSED_VALUE
 
       alerts.component_generated_alert_list.extend(
-          _create_anomalies_alerts(anomalies, split))
+          _create_anomalies_alerts(
+              anomalies,
+              split,
+              span=anomalies_artifact.span)
+      )
       logging.info('Anomalies alerts created for split %s.', split)
 
       logging.info(
