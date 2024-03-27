@@ -609,7 +609,7 @@ class PipelineState:
           ),
       )
 
-    if env.get_env().concurrent_pipeline_runs_enabled():
+    if env.get_env().concurrent_pipeline_runs_enabled(pipeline):
       # If concurrent runs are enabled, we should still prohibit interference
       # with any active async pipelines so disallow starting a sync pipeline.
       if active_async_pipeline_executions:

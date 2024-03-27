@@ -904,6 +904,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_new_executions=1,
         num_active_executions=1,
         ignore_update_node_state_tasks=True,
+        pipeline=pipeline,
     )
     self.assertEqual(stats_gen_node_uid, stats_gen_task.node_uid)
     self.assertIsInstance(stats_gen_task, task_lib.ExecNodeTask)
@@ -987,6 +988,7 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
         num_new_executions=2,
         num_active_executions=2,
         ignore_update_node_state_tasks=True,
+        pipeline=pipeline,
     )
     self.assertEqual(stats_gen_node_uid, stats_gen_task.node_uid)
     self.assertIsInstance(stats_gen_task, task_lib.ExecNodeTask)
