@@ -180,7 +180,7 @@ nodes {
                     index_op {
                       expression {
                         placeholder {
-                          key: "_UpstreamComponent.num"
+                          key: "UpstreamComponent_num"
                         }
                       }
                     }

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.utils.channel."""
 
-import tensorflow as tf
+from absl.testing import absltest
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.types import artifact
 from tfx.types import channel
@@ -25,7 +25,7 @@ class _MyArtifact(artifact.Artifact):
   TYPE_NAME = 'MyTypeName'
 
 
-class ChannelUtilsTest(tf.test.TestCase):
+class ChannelUtilsTest(absltest.TestCase):
 
   def testArtifactCollectionAsChannel(self):
     instance_a = _MyArtifact()
@@ -125,4 +125,4 @@ class ChannelUtilsTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()

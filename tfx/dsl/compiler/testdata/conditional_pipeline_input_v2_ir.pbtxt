@@ -1001,7 +1001,7 @@ nodes {
                           index_op {
                             expression {
                               placeholder {
-                                key: "_Evaluator.blessing"
+                                key: "Evaluator_blessing"
                               }
                             }
                           }
@@ -1264,7 +1264,7 @@ nodes {
                           index_op {
                             expression {
                               placeholder {
-                                key: "_Evaluator.blessing"
+                                key: "Evaluator_blessing"
                               }
                             }
                           }
@@ -1301,7 +1301,7 @@ nodes {
                                 index_op {
                                   expression {
                                     placeholder {
-                                      key: "_InfraValidator.blessing"
+                                      key: "InfraValidator_blessing"
                                     }
                                   }
                                 }
@@ -1333,7 +1333,7 @@ nodes {
                                       index_op {
                                         expression {
                                           placeholder {
-                                            key: "model"
+                                            key: "Trainer_model"
                                           }
                                         }
                                       }

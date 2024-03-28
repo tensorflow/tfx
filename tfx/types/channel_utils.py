@@ -211,10 +211,8 @@ def unwrap_simple_channel_placeholder(
       # proto paths above and been getting default messages all along. If this
       # sub-message is present, then the whole chain was correct.
       not index_op.expression.HasField('placeholder')
-      # ChannelWrappedPlaceholder uses INPUT_ARTIFACT for some reason, and has
-      # no key when encoded with encode().
+      # ChannelWrappedPlaceholder uses INPUT_ARTIFACT for some reason.
       or cwp.type != placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT
-      or cwp.key
       # For the `[0]` part of the desired shape.
       or index_op.index != 0
   ):
