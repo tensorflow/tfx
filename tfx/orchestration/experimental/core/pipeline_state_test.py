@@ -620,7 +620,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
       )
       pipeline_state = pstate.PipelineState.new(m, pipeline)
       self.assertEqual(
-          task_lib.PipelineUid(pipeline_id='pipeline1'),
+          task_lib.PipelineUid(pipeline_id='pipeline1', pipeline_run_id='run0'),
           pipeline_state.pipeline_uid,
       )
 

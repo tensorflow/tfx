@@ -161,8 +161,15 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest, parameterized.TestCase):
       # There should be another orchestrator execution for the inner pipeline.
       pipeline_states = pstate.PipelineState.load_all_active(mlmd_connection)
       self.assertLen(pipeline_states, 2)
+      sub_pipeline_states = [
+          state
+          for state in pipeline_states
+          if state.pipeline_uid.pipeline_id == 'my_sub_pipeline'
+      ]
+      self.assertLen(sub_pipeline_states, 1)
       subpipeline_state = pstate.PipelineState.load(
-          mlmd_connection, task_lib.PipelineUid(pipeline_id='my_sub_pipeline')
+          mlmd_connection,
+          sub_pipeline_states[0].pipeline_uid,
       )
 
       # The scheduler is still waiting for subpipeline to finish.
