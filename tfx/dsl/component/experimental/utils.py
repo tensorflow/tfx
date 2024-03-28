@@ -25,6 +25,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.types import artifact
 from tfx.types import component_spec
 from tfx.types import system_executions
+from google.protobuf import message
 
 
 class ArgFormats(enum.Enum):
@@ -206,10 +207,17 @@ def _create_component_spec_class(
             json_compatible_outputs[key],
         )
   if parameters:
-    for key, primitive_type in parameters.items():
-      spec_parameters[key] = component_spec.ExecutionParameter(
-          type=primitive_type, optional=(key in arg_defaults)
-      )
+    for key, param_type in parameters.items():
+      if inspect.isclass(param_type) and issubclass(
+          param_type, message.Message
+      ):
+        spec_parameters[key] = component_spec.ExecutionParameter(
+            type=param_type, optional=(key in arg_defaults), use_proto=True
+        )
+      else:
+        spec_parameters[key] = component_spec.ExecutionParameter(
+            type=param_type, optional=(key in arg_defaults)
+        )
   component_spec_class = type(
       '%s_Spec' % func.__name__,
       (tfx_types.ComponentSpec,),
