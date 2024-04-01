@@ -22,6 +22,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import component_generated_alert_pb2
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import garbage_collection
 from tfx.orchestration.experimental.core import mlmd_state
@@ -93,6 +94,10 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
           contexts=task.contexts,
           output_artifacts=task.output_artifacts,
           executor_output=executor_output)
+
+    # Logs successful usage of a Tflex component.
+    env.get_env().log_usage('tflex-component')
+
     garbage_collection.run_garbage_collection_for_node(mlmd_handle,
                                                        task.node_uid,
                                                        task.get_node())

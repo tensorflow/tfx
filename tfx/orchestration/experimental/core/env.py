@@ -71,6 +71,10 @@ class Env(abc.ABC):
   def check_if_can_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> None:
     """Check if this orchestrator is capable of orchestrating the pipeline."""
 
+  @abc.abstractmethod
+  def log_usage(self, label: str) -> None:
+    """Logs usage info for the given label."""
+
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -102,6 +106,9 @@ class _DefaultEnv(Env):
     pass
 
   def check_if_can_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> None:
+    pass
+
+  def log_usage(self, label: str) -> None:
     pass
 
 
