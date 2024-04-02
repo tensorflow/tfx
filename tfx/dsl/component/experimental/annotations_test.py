@@ -18,7 +18,6 @@ from typing import Dict
 import apache_beam as beam
 import tensorflow as tf
 from tfx.dsl.component.experimental import annotations
-from tfx.dsl.component.experimental import annotations_test_proto_pb2
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 from tfx.types import value_artifact
@@ -28,21 +27,18 @@ class AnnotationsTest(tf.test.TestCase):
 
   def testArtifactGenericAnnotation(self):
     # Error: type hint whose parameter is not an Artifact subclass.
-    with self.assertRaisesRegex(
-        ValueError, 'expects .* a concrete subclass of'
-    ):
+    with self.assertRaisesRegex(ValueError,
+                                'expects .* a concrete subclass of'):
       _ = annotations._ArtifactGeneric[int]  # pytype: disable=unsupported-operands
 
     # Error: type hint with abstract Artifact subclass.
-    with self.assertRaisesRegex(
-        ValueError, 'expects .* a concrete subclass of'
-    ):
+    with self.assertRaisesRegex(ValueError,
+                                'expects .* a concrete subclass of'):
       _ = annotations._ArtifactGeneric[artifact.Artifact]
 
     # Error: type hint with abstract Artifact subclass.
-    with self.assertRaisesRegex(
-        ValueError, 'expects .* a concrete subclass of'
-    ):
+    with self.assertRaisesRegex(ValueError,
+                                'expects .* a concrete subclass of'):
       _ = annotations._ArtifactGeneric[value_artifact.ValueArtifact]
 
     # OK.
@@ -53,55 +49,56 @@ class AnnotationsTest(tf.test.TestCase):
     _ = annotations.OutputArtifact[standard_artifacts.Examples]
     _ = annotations.AsyncOutputArtifact[standard_artifacts.Model]
 
-  def testPrimitivAndProtoTypeGenericAnnotation(self):
-    # Error: type hint whose parameter is not a primitive or a proto type
+  def testPrimitiveTypeGenericAnnotation(self):
+    # Error: type hint whose parameter is not a primitive type
     # pytype: disable=unsupported-operands
     with self.assertRaisesRegex(
         ValueError, 'T to be `int`, `float`, `str`, `bool`'
     ):
-      _ = annotations._PrimitiveAndProtoTypeGeneric[artifact.Artifact]
+      _ = annotations._PrimitiveTypeGeneric[artifact.Artifact]
     with self.assertRaisesRegex(
         ValueError, 'T to be `int`, `float`, `str`, `bool`'
     ):
-      _ = annotations._PrimitiveAndProtoTypeGeneric[object]
+      _ = annotations._PrimitiveTypeGeneric[object]
     with self.assertRaisesRegex(
         ValueError, 'T to be `int`, `float`, `str`, `bool`'
     ):
-      _ = annotations._PrimitiveAndProtoTypeGeneric[123]
+      _ = annotations._PrimitiveTypeGeneric[123]
     with self.assertRaisesRegex(
         ValueError, 'T to be `int`, `float`, `str`, `bool`'
     ):
-      _ = annotations._PrimitiveAndProtoTypeGeneric['string']
+      _ = annotations._PrimitiveTypeGeneric['string']
     with self.assertRaisesRegex(
         ValueError, 'T to be `int`, `float`, `str`, `bool`'
     ):
-      _ = annotations._PrimitiveAndProtoTypeGeneric[Dict[int, int]]
+      _ = annotations._PrimitiveTypeGeneric[Dict[int, int]]
     with self.assertRaisesRegex(
         ValueError, 'T to be `int`, `float`, `str`, `bool`'
     ):
-      _ = annotations._PrimitiveAndProtoTypeGeneric[bytes]
+      _ = annotations._PrimitiveTypeGeneric[bytes]
     # pytype: enable=unsupported-operands
     # OK.
-    _ = annotations._PrimitiveAndProtoTypeGeneric[int]
-    _ = annotations._PrimitiveAndProtoTypeGeneric[float]
-    _ = annotations._PrimitiveAndProtoTypeGeneric[str]
-    _ = annotations._PrimitiveAndProtoTypeGeneric[bool]
-    _ = annotations._PrimitiveAndProtoTypeGeneric[Dict[str, float]]
-    _ = annotations._PrimitiveAndProtoTypeGeneric[bool]
-    _ = annotations._PrimitiveAndProtoTypeGeneric[
-        annotations_test_proto_pb2.TestMessage
-    ]
+    _ = annotations._PrimitiveTypeGeneric[int]
+    _ = annotations._PrimitiveTypeGeneric[float]
+    _ = annotations._PrimitiveTypeGeneric[str]
+    _ = annotations._PrimitiveTypeGeneric[bool]
+    _ = annotations._PrimitiveTypeGeneric[Dict[str, float]]
+    _ = annotations._PrimitiveTypeGeneric[bool]
 
   def testPipelineTypeGenericAnnotation(self):
     # Error: type hint whose parameter is not a primitive type
-    with self.assertRaisesRegex(ValueError, 'T to be `beam.Pipeline`'):
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `beam.Pipeline`'):
       _ = annotations._PipelineTypeGeneric[artifact.Artifact]
-    with self.assertRaisesRegex(ValueError, 'T to be `beam.Pipeline`'):
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `beam.Pipeline`'):
       _ = annotations._PipelineTypeGeneric[object]
     # pytype: disable=unsupported-operands
-    with self.assertRaisesRegex(ValueError, 'T to be `beam.Pipeline`'):
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `beam.Pipeline`'):
       _ = annotations._PipelineTypeGeneric[123]
-    with self.assertRaisesRegex(ValueError, 'T to be `beam.Pipeline`'):
+    with self.assertRaisesRegex(
+        ValueError, 'T to be `beam.Pipeline`'):
       _ = annotations._PipelineTypeGeneric['string']
     # pytype: enable=unsupported-operands
 
@@ -113,7 +110,6 @@ class AnnotationsTest(tf.test.TestCase):
     _ = annotations.Parameter[float]
     _ = annotations.Parameter[str]
     _ = annotations.Parameter[bool]
-    _ = annotations.Parameter[annotations_test_proto_pb2.TestMessage]
 
 
 if __name__ == '__main__':
