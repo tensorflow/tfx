@@ -14,3 +14,6 @@ Flask-session<0.6.0
 #TODO(b/329181965): Remove once we migrate TFX to 2.16.
 tensorflow<2.16
 tensorflow-text<2.16
+
+#TODO(b/332616741): Scipy 1.13.0 breaks the test.
+scipy<1.13.0
