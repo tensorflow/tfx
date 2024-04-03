@@ -1148,6 +1148,17 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
       mock_snapshot.assert_called()
 
+  def test_initiate_pipeline_start_gets_post_processed(self):
+    with self._mlmd_connection as m:
+      with test_utils.pipeline_start_postprocess_env():
+        pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+        pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+        self.assertEqual(
+            pipeline_state.pipeline.pipeline_info.id,
+            'test_pipeline_postprocessed',
+        )
+
   @parameterized.named_parameters(
       dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),
       dict(

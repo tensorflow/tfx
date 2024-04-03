@@ -249,7 +249,7 @@ def initiate_pipeline_start(
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
       )
-
+  env.get_env().pipeline_start_postprocess(pipeline)
   return pstate.PipelineState.new(
       mlmd_handle, pipeline, pipeline_run_metadata, reused_pipeline_view
   )

@@ -499,3 +499,13 @@ def concurrent_pipeline_runs_enabled_env():
       return True
 
   return _TestEnv()
+
+
+def pipeline_start_postprocess_env():
+
+  class _TestEnv(env._DefaultEnv):  # pylint: disable=protected-access
+
+    def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
+      pipeline.pipeline_info.id = pipeline.pipeline_info.id + '_postprocessed'
+
+  return _TestEnv()

@@ -71,6 +71,16 @@ class Env(abc.ABC):
   def check_if_can_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> None:
     """Check if this orchestrator is capable of orchestrating the pipeline."""
 
+  @abc.abstractmethod
+  def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
+    """Method for processing a pipeline at the end of its initialization, before it starts running.
+
+    This *can* mutate the provided IR in-place.
+
+    Args:
+      pipeline: The pipeline IR to process.
+    """
+
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -102,6 +112,9 @@ class _DefaultEnv(Env):
     pass
 
   def check_if_can_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> None:
+    pass
+
+  def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
     pass
 
 

@@ -16,6 +16,7 @@
 import tensorflow as tf
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import test_utils
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
 
@@ -43,6 +44,9 @@ class _TestEnv(env.Env):
     raise NotImplementedError()
 
   def check_if_can_orchestrate(self, pipeline) -> None:
+    raise NotImplementedError()
+
+  def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
     raise NotImplementedError()
 
 
