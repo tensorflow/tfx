@@ -127,6 +127,10 @@ class _Generator:
           node_id, node_state.backfill_token
       )
       if service_status is not None:
+        logging.error(
+            '%s is pure service node',
+            node_id,
+        )
         if (
             node_state.backfill_token
             and service_status.code == service_jobs.ServiceStatusCode.SUCCESS
@@ -175,7 +179,12 @@ class _Generator:
       # For mixed service nodes, we ensure node services and check service
       # status; the node is aborted if its service jobs have failed.
       service_status = self._ensure_node_services_if_mixed(node.node_info.id)
+      logging.error('Guowei service_status: %s', service_status)
       if service_status is not None:
+        logging.error(
+            '%s is mixed service node',
+            node_id,
+        )
         if service_status.code != service_jobs.ServiceStatusCode.RUNNING:
           error_msg = (
               f'associated service job failed; node uid: {node_uid}; error'
