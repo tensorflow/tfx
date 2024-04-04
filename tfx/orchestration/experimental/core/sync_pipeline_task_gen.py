@@ -290,10 +290,8 @@ class _Generator:
     result = []
 
     node_state = self._node_state_by_node_uid[node_uid]
-    if node_state.state in (
-        pstate.NodeState.STOPPING,
-        pstate.NodeState.STOPPED,
-    ):
+    if node_state.state in (pstate.NodeState.STOPPING, pstate.NodeState.STOPPED,
+                            pstate.NodeState.PAUSING, pstate.NodeState.PAUSED):
       logging.info('Ignoring node in state \'%s\' for task generation: %s',
                    node_state.state, node_uid)
       return result
@@ -355,6 +353,7 @@ class _Generator:
     node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
     latest_executions_set = task_gen_utils.get_latest_executions_set(
         node_executions)
+    logging.info('node executions: %s', node_executions)
     logging.info('latest executions set: %s', latest_executions_set)
     # Generates tasks from resolved inputs if the node doesn't have any
     # execution.
@@ -543,19 +542,12 @@ class _Generator:
     # manner. Idempotency is guaranteed by the artifact type name.
     # The external artifacts will be copies to local db when we register
     # executions. Idempotency is guaranteed by external_id.
-    updated_external_artifacts = []
+    # TODO(b/258477751) Add more tests to test the producer/consumer pipelines.
     for input_and_params in resolved_info.input_and_params:
       for artifacts in input_and_params.input_artifacts.values():
-        updated_external_artifacts.extend(
-            task_gen_utils.update_external_artifact_type(
-                self._mlmd_handle, artifacts
-            )
-        )
-    if updated_external_artifacts:
-      logging.info(
-          'Updated external artifact ids: %s',
-          [a.id for a in updated_external_artifacts],
-      )
+        logging.info('Updating external artifact type: %s', artifacts)
+        task_gen_utils.update_external_artifact_type(self._mlmd_handle,
+                                                     artifacts)
 
     executions = task_gen_utils.register_executions(
         metadata_handle=self._mlmd_handle,
