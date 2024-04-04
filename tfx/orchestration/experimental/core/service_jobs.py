@@ -40,7 +40,7 @@ class ServiceJobManager(abc.ABC):
   """Interface for service job manager.
 
   Service jobs are long-running jobs associated with a node or a pipeline that
-  persist across executions (eg: worker pools, Tensorboard, etc). Service jobs
+  persist across executions (eg: worker pools, TensorBoard, etc). Service jobs
   should be started before the nodes that depend on them can be run.
   """
 
@@ -71,6 +71,14 @@ class ServiceJobManager(abc.ABC):
     Returns:
       Status of the service job(s) for the node.
     """
+
+  @abc.abstractmethod
+  def ensure_mpm_version_match(
+      self,
+      pipeline_state: pstate.PipelineState,
+      node_id: str,
+  ) -> ServiceStatus:
+    """Ensures mpm version of FSK mgr and executor are matched."""
 
   @abc.abstractmethod
   def stop_node_services(self, pipeline_state: pstate.PipelineState,
@@ -127,6 +135,14 @@ class DummyServiceJobManager(ServiceJobManager):
     del pipeline_state, node_id
     raise NotImplementedError('Service jobs not supported.')
 
+  def ensure_mpm_version_match(
+      self,
+      pipeline_state: pstate.PipelineState,
+      node_id: str,
+  ) -> ServiceStatus:
+    del pipeline_state, node_id
+    raise NotImplementedError('Service jobs not supported.')
+
   def stop_node_services(self, pipeline_state: pstate.PipelineState,
                          node_id: str) -> bool:
     del pipeline_state, node_id
@@ -170,6 +186,29 @@ class ServiceJobManagerCleanupWrapper(ServiceJobManager):
       logging.info(
           'ensure_node_services returned status `FAILED` or raised exception; '
           'calling stop_node_services (best effort) for node: %s',
+          node_id,
+      )
+      self.stop_node_services(pipeline_state, node_id)
+    return service_status
+
+  def ensure_mpm_version_match(
+      self,
+      pipeline_state: pstate.PipelineState,
+      node_id: str,
+  ) -> ServiceStatus:
+    try:
+      return self._service_job_manager.ensure_mpm_version_match(
+          pipeline_state, node_id
+      )
+    except Exception as e:  # pylint: disable=broad-except
+      logging.exception(
+          'Exception raised by underlying `ServiceJobManager` instance.'
+      )
+      service_status = ServiceStatus(code=ServiceStatusCode.FAILED, msg=str(e))
+    if service_status.code == ServiceStatusCode.FAILED:
+      logging.info(
+          'ensure_mpm_version_match returned status `FAILED` or raised'
+          ' exception; calling stop_node_services (best effort) for node: %s',
           node_id,
       )
       self.stop_node_services(pipeline_state, node_id)

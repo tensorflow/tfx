@@ -127,6 +127,10 @@ class _Generator:
           node_id, node_state.backfill_token
       )
       if service_status is not None:
+        logging.error(
+            '%s is pure service node',
+            node_id,
+        )
         if (
             node_state.backfill_token
             and service_status.code == service_jobs.ServiceStatusCode.SUCCESS
@@ -175,7 +179,12 @@ class _Generator:
       # For mixed service nodes, we ensure node services and check service
       # status; the node is aborted if its service jobs have failed.
       service_status = self._ensure_node_services_if_mixed(node.node_info.id)
+      logging.error('Guowei service_status: %s', service_status)
       if service_status is not None:
+        logging.error(
+            '%s is mixed service node',
+            node_id,
+        )
         if service_status.code != service_jobs.ServiceStatusCode.RUNNING:
           error_msg = (
               f'associated service job failed; node uid: {node_uid}; error'
@@ -198,6 +207,16 @@ class _Generator:
       tasks = self._generate_tasks_for_node(
           self._mlmd_handle, node, node_state.backfill_token
       )
+      if self._service_job_manager.is_pure_service_node(
+          self._pipeline_state, node_id
+      ) or self._service_job_manager.is_mixed_service_node(
+          self._pipeline_state, node_id
+      ):
+        if any([t for t in tasks if isinstance(t, task_lib.ExecNodeTask)]):
+          self._service_job_manager.ensure_mpm_version_match(
+              self._pipeline_state, node_id
+          )
+
       logging.info(
           '[AsyncPipelineTaskGenerator._generate_tasks_for_node] generated'
           ' tasks for node %s: %s',
