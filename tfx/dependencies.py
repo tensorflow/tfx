@@ -117,7 +117,7 @@ def make_required_install_packages():
           nightly='>=0.46.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master',
       ),
-      'tensorflow-serving-api>=2.15,<2.16',
+      'tensorflow-serving-api==2.15.0rc0',
       'tensorflow-transform'
       + select_constraint(
           default='>=1.14.0,<1.15.0',
