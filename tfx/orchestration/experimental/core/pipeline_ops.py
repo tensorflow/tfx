@@ -259,6 +259,7 @@ def initiate_pipeline_start(
 def stop_pipelines(
     mlmd_handle: metadata.Metadata,
     pipeline_uids: List[task_lib.PipelineUid],
+    return_immediately: bool = False,
     timeout_secs: Optional[float] = None,
     ignore_non_existent_or_inactive: Optional[bool] = False,
 ) -> None:
@@ -270,6 +271,9 @@ def stop_pipelines(
   Args:
     mlmd_handle: A handle to the MLMD db.
     pipeline_uids: UIDs of the pipeline to be stopped.
+    return_immediately: If true, returns immediately to skip waiting for all
+      pipelines to be inactive. If false, waits for all the pipelines to
+      completely stop before returning.
     timeout_secs: Amount of time in seconds total to wait for all pipelines to
       stop. If `None`, waits indefinitely.
     ignore_non_existent_or_inactive: If a pipeline is not found or inactive,
@@ -309,6 +313,14 @@ def stop_pipelines(
           )
           continue
         raise e
+
+  if return_immediately:
+    logging.info(
+        'Skipping wait for all pipelines to be inactive; pipeline ids: %s.',
+        pipeline_ids_str,
+    )
+    return
+
   logging.info(
       'Waiting for pipelines to be stopped; pipeline ids: %s', pipeline_ids_str
   )
@@ -336,6 +348,7 @@ def stop_pipelines(
 def stop_pipeline(
     mlmd_handle: metadata.Metadata,
     pipeline_uid: task_lib.PipelineUid,
+    return_immediately: bool = False,
     timeout_secs: Optional[float] = None,
 ) -> None:
   """Stops a single pipeline. Convenience wrapper around stop_pipelines."""
@@ -343,6 +356,7 @@ def stop_pipeline(
       mlmd_handle=mlmd_handle,
       pipeline_uids=[pipeline_uid],
       timeout_secs=timeout_secs,
+      return_immediately=return_immediately,
   )
 
 

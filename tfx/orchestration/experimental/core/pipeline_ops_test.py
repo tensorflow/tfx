@@ -1236,6 +1236,28 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           pipeline=_test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC),
       ),
   )
+  def test_stop_pipeline_returns_immediately(self, pipeline):
+    with self._mlmd_connection as m:
+      mock_wait_for_predicate = self.enter_context(
+          mock.patch.object(pipeline_ops, '_wait_for_predicate', autospec=True)
+      )
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      pipeline_ops.stop_pipeline(
+          m,
+          task_lib.PipelineUid.from_pipeline(pipeline),
+          timeout_secs=20.0,
+          return_immediately=True,
+      )
+      mock_wait_for_predicate.assert_not_called()
+
+  @parameterized.named_parameters(
+      dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),
+      dict(
+          testcase_name='sync',
+          pipeline=_test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC),
+      ),
+  )
   def test_stop_pipeline_wait_for_inactivation_timeout(self, pipeline):
     with self._mlmd_connection as m:
       pipeline_ops.initiate_pipeline_start(m, pipeline)
