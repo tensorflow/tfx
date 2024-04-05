@@ -1148,12 +1148,15 @@ class PipelineState:
 class PipelineView:
   """Class for reading active or inactive pipeline view."""
 
-  def __init__(self, pipeline_id: str, context: metadata_store_pb2.Context,
-               execution: metadata_store_pb2.Execution):
+  def __init__(self, pipeline_id: str, execution: metadata_store_pb2.Execution):
     self.pipeline_id = pipeline_id
-    self.context = context
     self.execution = execution
     self._node_states_proxy = _NodeStatesProxy(execution)
+    self.pipeline_run_id = None
+    if _PIPELINE_RUN_ID in execution.custom_properties:
+      self.pipeline_run_id = execution.custom_properties[
+          _PIPELINE_RUN_ID
+      ].string_value
     self._pipeline = None  # lazily set
 
   @classmethod
@@ -1188,7 +1191,7 @@ class PipelineView:
         context.id, list_options=list_options, **kwargs
     )
     executions = sorted(executions, key=lambda x: x.create_time_since_epoch)
-    return [cls(pipeline_id, context, execution) for execution in executions]
+    return [cls(pipeline_id, execution) for execution in executions]
 
   @classmethod
   def load(cls,
@@ -1250,7 +1253,7 @@ class PipelineView:
                 f' {pipeline_run_id}'
             ),
         )
-      return cls(pipeline_id, context, executions[0])
+      return cls(pipeline_id, executions[0])
 
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND,
@@ -1274,12 +1277,6 @@ class PipelineView:
   @property
   def pipeline_execution_mode(self) -> pipeline_pb2.Pipeline.ExecutionMode:
     return _retrieve_pipeline_exec_mode(self.execution)
-
-  @property
-  def pipeline_run_id(self) -> str:
-    if _PIPELINE_RUN_ID in self.execution.custom_properties:
-      return self.execution.custom_properties[_PIPELINE_RUN_ID].string_value
-    return self.pipeline.runtime_spec.pipeline_run_id.field_value.string_value
 
   @property
   def pipeline_status_code(
