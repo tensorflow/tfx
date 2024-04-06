@@ -44,10 +44,6 @@ def run_with_executor(
   Returns:
     The output from executor.
   """
-  # In cases where output directories are not empty due to a previous or
-  # unrelated execution, clear the directories to ensure consistency.
-  outputs_utils.clear_output_dirs(execution_info.output_dict)
-
   for _, artifact_list in execution_info.input_dict.items():
     for artifact in artifact_list:
       if isinstance(artifact, ValueArtifact):
@@ -92,16 +88,18 @@ class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
   def __init__(self,
                executor_spec: message.Message,
-               platform_config: Optional[message.Message] = None):
+               platform_config: Optional[message.Message] = None,
+               pipeline_platform_config: Optional[message.Message] = None):
     """Initializes a PythonExecutorOperator.
 
     Args:
       executor_spec: The specification of how to initialize the executor.
       platform_config: The specification of how to allocate resource for the
         executor.
+      pipeline_platform_config: Pipeline-level context information.
     """
     # Python executors run locally, so platform_config is not used.
-    del platform_config
+    del platform_config, pipeline_platform_config
     super().__init__(executor_spec)
     python_class_executor_spec = cast(
         executable_spec_pb2.PythonClassExecutableSpec, self._executor_spec)

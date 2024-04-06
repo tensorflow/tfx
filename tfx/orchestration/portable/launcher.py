@@ -22,6 +22,7 @@ import attr
 import grpc
 import portpicker
 from tfx import types
+from tfx.dsl.compiler import placeholder_utils
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
@@ -116,7 +117,7 @@ class _ExecutionFailedError(Exception):
 
 
 def _register_execution(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: List[metadata_store_pb2.Context],
     input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
@@ -124,11 +125,12 @@ def _register_execution(
 ) -> metadata_store_pb2.Execution:
   """Registers an execution in MLMD."""
   return execution_publish_utils.register_execution(
-      metadata_handler=metadata_handler,
+      metadata_handle=metadata_handle,
       execution_type=execution_type,
       contexts=contexts,
       input_artifacts=input_artifacts,
-      exec_properties=exec_properties)
+      exec_properties=exec_properties,
+  )
 
 
 class Launcher:
@@ -182,6 +184,7 @@ class Launcher:
     self._pipeline_info = pipeline_info
     self._pipeline_runtime_spec = pipeline_runtime_spec
     self._executor_spec = executor_spec
+    self._platform_config = platform_config
     self._executor_operators = {}
     self._executor_operators.update(DEFAULT_EXECUTOR_OPERATORS)
     self._executor_operators.update(custom_executor_operators or {})
@@ -214,14 +217,16 @@ class Launcher:
     ), 'A node must be system node or have an executor.'
 
   def _register_or_reuse_execution(
-      self, metadata_handler: metadata.Metadata,
+      self,
+      metadata_handle: metadata.Metadata,
       contexts: List[metadata_store_pb2.Context],
       input_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
       exec_properties: Optional[Mapping[str, types.Property]] = None,
   ) -> metadata_store_pb2.Execution:
     """Registers or reuses an execution in MLMD."""
     executions = execution_lib.get_executions_associated_with_all_contexts(
-        metadata_handler, contexts)
+        metadata_handle, contexts
+    )
     if len(executions) > 1:
       raise RuntimeError('Expecting no more than one previous executions for'
                          'the associated contexts')
@@ -237,18 +242,20 @@ class Launcher:
             execution.last_known_state)
       return execution
     return _register_execution(
-        metadata_handler=metadata_handler,
+        metadata_handle=metadata_handle,
         execution_type=self._pipeline_node.node_info.type,
         contexts=contexts,
         input_artifacts=input_artifacts,
-        exec_properties=exec_properties)
+        exec_properties=exec_properties,
+    )
 
   def _prepare_execution(self) -> _ExecutionPreparationResult:
     """Prepares inputs, outputs and execution properties for actual execution."""
     with self._mlmd_connection as m:
       # 1.Prepares all contexts.
       contexts = context_lib.prepare_contexts(
-          metadata_handler=m, node_contexts=self._pipeline_node.contexts)
+          metadata_handle=m, node_contexts=self._pipeline_node.contexts
+      )
 
       # 2. Resolves inputs and execution properties.
       exec_properties = data_types_utils.build_parsed_value_dict(
@@ -257,17 +264,18 @@ class Launcher:
 
       try:
         resolved_inputs = inputs_utils.resolve_input_artifacts(
-            pipeline_node=self._pipeline_node,
-            metadata_handler=m)
+            pipeline_node=self._pipeline_node, metadata_handle=m
+        )
         logging.info('[%s] Resolved inputs: %s',
                      self._pipeline_node.node_info.id, resolved_inputs)
       except exceptions.InputResolutionError as e:
         logging.exception('[%s] Input resolution error: %s',
                           self._pipeline_node.node_info.id, e)
         execution = self._register_or_reuse_execution(
-            metadata_handler=m,
+            metadata_handle=m,
             contexts=contexts,
-            exec_properties=exec_properties)
+            exec_properties=exec_properties,
+        )
         if not execution_lib.is_execution_successful(execution):
           self._publish_failed_execution(
               execution_id=execution.id,
@@ -297,9 +305,10 @@ class Launcher:
             _ERROR_CODE_UNIMPLEMENTED,
             'Handling more than one input dicts not implemented yet.')
         execution = self._register_or_reuse_execution(
-            metadata_handler=m,
+            metadata_handle=m,
             contexts=contexts,
-            exec_properties=exec_properties)
+            exec_properties=exec_properties,
+        )
         if not execution_lib.is_execution_successful(execution):
           self._publish_failed_execution(
               execution_id=execution.id,
@@ -315,15 +324,32 @@ class Launcher:
 
       # 4. Resolve the dynamic exec properties from implicit input channels.
       try:
+        placeholder_context = placeholder_utils.ResolutionContext(
+            exec_info=data_types.ExecutionInfo(
+                input_dict={
+                    key: list(value) for key, value in input_artifacts.items()
+                },
+                pipeline_node=self._pipeline_node,
+                pipeline_info=self._pipeline_info,
+                pipeline_run_id=self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value,
+                top_level_pipeline_run_id=self._pipeline_runtime_spec.top_level_pipeline_run_id,
+            ),
+            executor_spec=self._executor_spec,
+            platform_config=self._platform_config,
+        )
         dynamic_exec_properties = inputs_utils.resolve_dynamic_parameters(
             node_parameters=self._pipeline_node.parameters,
-            input_artifacts=input_artifacts)
+            context=placeholder_context,
+        )
         exec_properties.update(dynamic_exec_properties)
       except exceptions.InputResolutionError as e:
+        logging.exception('[%s] Dynamic exec property resolution error: %s',
+                          self._pipeline_node.node_info.id, e)
         execution = self._register_or_reuse_execution(
-            metadata_handler=m,
+            metadata_handle=m,
             contexts=contexts,
-            exec_properties=exec_properties)
+            exec_properties=exec_properties,
+        )
         if not execution_lib.is_execution_successful(execution):
           self._publish_failed_execution(
               execution_id=execution.id,
@@ -337,10 +363,11 @@ class Launcher:
 
       # 5. Registers execution in metadata.
       execution = self._register_or_reuse_execution(
-          metadata_handler=m,
+          metadata_handle=m,
           contexts=contexts,
           input_artifacts=input_artifacts,
-          exec_properties=exec_properties)
+          exec_properties=exec_properties,
+      )
       if execution_lib.is_execution_successful(execution):
         return _ExecutionPreparationResult(
             execution_info=self._build_execution_info(
@@ -369,23 +396,25 @@ class Launcher:
     with self._mlmd_connection as m:
       # 7. Check cached result
       cache_context = cache_utils.get_cache_context(
-          metadata_handler=m,
+          metadata_handle=m,
           pipeline_node=self._pipeline_node,
           pipeline_info=self._pipeline_info,
           executor_spec=self._executor_spec,
           input_artifacts=input_artifacts,
           output_artifacts=output_artifacts,
-          parameters=exec_properties)
+          parameters=exec_properties,
+      )
       contexts.append(cache_context)
 
       # 8. Should cache be used?
       if self._pipeline_node.execution_options.caching_options.enable_cache:
         cached_outputs = cache_utils.get_cached_outputs(
-            metadata_handler=m, cache_context=cache_context)
+            metadata_handle=m, cache_context=cache_context
+        )
         if cached_outputs is not None:
           # Publishes cache result
           execution_publish_utils.publish_cached_executions(
-              metadata_handler=m,
+              metadata_handle=m,
               contexts=contexts,
               executions=[execution],
               output_artifacts_maps=[cached_outputs],
@@ -412,7 +441,8 @@ class Launcher:
               execution_output_uri=(
                   self._output_resolver.get_executor_output_uri(execution.id)),
               stateful_working_dir=(
-                  self._output_resolver.get_stateful_working_directory()),
+                  self._output_resolver.get_stateful_working_directory(
+                      execution)),
               tmp_dir=self._output_resolver.make_tmp_dir(execution.id)),
           execution_metadata=execution,
           contexts=contexts,
@@ -441,6 +471,8 @@ class Launcher:
       self, execution_info: data_types.ExecutionInfo
   ) -> execution_result_pb2.ExecutorOutput:
     """Executes underlying component implementation."""
+    if self._executor_operator is None:
+      raise ValueError('Executor operator is undefined.')
 
     logging.info('Going to run a new execution: %s', execution_info)
 
@@ -467,11 +499,12 @@ class Launcher:
     """Publishes succeeded execution result to ml metadata."""
     with self._mlmd_connection as m:
       execution_publish_utils.publish_succeeded_execution(
-          metadata_handler=m,
+          metadata_handle=m,
           execution_id=execution_id,
           contexts=contexts,
           output_artifacts=output_dict,
-          executor_output=executor_output)
+          executor_output=executor_output,
+      )
 
   def _publish_failed_execution(
       self,
@@ -482,10 +515,11 @@ class Launcher:
     """Publishes failed execution to ml metadata."""
     with self._mlmd_connection as m:
       execution_publish_utils.publish_failed_execution(
-          metadata_handler=m,
+          metadata_handle=m,
           execution_id=execution_id,
           contexts=contexts,
-          executor_output=executor_output)
+          executor_output=executor_output,
+      )
 
   def _clean_up_stateless_execution_info(
       self, execution_info: data_types.ExecutionInfo):
@@ -551,10 +585,9 @@ class Launcher:
 
     # Runs as a normal node.
     execution_preparation_result = self._prepare_execution()
-    (execution_info, contexts,
-     is_execution_needed) = (execution_preparation_result.execution_info,
-                             execution_preparation_result.contexts,
-                             execution_preparation_result.is_execution_needed)
+    execution_info = execution_preparation_result.execution_info
+    contexts = execution_preparation_result.contexts
+    is_execution_needed = execution_preparation_result.is_execution_needed
     if is_execution_needed:
       executor_watcher = None
       try:

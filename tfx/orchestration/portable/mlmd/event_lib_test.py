@@ -376,6 +376,22 @@ class EventLibTest(tf.test.TestCase, parameterized.TestCase):
             artifact_id=2,
             execution_id=3))
 
+  def testContainsKey(self):
+    event = Event(
+        type=metadata_store_pb2.Event.PENDING_OUTPUT,
+        path=Path(
+            steps=[
+                Step(key='foo'),
+                Step(index=0),
+            ]
+        ),
+    )
+    with self.subTest('Matching key.'):
+      self.assertTrue(event_lib.contains_key(event, 'foo'))
+
+    with self.subTest('Non-matching key.'):
+      self.assertFalse(event_lib.contains_key(event, 'bar'))
+
 
 if __name__ == '__main__':
   tf.test.main()

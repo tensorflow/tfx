@@ -15,6 +15,7 @@
 import contextlib
 import copy
 import os
+from typing import Any
 from unittest import mock
 
 import tensorflow as tf
@@ -37,6 +38,7 @@ from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
@@ -74,6 +76,10 @@ class _FakeEmptyExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
   SUPPORTED_PLATFORM_CONFIG_TYPE = None
+
+  # If you see this default value in your test output, run_executor() has not
+  # been called.
+  _exec_properties: dict[str, Any] = {'Not yet executed??': 'No exec props set'}
 
   def run_executor(
       self, execution_info: data_types.ExecutionInfo
@@ -184,7 +190,8 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
     span = 2
     with self._mlmd_connection as m:
       previous_output = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=self._pipeline_node)[0]
+          metadata_handle=m, pipeline_node=self._pipeline_node
+      )[0]
 
       # Version should be the max of existing version + 1 if span exists,
       # otherwise 0.
@@ -315,12 +322,13 @@ class LauncherTest(test_case_utils.TfxTest):
         execution = execution_publish_utils.register_execution(
             m, example_gen.node_info.type, contexts)
         publish_execution(
-            metadata_handler=m,
+            metadata_handle=m,
             execution_id=execution.id,
             contexts=contexts,
             output_artifacts={
                 'output_examples': [output_example],
-            })
+            },
+        )
 
       if transform:
         # Publishes Transform output.
@@ -331,12 +339,13 @@ class LauncherTest(test_case_utils.TfxTest):
         execution = execution_publish_utils.register_execution(
             m, transform.node_info.type, contexts)
         publish_execution(
-            metadata_handler=m,
+            metadata_handle=m,
             execution_id=execution.id,
             contexts=contexts,
             output_artifacts={
                 'transform_graph': [output_transform_graph],
-            })
+            },
+        )
 
   @staticmethod
   def fakeExampleGenOutput(mlmd_connection: metadata.Metadata,
@@ -777,18 +786,20 @@ class LauncherTest(test_case_utils.TfxTest):
     # state.
     with self._mlmd_connection as m:
       contexts = context_lib.prepare_contexts(
-          metadata_handler=m,
-          node_contexts=test_launcher._pipeline_node.contexts)
+          metadata_handle=m, node_contexts=test_launcher._pipeline_node.contexts
+      )
       exec_properties = data_types_utils.build_parsed_value_dict(
           inputs_utils.resolve_parameters_with_schema(
               node_parameters=test_launcher._pipeline_node.parameters))
       input_artifacts = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=test_launcher._pipeline_node)[0]
+          metadata_handle=m, pipeline_node=test_launcher._pipeline_node
+      )[0]
       first_execution = test_launcher._register_or_reuse_execution(
-          metadata_handler=m,
+          metadata_handle=m,
           contexts=contexts,
           input_artifacts=input_artifacts,
-          exec_properties=exec_properties)
+          exec_properties=exec_properties,
+      )
       self.assertEqual(first_execution.last_known_state,
                        metadata_store_pb2.Execution.RUNNING)
 
@@ -1100,28 +1111,36 @@ class LauncherTest(test_case_utils.TfxTest):
     self._test_executor_operators = {
         _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeEmptyExecutorOperator
     }
-    mock_param = {
-        'input_num': 1
-    }
-    with mock.patch.object(
-        inputs_utils,
-        'resolve_dynamic_parameters',
-        return_value=mock_param) as mock_resolve_dynamic_parameters:
+    fake_input_num = standard_artifacts.Integer()
+    fake_input_num.uri = self.create_tempfile().full_path
+    fake_input_num.value = 1
+    mock_resolve_input_artifacts = self.enter_context(
+        mock.patch.object(
+            inputs_utils,
+            'resolve_input_artifacts',
+            autospec=True,
+            return_value=[
+                {'_UpstreamComponent.num': [fake_input_num]},
+            ],
+        )
+    )
 
-      test_launcher = launcher.Launcher(
-          pipeline_node=self._downstream_component,
-          mlmd_connection=self._mlmd_connection,
-          pipeline_info=self._pipeline_info,
-          pipeline_runtime_spec=self._pipeline_runtime_spec,
-          executor_spec=self._trainer_executor_spec,
-          custom_executor_operators=self._test_executor_operators)
-      execution_info = test_launcher.launch()
-      mock_resolve_dynamic_parameters.assert_called_once()
+    test_launcher = launcher.Launcher(
+        pipeline_node=self._downstream_component,
+        mlmd_connection=self._mlmd_connection,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
+        custom_executor_operators=self._test_executor_operators)
+    execution_info = test_launcher.launch()
+    mock_resolve_input_artifacts.assert_called_once()
 
     with self._mlmd_connection as m:
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
-      self.assertEqual(test_launcher._executor_operator._exec_properties,
-                       {'input_num': 1})
+      self.assertEqual(
+          {'input_num': 1, 'input_str': execution_info.pipeline_run_id},
+          test_launcher._executor_operator._exec_properties,
+      )
       self.assertProtoPartiallyEquals(
           """
           last_known_state: COMPLETE
@@ -1131,7 +1150,13 @@ class LauncherTest(test_case_utils.TfxTest):
                 int_value: 1
               }
           }
-          """,
+          custom_properties {
+            key: "input_str"
+              value {
+                string_value: "%s"
+              }
+          }
+          """ % execution_info.pipeline_run_id,
           execution,
           ignored_fields=[
               'id',
@@ -1148,22 +1173,25 @@ class LauncherTest(test_case_utils.TfxTest):
     self._test_executor_operators = {
         _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeEmptyExecutorOperator
     }
-    with mock.patch.object(
-        inputs_utils, 'resolve_dynamic_parameters',
-        autospec=True) as mock_resolve_dynamic_parameters:
-      mock_resolve_dynamic_parameters.side_effect = ValueError(
-          'resolving prop error')
+    self.enter_context(
+        mock.patch.object(
+            inputs_utils,
+            'resolve_dynamic_parameters',
+            autospec=True,
+            side_effect=ValueError('resolving prop error'),
+        )
+    )
 
-      test_launcher = launcher.Launcher(
-          pipeline_node=self._downstream_component,
-          mlmd_connection=self._mlmd_connection,
-          pipeline_info=self._pipeline_info,
-          pipeline_runtime_spec=self._pipeline_runtime_spec,
-          executor_spec=self._trainer_executor_spec,
-          custom_executor_operators=self._test_executor_operators)
-      with self.assertRaisesRegex(
-          ValueError, 'resolving prop error'):
-        test_launcher.launch()
+    test_launcher = launcher.Launcher(
+        pipeline_node=self._downstream_component,
+        mlmd_connection=self._mlmd_connection,
+        pipeline_info=self._pipeline_info,
+        pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
+        custom_executor_operators=self._test_executor_operators,
+    )
+    with self.assertRaisesRegex(ValueError, 'resolving prop error'):
+      test_launcher.launch()
 
 
 if __name__ == '__main__':

@@ -26,7 +26,6 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
-from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -34,6 +33,17 @@ from tfx.utils import status as status_lib
 from tfx.utils import topsort
 
 from ml_metadata.proto import metadata_store_pb2
+
+
+_LAZY_TRIGGER_STRATEGIES = frozenset({
+    pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED,
+    pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+})
+
+_UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES = frozenset({
+    pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
+    pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED,
+})
 
 
 class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
@@ -85,6 +95,19 @@ class SyncPipelineTaskGenerator(task_gen.TaskGenerator):
                       self._is_task_id_tracked_fn, self._service_job_manager,
                       self._fail_fast)()
 
+  def get_tasks_for_node(
+      self,
+      node: node_proto_view.NodeProtoView,
+      pipeline_state: pstate.PipelineState,
+  ) -> List[task_lib.Task]:
+    return _Generator(
+        self._mlmd_connection_manager,
+        pipeline_state,
+        self._is_task_id_tracked_fn,
+        self._service_job_manager,
+        self._fail_fast,
+    ).generate_tasks_for_node(node)
+
 
 class _Generator:
   """Generator implementation class for SyncPipelineTaskGenerator."""
@@ -105,40 +128,82 @@ class _Generator:
               pipeline.execution_mode))
     self._pipeline_state = pipeline_state
     with self._pipeline_state:
-      self._node_states_dict = self._pipeline_state.get_node_states_dict()
-    self._pipeline_uid = self._pipeline_state.pipeline_uid
+      self._node_state_by_node_uid = self._pipeline_state.get_node_states_dict()
     self._pipeline = pipeline
-    self._pipeline_run_id = (
-        pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
     self._is_task_id_tracked_fn = is_task_id_tracked_fn
     self._service_job_manager = service_job_manager
     self._fail_fast = fail_fast
+    self._node_proto_view_by_node_id: collections.OrderedDict[
+        str, node_proto_view.NodeProtoView
+    ] = collections.OrderedDict()
+
+  def generate_tasks_for_node(
+      self, node: node_proto_view.NodeProtoView
+  ) -> List[task_lib.Task]:
+    logging.info('in generate_tasks_for_node')
+    return self._generate_tasks_from_resolved_inputs(node)
 
   def __call__(self) -> List[task_lib.Task]:
     layers = _topsorted_layers(self._pipeline)
-    skipped_node_ids = _skipped_node_ids(self._pipeline)
-    terminal_node_ids = _terminal_node_ids(layers, skipped_node_ids)
     exec_node_tasks = []
     update_node_state_tasks = []
     successful_node_ids = set()
     failed_nodes_dict: Dict[str, status_lib.Status] = {}
     finalize_pipeline_task = None
+    lazily_evaluated_node_ids = set()
+
+    # Loop over all nodes before deciding scheduling so we have full knowledge
+    # of all the completed/lazy nodes.
+    for layer in layers:
+      for node in layer:
+        node_id = node.node_info.id
+        node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
+        node_state = self._node_state_by_node_uid[node_uid]
+        self._node_proto_view_by_node_id[node_id] = node
+
+        if node.execution_options.strategy in _LAZY_TRIGGER_STRATEGIES:
+          lazily_evaluated_node_ids.add(node.node_info.id)
+        if node_state.is_success() or (
+            node_state.is_failure()
+            and node.execution_options.node_success_optional
+        ):
+          successful_node_ids.add(node_id)
+        elif node_state.is_failure():
+          failed_nodes_dict[node_id] = node_state.status
+
+    # Collect nodes that cannot be run because they have a failed ancestor.
+    unrunnable_node_ids = _unrunnable_nodes(
+        self._node_proto_view_by_node_id,
+        set(failed_nodes_dict.keys()),
+    )
+
     for layer_nodes in layers:
       for node in layer_nodes:
         node_id = node.node_info.id
-        node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
-        node_state = self._node_states_dict[node_uid]
-        if node_state.is_success() or (node_state.is_failure(
-        ) and node.execution_options.node_success_optional):
-          successful_node_ids.add(node_id)
+        if node_id in successful_node_ids:
           continue
-        if node_state.is_failure():
-          failed_nodes_dict[node_id] = node_state.status
+        if node_id in failed_nodes_dict:
           continue
-        if not self._trigger_strategy_satisfied(node, successful_node_ids,
-                                                failed_nodes_dict):
+        if not self._trigger_strategy_satisfied(
+            node,
+            successful_node_ids,
+            failed_nodes_dict,
+            lazily_evaluated_node_ids,
+            unrunnable_node_ids
+        ):
           continue
+        logging.info(
+            '[SyncPipelineTaskGenerator._generate_tasks_for_node] generating'
+            ' tasks for node %s',
+            node.node_info.id,
+        )
         tasks = self._generate_tasks_for_node(node)
+        logging.info(
+            '[SyncPipelineTaskGenerator._generate_tasks_for_node] generated'
+            ' tasks for node %s: %s',
+            node.node_info.id,
+            [t.task_id for t in tasks],
+        )
         for task in tasks:
           if isinstance(task, task_lib.UpdateNodeStateTask):
             if pstate.is_node_state_success(
@@ -157,52 +222,64 @@ class _Generator:
           elif isinstance(task, task_lib.ExecNodeTask):
             exec_node_tasks.append(task)
 
+        # TODO(b/308161293): Remove this and check for updates in later layers
+        # as well.
         if finalize_pipeline_task:
           break
-
       if finalize_pipeline_task:
         break
 
-    if not self._fail_fast and failed_nodes_dict:
-      assert not finalize_pipeline_task
-      node_by_id = _node_by_id(self._pipeline)
-      # Collect nodes that cannot be run because they have a failed ancestor.
-      unrunnable_descendant_ids = set()
-      for node_id in failed_nodes_dict:
-        unrunnable_descendant_ids |= _unrunnable_descendants(
-            node_by_id, node_id)
-      # Nodes that are still runnable have neither succeeded nor failed, don't
-      # have a failed ancestor, or have a triggering strategy that ignores
-      # upstream failures.
-      runnable_node_ids = node_by_id.keys() - (
-          unrunnable_descendant_ids | successful_node_ids
-          | failed_nodes_dict.keys())
-      if not runnable_node_ids:
-        # If there are no runnable nodes and not all nodes are completed,
-        # we can abort the pipeline.
-        if unrunnable_descendant_ids:
-          finalize_pipeline_task = self._abort_task(failed_nodes_dict)
-        # If all nodes are completed and not all terminal nodes are successful,
-        # the pipeline should be marked failed.
-        elif terminal_node_ids & failed_nodes_dict.keys():
-          failed_terminal_nodes = {
-              k: v
-              for k, v in failed_nodes_dict.items()
-              if k in terminal_node_ids
-          }
-          finalize_pipeline_task = self._abort_task(failed_terminal_nodes)
-
+    # Always update node states if possible.
     result = update_node_state_tasks
+    # If finalize_pipeline_task is set here then we should be in fail_fast
+    # mode. Will only update node states and finalize pipeline, ignoring other
+    # tasks.
     if finalize_pipeline_task:
       result.append(finalize_pipeline_task)
-    elif terminal_node_ids <= successful_node_ids:
-      # If all terminal nodes are successful, the pipeline can be finalized.
-      result.append(
-          task_lib.FinalizePipelineTask(
-              pipeline_uid=self._pipeline_uid,
-              status=status_lib.Status(code=status_lib.Code.OK)))
+      return result
+
+    # Because we can find newly failed nodes from UpdateNodeStateTask
+    # recompute all unrunnable nodes so we can fail the pipeline in this
+    # loop.
+    # Note that because we only ever append to failed_nodes_dict this set
+    # is guaranteed to contain at least the unrunnable nodes we originally
+    # computed.
+    unrunnable_node_ids = _unrunnable_nodes(
+        self._node_proto_view_by_node_id,
+        set(failed_nodes_dict.keys()),
+    )
+
+    # Nodes that are still runnable have neither succeeded nor failed, don't
+    # have a failed ancestor, or have a triggering strategy that ignores
+    # upstream failures.
+    runnable_node_ids = self._node_proto_view_by_node_id.keys() - (
+        unrunnable_node_ids
+        | successful_node_ids
+        | failed_nodes_dict.keys()
+    )
+
+    # If there are no more runnable nodes, then we finalize the pipeline,
+    # otherwise run our exec_node tasks,
+    if not runnable_node_ids:
+      logging.info(
+          'No more runnable nodes in pipeline, finalizing. Successful nodes:'
+          ' %s, failed nodes: %s, unrunnable nodes: %s.',
+          successful_node_ids,
+          failed_nodes_dict.keys(),
+          unrunnable_node_ids,
+      )
+      if failed_nodes_dict:
+        result.append(self._abort_task(failed_nodes_dict))
+      else:
+        result.append(
+            task_lib.FinalizePipelineTask(
+                pipeline_uid=self._pipeline_state.pipeline_uid,
+                status=status_lib.Status(code=status_lib.Code.OK),
+            )
+        )
     else:
       result.extend(exec_node_tasks)
+
     return result
 
   def _generate_tasks_for_node(
@@ -212,9 +289,11 @@ class _Generator:
     node_id = node.node_info.id
     result = []
 
-    node_state = self._node_states_dict[node_uid]
-    if node_state.state in (pstate.NodeState.STOPPING, pstate.NodeState.STOPPED,
-                            pstate.NodeState.PAUSING, pstate.NodeState.PAUSED):
+    node_state = self._node_state_by_node_uid[node_uid]
+    if node_state.state in (
+        pstate.NodeState.STOPPING,
+        pstate.NodeState.STOPPED,
+    ):
       logging.info('Ignoring node in state \'%s\' for task generation: %s',
                    node_state.state, node_uid)
       return result
@@ -223,11 +302,11 @@ class _Generator:
     # but we ensure node services and check service status.
     service_status = self._ensure_node_services_if_pure(node_id)
     if service_status is not None:
-      if service_status == service_jobs.ServiceStatus.FAILED:
+      if service_status.code == service_jobs.ServiceStatusCode.FAILED:
         # TODO(b/205642811): Mark all pending executions as either failed (if
         # active) or canceled (if new), and delete the the executions temporary
         # and output directories.
-        error_msg = f'service job failed; node uid: {node_uid}'
+        error_msg = f'service job failed; error message: {service_status.msg}'
         result.append(
             self._update_node_state_to_failed_task(
                 node_uid,
@@ -235,13 +314,15 @@ class _Generator:
                 error_msg=error_msg,
             )
         )
-      elif service_status == service_jobs.ServiceStatus.SUCCESS:
+      elif service_status.code == service_jobs.ServiceStatusCode.SUCCESS:
         logging.info('Service node successful: %s', node_uid)
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid, state=pstate.NodeState.COMPLETE))
-      elif (service_status == service_jobs.ServiceStatus.RUNNING and
-            node_state.state != pstate.NodeState.RUNNING):
+      elif (
+          service_status.code == service_jobs.ServiceStatusCode.RUNNING
+          and node_state.state != pstate.NodeState.RUNNING
+      ):
         result.append(
             task_lib.UpdateNodeStateTask(
                 node_uid=node_uid, state=pstate.NodeState.RUNNING))
@@ -250,14 +331,20 @@ class _Generator:
     # For mixed service nodes, we ensure node services and check service
     # status; pipeline is aborted if the service jobs have failed.
     service_status = self._ensure_node_services_if_mixed(node.node_info.id)
-    if service_status == service_jobs.ServiceStatus.FAILED:
-      error_msg = f'associated service job failed; node uid: {node_uid}'
-      result.append(
-          self._update_node_state_to_failed_task(
-              node_uid, error_code=status_lib.Code.UNKNOWN, error_msg=error_msg
-          )
-      )
-      return result
+    if service_status:
+      if service_status.code == service_jobs.ServiceStatusCode.FAILED:
+        error_msg = (
+            f'associated service job failed; node uid: {node_uid}, error'
+            f' message: {service_status.msg}'
+        )
+        result.append(
+            self._update_node_state_to_failed_task(
+                node_uid,
+                error_code=status_lib.Code.UNKNOWN,
+                error_msg=error_msg,
+            )
+        )
+        return result
 
     # If a task for the node is already tracked by the task queue, it need
     # not be considered for generation again.
@@ -268,7 +355,7 @@ class _Generator:
     node_executions = task_gen_utils.get_executions(self._mlmd_handle, node)
     latest_executions_set = task_gen_utils.get_latest_executions_set(
         node_executions)
-
+    logging.info('latest executions set: %s', latest_executions_set)
     # Generates tasks from resolved inputs if the node doesn't have any
     # execution.
     if not latest_executions_set:
@@ -285,9 +372,13 @@ class _Generator:
               node_uid=node_uid, state=pstate.NodeState.COMPLETE))
       return result
 
-    # If the node has a failed execution, try to retry the failed execution.
     failed_executions = [
         e for e in latest_executions_set if execution_lib.is_execution_failed(e)
+    ]
+    canceled_executions = [
+        e
+        for e in latest_executions_set
+        if execution_lib.is_execution_canceled(e)
     ]
     if failed_executions:
       if len(failed_executions) > 1:
@@ -300,22 +391,29 @@ class _Generator:
                 error_msg=error_msg,
             )
         )
-      # Retry if under retry limit or already STARTING. STARTING is set upstream
+      # If the node has a failed execution, try to retry the failed execution.
+      # Retry if under retry limit or if STARTED. STARTED is set upstream
       # so we should respect it here. See b/277257906.
       elif (
-          node.execution_options.max_execution_retries
+          node.execution_options.HasField('max_execution_retries')
+          and node.execution_options.max_execution_retries
           >= task_gen_utils.get_num_of_failures_from_failed_execution(
               node_executions, failed_executions[0]
           )
-          or node_state.state == pstate.NodeState.STARTING
-      ):
-        [retry_execution] = (
+      ) or node_state.state == pstate.NodeState.STARTED:
+        retry_executions = (
             task_gen_utils.register_executions_from_existing_executions(
-                self._mlmd_handle, node, failed_executions
+                self._mlmd_handle,
+                self._pipeline,
+                node,
+                failed_executions + canceled_executions,
             )
         )
         result.extend(
-            self._generate_tasks_from_existing_execution(retry_execution, node))
+            self._generate_tasks_from_existing_execution(
+                retry_executions[0], node
+            )
+        )
       else:
         result.append(
             task_lib.UpdateNodeStateTask(
@@ -328,15 +426,13 @@ class _Generator:
         )
       return result
 
-    # Restarts canceled node, if the node state is STARTING.
-    canceled_executions = [
-        e for e in latest_executions_set
-        if execution_lib.is_execution_canceled(e)
-    ]
-    if canceled_executions and node_state.state == pstate.NodeState.STARTING:
+    # Restarts canceled node, if the node state is STARTED.
+    logging.info('canceled executions: %s', canceled_executions)
+    if canceled_executions and node_state.state == pstate.NodeState.STARTED:
+      logging.info('restarting node %s', node.node_info.id)
       new_executions = (
           task_gen_utils.register_executions_from_existing_executions(
-              self._mlmd_handle, node, canceled_executions
+              self._mlmd_handle, self._pipeline, node, canceled_executions
           )
       )
       with mlmd_state.mlmd_execution_atomic_op(
@@ -380,6 +476,10 @@ class _Generator:
       self, execution: metadata_store_pb2.Execution,
       node: node_proto_view.NodeProtoView) -> List[task_lib.Task]:
     """Generates tasks for a node from its existing execution."""
+    logging.info(
+        'Generating tasks from existing execution for node: %s',
+        node.node_info.id,
+    )
     tasks = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
     with mlmd_state.mlmd_execution_atomic_op(
@@ -399,15 +499,20 @@ class _Generator:
       node: node_proto_view.NodeProtoView,
   ) -> List[task_lib.Task]:
     """Generates tasks for a node by freshly resolving inputs."""
+    logging.info(
+        'Generating tasks from resolved inputs for node: %s', node.node_info.id
+    )
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
     try:
       resolved_info = task_gen_utils.generate_resolved_info(
-          self._mlmd_connection_manager, node)
+          self._mlmd_connection_manager, node, self._pipeline
+      )
+      logging.info('Resolved inputs: %s', resolved_info)
     except exceptions.InputResolutionError as e:
       error_msg = (f'failure to resolve inputs; node uid: {node_uid}; '
-                   f'error: {e.__cause__ if hasattr(e, "__cause__") else e}')
+                   f'error: {e.__cause__ or e}')
       result.append(
           self._update_node_state_to_failed_task(
               node_uid, error_code=e.grpc_code_value, error_msg=error_msg
@@ -416,57 +521,60 @@ class _Generator:
       return result
 
     if not resolved_info.input_and_params:
+      logging.info('Node skipped: %s', node_uid)
       result.append(
           task_lib.UpdateNodeStateTask(
-              node_uid=node_uid, state=pstate.NodeState.SKIPPED))
+              node_uid=node_uid,
+              state=pstate.NodeState.SKIPPED,
+              status=status_lib.Status(
+                  code=status_lib.Code.OK,
+                  message=(
+                      'Node execution skipped either due to conditional'
+                      ' evaluated to false or no inputs resolved. Please check'
+                      ' whether the output of the upstream node was generated'
+                      ' successfully.'
+                  ),
+              ),
+          )
+      )
       return result
 
     # Copys artifact types of the external artifacts to local db, in idempotent
     # manner. Idempotency is guaranteed by the artifact type name.
     # The external artifacts will be copies to local db when we register
     # executions. Idempotency is guaranteed by external_id.
-    # TODO(b/258477751) Add more tests to test the producer/consumer pipelines.
+    updated_external_artifacts = []
     for input_and_params in resolved_info.input_and_params:
       for artifacts in input_and_params.input_artifacts.values():
-        task_gen_utils.update_external_artifact_type(self._mlmd_handle,
-                                                     artifacts)
+        updated_external_artifacts.extend(
+            task_gen_utils.update_external_artifact_type(
+                self._mlmd_handle, artifacts
+            )
+        )
+    if updated_external_artifacts:
+      logging.info(
+          'Updated external artifact ids: %s',
+          [a.id for a in updated_external_artifacts],
+      )
 
     executions = task_gen_utils.register_executions(
-        metadata_handler=self._mlmd_handle,
+        metadata_handle=self._mlmd_handle,
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
-        input_and_params=resolved_info.input_and_params)
+        input_and_params=resolved_info.input_and_params,
+    )
 
-    # Selects the first artifacts and create a exec task.
-    input_artifacts = resolved_info.input_and_params[0].input_artifacts
-    # Selects the first execution and marks it as RUNNING.
-    with mlmd_state.mlmd_execution_atomic_op(
-        mlmd_handle=self._mlmd_handle,
-        execution_id=executions[0].id) as execution:
-      execution.last_known_state = metadata_store_pb2.Execution.RUNNING
-    outputs_resolver = outputs_utils.OutputsResolver(
-        node, self._pipeline.pipeline_info, self._pipeline.runtime_spec,
-        self._pipeline.execution_mode)
-    output_artifacts = outputs_resolver.generate_output_artifacts(execution.id)
-    outputs_utils.make_output_dirs(output_artifacts)
-
-    result.append(
-        task_lib.UpdateNodeStateTask(
-            node_uid=node_uid, state=pstate.NodeState.RUNNING))
-    result.append(
-        task_lib.ExecNodeTask(
-            node_uid=node_uid,
-            execution_id=execution.id,
+    result.extend(
+        task_gen_utils.generate_tasks_from_one_input(
+            metadata_handle=self._mlmd_handle,
+            node=node,
+            execution=executions[0],
+            input_and_param=resolved_info.input_and_params[0],
             contexts=resolved_info.contexts,
-            input_artifacts=input_artifacts,
-            exec_properties=resolved_info.input_and_params[0].exec_properties,
-            output_artifacts=output_artifacts,
-            executor_output_uri=outputs_resolver.get_executor_output_uri(
-                execution.id),
-            stateful_working_dir=outputs_resolver
-            .get_stateful_working_directory(execution.id),
-            tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
-            pipeline=self._pipeline))
+            pipeline=self._pipeline,
+            execution_node_state=pstate.NodeState.RUNNING,
+        )
+    )
     return result
 
   def _ensure_node_services_if_pure(
@@ -499,23 +607,112 @@ class _Generator:
     return set(node.upstream_nodes) <= (
         successful_node_ids | failed_nodes_dict.keys())
 
+  def _lifetime_end_when_subgraph_cannot_progress(
+      self,
+      node: node_proto_view.NodeProtoView,
+      successful_node_ids: Set[str],
+      unrunnable_node_ids: Set[str],
+      failed_nodes_dict: Mapping[str, status_lib.Status],
+  ) -> bool:
+    """Returns `True` if all upstream nodes are either COMPLETE or unrunnable."""
+    if not (
+        start_node := node.execution_options.resource_lifetime.lifetime_start
+    ):
+      raise ValueError(
+          f'Node {node.node_info.id} has trigger strategy'
+          ' LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS but no lifetime_start.'
+      )
+    # If the start node was not successful we will never trigger the end node.
+    if start_node not in successful_node_ids:
+      return False
+
+    # Otherwise, the end node should run if none of its upstream nodes are
+    # runnable.
+
+    # All nodes not in this set are runnable.
+    complete_or_unrunnable_nodes = (
+        successful_node_ids | unrunnable_node_ids | failed_nodes_dict.keys()
+    )
+
+    # Any potentially runnable upstream nodes are the upstream nodes that are
+    # not complete or unrunnable.
+    runnable_upstream_node_ids = (
+        set(node.upstream_nodes) - complete_or_unrunnable_nodes
+    )
+    logging.info(
+        '[LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS trigger check]'
+        ' for node %s,'
+        ' complete_or_unrunnable nodes: %s, runnable upstream nodes: %s',
+        node.node_info.id,
+        complete_or_unrunnable_nodes,
+        runnable_upstream_node_ids,
+    )
+    # If this set is empty then the end node should run, otherwise it needs to
+    # wait.
+    return not runnable_upstream_node_ids
+
   def _trigger_strategy_satisfied(
-      self, node: node_proto_view.NodeProtoView, successful_node_ids: Set[str],
-      failed_nodes_dict: Dict[str, status_lib.Status]) -> bool:
+      self,
+      node: node_proto_view.NodeProtoView,
+      successful_node_ids: Set[str],
+      failed_nodes_dict: Dict[str, status_lib.Status],
+      lazily_evaluated_node_ids: Set[str],
+      unrunnable_node_ids: Set[str],
+  ) -> bool:
     """Returns `True` if the node's Trigger Strategy is satisfied."""
-    if node.execution_options.strategy == (
-        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED):
-      return self._upstream_nodes_completed(node, successful_node_ids,
-                                            failed_nodes_dict)
+    if node.execution_options.strategy in _UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES:
+      node_trigger_strategy_satisfied = self._upstream_nodes_completed(
+          node, successful_node_ids, failed_nodes_dict
+      )
     elif node.execution_options.strategy in (
         pipeline_pb2.NodeExecutionOptions.TRIGGER_STRATEGY_UNSPECIFIED,
-        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_SUCCEEDED):
-      return self._upstream_nodes_successful(node, successful_node_ids)
+        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_SUCCEEDED,
+        pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED,
+    ):
+      node_trigger_strategy_satisfied = self._upstream_nodes_successful(
+          node, successful_node_ids
+      )
+    elif (
+        node.execution_options.strategy
+        == pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS
+    ):
+      node_trigger_strategy_satisfied = (
+          self._lifetime_end_when_subgraph_cannot_progress(
+              node, successful_node_ids, unrunnable_node_ids, failed_nodes_dict
+          )
+      )
     else:
       raise NotImplementedError(
           'Unrecognized node triggering strategy: %s' %
           pipeline_pb2.NodeExecutionOptions.TriggerStrategy.Name(
               node.execution_options.strategy))
+
+    if not node_trigger_strategy_satisfied:
+      return node_trigger_strategy_satisfied
+
+    # Only check that downstream nodes are otherwise satisfied if there are any
+    # downstream nodes, otherwise we should just treat the node as normal.
+    if (
+        node.execution_options.strategy in _LAZY_TRIGGER_STRATEGIES
+        and node.downstream_nodes
+    ):
+      any_downstream_node_otherwise_ready = False
+      successful_or_lazy_node_ids = (
+          successful_node_ids | lazily_evaluated_node_ids
+      )
+      for downstream_node in node.downstream_nodes:
+        downstream_trigger = self._trigger_strategy_satisfied(
+            self._node_proto_view_by_node_id[downstream_node],
+            successful_or_lazy_node_ids,
+            failed_nodes_dict,
+            lazily_evaluated_node_ids,
+            unrunnable_node_ids
+        )
+        any_downstream_node_otherwise_ready |= downstream_trigger
+        if any_downstream_node_otherwise_ready:
+          break
+      node_trigger_strategy_satisfied &= any_downstream_node_otherwise_ready
+    return node_trigger_strategy_satisfied
 
   def _abort_task(
       self, failed_nodes_dict: Mapping[str, status_lib.Status]
@@ -529,17 +726,22 @@ class _Generator:
         ),
     )
     return task_lib.FinalizePipelineTask(
-        pipeline_uid=self._pipeline_uid,
+        pipeline_uid=self._pipeline_state.pipeline_uid,
         status=next(iter(failed_nodes_dict.values())),
     )
 
 
-def _skipped_node_ids(pipeline: pipeline_pb2.Pipeline) -> Set[str]:
-  """Returns the set of nodes that are marked as skipped in partial run."""
+def _skipped_node_ids(
+    node_states_dict: Dict[task_lib.NodeUid, pstate.NodeState]
+) -> Set[str]:
+  """Returns the nodes that are marked as skipped in partial run or by user."""
   skipped_node_ids = set()
-  for node in pstate.get_all_nodes(pipeline):
-    if node.execution_options.HasField('skip'):
-      skipped_node_ids.add(node.node_info.id)
+  for node_uid, node_state in node_states_dict.items():
+    if node_state.state in (
+        pstate.NodeState.SKIPPED,
+        pstate.NodeState.SKIPPED_PARTIAL_RUN,
+    ):
+      skipped_node_ids.add(node_uid.node_id)
   return skipped_node_ids
 
 
@@ -557,22 +759,6 @@ def _topsorted_layers(
           lambda node: [node_by_id[n] for n in node.downstream_nodes]))
 
 
-def _terminal_node_ids(layers: List[List[node_proto_view.NodeProtoView]],
-                       skipped_node_ids: Set[str]) -> Set[str]:
-  """Returns nodes across all layers that have no downstream nodes to run."""
-  terminal_node_ids: Set[str] = set()
-  for layer_nodes in layers:
-    for node in layer_nodes:
-      # Ignore skipped nodes.
-      if node.node_info.id in skipped_node_ids:
-        continue
-      if not node.downstream_nodes or all(
-          downstream_node in skipped_node_ids
-          for downstream_node in node.downstream_nodes):
-        terminal_node_ids.add(node.node_info.id)
-  return terminal_node_ids
-
-
 def _node_by_id(
     pipeline: pipeline_pb2.Pipeline
 ) -> Dict[str, node_proto_view.NodeProtoView]:
@@ -583,21 +769,60 @@ def _node_by_id(
   return result
 
 
-def _unrunnable_descendants(node_by_id: Mapping[str,
-                                                node_proto_view.NodeProtoView],
-                            failed_node_id: str) -> Set[str]:
-  """Returns node_ids of all unrunnable descendants of the given failed node_id."""
+def _unrunnable_nodes(
+    node_by_id: collections.OrderedDict[str, node_proto_view.NodeProtoView],
+    failed_node_ids: Set[str],
+) -> Set[str]:
+  """Returns node_ids of all unrunnable descendant nodes for each member of the given failed_node_ids set."""
+
+  unrunnable = set()
   queue = collections.deque()
-  for node_with_upstream_failure in node_by_id[failed_node_id].downstream_nodes:
-    # Nodes with ALL_UPSTREAM_NODES_COMPLETED trigger strategy can make progress
-    # despite a failed upstream node.
-    if node_by_id[node_with_upstream_failure].execution_options.strategy != (
-        pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED):
-      queue.append(node_with_upstream_failure)
-  result = set()
+
+  for failed_node_id in failed_node_ids:
+    for node_with_upstream_failure in node_by_id[
+        failed_node_id
+    ].downstream_nodes:
+      # Nodes with a upstream success optional trigger strategy can make
+      # progress despite a failed upstream node.
+      if (
+          node_by_id[node_with_upstream_failure].execution_options.strategy
+          not in _UPSTREAM_SUCCESS_OPTIONAL_STRATEGIES
+      ):
+        queue.append(node_with_upstream_failure)
+
   while queue:
     q_node_id = queue.popleft()
-    if q_node_id not in result:
+    node = node_by_id[q_node_id]
+    start_node = node.execution_options.resource_lifetime.lifetime_start
+    if (
+        node.execution_options.strategy
+        == pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS
+        and not (start_node in failed_node_ids or start_node in unrunnable)
+    ):
+      logging.info(
+          '%s is an end node that may still be run since its start node %s'
+          ' was neither failed nor unrunnable. Not marking the end node nor'
+          ' its descendants as unrunnable due to the failures of %s.',
+          q_node_id,
+          start_node,
+          ', '.join(failed_node_ids),
+      )
+      continue
+    if q_node_id not in unrunnable:
       queue.extend(node_by_id[q_node_id].downstream_nodes)
-      result.add(q_node_id)
-  return result
+      unrunnable.add(q_node_id)
+
+  # Lazy nodes whose descendents are all unrunnable are also unrunnable, so we
+  # need to add them here.
+  # We go over the dictionary in reverse order so that lazy nodes that are
+  # downstream of other lazy nodes are checked in (reverse) order.
+  for node_id, node in reversed(node_by_id.items()):
+    if (
+        node.execution_options.strategy in _LAZY_TRIGGER_STRATEGIES
+        and node.downstream_nodes
+        and all(
+            downstream in unrunnable for downstream in node.downstream_nodes
+        )
+    ):
+      unrunnable.add(node_id)
+  return unrunnable

@@ -15,21 +15,27 @@
 
 import os
 import time
+from unittest import mock
 import uuid
 
 from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx import version
+from tfx.orchestration import data_types_utils
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.experimental.core import test_utils as otu
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration.experimental.core.testing import test_dynamic_exec_properties_pipeline
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
@@ -38,6 +44,8 @@ from tfx.utils import test_case_utils as tu
 from ml_metadata.proto import metadata_store_pb2
 
 State = metadata_store_pb2.Execution.State
+
+_PIPELINE_RUN_ID = 'test_run_0'
 
 
 class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
@@ -60,12 +68,10 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     # Sets up the pipeline.
     pipeline = test_async_pipeline.create_pipeline()
     self._pipeline = pipeline
-    self._pipeline_info = pipeline.pipeline_info
-    self._pipeline_runtime_spec = pipeline.runtime_spec
-    self._pipeline_runtime_spec.pipeline_root.field_value.string_value = (
-        pipeline_root)
-    self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
-        'test_run_0')
+    pipeline.runtime_spec.pipeline_root.field_value.string_value = pipeline_root
+    pipeline.runtime_spec.pipeline_run_id.field_value.string_value = (
+        _PIPELINE_RUN_ID
+    )
 
     # Extracts components.
     self._example_gen = pipeline.nodes[0].pipeline_node
@@ -133,18 +139,6 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           metadata_store_pb2.Execution.State.FAILED,
       )
       self.assertLen(task_gen_utils.get_executions(m, self._example_gen), 3)
-      succeeded_executions = task_gen_utils.get_executions(
-          m, self._example_gen, only_successful=True
-      )
-      self.assertLen(succeeded_executions, 2)
-      self.assertEqual(
-          metadata_store_pb2.Execution.State.COMPLETE,
-          succeeded_executions[0].last_known_state,
-      )
-      self.assertEqual(
-          metadata_store_pb2.Execution.State.COMPLETE,
-          succeeded_executions[1].last_known_state,
-      )
 
   def test_get_executions_only_active(self):
     with self._mlmd_connection as m:
@@ -176,11 +170,26 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       # pipeline.
       self.assertCountEqual(
           active_eg_execs[0:2],
-          task_gen_utils.get_executions(m, self._example_gen, only_active=True))
+          task_gen_utils.get_executions(
+              m,
+              self._example_gen,
+              additional_filters=['last_known_state IN (NEW, RUNNING)'],
+          ),
+      )
       self.assertEmpty(
-          task_gen_utils.get_executions(m, self._transform, only_active=True))
+          task_gen_utils.get_executions(
+              m,
+              self._transform,
+              additional_filters=['last_known_state IN (NEW, RUNNING)'],
+          )
+      )
       self.assertEmpty(
-          task_gen_utils.get_executions(m, self._trainer, only_active=True))
+          task_gen_utils.get_executions(
+              m,
+              self._trainer,
+              additional_filters=['last_known_state IN (NEW, RUNNING)'],
+          )
+      )
 
   def test_get_executions_only_active_with_backfill_token(self):
     with self._mlmd_connection as m:
@@ -266,7 +275,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           task_gen_utils.get_executions(
               m,
               self._example_gen,
-              only_active=True,
+              additional_filters=['last_known_state IN (NEW, RUNNING)'],
               backfill_token=backfill_token_1,
           ),
       )
@@ -275,7 +284,7 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           task_gen_utils.get_executions(
               m,
               self._example_gen,
-              only_active=True,
+              additional_filters=['last_known_state IN (NEW, RUNNING)'],
               backfill_token=backfill_token_2,
           ),
       )
@@ -364,63 +373,68 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
   def test_generate_resolved_info(self):
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
-    with self._mlmd_connection_manager as mlmd_connection_manager:
-      resolved_info = task_gen_utils.generate_resolved_info(
-          mlmd_connection_manager, self._transform)
-      self.assertCountEqual(['my_pipeline', 'my_pipeline.my_transform'],
-                            [c.name for c in resolved_info.contexts])
-      self.assertLen(
-          resolved_info.input_and_params[0].input_artifacts['examples'], 1)
-      self.assertProtoPartiallyEquals(
-          f"""
-          id: 1
-          uri: "my_examples_uri"
-          custom_properties {{
-            key: "span"
-            value {{
-              int_value: 2
-            }}
+    resolved_info = task_gen_utils.generate_resolved_info(
+        self._mlmd_connection_manager,
+        node_proto_view.get_view(self._transform),
+        self._pipeline,
+    )
+    self.assertCountEqual(
+        ['my_pipeline', 'my_pipeline.my_transform'],
+        [c.name for c in resolved_info.contexts],
+    )
+    self.assertLen(
+        resolved_info.input_and_params[0].input_artifacts['examples'], 1
+    )
+    self.assertProtoPartiallyEquals(
+        f"""
+        id: 1
+        uri: "my_examples_uri"
+        custom_properties {{
+          key: "span"
+          value {{
+            int_value: 2
           }}
-          custom_properties {{
-            key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
-            value {{string_value: "{version.__version__}"}}
+        }}
+        custom_properties {{
+          key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
+          value {{string_value: "{version.__version__}"}}
+        }}
+        custom_properties {{
+          key: "version"
+          value {{
+            int_value: 1
           }}
-          custom_properties {{
-            key: "version"
-            value {{
-              int_value: 1
-            }}
-          }}
-          state: LIVE""",
-          resolved_info.input_and_params[0]
-          .input_artifacts['examples'][0]
-          .mlmd_artifact,
-          ignored_fields=[
-              'type_id',
-              'type',
-              'create_time_since_epoch',
-              'last_update_time_since_epoch',
-          ],
-      )
+        }}
+        state: LIVE""",
+        resolved_info.input_and_params[0]
+        .input_artifacts['examples'][0]
+        .mlmd_artifact,
+        ignored_fields=[
+            'type_id',
+            'type',
+            'create_time_since_epoch',
+            'last_update_time_since_epoch',
+        ],
+    )
 
   def test_generate_resolved_info_with_dynamic_exec_prop(self):
-    dynamic_exec_properties_pipeline = (
-        test_dynamic_exec_properties_pipeline.create_pipeline())
-    self._dynamic_exec_properties_pipeline = dynamic_exec_properties_pipeline
-    self._pipeline_runtime_spec = dynamic_exec_properties_pipeline.runtime_spec
-    self._pipeline_runtime_spec.pipeline_root.field_value.string_value = (
-        self._pipeline_root)
-    self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
-        'test_run_dynamic_prop')
+    self._pipeline = test_dynamic_exec_properties_pipeline.create_pipeline()
+    pipeline_runtime_spec = self._pipeline.runtime_spec
+    pipeline_runtime_spec.pipeline_root.field_value.string_value = (
+        self._pipeline_root
+    )
+    pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
+        'test_run_dynamic_prop'
+    )
 
-    self._upstream_node = (
-        dynamic_exec_properties_pipeline.nodes[0].pipeline_node)
-    self._dynamic_exec_properties_node = (
-        dynamic_exec_properties_pipeline.nodes[1].pipeline_node)
+    [upstream_node, dynamic_exec_properties_node] = [
+        n.pipeline_node for n in self._pipeline.nodes
+    ]
 
-    self._set_pipeline_context(self._dynamic_exec_properties_pipeline,
-                               'pipeline_run', 'test_run_dynamic_prop')
-    for input_spec in self._dynamic_exec_properties_node.inputs.inputs.values():
+    self._set_pipeline_context(
+        self._pipeline, 'pipeline_run', 'test_run_dynamic_prop'
+    )
+    for input_spec in dynamic_exec_properties_node.inputs.inputs.values():
       for channel in input_spec.channels:
         for context_query in channel.context_queries:
           if context_query.type.name == 'pipeline_run':
@@ -428,22 +442,36 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
                 'test_run_dynamic_prop'
             )
 
-    otu.fake_upstream_node_run(self._mlmd_connection, self._upstream_node,
-                               self.create_tempfile().full_path)
-    with self._mlmd_connection_manager as mlmd_connection_manager:
-      resolved_info = task_gen_utils.generate_resolved_info(
-          mlmd_connection_manager, self._dynamic_exec_properties_node)
+    otu.fake_upstream_node_run(
+        self._mlmd_connection,
+        upstream_node,
+        fake_result='Tflex rocks.',
+        tmp_path=self.create_tempfile().full_path,
+    )
+    resolved_info = task_gen_utils.generate_resolved_info(
+        self._mlmd_connection_manager,
+        node_proto_view.get_view(dynamic_exec_properties_node),
+        self._pipeline,
+    )
 
-      self.assertCountEqual([
-          'my_pipeline', 'test_run_dynamic_prop',
-          'my_pipeline.DownstreamComponent'
-      ], [c.name for c in resolved_info.contexts])
-      self.assertLen(
-          resolved_info.input_and_params[0]
-          .input_artifacts['_UpstreamComponent.num'], 1)
-      self.assertEqual(
-          otu.OUTPUT_NUM,
-          resolved_info.input_and_params[0].exec_properties['input_num'])
+    self.assertCountEqual(
+        [
+            'my_pipeline',
+            'test_run_dynamic_prop',
+            'my_pipeline.DownstreamComponent',
+        ],
+        [c.name for c in resolved_info.contexts],
+    )
+    self.assertLen(
+        resolved_info.input_and_params[0].input_artifacts[
+            '_UpstreamComponent.result'
+        ],
+        1,
+    )
+    self.assertEqual(
+        'Tflex rocks. Especially the run with ID: test_run_dynamic_prop',
+        resolved_info.input_and_params[0].exec_properties['input_str'],
+    )
 
   @parameterized.named_parameters(
       dict(
@@ -553,6 +581,41 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertLen(m.store.get_executions_by_context(context_1.id), 2)
       self.assertLen(m.store.get_executions_by_context(context_2.id), 2)
 
+  def test_register_executions_with_stateful_working_dir_index(self):
+    with self._mlmd_connection as m:
+      context_type = metadata_store_pb2.ContextType(name='my_ctx_type')
+      context_type_id = m.store.put_context_type(context_type)
+      context = metadata_store_pb2.Context(
+          name='context', type_id=context_type_id
+      )
+      m.store.put_contexts([context])
+
+      # Registers an execution with STATEFUL_WORKING_DIR_INDEX.
+      task_gen_utils.register_executions(
+          m,
+          execution_type=metadata_store_pb2.ExecutionType(name='my_ex_type'),
+          contexts=[context],
+          input_and_params=[
+              task_gen_utils.InputAndParam(
+                  input_artifacts={
+                      'input_example': [standard_artifacts.Examples()]
+                  },
+                  exec_properties={
+                      constants.STATEFUL_WORKING_DIR_INDEX: 'test_index'
+                  },
+              ),
+          ],
+      )
+
+      executions = m.store.get_executions()
+      self.assertLen(executions, 1)
+      self.assertEqual(
+          executions[0]
+          .custom_properties[constants.STATEFUL_WORKING_DIR_INDEX]
+          .string_value,
+          'test_index',
+      )
+
   def test_get_executions_num_of_failure(self):
     failed_execution = metadata_store_pb2.Execution(
         last_known_state=metadata_store_pb2.Execution.FAILED)
@@ -587,7 +650,31 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         ),
     )
 
-  def test_register_execution_from_existing_execution(self):
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='reset_stateful_working_dir_with_previous_stateful_working_dir_index',
+          reset_stateful_working_dir=True,
+          has_previous_stateful_working_dir_index=True,
+      ),
+      dict(
+          testcase_name='reset_stateful_working_dir_without_previous_stateful_working_dir_index',
+          reset_stateful_working_dir=True,
+          has_previous_stateful_working_dir_index=False,
+      ),
+      dict(
+          testcase_name='not_reset_stateful_working_dir_with_previous_stateful_working_dir_index',
+          reset_stateful_working_dir=False,
+          has_previous_stateful_working_dir_index=True,
+      ),
+      dict(
+          testcase_name='not_reset_stateful_working_dir_without_previous_stateful_working_dir_index',
+          reset_stateful_working_dir=False,
+          has_previous_stateful_working_dir_index=False,
+      ),
+  )
+  def test_register_execution_from_existing_execution(
+      self, reset_stateful_working_dir, has_previous_stateful_working_dir_index
+  ):
     with self._mlmd_connection as m:
       # Put contexts.
       context_type = metadata_store_pb2.ContextType(name='my_ctx_type')
@@ -597,6 +684,16 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           metadata_store_pb2.Context(name='context-2', type_id=context_type_id)
       ]
       m.store.put_contexts(contexts)
+      # Add dynamic exec property to example gen
+      ph_value = placeholder_pb2.PlaceholderExpression(
+          value=data_types_utils.set_metadata_value(
+              metadata_store_pb2.Value(), 'foo_value'
+          )
+      )
+      dynamic_exec_property = (
+          self._example_gen.parameters.parameters.get_or_create('ph_property')
+      )
+      dynamic_exec_property.placeholder.CopyFrom(ph_value)
 
       # Put a failed execution.
       input_and_param = task_gen_utils.InputAndParam(
@@ -611,17 +708,41 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       failed_execution.custom_properties[
           task_gen_utils
           ._EXTERNAL_EXECUTION_INDEX].int_value = 1
+      if has_previous_stateful_working_dir_index:
+        failed_execution.custom_properties[
+            constants.STATEFUL_WORKING_DIR_INDEX
+        ].string_value = 'mocked-failed-index'
       failed_execution.custom_properties['should_not_be_copied'].int_value = 1
       failed_execution = execution_lib.put_execution(
           m,
           failed_execution,
           contexts,
           input_artifacts=input_and_param.input_artifacts)
-
+      # Create stateful working dir.
+      mocked_node_dir = os.path.join(
+          self.create_tempdir().full_path, self._example_gen.node_info.id
+      )
+      self._example_gen.execution_options.reset_stateful_working_dir = (
+          reset_stateful_working_dir
+      )
       # Register a retry execution from a failed execution.
+      mocked_new_uuid = 'mocked-new-uuid'
+      self.enter_context(
+          mock.patch.object(
+              outputs_utils.uuid, 'uuid4', return_value=mocked_new_uuid
+          )
+      )
+      self.enter_context(
+          mock.patch.object(
+              outputs_utils, 'get_node_dir', return_value=mocked_node_dir
+          )
+      )
       [retry_execution] = (
           task_gen_utils.register_executions_from_existing_executions(
-              m, self._example_gen, [failed_execution]
+              m,
+              self._pipeline,
+              node_proto_view.get_view(self._example_gen),
+              [failed_execution],
           )
       )
 
@@ -633,6 +754,31 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
               task_gen_utils._EXTERNAL_EXECUTION_INDEX],
           failed_execution.custom_properties[
               task_gen_utils._EXTERNAL_EXECUTION_INDEX])
+      if (
+          not reset_stateful_working_dir
+          and has_previous_stateful_working_dir_index
+      ):
+        self.assertEqual(
+            retry_execution.custom_properties[
+                constants.STATEFUL_WORKING_DIR_INDEX
+            ],
+            failed_execution.custom_properties[
+                constants.STATEFUL_WORKING_DIR_INDEX
+            ],
+        )
+      else:
+        self.assertEqual(
+            data_types_utils.get_metadata_value(
+                retry_execution.custom_properties[
+                    constants.STATEFUL_WORKING_DIR_INDEX
+                ]
+            ),
+            mocked_new_uuid,
+        )
+      self.assertEqual(
+          retry_execution.custom_properties['ph_property'].string_value,
+          'foo_value',
+      )
       self.assertIsNone(
           retry_execution.custom_properties.get('should_not_be_copied'))
       # Check all input artifacts are the same.
@@ -672,87 +818,154 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
 
   def test_get_unprocessed_inputs(self):
     with self._mlmd_connection as m:
-      # Prepare context.
-      context_type = metadata_store_pb2.ContextType(name='ctx_type')
-      context_type_id = m.store.put_context_type(context_type)
-      context = metadata_store_pb2.Context(name='ctx', type_id=context_type_id)
-      m.store.put_contexts([context])
-
-      # Prepare artifact.
-      artifact_type = metadata_store_pb2.ArtifactType(name='a_type')
-      artifact_type.id = m.store.put_artifact_type(artifact_type)
-      artifact_pb_1 = metadata_store_pb2.Artifact(type_id=artifact_type.id)
-      artifact_pb_1.id = m.store.put_artifacts([artifact_pb_1])[0]
-      artifact_pb_2 = metadata_store_pb2.Artifact(type_id=artifact_type.id)
-      artifact_pb_2.id = m.store.put_artifacts([artifact_pb_2])[0]
-      [artifact_1, artifact_2] = artifact_utils.deserialize_artifacts(
-          artifact_type, [artifact_pb_1, artifact_pb_2]
-      )
-
+      contexts = m.store.get_contexts()
       with self.subTest(name='NoInput'):
         # There is no input.
         resolved_info = task_gen_utils.ResolvedInfo(
-            contexts=[context], input_and_params=[]
+            contexts=contexts, input_and_params=[]
         )
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [], resolved_info, self._transform
+            m, resolved_info, self._transform
         )
         self.assertEmpty(unprocessed_inputs)
+
+      # Fake 2 artifacts for _example_gen.
+      otu.fake_upstream_node_run(
+          m,
+          self._example_gen,
+          fake_result='Tflex rocks.',
+          tmp_path=self.create_tempfile().full_path,
+      )
+      otu.fake_upstream_node_run(
+          m,
+          self._example_gen,
+          fake_result='Tflex rocks.',
+          tmp_path=self.create_tempfile().full_path,
+      )
+      artifact_types = m.store.get_artifact_types()
+      artifacts = artifact_utils.deserialize_artifacts(
+          artifact_types[0], m.store.get_artifacts()
+      )
+      artifacts.sort(key=lambda a: a.mlmd_artifact.create_time_since_epoch)
+      input_and_param = task_gen_utils.InputAndParam(
+          input_artifacts={'examples': artifacts}
+      )
+      resolved_info_for_transform = task_gen_utils.ResolvedInfo(
+          contexts=contexts,
+          input_and_params=[input_and_param],
+      )
 
       with self.subTest(name='OneUnprocessedInput'):
-        # There is 1 unprocessed_input
-        input_and_param = task_gen_utils.InputAndParam(
-            input_artifacts={'examples': [artifact_1, artifact_2]}
+        mock.patch.object(
+            m.store,
+            'get_executions',
+            wraps=m.store.get_executions,
+        ).start()
+
+        # Simulate that self._transform has canceled execution. The canceled
+        # execution should not be consider as processed.
+        execution = otu.fake_start_node_with_handle(
+            m, self._transform, input_artifacts={'examples': artifacts}
         )
-        resolved_info = task_gen_utils.ResolvedInfo(
-            contexts=[context],
-            input_and_params=[input_and_param],
+        otu.fake_finish_node_with_handle(
+            m, self._transform, execution.id, success=False
         )
+        execution.last_known_state = metadata_store_pb2.Execution.CANCELED
+        m.store.put_executions([execution])
+
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [], resolved_info, self._transform
+            m, resolved_info_for_transform, self._transform
         )
+        m.store.get_executions.assert_called_once()
         self.assertLen(unprocessed_inputs, 1)
         self.assertEqual(unprocessed_inputs[0], input_and_param)
 
-      # Simulate that artifact_1 and artifact_2 are processed.
-      execution = execution_lib.prepare_execution(
-          m,
-          execution_type=metadata_store_pb2.ExecutionType(name='my_ex_type'),
-          state=metadata_store_pb2.Execution.COMPLETE,
-      )
-      execution = execution_lib.put_execution(
-          m,
-          execution,
-          [context],
-          input_artifacts={'examples': [artifact_1, artifact_2]},
-      )
-
       with self.subTest(name='ResolvedArtifactsMatchProcessedArtifacts'):
-        input_and_param = task_gen_utils.InputAndParam(
-            input_artifacts={'examples': [artifact_1, artifact_2]}
+        mock.patch.object(
+            m.store,
+            'get_executions',
+            wraps=m.store.get_executions,
+        ).start()
+        # Simulate that the output for _example_gen is processed, so no
+        # unprocessed input for _transform.
+        execution = otu.fake_start_node_with_handle(
+            m, self._transform, input_artifacts={'examples': artifacts}
         )
-        resolved_info = task_gen_utils.ResolvedInfo(
-            contexts=[context],
-            input_and_params=[input_and_param],
-        )
+        otu.fake_finish_node_with_handle(m, self._transform, execution.id)
         unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [execution], resolved_info, self._transform
+            m, resolved_info_for_transform, self._transform
+        )
+        m.store.get_executions.assert_called_once()
+        self.assertEqual(
+            m.store.get_executions.call_args[1]['list_options'].filter_query,
+            "(contexts_0.type = 'node') AND (contexts_0.name ="
+            " 'my_pipeline.my_transform') AND (create_time_since_epoch >="
+            f' {artifacts[-1].mlmd_artifact.create_time_since_epoch}) AND'
+            ' ((last_known_state = COMPLETE)'
+            ' OR (last_known_state = CACHED) OR (last_known_state = FAILED)'
+            ' OR (last_known_state = CANCELED))',
         )
         self.assertEmpty(unprocessed_inputs)
 
-      with self.subTest(name='ResolvedArtifactsNotMatchProcessedArtifacts'):
-        input_and_param = task_gen_utils.InputAndParam(
-            input_artifacts={'key1': [artifact_1], 'key2': [artifact_2]}
-        )
-        resolved_info = task_gen_utils.ResolvedInfo(
-            contexts=[context],
-            input_and_params=[input_and_param],
-        )
-        unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
-            m, [execution], resolved_info, self._transform
-        )
-        self.assertLen(unprocessed_inputs, 1)
-        self.assertEqual(unprocessed_inputs[0], input_and_param)
+  def test_get_unprocessed_inputs_with_retry_limit(self):
+    with self._mlmd_connection as m:
+      # Fake one output of self._example_gen.
+      otu.fake_upstream_node_run(
+          m,
+          self._example_gen,
+          fake_result='Tflex rocks.',
+          tmp_path=self.create_tempfile().full_path,
+      )
+      contexts = m.store.get_contexts()
+      artifact_types = m.store.get_artifact_types()
+      artifacts = artifact_utils.deserialize_artifacts(
+          artifact_types[0], m.store.get_artifacts()
+      )
+      input_and_param = task_gen_utils.InputAndParam(
+          input_artifacts={'examples': artifacts}
+      )
+      resolved_info_for_transform = task_gen_utils.ResolvedInfo(
+          contexts=contexts,
+          input_and_params=[input_and_param],
+      )
+
+      # Set the maximum retry of self._transform to 2.
+      self._transform.execution_options.max_execution_retries = 2
+
+      # Simulate that self._transform failed the first time.
+      execution = otu.fake_start_node_with_handle(
+          m, self._transform, input_artifacts={'examples': artifacts}
+      )
+      otu.fake_finish_node_with_handle(
+          m, self._transform, execution.id, success=False
+      )
+      self.assertIsNone(input_and_param.exec_properties)
+      unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+          m, resolved_info_for_transform, self._transform
+      )
+      self.assertIsNotNone(unprocessed_inputs[0].exec_properties)
+      self.assertLen(unprocessed_inputs, 1)
+
+      # Simulate that self._transform retry twice.
+      execution = otu.fake_start_node_with_handle(
+          m, self._transform, input_artifacts={'examples': artifacts}
+      )
+      otu.fake_finish_node_with_handle(
+          m, self._transform, execution.id, success=False
+      )
+      execution = otu.fake_start_node_with_handle(
+          m, self._transform, input_artifacts={'examples': artifacts}
+      )
+      otu.fake_finish_node_with_handle(
+          m, self._transform, execution.id, success=False
+      )
+
+      # Since self._transform has retried twice, we won't try it again, so the
+      # unprocessed_inputs is empty.
+      unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
+          m, resolved_info_for_transform, self._transform
+      )
+      self.assertEmpty(unprocessed_inputs)
 
   def test_get_unprocessed_inputs_no_trigger(self):
     # Set the example_gen to transform node as NO_TRIGGER.
@@ -766,11 +979,12 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
     # ExampleGen generates the first output.
     otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1, 1)
     resolved_info = task_gen_utils.generate_resolved_info(
-        self._mlmd_connection_manager, self._transform
+        self._mlmd_connection_manager,
+        node_proto_view.get_view(self._transform),
+        self._pipeline,
     )
     unprocessed_inputs = task_gen_utils.get_unprocessed_inputs(
         self._mlmd_connection,
-        [],
         resolved_info,
         self._transform,
     )
@@ -829,92 +1043,57 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         task_gen_utils.interpret_status_from_failed_execution(execution),
     )
 
-  def test_get_oldest_active_execution_without_external_execution_index(self):
+  def test_get_next_active_execution_with_external_execution_index(self):
     executions = [
         metadata_store_pb2.Execution(
             id=1,
             create_time_since_epoch=1001,
             last_known_state=metadata_store_pb2.Execution.COMPLETE,
+            custom_properties={
+                '__external_execution_index__': metadata_store_pb2.Value(
+                    int_value=0,
+                )
+            },
         ),
         metadata_store_pb2.Execution(
             id=2,
             create_time_since_epoch=1002,
             last_known_state=metadata_store_pb2.Execution.RUNNING,
+            custom_properties={
+                '__external_execution_index__': metadata_store_pb2.Value(
+                    int_value=0,
+                )
+            },
         ),
         metadata_store_pb2.Execution(
             id=3,
-            create_time_since_epoch=1003,
+            create_time_since_epoch=1002,
             last_known_state=metadata_store_pb2.Execution.NEW,
-        ),
-    ]
-
-    oldest = task_gen_utils.get_oldest_active_execution(executions)
-    assert oldest is not None
-    self.assertEqual(
-        oldest.last_known_state, metadata_store_pb2.Execution.RUNNING
-    )
-    self.assertEqual(oldest.create_time_since_epoch, 1002)
-    self.assertEqual(oldest.id, 2)
-
-  def test_get_oldest_active_execution_with_external_execution_index(self):
-    executions = [
-        metadata_store_pb2.Execution(
-            id=1,
-            create_time_since_epoch=1001,
-            last_known_state=metadata_store_pb2.Execution.COMPLETE,
-            custom_properties={
-                '__external_execution_index__': metadata_store_pb2.Value(
-                    int_value=0,
-                )
-            },
-        ),
-        metadata_store_pb2.Execution(
-            id=2,
-            create_time_since_epoch=1002,
-            last_known_state=metadata_store_pb2.Execution.RUNNING,
-            custom_properties={
-                '__external_execution_index__': metadata_store_pb2.Value(
-                    int_value=0,
-                )
-            },
-        ),
-        metadata_store_pb2.Execution(
-            id=3,
-            create_time_since_epoch=1002,
-            last_known_state=metadata_store_pb2.Execution.RUNNING,
             custom_properties={
                 '__external_execution_index__': metadata_store_pb2.Value(
                     int_value=1,
                 )
             },
         ),
-        metadata_store_pb2.Execution(
-            id=4,
-            create_time_since_epoch=1003,
-            last_known_state=metadata_store_pb2.Execution.NEW,
-            custom_properties={
-                '__external_execution_index__': metadata_store_pb2.Value(
-                    int_value=0,
-                )
-            },
-        ),
     ]
 
-    oldest = task_gen_utils.get_oldest_active_execution(executions)
-    self.assertIsNotNone(oldest)
+    next_execution = task_gen_utils.get_next_active_execution_to_run(executions)
+    self.assertIsNotNone(next_execution)
     self.assertEqual(
-        oldest.last_known_state, metadata_store_pb2.Execution.RUNNING
+        next_execution.last_known_state, metadata_store_pb2.Execution.RUNNING
     )
-    self.assertEqual(oldest.create_time_since_epoch, 1002)
-    self.assertEqual(oldest.id, 2)
+    self.assertEqual(next_execution.create_time_since_epoch, 1002)
+    self.assertEqual(next_execution.id, 2)
     self.assertEqual(
-        oldest.custom_properties['__external_execution_index__'].int_value,
+        next_execution.custom_properties[
+            '__external_execution_index__'
+        ].int_value,
         0,
     )
 
   def test_get_oldest_active_execution_no_executions(self):
-    oldest = task_gen_utils.get_oldest_active_execution([])
-    self.assertIsNone(oldest)
+    next_execution = task_gen_utils.get_next_active_execution_to_run([])
+    self.assertIsNone(next_execution)
 
   def test_get_oldest_active_execution_no_active_executions(self):
     executions = [
@@ -935,8 +1114,61 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         ),
     ]
 
-    oldest = task_gen_utils.get_oldest_active_execution(executions)
-    self.assertIsNone(oldest)
+    next_execution = task_gen_utils.get_next_active_execution_to_run(executions)
+    self.assertIsNone(next_execution)
+
+  def test_generate_tasks_from_one_input(self):
+    with self._mlmd_connection as m:
+      # Fake one output for _example_gen, so there is 1 input for _transform.
+      otu.fake_upstream_node_run(
+          m,
+          self._example_gen,
+          fake_result='Tflex rocks.',
+          tmp_path=self.create_tempfile().full_path,
+      )
+      artifact_types = m.store.get_artifact_types()
+      artifacts = artifact_utils.deserialize_artifacts(
+          artifact_types[0], m.store.get_artifacts()
+      )
+      input_and_param = task_gen_utils.InputAndParam(
+          input_artifacts={'examples': artifacts}
+      )
+
+      # Put contexts.
+      context_type = metadata_store_pb2.ContextType(name='my_ctx_type')
+      context_type_id = m.store.put_context_type(context_type)
+      contexts = [
+          metadata_store_pb2.Context(name='context-1', type_id=context_type_id),
+          metadata_store_pb2.Context(name='context-2', type_id=context_type_id),
+      ]
+      m.store.put_contexts(contexts)
+      executions = task_gen_utils.register_executions(
+          metadata_handle=m,
+          execution_type=self._transform.node_info.type,
+          contexts=contexts,
+          input_and_params=[input_and_param],
+      )
+      tasks = task_gen_utils.generate_tasks_from_one_input(
+          metadata_handle=m,
+          node=self._transform,
+          execution=executions[0],
+          input_and_param=input_and_param,
+          contexts=contexts,
+          pipeline=self._pipeline,
+          execution_node_state=pstate.NodeState.RUNNING,
+      )
+
+      self.assertLen(tasks, 2)
+      [update_task, exec_task] = tasks
+      self.assertIsInstance(update_task, task_lib.UpdateNodeStateTask)
+      self.assertEqual(
+          update_task,
+          task_lib.UpdateNodeStateTask(
+              task_lib.NodeUid.from_node(self._pipeline, self._transform),
+              state=pstate.NodeState.RUNNING,
+          ),
+      )
+      self.assertIsInstance(exec_task, task_lib.ExecNodeTask)
 
 
 if __name__ == '__main__':

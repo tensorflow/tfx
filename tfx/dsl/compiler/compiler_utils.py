@@ -154,10 +154,16 @@ def _component_has_task_dependency(node: base_node.BaseNode) -> bool:
   return bool(all_deps - data_deps)
 
 
+# TODO: b/313927200 - This should not treat Cond as a task dependency.
 def has_task_dependency(tfx_pipeline: pipeline.Pipeline) -> bool:
   """Checks if a pipeline contains task dependency."""
   return any(_component_has_task_dependency(node)
              for node in tfx_pipeline.components)
+
+
+def has_resolver_node(tfx_pipeline: pipeline.Pipeline) -> bool:
+  """Checks if a pipeline contains Resolver node (not resolver function)."""
+  return any(is_resolver(node) for node in tfx_pipeline.components)
 
 
 def pipeline_begin_node_type_name(p: pipeline.Pipeline) -> str:
@@ -185,6 +191,12 @@ def pipeline_end_node_id_from_pipeline_id(pipeline_id: str) -> str:
   return f"{pipeline_id}{constants.PIPELINE_END_NODE_SUFFIX}"
 
 
+def end_node_context_name_from_subpipeline_id(subpipeline_id: str) -> str:
+  """Builds the end_node context name of a composable pipeline."""
+  end_node_id = pipeline_end_node_id_from_pipeline_id(subpipeline_id)
+  return node_context_name(subpipeline_id, end_node_id)
+
+
 def node_context_name(pipeline_context_name: str, node_id: str):
   """Defines the name used to reference a node context in MLMD."""
   return f"{pipeline_context_name}.{node_id}"
@@ -199,7 +211,7 @@ def implicit_channel_key(channel: types.BaseChannel):
     if channel.producer_component_id and channel.output_key:
       return f"_{channel.producer_component_id}.{channel.output_key}"
     raise ValueError(
-        "Cannot create implicit input key for Channel that has no"
+        "Cannot create implicit input key for Channel that has no "
         "producer_component_id and output_key."
     )
   elif isinstance(channel, channel_types.ExternalPipelineChannel):
@@ -234,17 +246,19 @@ def build_channel_to_key_fn(implicit_keys_map):
   return channel_to_key_fn
 
 
-def validate_dynamic_exec_ph_operator(placeholder: ph.ArtifactPlaceholder):
-  # Supported format for dynamic exec prop:
-  # component.output['ouput_key'].future()[0].value
-  if len(placeholder._operators) != 2:  # pylint: disable=protected-access
-    raise ValueError("dynamic exec property should contain two placeholder "
-                     "operator, while pass %d operaters" %
-                     len(placeholder._operators))  # pylint: disable=protected-access
-  if (not isinstance(placeholder._operators[0], ph._IndexOperator) or  # pylint: disable=protected-access
-      not isinstance(placeholder._operators[1], ph._ArtifactValueOperator)):  # pylint: disable=protected-access
-    raise ValueError("dynamic exec property should be in form of "
-                     "component.output[\'ouput_key\'].future()[0].value")
+def validate_exec_property_placeholder(key: str, placeholder: ph.Placeholder):
+  """Fails if the given placeholder is not allowed for an exec_property."""
+  for p in placeholder.traverse():
+    if isinstance(p, ph.ArtifactPlaceholder) and p.is_output:
+      raise ValueError(
+          f"Exec property {key!r} depends on output placeholder {p.key!r} but "
+          "must not."
+      )
+    if isinstance(p, ph.ExecPropertyPlaceholder):
+      raise ValueError(
+          f"Exec property {key!r} depends on another exec property "
+          f"{p.key!r} but must not."
+      )
 
 
 def output_spec_from_channel(channel: types.BaseChannel,
@@ -274,6 +288,14 @@ def output_spec_from_channel(channel: types.BaseChannel,
   # Compile OutputSpec.artifact_spec.additional_custom_parameters.
   for property_name, property_value in (
       output_channel.additional_custom_properties.items()):
+    # Ensure no duplicate names between properties and custom properties.
+    if property_name in artifact_type.properties:
+      raise ValueError(
+          f"Node {node_id} has a property name conflict: '{property_name}' is"
+          f" already used in {artifact_type.name}'s properties. Please change"
+          " this custom property to a different name."
+      )
+
     value_field = result.artifact_spec.additional_custom_properties[
         property_name].field_value
     try:
@@ -293,6 +315,10 @@ def output_spec_from_channel(channel: types.BaseChannel,
   if output_channel._predefined_artifact_uris is not None:
     result.artifact_spec.external_artifact_uris.extend(
         output_channel._predefined_artifact_uris)
+
+  # Compile OutputSpec.artifact_spec.is_async
+  if output_channel.is_async:
+    result.artifact_spec.is_async = True
 
   return result
 
@@ -315,7 +341,7 @@ def _check_property_value_type(property_name: str,
 class _PipelineEnd(base_node.BaseNode):
   """Virtual pipeline end node.
 
-  While the pipeline end node does not exists nor accessible in DSL, having a
+  While the pipeline end node does not exist nor accessible in DSL, having a
   PipelineEnd class helps generalizing the compilation.
 
   Supported features:

@@ -25,8 +25,10 @@ from ml_metadata.proto import metadata_store_pb2
 class MLMDConnectionManager:
   """MLMDConnectionManager manages the connections to MLMD.
 
-  It shares the same connection (or Metadata handle) for the same MLMD database,
-  which can be distinguished by the "identifier" of the connection config.
+  It can connect to multiple MLMD databases.
+  For each MLMD database it connects, only one connection/channel will be
+  created. The connections/channels can be distinguished by the "identifier" of
+  the connection config.
 
   The connection sharing begins from the time the manager instance __enter__ and
   ends on the __exit__. Manager can __enter__ multiple times; in such case the

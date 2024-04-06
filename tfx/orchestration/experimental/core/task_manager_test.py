@@ -17,11 +17,13 @@ import contextlib
 import functools
 import os
 import threading
+import time
 
 from absl import logging
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import data_types_utils
+from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -48,13 +50,11 @@ def _test_exec_node_task(node_id, pipeline_id, pipeline=None):
   return test_utils.create_exec_node_task(node_uid, pipeline=pipeline)
 
 
-def _test_cancel_node_task(node_id, pipeline_id, pause=False):
+def _test_cancel_node_task(node_id, pipeline_id):
   node_uid = task_lib.NodeUid(
       pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
       node_id=node_id)
-  cancel_type = (
-      task_lib.NodeCancelType.PAUSE_EXEC
-      if pause else task_lib.NodeCancelType.CANCEL_EXEC)
+  cancel_type = task_lib.NodeCancelType.CANCEL_EXEC
   return task_lib.CancelNodeTask(node_uid=node_uid, cancel_type=cancel_type)
 
 
@@ -129,17 +129,24 @@ class TaskManagerTest(test_utils.TfxTest):
     self._type_url = deployment_config.executor_specs['Trainer'].type_url
 
   @contextlib.contextmanager
-  def _task_manager(self, task_queue):
+  def _task_manager(self, task_queue, max_active_task_schedulers=1000):
+    # Use TaskManagerE2ETest below if you want to test MLMD integration.
+    mlmd_handle = mock.create_autospec(metadata.Metadata, instance=True)
+    mlmd_handle.store.get_executions_by_id.return_value = [
+        metadata_store_pb2.Execution()
+    ]
     with tm.TaskManager(
-        mock.Mock(),
+        mlmd_handle,
         task_queue,
-        max_active_task_schedulers=1000,
+        max_active_task_schedulers=max_active_task_schedulers,
         max_dequeue_wait_secs=0.1,
-        process_all_queued_tasks_before_exit=True) as task_manager:
+        process_all_queued_tasks_before_exit=True,
+    ) as task_manager:
       yield task_manager
 
+  @mock.patch.object(pstate, 'record_state_change_time')
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
-  def test_task_handling(self, mock_publish):
+  def test_task_handling(self, mock_publish, mock_record_state_change_time):
     collector = _Collector()
 
     # Register a fake task scheduler.
@@ -170,8 +177,7 @@ class TaskManagerTest(test_utils.TfxTest):
       pusher_exec_task = _test_exec_node_task(
           'Pusher', 'test-pipeline', pipeline=self._pipeline)
       task_queue.enqueue(pusher_exec_task)
-      task_queue.enqueue(
-          _test_cancel_node_task('Pusher', 'test-pipeline', pause=True))
+      task_queue.enqueue(_test_cancel_node_task('Pusher', 'test-pipeline'))
 
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
@@ -209,13 +215,16 @@ class TaskManagerTest(test_utils.TfxTest):
             mlmd_handle=mock.ANY, task=evaluator_exec_task, result=result_ok),
     ],
                                   any_order=True)
-    # It is expected that publish is not called for Pusher because it was
-    # cancelled with pause=True so there must be only 3 calls.
-    self.assertLen(mock_publish.mock_calls, 3)
 
+    self.assertLen(mock_publish.mock_calls, 4)
+    self.assertLen(mock_record_state_change_time.mock_calls, 4)
+
+  @mock.patch.object(pstate, 'record_state_change_time')
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
   @mock.patch.object(tm.TaskManager, '_fail_execution')
-  def test_exceptions_are_surfaced(self, mock_fail_exec, mock_publish):
+  def test_post_execution_exceptions_are_surfaced(
+      self, mock_fail_exec, mock_publish, mock_record_state_change_time
+  ):
     def _publish(**kwargs):
       task = kwargs['task']
       assert isinstance(task, task_lib.ExecNodeTask)
@@ -265,6 +274,97 @@ class TaskManagerTest(test_utils.TfxTest):
     ],
                                   any_order=True)
     mock_fail_exec.assert_called_once()
+    self.assertLen(mock_publish.mock_calls, 2)
+    self.assertLen(mock_record_state_change_time.mock_calls, 1)
+
+  @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
+  def test_task_scheduler_cancellations_are_prioritized(
+      self, unused_mock
+  ) -> None:
+    collector = _Collector()
+
+    # Register a fake task scheduler.
+    ts.TaskSchedulerRegistry.register(
+        self._type_url,
+        functools.partial(
+            _FakeTaskScheduler,
+            block_nodes={'Trainer', 'Transform'},
+            collector=collector,
+        ),
+    )
+
+    task_queue = tq.TaskQueue()
+    with self._task_manager(
+        task_queue, max_active_task_schedulers=2
+    ) as task_manager:
+
+      def _wait_for(
+          num_pending, num_active, num_ts_futures, timeout=30.0
+      ) -> None:
+        start_time = time.time()
+        while time.time() - start_time <= timeout:
+          if (
+              len(task_manager._pending_schedulers) == num_pending
+              and task_manager._active_scheduler_counter.count() == num_active
+              and len(task_manager._ts_futures) == num_ts_futures
+          ):
+            return
+          time.sleep(0.1)
+        raise TimeoutError(
+            f'Timeout waiting for {num_pending} pending and {num_active} task'
+            ' schedulers.'
+        )
+
+      # Enqueue 4 tasks.
+      task_queue.enqueue(
+          _test_exec_node_task(
+              'Trainer', 'test-pipeline', pipeline=self._pipeline
+          )
+      )
+      task_queue.enqueue(
+          _test_exec_node_task(
+              'Transform', 'test-pipeline', pipeline=self._pipeline
+          )
+      )
+      task_queue.enqueue(
+          _test_exec_node_task(
+              'Evaluator', 'test-pipeline', pipeline=self._pipeline
+          )
+      )
+      task_queue.enqueue(
+          _test_exec_node_task(
+              'Pusher', 'test-pipeline', pipeline=self._pipeline
+          )
+      )
+
+      # Since max_active_task_schedulers=2, the first two tasks should be active
+      # and the other two pending.
+      _wait_for(num_pending=2, num_active=2, num_ts_futures=2)
+
+      self.assertEqual(
+          ['Evaluator', 'Pusher'],
+          [
+              s.task_scheduler.task.node_uid.node_id
+              for s in task_manager._pending_schedulers
+          ],
+      )
+      task_queue.enqueue(_test_cancel_node_task('Evaluator', 'test-pipeline'))
+      task_queue.enqueue(_test_cancel_node_task('Pusher', 'test-pipeline'))
+
+      # Cancellations should be prioritized and go through even when
+      # `max_active_task_schedulers` slots are occupied.
+      _wait_for(num_pending=0, num_active=2, num_ts_futures=2)
+
+      task_queue.enqueue(_test_cancel_node_task('Trainer', 'test-pipeline'))
+      task_queue.enqueue(_test_cancel_node_task('Transform', 'test-pipeline'))
+      _wait_for(num_pending=0, num_active=0, num_ts_futures=0)
+
+    self.assertTrue(task_manager.done())
+    self.assertIsNone(task_manager.exception())
+    self.assertCountEqual(
+        ['Trainer', 'Transform', 'Evaluator', 'Pusher'],
+        [task.node_uid.node_id for task in collector.scheduled_tasks],
+    )
 
 
 class _FakeComponentScheduler(ts.TaskScheduler):
@@ -344,15 +444,16 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
 
-    # Task generator should produce two tasks for transform. The first one is
-    # UpdateNodeStateTask and the second one is ExecNodeTask.
+    # Task generator should produce three tasks for transform. The first one is
+    # UpdateNodeStateTask with state RUNNING, the second one is ExecNodeTask
+    # and the third one is UpdateNodeStateTask with state STARTED
     with self._mlmd_connection_manager as mlmd_connection_manager:
       m = mlmd_connection_manager.primary_mlmd_handle
       pipeline_state = pstate.PipelineState.new(m, self._pipeline)
       tasks = asptg.AsyncPipelineTaskGenerator(
           mlmd_connection_manager, self._task_queue.contains_task_id,
           service_jobs.DummyServiceJobManager()).generate(pipeline_state)
-    self.assertLen(tasks, 2)
+    self.assertLen(tasks, 3)
     self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
     self.assertEqual('my_transform', tasks[0].node_uid.node_id)
     self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
@@ -360,6 +461,9 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertEqual('my_transform', tasks[1].node_uid.node_id)
     self.assertTrue(os.path.exists(tasks[1].stateful_working_dir))
     self.assertTrue(os.path.exists(tasks[1].tmp_dir))
+    self.assertIsInstance(tasks[2], task_lib.UpdateNodeStateTask)
+    self.assertEqual('my_trainer', tasks[2].node_uid.node_id)
+    self.assertEqual(pstate.NodeState.STARTED, tasks[2].state)
 
     self._task = tasks[1]
     self._output_artifact_uri = self._task.output_artifacts['transform_graph'][
@@ -467,9 +571,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   def test_executor_failure(self):
@@ -497,9 +600,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   def test_scheduler_raises_exception(self):
@@ -515,9 +617,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertEqual(metadata_store_pb2.Execution.FAILED,
                      execution.last_known_state)
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   def test_scheduler_raises_StatusNotOkError(self):
@@ -545,9 +646,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         ].string_value,
     )
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
@@ -585,6 +685,26 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]
         ),
+    )
+
+  @mock.patch.object(time, 'time')
+  def test_execution_start_time_property(self, mock_time):
+    mock_time.return_value = 12345
+    self._register_task_scheduler(
+        ts.TaskSchedulerResult(
+            status=status_lib.Status(code=status_lib.Code.OK),
+            output=ts.ImporterNodeOutput(
+                output_artifacts=self._task.output_artifacts
+            ),
+        )
+    )
+    _ = self._run_task_manager()
+    execution = self._get_execution()
+    self.assertEqual(
+        12345,
+        execution.custom_properties.get(
+            constants.EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY
+        ).int_value,
     )
 
 

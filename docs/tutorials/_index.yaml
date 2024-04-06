@@ -12,59 +12,19 @@ landing_page:
   rows:
   - classname:
       devsite-landing-row-100
-    heading: "TensorFlow in Production tutorials"
+    heading: "TensorFlow in Production Tutorials"
     items:
     - description: >
-        <aside class="caution">
-        <p><strong>Caution:</strong> TFX is currently experiencing issues with Python 3.10 in
-        Colab.</p>
-        <p>To run the tutorials, <strong>modify the notebook as follows:</strong></p>
-        <ol>
-        <li>Add a new code cell at the top of the notebook.</li>
-        <li><strong>Enter this code in the cell:</strong><br />
-        <code>
-        %%shell<br />
-        sudo apt update<br />
-        sudo apt install python3.8 python3.8-distutils python3.8-dev<br />
-        update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 3<br />
-        curl -O https://bootstrap.pypa.io/get-pip.py<br />
-        python get-pip.py
-        </code></li>
-        <li><strong>Replace the code in the cell which installs TFX with this code:</strong><br />
-        <code>
-        # 1) TFX relies on an old version of google-api-core so we let google-auth float<br />
-        # for the install. We grep it out below:<br />
-        !grep -v google-auth /etc/requirements.core.in > requirements.txt<br />
-        <br />
-        # 2) httplib2 should be included in /etc/requirements.core.in but it's not for<br />
-        # reasons. We ensure it's included:<br />
-        !grep httplib2 /etc/requirements.user.in >> requirements.txt<br />
-        <br />
-        # 3) google.colab package is not available as a wheel. We symlink that in so<br />
-        # it's on the sys.path of Python 3.8:<br />
-        !mkdir /usr/local/lib/python3.8/dist-packages/google<br />
-        !ln -s /usr/local/lib/python3.10/dist-packages/google/colab
-        /usr/local/lib/python3.8/dist-packages/google/colab<br />
-        <br />
-        # Now with those pre-requisites out of the way:<br />
-        !pip install tfx==1.13.0 -r requirements.txt
-        </code>
-        </ol>
-        </aside>
-  - classname:
-      devsite-landing-row-100
-    heading: "TFX 1.0"
-    items:
-    - description: >
-        <p>
-        We are happy to announce the availability of the
-        <a href="https://github.com/tensorflow/tfx/releases">TFX 1.0.0</a>.
-        This is the initial post-beta release of TFX, which provides stable public APIs and
-        artifacts. You can be assured that your future TFX pipelines will keep working after an
-        upgrade within the compatibility scope defined in this
-        <a href="https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md">RFC</a>.
-        </p>
-
+        <p>These tutorials will get you started, and help you learn a few different ways of
+        working with TFX for production workflows and deployments.  In particular, you'll
+        learn the two main styles of developing a TFX pipeline:</p>
+        <ul>
+        <li>Using the <code>InteractiveContext</code> to develop a pipeline in a notebook,
+        working with one component at a time.  This style makes development easier
+        and more Pythonic.</li>
+        <li>Defining an entire pipeline and executing it with a runner.  This is what
+        your pipelines will look like when you deploy them.</li>
+        </ul>
   - heading: "Getting started tutorials"
     classname: devsite-landing-row-100
     items:

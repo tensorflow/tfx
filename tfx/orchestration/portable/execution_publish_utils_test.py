@@ -41,7 +41,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
     self._connection_config.sqlite.SetInParent()
     self._execution_type = metadata_store_pb2.ExecutionType(name='my_ex_type')
 
-  def _generate_contexts(self, metadata_handler):
+  def _generate_contexts(self, metadata_handle):
     context_spec = pipeline_pb2.NodeContexts()
     text_format.Parse(
         """
@@ -57,7 +57,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             field_value {string_value: 'my_component'}
           }
         }""", context_spec)
-    return context_lib.prepare_contexts(metadata_handler, context_spec)
+    return context_lib.prepare_contexts(metadata_handle, context_spec)
 
   def testRegisterExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -179,8 +179,9 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       output_key = 'examples'
       output_example = standard_artifacts.Examples()
       output_example.uri = '/examples_uri'
-      execution_lib.register_pending_output_artifacts(
-          m, execution_id, {output_key: [output_example]})
+      execution_lib.register_output_artifacts(
+          m, execution_id, {output_key: [output_example]}
+      )
       executor_output = execution_result_pb2.ExecutorOutput()
       text_format.Parse(
           """
@@ -190,10 +191,15 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             value {int_value: 1}
           }
           """, executor_output.output_artifacts[output_key].artifacts.add())
-      output_dict = execution_publish_utils.publish_succeeded_execution(
-          m, execution_id, contexts, {output_key: [output_example]},
-          executor_output)
-      [execution] = m.store.get_executions()
+      output_dict, execution = (
+          execution_publish_utils.publish_succeeded_execution(
+              m,
+              execution_id,
+              contexts,
+              {output_key: [output_example]},
+              executor_output,
+          )
+      )
       self.assertProtoPartiallyEquals(
           """
           id: 1
@@ -287,8 +293,9 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       output_example = standard_artifacts.Examples()
       output_example.uri = outputs_utils.RESOLVED_AT_RUNTIME
       output_example.is_external = True
-      execution_lib.register_pending_output_artifacts(
-          m, execution_id, {output_key: [output_example]})
+      execution_lib.register_output_artifacts(
+          m, execution_id, {output_key: [output_example]}
+      )
       executor_output = execution_result_pb2.ExecutorOutput()
       # The executor output contains two artifacts compared to the original one.
       for output_artifact_uri in ['/examples_uri/1', '/examples_uri/2']:
@@ -301,7 +308,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             }}
             """, executor_output.output_artifacts[output_key].artifacts.add())
 
-      output_dict = execution_publish_utils.publish_succeeded_execution(
+      output_dict, _ = execution_publish_utils.publish_succeeded_execution(
           m, execution_id, contexts, {output_key: [output_example]},
           executor_output)
       self.assertLen(output_dict[output_key], 2)
@@ -359,7 +366,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             value {{int_value: 1}}
           }}
           """, executor_output.output_artifacts['key1'].artifacts.add())
-      output_dict = execution_publish_utils.publish_succeeded_execution(
+      output_dict, _ = execution_publish_utils.publish_succeeded_execution(
           m, execution_id, contexts, original_artifacts, executor_output)
       self.assertEmpty(output_dict['key1'])
       self.assertNotEmpty(output_dict['key2'])
@@ -412,10 +419,15 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           }
           """, executor_output.output_artifacts[output_key].artifacts.add())
 
-      output_dict = execution_publish_utils.publish_succeeded_execution(
-          m, execution_id, contexts, {output_key: [output_example]},
-          executor_output)
-      [execution] = m.store.get_executions()
+      output_dict, execution = (
+          execution_publish_utils.publish_succeeded_execution(
+              m,
+              execution_id,
+              contexts,
+              {output_key: [output_example]},
+              executor_output,
+          )
+      )
       self.assertProtoPartiallyEquals(
           """
           id: 1
@@ -799,7 +811,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           [c.id for c in contexts],
           [c.id for c in m.store.get_contexts_by_artifact(output_example.id)])
 
-  def testPublishSuccessfulExecutionKeepsReferenceArtifact(self):
+  def testPublishSuccessfulExecutionIngoresReferenceArtifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       contexts = self._generate_contexts(m)
       execution_id = execution_publish_utils.register_execution(
@@ -809,6 +821,9 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       artifact = standard_artifacts.Model()
       artifact.uri = '/base_uri'
       artifact.state = tfx_artifact.ArtifactState.REFERENCE
+      execution_lib.register_output_artifacts(
+          m, execution_id, {output_key: [artifact]}
+      )
       executor_output = execution_result_pb2.ExecutorOutput()
       execution_publish_utils.publish_succeeded_execution(
           m, execution_id, contexts, {output_key: [artifact]}, executor_output
@@ -828,6 +843,28 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
               'last_update_time_since_epoch',
               'name',
           ],
+      )
+
+      [pre_registration_event] = m.store.get_events_by_execution_ids(
+          [execution.id]
+      )
+      # No OUTPUT Event should exist for the REFERENCE artifact.
+      self.assertProtoPartiallyEquals(
+          """
+          artifact_id: 1
+          execution_id: 1
+          path {
+            steps {
+              key: 'checkpoint_model'
+            }
+            steps {
+              index: 0
+            }
+          }
+          type: PENDING_OUTPUT
+          """,
+          pre_registration_event,
+          ignored_fields=['milliseconds_since_epoch'],
       )
 
       # Check that the artifact state is still REFERENCE and not PENDING.

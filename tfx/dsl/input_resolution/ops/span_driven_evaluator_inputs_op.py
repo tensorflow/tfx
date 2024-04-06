@@ -70,6 +70,11 @@ class SpanDrivenEvaluatorInputs(
   # >= start_span_number will be considered.
   start_span_number = resolver_op.Property(type=int, default=0)
 
+  # Whether to return the materialized Examples produced by the Transform
+  # component. Should only be used if a Model was trained on materialized
+  # transformed Examples produced by a Transform. Defaults to False.
+  use_transformed_examples = resolver_op.Property(type=bool, default=False)
+
   def _get_model_to_evaluate(
       self,
       trained_examples_by_model: Dict[types.Artifact, List[types.Artifact]],
@@ -88,7 +93,7 @@ class SpanDrivenEvaluatorInputs(
         # The first Model was trained on spans less than max_span.
         return model
 
-    # No elegible Model was found, so a SkipSignal is raised.
+    # No eligible Model was found, so a SkipSignal is raised.
     raise exceptions.SkipSignal()
 
   def apply(self, input_dict: typing_utils.ArtifactMultiDict):
@@ -146,7 +151,7 @@ class SpanDrivenEvaluatorInputs(
     trained_examples_by_model = {}
     for model in input_dict[ops_utils.MODEL_KEY]:
       trained_examples_by_model[model] = training_range_op.training_range(
-          self.context.store, model
+          self.context.store, model, self.use_transformed_examples
       )
 
     # Sort the Models by latest created, with ties broken by id.

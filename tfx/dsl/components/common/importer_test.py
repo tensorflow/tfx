@@ -44,14 +44,15 @@ class ImporterTest(tf.test.TestCase):
     with metadata.Metadata(connection_config=connection_config) as m:
       m.publish_artifacts([existing_artifact])
       result = importer.generate_output_dict(
-          metadata_handler=m,
+          metadata_handle=m,
           uri=source_uri,
           properties={},
           custom_properties={},
           reimport=False,
           output_artifact_class=types.Artifact(artifact_type).type,
           mlmd_artifact_type=artifact_type,
-          output_key=importer.IMPORT_RESULT_KEY)
+          output_key=importer.IMPORT_RESULT_KEY,
+      )
       self.assertEqual(existing_artifact.id,
                        result[importer.IMPORT_RESULT_KEY][0].id)
 
@@ -74,14 +75,15 @@ class ImporterTest(tf.test.TestCase):
     with metadata.Metadata(connection_config=connection_config) as m:
       m.publish_artifacts([existing_artifact1, existing_artifact2])
       result = importer.generate_output_dict(
-          metadata_handler=m,
+          metadata_handle=m,
           uri=source_uri,
           properties={},
           custom_properties={},
           reimport=False,
           output_artifact_class=types.Artifact(artifact2_type).type,
           mlmd_artifact_type=artifact2_type,
-          output_key=importer.IMPORT_RESULT_KEY)
+          output_key=importer.IMPORT_RESULT_KEY,
+      )
       self.assertNotEqual(result[importer.IMPORT_RESULT_KEY][0].id,
                           existing_artifact1.id)
       self.assertNotEqual(result[importer.IMPORT_RESULT_KEY][0].id,
@@ -102,14 +104,15 @@ class ImporterTest(tf.test.TestCase):
     with metadata.Metadata(connection_config=connection_config) as m:
       m.publish_artifacts([existing_artifact])
       result = importer.generate_output_dict(
-          metadata_handler=m,
+          metadata_handle=m,
           uri=source_uri,
           properties={},
           custom_properties={},
           reimport=False,
           output_artifact_class=types.Artifact(artifact_type).type,
           mlmd_artifact_type=artifact_type,
-          output_key=importer.IMPORT_RESULT_KEY)
+          output_key=importer.IMPORT_RESULT_KEY,
+      )
       self.assertNotEqual(result[importer.IMPORT_RESULT_KEY][0].id,
                           existing_artifact.id)
 
@@ -128,7 +131,7 @@ class ImporterTest(tf.test.TestCase):
     mlmd.publish_artifacts([existing_artifact])
 
     result = importer.generate_output_dict(
-        metadata_handler=mlmd,
+        metadata_handle=mlmd,
         uri=source_uri,
         properties={'span': 0},
         custom_properties={},
@@ -240,7 +243,7 @@ class ImporterDriverTest(tf.test.TestCase, parameterized.TestCase):
   def testImporterDriver(self, reimport: bool):
     with metadata.Metadata(connection_config=self.connection_config) as m:
       m.publish_artifacts(self.existing_artifacts)
-      driver = importer.ImporterDriver(metadata_handler=m)
+      driver = importer.ImporterDriver(metadata_handle=m)
       execution_result = driver.pre_execution(
           component_info=self.component_info,
           pipeline_info=self.pipeline_info,

@@ -49,7 +49,6 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str,
       pipeline_root=pipeline_root,
       components=[example_gen, statistics_gen, infer_schema],
       enable_cache=True,
-      additional_pipeline_args={},
   )
 
 

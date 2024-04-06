@@ -37,10 +37,10 @@ class EqualPropertyValuesOpTest(tf.test.TestCase):
 
   def test_equal_property_values_no_property(self):
     artifacts = self.create_artifacts(n=3)
-    with self.assertRaises(ValueError):
-      self._equal_property_values(
-          artifacts, property_key="id", property_value=3
-      )
+    results = self._equal_property_values(
+        artifacts, property_key="id", property_value=3
+    )
+    self.assertEmpty(results)
 
   def test_equal_property_values_not_equal(self):
     artifacts = self.create_artifacts(n=3)
@@ -70,9 +70,10 @@ class EqualPropertyValuesOpTest(tf.test.TestCase):
     artifact_no_custom.num_steps = 1
     with self.subTest(name="NoCustomProperty"):
       # Checking non-custom property will return the correct value.
-      with self.assertRaises(ValueError):
-        self._equal_property_values(
-            [artifact_no_custom], property_key="num_steps", property_value=1)
+      results = self._equal_property_values(
+          [artifact_no_custom], property_key="num_steps", property_value=1
+      )
+      self.assertEmpty(results)
     with self.subTest(name="HasNonCustomProperty"):
       results = self._equal_property_values(
           [artifact_no_custom], property_key="num_steps", property_value=1,

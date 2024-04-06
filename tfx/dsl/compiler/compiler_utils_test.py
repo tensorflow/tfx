@@ -25,6 +25,7 @@ from tfx.dsl.components.base import executor_spec
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
@@ -32,8 +33,10 @@ from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
 from tfx.types.channel import Channel
+from tfx.types.channel import OutputChannel
 from tfx.types.channel_utils import external_pipeline_artifact_query
 
+from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -97,6 +100,16 @@ class CompilerUtilsTest(tf.test.TestCase):
 
     example_gen = CsvExampleGen(input_base="data_path")
     self.assertFalse(compiler_utils.is_resolver(example_gen))
+
+  def testHasResolverNode(self):
+    resolver_node = resolver.Resolver(
+        strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy
+    )
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name="fake_name",
+        components=[resolver_node],
+    )
+    self.assertTrue(compiler_utils.has_resolver_node(test_pipeline))
 
   def testIsImporter(self):
     impt = importer.Importer(
@@ -185,20 +198,94 @@ class CompilerUtilsTest(tf.test.TestCase):
     self.assertEqual(fn(model), "real_key")
     self.assertEqual(fn(examples), "_example_gen.examples")
 
-  def testValidateDynamicExecPhOperator(self):
-    with self.assertRaises(ValueError):
-      invalid_dynamic_exec_ph = Channel(type=_MyType).future()
-      compiler_utils.validate_dynamic_exec_ph_operator(invalid_dynamic_exec_ph)
-    with self.assertRaises(ValueError):
-      invalid_dynamic_exec_ph = Channel(type=_MyType).future()[0].uri
-      compiler_utils.validate_dynamic_exec_ph_operator(invalid_dynamic_exec_ph)
-    with self.assertRaises(ValueError):
-      invalid_dynamic_exec_ph = Channel(
-          type=_MyType).future()[0].value + Channel(
-              type=_MyType).future()[0].value
-      compiler_utils.validate_dynamic_exec_ph_operator(invalid_dynamic_exec_ph)
-    valid_dynamic_exec_ph = Channel(type=_MyType).future()[0].value
-    compiler_utils.validate_dynamic_exec_ph_operator(valid_dynamic_exec_ph)
+
+class ValidateExecPropertyPlaceholderTest(tf.test.TestCase):
+
+  def test_accepts_canonical_dynamic_exec_prop_placeholder(self):
+    # .future()[0].uri is how we tell users to hook up a dynamic exec prop.
+    compiler_utils.validate_exec_property_placeholder(
+        "testkey", Channel(type=_MyType).future()[0].value
+    )
+
+  def test_accepts_complex_exec_prop_placeholder(self):
+    compiler_utils.validate_exec_property_placeholder(
+        "testkey",
+        ph.execution_invocation().pipeline_run_id
+        + "foo"
+        + ph.input("someartifact").uri
+        + "/somefile.txt",
+    )
+
+  def test_accepts_complex_dynamic_exec_prop_placeholder(self):
+    compiler_utils.validate_exec_property_placeholder(
+        "testkey",
+        Channel(type=_MyType).future()[0].value
+        + "foo"
+        + ph.input("someartifact").uri
+        + "/somefile.txt",
+    )
+
+  def test_rejects_output_artifact_placeholder(self):
+    with self.assertRaisesRegex(
+        ValueError, ".*testkey.*output placeholder.*someartifact.*"
+    ):
+      compiler_utils.validate_exec_property_placeholder(
+          "testkey", ph.output("someartifact").uri
+      )
+    with self.assertRaisesRegex(
+        ValueError, ".*testkey.*output placeholder.*someartifact.*"
+    ):
+      compiler_utils.validate_exec_property_placeholder(
+          "testkey",
+          ph.execution_invocation().pipeline_run_id
+          + "foo"
+          + ph.output("someartifact").uri
+          + "/somefile.txt",
+      )
+
+  def test_rejects_exec_property_dependency(self):
+    # One exec property can't depend on another. And we're validating
+    # placeholders that will populate exec properties here, so they can't read
+    # from them.
+    with self.assertRaisesRegex(
+        ValueError, ".*testkey.*another exec property.*somekey"
+    ):
+      compiler_utils.validate_exec_property_placeholder(
+          "testkey", ph.exec_property("somekey")
+      )
+    with self.assertRaisesRegex(
+        ValueError, ".*testkey.*another exec property.*somekey"
+    ):
+      compiler_utils.validate_exec_property_placeholder(
+          "testkey",
+          ph.execution_invocation().pipeline_run_id
+          + "foo"
+          + ph.exec_property("somekey")
+          + "/somefile.txt",
+      )
+
+  def testOutputSpecFromChannel_AsyncOutputChannel(self):
+    channel = OutputChannel(
+        artifact_type=standard_artifacts.Model,
+        output_key="model",
+        producer_component="trainer",
+        is_async=True,
+    )
+
+    actual = compiler_utils.output_spec_from_channel(channel, "trainer")
+    expected = text_format.Parse(
+        """
+        artifact_spec {
+          type {
+            name: "Model"
+            base_type: MODEL
+          }
+          is_async: true
+        }
+        """,
+        pipeline_pb2.OutputSpec(),
+    )
+    self.assertProtoEquals(actual, expected)
 
 
 if __name__ == "__main__":

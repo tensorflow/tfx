@@ -25,7 +25,8 @@ symbols are already available from one of followings:
 Consider other symbols as private.
 """
 
-from typing import Callable, cast, Dict, Iterable, Iterator, List, Type, Optional, Set, Sequence
+import typing
+from typing import Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Type, cast
 
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.proto.orchestration import placeholder_pb2
@@ -150,7 +151,7 @@ def external_pipeline_artifact_query(
 
   Args:
     artifact_type: Subclass of Artifact for this channel.
-    owner: Onwer of the pipeline.
+    owner: Owner of the pipeline.
     pipeline_name: Name of the pipeline the artifacts belong to.
     producer_component_id: Id of the component produces the artifacts.
     output_key: The output key when producer component produces the artifacts in
@@ -179,10 +180,55 @@ def external_pipeline_artifact_query(
 def get_dependent_channels(
     placeholder: ph.Placeholder,
 ) -> Iterator[channel.Channel]:
-  """Yields all Channels used in/under the given placeholder."""
+  """Yields all Channels used in/ the given placeholder."""
   for p in placeholder.traverse():
     if isinstance(p, ph.ChannelWrappedPlaceholder):
-      yield p.channel
+      yield typing.cast(channel.Channel, p.channel)
+
+
+def unwrap_simple_channel_placeholder(
+    placeholder: ph.Placeholder,
+) -> channel.Channel:
+  """Unwraps a `x.future()[0].value` placeholder and returns its `x`.
+
+  Args:
+    placeholder: A placeholder expression.
+
+  Returns:
+    The (only) channel involved in the expression.
+
+  Raises:
+    ValueError: If the input placeholder is anything more complex than
+      `some_channel.future()[0].value`, and in particular if it involves
+      multiple channels, arithmetic operations or input/output artifacts.
+  """
+  # Validate that it's the right shape.
+  outer_ph = placeholder.encode()
+  index_op = outer_ph.operator.artifact_value_op.expression.operator.index_op
+  cwp = index_op.expression.placeholder
+  if (
+      # This catches the case where we've been navigating down non-existent
+      # proto paths above and been getting default messages all along. If this
+      # sub-message is present, then the whole chain was correct.
+      not index_op.expression.HasField('placeholder')
+      # ChannelWrappedPlaceholder uses INPUT_ARTIFACT for some reason, and has
+      # no key when encoded with encode().
+      or cwp.type != placeholder_pb2.Placeholder.Type.INPUT_ARTIFACT
+      or cwp.key
+      # For the `[0]` part of the desired shape.
+      or index_op.index != 0
+  ):
+    raise ValueError(
+        'Expected placeholder of shape somechannel.future()[0].value, but got'
+        f' {placeholder}.'
+    )
+
+  # Now that we know there's only one channel inside, we can just extract it:
+  return next(
+      p.channel
+      for p in placeholder.traverse()
+      if isinstance(p, ph.ChannelWrappedPlaceholder)
+  )
 
 
 def encode_placeholder_with_channels(

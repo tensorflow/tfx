@@ -38,10 +38,12 @@ class ContextLibTest(test_case_utils.TfxTest):
         node_contexts)
     with metadata.Metadata(connection_config=self._connection_config) as m:
       context_lib.prepare_contexts(
-          metadata_handler=m, node_contexts=node_contexts)
+          metadata_handle=m, node_contexts=node_contexts
+      )
       # Duplicated call should succeed.
       contexts = context_lib.prepare_contexts(
-          metadata_handler=m, node_contexts=node_contexts)
+          metadata_handle=m, node_contexts=node_contexts
+      )
 
       got_context_type_one = m.store.get_context_type('my_context_type_one')
       got_context_type_one.ClearField('id')
@@ -83,10 +85,12 @@ class ContextLibTest(test_case_utils.TfxTest):
         node_contexts)
     with metadata.Metadata(connection_config=self._connection_config) as m:
       context_lib.prepare_contexts(
-          metadata_handler=m, node_contexts=node_contexts)
+          metadata_handle=m, node_contexts=node_contexts
+      )
       # Duplicated call should succeed.
       contexts = context_lib.prepare_contexts(
-          metadata_handler=m, node_contexts=node_contexts)
+          metadata_handle=m, node_contexts=node_contexts
+      )
 
       # Check the created contexts.
       self.assertLen(contexts, 3)
@@ -113,14 +117,16 @@ class ContextLibTest(test_case_utils.TfxTest):
   def testRegisterContextByTypeAndName(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       context_lib.register_context_if_not_exists(
-          metadata_handler=m,
+          metadata_handle=m,
           context_type_name='my_context_type',
-          context_name='my_context')
+          context_name='my_context',
+      )
       # Duplicated call should succeed.
       context = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
+          metadata_handle=m,
           context_type_name='my_context_type',
-          context_name='my_context')
+          context_name='my_context',
+      )
 
       got_context_type = m.store.get_context_type('my_context_type')
       got_context_type.ClearField('id')
@@ -135,18 +141,21 @@ class ContextLibTest(test_case_utils.TfxTest):
   def testRegisterContextAndSetParentChildRelationship(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       parent_context = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
+          metadata_handle=m,
           context_type_name='my_context_type',
-          context_name='parent_context')
+          context_name='parent_context',
+      )
       context_1 = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
+          metadata_handle=m,
           context_type_name='my_context_type',
-          context_name='context_1')
+          context_name='context_1',
+      )
       context_2 = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
+          metadata_handle=m,
           context_type_name='my_context_type',
           context_name='context_2',
-          parent_contexts=[parent_context])
+          parent_contexts=[parent_context],
+      )
 
       context_1_parents = m.store.get_parent_contexts_by_context(context_1.id)
       self.assertEqual([], context_1_parents)
@@ -157,13 +166,15 @@ class ContextLibTest(test_case_utils.TfxTest):
   def testPutParentContextIfNotExists(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       parent_context = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
+          metadata_handle=m,
           context_type_name='my_context_type',
-          context_name='parent_context_name')
+          context_name='parent_context_name',
+      )
       child_context = context_lib.register_context_if_not_exists(
-          metadata_handler=m,
+          metadata_handle=m,
           context_type_name='my_context_type',
-          context_name='child_context_name')
+          context_name='child_context_name',
+      )
       context_lib.put_parent_context_if_not_exists(m,
                                                    parent_id=parent_context.id,
                                                    child_id=child_context.id)

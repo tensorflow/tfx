@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Shared IR serialization logic used by TFleX python executor binary."""
+r"""Shared utils used by TFleX python executor binary."""
 
 import base64
-
 from typing import Union
 
 from tfx.orchestration import metadata
@@ -22,13 +21,37 @@ from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_invocation_pb2
 from tfx.proto.orchestration import metadata_pb2
+from tfx.utils import import_utils
+
+
+_PythonClassExecutableSpec = executable_spec_pb2.PythonClassExecutableSpec
+_BeamExecutableSpec = executable_spec_pb2.BeamExecutableSpec
+
+
+def import_class_path(
+    executable_spec: Union[_PythonClassExecutableSpec, _BeamExecutableSpec],
+):
+  """Import the class path from Python or Beam executor spec."""
+  if isinstance(executable_spec, _BeamExecutableSpec):
+    import_utils.import_class_by_path(
+        executable_spec.python_executor_spec.class_path
+    )
+  elif isinstance(executable_spec, _PythonClassExecutableSpec):
+    import_utils.import_class_by_path(executable_spec.class_path)
+  else:
+    raise ValueError(
+        f'Executable spec type {type(executable_spec)} is not supported.'
+    )
 
 
 def deserialize_execution_info(
     execution_info_b64: str) -> data_types.ExecutionInfo:
   """De-serializes the ExecutionInfo class from a url safe base64 encoded binary string."""
-  execution_info_proto = execution_invocation_pb2.ExecutionInvocation.FromString(
-      base64.urlsafe_b64decode(execution_info_b64))
+  execution_info_proto = (
+      execution_invocation_pb2.ExecutionInvocation.FromString(
+          base64.urlsafe_b64decode(execution_info_b64)
+      )
+  )
   return data_types.ExecutionInfo.from_proto(execution_info_proto)
 
 
@@ -61,7 +84,10 @@ def serialize_mlmd_connection_config(
   mlmd_wrapper = metadata_pb2.MLMDConnectionConfig()
   for name, descriptor in (
       metadata_pb2.MLMDConnectionConfig.DESCRIPTOR.fields_by_name.items()):
-    if descriptor.message_type.full_name == connection_config.DESCRIPTOR.full_name:
+    if (
+        descriptor.message_type.full_name
+        == connection_config.DESCRIPTOR.full_name
+    ):
       getattr(mlmd_wrapper, name).CopyFrom(connection_config)
       break
   return base64.b64encode(mlmd_wrapper.SerializeToString()).decode('ascii')

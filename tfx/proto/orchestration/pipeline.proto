@@ -255,7 +255,7 @@ message InputGraph {
   // Nodes of this input graph. Key is the node ID.
   map<string, Node> nodes = 1;
   // The ID of the output node of the input graph. The output data type of the
-  // input graph is the output data type of the reuslt node.
+  // input graph is the output data type of the result node.
   string result_node = 2;
 }
 
@@ -431,7 +431,7 @@ message OutputSpec {
     // output artifact created by the orchestrator at the start of the
     // component execution will be given state REFERENCE. Artifacts emitted
     // during component execution will be given state LIVE.
-    bool is_intermediate_artifact = 5;
+    bool is_async = 5;
   }
   ArtifactSpec artifact_spec = 1;
 
@@ -537,9 +537,11 @@ message NodeExecutionOptions {
   // An enum defines the trigger strategy of when the node will be ready to be
   // triggered. Only supported in the experimental orchestrator under SYNC mode
   // and ignored when configured for other platforms.
-  // Note that for all trigger strategies outlined below, all
-  // upstream nodes with either task or data dependency needs to be in a final
-  // state.
+  // Note that for all trigger strategies outlined below, except
+  // LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS all upstream nodes with either
+  // task or data dependency needs to be in a final state.
+  // For LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS upstream nodes can be
+  // "unrunnable", e.g. they cannot run due to upstream failures.
   enum TriggerStrategy {
     // Unspecified.  Behave the same as ALL_UPSTREAM_NODES_SUCCEEDED.
     TRIGGER_STRATEGY_UNSPECIFIED = 0;
@@ -547,9 +549,22 @@ message NodeExecutionOptions {
     ALL_UPSTREAM_NODES_SUCCEEDED = 1;
     // Specifies that all upstream nodes are in any final state.
     ALL_UPSTREAM_NODES_COMPLETED = 2;
+    // Specifies that all upstream nodes are in a succeeded state and that any
+    // downstream node would otherwise be able to run.
+    LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED = 5;
+    // Specifies that all upstream nodes are in a final state and that any
+    // downstream node would otherwise be able to run.
+    LAZILY_ALL_UPSTREAM_NODES_COMPLETED = 4;
+    // Trigger strategy for resource lifetimes so that the end node may run
+    // when the subgraph is no longer capable of progressing. This trigger
+    // strategy requires NodeExecutionOptions.resource_lifetime.lifetime_start
+    // to be set and will error otherwise.
+    // This trigger strategy is considered experimental. Use at your own risk.
+    LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS = 6;
+    reserved 3;
   }
   // The trigger strategy of this node.
-  // Unset or set to default value of TRIGGER_STATEGY_UNDEFINED behaves the
+  // Unset or set to default value of TRIGGER_STRATEGY_UNDEFINED behaves the
   // same as ALL_UPSTREAM_NODES_SUCCEEDED.
   TriggerStrategy strategy = 4;
 
@@ -563,10 +578,13 @@ message NodeExecutionOptions {
   // LINT.ThenChange(tfx/orchestration/experimental/core/sync_pipeline_task_gen.py)
   // Maximum number of times to retry an execution if it failed. Only supported
   // in the internal orchestrator.
-  uint32 max_execution_retries = 6;
+  optional uint32 max_execution_retries = 6;
   // Maximum time in seconds before failing an execution. Only supported
   // in the internal orchestrator. Default to 0 which means never timeout.
   uint32 execution_timeout_sec = 7;
+  // If False, the previous stateful working dir will be reused upon execution
+  // retries. If True, previous stateful working dir will NOT be reused.
+  bool reset_stateful_working_dir = 11;
 
   // Fine-grained trigger configuration for the ASYNC execution mode.
   message AsyncTrigger {
@@ -599,9 +617,49 @@ message NodeExecutionOptions {
 
   // Async mode trigger configuration for this node.
   AsyncTrigger async_trigger = 8;
+
+  // Configurations around a resource lifetime.
+  // Current behavior for ASYNC pipelines is undefined.
+  // TODO(b/298253165)
+  message ResourceLifetime {
+    // This is a feature to enable "end nodes" in a pipeline to
+    // support resource lifetimes. If this field is set then the node which this
+    // NodeExecutionOptions belongs to will run during pipeline finalization if
+    // the "lifetime_start" node has run succesfully.
+    // Pipeline finalization happens when:
+    // 1. All nodes in the pipeline completed, this is the "happy path".
+    // 2. A user requests for the pipeline to stop
+    // 3. A node fails in the pipeline and it cannot continue executing.
+    // This should be the id of the node "starting" a lifetime.
+    oneof paired_lifetime {
+      // If set then the node this NodeExecutionOptions belongs to marks the end
+      // of some lifetime.
+      string lifetime_start = 1;
+    }
+  }
+
+  ResourceLifetime resource_lifetime = 9;
+
+  // Which part of the component lifecycle should be applied to this component.
+  // By default there are three stages to a component lifecycle:
+  // 1. Launch (eg; job up)
+  // 2. Monitor (eg; while job_not_failed: ...)
+  // 3. Cleanup (eg; if stopped: job down)
+  enum RunMode {
+    // With DEFAULT all three stages are run.
+    DEFAULT = 0;
+    // Only the "Launch" stage is run, leaving a hanging job if no cleanup node
+    // is provided for this node.
+    // NOTE: this is intended to be used with "cleanup" nodes which are a system
+    // node that can automatically cleanup jobs produced from a LAUNCH_ONLY node
+    // by using the output artifact of the LAUNCH_ONLY node which has custom
+    // properties containing the necessary information to bring down the jobs.
+    LAUNCH_ONLY = 1;
+  }
+
+  RunMode run_mode = 10;
 }
 
-// Pipeline node definition.
 message PipelineNode {
   // Basic info of a pipeline node.
   NodeInfo node_info = 1;
@@ -649,6 +707,8 @@ message PipelineRuntimeSpec {
   // The id of the pipeline run for the top-level pipeline in this execution. If
   // The top level-pipeline is ASYNC then this will be empty.
   string top_level_pipeline_run_id = 3;
+  // URL to the Tflex frontend for this pipeline/run.
+  string frontend_url = 4;
   // Used for partial runs.
   SnapshotSettings snapshot_settings = 8;
 }

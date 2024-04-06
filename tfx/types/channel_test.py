@@ -55,10 +55,6 @@ class ChannelTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       channel.Channel(_AnotherType).set_artifacts([instance_a, instance_b])
 
-  def testStringTypeNameNotAllowed(self):
-    with self.assertRaises(ValueError):
-      channel.Channel('StringTypeName')
-
   def testJsonRoundTrip(self):
     proto_property = metadata_store_pb2.Value()
     proto_property.proto_value.Pack(
@@ -98,8 +94,8 @@ class ChannelTest(tf.test.TestCase):
     future = chnl.future()
     self.assertIsInstance(future, placeholder.ChannelWrappedPlaceholder)
     self.assertIs(future.channel, chnl)
-    self.assertIsInstance(future[0], placeholder.ChannelWrappedPlaceholder)
-    self.assertIsInstance(future.value, placeholder.ChannelWrappedPlaceholder)
+    self.assertIsInstance(future[0], placeholder.Placeholder)
+    self.assertIsInstance(future.value, placeholder.Placeholder)
 
   def testValidUnionChannel(self):
     channel1 = channel.Channel(type=_MyType)
@@ -182,6 +178,27 @@ class ChannelTest(tf.test.TestCase):
     check(pipeline_output_channel, ['p'])
     check(union_channel, ['x1', 'x2'])
     check(resolved_channel_, ['x1', 'x2'])
+
+  def testChannelAsOptionalChannel(self):
+    x1 = mock.MagicMock()
+    x1.id = 'x1'
+    required_output_channel = channel.OutputChannel(
+        artifact_type=_MyType, producer_component=x1, output_key='out1'
+    )
+    optional_output_channel = required_output_channel.as_optional()
+
+    self.assertIsNone(required_output_channel.is_optional)
+    self.assertTrue(optional_output_channel.is_optional)
+
+    self.assertEqual(
+        required_output_channel.producer_component,
+        optional_output_channel.producer_component,
+    )
+
+    # Check new channel mutation doesn't impact parent channel
+    optional_output_channel.set_as_async_channel()
+    self.assertTrue(optional_output_channel.is_async)
+    self.assertFalse(required_output_channel.is_async)
 
 
 if __name__ == '__main__':

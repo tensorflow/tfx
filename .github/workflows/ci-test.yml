@@ -30,10 +30,10 @@ jobs:
         # Select proto files.
         (cat $HOME/files_added.txt; echo; cat $HOME/files_modified.txt) | tr ' ' '\n' | grep '\.proto$' > proto_files.txt || true
 
-    - name: Set up Python 3.8
+    - name: Set up Python 3.9
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - name: Set up Bazel 5.3.0
       run: |

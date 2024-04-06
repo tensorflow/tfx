@@ -274,7 +274,9 @@ class StepBuilderTest(tf.test.TestCase):
             component_defs=component_defs,
             deployment_config=pipeline_pb2.PipelineDeploymentConfig(),
             dynamic_exec_properties=dynamic_exec_properties,
-            dsl_context_reg=dsl_context_registry.get()).build())
+            dsl_context_reg=pipeline.dsl_context_registry,
+        ).build()
+    )
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_dynamic_execution_properties_upstream_component_spec.pbtxt',
@@ -295,11 +297,32 @@ class StepBuilderTest(tf.test.TestCase):
             component_defs=component_defs,
             deployment_config=pipeline_pb2.PipelineDeploymentConfig(),
             dynamic_exec_properties=dynamic_exec_properties,
-            dsl_context_reg=dsl_context_registry.get()).build())
+            dsl_context_reg=pipeline.dsl_context_registry,
+        ).build()
+    )
     self.assertProtoEquals(
         test_utils.get_proto_from_test_data(
             'expected_dynamic_execution_properties_downstream_component_task.pbtxt',
             pipeline_pb2.PipelineTaskSpec()), example_gen_task_spec)
+
+  def testIllegalDynamicExecutionProperty(self):
+    dynamic_exec_properties = {
+        ('range_config_generator', 'range_config'): 'String'
+    }
+    pipeline = test_utils.two_step_pipeline_with_illegal_dynamic_exec_property()
+    example_gen = pipeline.components[1]
+    component_defs = {}
+    with self.assertRaisesRegex(
+        ValueError, 'Invalid placeholder for exec prop range_config.*'
+    ):
+      step_builder.StepBuilder(
+          node=example_gen,
+          image='gcr.io/tensorflow/tfx:latest',
+          component_defs=component_defs,
+          deployment_config=pipeline_pb2.PipelineDeploymentConfig(),
+          dynamic_exec_properties=dynamic_exec_properties,
+          dsl_context_reg=pipeline.dsl_context_registry,
+      ).build()
 
   def testBuildLatestBlessedModelStrategySucceed(self):
     latest_blessed_resolver = resolver.Resolver(

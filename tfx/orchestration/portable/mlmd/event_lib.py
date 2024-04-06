@@ -141,13 +141,7 @@ def is_valid_output_event(event: metadata_store_pb2.Event,
   if event.type not in _VALID_OUTPUT_EVENT_TYPES:
     return False
   if expected_output_key:
-    # Ignores errors during event.path parsing which indicates the event is
-    # invalid, and returns False.
-    with contextlib.suppress(ValueError):
-      for key, _ in _parse_path(event):
-        if key == expected_output_key:
-          return True
-    return False
+    return contains_key(event, expected_output_key)
   return True
 
 
@@ -170,14 +164,19 @@ def is_valid_input_event(event: metadata_store_pb2.Event,
   if event.type not in _VALID_INPUT_EVENT_TYPES:
     return False
   if expected_input_key:
-    # Ignores errors during event.path parsing which indicates the event is
-    # invalid, and returns False.
-    with contextlib.suppress(ValueError):
-      for key, _ in _parse_path(event):
-        if key == expected_input_key:
-          return True
-    return False
+    return contains_key(event, expected_input_key)
   return True
+
+
+def contains_key(event: metadata_store_pb2.Event, key: str) -> bool:
+  """Checks if the event has a matching a key in its path."""
+  # Ignores errors during event.path parsing which indicates the event is
+  # invalid, and returns False.
+  with contextlib.suppress(ValueError):
+    for path_key, _ in _parse_path(event):
+      if key == path_key:
+        return True
+  return False
 
 
 def add_event_path(

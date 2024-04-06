@@ -329,42 +329,38 @@ in the following section.
 
 The pipeline consists of the following steps:
 
-1.  After raw data is imported, tabular data is stored in
-    BigQuery, and other data like images, audio, and video, is
-    stored in Cloud Storage. The second part of this series uses tabular
-    data stored in BigQuery as an example.
-1.  Data engineering (preparation) and feature engineering are executed at
-    scale using Dataflow. This execution produces ML-ready
-    training, evaluation, and test sets that are stored in
-    Cloud Storage. Ideally, these datasets are stored as
-    [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord)
-    files, which is the optimized format for TensorFlow computations.
+1.  After raw data is imported, tabular data is stored in BigQuery, and other
+    data like images, audio, and video, is stored in Cloud Storage. The second
+    part of this series uses tabular data stored in BigQuery as an example.
+1.  Data engineering (preparation) and feature engineering are executed at scale
+    using Dataflow. This execution produces ML-ready training, evaluation, and
+    test sets that are stored in Cloud Storage. Ideally, these datasets are
+    stored as
+    [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord) files,
+    which is the optimized format for TensorFlow computations.
 1.  A TensorFlow model
-    [trainer package](/vertex-ai/docs/training/create-python-pre-built-container){: .external }
-    is submitted to Vertex AI Training, which uses the preprocessed data
-    from the previous steps to train the model. The output of this step is a
-    trained TensorFlow
-    [SavedModel](https://www.tensorflow.org/guide/saved_model)
-    that is exported to Cloud Storage.
-1.  The trained TensorFlow model is deployed to
-    Vertex AI Prediction as a service that has a REST API so that it can
-    be used for online predictions. The same model can also be used for batch
-    prediction jobs.
-1.  After the model is deployed as a REST API, client apps and internal
-    systems can invoke the API by sending requests with some data points, and
-    receiving responses from the model with predictions.
+    [trainer package](https://cloud.google.com/vertex-ai/docs/training/create-python-pre-built-container){: .external }
+    is submitted to Vertex AI Training, which uses the preprocessed data from
+    the previous steps to train the model. The output of this step is a trained
+    TensorFlow [SavedModel](https://www.tensorflow.org/guide/saved_model) that
+    is exported to Cloud Storage.
+1.  The trained TensorFlow model is deployed to Vertex AI Prediction as a
+    service that has a REST API so that it can be used for online predictions.
+    The same model can also be used for batch prediction jobs.
+1.  After the model is deployed as a REST API, client apps and internal systems
+    can invoke the API by sending requests with some data points, and receiving
+    responses from the model with predictions.
 1.  For orchestrating and automating this pipeline, you can use
-    [Vertex AI Pipelines](/vertex-ai/docs/pipelines/introduction){: .external }
+    [Vertex AI Pipelines](https://cloud.google.com/vertex-ai/docs/pipelines/introduction){: .external }
     as a scheduler to invoke the data preparation, model training, and model
     deployment steps.
 
 You can also use
-[Vertex AI Feature Store](/vertex-ai/docs/featurestore){: .external }
+[Vertex AI Feature Store](https://cloud.google.com/vertex-ai/docs/featurestore/){: .external }
 to store input features to make predictions. For example, you can periodically
-create engineered features from the latest raw data and store them in
-Vertex AI Feature Store. Client apps fetch the required input features from
-Vertex AI Feature Store and send them to the model to receive
-predictions.
+create engineered features from the latest raw data and store them in Vertex AI
+Feature Store. Client apps fetch the required input features from Vertex AI
+Feature Store and send them to the model to receive predictions.
 
 ### Where to do preprocessing
 
@@ -412,12 +408,13 @@ implementations. Whenever you change the logic in SQL to preprocess the training
 data, you need to change the Java implementation accordingly to preprocess data
 at serving time.
 
-If you are using your model only for batch prediction (for example, using
-Vertex AI [ batch prediction](/vertex-ai/docs/predictions/batch-predictions){: .external }),
-and if your data for scoring is sourced from BigQuery, you can
-implement these preprocessing operations as part of the BigQuery
-SQL script. In that case, you can use the same preprocessing SQL script to
-prepare both training and scoring data.
+If you are using your model only for batch prediction (for example, using Vertex
+AI
+[batch prediction](https://cloud.google.com/vertex-ai/docs/predictions/get-batch-predictions){: .external }),
+and if your data for scoring is sourced from BigQuery, you can implement these
+preprocessing operations as part of the BigQuery SQL script. In that case, you
+can use the same preprocessing SQL script to prepare both training and scoring
+data.
 
 Full-pass stateful transformations aren't suitable for implementation in
 BigQuery. If you use BigQuery for full-pass
@@ -459,18 +456,16 @@ processing stream data for near real-time predictions.
 </figure>
 
 As shown in figure 3, during processing, events called *data points* are
-ingested into
-[Pub/Sub](/pubsub/docs){: .external }.
-Dataflow consumes these data points, computes features based on
-aggregates over time, and then calls the deployed ML model API for predictions.
-Predictions are then sent to an outbound Pub/Sub queue. From
-Pub/Sub, predictions can be consumed by downstream systems like
-monitoring or control, or they can be pushed back (for example, as
-notifications) to the original requesting client. Predictions can also be stored
-in a low-latency data store like
-[Cloud Bigtable](/bigtable/docs){: .external }
-for real-time fetching. Cloud Bigtable can also be used to accumulate and
-store these real-time aggregations so they can be looked up when needed for
+ingested into [Pub/Sub](https://cloud.google.com/pubsub/docs){: .external }.
+Dataflow consumes these data points, computes features based on aggregates over
+time, and then calls the deployed ML model API for predictions. Predictions are
+then sent to an outbound Pub/Sub queue. From Pub/Sub, predictions can be
+consumed by downstream systems like monitoring or control, or they can be pushed
+back (for example, as notifications) to the original requesting client.
+Predictions can also be stored in a low-latency data store like
+[Cloud Bigtable](https://cloud.google.com/bigtable/docs){: .external } for
+real-time fetching. Cloud Bigtable can also be used to accumulate and store
+these real-time aggregations so they can be looked up when needed for
 prediction.
 
 The same Apache Beam implementation can be used to batch-process training data
@@ -888,13 +883,13 @@ columns.
 
 ## What's next
 
--   To implement a `tf.Transform` pipeline and run it using
-    Dataflow, read part two of this series,
-    [Data preprocessing for ML using TensorFlow Transform](data-preprocessing-for-ml-with-tf-transform-pt2).
+-   To implement a `tf.Transform` pipeline and run it using Dataflow, read part
+    two of this series,
+    [Data preprocessing for ML using TensorFlow Transform](https://www.tensorflow.org/tfx/tutorials/transform/data_preprocessing_with_cloud).
 -   Take the Coursera specialization on ML with
     [TensorFlow on Google Cloud](https://www.coursera.org/specializations/machine-learning-tensorflow-gcp){: .external }.
 -   Learn about best practices for ML engineering in
     [Rules of ML](https://developers.google.com/machine-learning/guides/rules-of-ml/){: .external }.
 +   For more reference architectures, diagrams, and best practices, explore the
-<a href="/architecture" track-type="tutorial" track-name="textLink" track-metadata-position="nextSteps">Cloud Architecture Center</a>.
-
+    <a href="https://www.tensorflow.org/tfx/guide/solutions" track-type="tutorial" track-name="textLink" track-metadata-position="nextSteps">TFX
+    Cloud Solutions</a>.

@@ -43,6 +43,8 @@ def import_class_by_path(class_path: str) -> Type[Any]:
 
 def import_func_from_module(module_path: str, fn_name: str) -> Callable:  # pylint: disable=g-bare-generic
   """Imports a function from a module provided as source file or module path."""
+  # TODO(b/323284133): This is not working correctly for a function inside the
+  # __main__ module. Should be fixed.
   original_module_path = module_path
   wheel_context_manager = None
   if '@' in module_path:

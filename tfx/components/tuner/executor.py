@@ -90,7 +90,8 @@ def write_best_hyperparameters(
 
 def search(input_dict: Dict[str, List[types.Artifact]],
            exec_properties: Dict[str, Any],
-           working_dir: str) -> base_tuner.BaseTuner:
+           working_dir: str,
+           print_tuning_summary: bool = True) -> base_tuner.BaseTuner:
   """Conduct a single hyperparameter search loop, and return the Tuner."""
   tuner_fn = _get_tuner_fn(exec_properties)
 
@@ -101,11 +102,13 @@ def search(input_dict: Dict[str, List[types.Artifact]],
   result = tuner_fn_result.tuner
 
   # TODO(b/156966497): set logger for printing.
-  result.search_space_summary()
+  if print_tuning_summary:
+    result.search_space_summary()
   logging.info('Start tuning... Tuner ID: %s', result.tuner_id)
   result.search(**tuner_fn_result.fit_kwargs)
   logging.info('Finished tuning... Tuner ID: %s', result.tuner_id)
-  result.results_summary()
+  if print_tuning_summary:
+    result.results_summary()
 
   return result
 

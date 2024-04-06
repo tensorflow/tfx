@@ -26,6 +26,7 @@ from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import _SimpleBeamComponent
 from tfx.dsl.component.experimental.decorators import _SimpleComponent
+from tfx.dsl.component.experimental.decorators import BaseFunctionalComponent
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_executor
@@ -414,21 +415,31 @@ class ComponentDecoratorTest(tf.test.TestCase):
         'expects arguments to be passed as keyword arguments'):
       _injector_1(9, 'secret')
 
+  def testReturnsCorrectTypes(self):
+    """Ensure the expected types are returned."""
+    # The BaseFunctionalComponentFactory protocol isn't runtime-checkable, but
+    # we can instead check that we can access its members:
+    self.assertIsNotNone(_injector_1.test_call)
+    self.assertIsNone(_injector_1.platform_classlevel_extensions)
+
+    instance = _injector_1(foo=9, bar='secret')
+    self.assertIsInstance(instance, BaseFunctionalComponent)
+
   def testNoBeamPipelineWhenUseBeamIsTrueFails(self):
     with self.assertRaisesWithLiteralMatch(
         ValueError,
         'The decorated function must have one and only one optional parameter '
         'of type BeamComponentParameter[beam.Pipeline] with '
         'default value None when use_beam=True.'):
-      component(_verify_beam_pipeline_arg, use_beam=True)(a=1)
+      component(use_beam=True)(_verify_beam_pipeline_arg)(a=1)
 
   def testBeamPipelineDefaultIsNotNoneFails(self):
     with self.assertRaisesWithLiteralMatch(
         ValueError,
         'The default value for BeamComponentParameter must be None.'):
-      component(
-          _verify_beam_pipeline_arg_non_none_default_value, use_beam=True)(
-              a=1)
+      component(use_beam=True)(
+          _verify_beam_pipeline_arg_non_none_default_value
+      )(a=1)
 
   def testBeamExecutionSuccess(self):
     """Test execution with return values; success case."""
@@ -647,6 +658,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         components=[instance_1, instance_2])
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
+    instance_1 = _injector_4()
     instance_2 = _json_compat_check_component(
         a=instance_1.outputs['d'],
         b=instance_1.outputs['e'],

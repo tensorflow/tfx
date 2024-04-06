@@ -14,7 +14,7 @@
 """Lightweight wrapper for building MLMD filter query."""
 
 import collections
-from typing import Any, List, Union
+from typing import Any, List, Sequence, Union
 
 import ml_metadata as mlmd
 
@@ -54,7 +54,9 @@ class Or(_ClauseList):
   separator = 'OR'
 
 
-def to_sql_string(value: Union[bool, int, float, str, List[Any]]) -> str:
+def to_sql_string(
+    value: Union[bool, int, float, str, List[Any], Sequence[Any]]
+) -> str:
   """Converts python value to appropriate GoogleSQL string."""
   if isinstance(value, list):
     inner = ', '.join(to_sql_string(v) for v in value)

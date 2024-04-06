@@ -13,11 +13,11 @@
 # limitations under the License.
 """Tests for Kubeflow V2 runner."""
 
+import collections
 import datetime
 import json
 import os
 from unittest import mock
-
 
 import tensorflow as tf
 from tfx import version
@@ -41,6 +41,10 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
   def setUp(self):
     super().setUp()
     self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
+    VersionInfo = collections.namedtuple(
+        'VersionInfo', ['major', 'minor', 'micro']
+    )
+    self.enter_context(mock.patch('sys.version_info', new=VersionInfo(3, 7, 0)))
 
   def _compare_against_testdata(
       self, runner: kubeflow_v2_dag_runner.KubeflowV2DagRunner,
@@ -62,13 +66,10 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
 
     self.assertDictEqual(actual_json, expected_json)
 
-  @mock.patch('sys.version_info')
   @mock.patch(
       'tfx.orchestration.kubeflow.v2.kubeflow_v2_dag_runner._get_current_time')
-  def testCompileTwoStepPipeline(self, fake_now, fake_sys_version):
+  def testCompileTwoStepPipeline(self, fake_now):
     fake_now.return_value = datetime.date(2020, 1, 1)
-    fake_sys_version.major = 3
-    fake_sys_version.minor = 7
     runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
         output_dir=_TEST_DIR,
         output_filename=_TEST_FILE_NAME,
@@ -83,16 +84,11 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
         golden_file='expected_two_step_pipeline_job.json',
     )
 
-  @mock.patch('sys.version_info')
   @mock.patch(
       'tfx.orchestration.kubeflow.v2.kubeflow_v2_dag_runner._get_current_time'
   )
-  def testCompileTwoStepPipelineWithMultipleImages(
-      self, fake_now, fake_sys_version
-  ):
+  def testCompileTwoStepPipelineWithMultipleImages(self, fake_now):
     fake_now.return_value = datetime.date(2020, 1, 1)
-    fake_sys_version.major = 3
-    fake_sys_version.minor = 7
     images = {
         kubeflow_v2_dag_runner._DEFAULT_IMAGE_PATH_KEY: 'gcr.io/my-tfx:latest',
         'BigQueryExampleGen': 'gcr.io/big-query:1.0.0',
@@ -111,18 +107,15 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
         golden_file='expected_two_step_pipeline_job_with_multiple_images.json',
     )
 
-  @mock.patch('sys.version_info')
   @mock.patch('tfx.version')
   @mock.patch(
       'tfx.orchestration.kubeflow.v2.kubeflow_v2_dag_runner._get_current_time'
   )
   def testCompileTwoStepPipelineWithoutDefaultImage(
-      self, fake_now, fake_tfx_version, fake_sys_version
+      self, fake_now, fake_tfx_version
   ):
     fake_now.return_value = datetime.date(2020, 1, 1)
     fake_tfx_version.__version__ = '1.13.0.dev'
-    fake_sys_version.major = 3
-    fake_sys_version.minor = 7
     images = {
         'BigQueryExampleGen': 'gcr.io/big-query:1.0.0',
     }
@@ -141,16 +134,11 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest):
     )
 
   @mock.patch.object(base_component.BaseComponent, '_resolve_pip_dependencies')
-  @mock.patch('sys.version_info')
   @mock.patch(
       'tfx.orchestration.kubeflow.v2.kubeflow_v2_dag_runner._get_current_time'
   )
-  def testCompileFullTaxiPipeline(
-      self, fake_now, fake_sys_version, moke_resolve_dependencies
-  ):
+  def testCompileFullTaxiPipeline(self, fake_now, moke_resolve_dependencies):
     fake_now.return_value = datetime.date(2020, 1, 1)
-    fake_sys_version.major = 3
-    fake_sys_version.minor = 7
     moke_resolve_dependencies.return_value = None
 
     runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(

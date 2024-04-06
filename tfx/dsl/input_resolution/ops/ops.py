@@ -21,15 +21,19 @@ from tfx.dsl.input_resolution.ops import all_spans_op
 from tfx.dsl.input_resolution.ops import consecutive_spans_op
 from tfx.dsl.input_resolution.ops import equal_property_values_op
 from tfx.dsl.input_resolution.ops import exclude_spans_op
+from tfx.dsl.input_resolution.ops import graph_traversal_op
 from tfx.dsl.input_resolution.ops import group_by_lineage_op
 from tfx.dsl.input_resolution.ops import latest_create_time_op
 from tfx.dsl.input_resolution.ops import latest_pipeline_run_outputs_op as latest_pipeline_run_op
 from tfx.dsl.input_resolution.ops import latest_policy_model_op
 from tfx.dsl.input_resolution.ops import latest_span_op
 from tfx.dsl.input_resolution.ops import latest_version_op
+from tfx.dsl.input_resolution.ops import paired_spans_op
 from tfx.dsl.input_resolution.ops import shuffle_op
+from tfx.dsl.input_resolution.ops import siblings_op
 from tfx.dsl.input_resolution.ops import skip_if_empty_op
 from tfx.dsl.input_resolution.ops import skip_if_less_than_n_spans_op
+from tfx.dsl.input_resolution.ops import slice_op
 from tfx.dsl.input_resolution.ops import sliding_window_op
 from tfx.dsl.input_resolution.ops import span_driven_evaluator_inputs_op as evaluator_op
 from tfx.dsl.input_resolution.ops import static_span_range_op
@@ -59,11 +63,13 @@ def _register_op(cls: _ResolverOpType) -> None:
     raise ValueError(f'Duplicated name {cls.canonical_name} while registering.')
   _OPS_BY_NAME[cls.canonical_name] = cls
 
+
 # go/keep-sorted start
 AllSpans = all_spans_op.AllSpans
 ConsecutiveSpans = consecutive_spans_op.ConsecutiveSpans
 EqualPropertyValues = equal_property_values_op.EqualPropertyValues
 ExcludeSpans = exclude_spans_op.ExcludeSpans
+GraphTraversal = graph_traversal_op.GraphTraversal
 GroupByDisjointLineage = group_by_lineage_op.GroupByDisjointLineage
 GroupByPivot = group_by_lineage_op.GroupByPivot
 LatestCreateTime = latest_create_time_op.LatestCreateTime
@@ -71,9 +77,12 @@ LatestPipelineRunOutputs = latest_pipeline_run_op.LatestPipelineRunOutputs
 LatestPolicyModel = latest_policy_model_op.LatestPolicyModel
 LatestSpan = latest_span_op.LatestSpan
 LatestVersion = latest_version_op.LatestVersion
+PairedSpans = paired_spans_op.PairedSpans
 Shuffle = shuffle_op.Shuffle
+Siblings = siblings_op.Siblings
 SkipIfEmpty = skip_if_empty_op.SkipIfEmpty
 SkipIfLessThanNSpans = skip_if_less_than_n_spans_op.SkipIfLessThanNSpans
+Slice = slice_op.Slice
 SlidingWindow = sliding_window_op.SlidingWindow
 SpanDrivenEvaluatorInputs = evaluator_op.SpanDrivenEvaluatorInputs
 StaticSpanRange = static_span_range_op.StaticSpanRange
@@ -85,6 +94,7 @@ _register_op(AllSpans)
 _register_op(ConsecutiveSpans)
 _register_op(EqualPropertyValues)
 _register_op(ExcludeSpans)
+_register_op(GraphTraversal)
 _register_op(GroupByDisjointLineage)
 _register_op(GroupByPivot)
 _register_op(LatestCreateTime)
@@ -92,9 +102,12 @@ _register_op(LatestPipelineRunOutputs)
 _register_op(LatestPolicyModel)
 _register_op(LatestSpan)
 _register_op(LatestVersion)
+_register_op(PairedSpans)
 _register_op(Shuffle)
+_register_op(Siblings)
 _register_op(SkipIfEmpty)
 _register_op(SkipIfLessThanNSpans)
+_register_op(Slice)
 _register_op(SlidingWindow)
 _register_op(SpanDrivenEvaluatorInputs)
 _register_op(StaticSpanRange)
@@ -108,6 +121,7 @@ def _register_strategy(cls: _ResolverStrategyType) -> None:
   if class_path in _OPS_BY_CLASSPATH:
     raise ValueError(f'Duplicated class path {class_path} while registering.')
   _OPS_BY_CLASSPATH[class_path] = cls
+
 
 # For ResolverStrategy, register them but do not expose their public name.
 # go/keep-sorted start

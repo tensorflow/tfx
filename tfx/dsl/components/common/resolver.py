@@ -109,8 +109,7 @@ class _ResolverDriver(base_driver.BaseDriver):
       pipeline_info: data_types.PipelineInfo,
       input_channels: Mapping[str, types.BaseChannel],
   ) -> Dict[str, List[types.Artifact]]:
-    pipeline_context = self._metadata_handler.get_pipeline_context(
-        pipeline_info)
+    pipeline_context = self._metadata_handle.get_pipeline_context(pipeline_info)
     if pipeline_context is None:
       raise RuntimeError(f'Pipeline context absent for {pipeline_info}.')
 
@@ -121,11 +120,12 @@ class _ResolverDriver(base_driver.BaseDriver):
       # support all BaseChannel types. Use a common input resolution stack
       # instead.
       for channel in channel_utils.get_individual_channels(c):
-        artifacts = self._metadata_handler.get_qualified_artifacts(
+        artifacts = self._metadata_handle.get_qualified_artifacts(
             contexts=[pipeline_context],
             type_name=channel.type_name,
             producer_component_id=channel.producer_component_id,
-            output_key=channel.output_key)
+            output_key=channel.output_key,
+        )
         artifacts_by_id.update({a.id: a for a in artifacts})
       result[key] = list(artifacts_by_id.values())
     return result
@@ -142,19 +142,22 @@ class _ResolverDriver(base_driver.BaseDriver):
       component_info: data_types.ComponentInfo,
   ) -> data_types.ExecutionDecision:
     # Registers contexts and execution
-    contexts = self._metadata_handler.register_pipeline_contexts_if_not_exists(
-        pipeline_info)
-    execution = self._metadata_handler.register_execution(
+    contexts = self._metadata_handle.register_pipeline_contexts_if_not_exists(
+        pipeline_info
+    )
+    execution = self._metadata_handle.register_execution(
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,
         component_info=component_info,
-        contexts=contexts)
+        contexts=contexts,
+    )
     # Gets resolved artifacts.
     resolved = self._build_input_dict(pipeline_info, input_dict)
     maybe_strategy = self._maybe_get_strategy(exec_properties)
     if maybe_strategy:
       resolved = maybe_strategy.resolve_artifacts(
-          self._metadata_handler.store, resolved)
+          self._metadata_handle.store, resolved
+      )
     if resolved is None:
       # No inputs available. Still driver needs an ExecutionDecision, so use a
       # dummy dict with no artifacts.
@@ -165,12 +168,13 @@ class _ResolverDriver(base_driver.BaseDriver):
       c.set_artifacts(resolved[k])
     # Updates execution to reflect artifact resolution results and mark
     # as cached.
-    self._metadata_handler.update_execution(
+    self._metadata_handle.update_execution(
         execution=execution,
         component_info=component_info,
         output_artifacts=resolved,
         execution_state=metadata.EXECUTION_STATE_CACHED,
-        contexts=contexts)
+        contexts=contexts,
+    )
 
     return data_types.ExecutionDecision(
         input_dict={},

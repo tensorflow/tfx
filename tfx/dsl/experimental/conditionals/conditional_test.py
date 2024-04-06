@@ -13,35 +13,15 @@
 # limitations under the License.
 """Tests for tfx.dsl.experimental.conditionals.conditional."""
 
-from typing import Any, Dict
-
 import tensorflow as tf
-from tfx.dsl.components.base import base_node
 from tfx.dsl.context_managers import dsl_context_registry
+from tfx.dsl.context_managers import test_utils
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.placeholder import placeholder
+from tfx.orchestration import pipeline
 
 
-class _FakeNode(base_node.BaseNode):
-
-  @property
-  def inputs(self) -> Dict[str, Any]:
-    return {}
-
-  @property
-  def outputs(self) -> Dict[str, Any]:
-    return {}
-
-  @property
-  def exec_properties(self) -> Dict[str, Any]:
-    return {}
-
-
-class _FakePredicate(placeholder.Predicate):
-
-  def __init__(self, name):
-    super().__init__(pred_dataclass=None)
-    self.name = name
+Node = test_utils.Node
 
 
 class ConditionalTest(tf.test.TestCase):
@@ -52,40 +32,63 @@ class ConditionalTest(tf.test.TestCase):
         expected_predicates)
 
   def testSingleCondition(self):
-    pred = _FakePredicate('pred')
+    pred = placeholder.input('foo') == 'bar'
     with conditional.Cond(pred):
-      node1 = _FakeNode().with_id('node1')
-      node2 = _FakeNode().with_id('node2')
+      node1 = Node('node1')
+      node2 = Node('node2')
     self.assertPredicatesEqual(node1, pred)
     self.assertPredicatesEqual(node2, pred)
 
   def testNestedCondition(self):
-    pred1 = _FakePredicate('pred1')
-    pred2 = _FakePredicate('pred2')
+    pred1 = placeholder.input('foo') == 'bar'
+    pred2 = placeholder.input('foo') == 'baz'
     with conditional.Cond(pred1):
-      node1 = _FakeNode().with_id('node1')
+      node1 = Node('node1')
       with conditional.Cond(pred2):
-        node2 = _FakeNode().with_id('node2')
+        node2 = Node('node2')
     self.assertPredicatesEqual(node1, pred1)
     self.assertPredicatesEqual(node2, pred1, pred2)
 
   def testReusePredicate(self):
-    pred = _FakePredicate('pred')
+    pred = placeholder.input('foo') == 'bar'
     with conditional.Cond(pred):
-      node1 = _FakeNode().with_id('node1')
+      node1 = Node('node1')
     with conditional.Cond(pred):
-      node2 = _FakeNode().with_id('node2')
+      node2 = Node('node2')
     self.assertPredicatesEqual(node1, pred)
     self.assertPredicatesEqual(node2, pred)
 
   def testNestedConditionWithDuplicatePredicates(self):
-    pred = _FakePredicate('pred')
+    # Note: This only catches the duplication if the _same_ predicate (in terms
+    # of Python object identity) is used. Ideally we would also detect
+    # equivalent predicates (like __eq__) but placeholders cannot implement
+    # __eq__ itself (due to its special function in creating predicates from
+    # ChannelWrappedPlaceholder) and placeholders also don't offer another
+    # equality function at the moment.
+    pred = placeholder.input('foo') == 'bar'
     with self.assertRaisesRegex(
         ValueError, 'Nested conditionals with duplicate predicates'):
       with conditional.Cond(pred):
-        unused_node1 = _FakeNode().with_id('node1')
+        unused_node1 = Node('node1')
         with conditional.Cond(pred):
-          unused_node2 = _FakeNode().with_id('node2')
+          unused_node2 = Node('node2')
+
+  def testCond_Subpipeline(self):
+    pred = placeholder.input('foo') == 'bar'
+    with conditional.Cond(pred):
+      a = Node('A')
+      b = Node('B')
+      p = pipeline.Pipeline(pipeline_name='p', components=[a, b])
+    p_out = pipeline.Pipeline(pipeline_name='p_out', components=[p])
+
+    # Nodes from subpipeline are isolated from the outer pipeline context thus
+    # are not conditional.
+    self.assertEmpty(conditional.get_predicates(a, p.dsl_context_registry))
+
+    # Subpipeline is under conditional of the outer pipeline.
+    self.assertCountEqual(
+        conditional.get_predicates(p, p_out.dsl_context_registry), [pred]
+    )
 
 
 if __name__ == '__main__':

@@ -21,14 +21,19 @@ from absl.testing import parameterized
 from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.example_validator import executor
 from tfx.dsl.io import fileio
+from tfx.orchestration.experimental.core import component_generated_alert_pb2
+from tfx.orchestration.experimental.core import constants
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
-from tensorflow_metadata.proto.v0 import anomalies_pb2
 
+from google.protobuf import any_pb2
 from google.protobuf import text_format
+from ml_metadata.proto import metadata_store_pb2
+from tensorflow_metadata.proto.v0 import anomalies_pb2
 
 
 class ExecutorTest(parameterized.TestCase):
@@ -52,12 +57,15 @@ class ExecutorTest(parameterized.TestCase):
       {
           'testcase_name': 'No_anomalies',
           'custom_validation_config': None,
-          'expected_anomalies': {}
-      }, {
-          'testcase_name':
-              'Custom_validation',
-          'custom_validation_config':
-              """
+          'expected_anomalies': {},
+          'expected_blessing': {
+              'train': executor.BLESSED_VALUE,
+              'eval': executor.BLESSED_VALUE,
+          },
+      },
+      {
+          'testcase_name': 'Custom_validation',
+          'custom_validation_config': """
               feature_validations {
               feature_path { step: 'company' }
               validations {
@@ -81,10 +89,19 @@ class ExecutorTest(parameterized.TestCase):
                     type: CUSTOM_VALIDATION
                     short_description: 'Feature does not have enough values.'
                   }
-                  """, anomalies_pb2.AnomalyInfo())
-          }
-      })
-  def testDo(self, custom_validation_config, expected_anomalies):
+                  """,
+                  anomalies_pb2.AnomalyInfo(),
+              )
+          },
+          'expected_blessing': {
+              'train': executor.NOT_BLESSED_VALUE,
+              'eval': executor.NOT_BLESSED_VALUE,
+          },
+      },
+  )
+  def testDo(
+      self, custom_validation_config, expected_anomalies, expected_blessing
+  ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
@@ -126,7 +143,9 @@ class ExecutorTest(parameterized.TestCase):
     }
 
     example_validator_executor = executor.Executor()
-    example_validator_executor.Do(input_dict, output_dict, exec_properties)
+    executor_output = example_validator_executor.Do(
+        input_dict, output_dict, exec_properties
+    )
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train', 'eval']),
@@ -154,6 +173,64 @@ class ExecutorTest(parameterized.TestCase):
                                    'SchemaDiff.pb')
     self.assertFalse(fileio.exists(train_file_path))
     # TODO(zhitaoli): Add comparison to expected anomolies.
+
+    self.assertEqual(
+        validation_output.get_json_value_custom_property(
+            executor.ARTIFACT_PROPERTY_BLESSED_KEY
+        ),
+        expected_blessing,
+    )
+
+    if expected_anomalies:
+      alerts = component_generated_alert_pb2.ComponentGeneratedAlertList()
+      alerts.component_generated_alert_list.append(
+          component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+              alert_name='Feature does not have enough values.',
+              alert_body=(
+                  'Custom validation triggered anomaly. Query:'
+                  ' feature.string_stats.common_stats.min_num_values > 5 Test'
+                  ' dataset: default slice for feature company in split train.'
+              ),
+          )
+      )
+      alerts.component_generated_alert_list.append(
+          component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+              alert_name='Feature does not have enough values.',
+              alert_body=(
+                  'Custom validation triggered anomaly. Query:'
+                  ' feature.string_stats.common_stats.min_num_values > 5 Test'
+                  ' dataset: default slice for feature company in split eval.'
+              ),
+          )
+      )
+      alerts_any_proto = any_pb2.Any()
+      alerts_any_proto.Pack(alerts)
+      self.assertEqual(
+          executor_output,
+          execution_result_pb2.ExecutorOutput(
+              execution_properties={
+                  constants.COMPONENT_GENERATED_ALERTS_KEY: (
+                      metadata_store_pb2.Value(proto_value=alerts_any_proto)
+                  )
+              },
+              output_artifacts={
+                  standard_component_specs.ANOMALIES_KEY: (
+                      execution_result_pb2.ExecutorOutput.ArtifactList(
+                          artifacts=[validation_output.mlmd_artifact]))
+              },
+          ),
+      )
+    else:
+      self.assertEqual(
+          executor_output,
+          execution_result_pb2.ExecutorOutput(
+              output_artifacts={
+                  standard_component_specs.ANOMALIES_KEY: (
+                      execution_result_pb2.ExecutorOutput.ArtifactList(
+                          artifacts=[validation_output.mlmd_artifact]))
+              },
+          ),
+      )
 
 
 if __name__ == '__main__':

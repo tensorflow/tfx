@@ -52,13 +52,15 @@ def select_constraint(default, nightly=None, git_master=None):
 def make_pipeline_sdk_required_install_packages():
   return [
       'absl-py>=0.9,<2.0.0',
-      'ml-metadata' + select_constraint(
+      'ml-metadata'
+      + select_constraint(
           # LINT.IfChange
-          default='>=1.13.1,<1.14.0',
+          default='>=1.14.0,<1.15.0',
           # LINT.ThenChange(tfx/workspace.bzl)
-          nightly='>=1.14.0.dev',
-          git_master='@git+https://github.com/google/ml-metadata@master'),
-      'packaging>=20,<21',
+          nightly='>=1.15.0.dev',
+          git_master='@git+https://github.com/google/ml-metadata@master',
+      ),
+      'packaging>=22',
       'portpicker>=1.3.1,<2',
       'protobuf>=3.20.3,<5',
       'docker>=4.1,<5',
@@ -78,51 +80,54 @@ def make_required_install_packages():
   # and protobuf) with TF.
   return make_pipeline_sdk_required_install_packages() + [
       'apache-beam[gcp]>=2.47,<3',
-      'attrs>=19.3.0,<22',
+      'attrs>=19.3.0,<24',
       'click>=7,<9',
-      'google-api-core<2',
+      'google-api-core<3',
       'google-cloud-aiplatform>=1.6.2,<2',
-      'google-cloud-bigquery>=2.26.0,<3',
+      'google-cloud-bigquery>=3,<4',
       'grpcio>=1.28.1,<2',
-      'keras-tuner>=1.0.4,<2',
+      'keras-tuner>=1.0.4,<2,!=1.4.0,!=1.4.1',
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
       'pyarrow>=10,<11',
+      # TODO(b/332616741): Scipy version 1.13 breaks the TFX OSS test.
+      # Unpin once the issue is resolved.
+      'scipy<1.13',
       # TODO(b/291837844): Pinned pyyaml to 5.3.1.
       # Unpin once the issue with installation is resolved.
-      'pyyaml>=3.12,<6,!=5.4.0,!=5.4.1',
+      'pyyaml>=6,<7',
       # Keep the TF version same as TFT to help Pip version resolution.
       # Pip might stuck in a TF 1.15 dependency although there is a working
       # dependency set with TF 2.x without the sync.
       # pylint: disable=line-too-long
-      'tensorflow' + select_constraint('>=2.13.0,<2.14'),
+      'tensorflow' + select_constraint('>=2.15.0,<2.16'),
       # pylint: enable=line-too-long
-      'tensorflow-hub>=0.9.0,<0.14',
+      'tensorflow-hub>=0.15.0,<0.16',
       'tensorflow-data-validation'
       + select_constraint(
-          default='>=1.13.0,<1.14.0',
-          nightly='>=1.14.0.dev',
+          default='>=1.14.0,<1.15.0',
+          nightly='>=1.15.0.dev',
           git_master=(
               '@git+https://github.com/tensorflow/data-validation@master'
           ),
       ),
       'tensorflow-model-analysis'
       + select_constraint(
-          default='>=0.44.0,<0.45.0',
-          nightly='>=0.45.0.dev',
+          default='>=0.45.0,<0.46.0',
+          nightly='>=0.46.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master',
       ),
-      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3',
+      'tensorflow-serving-api>=2.15,<2.16',
       'tensorflow-transform'
       + select_constraint(
-          default='>=1.13.0,<1.14.0',
-          nightly='>=1.14.0.dev',
+          default='>=1.14.0,<1.15.0',
+          nightly='>=1.15.0.dev',
           git_master='@git+https://github.com/tensorflow/transform@master',
       ),
       'tfx-bsl'
       + select_constraint(
-          default='>=1.13.0,<1.14.0',
-          nightly='>=1.14.0.dev',
+          default='>=1.14.0,<1.15.0',
+          nightly='>=1.15.0.dev',
           git_master='@git+https://github.com/tensorflow/tfx-bsl@master',
       ),
   ]
@@ -138,6 +143,7 @@ def make_extra_packages_airflow():
 def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
+      # TODO(b/304892416): Migrate from KFP SDK v1 to v2.
       'kfp>=1.8.14,<2',
       'kfp-pipeline-spec>=0.1.10,<0.2',
   ]
@@ -155,6 +161,8 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
+      # TODO(b/304892416): Migrate from KFP SDK v1 to v2.
+      'kfp>=1.8.14,<2',
       'kfp-pipeline-spec>=0.1.10,<0.2',
       'mmh>=2.2,<3',
       'python-snappy>=0.5,<0.6',
@@ -167,7 +175,7 @@ def make_extra_packages_docker_image():
 def make_extra_packages_tfjs():
   # Packages needed for tfjs.
   return [
-      'tensorflowjs>=3.6.0,<4',
+      'tensorflowjs>=4.5,<5',
   ]
 
 
@@ -184,8 +192,8 @@ def make_extra_packages_tf_ranking():
   return [
       'tensorflow-ranking>=0.5,<0.6',
       'struct2tensor' + select_constraint(
-          default='>=0.44,<0.45',
-          nightly='>=0.45.0.dev',
+          default='>=0.45,<0.46',
+          nightly='>=0.46.0.dev',
           git_master='@git+https://github.com/google/struct2tensor@master'),
   ]
 
@@ -195,7 +203,7 @@ def make_extra_packages_tfdf():
   # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
   return [
       # NOTE: TFDF 1.0.1 is only compatible with TF 2.10.x.
-      'tensorflow-decision-forests>=1.0.1,<2',
+      'tensorflow-decision-forests>=1.0.1,<1.9',
   ]
 
 
@@ -204,8 +212,9 @@ def make_extra_packages_flax():
   # Required for the experimental tfx/examples using Flax, e.g.,
   # tfx/examples/penguin.
   return [
-      'jax<1',
-      'jaxlib<1',
+      # TODO(b/324157691): Upgrade jax once we upgrade TF version.
+      'jax<0.4.24',
+      'jaxlib<0.4.24',
       'flax<1',
       'optax<1',
   ]

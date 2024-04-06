@@ -15,9 +15,7 @@
 from typing import Dict, List, Optional
 
 from absl.testing import parameterized
-
 import tensorflow as tf
-
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import latest_policy_model_op
@@ -25,6 +23,7 @@ from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 
+from ml_metadata.proto import metadata_store_pb2
 
 _LATEST_EXPORTED = latest_policy_model_op.Policy.LATEST_EXPORTED
 _LATEST_EVALUATOR_BLESSED = (
@@ -581,6 +580,77 @@ class LatestPolicyModelOpTest(
 
     actual = self._latest_policy_model(policy)['model'][0]
     self.assertArtifactEqual(actual, str_to_model[expected])
+
+  def testLatestPolicyModelOp_ModelIsNotDirectParentOfModelBlessing(self):
+    # Manually create a path:
+    # model_1 -> dummy_execution -> dummy_artifact -> evaluator
+    # -> model_blessing
+    dummy_artifact = self.prepare_tfx_artifact(test_utils.DummyArtifact)
+    self.put_execution(
+        'DummyExecution',
+        inputs={'model': self.unwrap_tfx_artifacts([self.model_1])},
+        outputs={'dummy_artifact': self.unwrap_tfx_artifacts([dummy_artifact])},
+    )
+    model_blessing_1 = self.prepare_tfx_artifact(
+        test_utils.ModelBlessing, custom_properties={'blessed': 1}
+    )
+    self.put_execution(
+        'Evaluator',
+        inputs={'dummy_artifact': self.unwrap_tfx_artifacts([dummy_artifact])},
+        outputs={'blessing': self.unwrap_tfx_artifacts([model_blessing_1])},
+    )
+    actual = self._latest_policy_model(_LATEST_EVALUATOR_BLESSED)
+    self.assertArtifactMapsEqual(
+        actual,
+        {'model': [self.model_1], 'model_blessing': [model_blessing_1]},
+    )
+
+    # Bless model_2 with model_1 as baseline:
+    model_blessing_2 = self.evaluator_bless_model(
+        model=self.model_2, baseline_model=self.model_1
+    )
+    actual = self._latest_policy_model(_LATEST_EVALUATOR_BLESSED)
+    self.assertArtifactMapsEqual(
+        actual,
+        {
+            'model': [self.model_2],
+            'model_blessing': [model_blessing_2],
+        },
+    )
+    # When we restrict the artifacts to just [model_1, model_3], then model_1
+    # should be returned.
+    actual = self._latest_policy_model(
+        _LATEST_EVALUATOR_BLESSED, model=[self.model_1, self.model_3]
+    )
+    self.assertArtifactMapsEqual(
+        actual,
+        {
+            'model': [self.model_1],
+            'model_blessing': [model_blessing_1],
+        },
+    )
+
+  def testLatestPolicyModelOp_FailedExecution(self):
+    self.push_model(self.model_1)
+    model_push_2 = self.push_model(self.model_2)
+
+    # This ModelPush artifact was marked as ABANDONED because the Pusher
+    # execution failed.
+    model_push_3 = self.prepare_tfx_artifact(
+        test_utils.ModelPush, state=metadata_store_pb2.Artifact.State.ABANDONED
+    )
+    self.push_model(self.model_3, model_push=model_push_3)
+
+    # LatestPolicyModel should NOT consider self.model_3 as the latest pushed
+    # model.
+    actual = self._latest_policy_model(_LATEST_PUSHED)
+    self.assertArtifactMapsEqual(
+        actual,
+        {
+            'model': [self.model_2],
+            'model_push': [model_push_2],
+        },
+    )
 
 
 if __name__ == '__main__':

@@ -147,6 +147,7 @@ def _validate_properties_schema(
     # instantiation.
     # We only validate primitive-typed property for now because other types can
     # have nested schema in the YAML spec as well.
+    # pytype: disable=attribute-error  # use-enum-overlay
     if (schema[k]['type'] == _YAML_INT_TYPE and
         v.type != artifact.PropertyType.INT or
         schema[k]['type'] == _YAML_STRING_TYPE and
@@ -155,6 +156,7 @@ def _validate_properties_schema(
         v.type != artifact.PropertyType.FLOAT):
       raise TypeError(f'Property type mismatched at {k} for schema: {schema}. '
                       f'Expected {schema[k]["type"]} but got {v.type}')
+    # pytype: enable=attribute-error  # use-enum-overlay
 
 
 def build_input_artifact_spec(

@@ -28,12 +28,17 @@ class CondContext(dsl_context.DslContext):
   predicate: placeholder.Predicate
 
   def validate(self, containing_nodes: Sequence[base_node.BaseNode]):
-    if any(p.predicate == self.predicate
-           for p in self.ancestors
-           if isinstance(p, CondContext)):
-      raise ValueError(
-          f'Nested conditionals with duplicate predicates: {self.predicate}.'
-          'Consider merging the nested conditionals.')
+    for ancestor_context in self.ancestors:
+      if isinstance(ancestor_context, CondContext):
+        # We can't use == on the objects themselves here, because they're magic
+        # placeholders that would return a _ComparisonPredicate, which is always
+        # truthy. TODO(b/297353695): Detect equivalent predicates too.
+        if id(ancestor_context.predicate) == id(self.predicate):
+          raise ValueError(
+              'Nested conditionals with duplicate predicates:\n'
+              f'{self.predicate} vs\n{ancestor_context.predicate}.\n'
+              'Please merge the redundant conditionals.'
+          )
 
 
 def get_predicates(

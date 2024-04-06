@@ -16,9 +16,10 @@ import collections
 import os
 
 import tensorflow as tf
-
 from tfx import types
+from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -64,14 +65,17 @@ class _TestMixin(test_case_utils.TfxTest):
   def make_model(self, **kwargs) -> types.Artifact:
     return self._make_artifact('Model', **kwargs)
 
-  def fake_execute(self, metadata_handler, pipeline_node, input_map,
-                   output_map):
+  def fake_execute(self, metadata_handle, pipeline_node, input_map, output_map):
     contexts = context_lib.prepare_contexts(
-        metadata_handler, pipeline_node.contexts)
+        metadata_handle, pipeline_node.contexts
+    )
     execution = execution_publish_utils.register_execution(
-        metadata_handler, pipeline_node.node_info.type, contexts, input_map)
-    return execution_publish_utils.publish_succeeded_execution(
-        metadata_handler, execution.id, contexts, output_map)
+        metadata_handle, pipeline_node.node_info.type, contexts, input_map
+    )
+    output_dict, _ = execution_publish_utils.publish_succeeded_execution(
+        metadata_handle, execution.id, contexts, output_map
+    )
+    return output_dict
 
   def assertArtifactEqual(self, expected, actual):
     self.assertProtoPartiallyEquals(
@@ -126,7 +130,7 @@ class InputsUtilsTest(_TestMixin):
         }""", parameters)
 
     parameters = inputs_utils.resolve_parameters(parameters)
-    self.assertEqual(len(parameters), 2)
+    self.assertLen(parameters, 2)
     self.assertEqual(parameters['key_one'], 'value_one')
     self.assertEqual(parameters['key_two'], 2)
 
@@ -166,6 +170,7 @@ class InputsUtilsTest(_TestMixin):
           })
       output_example = output_artifacts['output_examples'][0]
       side_examples = output_artifacts['another_examples'][0]
+      del side_examples
 
       # Publishes second ExampleGen with one output channel with the same output
       # key as the first ExampleGen. However this is not consumed by downstream
@@ -180,7 +185,8 @@ class InputsUtilsTest(_TestMixin):
       # Gets inputs for transform. Should get back what the first ExampleGen
       # published in the `output_examples` channel.
       transform_inputs = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=my_transform)[0]
+          metadata_handle=m, pipeline_node=my_transform
+      )[0]
       self.assertArtifactMapEqual({'examples_1': [output_example],
                                    'examples_2': [output_example]},
                                   transform_inputs)
@@ -191,7 +197,8 @@ class InputsUtilsTest(_TestMixin):
       with self.assertRaisesRegex(
           exceptions.InsufficientInputError, 'InputSpec min_count has not met'):
         inputs_utils.resolve_input_artifacts(
-            metadata_handler=m, pipeline_node=my_trainer)
+            metadata_handle=m, pipeline_node=my_trainer
+        )
 
       # Tries to resolve inputs for transform after adding a new context query
       # to the input spec that refers to a non-existent context. Inputs cannot
@@ -203,7 +210,8 @@ class InputsUtilsTest(_TestMixin):
       with self.assertRaisesRegex(
           exceptions.InsufficientInputError, 'InputSpec min_count has not met'):
         inputs_utils.resolve_input_artifacts(
-            metadata_handler=m, pipeline_node=my_transform)
+            metadata_handle=m, pipeline_node=my_transform
+        )
 
   def testResolveInputArtifacts_OutputKeyUnset(self):
     pipeline = self.load_pipeline_proto(
@@ -222,7 +230,8 @@ class InputsUtilsTest(_TestMixin):
       # Gets inputs for pusher. Should get back what the first Model
       # published in the `output_model` channel.
       pusher_inputs = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=my_pusher)[0]
+          metadata_handle=m, pipeline_node=my_pusher
+      )[0]
       self.assertArtifactMapEqual({'model': [output_model]},
                                   pusher_inputs)
 
@@ -231,23 +240,24 @@ class InputsUtilsTest(_TestMixin):
         'pipeline_for_input_resolver_test.pbtxt')
     self._my_example_gen = self._pipeline.nodes[0].pipeline_node
     self._my_transform = self._pipeline.nodes[2].pipeline_node
-    self._metadata_handler = self.enter_context(self.get_metadata())
+    self._metadata_handle = self.enter_context(self.get_metadata())
 
     examples = [self.make_examples(uri=f'examples/{i+1}')
                 for i in range(num_examples)]
     output_dict = self.fake_execute(
-        self._metadata_handler,
+        self._metadata_handle,
         self._my_example_gen,
         input_map=None,
-        output_map={'output_examples': examples})
+        output_map={'output_examples': examples},
+    )
     self._examples = output_dict['output_examples']
 
   def testResolveInputArtifacts_Normal(self):
     self._setup_pipeline_for_input_resolver_test()
 
     result = inputs_utils.resolve_input_artifacts(
-        pipeline_node=self._my_transform,
-        metadata_handler=self._metadata_handler)
+        pipeline_node=self._my_transform, metadata_handle=self._metadata_handle
+    )
     self.assertIsInstance(result, inputs_utils.Trigger)
     self.assertArtifactMapListEqual([{'examples_1': self._examples,
                                       'examples_2': self._examples}], result)
@@ -261,7 +271,8 @@ class InputsUtilsTest(_TestMixin):
         r'inputs\[examples_1\] has min_count = 2 but only got 1'):
       inputs_utils.resolve_input_artifacts(
           pipeline_node=self._my_transform,
-          metadata_handler=self._metadata_handler)
+          metadata_handle=self._metadata_handle,
+      )
 
   def testResolveParameterSchema(self):
     parameters = pipeline_pb2.NodeParameters()
@@ -293,7 +304,7 @@ class InputsUtilsTest(_TestMixin):
           }
     """
     parameter_schemas = inputs_utils.resolve_parameters_with_schema(parameters)
-    self.assertEqual(len(parameter_schemas), 2)
+    self.assertLen(parameter_schemas, 2)
     self.assertProtoPartiallyEquals(expected_schema,
                                     parameter_schemas['key_one'])
 
@@ -302,19 +313,40 @@ class InputsUtilsTest(_TestMixin):
     text_format.Parse(
         """
         parameters {
-          key: "input_num"
+          key: "input_str"
           value {
             placeholder {
               operator {
-                artifact_value_op {
-                  expression {
+                concat_op {
+                  expressions {
                     operator {
-                      index_op {
+                      artifact_value_op {
                         expression {
-                          placeholder {
-                            key: "_test_placeholder"
+                          operator {
+                            index_op {
+                              expression {
+                                placeholder {
+                                  key: "_test_placeholder"
+                                }
+                              }
+                            }
                           }
                         }
+                      }
+                    }
+                  }
+                  expressions {
+                    value { string_value: "_foo_" }
+                  }
+                  expressions {
+                    operator {
+                      proto_op {
+                        expression {
+                          placeholder {
+                            type: EXEC_INVOCATION
+                          }
+                        }
+                        proto_field_path: ".pipeline_run_id"
                       }
                     }
                   }
@@ -322,22 +354,36 @@ class InputsUtilsTest(_TestMixin):
               }
             }
           }
-        }""", dynamic_parameters)
-    test_artifact = types.standard_artifacts.Integer()
+        }""",
+        dynamic_parameters,
+    )
+    test_artifact = types.standard_artifacts.String()
     test_artifact.uri = self.create_tempfile().full_path
-    test_artifact.value = 42
+    test_artifact.value = 'testvalue'
     input_dict = {'_test_placeholder': [test_artifact]}
     dynamic_parameters_res = inputs_utils.resolve_dynamic_parameters(
-        dynamic_parameters, input_dict)
+        dynamic_parameters,
+        placeholder_utils.ResolutionContext(
+            exec_info=data_types.ExecutionInfo(
+                input_dict=input_dict, pipeline_run_id='testrunid'
+            )
+        ),
+    )
     self.assertLen(dynamic_parameters_res, 1)
-    self.assertEqual(dynamic_parameters_res['input_num'], 42)
+    self.assertEqual(
+        dynamic_parameters_res['input_str'], 'testvalue_foo_testrunid'
+    )
 
     with self.assertRaises(
         exceptions.InvalidArgument,
-        msg='Failed to resolve dynamic exec property. '
-        'Key: input_num. Value: input("_test_placeholder")[0].value'):
-      dynamic_parameters_res = inputs_utils.resolve_dynamic_parameters(
-          dynamic_parameters, {})
+        msg=(
+            'Failed to resolve dynamic exec property. '
+            'Key: input_str. Value: input("_test_placeholder")[0].value'
+        ),
+    ):
+      inputs_utils.resolve_dynamic_parameters(
+          dynamic_parameters, placeholder_utils.ResolutionContext()
+      )
 
 
 if __name__ == '__main__':

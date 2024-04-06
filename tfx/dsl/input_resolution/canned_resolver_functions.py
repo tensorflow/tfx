@@ -13,11 +13,13 @@
 # limitations under the License.
 """Module for public facing, canned resolver functions."""
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 from absl import logging
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution.ops import ops
+from tfx.types import artifact
+from tfx.types import channel as channel_types
 
 
 @resolver_function.resolver_function
@@ -49,13 +51,15 @@ def latest_version(artifacts, n: int = 1):
 
 
 @resolver_function.resolver_function
-def static_range(artifacts,
-                 *,
-                 start_span_number: int = -1,
-                 end_span_number: int = -1,
-                 keep_all_versions: bool = False,
-                 exclude_span_numbers: Sequence[int] = (),
-                 min_spans: Optional[int] = None):
+def static_range(
+    artifacts,
+    *,
+    start_span_number: int = -1,
+    end_span_number: int = -1,
+    keep_all_versions: bool = False,
+    exclude_span_numbers: Sequence[int] = (),
+    min_spans: Optional[int] = None,
+):
   """Returns artifacts with spans in [start_span, end_span] inclusive.
 
   This resolver function is based on the span-version semantics, which only
@@ -112,7 +116,8 @@ def static_range(artifacts,
     min_spans: Minimum number of desired example spans in the range. If
       min_spans is None, and if both end_span_number and start_span_number are
       positive, it is set to end_span_number - start_span_number + 1. Else if
-      min_spans is None, it is set to -1.
+      min_spans is None, it is set to -1, meaning all unique spans will be
+      considered.
 
   Returns:
     Artifacts with spans in [start_span, end_span] inclusive.
@@ -121,10 +126,12 @@ def static_range(artifacts,
       artifacts,
       start_span=start_span_number,
       end_span=end_span_number,
-      keep_all_versions=keep_all_versions)
+      keep_all_versions=keep_all_versions,
+  )
   if exclude_span_numbers:
     resolved_artifacts = ops.ExcludeSpans(
-        resolved_artifacts, denylist=exclude_span_numbers)
+        resolved_artifacts, denylist=exclude_span_numbers
+    )
 
   if min_spans is None:
     # We check that start_span_number and end_span_number are positive to ensure
@@ -132,11 +139,26 @@ def static_range(artifacts,
     # spans will be considered.
     if start_span_number >= 0 and end_span_number >= 0:
       min_spans = end_span_number - start_span_number + 1
+
+      # Decrement min_spans by the number of spans in exclude_span_numbers that
+      # are in the range [start_span_number, end_span_number].
+      num_excluded_spans = 0
+      for excluded_span in exclude_span_numbers:
+        if (
+            excluded_span >= start_span_number
+            and excluded_span <= end_span_number
+        ):
+          num_excluded_spans += 1
+      min_spans -= num_excluded_spans
+
       logging.warning(
           'min_spans for static_range(...) was not set and is being set to '
-          'end_span_number - start_span_number + 1 = %s - %s + 1 = %s.',
+          'end_span_number - start_span_number + 1 - '
+          '(number of excluded spans in the range [start_span, end_span]) = '
+          '%s - %s + 1 - %s = %s.',
           end_span_number,
           start_span_number,
+          num_excluded_spans,
           min_spans,
       )
     else:
@@ -150,14 +172,17 @@ def static_range(artifacts,
 
 
 @resolver_function.resolver_function
-def rolling_range(artifacts,
-                  *,
-                  start_span_number: int = 0,
-                  num_spans: int = 1,
-                  skip_num_recent_spans: int = 0,
-                  keep_all_versions: bool = False,
-                  exclude_span_numbers: Sequence[int] = (),
-                  min_spans: Optional[int] = None):
+def rolling_range(
+    artifacts,
+    *,
+    start_span_number: int = 0,
+    num_spans: int = 1,
+    skip_num_recent_spans: int = 0,
+    keep_all_versions: bool = False,
+    exclude_span_numbers: Sequence[int] = (),
+    min_spans: Optional[int] = None,
+    version_sort_keys: Sequence[str] = (),
+):
   """Returns artifacts with spans in a rolling range.
 
   A rolling range covers the latest (largest) spans. It's calculated in the
@@ -176,7 +201,9 @@ def rolling_range(artifacts,
   sorted_spans[:-skip_num_recent_spans][-num_spans:]
 
   This resolver function is based on the span-version semantics, which only
-  considers the latest version of each span. If you want to keep all versions,
+  considers the latest version of each span. The version semantics can be
+  optionally changed by providing a list of artifact attributes that can be used
+  to sort versions within a particular span. If you want to keep all versions,
   then set keep_all_versions=True. Input artifacts must have both "span" int
   property and "version" int property.
 
@@ -235,6 +262,11 @@ def rolling_range(artifacts,
     exclude_span_numbers: The span numbers to exclude.
     min_spans: Minimum number of desired example spans in the range. If
       min_spans is None, it is set to num_spans.
+    version_sort_keys: List of string artifact attributes to sort or filter the
+      versions witin the spans, applied in order of specification. Nested keys
+      can use '.' separator for e.g. 'mlmd_artifact.create_time_since_epoch'. It
+      can be used to override the default behavior, which is sort by version
+      number and break ties by create time and id.
 
   Returns:
     Artifacts with spans in the rolling range.
@@ -244,10 +276,13 @@ def rolling_range(artifacts,
       min_span=start_span_number,
       n=num_spans,
       skip_last_n=skip_num_recent_spans,
-      keep_all_versions=keep_all_versions)
+      keep_all_versions=keep_all_versions,
+      version_sort_keys=version_sort_keys,
+  )
   if exclude_span_numbers:
     resolved_artifacts = ops.ExcludeSpans(
-        resolved_artifacts, denylist=exclude_span_numbers)
+        resolved_artifacts, denylist=exclude_span_numbers
+    )
 
   if min_spans is None:
     logging.warning(
@@ -351,9 +386,11 @@ def latest_pipeline_run_outputs(pipeline, output_keys: Sequence[str] = ()):
     if output_key not in pipeline.outputs:
       raise ValueError(
           f'Output key {output_key} does not exist in pipeline {pipeline.id}. '
-          f'Available: {list(pipeline.outputs)}')
+          f'Available: {list(pipeline.outputs)}'
+      )
   return ops.LatestPipelineRunOutputs(
-      pipeline_name=pipeline.pipeline_name, output_keys=output_keys)
+      pipeline_name=pipeline.pipeline_name, output_keys=output_keys
+  )
 
 
 @latest_pipeline_run_outputs.output_type_inferrer
@@ -379,13 +416,15 @@ def _infer_latest_pipeline_run_type(pipeline, output_keys: Sequence[str] = ()):
 
 
 @resolver_function.resolver_function(unwrap_dict_key='window')
-def sequential_rolling_range(artifacts,
-                             *,
-                             start_span_number: Optional[int] = None,
-                             num_spans: int = 1,
-                             skip_num_recent_spans: int = 0,
-                             keep_all_versions: bool = False,
-                             exclude_span_numbers: Sequence[int] = ()):
+def sequential_rolling_range(
+    artifacts,
+    *,
+    start_span_number: Optional[int] = None,
+    num_spans: int = 1,
+    skip_num_recent_spans: int = 0,
+    keep_all_versions: bool = False,
+    exclude_span_numbers: Sequence[int] = (),
+):
   """Returns artifacts with spans in a sequential rolling range.
 
   Sequential rolling range is a sliding window on the oldest consecutive spans.
@@ -461,11 +500,316 @@ def sequential_rolling_range(artifacts,
       first_span=start_span_number if start_span_number is not None else -1,
       skip_last_n=skip_num_recent_spans,
       keep_all_versions=keep_all_versions,
-      denylist=exclude_span_numbers)
+      denylist=exclude_span_numbers,
+  )
 
   return ops.SlidingWindow(resolved_artifacts, window_size=num_spans)
 
 
 @sequential_rolling_range.output_type_inferrer
 def _infer_seqential_rolling_range_type(channel, **kwargs):  # pylint: disable=unused-argument
+  return {'window': channel.type}
+
+
+@resolver_function.resolver_function()
+def paired_spans(
+    artifacts,
+    *,
+    match_version: bool = True,
+    keep_all_versions: bool = False,
+):
+  """Pairs up Examples from different channels, matching by (span, version).
+
+  This enables grouping together Artifacts from separate channels.
+
+  Example usage:
+
+  NOTE: Notation here is `{artifact_type}:{span}:{version}`
+
+  >>> paired_spans({'x': channel([X:0:0, X:0:1, X:1:0, X:2:0]),
+                    'y': channel([Y:0:0, Y:0:1, Y:1:0, Y:3:0])})
+  Loopable([
+      {'x': channel([X:0:1]), 'y': channel([Y:0:1])},
+      {'x': channel([X:1:0]), 'y': channel([Y:1:0])},
+  ])
+
+  Note that the span `0` has two versions, but only the latest version `1` is
+  selected. This is the default semantics of the span & version where only the
+  latest version is considered valid of each span.
+
+  If you want to select all versions including the non-latest ones, you can
+  set `keep_all_versions=True`.
+
+  >>> paired_spans({'x': channel([X:0:0, X:0:1, X:1:0]),
+                    'y': channel([Y:0:0, Y:0:1, Y:1:0]},
+                    keep_all_versions=True)
+  Loopable([
+      {'x': channel([X:0:0]), 'y': channel([Y:0:0])},
+      {'x': channel([X:0:1]), 'y': channel([Y:0:1])},
+      {'x': channel([X:1:0]), 'y': channel([Y:1:0])},
+  ])
+
+  By default, the version property is considered for pairing, meaning that the
+  version should exact match, otherwise it is not considered the pair.
+
+  >>> paired_spans({'x': channel([X:0:999, X:1:999]),
+                    'y': channel([Y:0:0, Y:1:0])})
+  Loopable([])
+
+  If you do not care about version, and just want to pair artifacts that
+  consider only the span property (and select latest version for each span),
+  you can set `match_version=False`.
+
+  >>> paired_spans({'x': channel([X:0:999, X:1:999]),
+                    'y': channel([Y:0:0, Y:1:0, Y:1:1])},
+                    match_version=False)
+  Loopable([
+      {'x': channel([X:0:999]), 'y': channel([Y:0:0])},
+      {'x': channel([X:1:999]), 'y': channel([Y:1:1])},
+  ])
+
+  Since `match_version=False` only consideres the latest version of each span,
+  this cannot be used together with `keep_all_versions=True`.
+
+  As `paired_spans` returns a `Loopable`, it must be used together with
+  `ForEach`. For example:
+
+  ```python
+  with ForEach(paired_spans({'a' : channel_a, 'b' : channel_b})) as pair:
+    component = Component(a=pair['a'], b=pair['b'])
+  ```
+
+  NOTE: `paired_spans` can pair Artifacts from N >= 2 channels.
+
+  Args:
+    artifacts: A dictionary of artifacts.
+    match_version: Whether the version of each span should exactly match.
+    keep_all_versions: Whether to pair up all versions of artifacts, or only the
+      latest version. Defaults to False. Requires match_version = True.
+
+  Returns:
+    A list of artifact dicts where each dict has as its key the channel key,
+    and as its value has a list with a single artifact having the same span and
+    version across the dict.
+  """
+  if keep_all_versions and not match_version:
+    raise ValueError('keep_all_versions = True requires match_version = True.')
+
+  # TODO: b/322812375 - Remove kwargs dict handling once orchestrator knows
+  # match_version argument.
+  kwargs = {}
+  if not match_version:
+    kwargs['match_version'] = False
+  return ops.PairedSpans(
+      artifacts,
+      keep_all_versions=keep_all_versions,
+      **kwargs,
+  )
+
+
+@resolver_function.resolver_function
+def filter_property_equal(
+    artifacts,
+    *,
+    key: str,
+    value: Union[int, float, str, bool, artifact.JsonValueType],
+):
+  """Returns artifacts with matching property values.
+
+  Example usage:
+
+  Consider artifacts [A, B, C] with bool property 'blessed' set to
+  [True, True, False].
+
+  filter_property_equal(
+      [A, B, C],
+      property_key='blessed',
+      property_value=False,
+  )
+
+  will return [C].
+
+  Args:
+    artifacts: The list of artifacts to filter.
+    key: The property key to match by.
+    value: The expected property value to match by.
+
+  Returns:
+    Artifact(s) with matching custom property (or property) values.
+  """
+  return ops.EqualPropertyValues(
+      artifacts,
+      property_key=key,
+      property_value=value,
+      is_custom_property=False,
+  )
+
+
+@resolver_function.resolver_function
+def filter_custom_property_equal(
+    artifacts,
+    *,
+    key: str,
+    value: Union[int, float, str, bool, artifact.JsonValueType],
+):
+  """Returns artifacts with matching custom property values.
+
+  Example usage:
+
+  Consider artifact [A, B, C] with int custom property 'purity' set to
+  [1, 1, 2].
+
+  filter_custom_property_equal(
+      [A, B, C],
+      property_key='purity',
+      property_value=2,
+  )
+
+  will return [C].
+
+  Args:
+    artifacts: The list of artifacts to filter.
+    key: The property key to match by.
+    value: The expected property value to match by.
+
+  Returns:
+    Artifact(s) with matching custom property (or property) values.
+  """
+  return ops.EqualPropertyValues(
+      artifacts,
+      property_key=key,
+      property_value=value,
+      is_custom_property=True,
+  )
+
+
+@resolver_function.resolver_function
+def _slice(artifacts, **kwargs):
+  # It's important to not pass the None value which cannot be serialized to IR.
+  kwargs = {k: v for k, v in kwargs.items() if v is not None}
+  return ops.Slice(artifacts, **kwargs)
+
+
+def pick(channel: channel_types.BaseChannel, i: int, /):
+  """Pick an i'th artifact from channel.
+
+  Like in python, negative indexing is allowed.
+
+  If the index is out of range, in synchronous pipeline it raises an error and
+  the component would not get executed. In asynchronous pipeline, it will wait
+  until the input length is sufficient to handle the index.
+
+  Usage:
+
+  ```python
+  # In ASYNC pipeline:
+  with ForEach(example_gen.outputs['examples']) as each_example:
+    statistics_gen = StatisticsGen(examples=each_example)
+
+  latest_statistics_pair = latest_created(
+      statistics_gen.outputs['statistics'], n=2
+  )
+  validator = DistributionValidator(
+      baseline_statistics=pick(latest_statistics_pair, 0),
+      statistics=pick(latest_statistics_pair, 1),
+      ...
+  )
+  ```
+
+  Args:
+    channel: A channel instance (e.g. `my_component.outputs['x']`).
+    i: An index to pick. Can be negative.
+
+  Returns:
+    A channel that represents `inputs[i]`.
+  """
+  return _slice(channel, start=i, stop=(i + 1) or None, min_count=1)
+
+
+def slice(  # pylint: disable=redefined-builtin
+    channel: channel_types.BaseChannel,
+    /,
+    start: Optional[int] = None,
+    stop: Optional[int] = None,
+    min_count: Optional[int] = None,
+):
+  """Pick slice(start, stop) of the input artifacts.
+
+  Like in python, negative indexing is allowed.
+
+  If the range is larger than the number of artifacts in the channel, then like
+  in python slice, the result would be truncated to the available values. You
+  can use min_count to ensure the range has enough values. In synchronous
+  pipeline, it is an error if the min_count is not met. In asynchronous
+  pipeline, it will wait until min_count is met.
+
+  None value in the start or stop index means beginning and the end of the range
+  respectively. For example, `pick_range(x, start=-2, end=None)` means `x[-2:]`.
+
+  Usage:
+
+  ```python
+  # In asynchronous pipeline
+  last_week_before_yesterday = pick_range(
+      example_gen.outputs['examples'], start=-7, stop=-1
+  )
+  with ForEach(last_week_before_yesterday) as each_example:
+    evaluator = Evaluator(example=each_example, model=latest_model)
+  ```
+
+  Args:
+    channel: A channel instance (e.g. `my_component.outputs['x']`).
+    start: A start index (inclusive) of the range. Can be negative.
+    stop: A stop index (exclusive) of the range. Can be negative.
+    min_count: A minimum number of values the range should contain. When
+      specified, synchronous (DAG) pipeline will fail if the min_count is not
+      met. Asynchronous (continuous) pipeine will wait until min_count is met.
+
+  Returns:
+    A channel that represents `inputs[start:stop]` slice range.
+  """
+  # Slice(start=None, stop=None) is a no-op and we can return the input as is.
+  if start is None and stop is None:
+    return channel
+  return _slice(channel, start=start, stop=stop, min_count=min_count)
+
+
+@resolver_function.resolver_function(unwrap_dict_key='window')
+def sliding_window(channel: channel_types.BaseChannel, window_size: int):
+  """Returns artifacts with a sliding window applied.
+
+  For example, for a channel with artifacts [A, B, C, D] and window_size = 2,
+  [[A, B], [B, C], [C, D]] will be returned.
+
+  For Examples artifacts, sequential_rolling_range() should be used instead.
+
+  Because sliding_window() returns multiple windows, it must be used
+  together with ForEach.
+
+  Usage:
+
+  ```python
+  # In ASYNC pipeline:
+  with ForEach(
+      sliding_window(statistics_gen.outputs['statistics'], window_size=2)
+  ) as statistics_pair:
+    distribution_validator = DistributionValidator(
+        baseline_statistics=pick(statistics_pair, 0),
+        statistics=pick(statistics_pair, 1),
+        ...
+    )
+  ```
+
+  Args:
+    channel: A channel instance (e.g. `my_component.outputs['x']`).
+    window_size: The length of the sliding window, must be > 0.
+
+  Returns:
+    Artifacts with a sliding window applied.
+  """
+  return ops.SlidingWindow(channel, window_size=window_size)
+
+
+@sliding_window.output_type_inferrer
+def _infer_sliding_window_type(channel: channel_types.BaseChannel, **kwargs):  # pylint: disable=unused-argument
   return {'window': channel.type}

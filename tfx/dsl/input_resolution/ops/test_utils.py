@@ -77,6 +77,10 @@ class Model(DummyArtifact):
   TYPE_NAME = ops_utils.MODEL_TYPE_NAME
 
 
+class ModelRun(DummyArtifact):
+  TYPE_NAME = ops_utils.MODEL_RUN_TYPE_NAME
+
+
 class ModelBlessing(DummyArtifact):
   TYPE_NAME = ops_utils.MODEL_BLESSING_TYPE_NAME
 
@@ -95,6 +99,24 @@ class FakeSpec(component_spec.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {
       'x': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      ops_utils.ROOT_ARTIFACT_KEY: component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      'examples': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      'transform_graph': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      'model_blessing': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      'model_push_path': component_spec.ChannelParameter(
+          type=tfx_artifact.Artifact, optional=True
+      ),
+      'model_run': component_spec.ChannelParameter(
           type=tfx_artifact.Artifact, optional=True
       ),
       ops_utils.MODEL_KEY: component_spec.ChannelParameter(
@@ -196,6 +218,17 @@ class ResolverTestCase(
     """Return the underlying MLMD Artifacta of a list of TFleX Artifacts."""
     return [a.mlmd_artifact for a in artifacts]
 
+  def build_node_context(
+      self,
+      pipeline_name: str,
+      node_id: str,
+  ):
+    """Returns a "node" Context with name "pipeline_name.node_id."""
+    context = self.put_context(
+        context_type='node', context_name=f'{pipeline_name}.{node_id}'
+    )
+    return context
+
   def create_examples(
       self,
       spans_and_versions: Sequence[Tuple[int, int]],
@@ -216,6 +249,23 @@ class ResolverTestCase(
         contexts=contexts,
     )
     return examples
+
+  def transform_examples(
+      self,
+      examples: List[types.Artifact],
+      contexts: Sequence[metadata_store_pb2.Context] = (),
+  ) -> types.Artifact:
+    inputs = {'examples': self.unwrap_tfx_artifacts(examples)}
+    transform_graph = self.prepare_tfx_artifact(TransformGraph)
+    self.put_execution(
+        'Transform',
+        inputs=inputs,
+        outputs={
+            'transform_graph': self.unwrap_tfx_artifacts([transform_graph])
+        },
+        contexts=contexts,
+    )
+    return transform_graph
 
   def train_on_examples(
       self,
@@ -287,10 +337,12 @@ class ResolverTestCase(
   def push_model(
       self,
       model: types.Artifact,
+      model_push: Optional[types.Artifact] = None,
       contexts: Sequence[metadata_store_pb2.Context] = (),
   ):
     """Add an Execution to MLMD where the Pusher pushes the model."""
-    model_push = self.prepare_tfx_artifact(ModelPush)
+    if model_push is None:
+      model_push = self.prepare_tfx_artifact(ModelPush)
     self.put_execution(
         'ServomaticPusher',
         inputs={'model_export': self.unwrap_tfx_artifacts([model])},

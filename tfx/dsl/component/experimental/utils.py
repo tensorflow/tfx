@@ -231,7 +231,6 @@ def _create_executor_spec_instance(
     arg_defaults: Dict[str, Any],
     return_values_optionality: Optional[Dict[str, bool]] = None,
     json_compatible_outputs: Optional[Dict[str, Any]] = None,
-    ingress_previous_execution_limit: Optional[int] = None,
 ) -> executor_spec.ExecutorClassSpec:
   """Creates the executor spec instance for the func-generated component.
 
@@ -249,34 +248,25 @@ def _create_executor_spec_instance(
     json_compatible_outputs: A dict from output names that have json compatible
       types to their typehints. Json compatibility is determined by
       `tfx.dsl.component.experimental.json_compat.is_json_compatible`.
-    ingress_previous_execution_limit: Maximum number of latest previous
-      executions used by ingress python component, only applies to ingress
-      python component.
 
   Returns:
     an instance of `executor_spec_class` whose executor_class is a subclass of
     `base_executor_class`.
   """
-  executor_class_attribute_dict = {
-      '_ARG_FORMATS': arg_formats,
-      '_ARG_DEFAULTS': arg_defaults,
-      # The function needs to be marked with `staticmethod` so that later
-      # references of `self._FUNCTION` do not result in a bound method (i.e.
-      # one with `self` as its first parameter).
-      '_FUNCTION': staticmethod(func),  # pytype: disable=not-callable
-      '_RETURNED_VALUES': return_values_optionality,
-      '_RETURN_JSON_COMPAT_TYPEHINT': json_compatible_outputs,
-      '__module__': func.__module__,
-  }
-
-  if ingress_previous_execution_limit:
-    executor_class_attribute_dict['_INGRESS_PREVIOUS_EXECUTION_LIMIT'] = (
-        ingress_previous_execution_limit
-    )
   executor_class = type(
       '%s_Executor' % func.__name__,
       (base_executor_class,),
-      executor_class_attribute_dict,
+      {
+          '_ARG_FORMATS': arg_formats,
+          '_ARG_DEFAULTS': arg_defaults,
+          # The function needs to be marked with `staticmethod` so that later
+          # references of `self._FUNCTION` do not result in a bound method (i.e.
+          # one with `self` as its first parameter).
+          '_FUNCTION': staticmethod(func),  # pytype: disable=not-callable
+          '_RETURNED_VALUES': return_values_optionality,
+          '_RETURN_JSON_COMPAT_TYPEHINT': json_compatible_outputs,
+          '__module__': func.__module__,
+      },
   )
   # Expose the generated executor class in the same module as the decorated
   # function. This is needed so that the executor class can be accessed at the
@@ -303,7 +293,6 @@ def create_component_class(
     json_compatible_inputs: Optional[Dict[str, Any]] = None,
     json_compatible_outputs: Optional[Dict[str, Any]] = None,
     return_values_optionality: Optional[Dict[str, bool]] = None,
-    ingress_previous_execution_limit: Optional[int] = None,
 ) -> Type[base_component.BaseComponent]:
   """Creates the component class for the func-generated component.
 
@@ -330,9 +319,6 @@ def create_component_class(
       `tfx.dsl.component.experimental.json_compat.is_json_compatible`.
     return_values_optionality: A dict from output names that are primitive type
       values returned from the user function to whether they are `Optional`.
-    ingress_previous_execution_limit: maximum number of latest previous
-      executions used by ingress python component, only applies to ingress
-      python component.
 
   Returns:
     a subclass of `base_component_class`.
@@ -357,7 +343,6 @@ def create_component_class(
       arg_defaults,
       return_values_optionality,
       json_compatible_outputs,
-      ingress_previous_execution_limit=ingress_previous_execution_limit,
   )
 
   return type(

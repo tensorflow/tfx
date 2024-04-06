@@ -8,18 +8,9 @@
 # constraint if it is installed either directly or transitively by the
 # dependencies.
 
-# TODO(b/232490018) Remove pinned Cython after pycocotools issue resolved.
-Cython<1
+# TODO(b/321609768): Remove pinned Flask-session version after resolving the issue.
+Flask-session<0.6.0
 
-# TODO(b/265052215): Remove pinned version after resolving the issue.
-cachelib<0.10.0
-
-# TODO(b/281467874): Remove this after upgrading OpenSSL version in our test
-# environment.
-urllib3<2
-
-# TODO(b/291837844): Remove this after upgrading PyYaml to >=6.0.1.
-pyyaml==5.3.1
-
-# TODO(b/292011737): Remove this after orbax release a new version after 0.1.8.
-orbax!=0.1.8
+#TODO(b/329181965): Remove once we migrate TFX to 2.16.
+tensorflow<2.16
+tensorflow-text<2.16

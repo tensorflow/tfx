@@ -27,11 +27,11 @@ class Publisher:
   """Publish execution to metadata.
 
   Attributes:
-    _metadata_handler: An instance of Metadata.
+    _metadata_handle: An instance of Metadata.
   """
 
-  def __init__(self, metadata_handler: metadata.Metadata):
-    self._metadata_handler = metadata_handler
+  def __init__(self, metadata_handle: metadata.Metadata):
+    self._metadata_handle = metadata_handle
 
   def publish_execution(
       self,
@@ -61,7 +61,8 @@ class Publisher:
     logging.debug('Outputs: %s', output_artifacts)
     logging.debug('Execution properties: %s', exec_properties)
 
-    self._metadata_handler.publish_execution(
+    self._metadata_handle.publish_execution(
         component_info=component_info,
         output_artifacts=output_artifacts,
-        exec_properties=exec_properties)
+        exec_properties=exec_properties,
+    )

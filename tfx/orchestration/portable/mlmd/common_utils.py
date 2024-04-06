@@ -42,7 +42,7 @@ def _assert_metadata_type_match(
 
 
 def register_type_if_not_exist(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     metadata_type: MetadataType,
 ) -> MetadataType:
   """Registers a metadata type if not exists.
@@ -51,7 +51,7 @@ def register_type_if_not_exist(
   to register new metadata type.
 
   Args:
-    metadata_handler: A handler to access MLMD store.
+    metadata_handle: A handler to access MLMD store.
     metadata_type: The metadata type to register if does not exist.
 
   Returns:
@@ -65,14 +65,14 @@ def register_type_if_not_exist(
     return metadata_type
 
   if isinstance(metadata_type, metadata_store_pb2.ArtifactType):
-    get_type_handler = metadata_handler.store.get_artifact_type
-    put_type_handler = metadata_handler.store.put_artifact_type
+    get_type_handler = metadata_handle.store.get_artifact_type
+    put_type_handler = metadata_handle.store.put_artifact_type
   elif isinstance(metadata_type, metadata_store_pb2.ContextType):
-    get_type_handler = metadata_handler.store.get_context_type
-    put_type_handler = metadata_handler.store.put_context_type
+    get_type_handler = metadata_handle.store.get_context_type
+    put_type_handler = metadata_handle.store.put_context_type
   elif isinstance(metadata_type, metadata_store_pb2.ExecutionType):
-    get_type_handler = metadata_handler.store.get_execution_type
-    put_type_handler = metadata_handler.store.put_execution_type
+    get_type_handler = metadata_handle.store.get_execution_type
+    put_type_handler = metadata_handle.store.put_execution_type
   else:
     raise ValueError('Unexpected value type: %s.' % type(metadata_type))
 

@@ -37,15 +37,17 @@ class ImporterTaskScheduler(task_scheduler.TaskScheduler[task_lib.ExecNodeTask]
         output_spec.artifact_spec.additional_custom_properties)
 
     output_artifacts = importer.generate_output_dict(
-        metadata_handler=self.mlmd_handle,
+        metadata_handle=self.mlmd_handle,
         uri=cast(str, self.task.exec_properties[importer.SOURCE_URI_KEY]),
         properties=properties,
         custom_properties=custom_properties,
         reimport=bool(self.task.exec_properties[importer.REIMPORT_OPTION_KEY]),
         output_artifact_class=types.Artifact(
-            output_spec.artifact_spec.type).type,
+            output_spec.artifact_spec.type
+        ).type,
         mlmd_artifact_type=output_spec.artifact_spec.type,
-        output_key=output_key)
+        output_key=output_key,
+    )
 
     return task_scheduler.TaskSchedulerResult(
         status=status_lib.Status(code=status_lib.Code.OK),

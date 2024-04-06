@@ -28,7 +28,7 @@ from tfx.utils import dependency_utils
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
   _BeamPipeline = beam.Pipeline
-except ModuleNotFoundError:
+except Exception:  # pylint: disable=broad-exception-caught
   beam = None
   _BeamPipeline = Any
 
@@ -68,11 +68,11 @@ class BaseBeamExecutor(BaseExecutor):
     """Constructs a beam based executor."""
     super().__init__(context)
 
-    self._beam_pipeline_args = None
+    self._beam_pipeline_args = []
     self._make_beam_pipeline_fn = None
     if context:
       if isinstance(context, BaseBeamExecutor.Context):
-        self._beam_pipeline_args = context.beam_pipeline_args
+        self._beam_pipeline_args = context.beam_pipeline_args or []
         self._make_beam_pipeline_fn = context.make_beam_pipeline_fn
       else:
         raise ValueError('BaseBeamExecutor found initialized with '

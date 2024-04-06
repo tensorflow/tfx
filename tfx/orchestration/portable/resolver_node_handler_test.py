@@ -97,7 +97,8 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
 
     with self._mlmd_connection as m:
       resolved_inputs = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=self._my_resolver)
+          metadata_handle=m, pipeline_node=self._my_resolver
+      )
       self.assertLen(resolved_inputs, 1)
       self.assertIn('models', resolved_inputs[0])
       self.assertLen(resolved_inputs[0]['models'], 1)

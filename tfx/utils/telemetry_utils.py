@@ -14,10 +14,11 @@
 """Utilities for gathering telemetry for TFX components and pipelines."""
 
 import contextlib
+import functools
 import re
 import sys
 import threading
-from typing import Dict, List
+from typing import Dict, List, Any, Callable
 
 from absl import logging
 from googleapiclient import http
@@ -104,11 +105,18 @@ def make_beam_labels_args() -> List[str]:
   return result
 
 
-def noop_telemetry(*args, **kwargs) -> None:
-  """This function is a no-op in OSS."""
-  del args
-  del kwargs
-  return None
+def noop_telemetry(
+    event_metric: Any
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+  del event_metric
+  def instantiated_decorator(function):
+    @functools.wraps(function)
+    def wrapper(*args, **kwargs):
+      return function(*args, **kwargs)
+
+    return wrapper
+
+  return instantiated_decorator
 
 
 class TFXHttpRequest(http.HttpRequest):
