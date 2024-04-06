@@ -8,8 +8,9 @@
 # constraint if it is installed either directly or transitively by the
 # dependencies.
 
-# TODO(b/232490018) Remove pinned Cython after pycocotools issue resolved.
-Cython<1
+# TODO(b/321609768): Remove pinned Flask-session version after resolving the issue.
+Flask-session<0.6.0
 
-# TODO(b/265052215): Remove pinned version after resolving the issue.
-cachelib<0.10.0
+#TODO(b/329181965): Remove once we migrate TFX to 2.16.
+tensorflow<2.16
+tensorflow-text<2.16

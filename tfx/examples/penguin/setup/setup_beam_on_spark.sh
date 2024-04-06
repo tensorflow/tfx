@@ -52,9 +52,9 @@ function start_spark() {
   ./sbin/stop-all.sh
   # Authenticate to avoid CVE-2018-17190
   # https://spark.apache.org/security.html
-  echo -e "spark.authenticate true" > $SPARK_CONF
-  echo -e "spark.authenticate.secret $SPARK_SECRET" > $SPARK_CONF
-  echo -e "spark.master.rest.enabled true" > $SPARK_CONF
+  echo -e "spark.authenticate true" >> $SPARK_CONF
+  echo -e "spark.authenticate.secret $SPARK_SECRET" >> $SPARK_CONF
+  echo -e "spark.master.rest.enabled true" >> $SPARK_CONF
   # default web UI port (8080) is also used by Airflow
   ./sbin/start-master.sh -h $SPARK_HOST -p $SPARK_PORT --webui-port 8081 --properties-file $SPARK_CONF
   ./sbin/start-slave.sh $SPARK_LEADER_URL --properties-file $SPARK_CONF

@@ -36,6 +36,38 @@ class ExamplesUtilsTest(tf.test.TestCase):
     self.assertEqual(examples_utils.get_payload_format_string(examples),
                      'FORMAT_PROTO')
 
+  def test_get_split_pattern(self):
+    examples = standard_artifacts.Examples()
+    examples.uri = '/test/uri'
+    examples.split_names = '["train"]'
+    self.assertEqual(
+        examples_utils.get_split_file_patterns([examples], 'train'),
+        ['/test/uri/Split-train/*'],
+    )
+    with self.assertRaises(ValueError):
+      examples_utils.get_split_file_patterns([examples], 'missing_split')
+
+  def test_get_split_pattern_with_custom_pattern(self):
+    examples1 = standard_artifacts.Examples()
+    examples1.uri = '/test/uri'
+    examples1.split_names = '["train"]'
+
+    examples2 = standard_artifacts.Examples()
+    examples2.uri = '/test/uri'
+    k, v = examples_utils.get_custom_split_patterns_key_and_property(
+        {'train': 'subdir/train-*-of-*'}
+    )
+    examples2.set_string_custom_property(k, v)
+
+    self.assertEqual(
+        ['/test/uri/Split-train/*', '/test/uri/subdir/train-*-of-*'],
+        examples_utils.get_split_file_patterns([examples1, examples2], 'train'),
+    )
+    with self.assertRaises(ValueError):
+      examples_utils.get_split_file_patterns(
+          [examples1, examples2], 'missing_split'
+      )
+
   def test_get_payload_format_invalid_artifact_type(self):
     artifact = standard_artifacts.Schema()
     with self.assertRaises(AssertionError):

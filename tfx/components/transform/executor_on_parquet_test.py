@@ -75,8 +75,10 @@ class ExecutorOnParquetTest(executor_test.ExecutorTest):
     for filepath in example_files:
       directory, filename = os.path.split(filepath)
       _, parent_dir_name = os.path.split(directory)
-      dest_dir1 = os.path.join(cls._ARTIFACT1_URI, parent_dir_name)
-      dest_dir2 = os.path.join(cls._ARTIFACT2_URI, parent_dir_name)
+      dest_dir1 = os.path.join(
+          cls._ARTIFACT_URI_TEMPLATE.format(1), parent_dir_name)
+      dest_dir2 = os.path.join(
+          cls._ARTIFACT_URI_TEMPLATE.format(2), parent_dir_name)
       fileio.makedirs(dest_dir1)
       fileio.makedirs(dest_dir2)
       dest_path1 = os.path.join(dest_dir1, filename[:-3] + '.parquet')
@@ -85,7 +87,8 @@ class ExecutorOnParquetTest(executor_test.ExecutorTest):
 
     # Duplicate the number of train and eval records such that
     # second artifact has twice as many as first.
-    artifact2_pattern = os.path.join(cls._ARTIFACT2_URI, '*', '*')
+    artifact2_pattern = os.path.join(
+        cls._ARTIFACT_URI_TEMPLATE.format(2), '*', '*')
     artifact2_files = fileio.glob(artifact2_pattern)
     for filepath in artifact2_files:
       directory, filename = os.path.split(filepath)

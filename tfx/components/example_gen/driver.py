@@ -65,9 +65,9 @@ def update_output_artifact(
 class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
   """Custom driver for ExampleGen."""
 
-  def __init__(self, metadata_handler: metadata.Metadata):
-    base_driver.BaseDriver.__init__(self, metadata_handler)
-    ir_base_driver.BaseDriver.__init__(self, metadata_handler)
+  def __init__(self, metadata_handle: metadata.Metadata):
+    base_driver.BaseDriver.__init__(self, metadata_handle)
+    ir_base_driver.BaseDriver.__init__(self, metadata_handle)
 
   def get_input_processor(
       self,

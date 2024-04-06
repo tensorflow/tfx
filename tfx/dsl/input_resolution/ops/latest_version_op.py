@@ -68,7 +68,12 @@ class LatestVersion(
 
     # Consider span in the sorting only if all the artifacts have the span
     # PROPERTY.
-    key = lambda a: (a.span, a.version, a.id)
+    key = lambda a: (  # pylint: disable=g-long-lambda
+        a.span,
+        a.version,
+        a.mlmd_artifact.create_time_since_epoch,
+        a.id,
+    )
     for artifact in valid_artifacts:
       if ('span' not in artifact.PROPERTIES or
           artifact.PROPERTIES['span'].type != types.artifact.PropertyType.INT):

@@ -16,7 +16,7 @@
 import datetime
 import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, MutableMapping
 from absl import logging
 
 from kfp.pipeline_spec import pipeline_spec_pb2
@@ -37,6 +37,11 @@ KUBEFLOW_TFX_CMD = (
     'python', '-m',
     'tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor')
 
+# If the default_image is set to be a map, the value of this key is used for the
+# components whose images are not specified. If not specified, this key will
+# have the value of default TFX container image.
+_DEFAULT_IMAGE_PATH_KEY = pipeline_builder.DEFAULT_IMAGE_PATH_KEY
+
 # Current schema version for the API proto.
 _SCHEMA_VERSION = '2.0.0'
 
@@ -53,18 +58,21 @@ def _get_current_time():
 class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
   """Runtime configuration specific to execution on Kubeflow V2 pipelines."""
 
-  def __init__(self,
-               display_name: Optional[str] = None,
-               default_image: Optional[str] = None,
-               default_commands: Optional[List[str]] = None,
-               **kwargs):
+  def __init__(
+      self,
+      display_name: Optional[str] = None,
+      default_image: Optional[Union[str, MutableMapping[str, str]]] = None,
+      default_commands: Optional[List[str]] = None,
+      **kwargs
+  ):
     """Constructs a Kubeflow V2 runner config.
 
     Args:
       display_name: Optional human-readable pipeline name. Defaults to the
         pipeline name passed into `KubeflowV2DagRunner.run()`.
       default_image: The default TFX image to be used if not overriden by per
-        component specification.
+        component specification. It can be a map whose key is a component id and
+        value is an image path to set the image by a component level.
       default_commands: Optionally specifies the commands of the provided
         container image. When not provided, the default `ENTRYPOINT` specified
         in the docker image is used. Note: the commands here refers to the K8S
@@ -79,6 +87,11 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
     super().__init__(**kwargs)
     self.display_name = display_name
     self.default_image = default_image or _KUBEFLOW_TFX_IMAGE
+    if (
+        isinstance(self.default_image, MutableMapping)
+        and self.default_image.get(_DEFAULT_IMAGE_PATH_KEY) is None
+    ):
+      self.default_image[_DEFAULT_IMAGE_PATH_KEY] = _KUBEFLOW_TFX_IMAGE
     if default_commands is None:
       self.default_commands = KUBEFLOW_TFX_CMD
     else:

@@ -19,7 +19,6 @@ from absl import logging
 from tfx import types
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.mlmd import event_lib
-from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 
@@ -74,10 +73,7 @@ def _get_output_artifacts(
     output_key: Optional[str] = None,
 ) -> List[metadata_store_pb2.Artifact]:
   """Get all output artifacts of the given executions."""
-  executions_ids = [
-      e.id for e in executions
-      if execution_lib.is_execution_successful(e)
-  ]
+  executions_ids = [e.id for e in executions]
   events = [
       v for v in store.get_events_by_execution_ids(executions_ids)
       if event_lib.is_valid_output_event(v, output_key)

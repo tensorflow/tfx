@@ -92,6 +92,8 @@ message LocalDockerConfig {
   // Optional docker client timeout seconds. Default to the constant defined in
   // docker-py library.
   int32 client_timeout_seconds = 3;
+  // Optional host ip address. If not specified, then uses "localhost".
+  string host_ip_address = 4;
 }
 
 // Kubernetes configuration. We currently only support the use case when infra
@@ -187,6 +189,7 @@ message SecretKeySelector {
 message Resources {
   map<string, string> requests = 1;
   map<string, string> limits = 2;
+  map<string, string> claims = 3;
 }
 
 // Specification for validation criteria and thresholds.

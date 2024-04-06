@@ -53,25 +53,28 @@ class CacheUtilsTest(test_case_utils.TfxTest):
         class_path: "my.class.path"
         """, executable_spec_pb2.PythonClassExecutableSpec())
 
-  def _get_cache_context(self,
-                         metadata_handler,
-                         custom_pipeline_node=None,
-                         custom_pipeline_info=None,
-                         executor_spec=None,
-                         custom_input_artifacts=None,
-                         custom_output_artifacts=None,
-                         custom_parameters=None,
-                         custom_module_content=None):
+  def _get_cache_context(
+      self,
+      metadata_handle,
+      custom_pipeline_node=None,
+      custom_pipeline_info=None,
+      executor_spec=None,
+      custom_input_artifacts=None,
+      custom_output_artifacts=None,
+      custom_parameters=None,
+      custom_module_content=None,
+  ):
     with fileio.open(self._module_file_path, 'w+') as f:
       f.write(custom_module_content or self._module_file_content)
     return cache_utils.get_cache_context(
-        metadata_handler,
+        metadata_handle,
         custom_pipeline_node or self._pipeline_node,
         custom_pipeline_info or self._pipeline_info,
         executor_spec=(executor_spec or self._executor_spec),
         input_artifacts=(custom_input_artifacts or self._input_artifacts),
         output_artifacts=(custom_output_artifacts or self._output_artifacts),
-        parameters=(custom_parameters or self._parameters))
+        parameters=(custom_parameters or self._parameters),
+    )
 
   def testGetCacheContext(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -81,8 +84,11 @@ class CacheUtilsTest(test_case_utils.TfxTest):
           cache_context,
           context_from_mlmd,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
 
   def testGetCacheContextTwiceSameArgs(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -209,7 +215,7 @@ class CacheUtilsTest(test_case_utils.TfxTest):
           })
       execution_two = execution_publish_utils.register_execution(
           m, metadata_store_pb2.ExecutionType(name='my_type'), [cache_context])
-      output_artifacts = execution_publish_utils.publish_succeeded_execution(
+      output_artifacts, _ = execution_publish_utils.publish_succeeded_execution(
           m,
           execution_two.id, [cache_context],
           output_artifacts={
@@ -227,20 +233,29 @@ class CacheUtilsTest(test_case_utils.TfxTest):
           cached_output[output_models_key][0].mlmd_artifact,
           output_artifacts[output_models_key][0].mlmd_artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       self.assertProtoPartiallyEquals(
           cached_output[output_models_key][1].mlmd_artifact,
           output_artifacts[output_models_key][1].mlmd_artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       self.assertProtoPartiallyEquals(
           cached_output[output_examples_key][0].mlmd_artifact,
           output_artifacts[output_examples_key][0].mlmd_artifact,
           ignored_fields=[
-              'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
 
       # There should again be no cached outputs if the artifacts cannot be
       # verified as still existing

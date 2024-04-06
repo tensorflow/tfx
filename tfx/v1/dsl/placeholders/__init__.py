@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX placeholders module."""
+# pylint: disable=unused-import
 
 from tfx.dsl.placeholder.placeholder import exec_property
+from tfx.dsl.placeholder.placeholder import execution_invocation
 from tfx.dsl.placeholder.placeholder import input  # pylint: disable=redefined-builtin
 from tfx.dsl.placeholder.placeholder import output

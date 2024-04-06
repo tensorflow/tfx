@@ -18,26 +18,26 @@ Experimental: no backwards compatibility guarantees.
 
 import copy
 import functools
-import sys
 import types
-from typing import Any, Dict, List, Optional, Type
+import typing
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Protocol, Type, Union
 
 from tfx import types as tfx_types
 from tfx.dsl.component.experimental import function_parser
 from tfx.dsl.component.experimental import json_compat
+from tfx.dsl.component.experimental import utils
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import base_beam_executor
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.types import channel
-from tfx.types import component_spec
 from tfx.types import system_executions
 
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
   _BeamPipeline = beam.Pipeline
-except ModuleNotFoundError:
+except Exception:  # pylint: disable=broad-exception-caught
   beam = None
   _BeamPipeline = Any
 
@@ -54,7 +54,7 @@ def _extract_func_args(
   """Extracts function arguments for the decorated function."""
   result = {}
   for name, arg_format in arg_formats.items():
-    if arg_format == function_parser.ArgFormats.INPUT_ARTIFACT:
+    if arg_format == utils.ArgFormats.INPUT_ARTIFACT:
       input_list = input_dict.get(name, [])
       if len(input_list) == 1:
         result[name] = input_list[0]
@@ -65,7 +65,9 @@ def _extract_func_args(
         raise ValueError(
             ('Expected input %r to %s to be a singleton ValueArtifact channel '
              '(got %s instead).') % (name, obj, input_list))
-    elif arg_format == function_parser.ArgFormats.OUTPUT_ARTIFACT:
+    elif arg_format == utils.ArgFormats.LIST_INPUT_ARTIFACTS:
+      result[name] = input_dict.get(name, [])
+    elif arg_format == utils.ArgFormats.OUTPUT_ARTIFACT:
       output_list = output_dict.get(name, [])
       if len(output_list) == 1:
         result[name] = output_list[0]
@@ -73,7 +75,7 @@ def _extract_func_args(
         raise ValueError(
             ('Expected output %r to %s to be a singleton ValueArtifact channel '
              '(got %s instead).') % (name, obj, output_list))
-    elif arg_format == function_parser.ArgFormats.ARTIFACT_VALUE:
+    elif arg_format == utils.ArgFormats.ARTIFACT_VALUE:
       input_list = input_dict.get(name, [])
       if len(input_list) == 1:
         result[name] = input_list[0].value
@@ -84,7 +86,7 @@ def _extract_func_args(
         raise ValueError(
             ('Expected input %r to %s to be a singleton ValueArtifact channel '
              '(got %s instead).') % (name, obj, input_list))
-    elif arg_format == function_parser.ArgFormats.PARAMETER:
+    elif arg_format == utils.ArgFormats.PARAMETER:
       if name in exec_properties:
         result[name] = exec_properties[name]
       elif name in arg_defaults:
@@ -94,7 +96,7 @@ def _extract_func_args(
         raise ValueError(
             ('Expected non-optional parameter %r of %s to be provided, but no '
              'value was passed.') % (name, obj))
-    elif arg_format == function_parser.ArgFormats.BEAM_PARAMETER:
+    elif arg_format == utils.ArgFormats.BEAM_PARAMETER:
       result[name] = beam_pipeline
       if name in arg_defaults and arg_defaults[name] is not None:
         raise ValueError('beam Pipeline parameter does not allow default ',
@@ -145,7 +147,28 @@ def _assign_returned_values(
   return result
 
 
-class _SimpleComponent(base_component.BaseComponent):
+class BaseFunctionalComponent(base_component.BaseComponent):
+  """Base class for functional components."""
+  # Can be used for platform-specific additional information attached to this
+  # component class.
+  platform_classlevel_extensions: ClassVar[Any] = None
+
+
+class BaseFunctionalComponentFactory(Protocol):
+  """Serves to declare the return type below."""
+
+  platform_classlevel_extensions: Any = None
+
+  def __call__(self, *args: Any, **kwargs: Any) -> BaseFunctionalComponent:
+    """This corresponds to BaseFunctionalComponent.__init__."""
+    ...
+
+  def test_call(self, *args: Any, **kwargs: Any) -> Any:
+    """This corresponds to the static BaseFunctionalComponent.test_call()."""
+    ...
+
+
+class _SimpleComponent(BaseFunctionalComponent):
   """Component whose constructor generates spec instance from arguments."""
 
   def __init__(self, *unused_args, **kwargs):
@@ -200,7 +223,7 @@ class _FunctionExecutor(base_executor.BaseExecutor):
   # allow pytype to properly type check these properties.
 
   # Describes the format of each argument passed to the component function, as
-  # a dictionary from name to a `function_parser.ArgFormats` enum value.
+  # a dictionary from name to a `utils.ArgFormats` enum value.
   _ARG_FORMATS = {}
   # Map from names of optional arguments to their default argument values.
   _ARG_DEFAULTS = {}
@@ -269,12 +292,34 @@ class _FunctionBeamExecutor(base_beam_executor.BaseBeamExecutor,
         ))
 
 
+@typing.overload
+def component(func: types.FunctionType, /) -> BaseFunctionalComponentFactory:
+  ...
+
+
+@typing.overload
+def component(
+    *,
+    component_annotation: Optional[
+        type[system_executions.SystemExecution]
+    ] = None,
+    use_beam: bool = False,
+) -> Callable[[types.FunctionType], BaseFunctionalComponentFactory]:
+  ...
+
+
 def component(
     func: Optional[types.FunctionType] = None,
-    component_annotation: Optional[Type[
-        system_executions.SystemExecution]] = None,
+    /,
+    *,
+    component_annotation: Optional[
+        Type[system_executions.SystemExecution]
+    ] = None,
     use_beam: bool = False,
-) -> Any:
+) -> Union[
+    BaseFunctionalComponentFactory,
+    Callable[[types.FunctionType], BaseFunctionalComponentFactory],
+]:
   """Decorator: creates a component from a typehint-annotated Python function.
 
   This decorator creates a component based on typehint annotations specified for
@@ -307,12 +352,11 @@ def component(
     optional argument.
 
   The return value typehint should be either empty or `None`, in the case of a
-  component function that has no return values, or an instance of
-  `OutputDict(key_1=type_1, ...)`, where each key maps to a given type (each
-  type is a primitive value type, i.e. `int`, `float`, `str`, `bytes`, `bool`
-  `Dict` or  `List`; or `Optional[T]`, where T is a primitive type value, in
-  which case `None` can be returned), to indicate that the return value is a
-  dictionary with specified keys and value types.
+  component function that has no return values, or a `TypedDict` of primitive
+  value types (`int`, `float`, `str`, `bytes`, `bool`, `dict` or `list`; or
+  `Optional[T]`, where T is a primitive type value, in which case `None` can be
+  returned), to indicate that the return value is a dictionary with specified
+  keys and value types.
 
   Note that output artifacts should not be included in the return value
   typehint; they should be included as `OutputArtifact` annotations in the
@@ -324,24 +368,25 @@ def component(
 
   This is example usage of component definition using this decorator:
 
-      from tfx.dsl.components.base.annotations import OutputDict
-      from tfx.dsl.components.base.annotations import
-      InputArtifact
-      from tfx.dsl.components.base.annotations import
-      OutputArtifact
-      from tfx.dsl.components.base.annotations import
-      Parameter
-      from tfx.dsl.components.base.decorators import component
-      from tfx.types import standard_artifacts
-      from tfx.types import system_executions
+      from tfx import v1 as tfx
 
-      @component(component_annotation=system_executions.Train)
+      InputArtifact = tfx.dsl.components.InputArtifact
+      OutputArtifact = tfx.dsl.components.OutputArtifact
+      Parameter = tfx.dsl.components.Parameter
+      Examples = tfx.types.standard_artifacts.Examples
+      Model = tfx.types.standard_artifacts.Model
+
+      class MyOutput(TypedDict):
+        loss: float
+        accuracy: float
+
+      @component(component_annotation=tfx.dsl.standard_annotations.Train)
       def MyTrainerComponent(
-          training_data: InputArtifact[standard_artifacts.Examples],
-          model: OutputArtifact[standard_artifacts.Model],
+          training_data: InputArtifact[Examples],
+          model: OutputArtifact[Model],
           dropout_hyperparameter: float,
           num_iterations: Parameter[int] = 10
-          ) -> OutputDict(loss=float, accuracy=float):
+      ) -> MyOutput:
         '''My simple trainer component.'''
 
         records = read_examples(training_data.uri)
@@ -371,7 +416,7 @@ def component(
           model: OutputArtifact[standard_artifacts.Model],
           dropout_hyperparameter: float,
           num_iterations: Parameter[int] = 10
-          ) -> OutputDict(loss=float, accuracy=float):
+          ) -> Output:
         '''My simple trainer component.'''
 
         records = read_examples(training_data.uri)
@@ -413,27 +458,31 @@ def component(
       tfx-pipeline-wise beam_pipeline_args.
 
   Returns:
-    `base_component.BaseComponent` or `base_component.BaseBeamComponent`
-      subclass for the given component executor function.
+    An object that:
+    1. you can call like the initializer of a subclass of
+      `base_component.BaseComponent` (or `base_component.BaseBeamComponent`).
+    2. has a test_call() member function for unit testing the inner
+       implementation of the component.
+    Today, the returned object is literally a subclass of BaseComponent, so it
+    can be used as a `Type` e.g. in isinstance() checks. But you must not rely
+    on this, as we reserve the right to reserve a different kind of object in
+    future, which _only_ satisfies the two criteria (1.) and (2.) above
+    without being a `Type` itself.
 
   Raises:
     EnvironmentError: if the current Python interpreter is not Python 3.
   """
   if func is None:
+    # Python decorators with arguments in parentheses result in two function
+    # calls. The first function call supplies the kwargs and the second supplies
+    # the decorated function. Here we forward the kwargs to the second call.
     return functools.partial(
-        component, component_annotation=component_annotation, use_beam=use_beam)
+        component,
+        component_annotation=component_annotation,
+        use_beam=use_beam,
+    )
 
-  # Defining a component within a nested class or function closure causes
-  # problems because in this case, the generated component classes can't be
-  # referenced via their qualified module path.
-  #
-  # See https://www.python.org/dev/peps/pep-3155/ for details about the special
-  # '<locals>' namespace marker.
-  if '<locals>' in func.__qualname__.split('.'):
-    raise ValueError(
-        'The @component decorator can only be applied to a function defined '
-        'at the module level. It cannot be used to construct a component for a '
-        'function defined in a nested class or function closure.')
+  utils.assert_is_top_level_func(func)
 
   (inputs, outputs, parameters, arg_formats, arg_defaults, returned_values,
    json_typehints, return_json_typehints) = (
@@ -444,63 +493,27 @@ def component(
                      'BeamComponentParameter[beam.Pipeline] with '
                      'default value None when use_beam=True.')
 
-  spec_inputs = {}
-  spec_outputs = {}
-  spec_parameters = {}
-  for key, artifact_type in inputs.items():
-    spec_inputs[key] = component_spec.ChannelParameter(
-        type=artifact_type, optional=(key in arg_defaults))
-    if key in json_typehints:
-      setattr(spec_inputs[key], '_JSON_COMPAT_TYPEHINT', json_typehints[key])
-  for key, artifact_type in outputs.items():
-    assert key not in arg_defaults, 'Optional outputs are not supported.'
-    spec_outputs[key] = component_spec.ChannelParameter(type=artifact_type)
-    if key in return_json_typehints:
-      setattr(spec_outputs[key], '_JSON_COMPAT_TYPEHINT',
-              return_json_typehints[key])
-  for key, primitive_type in parameters.items():
-    spec_parameters[key] = component_spec.ExecutionParameter(
-        type=primitive_type, optional=(key in arg_defaults))
-  component_spec_class = type(
-      '%s_Spec' % func.__name__, (tfx_types.ComponentSpec,), {
-          'INPUTS': spec_inputs,
-          'OUTPUTS': spec_outputs,
-          'PARAMETERS': spec_parameters,
-          'TYPE_ANNOTATION': component_annotation,
-      })
-
-  executor_class = type(
-      '%s_Executor' % func.__name__,
-      (_FunctionBeamExecutor if use_beam else _FunctionExecutor,),
-      {
-          '_ARG_FORMATS': arg_formats,
-          '_ARG_DEFAULTS': arg_defaults,
-          # The function needs to be marked with `staticmethod` so that later
-          # references of `self._FUNCTION` do not result in a bound method (i.e.
-          # one with `self` as its first parameter).
-          '_FUNCTION': staticmethod(func),  # pytype: disable=not-callable
-          '_RETURNED_VALUES': returned_values,
-          '_RETURN_JSON_COMPAT_TYPEHINT': return_json_typehints,
-          '__module__': func.__module__,
-      })
-
-  # Expose the generated executor class in the same module as the decorated
-  # function. This is needed so that the executor class can be accessed at the
-  # proper module path. One place this is needed is in the Dill pickler used by
-  # Apache Beam serialization.
-  module = sys.modules[func.__module__]
-  setattr(module, '%s_Executor' % func.__name__, executor_class)
-
-  executor_spec_class = (
-      executor_spec.BeamExecutorSpec
-      if use_beam else executor_spec.ExecutorClassSpec)
-  executor_spec_instance = executor_spec_class(executor_class=executor_class)
-
-  return type(
-      func.__name__, (_SimpleBeamComponent if use_beam else _SimpleComponent,),
-      {
-          'SPEC_CLASS': component_spec_class,
-          'EXECUTOR_SPEC': executor_spec_instance,
-          '__module__': func.__module__,
-          'test_call': staticmethod(func),  # pytype: disable=not-callable
-      })
+  component_class = utils.create_component_class(
+      func=func,
+      arg_defaults=arg_defaults,
+      arg_formats=arg_formats,
+      base_executor_class=(
+          _FunctionBeamExecutor if use_beam else _FunctionExecutor
+      ),
+      executor_spec_class=(
+          executor_spec.BeamExecutorSpec
+          if use_beam
+          else executor_spec.ExecutorClassSpec
+      ),
+      base_component_class=(
+          _SimpleBeamComponent if use_beam else _SimpleComponent
+      ),
+      inputs=inputs,
+      outputs=outputs,
+      parameters=parameters,
+      type_annotation=component_annotation,
+      json_compatible_inputs=json_typehints,
+      json_compatible_outputs=return_json_typehints,
+      return_values_optionality=returned_values,
+  )
+  return typing.cast(BaseFunctionalComponentFactory, component_class)

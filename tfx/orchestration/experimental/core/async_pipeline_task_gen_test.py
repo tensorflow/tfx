@@ -28,6 +28,7 @@ from tfx.orchestration.experimental.core import task_queue as tq
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.experimental.core.testing import test_async_pipeline
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.utils import status as status_lib
 
 
@@ -79,14 +80,20 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         _is_mixed_service_node)
     self._mock_service_job_manager.stop_node_services.return_value = True
 
-    def _default_ensure_node_services(unused_pipeline_state, node_id):
+    def _default_ensure_node_services(
+        unused_pipeline_state, node_id, unused_backfill_token=''
+    ):
       self.assertIn(
           node_id,
-          (self._example_gen.node_info.id, self._transform.node_info.id))
-      return service_jobs.ServiceStatus.RUNNING
+          (self._example_gen.node_info.id, self._transform.node_info.id),
+      )
+      return service_jobs.ServiceStatus(
+          code=service_jobs.ServiceStatusCode.RUNNING
+      )
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
-        _default_ensure_node_services)
+        _default_ensure_node_services
+    )
 
   def _finish_node_execution(
       self, use_task_queue, exec_node_task, success=True
@@ -134,15 +141,23 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
 
     # Note that "example gen" tasks will be generated since it has no declared
     # inputs, so it is okay to execute it even when there are no inputs.
-    [update_example_gen_task] = self._generate_and_test(
-        use_task_queue=False,
-        num_initial_executions=0,
-        num_tasks_generated=1,
-        num_new_executions=0,
-        num_active_executions=0,
-        expected_exec_nodes=[])
+    [update_example_gen_task, update_transform_task, update_trainer_task] = (
+        self._generate_and_test(
+            use_task_queue=False,
+            num_initial_executions=0,
+            num_tasks_generated=3,
+            num_new_executions=0,
+            num_active_executions=0,
+            expected_exec_nodes=[],
+        )
+    )
+
     self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
+    self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
+    self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
 
   @parameterized.parameters(False, True)
   @mock.patch.object(task_gen_utils, 'update_external_artifact_type')
@@ -161,35 +176,42 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     # Simulate that ExampleGen has already completed successfully.
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
-
     # Generate once.
-    [update_example_gen_task, update_transform_task,
-     exec_transform_task] = self._generate_and_test(
-         use_task_queue,
-         num_initial_executions=1,
-         num_tasks_generated=3,
-         num_new_executions=1,
-         num_active_executions=1,
-         expected_exec_nodes=[self._transform])
+    [
+        update_example_gen_task,
+        update_transform_task,
+        exec_transform_task,
+        update_trainer_task,
+    ] = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=1,
+        num_tasks_generated=4,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._transform],
+    )
     self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.RUNNING, update_transform_task.state)
     self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
+    self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
 
     self._mock_service_job_manager.ensure_node_services.assert_has_calls([
-        mock.call(mock.ANY, self._example_gen.node_info.id),
-        mock.call(mock.ANY, self._transform.node_info.id)
+        mock.call(mock.ANY, self._example_gen.node_info.id, ''),
+        mock.call(mock.ANY, self._transform.node_info.id),
     ])
 
     # No new effects if generate called again.
     tasks = self._generate_and_test(
         use_task_queue,
         num_initial_executions=2,
-        num_tasks_generated=0 if use_task_queue else 2,
+        num_tasks_generated=1 if use_task_queue else 3,
         num_new_executions=0,
         num_active_executions=1,
-        expected_exec_nodes=[] if use_task_queue else [self._transform])
+        expected_exec_nodes=[] if use_task_queue else [self._transform],
+    )
     if not use_task_queue:
       exec_transform_task = tasks[1]
 
@@ -205,6 +227,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
          num_new_executions=1,
          num_active_executions=1,
          expected_exec_nodes=[self._trainer])
+
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
     self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
@@ -240,6 +263,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_new_executions=2,
         num_active_executions=2,
         expected_exec_nodes=[self._transform, self._trainer])
+
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.RUNNING, update_transform_task.state)
     self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
@@ -281,6 +305,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_new_executions=1,
         num_active_executions=1,
         expected_exec_nodes=[self._trainer])
+
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
     self.assertIsInstance(update_trainer_task_1, task_lib.UpdateNodeStateTask)
@@ -296,7 +321,9 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
         num_initial_executions=7,
         num_tasks_generated=1,
         num_new_executions=0,
-        num_active_executions=0)
+        num_active_executions=0,
+    )
+
     self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
 
@@ -322,23 +349,30 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
                                     1)
 
     # Generate once, two executions for Transform is generated.
-    [update_example_gen_task, update_transform_task,
-     exec_transform_task] = self._generate_and_test(
-         use_task_queue,
-         num_initial_executions=2,
-         num_tasks_generated=3,
-         num_new_executions=2,
-         num_active_executions=2,
-         expected_exec_nodes=[self._transform])
+    [
+        update_example_gen_task,
+        update_transform_task,
+        exec_transform_task,
+        update_trainer_task,
+    ] = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=2,
+        num_tasks_generated=4,
+        num_new_executions=2,
+        num_active_executions=2,
+        expected_exec_nodes=[self._transform],
+    )
     self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.RUNNING, update_transform_task.state)
     self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
+    self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
 
     self._mock_service_job_manager.ensure_node_services.assert_has_calls([
-        mock.call(mock.ANY, self._example_gen.node_info.id),
-        mock.call(mock.ANY, self._transform.node_info.id)
+        mock.call(mock.ANY, self._example_gen.node_info.id, ''),
+        mock.call(mock.ANY, self._transform.node_info.id),
     ])
 
     # Mark one of the Transform executions complete.
@@ -411,7 +445,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     # Generate once.
     num_initial_executions = 1
     if stop_transform:
-      num_tasks_generated = 1
+      num_tasks_generated = 2
       num_new_executions = 0
       num_active_executions = 0
       with self._mlmd_connection as m:
@@ -424,7 +458,7 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
             node_state.update(pstate.NodeState.STOPPING,
                               status_lib.Status(code=status_lib.Code.CANCELLED))
     else:
-      num_tasks_generated = 3
+      num_tasks_generated = 4
       num_new_executions = 1
       num_active_executions = 1
     tasks = self._generate_and_test(
@@ -445,46 +479,118 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
       self.assertEqual(pstate.NodeState.RUNNING, tasks[1].state)
       self.assertIsInstance(tasks[2], task_lib.ExecNodeTask)
 
+  def test_task_generation_when_node_skipped(self):
+    """Tests skipped nodes have status msg updates when generating tasks."""
+
+    with mock.patch.object(
+        task_gen_utils, 'generate_resolved_info', autospec=True
+    ) as mock_generate_resolved_info:
+      mock_generate_resolved_info.side_effect = (
+          exceptions.InputResolutionError()
+      )
+      expected_error = (
+          'failure to resolve inputs; node uid:'
+          " NodeUid(pipeline_uid=PipelineUid(pipeline_id='my_pipeline',"
+          " pipeline_run_id=None), node_id='my_transform'); error:"
+          " ['tfx.orchestration.portable.input_resolution.exceptions.InputResolutionError\\n']"
+      )
+      tasks = self._generate_and_test(
+          use_task_queue=False,
+          num_initial_executions=0,
+          num_tasks_generated=3,
+          num_new_executions=0,
+          num_active_executions=0,
+      )
+
+      self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
+      self.assertEqual(pstate.NodeState.STARTED, tasks[1].state)
+      self.assertEqual(status_lib.Code.UNAVAILABLE, tasks[2].status.code)
+      self.assertEqual(expected_error, tasks[1].status.message)
+
   def test_service_job_failed(self):
     """Tests task generation when example-gen service job fails."""
 
-    def _ensure_node_services(unused_pipeline_state, node_id):
+    def _ensure_node_services(
+        unused_pipeline_state, node_id, unused_backfill_token=''
+    ):
       if node_id == 'my_example_gen':
-        return service_jobs.ServiceStatus.FAILED
+        return service_jobs.ServiceStatus(
+            code=service_jobs.ServiceStatusCode.FAILED, msg='foobar error'
+        )
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
-        _ensure_node_services)
-    [update_task] = self._generate_and_test(
-        True,
-        num_initial_executions=0,
-        num_tasks_generated=1,
-        num_new_executions=0,
-        num_active_executions=0)
-    self.assertIsInstance(update_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(status_lib.Code.ABORTED, update_task.status.code)
+        _ensure_node_services
+    )
+    [update_examplegen, update_transform, update_trainer] = (
+        self._generate_and_test(
+            True,
+            num_initial_executions=0,
+            num_tasks_generated=3,
+            num_new_executions=0,
+            num_active_executions=0,
+        )
+    )
+    self.assertIsInstance(update_examplegen, task_lib.UpdateNodeStateTask)
+    self.assertEqual(status_lib.Code.UNKNOWN, update_examplegen.status.code)
+    self.assertEqual(
+        'service job failed; error message: foobar error',
+        update_examplegen.status.message,
+    )
+    self.assertIsInstance(update_transform, task_lib.UpdateNodeStateTask)
+    self.assertEqual(status_lib.Code.OK, update_transform.status.code)
+    self.assertEqual(
+        'Waiting for new input artifacts to be processed. Non-triggering input'
+        ' or insufficient number of artifacts will not trigger new execution.',
+        update_transform.status.message,
+    )
+    self.assertIsInstance(update_trainer, task_lib.UpdateNodeStateTask)
+    self.assertEqual(status_lib.Code.OK, update_trainer.status.code)
+    self.assertEqual(
+        'Waiting for new input artifacts to be processed. Non-triggering input'
+        ' or insufficient number of artifacts will not trigger new execution.',
+        update_trainer.status.message,
+    )
 
   def test_mix_service_job_failed(self):
     """Tests task generation when my_transform mix service job fails."""
 
-    def _ensure_node_services(unused_pipeline_state, node_id):
+    def _ensure_node_services(
+        unused_pipeline_state, node_id, unused_backfill_token=''
+    ):
       if node_id == 'my_example_gen':
-        return service_jobs.ServiceStatus.RUNNING
+        return service_jobs.ServiceStatus(
+            code=service_jobs.ServiceStatusCode.RUNNING,
+        )
       if node_id == 'my_transform':
-        return service_jobs.ServiceStatus.FAILED
+        return service_jobs.ServiceStatus(
+            code=service_jobs.ServiceStatusCode.FAILED, msg='foobar error'
+        )
 
     self._mock_service_job_manager.ensure_node_services.side_effect = (
         _ensure_node_services)
-    [example_gen_update_task, transform_update_task] = self._generate_and_test(
-        True,
-        num_initial_executions=0,
-        num_tasks_generated=2,
-        num_new_executions=0,
-        num_active_executions=0)
+    [example_gen_update_task, transform_update_task, trainer_update_task] = (
+        self._generate_and_test(
+            True,
+            num_initial_executions=0,
+            num_tasks_generated=3,
+            num_new_executions=0,
+            num_active_executions=0,
+        )
+    )
     self.assertIsInstance(example_gen_update_task, task_lib.UpdateNodeStateTask)
     self.assertIsInstance(transform_update_task, task_lib.UpdateNodeStateTask)
-    self.assertEqual(status_lib.Code.ABORTED, transform_update_task.status.code)
+    self.assertEqual(status_lib.Code.UNKNOWN, transform_update_task.status.code)
+    self.assertEqual(
+        'associated service job failed; node uid:'
+        " NodeUid(pipeline_uid=PipelineUid(pipeline_id='my_pipeline',"
+        " pipeline_run_id=None), node_id='my_transform'); error message:"
+        ' foobar error',
+        transform_update_task.status.message,
+    )
+    self.assertIsInstance(trainer_update_task, task_lib.UpdateNodeStateTask)
 
-  def test_backfill(self):
+  @parameterized.parameters(False, True)
+  def test_backfill(self, throw_error):
     """Tests async pipeline task generation for backfill."""
     use_task_queue = True
     # Simulate that ExampleGen has already completed successfully.
@@ -493,24 +599,30 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     )
 
     # Generate once.
-    [update_example_gen_task, update_transform_task, exec_transform_task] = (
-        self._generate_and_test(
-            use_task_queue,
-            num_initial_executions=1,
-            num_tasks_generated=3,
-            num_new_executions=1,
-            num_active_executions=1,
-            expected_exec_nodes=[self._transform],
-        )
+    [
+        update_example_gen_task,
+        update_transform_task,
+        exec_transform_task,
+        update_trainer_task,
+    ] = self._generate_and_test(
+        use_task_queue,
+        num_initial_executions=1,
+        num_tasks_generated=4,
+        num_new_executions=1,
+        num_active_executions=1,
+        expected_exec_nodes=[self._transform],
     )
+
     self.assertIsInstance(update_example_gen_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.RUNNING, update_example_gen_task.state)
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.RUNNING, update_transform_task.state)
     self.assertIsInstance(exec_transform_task, task_lib.ExecNodeTask)
+    self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
 
     self._mock_service_job_manager.ensure_node_services.assert_has_calls([
-        mock.call(mock.ANY, self._example_gen.node_info.id),
+        mock.call(mock.ANY, self._example_gen.node_info.id, ''),
         mock.call(mock.ANY, self._transform.node_info.id),
     ])
 
@@ -560,34 +672,66 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
           transform_node
       ) as node_state:
         node_state.update(
-            pstate.NodeState.STARTING,
+            pstate.NodeState.STARTED,
             backfill_token='backfill-20221215-180505-123456',
         )
+    if throw_error:
+      # Mock the InputResolutionError when generate_resolved_info is called.
+      with mock.patch.object(
+          task_gen_utils, 'generate_resolved_info', autospec=True
+      ) as mock_generate_resolved_info:
+        mock_generate_resolved_info.side_effect = (
+            exceptions.InputResolutionError()
+        )
+        expected_error_msg = (
+            'Backfill of node my_transform failed Error: failure to resolve'
+            ' inputs; node uid:'
+            " NodeUid(pipeline_uid=PipelineUid(pipeline_id='my_pipeline',"
+            " pipeline_run_id=None), node_id='my_transform'); error:"
+            " ['tfx.orchestration.portable.input_resolution.exceptions.InputResolutionError\\n']"
+        )
 
+        [failed_transform_task, update_trainer_task] = (
+            self._generate_and_test(
+                use_task_queue,
+                num_initial_executions=3,
+                num_tasks_generated=2,
+                num_new_executions=0,
+                num_active_executions=0,
+                expected_exec_nodes=[],
+            )
+        )
+        self.assertIsInstance(
+            failed_transform_task, task_lib.UpdateNodeStateTask
+        )
+        self.assertEqual(pstate.NodeState.FAILED, failed_transform_task.state)
+        self.assertEqual(
+            status_lib.Code.FAILED_PRECONDITION,
+            failed_transform_task.status.code,
+        )
+        self.assertEqual(
+            expected_error_msg, failed_transform_task.status.message
+        )
+        self.assertEqual(
+            '',
+            failed_transform_task.backfill_token,
+        )
+        self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+        self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
+      return
     # Transform tasks should be generated as it will start a backfill.
     # Trainer will just be updated to STARTED state, since there are no new
     # inputs.
     [
-        update_transform_to_started_task,
         update_transform_to_running_task,
         exec_transform_task,
     ] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=3,
-        num_tasks_generated=3,
+        num_tasks_generated=2,
         num_new_executions=1,
         num_active_executions=1,
         expected_exec_nodes=[self._transform],
-    )
-    self.assertIsInstance(
-        update_transform_to_started_task, task_lib.UpdateNodeStateTask
-    )
-    self.assertEqual(
-        pstate.NodeState.STARTED, update_transform_to_started_task.state
-    )
-    self.assertEqual(
-        'backfill-20221215-180505-123456',
-        update_transform_to_started_task.backfill_token,
     )
     self.assertIsInstance(
         update_transform_to_running_task, task_lib.UpdateNodeStateTask
@@ -646,26 +790,20 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
           transform_node
       ) as node_state:
         node_state.update(
-            pstate.NodeState.STARTING,
+            pstate.NodeState.STARTED,
             backfill_token='backfill-20221215-180505-123456',
         )
 
     # Transform should stop immediately, since it sees the previous backfill
     # execution.
-    [update_transform_to_started_task, update_transform_to_stopped_task] = (
+    [update_transform_to_stopped_task] = (
         self._generate_and_test(
             use_task_queue,
             num_initial_executions=5,
-            num_tasks_generated=2,
+            num_tasks_generated=1,
             num_new_executions=0,
             num_active_executions=0,
         )
-    )
-    self.assertIsInstance(
-        update_transform_to_started_task, task_lib.UpdateNodeStateTask
-    )
-    self.assertEqual(
-        pstate.NodeState.STARTED, update_transform_to_started_task.state
     )
     self.assertIsInstance(
         update_transform_to_stopped_task, task_lib.UpdateNodeStateTask
@@ -686,32 +824,21 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
           transform_node
       ) as node_state:
         node_state.update(
-            pstate.NodeState.STARTING,
+            pstate.NodeState.STARTED,
             backfill_token='backfill-20221215-192233-234567',
         )
 
     # Transform tasks should be generated as it will start a new backfill.
     [
-        update_transform_to_started_task,
         update_transform_to_running_task,
         exec_transform_task,
     ] = self._generate_and_test(
         use_task_queue,
         num_initial_executions=5,
-        num_tasks_generated=3,
+        num_tasks_generated=2,
         num_new_executions=1,
         num_active_executions=1,
         expected_exec_nodes=[self._transform],
-    )
-    self.assertIsInstance(
-        update_transform_to_started_task, task_lib.UpdateNodeStateTask
-    )
-    self.assertEqual(
-        pstate.NodeState.STARTED, update_transform_to_started_task.state
-    )
-    self.assertEqual(
-        'backfill-20221215-192233-234567',
-        update_transform_to_started_task.backfill_token,
     )
     self.assertIsInstance(
         update_transform_to_running_task, task_lib.UpdateNodeStateTask
@@ -742,6 +869,100 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     )
     self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
     self.assertEqual(pstate.NodeState.STOPPED, update_transform_task.state)
+
+  def test_backfill_pure_service_node(self):
+    backfill_token = 'backfill-20230227-180505-123456'
+    test_utils.get_or_create_pipeline_state(
+        self._mlmd_connection, self._pipeline
+    )
+    # Put ExampleGen in backfill mode.
+    with pstate.PipelineState.load(
+        self._mlmd_connection,
+        task_lib.PipelineUid.from_pipeline(self._pipeline),
+    ) as pipeline_state:
+      example_gen_node = task_lib.NodeUid.from_node(
+          self._pipeline, node_proto_view.get_view(self._example_gen)
+      )
+      with pipeline_state.node_state_update_context(
+          example_gen_node
+      ) as node_state:
+        node_state.update(
+            pstate.NodeState.STARTED,
+            backfill_token=backfill_token,
+        )
+    # Generate a RUNNING task for ExampleGen backfill.
+    [running_example_gen_task, update_transform_task, update_trainer_task] = (
+        self._generate_and_test(
+            use_task_queue=False,
+            num_initial_executions=0,
+            num_tasks_generated=3,
+            num_new_executions=0,
+            num_active_executions=0,
+            expected_exec_nodes=[],
+        )
+    )
+
+    self.assertIsInstance(
+        running_example_gen_task, task_lib.UpdateNodeStateTask
+    )
+    self.assertEqual(running_example_gen_task.state, pstate.NodeState.RUNNING)
+    self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
+    self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
+    self.assertEqual(running_example_gen_task.backfill_token, backfill_token)
+    self._mock_service_job_manager.ensure_node_services.assert_has_calls([
+        mock.call(
+            mock.ANY,
+            self._example_gen.node_info.id,
+            backfill_token,
+        ),
+    ])
+
+    # Mark ExampleGen backfill service job as COMPLETED.
+    def _backfill_completes(
+        unused_pipeline_state, node_id, unused_backfill_token=''
+    ):
+      if node_id == self._example_gen.node_info.id:
+        return service_jobs.ServiceStatus(
+            code=service_jobs.ServiceStatusCode.SUCCESS
+        )
+
+    self._mock_service_job_manager.reset_mock()
+    self._mock_service_job_manager.ensure_node_services.side_effect = (
+        _backfill_completes
+    )
+
+    # Generate a STOPPED task after ExampleGen backfill completes.
+    [stopped_example_gen_task, update_transform_task, update_trainer_task] = (
+        self._generate_and_test(
+            use_task_queue=False,
+            num_initial_executions=0,
+            num_tasks_generated=3,
+            num_new_executions=0,
+            num_active_executions=0,
+            expected_exec_nodes=[],
+        )
+    )
+    self.assertIsInstance(
+        stopped_example_gen_task, task_lib.UpdateNodeStateTask
+    )
+    self.assertEqual(stopped_example_gen_task.state, pstate.NodeState.STOPPED)
+    self.assertIsInstance(update_transform_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_transform_task.state)
+    self.assertIsInstance(update_trainer_task, task_lib.UpdateNodeStateTask)
+    self.assertEqual(pstate.NodeState.STARTED, update_trainer_task.state)
+    self.assertEqual(stopped_example_gen_task.backfill_token, '')
+    self._mock_service_job_manager.ensure_node_services.assert_has_calls([
+        mock.call(
+            mock.ANY,
+            self._example_gen.node_info.id,
+            backfill_token,
+        ),
+    ])
+    self._mock_service_job_manager.stop_node_services.assert_called_once_with(
+        mock.ANY, self._example_gen.node_info.id
+    )
 
 
 if __name__ == '__main__':

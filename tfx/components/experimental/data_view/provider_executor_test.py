@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.data_view.provider_executor."""
 import os
-import unittest
 
 import tensorflow as tf
 from tfx.components.experimental.data_view import provider_executor
@@ -23,9 +22,6 @@ from tfx.utils import name_utils
 from tfx_bsl.coders import tf_graph_record_decoder
 
 
-@unittest.skipIf(tf.__version__ < '2',
-                 'tfx-bsl installed does not have modules required to run this '
-                 'test or Tensorflow is not 2.x.')
 class DataViewProviderExecutorTest(tf.test.TestCase):
 
   def setUp(self):

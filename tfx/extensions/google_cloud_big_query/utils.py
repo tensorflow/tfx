@@ -17,7 +17,7 @@
 Internal utilities, no backwards compatibility guarantees.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import apache_beam as beam
 from apache_beam.io.gcp import bigquery
@@ -29,22 +29,28 @@ from tfx.utils import telemetry_utils
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(beam.typehints.Dict[str, Any])
-def ReadFromBigQuery(pipeline: beam.Pipeline,  # pylint: disable=invalid-name
-                     query: str) -> beam.pvalue.PCollection:
+def ReadFromBigQuery(  # pylint: disable=invalid-name
+    pipeline: beam.Pipeline,
+    query: str,
+    big_query_custom_config: Optional[Dict[str, Any]] = None,
+) -> beam.pvalue.PCollection:
   """Read data from BigQuery.
 
   Args:
     pipeline: Beam pipeline.
     query: A BigQuery sql string.
-
+    big_query_custom_config: A BigQuery custom configs dict.
   Returns:
     PCollection of dict.
   """
-  return (pipeline
-          | 'ReadFromBigQuery' >> bigquery.ReadFromBigQuery(
-              query=query,
-              use_standard_sql=True,
-              bigquery_job_labels=telemetry_utils.make_labels_dict()))
+  if big_query_custom_config is None:
+    big_query_custom_config = {}
+  return pipeline | 'ReadFromBigQuery' >> bigquery.ReadFromBigQuery(
+      query=query,
+      use_standard_sql=True,
+      bigquery_job_labels=telemetry_utils.make_labels_dict(),
+      **big_query_custom_config
+  )
 
 
 def row_to_example(  # pylint: disable=invalid-name

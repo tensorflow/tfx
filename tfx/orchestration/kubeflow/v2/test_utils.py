@@ -28,13 +28,14 @@ from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.experimental.conditionals import conditional
 from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types.experimental import simple_artifacts
 from tfx.utils import proto_utils
 
 from google.protobuf import message
+
+_ph = tfx.dsl.placeholders
 
 _TEST_TWO_STEP_PIPELINE_NAME = 'two-step-pipeline'
 
@@ -103,10 +104,37 @@ def two_step_pipeline_with_dynamic_exec_properties():
       input_date='22-09-26')
   example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(
       query='SELECT * FROM TABLE',
-      range_config=input_config_generator.outputs['range_config'].future()
-      [0].value).with_beam_pipeline_args([
-          '--runner=DataflowRunner',
-      ])
+      range_config=(
+          input_config_generator.outputs['range_config'].future()[0].value
+      ),
+  ).with_beam_pipeline_args([
+      '--runner=DataflowRunner',
+  ])
+  return tfx.dsl.Pipeline(
+      pipeline_name=_TEST_TWO_STEP_PIPELINE_WITH_DYNAMIC_EXEC_PROPERTIES_NAME,
+      pipeline_root=_TEST_PIPELINE_ROOT,
+      components=[input_config_generator, example_gen],
+      beam_pipeline_args=[
+          '--project=my-gcp-project',
+      ],
+  )
+
+
+def two_step_pipeline_with_illegal_dynamic_exec_property():
+  """Returns a simple 2-step pipeline under test with the second component's execution property declaring an illegally complex placeholder."""
+
+  input_config_generator = range_config_generator(  # pylint: disable=no-value-for-parameter
+      input_date='22-09-26'
+  )
+  example_gen = tfx.extensions.google_cloud_big_query.BigQueryExampleGen(
+      query='SELECT * FROM TABLE',
+      range_config=(
+          input_config_generator.outputs['range_config'].future()[0].value
+          + _ph.execution_invocation().pipeline_run_id
+      ),
+  ).with_beam_pipeline_args([
+      '--runner=DataflowRunner',
+  ])
   return tfx.dsl.Pipeline(
       pipeline_name=_TEST_TWO_STEP_PIPELINE_WITH_DYNAMIC_EXEC_PROPERTIES_NAME,
       pipeline_root=_TEST_PIPELINE_ROOT,
@@ -223,8 +251,9 @@ def create_pipeline_components(
       baseline_model=model_resolver.outputs['model'],
       eval_config=eval_config)
 
-  with conditional.Cond(evaluator.outputs['blessing'].future()
-                        [0].custom_property('blessed') == 1):
+  with tfx.dsl.Cond(
+      evaluator.outputs['blessing'].future()[0].custom_property('blessed') == 1
+  ):
     pusher = tfx.components.Pusher(
         model=trainer.outputs['model'],
         push_destination=tfx.proto.PushDestination(

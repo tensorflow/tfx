@@ -44,14 +44,15 @@ class ImporterTest(tf.test.TestCase):
     with metadata.Metadata(connection_config=connection_config) as m:
       m.publish_artifacts([existing_artifact])
       result = importer.generate_output_dict(
-          metadata_handler=m,
+          metadata_handle=m,
           uri=source_uri,
           properties={},
           custom_properties={},
           reimport=False,
           output_artifact_class=types.Artifact(artifact_type).type,
           mlmd_artifact_type=artifact_type,
-          output_key=importer.IMPORT_RESULT_KEY)
+          output_key=importer.IMPORT_RESULT_KEY,
+      )
       self.assertEqual(existing_artifact.id,
                        result[importer.IMPORT_RESULT_KEY][0].id)
 
@@ -74,14 +75,15 @@ class ImporterTest(tf.test.TestCase):
     with metadata.Metadata(connection_config=connection_config) as m:
       m.publish_artifacts([existing_artifact1, existing_artifact2])
       result = importer.generate_output_dict(
-          metadata_handler=m,
+          metadata_handle=m,
           uri=source_uri,
           properties={},
           custom_properties={},
           reimport=False,
           output_artifact_class=types.Artifact(artifact2_type).type,
           mlmd_artifact_type=artifact2_type,
-          output_key=importer.IMPORT_RESULT_KEY)
+          output_key=importer.IMPORT_RESULT_KEY,
+      )
       self.assertNotEqual(result[importer.IMPORT_RESULT_KEY][0].id,
                           existing_artifact1.id)
       self.assertNotEqual(result[importer.IMPORT_RESULT_KEY][0].id,
@@ -102,16 +104,48 @@ class ImporterTest(tf.test.TestCase):
     with metadata.Metadata(connection_config=connection_config) as m:
       m.publish_artifacts([existing_artifact])
       result = importer.generate_output_dict(
-          metadata_handler=m,
+          metadata_handle=m,
           uri=source_uri,
           properties={},
           custom_properties={},
           reimport=False,
           output_artifact_class=types.Artifact(artifact_type).type,
           mlmd_artifact_type=artifact_type,
-          output_key=importer.IMPORT_RESULT_KEY)
+          output_key=importer.IMPORT_RESULT_KEY,
+      )
       self.assertNotEqual(result[importer.IMPORT_RESULT_KEY][0].id,
                           existing_artifact.id)
+
+  def testGenerateOutputDict_DoesntReuseArtifactIfPropertiesAreUpdated(self):
+    config = metadata_store_pb2.ConnectionConfig()
+    config.fake_database.SetInParent()
+    mlmd = self.enter_context(metadata.Metadata(connection_config=config))
+
+    source_uri = 'artifact1_uri'
+    existing_artifact = standard_artifacts.Examples()
+    existing_artifact.uri = source_uri
+    existing_artifact.is_external = True
+    artifact_type = metadata_store_pb2.ArtifactType(
+        name=existing_artifact.TYPE_NAME
+    )
+    mlmd.publish_artifacts([existing_artifact])
+
+    result = importer.generate_output_dict(
+        metadata_handle=mlmd,
+        uri=source_uri,
+        properties={'span': 0},
+        custom_properties={},
+        reimport=False,
+        output_artifact_class=types.Artifact(artifact_type).type,
+        mlmd_artifact_type=artifact_type,
+        output_key=importer.IMPORT_RESULT_KEY,
+    )
+
+    self.assertLen(result[importer.IMPORT_RESULT_KEY], 1)
+    generated_artifact = result[importer.IMPORT_RESULT_KEY][0]
+    self.assertNotEqual(generated_artifact.id, existing_artifact.id)
+    self.assertTrue(generated_artifact.has_property('span'))
+    self.assertEqual(generated_artifact.span, 0)
 
   def testImporterDefinitionWithSingleUri(self):
     impt = importer.Importer(
@@ -209,7 +243,7 @@ class ImporterDriverTest(tf.test.TestCase, parameterized.TestCase):
   def testImporterDriver(self, reimport: bool):
     with metadata.Metadata(connection_config=self.connection_config) as m:
       m.publish_artifacts(self.existing_artifacts)
-      driver = importer.ImporterDriver(metadata_handler=m)
+      driver = importer.ImporterDriver(metadata_handle=m)
       execution_result = driver.pre_execution(
           component_info=self.component_info,
           pipeline_info=self.pipeline_info,

@@ -162,7 +162,7 @@ def run_fn(fn_args: tfx.components.FnArgs):
 
   # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=fn_args.model_run_dir, update_freq='batch')
+      log_dir=fn_args.model_run_dir, update_freq='epoch')
 
   model.fit(
       train_dataset,

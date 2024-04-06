@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for utils."""
+
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_component
@@ -28,8 +29,9 @@ class _BasicComponentSpec(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {}
   OUTPUTS = {
-      'examples':
-          component_spec.ChannelParameter(type=standard_artifacts.Examples)
+      "examples": component_spec.ChannelParameter(
+          type=standard_artifacts.Examples
+      )
   }
 
 
@@ -41,30 +43,39 @@ class _BasicComponent(base_component.BaseComponent):
   def __init__(self, component_spec_args):
     super().__init__(_BasicComponentSpec(**component_spec_args))
 
+_COMPONENT_SPEC_ARGS = {
+    "examples": channel.Channel(standard_artifacts.Examples)
+}
+
 
 class UtilsTest(tf.test.TestCase):
 
   def test_execution_options(self):
-    component = _BasicComponent(component_spec_args={
-        'examples': channel.Channel(standard_artifacts.Examples)
-    })
+    component = _BasicComponent(component_spec_args=_COMPONENT_SPEC_ARGS)
     component.node_execution_options = utils.NodeExecutionOptions(
-        trigger_strategy=pipeline_pb2.NodeExecutionOptions
-        .ALL_UPSTREAM_NODES_COMPLETED,
+        trigger_strategy=pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
         success_optional=True,
         max_execution_retries=-1,
-        execution_timeout_sec=100)
+        execution_timeout_sec=100,
+        lifetime_start="foo",
+        reset_stateful_working_dir=True,
+        _run_mode=pipeline_pb2.NodeExecutionOptions.RunMode.LAUNCH_ONLY,
+    )
     self.assertEqual(
         component.node_execution_options,
         utils.NodeExecutionOptions(
-            trigger_strategy=pipeline_pb2.NodeExecutionOptions
-            .ALL_UPSTREAM_NODES_COMPLETED,
+            trigger_strategy=pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,
             success_optional=True,
             max_execution_retries=0,
-            execution_timeout_sec=100))
+            execution_timeout_sec=100,
+            lifetime_start="foo",
+            reset_stateful_working_dir=True,
+            _run_mode=pipeline_pb2.NodeExecutionOptions.RunMode.LAUNCH_ONLY,
+        ),
+    )
     component.node_execution_options = None
     self.assertIsNone(component.node_execution_options)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   tf.test.main()

@@ -25,6 +25,8 @@ from tfx.utils import typing_utils
 
 import ml_metadata as mlmd
 
+from ml_metadata.proto import metadata_store_pb2
+
 
 class LatestPipelineRunOutputs(
     resolver_op.ResolverOp,
@@ -87,8 +89,21 @@ class LatestPipelineRunOutputs(
       raise exceptions.SkipSignal(
           f'Pipeline {self.pipeline_name} does not have any output artifacts '
           'from PipelineEnd node.')
+
     artifacts = self.context.store.get_artifacts_by_id(
         [e.artifact_id for e in end_node_output_events])
+    # Only consider LIVE artifacts.
+    artifacts = [
+        a
+        for a in artifacts
+        if a.state == metadata_store_pb2.Artifact.State.LIVE
+    ]
+    end_node_output_events = [
+        e
+        for e in end_node_output_events
+        if e.artifact_id in [a.id for a in artifacts]
+    ]
+
     artifact_types = self.context.store.get_artifact_types_by_id(
         list({a.type_id for a in artifacts}))
     artifact_types_by_id = {t.id: t for t in artifact_types}

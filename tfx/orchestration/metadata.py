@@ -27,12 +27,15 @@ import absl
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration.portable.mlmd import event_lib
+from tfx.types import artifact as artifact_lib
 from tfx.types import artifact_utils
-from tfx.types.artifact import Artifact
-from tfx.types.artifact import ArtifactState
 
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
+
+
+_Artifact = artifact_lib.Artifact
+_ArtifactState = artifact_lib.ArtifactState
 
 # Number of times to retry initialization of connection.
 _MAX_INIT_RETRY = 10
@@ -70,8 +73,6 @@ _EXECUTION_TYPE_RESERVED_KEYS = frozenset(
     (_EXECUTION_TYPE_KEY_CHECKSUM, _EXECUTION_TYPE_KEY_PIPELINE_NAME,
      _EXECUTION_TYPE_KEY_PIPELINE_ROOT, _EXECUTION_TYPE_KEY_RUN_ID,
      _EXECUTION_TYPE_KEY_COMPONENT_ID, _EXECUTION_TYPE_KEY_STATE))
-# Keys for artifact properties.
-_ARTIFACT_TYPE_KEY_STATE = 'state'
 
 # pyformat: disable
 ConnectionConfigType = Union[
@@ -198,22 +199,9 @@ class Metadata:
     artifact_type.id = type_id
     return artifact_type
 
-  def update_artifact_state(self, artifact: metadata_store_pb2.Artifact,
-                            new_state: str) -> None:
-    """Update the state of a given artifact."""
-    if not artifact.id:
-      raise ValueError('Artifact id missing for %s' % artifact)
-    # TODO(b/146936257): unify artifact access logic by wrapping raw MLMD
-    # artifact protos into tfx.types.Artifact objects at a lower level.
-    if _ARTIFACT_TYPE_KEY_STATE in artifact.properties:
-      artifact.properties[_ARTIFACT_TYPE_KEY_STATE].string_value = new_state
-    else:
-      artifact.custom_properties[
-          _ARTIFACT_TYPE_KEY_STATE].string_value = new_state
-    self.store.put_artifacts([artifact])
-
-  def _upsert_artifacts(self, tfx_artifact_list: List[Artifact],
-                        state: str) -> None:
+  def _upsert_artifacts(
+      self, tfx_artifact_list: List[_Artifact], state: str
+  ) -> None:
     """Updates or inserts a list of artifacts.
 
     This call will also update original tfx artifact list to contain the
@@ -234,7 +222,7 @@ class Metadata:
     for a, aid in zip(tfx_artifact_list, artifact_ids):
       a.id = aid
 
-  def publish_artifacts(self, tfx_artifact_list: List[Artifact]) -> None:
+  def publish_artifacts(self, tfx_artifact_list: List[_Artifact]) -> None:
     """Publishes artifacts to MLMD.
 
     This call will also update original tfx artifact list to contain the
@@ -243,7 +231,7 @@ class Metadata:
     Args:
       tfx_artifact_list: A list of tfx.types.Artifact which will be updated
     """
-    self._upsert_artifacts(tfx_artifact_list, ArtifactState.PUBLISHED)
+    self._upsert_artifacts(tfx_artifact_list, _ArtifactState.PUBLISHED)
 
   def get_artifacts_by_uri(self, uri: str) -> List[metadata_store_pb2.Artifact]:
     """Fetches artifacts given uri."""
@@ -287,7 +275,7 @@ class Metadata:
       type_name: str,
       producer_component_id: Optional[str] = None,
       output_key: Optional[str] = None,
-  ) -> List[Artifact]:
+  ) -> List[_Artifact]:
     """Gets qualified artifacts that have the right producer info.
 
     Args:
@@ -517,6 +505,7 @@ class Metadata:
     execution = metadata_store_pb2.Execution()
     execution.type_id = self._prepare_execution_type(
         component_info.component_type, exec_properties)
+    execution.type = component_info.component_type
     self._update_execution_proto(
         execution=execution,
         pipeline_info=pipeline_info,
@@ -528,12 +517,13 @@ class Metadata:
 
   def _artifact_and_event_pairs(
       self,
-      artifact_dict: Dict[str, List[Artifact]],
+      artifact_dict: Dict[str, List[_Artifact]],
       event_type: metadata_store_pb2.Event.Type,
       new_state: Optional[str] = None,
-      registered_artifacts_ids: Optional[Set[int]] = None
-  ) -> List[Tuple[metadata_store_pb2.Artifact,
-                  Optional[metadata_store_pb2.Event]]]:
+      registered_artifacts_ids: Optional[Set[int]] = None,
+  ) -> List[
+      Tuple[metadata_store_pb2.Artifact, Optional[metadata_store_pb2.Event]]
+  ]:
     """Creates a list of [Artifact, [Optional]Event] tuples.
 
     The result of this function will be used in a MLMD put_execution() call. The
@@ -576,12 +566,13 @@ class Metadata:
       self,
       execution: metadata_store_pb2.Execution,
       component_info: data_types.ComponentInfo,
-      input_artifacts: Optional[Dict[str, List[Artifact]]] = None,
-      output_artifacts: Optional[Dict[str, List[Artifact]]] = None,
+      input_artifacts: Optional[Dict[str, List[_Artifact]]] = None,
+      output_artifacts: Optional[Dict[str, List[_Artifact]]] = None,
       exec_properties: Optional[Dict[str, Any]] = None,
       execution_state: Optional[str] = None,
       artifact_state: Optional[str] = None,
-      contexts: Optional[List[metadata_store_pb2.Context]] = None) -> None:
+      contexts: Optional[List[metadata_store_pb2.Context]] = None,
+  ) -> None:
     """Updates the given execution in MLMD based on given information.
 
     All artifacts provided will be registered if not already. Registered id will
@@ -650,7 +641,7 @@ class Metadata:
       component_info: data_types.ComponentInfo,
       contexts: List[metadata_store_pb2.Context],
       exec_properties: Optional[Dict[str, Any]] = None,
-      input_artifacts: Optional[Dict[str, List[Artifact]]] = None
+      input_artifacts: Optional[Dict[str, List[_Artifact]]] = None,
   ) -> metadata_store_pb2.Execution:
     """Registers a new execution in metadata.
 
@@ -693,6 +684,7 @@ class Metadata:
       component_run_context.id = context_ids[-1]
     except mlmd.errors.AlreadyExistsError:
       component_run_context = self.get_component_run_context(component_info)
+      assert component_run_context is not None  # AlreadyExistsError indicates.
       absl.logging.debug(
           'Component run context already exists. Reusing the context %s.',
           component_run_context.name)
@@ -711,8 +703,9 @@ class Metadata:
   def publish_execution(
       self,
       component_info: data_types.ComponentInfo,
-      output_artifacts: Optional[Dict[str, List[Artifact]]] = None,
-      exec_properties: Optional[Dict[str, Any]] = None) -> None:
+      output_artifacts: Optional[Dict[str, List[_Artifact]]] = None,
+      exec_properties: Optional[Dict[str, Any]] = None,
+  ) -> None:
     """Publishes an execution with input and output artifacts info.
 
     This method will publish any execution with non-final states. It will
@@ -724,6 +717,8 @@ class Metadata:
       exec_properties: execution properties for the execution to be published.
     """
     component_run_context = self.get_component_run_context(component_info)
+    if component_run_context is None:
+      raise ValueError('Component run context does not exist.')
     [execution] = self.store.get_executions_by_context(component_run_context.id)
     contexts = [
         component_run_context,
@@ -741,8 +736,9 @@ class Metadata:
         output_artifacts=output_artifacts,
         exec_properties=exec_properties,
         execution_state=EXECUTION_STATE_COMPLETE,
-        artifact_state=ArtifactState.PUBLISHED,
-        contexts=contexts)
+        artifact_state=_ArtifactState.PUBLISHED,
+        contexts=contexts,
+    )
 
   def _is_eligible_previous_execution(
       self, current_execution: metadata_store_pb2.Execution,
@@ -776,10 +772,12 @@ class Metadata:
     return current_execution == target_execution
 
   def get_cached_outputs(
-      self, input_artifacts: Dict[str, List[Artifact]],
-      exec_properties: Dict[str, Any], pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo
-  ) -> Optional[Dict[str, List[Artifact]]]:
+      self,
+      input_artifacts: Dict[str, List[_Artifact]],
+      exec_properties: Dict[str, Any],
+      pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo,
+  ) -> Optional[Dict[str, List[_Artifact]]]:
     """Fetches cached output artifacts if any.
 
     Returns the output artifacts of a cached execution if any. An eligible
@@ -813,7 +811,8 @@ class Metadata:
 
     # Step 1: Finds historical executions related to the context in step 0.
     historical_executions = dict(
-        (e.id, e) for e in self._store.get_executions_by_context(context.id))
+        (e.id, e) for e in self.store.get_executions_by_context(context.id)
+    )
 
     # Step 2: Filters historical executions to find those that used all the
     # given inputs as input artifacts. The result of this step is a set of
@@ -877,7 +876,8 @@ class Metadata:
     return None
 
   def get_outputs_of_execution(
-      self, execution_id: int) -> Optional[Dict[str, List[Artifact]]]:
+      self, execution_id: int
+  ) -> Optional[Dict[str, List[_Artifact]]]:
     """Fetches outputs produced by a historical execution.
 
     Args:
@@ -891,7 +891,7 @@ class Metadata:
 
   def _get_outputs_of_events(
       self, events: List[metadata_store_pb2.Event]
-  ) -> Optional[Dict[str, List[Artifact]]]:
+  ) -> Optional[Dict[str, List[_Artifact]]]:
     """Fetches outputs produced by a list of events.
 
     Args:
@@ -923,9 +923,12 @@ class Metadata:
 
     return result
 
-  def search_artifacts(self, artifact_name: str,
-                       pipeline_info: data_types.PipelineInfo,
-                       producer_component_id: str) -> List[Artifact]:
+  def search_artifacts(
+      self,
+      artifact_name: str,
+      pipeline_info: data_types.PipelineInfo,
+      producer_component_id: str,
+  ) -> List[_Artifact]:
     """Search artifacts that matches given info.
 
     Args:

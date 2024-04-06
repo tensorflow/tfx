@@ -30,7 +30,7 @@ from google.protobuf import json_format
 
 # The location of test data.
 # This location depends on install path of TFX in the docker image.
-_TEST_DATA_ROOT = '/usr/local/lib/python3.8/dist-packages/tfx/examples/chicago_taxi_pipeline/data/simple'
+_TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_taxi_pipeline/data/simple'
 
 _success_file_name = 'success_final_status.txt'
 
@@ -71,7 +71,7 @@ class ExitHandlerE2ETest(base_test_case.BaseKubeflowV2Test):
       {
         "state":"SUCCEEDED",
         "error":{},
-        "pipeline_task_name":"_tfx_dag"
+        "pipeline_task_name":"tfx-dag"
       }
     """
 

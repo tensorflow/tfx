@@ -14,7 +14,7 @@
 """Lightweight wrapper for building MLMD filter query."""
 
 import collections
-from typing import Union
+from typing import Any, List, Sequence, Union
 
 import ml_metadata as mlmd
 
@@ -29,13 +29,21 @@ class _ClauseList(collections.UserList):
   separator = None
   list_options = list_options
 
+  def _flatten(self):
+    for clause in self:
+      if isinstance(clause, type(self)):
+        yield from clause._flatten()  # pylint: disable=protected-access
+      else:
+        yield clause
+
   def __str__(self) -> str:
-    if not self:
+    clauses = list(self._flatten())
+    if not clauses:
       return ''
-    elif len(self) == 1:
-      return self[0]
+    elif len(clauses) == 1:
+      return str(clauses[0])
     else:
-      return f' {self.separator} '.join(f'({clause})' for clause in self)
+      return f' {self.separator} '.join(f'({clause})' for clause in clauses)
 
 
 class And(_ClauseList):
@@ -44,3 +52,19 @@ class And(_ClauseList):
 
 class Or(_ClauseList):
   separator = 'OR'
+
+
+def to_sql_string(
+    value: Union[bool, int, float, str, List[Any], Sequence[Any]]
+) -> str:
+  """Converts python value to appropriate GoogleSQL string."""
+  if isinstance(value, list):
+    inner = ', '.join(to_sql_string(v) for v in value)
+    return f'({inner})'
+  if isinstance(value, bool):
+    return 'TRUE' if value else 'FALSE'
+  if isinstance(value, (int, float)):
+    return str(value)
+  if isinstance(value, str):
+    return f'"{value}"'
+  raise NotImplementedError(f'Cannot convert {value} to SQL string.')

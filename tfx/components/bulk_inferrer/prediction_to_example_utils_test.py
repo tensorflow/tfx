@@ -268,9 +268,21 @@ class PredictionToExampleUtilsTest(tf.test.TestCase, parameterized.TestCase):
              string_val: "prediction"
            }
          }
+         outputs {
+           key: "output_ints"
+           value {
+             dtype: DT_INT64
+             tensor_shape { dim { size: 1 } dim { size: 2 }}
+             int64_val: 2
+             int64_val: 3
+           }
+         }
        }
      }
-    """ % input_key, prediction_log_pb2.PredictionLog())
+    """
+        % input_key,
+        prediction_log_pb2.PredictionLog(),
+    )
 
     # The ending quote cannot be recognized correctly when `string_val` field
     # is directly set with a serialized string quoted in the text format.
@@ -289,9 +301,15 @@ class PredictionToExampleUtilsTest(tf.test.TestCase, parameterized.TestCase):
               output_key: 'output_bytes'
               output_column: 'predict_bytes'
             }
+            output_columns {
+              output_key: 'output_ints'
+              output_column: 'predict_ints'
+            }
           }
         }
-    """, bulk_inferrer_pb2.OutputExampleSpec())
+    """,
+        bulk_inferrer_pb2.OutputExampleSpec(),
+    )
     expected_example = text_format.Parse(
         """
         features {
@@ -307,8 +325,14 @@ class PredictionToExampleUtilsTest(tf.test.TestCase, parameterized.TestCase):
               key: "predict_bytes"
               value: { bytes_list: { value: "prediction" } }
             }
+            feature: {
+              key: "predict_ints"
+              value: { int64_list: { value: 2 value: 3 } }
+            }
           }
-    """, tf.train.Example())
+    """,
+        tf.train.Example(),
+    )
     self.assertProtoEquals(expected_example,
                            utils.convert(prediction_log, output_example_spec))
 

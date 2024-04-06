@@ -25,6 +25,33 @@ from tfx.orchestration.experimental.core import test_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
+def _create_test_execution(state, properties, custom_properties):
+  """Creates a test MLMD execution proto."""
+  execution = metadata_store_pb2.Execution(
+      id=1, type_id=1, last_known_state=state)
+
+  def _set_property_values(execution_properties, properties_to_add):
+    """Sets property fields for an execution proto."""
+    for key, val in properties_to_add.items():
+      value = metadata_store_pb2.Value()
+      if isinstance(val, bool):
+        value.bool_value = val
+        execution_properties[key].CopyFrom(value)
+      elif isinstance(val, str):
+        value.string_value = val
+        execution_properties[key].CopyFrom(value)
+      elif isinstance(val, int):
+        value.int_value = val
+        execution_properties[key].CopyFrom(value)
+      elif isinstance(val, float):
+        value.double_value = val
+        execution_properties[key].CopyFrom(value)
+
+  _set_property_values(execution.properties, properties)
+  _set_property_values(execution.custom_properties, custom_properties)
+  return execution
+
+
 def _write_test_execution(mlmd_handle):
   execution_type = metadata_store_pb2.ExecutionType(name='foo', version='bar')
   execution_type_id = mlmd_handle.store.put_execution_type(execution_type)
@@ -161,6 +188,68 @@ class MlmdStateTest(test_utils.TfxTest):
       # Evicting a non-existent execution should not raise any errors.
       with mlmd_state.evict_from_cache(expected_execution.id):
         pass
+
+  def test_get_field_mask_paths(self):
+    execution = _create_test_execution(
+        metadata_store_pb2.Execution.UNKNOWN,
+        {
+            'removed': 123.45,
+            'unchanged': 'test_string',
+        },
+        {
+            'node_states_updated': '{"importer": {}}',
+            'removed': False,
+            'value_type_updated': 456,
+        },
+    )
+    execution_copy = _create_test_execution(
+        metadata_store_pb2.Execution.RUNNING,
+        {
+            'unchanged': 'test_string',
+        },
+        {
+            'node_states_updated': '{"importer": {"state": "running"}}',
+            'added': 123,
+            'value_type_updated': 'test_string',
+        },
+    )
+    want_top_level_fields = [
+        f.name
+        for f in metadata_store_pb2.Execution.DESCRIPTOR.fields
+        if f.name not in ['properties', 'custom_properties']
+    ]
+    self.assertCountEqual(
+        mlmd_state.get_field_mask_paths(execution, execution_copy),
+        want_top_level_fields
+        + [
+            'properties.removed',
+            'custom_properties.added',
+            'custom_properties.node_states_updated',
+            'custom_properties.removed',
+            'custom_properties.value_type_updated',
+        ],
+    )
+
+  def test_get_field_mask_paths_no_changes(self):
+    execution = _create_test_execution(
+        metadata_store_pb2.Execution.RUNNING,
+        {'unchanged': 123},
+        {'node_states': '{"importer": {"state": "running"}}'},
+    )
+    execution_copy = _create_test_execution(
+        metadata_store_pb2.Execution.RUNNING,
+        {'unchanged': 123},
+        {'node_states': '{"importer": {"state": "running"}}'},
+    )
+    want_field_paths = [
+        f.name
+        for f in metadata_store_pb2.Execution.DESCRIPTOR.fields
+        if f.name not in ['properties', 'custom_properties']
+    ]
+    self.assertCountEqual(
+        mlmd_state.get_field_mask_paths(execution, execution_copy),
+        want_field_paths,
+    )
 
 
 if __name__ == '__main__':

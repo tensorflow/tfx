@@ -43,11 +43,13 @@ class ExecutionWatcherTest(test_case_utils.TfxTest):
         connection_config=connection_config)
     with self._mlmd_connection as m:
       self._execution = execution_publish_utils.register_execution(
-          metadata_handler=m,
+          metadata_handle=m,
           execution_type=metadata_store_pb2.ExecutionType(
-              name='test_execution_type'),
+              name='test_execution_type'
+          ),
           contexts=[],
-          input_artifacts=[])
+          input_artifacts=[],
+      )
     # Set up gRPC stub.
     port = portpicker.pick_unused_port()
     self.sidecar = execution_watcher.ExecutionWatcher(
@@ -94,9 +96,13 @@ class ExecutionWatcherTest(test_case_utils.TfxTest):
       """,
         executions[0],
         ignored_fields=[
-            'type_id', 'create_time_since_epoch',
-            'last_update_time_since_epoch', 'name'
-        ])
+            'type_id',
+            'type',
+            'create_time_since_epoch',
+            'last_update_time_since_epoch',
+            'name',
+        ],
+    )
 
 
 if __name__ == '__main__':

@@ -234,7 +234,7 @@ components {
   }
 }
 components {
-  key: "_tfx_dag"
+  key: "tfx-dag"
   value {
     dag {
       tasks {
@@ -339,12 +339,12 @@ root {
             key: "param1"
             value {
               task_final_status {
-                producer_task: "_tfx_dag"
+                producer_task: "tfx-dag"
               }
             }
           }
         }
-        dependent_tasks: "_tfx_dag"
+        dependent_tasks: "tfx-dag"
         component_ref {
           name: "ExitHandlerComponent"
         }
@@ -354,13 +354,13 @@ root {
       }
     }
     tasks {
-      key: "_tfx_dag"
+      key: "tfx-dag"
       value {
         task_info {
-          name: "_tfx_dag"
+          name: "tfx-dag"
         }
         component_ref {
-          name: "_tfx_dag"
+          name: "tfx-dag"
         }
       }
     }

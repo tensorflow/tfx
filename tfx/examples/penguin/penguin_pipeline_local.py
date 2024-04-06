@@ -19,12 +19,11 @@ import os
 import socket
 import sys
 from typing import List, Optional
+
 import absl
 from absl import flags
-
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
-from tfx.dsl.experimental.conditionals import conditional
 from tfx.utils import proto_utils
 
 
@@ -338,8 +337,9 @@ def create_pipeline(  # pylint: disable=invalid-name
   #
   # Note these operations are just placeholder, something like Mocks. They are
   # not evaluated until runtime. For more details, see tfx/dsl/placeholder/.
-  with conditional.Cond(evaluator.outputs['blessing'].future()
-                        [0].custom_property('blessed') == 1):
+  with tfx.dsl.Cond(
+      evaluator.outputs['blessing'].future()[0].custom_property('blessed') == 1
+  ):
     # Checks whether the model passed the validation steps and pushes the model
     # to a file destination if check passed.
     pusher = tfx.components.Pusher(

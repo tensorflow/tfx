@@ -194,8 +194,11 @@ class _WorkerExecutor(base_executor.BaseExecutor):
   """TFX Tuner executor impl as a worker in a Google Cloud AI Platform job."""
 
   def _run_chief_oracle(
-      self, input_dict: Dict[str, List[types.Artifact]],
-      exec_properties: Dict[str, List[types.Artifact]]) -> None:
+      self,
+      input_dict: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, List[types.Artifact]],
+  ) -> None:
     """Invoke chief oracle, and listen to the open port."""
     logging.info('chief_oracle() starting...')
 
@@ -211,30 +214,45 @@ class _WorkerExecutor(base_executor.BaseExecutor):
                  os.environ['KERASTUNER_ORACLE_IP'],
                  os.environ['KERASTUNER_ORACLE_PORT'])
 
-    # By design of KerasTuner, chief oracle blocks forever. Ref.
-    # https://github.com/keras-team/keras-tuner/blob/e8b0ad3ecae471c73e17cb41f37e6f99202ac0dd/kerastuner/engine/base_tuner.py#L74-L76
-    tuner_executor.search(input_dict, exec_properties, _WORKING_DIRECTORY)
+    # For the chief process, tuner_executor.search() starts the oracle server.
+    # The server keeps running till all trials are done.
+    tuner = tuner_executor.search(
+        input_dict=input_dict,
+        exec_properties=exec_properties,
+        working_dir=_WORKING_DIRECTORY,
+        print_tuning_summary=True)
+    tuner_executor.write_best_hyperparameters(tuner, output_dict)
 
   def _start_chief_oracle_in_subprocess(
-      self, input_dict: Dict[str, List[types.Artifact]],
-      exec_properties: Dict[str, List[types.Artifact]]):
+      self,
+      input_dict: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, List[types.Artifact]],
+  ):
     """Starts a chief oracle in a subprocess."""
     # Because of KerasTuner's interface whereby behavior is controlled
     # by environment variables, starting the chief oracle in a sub-process,
     # as opposed to another thread in the main process, in order not to leak
     # the environment variables.
-    result = multiprocessing.Process(
-        target=self._run_chief_oracle, args=(
+    result = multiprocessing.Process(  # pytype: disable=attribute-error  # re-none
+        target=self._run_chief_oracle,
+        args=(
             input_dict,
+            output_dict,
             exec_properties,
-        ))
+        ),
+    )
     result.start()
 
     logging.info('Chief oracle started at PID: %s', result.pid)
     return result
 
-  def _search(self, input_dict: Dict[str, List[types.Artifact]],
-              exec_properties: Dict[str, List[types.Artifact]]):
+  def _search(
+      self,
+      input_dict: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, List[types.Artifact]],
+  ):
     """Conducts a single search loop, setting up chief oracle if necessary."""
 
     # If not distributed, simply conduct search and return.
@@ -251,8 +269,13 @@ class _WorkerExecutor(base_executor.BaseExecutor):
         # a subprocess and manage its lifecycle by the main process.
         # Note that the Tuner with chief oracle does not run search loop,
         # hence does not run TensorFlow code in the subprocess.
-        self._chief_process = self._start_chief_oracle_in_subprocess(
-            input_dict, exec_properties)
+        self._start_chief_oracle_in_subprocess(
+            input_dict, output_dict, exec_properties
+        )
+
+        # We started the chief in a subprocess. Now we're reusing the original
+        # process as a tuner worker to run trials.
+        self._is_chief = False
 
       # If distributed, both master and worker need to know where the oracle is.
       # Per KerasTuner's interface, it is configured through env variables.
@@ -274,8 +297,14 @@ class _WorkerExecutor(base_executor.BaseExecutor):
     logging.info('Setting KERASTUNER_TUNER_ID with %s',
                  os.environ['KERASTUNER_TUNER_ID'])
 
-    return tuner_executor.search(input_dict, exec_properties,
-                                 _WORKING_DIRECTORY)
+    # Printing tuning summary in distributed setting involves RPC calls to Chief
+    # worker. Chief worker stops after all tuning trials are finished and might
+    # be unavailable for such RPC calls.
+    return tuner_executor.search(
+        input_dict=input_dict,
+        exec_properties=exec_properties,
+        working_dir=_WORKING_DIRECTORY,
+        print_tuning_summary=False)
 
   def __init__(self, context):
     super().__init__(context)
@@ -285,8 +314,6 @@ class _WorkerExecutor(base_executor.BaseExecutor):
     self._tuner_id = None
     self._master_addr = None
     self._master_port = None
-
-    self._chief_process = None  # Populated when the chief oracle is started.
 
     # Initialize configuration of distribution according to CLUSTER_SPEC
     logging.info('Initializing cluster spec... ')
@@ -332,26 +359,14 @@ class _WorkerExecutor(base_executor.BaseExecutor):
 
     logging.info('Tuner ID is: %s', self._tuner_id)
 
-  def __del__(self):
-    self._close()
-
-  def _close(self) -> None:
-    """Kills the chief oracle sub-process, if still running."""
-    if self._chief_process and self._chief_process.is_alive():
-      logging.info('Terminating chief oracle at PID: %s',
-                   self._chief_process.pid)
-      self._chief_process.terminate()
-
   def Do(self, input_dict: Dict[str, List[types.Artifact]],
          output_dict: Dict[str, List[types.Artifact]],
          exec_properties: Dict[str, Any]) -> None:
 
-    tuner = self._search(input_dict, exec_properties)
+    tuner = self._search(input_dict, output_dict, exec_properties)
 
     if self._tuner_id is not None and not self._is_chief:
       logging.info('Returning since this is not chief worker.')
       return
 
     tuner_executor.write_best_hyperparameters(tuner, output_dict)
-
-    self._close()

@@ -13,12 +13,11 @@
 # limitations under the License.
 """Internal shared classes for ForEach."""
 
-from typing import Any, Sequence, Callable, Optional, Dict, Union
+from typing import Any, Sequence, Callable, Dict, TypeVar, Generic
 
 import attr
 from tfx.dsl.context_managers import dsl_context
 from tfx.types import channel as channel_types
-from tfx.utils import typing_utils
 
 # Avoid cyclic dependency
 _BaseNode = Any
@@ -27,7 +26,11 @@ _BaseNode = Any
 @attr.s(auto_attribs=True, kw_only=True, hash=False, eq=False)
 class ForEachContext(dsl_context.DslContext):
   """DslContext for ForEach."""
-  wrapped_channel: Optional[channel_types.BaseChannel] = None
+  # The return value of the `ForEach.__enter__()`, or the variable in the `as`
+  # clause of the `ForEach`. Typically it is a BaseChannel or a sequence of
+  # BaseChannels, but can be Any.
+  # This is automatically set from `ForEach.enter()`. Do not set this directly.
+  loop_variable: Any = None
 
   def __hash__(self) -> int:
     return hash(id(self))
@@ -42,17 +45,19 @@ class ForEachContext(dsl_context.DslContext):
 
     if len(containing_nodes) > 1:
       raise NotImplementedError(
-          'Cannot define more than one component within ForEach yet.')
+          'Cannot define more than one component within ForEach yet. Got'
+          f' {[n.id for n in containing_nodes]}'
+      )
 
     # TODO(b/237363715): Raise if contaning nodes does not use loop variable
     # neither directly nor indirectly.
 
 
 _ChannelDict = Dict[str, channel_types.BaseChannel]
-LoopVar = Union[channel_types.BaseChannel, _ChannelDict]
+LoopVar = TypeVar('LoopVar')
 
 
-class Loopable:
+class Loopable(Generic[LoopVar]):
   """A loopable object can be used with ForEach.
 
   with ForEach(loopable) as handle:
@@ -70,10 +75,7 @@ class Loopable:
     self._loop_var_factory = loop_var_factory
 
   def get_loop_var(self, context: ForEachContext) -> LoopVar:
-    result = self._loop_var_factory(context)
-    if not typing_utils.is_compatible(result, LoopVar):
-      raise ValueError(f'ForEach got non-loopable instance {result}')
-    return result
+    return self._loop_var_factory(context)
 
   def __getitem__(self, *unused_args):
     raise RuntimeError(

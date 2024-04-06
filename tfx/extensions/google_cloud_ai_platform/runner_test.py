@@ -212,7 +212,9 @@ class RunnerTest(tf.test.TestCase):
             },],
         }, body['job_spec'])
     self.assertStartsWith(body['display_name'], 'tfx_')
-    self._mock_get.assert_called_with(name='vertex_job_study_id')
+    self._mock_get.assert_called_with(
+        name='vertex_job_study_id', retry=mock.ANY
+    )
 
   @mock.patch('tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
   def testStartCloudTrainingWithUserContainer_Vertex(self, mock_gapic):
@@ -260,7 +262,9 @@ class RunnerTest(tf.test.TestCase):
         },],
     }.items(), body['job_spec'].items())
     self.assertEqual(body['display_name'], 'my_jobid')
-    self._mock_get.assert_called_with(name='vertex_job_study_id')
+    self._mock_get.assert_called_with(
+        name='vertex_job_study_id', retry=mock.ANY
+    )
 
   @mock.patch('tfx.extensions.google_cloud_ai_platform.training_clients.gapic')
   def testStartCloudTrainingWithVertexCustomJob(self, mock_gapic):
@@ -328,7 +332,9 @@ class RunnerTest(tf.test.TestCase):
     self.assertEqual(body['display_name'], 'valid_name')
     self.assertDictEqual(body['encryption_spec'], expected_encryption_spec)
     self.assertLessEqual(user_provided_labels.items(), body['labels'].items())
-    self._mock_get.assert_called_with(name='vertex_job_study_id')
+    self._mock_get.assert_called_with(
+        name='vertex_job_study_id', retry=mock.ANY
+    )
 
   def _setUpPredictionMocks(self):
     self._serving_path = os.path.join(self._output_data_dir, 'serving_path')

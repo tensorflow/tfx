@@ -4,6 +4,8 @@ toc:
 
 - heading: "What's New"
   style: divider
+- title: "TFX-Addons"
+  path: /tfx/addons
 - title: "TFX Cloud Solutions"
   path: /tfx/guide/solutions.md
 - title: "Using Keras with TFX"
@@ -90,6 +92,8 @@ toc:
   - title: "Preprocess and transform data"
     path: /tfx/guide/tft
   - include: /tfx/transform/_toc.yaml
+  - title: "Data preprocessing best practices"
+    path: /tfx/guide/tft_bestpractices
 
 - title: "Modeling"
   style: accordion
@@ -113,6 +117,9 @@ toc:
   style: divider
 - title: "Apache Beam"
   path: "https://beam.apache.org/"
+  status: external
+- title: "MLTransform"
+  path: "https://cloud.google.com/dataflow/docs/machine-learning/ml-preprocess-data"
   status: external
 - title: "ML Metadata"
   path: /tfx/guide/mlmd

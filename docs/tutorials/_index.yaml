@@ -12,30 +12,19 @@ landing_page:
   rows:
   - classname:
       devsite-landing-row-100
-    heading: "TensorFlow in Production tutorials"
+    heading: "TensorFlow in Production Tutorials"
     items:
     - description: >
-        <p>
-        The best way to learn TensorFlow Extended (TFX) is to learn by doing.
-        These tutorials are focused examples of the key parts of TFX. They
-        include beginner tutorials to get started, and more advanced tutorials
-        for when you really want to dive into more advanced parts of TFX.
-        </p>
-
-  - classname:
-      devsite-landing-row-100
-    heading: "TFX 1.0"
-    items:
-    - description: >
-        <p>
-        We are happy to announce the availability of the
-        <a href="https://github.com/tensorflow/tfx/releases">TFX 1.0.0</a>.
-        This is the initial post-beta release of TFX, which provides stable public APIs and
-        artifacts. You can be assured that your future TFX pipelines will keep working after an
-        upgrade within the compatibility scope defined in this
-        <a href="https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md">RFC</a>.
-        </p>
-
+        <p>These tutorials will get you started, and help you learn a few different ways of
+        working with TFX for production workflows and deployments.  In particular, you'll
+        learn the two main styles of developing a TFX pipeline:</p>
+        <ul>
+        <li>Using the <code>InteractiveContext</code> to develop a pipeline in a notebook,
+        working with one component at a time.  This style makes development easier
+        and more Pythonic.</li>
+        <li>Defining an entire pipeline and executing it with a runner.  This is what
+        your pipelines will look like when you deploy them.</li>
+        </ul>
   - heading: "Getting started tutorials"
     classname: devsite-landing-row-100
     items:

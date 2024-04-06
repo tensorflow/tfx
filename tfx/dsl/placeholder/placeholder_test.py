@@ -14,30 +14,43 @@
 """Tests for tfx.dsl.placeholder.placeholder."""
 
 import copy
+import functools
 import os
-from typing import Type, TypeVar
+from typing import TypeVar
 
-from absl.testing import parameterized
 import tensorflow as tf
 from tfx.dsl.placeholder import placeholder as ph
+from tfx.dsl.placeholder import placeholder_base
+from tfx.dsl.placeholder import proto_placeholder
+from tfx.proto import transform_pb2
+from tfx.proto.orchestration import execution_invocation_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import placeholder_pb2
-from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
-from tfx.types.artifact import Artifact
-from tfx.types.artifact import Property
-from tfx.types.artifact import PropertyType
-from tfx.types.channel import Channel
-from tfx.utils import json_utils
 
 from google.protobuf import message
 from google.protobuf import text_format
+from ml_metadata.proto import metadata_store_pb2
+
+
+_DictNode = functools.partial(ph.make_proto, pipeline_pb2.InputGraph.DictNode())
+_ExecutionInvocation = functools.partial(
+    ph.make_proto, execution_invocation_pb2.ExecutionInvocation()
+)
+_StructuralRuntimeParameter = functools.partial(
+    ph.make_proto, pipeline_pb2.StructuralRuntimeParameter()
+)
+_StringOrRuntimeParameter = functools.partial(
+    ph.make_proto,
+    pipeline_pb2.StructuralRuntimeParameter.StringOrRuntimeParameter(),
+)
 
 
 _P = TypeVar('_P', bound=message.Message)
 
 
 def load_testdata(
-    filename: str, proto_class: Type[_P] = placeholder_pb2.PlaceholderExpression
+    filename: str, proto_class: type[_P] = placeholder_pb2.PlaceholderExpression
 ) -> _P:
   test_pb_filepath = os.path.join(
       os.path.dirname(__file__), 'testdata', filename
@@ -46,18 +59,16 @@ def load_testdata(
     return text_format.ParseLines(text_pb_file, proto_class())
 
 
-class _MyType(Artifact):
-  TYPE_NAME = 'MyTypeName'
-  PROPERTIES = {
-      'string_value': Property(PropertyType.STRING),
-  }
-
-
 class PlaceholderTest(tf.test.TestCase):
 
-  def _assert_placeholder_pb_equal_and_deepcopyable(self, placeholder,
-                                                    expected_pb_str):
+  def _assert_placeholder_pb_equal_and_deepcopyable(
+      self,
+      placeholder: ph.Placeholder,
+      expected_pb_str: str,
+  ):
     """This function will delete the original copy of placeholder."""
+    # Due to inclusion in types like ExecutableSpec, placeholders need to be
+    # deepcopy()-able.
     placeholder_copy = copy.deepcopy(placeholder)
     expected_pb = text_format.Parse(expected_pb_str,
                                     placeholder_pb2.PlaceholderExpression())
@@ -65,7 +76,15 @@ class PlaceholderTest(tf.test.TestCase):
     # needs to use an instance of placeholder after calling to this function,
     # we can consider returning placeholder_copy.
     del placeholder
-    self.assertProtoEquals(placeholder_copy.encode(), expected_pb)
+
+    encoded_placeholder = placeholder_copy.encode()
+
+    # Clear out the descriptors, which we don't want to assert (too verbose).
+    make_proto_op = encoded_placeholder.operator.make_proto_op
+    if make_proto_op.HasField('file_descriptors'):
+      make_proto_op.ClearField('file_descriptors')
+
+    self.assertProtoEquals(expected_pb, encoded_placeholder)
 
   def testArtifactUriWithDefault0Index(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -291,6 +310,10 @@ class PlaceholderTest(tf.test.TestCase):
         }
     """)
 
+  def testRejectsValueOfOutputArtifact(self):
+    with self.assertRaises(ValueError):
+      _ = ph.output('primitive').value
+
   def testConcatUriWithString(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         ph.output('model').uri + '/model', """
@@ -423,9 +446,11 @@ class PlaceholderTest(tf.test.TestCase):
 
   def testListConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.to_list([ph.input('model').uri,
-                    ph.exec_property('random_str')]) +
-        ph.to_list([ph.input('another_model').uri]), """
+        ph.make_list(
+            [ph.input('model').uri, 'foo', ph.exec_property('random_str')]
+        )
+        + ph.make_list([ph.input('another_model').uri]),
+        """
         operator {
           list_concat_op {
             expressions {
@@ -445,6 +470,11 @@ class PlaceholderTest(tf.test.TestCase):
                     }
                   }
                 }
+              }
+            }
+            expressions {
+              value {
+                string_value: "foo"
               }
             }
             expressions {
@@ -472,16 +502,17 @@ class PlaceholderTest(tf.test.TestCase):
                 }
               }
             }
-
           }
         }
-    """)
+    """,
+    )
 
   def testListConcatAndSerialize(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.to_list([ph.input('model').uri,
-                    ph.exec_property('random_str')
-                   ]).serialize_list(ph.ListSerializationFormat.JSON), """
+        ph.make_list(
+            [ph.input('model').uri, ph.exec_property('random_str')]
+        ).serialize_list(ph.ListSerializationFormat.JSON),
+        """
         operator {
           list_serialization_op {
             expression {
@@ -518,23 +549,142 @@ class PlaceholderTest(tf.test.TestCase):
             serialization_format: JSON
           }
         }
-    """)
+    """,
+    )
+
+  def testListEmpty(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_list([]),
+        """
+        operator {
+          list_concat_op {}
+        }
+    """,
+    )
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_list([]) + ph.make_list([ph.exec_property('random_str')]),
+        """
+        operator {
+          list_concat_op {
+            expressions {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "random_str"
+              }
+            }
+          }
+        }
+    """,
+    )
+
+  def testMakeDict(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        placeholder_base.make_dict({
+            'anotherkey': ph.input('another_model').uri,
+            'droppedkey': None,
+        }),
+        """
+        operator {
+          make_dict_op {
+            entries {
+              key {
+                value {
+                  string_value: "anotherkey"
+                }
+              }
+              value {
+                operator {
+                  artifact_uri_op {
+                    expression {
+                      operator {
+                        index_op {
+                          expression {
+                            placeholder {
+                              type: INPUT_ARTIFACT
+                              key: "another_model"
+                            }
+                          }
+                          index: 0
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+    """,
+    )
+
+  def testMakeDictWithTupleListInput(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        placeholder_base.make_dict([
+            ('fookey', ph.input('model').uri),
+            (ph.exec_property('random_str'), 'barvalue'),
+            ('droppedkey', None),
+        ]),
+        """
+        operator {
+          make_dict_op {
+            entries {
+              key {
+                value {
+                  string_value: "fookey"
+                }
+              }
+              value {
+                operator {
+                  artifact_uri_op {
+                    expression {
+                      operator {
+                        index_op {
+                          expression {
+                            placeholder {
+                              type: INPUT_ARTIFACT
+                              key: "model"
+                            }
+                          }
+                          index: 0
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            entries {
+              key {
+                placeholder {
+                  type: EXEC_PROPERTY
+                  key: "random_str"
+                }
+              }
+              value {
+                value {
+                  string_value: "barvalue"
+                }
+              }
+            }
+          }
+        }
+    """,
+    )
+
+  def testDictEmpty(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        placeholder_base.make_dict({}), 'operator { make_dict_op {} }'
+    )
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        placeholder_base.make_dict([]), 'operator { make_dict_op {} }'
+    )
 
   def testProtoOperatorDescriptor(self):
     placeholder = ph.exec_property('splits_config').analyze[0]
     component_spec = standard_component_specs.TransformSpec
     self.assertProtoEquals(
-        placeholder.encode(component_spec),
         load_testdata('proto_placeholder_operator.pbtxt'),
-    )
-
-  def testProtoFutureValueOperator(self):
-    output_channel = Channel(type=standard_artifacts.Integer)
-    placeholder = output_channel.future()[0].value
-    placeholder._key = '_component.num'
-    self.assertProtoEquals(
-        placeholder.encode(),
-        load_testdata('proto_placeholder_future_value_operator.pbtxt'),
+        placeholder.encode(component_spec),
     )
 
   def testConcatWithSelfReferences(self):
@@ -775,6 +925,40 @@ class PlaceholderTest(tf.test.TestCase):
             }
           }""")
 
+  def testJoinPath(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.join_path(ph.output('model').uri, 'foo.txt'),
+        """
+        operator {
+          join_path_op {
+            expressions {
+              operator {
+                artifact_uri_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: OUTPUT_ARTIFACT
+                            key: "model"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "foo.txt"
+              }
+            }
+          }
+        }
+        """,
+    )
+
   def testComplicatedConcat(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
         'google/' + ph.output('model').uri + '/model/' + '0/' +
@@ -836,7 +1020,7 @@ class PlaceholderTest(tf.test.TestCase):
 
   def testRuntimeInfoInvalidKey(self):
     with self.assertRaises(ValueError):
-      ph.runtime_info('invalid_key')
+      ph.runtime_info('invalid_key')  # pytype: disable=wrong-arg-types
 
   def testProtoSerializationOperator(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
@@ -885,8 +1069,8 @@ class PlaceholderTest(tf.test.TestCase):
         ph.ProtoSerializationFormat.JSON)
     component_spec = standard_component_specs.TransformSpec
     self.assertProtoEquals(
-        placeholder.encode(component_spec),
         load_testdata('proto_placeholder_serialization_operator.pbtxt'),
+        placeholder.encode(component_spec),
     )
 
   def testExecInvocation(self):
@@ -913,9 +1097,10 @@ class PlaceholderTest(tf.test.TestCase):
           }
     """)
 
-  def testBase64EncodeOperator(self):
+  def testBase64EncodeOperatorUrlSafe(self):
     self._assert_placeholder_pb_equal_and_deepcopyable(
-        ph.exec_property('str_value').b64encode(), """
+        ph.exec_property('str_value').b64encode(),
+        """
         operator {
           base64_encode_op {
             expression {
@@ -924,236 +1109,280 @@ class PlaceholderTest(tf.test.TestCase):
                 key: "str_value"
               }
             }
+            is_standard_b64: false
           }
         }
-    """)
+    """,
+    )
 
-  def testJsonSerializable(self):
-    json_text = json_utils.dumps(ph.input('model').uri)
-    python_instance = json_utils.loads(json_text)
-    self.assertEqual(ph.input('model').uri.encode(), python_instance.encode())
-
-
-class ChannelWrappedPlaceholderTest(parameterized.TestCase, tf.test.TestCase):
-
-  @parameterized.named_parameters(
-      {
-          'testcase_name': 'two_sides_placeholder',
-          'left': Channel(type=_MyType).future().value,
-          'right': Channel(type=_MyType).future().value,
-      },
-      {
-          'testcase_name': 'left_side_placeholder_right_side_string',
-          'left': Channel(type=_MyType).future().value,
-          'right': '#',
-      },
-      {
-          'testcase_name': 'left_side_string_right_side_placeholder',
-          'left': 'http://',
-          'right': Channel(type=_MyType).future().value,
-      },
-  )
-  def testConcat(self, left, right):
-    self.assertIsInstance(left + right, ph.ChannelWrappedPlaceholder)
-
-  def testJoinWithSelf(self):
-    left = Channel(type=_MyType).future().value
-    right = Channel(type=_MyType).future().value
-    self.assertIsInstance(ph.join([left, right]), ph.ChannelWrappedPlaceholder)
-
-  def testEncodeWithKeys(self):
-    channel = Channel(type=_MyType)
-    channel_future = channel.future()[0].value
-    actual_pb = channel_future.encode_with_keys(
-        lambda channel: channel.type_name)
-    expected_pb = text_format.Parse(
+  def testBase64EncodeOperator(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.exec_property('str_value').b64encode(url_safe=False),
         """
-      operator {
-        artifact_value_op {
-          expression {
-            operator {
-              index_op {
-                expression {
-                  placeholder {
-                    key: "MyTypeName"
-                  }
+        operator {
+          base64_encode_op {
+            expression {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "str_value"
+              }
+            }
+            is_standard_b64: true
+          }
+        }
+    """,
+    )
+
+  def testMakeProtoPlaceholder_Empty(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_proto(execution_invocation_pb2.ExecutionInvocation()),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+          }
+        }
+        """,
+    )
+
+  def testMakeProtoPlaceholder_BaseOnly(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_proto(
+            execution_invocation_pb2.ExecutionInvocation(tmp_dir='/foo')
+        ),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {
+                tmp_dir: "/foo"
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testMakeProtoPlaceholder_FieldOnly(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_proto(
+            execution_invocation_pb2.ExecutionInvocation(), tmp_dir='/foo'
+        ),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "tmp_dir"
+              value {
+                value {
+                  string_value: "/foo"
                 }
               }
             }
           }
         }
-      }
-    """, placeholder_pb2.PlaceholderExpression())
-    self.assertProtoEquals(actual_pb, expected_pb)
-    self.assertIsNone(channel_future._key)
+        """,
+    )
 
-
-class PredicateTest(parameterized.TestCase, tf.test.TestCase):
-
-  @parameterized.named_parameters(
-      {
-          'testcase_name': 'two_sides_placeholder',
-          'left': Channel(type=_MyType).future().value,
-          'right': Channel(type=_MyType).future().value,
-          'expected_op': placeholder_pb2.ComparisonOperator.Operation.LESS_THAN,
-          'expected_lhs_field': 'operator',
-          'expected_rhs_field': 'operator',
-      },
-      {
-          'testcase_name': 'left_side_placeholder_right_side_int',
-          'left': Channel(type=_MyType).future().value,
-          'right': 1,
-          'expected_op': placeholder_pb2.ComparisonOperator.Operation.LESS_THAN,
-          'expected_lhs_field': 'operator',
-          'expected_rhs_field': 'value',
-          'expected_rhs_value_type': 'int_value',
-      },
-      {
-          'testcase_name': 'left_side_placeholder_right_side_float',
-          'left': Channel(type=_MyType).future().value,
-          'right': 1.1,
-          'expected_op': placeholder_pb2.ComparisonOperator.Operation.LESS_THAN,
-          'expected_lhs_field': 'operator',
-          'expected_rhs_field': 'value',
-          'expected_rhs_value_type': 'double_value',
-      },
-      {
-          'testcase_name': 'left_side_placeholder_right_side_string',
-          'left': Channel(type=_MyType).future().value,
-          'right': 'one',
-          'expected_op': placeholder_pb2.ComparisonOperator.Operation.LESS_THAN,
-          'expected_lhs_field': 'operator',
-          'expected_rhs_field': 'value',
-          'expected_rhs_value_type': 'string_value',
-      },
-      {
-          'testcase_name':
-              'right_side_placeholder_left_side_int',
-          'left':
-              1,
-          'right':
-              Channel(type=_MyType).future().value,
-          'expected_op':
-              placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN,
-          'expected_lhs_field':
-              'operator',
-          'expected_rhs_field':
-              'value',
-          'expected_rhs_value_type':
-              'int_value',
-      },
-      {
-          'testcase_name':
-              'right_side_placeholder_left_side_float',
-          'left':
-              1.1,
-          'right':
-              Channel(type=_MyType).future().value,
-          'expected_op':
-              placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN,
-          'expected_lhs_field':
-              'operator',
-          'expected_rhs_field':
-              'value',
-          'expected_rhs_value_type':
-              'double_value',
-      },
-  )
-  def testComparison(self,
-                     left,
-                     right,
-                     expected_op,
-                     expected_lhs_field,
-                     expected_rhs_field,
-                     expected_rhs_value_type=None):
-    pred = left < right
-    actual_pb = pred.encode()
-    self.assertEqual(actual_pb.operator.compare_op.op, expected_op)
-    self.assertTrue(
-        actual_pb.operator.compare_op.lhs.HasField(expected_lhs_field))
-    self.assertTrue(
-        actual_pb.operator.compare_op.rhs.HasField(expected_rhs_field))
-    if expected_rhs_value_type:
-      self.assertTrue(
-          actual_pb.operator.compare_op.rhs.value.HasField(
-              expected_rhs_value_type))
-
-  def testEquals(self):
-    left = Channel(type=_MyType)
-    right = Channel(type=_MyType)
-    pred = left.future().value == right.future().value
-    actual_pb = pred.encode()
-    self.assertEqual(actual_pb.operator.compare_op.op,
-                     placeholder_pb2.ComparisonOperator.Operation.EQUAL)
-
-  def testEncode(self):
-    channel_1 = Channel(type=_MyType)
-    channel_2 = Channel(type=_MyType)
-    pred = channel_1.future().value > channel_2.future().value
-    actual_pb = pred.encode()
-    expected_pb = text_format.Parse(
+  def testMakeProtoPlaceholder_FieldOnlyWithAlias(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(tmp_dir='/foo'),
         """
-      operator {
-        compare_op {
-          lhs {
-            operator {
-              artifact_value_op {
-                expression {
-                  operator {
-                    index_op {
-                      expression {
-                        placeholder {}
-                      }
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "tmp_dir"
+              value {
+                value {
+                  string_value: "/foo"
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testMakeProtoPlaceholder_FieldPlaceholder(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(tmp_dir=ph.exec_property('foo')),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "tmp_dir"
+              value {
+                placeholder {
+                  type: EXEC_PROPERTY
+                  key: "foo"
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testMakeProtoPlaceholder_RejectsUndefinedField(self):
+    with self.assertRaisesRegex(ValueError, 'Unknown field undefined_field.*'):
+      _ExecutionInvocation(undefined_field=ph.exec_property('foo'))
+
+  def testMakeProtoPlaceholder_OtherFieldTypes(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_proto(
+            metadata_store_pb2.Value(),
+            int_value=42,
+            double_value=42.42,
+            string_value='foo42',
+            bool_value=True,
+        ),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/ml_metadata.Value] {}
+            }
+            fields {
+              key: "int_value"
+              value {
+                value {
+                  int_value: 42
+                }
+              }
+            }
+            fields {
+              key: "double_value"
+              value {
+                value {
+                  double_value: 42.42
+                }
+              }
+            }
+            fields {
+              key: "string_value"
+              value {
+                value {
+                  string_value: "foo42"
+                }
+              }
+            }
+            fields {
+              key: "bool_value"
+              value {
+                value {
+                  bool_value: true
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testMakeProtoPlaceholder_EnumField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_proto(
+            pipeline_pb2.UpdateOptions(),
+            reload_policy=pipeline_pb2.UpdateOptions.ALL,
+        ),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.UpdateOptions] {}
+            }
+            fields {
+              key: "reload_policy"
+              value {
+                value {
+                  int_value: 0
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testMakeProtoPlaceholder_EnumFieldPlaceholder(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_proto(
+            pipeline_pb2.UpdateOptions(), reload_policy=ph.exec_property('foo')
+        ),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.UpdateOptions] {}
+            }
+            fields {
+              key: "reload_policy"
+              value {
+                placeholder {
+                  type: EXEC_PROPERTY
+                  key: "foo"
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
+
+  def testMakeProtoPlaceholder_RejectsSubmessageIntoScalarField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected scalar value for.*tmp_dir.*'
+    ):
+      _ExecutionInvocation(tmp_dir=ph.make_proto(pipeline_pb2.PipelineInfo()))
+    with self.assertRaisesRegex(
+        ValueError, 'Expected scalar value for.*tmp_dir.*'
+    ):
+      _ExecutionInvocation(tmp_dir=pipeline_pb2.PipelineInfo())
+
+  def testMakeProtoPlaceholder_RejectsWrongScalarType(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected .*str.* for .*tmp_dir.*got 42'
+    ):
+      _ExecutionInvocation(tmp_dir=42)
+
+  def testMakeProtoPlaceholder_SubmessagePlaceholder(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(
+            pipeline_info=ph.make_proto(
+                pipeline_pb2.PipelineInfo(), id=ph.exec_property('foo')
+            )
+        ),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "pipeline_info"
+              value {
+                operator {
+                  make_proto_op {
+                    base {
+                      [type.googleapis.com/tfx.orchestration.PipelineInfo] {}
                     }
-                  }
-                }
-              }
-            }
-          }
-          rhs {
-            operator {
-              artifact_value_op {
-                expression {
-                  operator {
-                    index_op {
-                      expression {
-                        placeholder {}
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          op: GREATER_THAN
-        }
-      }
-    """, placeholder_pb2.PlaceholderExpression())
-    self.assertProtoEquals(actual_pb, expected_pb)
-
-  def testEncodeWithKeys(self):
-    channel_1 = Channel(type=_MyType)
-    channel_2 = Channel(type=_MyType)
-    pred = channel_1.future().value > channel_2.future().value
-    channel_to_key_map = {
-        channel_1: 'channel_1_key',
-        channel_2: 'channel_2_key',
-    }
-    actual_pb = pred.encode_with_keys(
-        lambda channel: channel_to_key_map[channel])
-    expected_pb = text_format.Parse(
-        """
-      operator {
-        compare_op {
-          lhs {
-            operator {
-              artifact_value_op {
-                expression {
-                  operator {
-                    index_op {
-                      expression {
+                    fields {
+                      key: "id"
+                      value {
                         placeholder {
-                          key: "channel_1_key"
+                          type: EXEC_PROPERTY
+                          key: "foo"
                         }
                       }
                     }
@@ -1162,116 +1391,141 @@ class PredicateTest(parameterized.TestCase, tf.test.TestCase):
               }
             }
           }
-          rhs {
-            operator {
-              artifact_value_op {
-                expression {
-                  operator {
-                    index_op {
-                      expression {
-                        placeholder {
-                          key: "channel_2_key"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          op: GREATER_THAN
         }
-      }
-    """, placeholder_pb2.PlaceholderExpression())
-    self.assertProtoEquals(actual_pb, expected_pb)
+        """,
+    )
 
-  def testNegation(self):
-    channel_1 = Channel(type=_MyType)
-    channel_2 = Channel(type=_MyType)
-    pred = channel_1.future().value < channel_2.future().value
-    not_pred = ph.logical_not(pred)
-    channel_to_key_map = {
-        channel_1: 'channel_1_key',
-        channel_2: 'channel_2_key',
-    }
-    actual_pb = not_pred.encode_with_keys(
-        lambda channel: channel_to_key_map[channel])
-    expected_pb = text_format.Parse(
+  def testMakeProtoPlaceholder_RejectsScalarValueForSubmessageField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected submessage .*pipeline_info.*'
+    ):
+      _ExecutionInvocation(pipeline_info='this is not a submessage')
+
+  def testMakeProtoPlaceholder_RejectsWrongTypeForSubmessageField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected message of type .*PipelineInfo.*pipeline_info.*'
+    ):
+      _ExecutionInvocation(
+          pipeline_info=ph.make_proto(pipeline_pb2.PipelineNode())
+      )
+    with self.assertRaisesRegex(
+        ValueError, 'Expected message of type .*PipelineInfo.*pipeline_info.*'
+    ):
+      _ExecutionInvocation(pipeline_info=pipeline_pb2.PipelineNode())
+
+  def testMakeProtoPlaceholder_RepeatedStringField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_proto(
+            pipeline_pb2.PipelineNode(),
+            upstream_nodes=['A', ph.exec_property('foo'), 'B'],
+        ),
         """
-      operator {
-        unary_logical_op {
-          expression {
-            operator {
-              compare_op {
-                lhs {
-                  operator {
-                    artifact_value_op {
-                      expression {
-                        operator {
-                          index_op {
-                            expression {
-                              placeholder {
-                                key: "channel_1_key"
-                              }
-                            }
-                          }
-                        }
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.PipelineNode] {}
+            }
+            fields {
+              key: "upstream_nodes"
+              value {
+                operator {
+                  list_concat_op {
+                    expressions {
+                      value {
+                        string_value: "A"
+                      }
+                    }
+                    expressions {
+                      placeholder {
+                        type: EXEC_PROPERTY
+                        key: "foo"
+                      }
+                    }
+                    expressions {
+                      value {
+                        string_value: "B"
                       }
                     }
                   }
                 }
-                rhs {
-                  operator {
-                    artifact_value_op {
-                      expression {
-                        operator {
-                          index_op {
-                            expression {
-                              placeholder {
-                                key: "channel_2_key"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-                op: LESS_THAN
               }
             }
           }
-          op: NOT
         }
-      }
-    """, placeholder_pb2.PlaceholderExpression())
-    self.assertProtoEquals(actual_pb, expected_pb)
+        """,
+    )
 
-  def testDoubleNegation(self):
-    """Treat `not(not(a))` as `a`."""
-    channel_1 = Channel(type=_MyType)
-    channel_2 = Channel(type=_MyType)
-    pred = channel_1.future().value < channel_2.future().value
-    not_not_pred = ph.logical_not(ph.logical_not(pred))
-    channel_to_key_map = {
-        channel_1: 'channel_1_key',
-        channel_2: 'channel_2_key',
-    }
-    actual_pb = not_not_pred.encode_with_keys(
-        lambda channel: channel_to_key_map[channel])
-    expected_pb = text_format.Parse(
+  def testMakeProtoPlaceholder_RepeatedSubmessageField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _StructuralRuntimeParameter(
+            parts=[
+                _StringOrRuntimeParameter(constant_value='A'),
+                _StringOrRuntimeParameter(
+                    constant_value=ph.exec_property('foo')
+                ),
+                _StringOrRuntimeParameter(constant_value='B'),
+            ],
+        ),
         """
-      operator {
-        compare_op {
-          lhs {
-            operator {
-              artifact_value_op {
-                expression {
-                  operator {
-                    index_op {
-                      expression {
-                        placeholder {
-                          key: "channel_1_key"
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.StructuralRuntimeParameter] {}
+            }
+            fields {
+              key: "parts"
+              value {
+                operator {
+                  list_concat_op {
+                    expressions {
+                      operator {
+                        make_proto_op {
+                          base {
+                            [type.googleapis.com/tfx.orchestration.StructuralRuntimeParameter.StringOrRuntimeParameter] {}
+                          }
+                          fields {
+                            key: "constant_value"
+                            value {
+                              value {
+                                string_value: "A"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    expressions {
+                      operator {
+                        make_proto_op {
+                          base {
+                            [type.googleapis.com/tfx.orchestration.StructuralRuntimeParameter.StringOrRuntimeParameter] {}
+                          }
+                          fields {
+                            key: "constant_value"
+                            value {
+                              placeholder {
+                                type: EXEC_PROPERTY
+                                key: "foo"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    expressions {
+                      operator {
+                        make_proto_op {
+                          base {
+                            [type.googleapis.com/tfx.orchestration.StructuralRuntimeParameter.StringOrRuntimeParameter] {}
+                          }
+                          fields {
+                            key: "constant_value"
+                            value {
+                              value {
+                                string_value: "B"
+                              }
+                            }
+                          }
                         }
                       }
                     }
@@ -1280,56 +1534,51 @@ class PredicateTest(parameterized.TestCase, tf.test.TestCase):
               }
             }
           }
-          rhs {
-            operator {
-              artifact_value_op {
-                expression {
-                  operator {
-                    index_op {
-                      expression {
-                        placeholder {
-                          key: "channel_2_key"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-          op: LESS_THAN
         }
-      }
-    """, placeholder_pb2.PlaceholderExpression())
-    self.assertProtoEquals(actual_pb, expected_pb)
+        """,
+    )
 
-  def testComparison_notEqual(self):
-    """Treat `a != b` as `not(a == b)`."""
-    channel_1 = Channel(type=_MyType)
-    channel_2 = Channel(type=_MyType)
-    pred = channel_1.future().value != channel_2.future().value
-    channel_to_key_map = {
-        channel_1: 'channel_1_key',
-        channel_2: 'channel_2_key',
-    }
-    actual_pb = pred.encode_with_keys(
-        lambda channel: channel_to_key_map[channel])
-    expected_pb = text_format.Parse(
+  def testMakeProtoPlaceholder_RejectsScalarValueForRepeatedField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected list input for repeated field .*upstream_nodes.*'
+    ):
+      ph.make_proto(
+          pipeline_pb2.PipelineNode(), upstream_nodes='this is not a list'
+      )
+
+  def testMakeProtoPlaceholder_AnySubmessage(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        ph.make_proto(
+            metadata_store_pb2.Value(),
+            # We can directly assign a message of any type and it will pack it.
+            proto_value=ph.make_proto(
+                pipeline_pb2.PipelineNode(),
+                upstream_nodes=[ph.exec_property('foo')],
+            ),
+        ),
         """
-      operator {
-        unary_logical_op {
-          expression {
-            operator {
-              compare_op {
-                lhs {
-                  operator {
-                    artifact_value_op {
-                      expression {
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/ml_metadata.Value] {}
+            }
+            fields {
+              key: "proto_value"
+              value {
+                operator {
+                  make_proto_op {
+                    base {
+                      [type.googleapis.com/tfx.orchestration.PipelineNode] {}
+                    }
+                    fields {
+                      key: "upstream_nodes"
+                      value {
                         operator {
-                          index_op {
-                            expression {
+                          list_concat_op {
+                            expressions {
                               placeholder {
-                                key: "channel_1_key"
+                                type: EXEC_PROPERTY
+                                key: "foo"
                               }
                             }
                           }
@@ -1338,343 +1587,292 @@ class PredicateTest(parameterized.TestCase, tf.test.TestCase):
                     }
                   }
                 }
-                rhs {
-                  operator {
-                    artifact_value_op {
-                      expression {
-                        operator {
-                          index_op {
-                            expression {
-                              placeholder {
-                                key: "channel_2_key"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-                op: EQUAL
               }
             }
           }
-          op: NOT
         }
-      }
-    """, placeholder_pb2.PlaceholderExpression())
-    self.assertProtoEquals(actual_pb, expected_pb)
+        """,
+    )
 
-  def testComparison_lessThanOrEqual(self):
-    """Treat `a <= b` as `not(a > b)`."""
-    channel_1 = Channel(type=_MyType)
-    channel_2 = Channel(type=_MyType)
-    pred = channel_1.future().value <= channel_2.future().value
-    channel_to_key_map = {
-        channel_1: 'channel_1_key',
-        channel_2: 'channel_2_key',
-    }
-    actual_pb = pred.encode_with_keys(
-        lambda channel: channel_to_key_map[channel])
-    expected_pb = text_format.Parse(
+  def testMakeProtoPlaceholder_MapWithStringValueField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _DictNode(
+            node_ids={'a': 'A', 'foo': ph.exec_property('foo')},
+        ),
         """
-      operator {
-        unary_logical_op {
-          expression {
-            operator {
-              compare_op {
-                lhs {
-                  operator {
-                    artifact_value_op {
-                      expression {
-                        operator {
-                          index_op {
-                            expression {
-                              placeholder {
-                                key: "channel_1_key"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-                rhs {
-                  operator {
-                    artifact_value_op {
-                      expression {
-                        operator {
-                          index_op {
-                            expression {
-                              placeholder {
-                                key: "channel_2_key"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-                op: GREATER_THAN
-              }
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.InputGraph.DictNode] {}
             }
-          }
-          op: NOT
-        }
-      }
-    """, placeholder_pb2.PlaceholderExpression())
-    self.assertProtoEquals(actual_pb, expected_pb)
-
-  def testComparison_greaterThanOrEqual(self):
-    """Treat `a >= b` as `not(a < b)`."""
-    channel_1 = Channel(type=_MyType)
-    channel_2 = Channel(type=_MyType)
-    pred = channel_1.future().value >= channel_2.future().value
-    channel_to_key_map = {
-        channel_1: 'channel_1_key',
-        channel_2: 'channel_2_key',
-    }
-    actual_pb = pred.encode_with_keys(
-        lambda channel: channel_to_key_map[channel])
-    expected_pb = text_format.Parse(
-        """
-      operator {
-        unary_logical_op {
-          expression {
-            operator {
-              compare_op {
-                lhs {
-                  operator {
-                    artifact_value_op {
-                      expression {
-                        operator {
-                          index_op {
-                            expression {
-                              placeholder {
-                                key: "channel_1_key"
-                              }
-                            }
-                          }
+            fields {
+              key: "node_ids"
+              value {
+                operator {
+                  make_dict_op {
+                    entries {
+                      key {
+                        value {
+                          string_value: "a"
+                        }
+                      }
+                      value {
+                        value {
+                          string_value: "A"
                         }
                       }
                     }
-                  }
-                }
-                rhs {
-                  operator {
-                    artifact_value_op {
-                      expression {
-                        operator {
-                          index_op {
-                            expression {
-                              placeholder {
-                                key: "channel_2_key"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-                op: LESS_THAN
-              }
-            }
-          }
-          op: NOT
-        }
-      }
-    """, placeholder_pb2.PlaceholderExpression())
-    self.assertProtoEquals(actual_pb, expected_pb)
-
-  def testNestedLogicalOps(self):
-    channel_11 = Channel(type=_MyType)
-    channel_12 = Channel(type=_MyType)
-    channel_21 = Channel(type=_MyType)
-    channel_22 = Channel(type=_MyType)
-    channel_3 = Channel(type=_MyType)
-    pred = ph.logical_or(
-        ph.logical_and(channel_11.future().value >= channel_12.future().value,
-                       channel_21.future().value < channel_22.future().value),
-        ph.logical_not(channel_3.future().value == 'foo'))
-
-    channel_to_key_map = {
-        channel_11: 'channel_11_key',
-        channel_12: 'channel_12_key',
-        channel_21: 'channel_21_key',
-        channel_22: 'channel_22_key',
-        channel_3: 'channel_3_key',
-    }
-    actual_pb = pred.encode_with_keys(
-        lambda channel: channel_to_key_map[channel])
-    expected_pb = text_format.Parse(
-        """
-      operator {
-        binary_logical_op {
-          lhs {
-            operator {
-              binary_logical_op {
-                lhs {
-                  operator {
-                    unary_logical_op {
-                      expression {
-                        operator {
-                          compare_op {
-                            lhs {
-                              operator {
-                                artifact_value_op {
-                                  expression {
-                                    operator {
-                                      index_op {
-                                        expression {
-                                          placeholder {
-                                            key: "channel_11_key"
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                            rhs {
-                              operator {
-                                artifact_value_op {
-                                  expression {
-                                    operator {
-                                      index_op {
-                                        expression {
-                                          placeholder {
-                                            key: "channel_12_key"
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                            op: LESS_THAN
-                          }
-                        }
-                      }
-                      op: NOT
-                    }
-                  }
-                }
-                rhs {
-                  operator {
-                    compare_op {
-                      lhs {
-                        operator {
-                          artifact_value_op {
-                            expression {
-                              operator {
-                                index_op {
-                                  expression {
-                                    placeholder {
-                                      key: "channel_21_key"
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                      rhs {
-                        operator {
-                          artifact_value_op {
-                            expression {
-                              operator {
-                                index_op {
-                                  expression {
-                                    placeholder {
-                                      key: "channel_22_key"
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                      op: LESS_THAN
-                    }
-                  }
-                }
-                op: AND
-              }
-            }
-          }
-          rhs {
-            operator {
-              unary_logical_op {
-                expression {
-                  operator {
-                    compare_op {
-                      lhs {
-                        operator {
-                          artifact_value_op {
-                            expression {
-                              operator {
-                                index_op {
-                                  expression {
-                                    placeholder {
-                                      key: "channel_3_key"
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                      rhs {
+                    entries {
+                      key {
                         value {
                           string_value: "foo"
                         }
                       }
-                      op: EQUAL
+                      value {
+                        placeholder {
+                          type: EXEC_PROPERTY
+                          key: "foo"
+                        }
+                      }
                     }
                   }
                 }
-                op: NOT
               }
             }
           }
-          op: OR
         }
-      }
-    """, placeholder_pb2.PlaceholderExpression())
-    self.assertProtoEquals(actual_pb, expected_pb)
+        """,
+    )
 
-  def testPredicateDependentChannels(self):
-    int1 = Channel(type=standard_artifacts.Integer)
-    int2 = Channel(type=standard_artifacts.Integer)
-    pred1 = int1.future().value == 1
-    pred2 = int1.future().value == int2.future().value
-    pred3 = ph.logical_not(pred1)
-    pred4 = ph.logical_and(pred1, pred2)
+  def testMakeProtoPlaceholder_MapWithSubmessageValueField(self):
+    self._assert_placeholder_pb_equal_and_deepcopyable(
+        _ExecutionInvocation(
+            execution_properties={
+                'fookey': ph.make_proto(
+                    metadata_store_pb2.Value(),
+                    string_value=ph.exec_property('fooprop'),
+                ),
+                'dropped': None,
+            },
+        ),
+        """
+        operator {
+          make_proto_op {
+            base {
+              [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+            }
+            fields {
+              key: "execution_properties"
+              value {
+                operator {
+                  make_dict_op {
+                    entries {
+                      key {
+                        value {
+                          string_value: "fookey"
+                        }
+                      }
+                      value {
+                        operator {
+                          make_proto_op {
+                            base {
+                              [type.googleapis.com/ml_metadata.Value] {}
+                            }
+                            fields {
+                              key: "string_value"
+                              value {
+                                placeholder {
+                                  type: EXEC_PROPERTY
+                                  key: "fooprop"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+    )
 
-    self.assertEqual(set(pred1.dependent_channels()), {int1})
-    self.assertEqual(set(pred2.dependent_channels()), {int1, int2})
-    self.assertEqual(set(pred3.dependent_channels()), {int1})
-    self.assertEqual(set(pred4.dependent_channels()), {int1, int2})
+  def testMakeProtoPlaceholder_RejectsScalarValueForMapField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected dict.*input for map field.*node_ids.*'
+    ):
+      _DictNode(node_ids='this is not a dict')
 
-  def testPlaceholdersInvolved(self):
+  def testMakeProtoPlaceholder_RejectsNonStringKeyForMapField(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Expected string.*for dict key.*node_ids.*'
+    ):
+      _DictNode(node_ids={42: 43})
+
+  def testMakeProtoPlaceholder_GeneratesSplitConfig(self):
+    # This is part one of a two-part test. This generates the
+    # PlaceholderExpression including the proto descriptors for SplitConfig.
+    # Part two is in proto_placeholder_test, where that descriptor isn't linked
+    # into the default descriptor pool, so that the descriptors must be loaded
+    # from the PlaceholderExpression.
+    # The two parts are connected through the testdata file.
+    placeholder = ph.make_proto(
+        transform_pb2.SplitsConfig(), analyze=['foo', 'bar']
+    ).serialize(ph.ProtoSerializationFormat.TEXT_FORMAT)
+    self.assertProtoEquals(
+        load_testdata('make_proto_placeholder.pbtxt'),
+        placeholder.encode(),
+    )
+
+  def testMakeProtoPlaceholder_IncludesAnyDescriptors(self):
+    expression = ph.make_proto(
+        metadata_store_pb2.Value(),
+        # We can directly assign a message of any type and it will pack it.
+        proto_value=ph.make_proto(
+            pipeline_pb2.PipelineNode(),
+            upstream_nodes=[ph.exec_property('foo')],
+        ),
+    ).encode()
+
+    described_message_types = set()
+    for file in expression.operator.make_proto_op.file_descriptors.file:
+      for message_type in file.message_type:
+        described_message_types.add(f'{file.package}.{message_type.name}')
+
+    self.assertIn('ml_metadata.Value', described_message_types)
+    self.assertIn('tfx.orchestration.PipelineNode', described_message_types)
+
+  def testTraverse(self):
     p = ('google/' + ph.runtime_info('platform_config').user + '/' +
          ph.output('model').uri + '/model/' + '0/' +
          ph.exec_property('version'))
-    got = p.placeholders_involved()
-    got_dict = {type(x): x for x in got}
-    self.assertCountEqual(
-        {
-            ph.ArtifactPlaceholder, ph.ExecPropertyPlaceholder,
-            ph.RuntimeInfoPlaceholder
-        }, got_dict.keys())
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+
+  def testListTraverse(self):
+    p = ph.make_list([
+        ph.runtime_info('platform_config').user,
+        ph.output('model').uri,
+        ph.exec_property('version'),
+    ])
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
+    self.assertIn(ph.ListPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+
+  def testDictTraverse(self):
+    p = placeholder_base.make_dict([
+        ('key1', ph.runtime_info('platform_config').user),
+        (ph.output('model').uri, ph.exec_property('version')),
+    ])
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
+    self.assertIn(placeholder_base.DictPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+
+  def testJoinPathTraverse(self):
+    p = ph.join_path(
+        ph.output('model').uri,
+        ph.exec_property('subdir'),
+        'test.txt',
+    )
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+    self.assertNotIn(ph.RuntimeInfoPlaceholder, ph_types)
+
+  def testMakeProtoTraverse(self):
+    p = _ExecutionInvocation(
+        tmp_dir=ph.exec_property('foo'),
+        pipeline_info=ph.make_proto(
+            pipeline_pb2.PipelineInfo(),
+            id=ph.runtime_info('pipeline_platform_config').project_name,
+        ),
+    )
+    ph_types = [type(x) for x in p.traverse()]
+    self.assertIn(proto_placeholder.MakeProtoPlaceholder, ph_types)
+    self.assertIn(ph.ExecPropertyPlaceholder, ph_types)
+    self.assertNotIn(ph.ArtifactPlaceholder, ph_types)
+    self.assertNotIn(ph.ChannelWrappedPlaceholder, ph_types)
+    self.assertIn(ph.RuntimeInfoPlaceholder, ph_types)
+
+  def testIterate(self):
+    p = ph.input('model')
+    with self.assertRaisesRegex(
+        RuntimeError, 'Iterating over a placeholder is not supported. '
+    ):
+      # Iterate over a placeholder by mistake.
+      for _ in p:
+        break
+
+
+class EncodeValueLikeTest(tf.test.TestCase):
+
+  def testEncodesPlaceholder(self):
+    self.assertProtoEquals(
+        """
+        placeholder {
+          type: EXEC_PROPERTY
+          key: "foo"
+        }
+        """,
+        placeholder_base.encode_value_like(ph.exec_property('foo')),
+    )
+
+  def testEncodesInt(self):
+    self.assertProtoEquals(
+        """
+        value {
+          int_value: 42
+        }
+        """,
+        placeholder_base.encode_value_like(42),
+    )
+
+  def testEncodesFloat(self):
+    self.assertProtoEquals(
+        """
+        value {
+          double_value: 42.42
+        }
+        """,
+        placeholder_base.encode_value_like(42.42),
+    )
+
+  def testEncodesString(self):
+    self.assertProtoEquals(
+        """
+        value {
+          string_value: "foo"
+        }
+        """,
+        placeholder_base.encode_value_like('foo'),
+    )
+
+  def testEncodesBool(self):
+    self.assertProtoEquals(
+        """
+        value {
+          bool_value: true
+        }
+        """,
+        placeholder_base.encode_value_like(True),
+    )
+
+  def testFailsOnInvalidInput(self):
+    with self.assertRaises(ValueError):
+      placeholder_base.encode_value_like(self)
 
 
 if __name__ == '__main__':

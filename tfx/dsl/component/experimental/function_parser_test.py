@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.function_parser."""
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, TypedDict, Union
 
 import apache_beam as beam
 import tensorflow as tf
@@ -22,8 +22,8 @@ from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
-from tfx.dsl.component.experimental.function_parser import ArgFormats
 from tfx.dsl.component.experimental.function_parser import parse_typehint_component_function
+from tfx.dsl.component.experimental.utils import ArgFormats
 from tfx.types import standard_artifacts
 
 
@@ -328,6 +328,34 @@ class FunctionParserTest(tf.test.TestCase):
     self.assertDictEqual(return_json_typehints,
                          {'optional_json': Optional[Dict[str, List[bool]]]})
 
+  def testListOfInputArtifacts(self):
+    def func(
+        examples_list: InputArtifact[List[standard_artifacts.Examples]],
+    ):
+      del examples_list
+    (
+        inputs,
+        outputs,
+        parameters,
+        arg_formats,
+        arg_defaults,
+        returned_values,
+        json_typehints,
+        return_json_typehints,
+    ) = parse_typehint_component_function(func)
+    self.assertDictEqual(
+        inputs,
+        {'examples_list': standard_artifacts.Examples})
+    self.assertEmpty(outputs)
+    self.assertEmpty(parameters)
+    self.assertDictEqual(
+        arg_formats,
+        {'examples_list': ArgFormats.LIST_INPUT_ARTIFACTS})
+    self.assertEmpty(arg_defaults)
+    self.assertEmpty(returned_values)
+    self.assertEmpty(json_typehints)
+    self.assertEmpty(return_json_typehints)
+
   def testFunctionParseErrors(self):
     # Non-function arguments.
     with self.assertRaisesRegex(
@@ -345,8 +373,9 @@ class FunctionParserTest(tf.test.TestCase):
     # Function with *args and **kwargs.
     with self.assertRaisesRegex(
         ValueError,
-        'must have either an OutputDict instance or `None` as its return'):
-
+        'Return type annotation of @component func_a should be TypedDict or'
+        ' None.',
+    ):
       def func_a(a: int, b: int) -> object:
         del a, b
         return object()
@@ -418,16 +447,16 @@ class FunctionParserTest(tf.test.TestCase):
     # Output artifact in the wrong place.
     with self.assertRaisesRegex(
         ValueError,
-        'Output artifacts .* should be declared as function parameters'):
-
+        "output artifact 'c' should be declared as a function parameter",
+    ):
       def func_i(a: int, b: int) -> OutputDict(c=standard_artifacts.Examples):
         return {'c': float(a + b)}
 
       parse_typehint_component_function(func_i)
     with self.assertRaisesRegex(
         ValueError,
-        'Output artifacts .* should be declared as function parameters'):
-
+        "output artifact 'c' should be declared as a function parameter",
+    ):
       def func_j(
           a: int,
           b: int) -> OutputDict(c=OutputArtifact[standard_artifacts.Examples]):
@@ -483,9 +512,9 @@ class FunctionParserTest(tf.test.TestCase):
     # Optional parameter's default value does not match declared type.
     with self.assertRaisesRegex(
         ValueError,
-        'The default value for optional parameter .* on function .* must be an '
-        'instance of its declared type .* or `None`'):
-
+        'The default value for optional parameter .* on function must be an '
+        'instance of its declared type .* or `None`',
+    ):
       def func_n(a: int,
                  b: int,
                  num_iterations: Parameter[int] = 'abc') -> OutputDict(c=float):
@@ -493,6 +522,24 @@ class FunctionParserTest(tf.test.TestCase):
         return {'c': float(a + b)}
 
       parse_typehint_component_function(func_n)
+
+  def testTypedDictReturnAnnotation(self):
+    class SimpleOutput(TypedDict):
+      x: int
+
+    def func() -> SimpleOutput:
+      return {'x': 42}
+
+    parsed = parse_typehint_component_function(func)
+    self.assertEqual(parsed.outputs, {'x': standard_artifacts.Integer})
+
+  def testTypedDictReturnAnnotation_Variant(self):
+
+    def func() -> TypedDict('SimpleOutput', {'x': int}):
+      return {'x': 42}
+
+    parsed = parse_typehint_component_function(func)
+    self.assertEqual(parsed.outputs, {'x': standard_artifacts.Integer})
 
 
 if __name__ == '__main__':

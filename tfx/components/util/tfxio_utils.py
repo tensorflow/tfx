@@ -13,7 +13,8 @@
 # limitations under the License.
 """TFXIO (standardized TFX inputs) related utilities."""
 
-from typing import Any, Callable, Dict, List, Iterator, Optional, Tuple, Union
+import logging
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 import pyarrow as pa
 import tensorflow as tf
@@ -29,6 +30,7 @@ from tfx_bsl.tfxio import record_to_tensor_tfxio
 from tfx_bsl.tfxio import tf_example_record
 from tfx_bsl.tfxio import tf_sequence_example_record
 from tfx_bsl.tfxio import tfxio
+
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 _SUPPORTED_FILE_FORMATS = (example_gen_pb2.FileFormat.FILE_FORMAT_PARQUET,
@@ -79,7 +81,7 @@ def resolve_payload_format_and_data_view_uri(
   # DataView (the one with the largest create time). This will guarantee that
   # the RecordBatch read from each artifact will share the same Arrow schema
   # (and thus Tensors fed to TF graphs, if applicable). The DataView will need
-  # to guarantee backward compatibilty with older spans. Usually the DataView
+  # to guarantee backward compatibility with older spans. Usually the DataView
   # is a struct2tensor query, so such guarantee is provided by protobuf
   # (as long as the user follows the basic principles of making changes to
   # the proto).
@@ -92,6 +94,74 @@ def resolve_payload_format_and_data_view_uri(
       'Unable to resolve a DataView for the Examples Artifacts '
       'provided -- some Artifacts did not have DataView attached: {}'
       .format(violating_artifacts))
+
+
+def get_file_format_and_patterns(
+    examples: List[artifact.Artifact],
+    split: str,
+) -> Tuple[List[str], List[str]]:
+  """Get aligned lists of file patterns and formats for Examples artifacts."""
+  file_patterns, file_formats = [], []
+  for examples_artifact in examples:
+    file_pattern = examples_utils.get_split_file_patterns(
+        [examples_artifact], split
+    )
+    assert len(file_pattern) == 1
+    file_patterns.append(file_pattern[0])
+    file_formats.append(examples_utils.get_file_format(examples_artifact))
+  return file_patterns, file_formats
+
+
+def get_split_tfxio(
+    examples: List[artifact.Artifact],
+    split: str,
+    telemetry_descriptors: List[str],
+    schema: Optional[schema_pb2.Schema] = None,
+    read_as_raw_records: bool = False,
+    raw_record_column_name: Optional[str] = None,
+) -> tfxio.TFXIO:
+  """Returns a TFXIO for a single split.
+
+  Args:
+    examples: The Examples artifacts that the TFXIO is intended to access.
+    split: The split to read. Must be a split contained in examples.
+    telemetry_descriptors: A set of descriptors that identify the component that
+      is instantiating the TFXIO. These will be used to construct the namespace
+      to contain metrics for profiling and are therefore expected to be
+      identifiers of the component itself and not individual instances of source
+      use.
+    schema: TFMD schema. Note that without a schema, some TFXIO interfaces in
+      certain TFXIO implementations might not be available.
+    read_as_raw_records: If True, ignore the payload type of `examples`. Always
+      use RawTfRecord TFXIO.
+    raw_record_column_name: If provided, the arrow RecordBatch produced by the
+      TFXIO will contain a string column of the given name, and the contents of
+      that column will be the raw records. Note that not all TFXIO supports this
+      option, and an error will be raised in that case. Required if
+      read_as_raw_records == True.
+
+  Returns:
+    A function that takes a file pattern as input and returns a TFXIO
+    instance.
+
+  Raises:
+    NotImplementedError: when given an unsupported example payload type.
+  """
+  payload_format, data_view_uri = resolve_payload_format_and_data_view_uri(
+      examples
+  )
+  file_patterns, file_formats = get_file_format_and_patterns(examples, split)
+  logging.info('Reading from pattern %s for split %s', file_patterns, split)
+  return make_tfxio(
+      file_pattern=file_patterns,
+      file_format=file_formats,
+      telemetry_descriptors=telemetry_descriptors,
+      payload_format=payload_format,
+      data_view_uri=data_view_uri,
+      schema=schema,
+      read_as_raw_records=read_as_raw_records,
+      raw_record_column_name=raw_record_column_name,
+  )
 
 
 def get_tfxio_factory_from_artifact(

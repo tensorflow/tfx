@@ -30,12 +30,12 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 def _get_outputs_of_execution(
-    metadata_handler: metadata.Metadata,
-    execution_id: int) -> Optional[Dict[str, List[types.Artifact]]]:
+    metadata_handle: metadata.Metadata, execution_id: int
+) -> Optional[Dict[str, List[types.Artifact]]]:
   """Fetches outputs produced by a historical execution.
 
   Args:
-    metadata_handler: A handler to access MLMD store.
+    metadata_handle: A handler to access MLMD store.
     execution_id: The id of the execution that produced the outputs.
 
   Returns:
@@ -45,18 +45,23 @@ def _get_outputs_of_execution(
   result = collections.defaultdict(list)
 
   output_events = [
-      event for event in metadata_handler.store.get_events_by_execution_ids(
-          [execution_id]) if event.type == metadata_store_pb2.Event.OUTPUT
+      event
+      for event in metadata_handle.store.get_events_by_execution_ids(
+          [execution_id]
+      )
+      if event.type == metadata_store_pb2.Event.OUTPUT
   ]
-  cached_output_artifacts = metadata_handler.store.get_artifacts_by_id(
-      [e.artifact_id for e in output_events])
+  cached_output_artifacts = metadata_handle.store.get_artifacts_by_id(
+      [e.artifact_id for e in output_events]
+  )
   for artifact in cached_output_artifacts:
     # Non-live artifact means partial result, will not be used.
     if artifact.state != metadata_store_pb2.Artifact.LIVE:
       return None
 
-  artifact_types = metadata_handler.store.get_artifact_types_by_id(
-      [a.type_id for a in cached_output_artifacts])
+  artifact_types = metadata_handle.store.get_artifact_types_by_id(
+      [a.type_id for a in cached_output_artifacts]
+  )
 
   for event, mlmd_artifact, artifact_type in zip(output_events,
                                                  cached_output_artifacts,
@@ -70,7 +75,7 @@ def _get_outputs_of_execution(
 
 
 def get_cache_context(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     pipeline_node: pipeline_pb2.PipelineNode,
     pipeline_info: pipeline_pb2.PipelineInfo,
     executor_spec: Optional[message.Message] = None,
@@ -90,7 +95,7 @@ def get_cache_context(
   - Serialized module file content if module file is present in parameters.
 
   Args:
-    metadata_handler: A handler to access MLMD store.
+    metadata_handle: A handler to access MLMD store.
     pipeline_node: A pipeline_pb2.PipelineNode instance to represent the node.
     pipeline_info: Information of the pipeline.
     executor_spec: A proto message representing the executor specification.
@@ -136,19 +141,20 @@ def get_cache_context(
       h.update(f.read().encode())
 
   return context_lib.register_context_if_not_exists(
-      metadata_handler=metadata_handler,
+      metadata_handle=metadata_handle,
       context_type_name=context_lib.CONTEXT_TYPE_EXECUTION_CACHE,
-      context_name=h.hexdigest())
+      context_name=h.hexdigest(),
+  )
 
 
 def get_cached_outputs(
-    metadata_handler: metadata.Metadata,
+    metadata_handle: metadata.Metadata,
     cache_context: metadata_store_pb2.Context,
 ) -> Optional[Dict[str, List[types.Artifact]]]:
   """Tries to get the cached output artifacts given a cache context.
 
   Args:
-    metadata_handler: A handler to access MLMD store.
+    metadata_handle: A handler to access MLMD store.
     cache_context: The context representing the cache key.
 
   Returns:
@@ -158,7 +164,8 @@ def get_cached_outputs(
   # Only success executions should be the producer of cached outputs.
   cached_executions = filter(
       execution_lib.is_execution_successful,
-      metadata_handler.store.get_executions_by_context(cache_context.id))
+      metadata_handle.store.get_executions_by_context(cache_context.id),
+  )
   if not cached_executions:
     return None
   # Sorts the candidate executions from newer to older.
@@ -168,8 +175,9 @@ def get_cached_outputs(
   # Defensively traverses candidate executions and returns once we find an
   # execution with valid outputs that can be confirmed to still exist.
   for execution in cached_executions:
-    cached_output_artifacts = _get_outputs_of_execution(metadata_handler,
-                                                        execution.id)
+    cached_output_artifacts = _get_outputs_of_execution(
+        metadata_handle, execution.id
+    )
     if cached_output_artifacts is not None:
       try:
         artifact_utils.verify_artifacts(cached_output_artifacts)

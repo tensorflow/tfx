@@ -30,7 +30,7 @@ and the different ways that you can build custom components.
 
 This section provides a high-level overview of the composition of a TFX
 component. If you are new to TFX pipelines,
-[learn the core concepts by reading the guide to understanding TFX pipelines](understanding_tfx_pipelines).
+[learn the core concepts by reading the guide to understanding TFX pipelines](understanding_tfx_pipelines.md).
 
 TFX components are composed of a component specification and an executor class
 which are packaged in a component interface class.
@@ -88,7 +88,7 @@ complexity of building a component specification, an executor, and a component
 interface.
 
 Learn how to
-[build Python function-based components](custom_function_component).
+[build Python function-based components](custom_function_component.md).
 
 ### Container-based components
 
@@ -111,7 +111,7 @@ since it requires packaging your code as a container image. This approach is
 most suitable for including non-Python code in your pipeline, or for building
 Python components with complex runtime environments or dependencies.
 
-Learn how to [build container-based components](container_component).
+Learn how to [build container-based components](container_component.md).
 
 ### Fully custom components
 
@@ -132,4 +132,4 @@ define an entirely new _component specification_.
 This approach is best for reusing existing component specifications and
 executors.
 
-Learn how to [build fully custom components](custom_component).
+Learn how to [build fully custom components](custom_component.md).

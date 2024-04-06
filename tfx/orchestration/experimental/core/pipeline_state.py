@@ -22,7 +22,7 @@ import json
 import os
 import threading
 import time
-from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Set, Tuple
 import uuid
 
 from absl import logging
@@ -36,18 +36,23 @@ from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import orchestration_options
+from tfx.utils import metrics_utils
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
+from tfx.proto.orchestration import metadata_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import run_state_pb2
+from tfx.utils import deprecation_utils
 from tfx.utils import json_utils
 from tfx.utils import status as status_lib
 
+from tfx.utils import telemetry_utils
 from google.protobuf import message
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
+
 
 _ORCHESTRATOR_RESERVED_ID = '__ORCHESTRATOR__'
 _PIPELINE_IR = 'pipeline_ir'
@@ -111,7 +116,6 @@ class NodeState(json_utils.Jsonable):
     status: Status of the node in state STOPPING or STOPPED.
   """
 
-  STARTING = 'starting'  # Pending work before state can change to STARTED.
   STARTED = 'started'  # Node is ready for execution.
   STOPPING = 'stopping'  # Pending work before state can change to STOPPED.
   STOPPED = 'stopped'  # Node execution is stopped.
@@ -122,17 +126,22 @@ class NodeState(json_utils.Jsonable):
   SKIPPED = 'skipped'
   # Node execution skipped due to partial run.
   SKIPPED_PARTIAL_RUN = 'skipped_partial_run'
-  PAUSING = 'pausing'  # Pending work before state can change to PAUSED.
-  PAUSED = 'paused'  # Node was paused and may be resumed in the future.
   FAILED = 'failed'  # Node execution failed due to errors.
 
   state: str = attr.ib(
       default=STARTED,
       validator=attr.validators.in_([
-          STARTING, STARTED, STOPPING, STOPPED, RUNNING, COMPLETE, SKIPPED,
-          SKIPPED_PARTIAL_RUN, PAUSING, PAUSED, FAILED
+          STARTED,
+          STOPPING,
+          STOPPED,
+          RUNNING,
+          COMPLETE,
+          SKIPPED,
+          SKIPPED_PARTIAL_RUN,
+          FAILED,
       ]),
-      on_setattr=attr.setters.validate)
+      on_setattr=attr.setters.validate,
+  )
   backfill_token: str = ''
   status_code: Optional[int] = None
   status_msg: str = ''
@@ -168,21 +177,15 @@ class NodeState(json_utils.Jsonable):
     self.state = state
     self.backfill_token = backfill_token
     self.status_code = status.code if status is not None else None
-    self.status_msg = status.message if status is not None else ''
+    self.status_msg = (status.message or '') if status is not None else ''
 
   def is_startable(self) -> bool:
     """Returns True if the node can be started."""
-    return self.state in set(
-        [self.PAUSED, self.STOPPING, self.STOPPED, self.FAILED])
+    return self.state in set([self.STOPPING, self.STOPPED, self.FAILED])
 
   def is_stoppable(self) -> bool:
     """Returns True if the node can be stopped."""
-    return self.state in set(
-        [self.STARTING, self.STARTED, self.RUNNING, self.PAUSED])
-
-  def is_pausable(self) -> bool:
-    """Returns True if the node can be stopped."""
-    return self.state in set([self.STARTING, self.STARTED, self.RUNNING])
+    return self.state in set([self.STARTED, self.RUNNING])
 
   def is_backfillable(self) -> bool:
     """Returns True if the node can be backfilled."""
@@ -205,14 +208,25 @@ class NodeState(json_utils.Jsonable):
       status_code_value = run_state_pb2.RunState.StatusCodeValue(
           value=self.status_code)
     return run_state_pb2.RunState(
-        state=_NODE_STATE_TO_RUN_STATE_MAP[self.state],
+        state=_NODE_STATE_TO_RUN_STATE_MAP.get(
+            self.state, run_state_pb2.RunState.UNKNOWN
+        ),
         status_code=status_code_value,
         status_msg=self.status_msg,
-        update_time=int(self.last_updated_time * 1000))
+        update_time=int(self.last_updated_time * 1000),
+    )
 
   def to_run_state_history(self) -> List[run_state_pb2.RunState]:
     run_state_history = []
     for state in self.state_history:
+      # STARTING, PAUSING and PAUSED has been deprecated but may still be
+      # present in state_history.
+      if (
+          state.state == 'starting'
+          or state.state == 'pausing'
+          or state.state == 'paused'
+      ):
+        continue
       run_state_history.append(
           NodeState(
               state=state.state,
@@ -268,6 +282,83 @@ class NodeState(json_utils.Jsonable):
         lambda s: is_node_state_running(s.state), include_current_state=True)
 
 
+class _NodeStatesProxy:
+  """Proxy for reading and updating deserialized NodeState dicts from Execution.
+
+  This proxy contains an internal write-back cache. Changes are not saved back
+  to the `Execution` until `save()` is called; cache would not be updated if
+  changes were made outside of the proxy, either. This is primarily used to
+  reduce JSON serialization/deserialization overhead for getting node state
+  execution property from pipeline execution.
+  """
+
+  def __init__(self, execution: metadata_store_pb2.Execution):
+    self._custom_properties = execution.custom_properties
+    self._deserialized_cache: Dict[str, Dict[str, NodeState]] = {}
+    self._changed_state_types: Set[str] = set()
+
+  def get(self, state_type: str = _NODE_STATES) -> Dict[str, NodeState]:
+    """Gets node states dict from pipeline execution with the specified type."""
+    if state_type not in [_NODE_STATES, _PREVIOUS_NODE_STATES]:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(
+              f'Expected state_type is {_NODE_STATES} or'
+              f' {_PREVIOUS_NODE_STATES}, got {state_type}.'
+          ),
+      )
+    if state_type not in self._deserialized_cache:
+      node_states_json = _get_metadata_value(
+          self._custom_properties.get(state_type)
+      )
+      self._deserialized_cache[state_type] = (
+          json_utils.loads(node_states_json) if node_states_json else {}
+      )
+    return self._deserialized_cache[state_type]
+
+  def set(
+      self, node_states: Dict[str, NodeState], state_type: str = _NODE_STATES
+  ) -> None:
+    """Sets node states dict with the specified type."""
+    self._deserialized_cache[state_type] = node_states
+    self._changed_state_types.add(state_type)
+
+  def save(self) -> None:
+    """Saves all changed node states dicts to pipeline execution."""
+    max_mlmd_str_value_len = env.get_env().max_mlmd_str_value_length()
+
+    for state_type in self._changed_state_types:
+      node_states = self._deserialized_cache[state_type]
+      node_states_json = json_utils.dumps(node_states)
+
+      # Removes state history from node states if it's too large to avoid
+      # hitting MLMD limit.
+      if (
+          max_mlmd_str_value_len
+          and len(node_states_json) > max_mlmd_str_value_len
+      ):
+        logging.info(
+            'Node states length %d is too large (> %d); Removing state history'
+            ' from it.',
+            len(node_states_json),
+            max_mlmd_str_value_len,
+        )
+        node_states_no_history = {}
+        for node, old_state in node_states.items():
+          new_state = copy.deepcopy(old_state)
+          new_state.state_history.clear()
+          node_states_no_history[node] = new_state
+        node_states_json = json_utils.dumps(node_states_no_history)
+        logging.info(
+            'Node states length after removing state history: %d',
+            len(node_states_json),
+        )
+
+      data_types_utils.set_metadata_value(
+          self._custom_properties[state_type], node_states_json
+      )
+
+
 def is_node_state_success(state: str) -> bool:
   return state in (NodeState.COMPLETE, NodeState.SKIPPED,
                    NodeState.SKIPPED_PARTIAL_RUN)
@@ -282,7 +373,6 @@ def is_node_state_running(state: str) -> bool:
 
 
 _NODE_STATE_TO_RUN_STATE_MAP = {
-    NodeState.STARTING: run_state_pb2.RunState.UNKNOWN,
     NodeState.STARTED: run_state_pb2.RunState.READY,
     NodeState.STOPPING: run_state_pb2.RunState.UNKNOWN,
     NodeState.STOPPED: run_state_pb2.RunState.STOPPED,
@@ -290,8 +380,6 @@ _NODE_STATE_TO_RUN_STATE_MAP = {
     NodeState.COMPLETE: run_state_pb2.RunState.COMPLETE,
     NodeState.SKIPPED: run_state_pb2.RunState.SKIPPED,
     NodeState.SKIPPED_PARTIAL_RUN: run_state_pb2.RunState.SKIPPED_PARTIAL_RUN,
-    NodeState.PAUSING: run_state_pb2.RunState.UNKNOWN,
-    NodeState.PAUSED: run_state_pb2.RunState.PAUSED,
     NodeState.FAILED: run_state_pb2.RunState.FAILED
 }
 
@@ -377,6 +465,25 @@ class _PipelineIRCodec:
     except json.JSONDecodeError:
       return _base64_decode_pipeline(value)
 
+# Signal to record whether there are active pipelines, this is an optimization
+# to avoid generating too many RPC calls getting contexts/executions during
+# idle time. Everytime when the pipeline state is updated to active (eg. start,
+# resume a pipeline), this variable must be toggled to True. Default as True as
+# well to make sure latest executions and contexts are checked when
+# orchestrator starts or gets preempted.
+_active_pipelines_exist = True
+# Lock to serialize the functions changing the _active_pipeline_exist status.
+_active_pipelines_lock = threading.Lock()
+
+
+def _synchronized(f):
+  @functools.wraps(f)
+  def wrapper(*args, **kwargs):
+    with _active_pipelines_lock:
+      return f(*args, **kwargs)
+
+  return wrapper
+
 
 class PipelineState:
   """Context manager class for dealing with pipeline state.
@@ -399,26 +506,50 @@ class PipelineState:
     pipeline: The pipeline proto associated with this `PipelineState` object.
       TODO(b/201294315): Fix self.pipeline going out of sync with the actual
       pipeline proto stored in the underlying MLMD execution in some cases.
+    pipeline_decode_error: If not None, we failed to decode the pipeline proto
+      from the MLMD execution.
     execution: The underlying execution in MLMD.
     execution_id: Id of the underlying execution in MLMD.
     pipeline_uid: Unique id of the pipeline.
+    pipeline_run_id: pipeline_run_id in case of sync pipeline, `None` otherwise.
   """
 
-  def __init__(self, mlmd_handle: metadata.Metadata,
-               pipeline: pipeline_pb2.Pipeline, execution_id: int):
+  def __init__(
+      self,
+      mlmd_handle: metadata.Metadata,
+      execution: metadata_store_pb2.Execution,
+      pipeline_id: str,
+  ):
     """Constructor. Use one of the factory methods to initialize."""
     self.mlmd_handle = mlmd_handle
     # TODO(b/201294315): Fix self.pipeline going out of sync with the actual
     # pipeline proto stored in the underlying MLMD execution in some cases.
-    self.pipeline = pipeline
-    self.execution_id = execution_id
+    try:
+      self.pipeline = _get_pipeline_from_orchestrator_execution(execution)  # pytype: disable=name-error
+      self.pipeline_decode_error = None
+    except Exception as e:  # pylint: disable=broad-except
+      logging.exception('Failed to load pipeline IR')
+      self.pipeline = pipeline_pb2.Pipeline()
+      self.pipeline_decode_error = e
+    self.execution_id = execution.id
+    self.pipeline_run_id = None
+    if _PIPELINE_RUN_ID in execution.custom_properties:
+      self.pipeline_run_id = execution.custom_properties[
+          _PIPELINE_RUN_ID
+      ].string_value
+    self.pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(
+        pipeline_id, self.pipeline_run_id
+    )
 
     # Only set within the pipeline state context.
     self._mlmd_execution_atomic_op_context = None
     self._execution: Optional[metadata_store_pb2.Execution] = None
     self._on_commit_callbacks: List[Callable[[], None]] = []
+    self._node_states_proxy: Optional[_NodeStatesProxy] = None
 
   @classmethod
+  @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
+  @_synchronized
   def new(
       cls,
       mlmd_handle: metadata.Metadata,
@@ -450,10 +581,15 @@ class PipelineState:
         context_type_name=_ORCHESTRATOR_RESERVED_ID,
         context_name=pipeline_uid.pipeline_id)
 
-    executions = mlmd_handle.store.get_executions_by_context(context.id)
-    active_pipeline_executions = [
-        e for e in executions if execution_lib.is_execution_active(e)
-    ]
+    active_pipeline_executions = mlmd_handle.store.get_executions_by_context(
+        context.id,
+        list_options=mlmd.ListOptions(
+            filter_query='last_known_state = NEW OR last_known_state = RUNNING'
+        ),
+    )
+    assert all(
+        execution_lib.is_execution_active(e) for e in active_pipeline_executions
+    )
     active_async_pipeline_executions = [
         e for e in active_pipeline_executions
         if _retrieve_pipeline_exec_mode(e) == pipeline_pb2.Pipeline.ASYNC
@@ -461,10 +597,16 @@ class PipelineState:
 
     # Disallow running concurrent async pipelines regardless of whether
     # concurrent pipeline runs are enabled.
-    if pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC and active_pipeline_executions:
+    if (
+        pipeline.execution_mode == pipeline_pb2.Pipeline.ASYNC
+        and active_pipeline_executions
+    ):
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.ALREADY_EXISTS,
-          message=f'Cannot run an async pipeline concurrently when another pipeline with id {pipeline_uid.pipeline_id} is active.'
+          message=(
+              'Cannot run an async pipeline concurrently when another '
+              f'pipeline with id {pipeline_uid.pipeline_id} is active.'
+          ),
       )
 
     if env.get_env().concurrent_pipeline_runs_enabled():
@@ -473,7 +615,10 @@ class PipelineState:
       if active_async_pipeline_executions:
         raise status_lib.StatusNotOkError(
             code=status_lib.Code.ALREADY_EXISTS,
-            message=f'Cannot run a sync pipeline concurrently when an async pipeline with id {pipeline_uid.pipeline_id} is active.'
+            message=(
+                'Cannot run a sync pipeline concurrently when an async '
+                f'pipeline with id {pipeline_uid.pipeline_id} is active.'
+            ),
         )
       # If concurrent runs are enabled, before starting a sync pipeline run,
       # ensure there isn't another active sync pipeline that shares the run id.
@@ -484,13 +629,20 @@ class PipelineState:
               _PIPELINE_RUN_ID)) == pipeline_uid.pipeline_run_id:
             raise status_lib.StatusNotOkError(
                 code=status_lib.Code.ALREADY_EXISTS,
-                message=f'Another pipeline run having pipeline id {pipeline_uid.pipeline_id} and run id {pipeline_uid.pipeline_run_id} is already active.'
+                message=(
+                    'Another pipeline run having pipeline id'
+                    f' {pipeline_uid.pipeline_id} and run id'
+                    f' {pipeline_uid.pipeline_run_id} is already active.'
+                ),
             )
     else:
       if active_pipeline_executions:
         raise status_lib.StatusNotOkError(
             code=status_lib.Code.ALREADY_EXISTS,
-            message=f'Another pipeline run having pipeline id {pipeline_uid.pipeline_id} is already active.'
+            message=(
+                'Another pipeline run having pipeline id '
+                f'{pipeline_uid.pipeline_id} is already active.'
+            ),
         )
 
     # TODO(b/254161062): Consider disallowing pipeline exec mode change for the
@@ -504,35 +656,74 @@ class PipelineState:
 
     exec_properties = {
         _PIPELINE_IR: _PipelineIRCodec.get().encode(pipeline),
-        _PIPELINE_EXEC_MODE: pipeline_exec_mode
+        _PIPELINE_EXEC_MODE: pipeline_exec_mode,
     }
     if pipeline_run_metadata:
       exec_properties[_PIPELINE_RUN_METADATA] = json_utils.dumps(
-          pipeline_run_metadata)
+          pipeline_run_metadata
+      )
 
     execution = execution_lib.prepare_execution(
         mlmd_handle,
         _ORCHESTRATOR_EXECUTION_TYPE,
         metadata_store_pb2.Execution.NEW,
         exec_properties=exec_properties,
-        execution_name=str(uuid.uuid4()))
+        execution_name=str(uuid.uuid4()),
+    )
     if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
       data_types_utils.set_metadata_value(
           execution.custom_properties[_PIPELINE_RUN_ID],
-          pipeline.runtime_spec.pipeline_run_id.field_value.string_value)
+          pipeline.runtime_spec.pipeline_run_id.field_value.string_value,
+      )
       _save_skipped_node_states(pipeline, reused_pipeline_view, execution)
+
+    # Find any normal pipeline node (possibly in a subpipeline) and prepare the
+    # contexts, which will register the associated pipeline contexts and
+    # pipeline run ID context.
+    #
+    # We do this so the pipeline contexts and pipeline run ID context are
+    # created immediately when the pipeline is started, so we can immediately
+    # associate extra information with them, rather than having to wait
+    # until the orchestrator generates tasks for a node in the pipeline for
+    # the contexts to be registered.
+    #
+    # If there are no normal nodes then no contexts are prepared.
+    def _prepare_pipeline_node_contexts(
+        pipeline: pipeline_pb2.Pipeline,
+    ) -> bool:
+      """Prepares contexts for any pipeline node in any sub pipeline layer."""
+      for node in pipeline.nodes:
+        if node.WhichOneof('node') == 'pipeline_node':
+          context_lib.prepare_contexts(mlmd_handle, node.pipeline_node.contexts)
+          return True
+        elif node.WhichOneof('node') == 'sub_pipeline':
+          if _prepare_pipeline_node_contexts(node.sub_pipeline):
+            return True
+      return False
+
+    _prepare_pipeline_node_contexts(pipeline)
+
+    # update _active_pipelines_exist to be True so orchestrator will keep
+    # fetching the latest contexts and execution when orchestrating the pipeline
+    # run.
+    global _active_pipelines_exist
+    _active_pipelines_exist = True
+    logging.info('Pipeline start, set active_pipelines_exist=True.')
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
-    pipeline_state = cls(
-        mlmd_handle=mlmd_handle, pipeline=pipeline, execution_id=execution.id)
+    pipeline_state = cls(mlmd_handle, execution, pipeline_uid.pipeline_id)
     event_observer.notify(
         event_observer.PipelineStarted(
-            pipeline_uid=pipeline_uid, pipeline_state=pipeline_state))
+            pipeline_uid=pipeline_uid, pipeline_state=pipeline_state
+        )
+    )
     record_state_change_time()
     return pipeline_state
 
   @classmethod
-  def load(cls, mlmd_handle: metadata.Metadata,
-           pipeline_uid: task_lib.PipelineUid) -> 'PipelineState':
+  @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
+  def load(
+      cls, mlmd_handle: metadata.Metadata, pipeline_uid: task_lib.PipelineUid
+  ) -> 'PipelineState':
     """Loads pipeline state from MLMD.
 
     Args:
@@ -544,8 +735,8 @@ class PipelineState:
 
     Raises:
       status_lib.StatusNotOkError: With code=NOT_FOUND if no active pipeline
-      with the given pipeline uid exists in MLMD. With code=INTERNAL if more
-      than 1 active execution exists for given pipeline uid.
+      with the given pipeline uid exists in MLMD. With code=FAILED_PRECONDITION
+      if more than 1 active execution exists for given pipeline uid.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_uid.pipeline_id)
     uids_and_states = cls._load_from_context(mlmd_handle, context, pipeline_uid)
@@ -555,13 +746,15 @@ class PipelineState:
           message=f'No active pipeline with uid {pipeline_uid} to load state.')
     if len(uids_and_states) > 1:
       raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INTERNAL,
+          code=status_lib.Code.FAILED_PRECONDITION,
           message=(
               f'Expected 1 but found {len(uids_and_states)} active pipelines '
               f'for pipeline uid: {pipeline_uid}'))
     return uids_and_states[0][1]
 
   @classmethod
+  @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
+  @_synchronized
   def load_all_active(cls,
                       mlmd_handle: metadata.Metadata) -> List['PipelineState']:
     """Loads all active pipeline states.
@@ -573,31 +766,84 @@ class PipelineState:
       List of `PipelineState` objects for all active pipelines.
 
     Raises:
-      status_lib.StatusNotOkError: With code=INTERNAL if more than one active
-      pipeline are found with the same pipeline uid.
+      status_lib.StatusNotOkError: With code=FAILED_PRECONDITION if more than
+      one active pipeline are found with the same pipeline uid.
     """
-    contexts = get_orchestrator_contexts(mlmd_handle)
-    active_pipeline_uids = set()
     result = []
-    for context in contexts:
-      uids_and_states = cls._load_from_context(mlmd_handle, context)
-      for pipeline_uid, pipeline_state in uids_and_states:
-        if pipeline_uid in active_pipeline_uids:
-          raise status_lib.StatusNotOkError(
-              code=status_lib.Code.INTERNAL,
-              message=(
-                  f'Found more than 1 active pipeline for pipeline uid: {pipeline_uid}'
-              ))
-        active_pipeline_uids.add(pipeline_uid)
-        result.append(pipeline_state)
+    global _active_pipelines_exist
+    if _active_pipelines_exist:
+      logging.info('Checking active pipelines.')
+      contexts = get_orchestrator_contexts(mlmd_handle)
+      active_pipeline_uids = set()
+      for context in contexts:
+        uids_and_states = cls._load_from_context(mlmd_handle, context)
+        for pipeline_uid, pipeline_state in uids_and_states:
+          if pipeline_uid in active_pipeline_uids:
+            raise status_lib.StatusNotOkError(
+                code=status_lib.Code.FAILED_PRECONDITION,
+                message=(
+                    'Found more than 1 active pipeline for pipeline uid:'
+                    f' {pipeline_uid}'
+                ),
+            )
+          active_pipeline_uids.add(pipeline_uid)
+          result.append(pipeline_state)
+
+    if not result:
+      _active_pipelines_exist = False
+      logging.info('No active pipelines, set _active_pipelines_exist=False.')
     return result
+
+  @classmethod
+  def load_run(
+      cls,
+      mlmd_handle: metadata.Metadata,
+      pipeline_id: str,
+      run_id: str,
+  ) -> 'PipelineState':
+    """Loads pipeline state for a specific run from MLMD.
+
+    Args:
+      mlmd_handle: A handle to the MLMD db.
+      pipeline_id: Id of the pipeline state to load.
+      run_id: The run_id of the pipeline to load.
+
+    Returns:
+      A `PipelineState` object.
+
+    Raises:
+      status_lib.StatusNotOkError: With code=NOT_FOUND if no active pipeline
+      with the given pipeline uid exists in MLMD. With code=INVALID_ARGUEMENT if
+      there is not exactly 1 active execution for given pipeline uid.
+    """
+    context = _get_orchestrator_context(mlmd_handle, pipeline_id)
+    query = f'custom_properties.pipeline_run_id.string_value = "{run_id}"'
+    executions = mlmd_handle.store.get_executions_by_context(
+        context.id,
+        list_options=mlmd.ListOptions(filter_query=query),
+    )
+
+    if len(executions) != 1:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.FAILED_PRECONDITION,
+          message=(
+              f'Expected 1 but found {len(executions)} pipeline runs '
+              f'for pipeline id: {pipeline_id} with run_id {run_id}'
+          ),
+      )
+
+    return cls(
+        mlmd_handle,
+        executions[0],
+        pipeline_id,
+    )
 
   @classmethod
   def _load_from_context(
       cls,
       mlmd_handle: metadata.Metadata,
       context: metadata_store_pb2.Context,
-      matching_pipeline_uid: Optional[task_lib.PipelineUid] = None
+      matching_pipeline_uid: Optional[task_lib.PipelineUid] = None,
   ) -> List[Tuple[task_lib.PipelineUid, 'PipelineState']]:
     """Loads active pipeline states associated with given orchestrator context.
 
@@ -611,11 +857,13 @@ class PipelineState:
       List of active pipeline states.
     """
     pipeline_id = pipeline_id_from_orchestrator_context(context)
-    # TODO(b/254578300): Use filter_query and load only the relevant executions.
-    executions = mlmd_handle.store.get_executions_by_context(context.id)
-    active_executions = [
-        e for e in executions if execution_lib.is_execution_active(e)
-    ]
+    active_executions = mlmd_handle.store.get_executions_by_context(
+        context.id,
+        list_options=mlmd.ListOptions(
+            filter_query='last_known_state = NEW OR last_known_state = RUNNING'
+        ),
+    )
+    assert all(execution_lib.is_execution_active(e) for e in active_executions)
     result = []
     for execution in active_executions:
       pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(
@@ -624,21 +872,10 @@ class PipelineState:
               execution.custom_properties.get(_PIPELINE_RUN_ID)))
       if matching_pipeline_uid and pipeline_uid != matching_pipeline_uid:
         continue
-      pipeline = _get_pipeline_from_orchestrator_execution(execution)
       result.append(
-          (pipeline_uid, PipelineState(mlmd_handle, pipeline, execution.id)))
+          (pipeline_uid, PipelineState(mlmd_handle, execution, pipeline_id))
+      )
     return result
-
-  @property
-  def pipeline_uid(self) -> task_lib.PipelineUid:
-    return task_lib.PipelineUid.from_pipeline(self.pipeline)
-
-  @property
-  def pipeline_run_id(self) -> Optional[str]:
-    """Returns pipeline_run_id in case of sync pipeline, `None` otherwise."""
-    if self.pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
-      return self.pipeline.runtime_spec.pipeline_run_id.field_value.string_value
-    return None
 
   @property
   def execution(self) -> metadata_store_pb2.Execution:
@@ -662,6 +899,15 @@ class PipelineState:
       data_types_utils.set_metadata_value(
           self._execution.custom_properties[_PIPELINE_STATUS_MSG],
           status.message)
+
+  @_synchronized
+  def initiate_resume(self) -> None:
+    global _active_pipelines_exist
+    _active_pipelines_exist = True
+    self._check_context()
+    self.remove_property(_STOP_INITIATED)
+    self.remove_property(_PIPELINE_STATUS_CODE)
+    self.remove_property(_PIPELINE_STATUS_MSG)
 
   def initiate_update(
       self,
@@ -769,7 +1015,7 @@ class PipelineState:
           code=status_lib.Code.INVALID_ARGUMENT,
           message=(f'Node {node_uid} does not belong to the pipeline '
                    f'{self.pipeline_uid}'))
-    node_states_dict = _get_node_states_dict(self._execution)
+    node_states_dict = self._node_states_proxy.get()
     node_state = node_states_dict.setdefault(node_uid.node_id, NodeState())
     old_state = copy.deepcopy(node_state)
     yield node_state
@@ -781,7 +1027,8 @@ class PipelineState:
                             copy.deepcopy(self._execution), node_uid,
                             self.pipeline_run_id, old_state, node_state)
       ])
-    _save_node_states_dict(self._execution, node_states_dict)
+    if old_state != node_state:
+      self._node_states_proxy.set(node_states_dict)
 
   def get_node_state(self,
                      node_uid: task_lib.NodeUid,
@@ -793,13 +1040,13 @@ class PipelineState:
           code=status_lib.Code.INVALID_ARGUMENT,
           message=(f'Node {node_uid} does not belong to the pipeline '
                    f'{self.pipeline_uid}'))
-    node_states_dict = _get_node_states_dict(self._execution, state_type)
+    node_states_dict = self._node_states_proxy.get(state_type)
     return node_states_dict.get(node_uid.node_id, NodeState())
 
   def get_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
     """Gets all node states of the pipeline."""
     self._check_context()
-    node_states_dict = _get_node_states_dict(self._execution, _NODE_STATES)
+    node_states_dict = self._node_states_proxy.get()
     result = {}
     for node in get_all_nodes(self.pipeline):
       node_uid = task_lib.NodeUid.from_node(self.pipeline, node)
@@ -809,8 +1056,7 @@ class PipelineState:
   def get_previous_node_states_dict(self) -> Dict[task_lib.NodeUid, NodeState]:
     """Gets all node states of the pipeline from previous run."""
     self._check_context()
-    node_states_dict = _get_node_states_dict(self._execution,
-                                             _PREVIOUS_NODE_STATES)
+    node_states_dict = self._node_states_proxy.get(_PREVIOUS_NODE_STATES)
     result = {}
     for node in get_all_nodes(self.pipeline):
       node_uid = task_lib.NodeUid.from_node(self.pipeline, node)
@@ -841,11 +1087,13 @@ class PipelineState:
     return _get_metadata_value(
         self._execution.custom_properties.get(property_key))
 
-  def save_property(self, property_key: str, property_value: str) -> None:
-    """Saves a custom property to the pipeline execution."""
+  def save_property(
+      self, property_key: str, property_value: types.Property
+  ) -> None:
     self._check_context()
-    self._execution.custom_properties[
-        property_key].string_value = property_value
+    data_types_utils.set_metadata_value(
+        self._execution.custom_properties[property_key], property_value
+    )
 
   def remove_property(self, property_key: str) -> None:
     """Removes a custom property of the pipeline execution if exists."""
@@ -878,9 +1126,11 @@ class PipelineState:
     execution = mlmd_execution_atomic_op_context.__enter__()
     self._mlmd_execution_atomic_op_context = mlmd_execution_atomic_op_context
     self._execution = execution
+    self._node_states_proxy = _NodeStatesProxy(execution)
     return self
 
   def __exit__(self, exc_type, exc_val, exc_tb):
+    self._node_states_proxy.save()
     mlmd_execution_atomic_op_context = self._mlmd_execution_atomic_op_context
     self._mlmd_execution_atomic_op_context = None
     self._execution = None
@@ -898,21 +1148,31 @@ class PipelineState:
 class PipelineView:
   """Class for reading active or inactive pipeline view."""
 
-  def __init__(self, pipeline_id: str, context: metadata_store_pb2.Context,
-               execution: metadata_store_pb2.Execution):
+  def __init__(self, pipeline_id: str, execution: metadata_store_pb2.Execution):
     self.pipeline_id = pipeline_id
-    self.context = context
     self.execution = execution
+    self._node_states_proxy = _NodeStatesProxy(execution)
+    self.pipeline_run_id = None
+    if _PIPELINE_RUN_ID in execution.custom_properties:
+      self.pipeline_run_id = execution.custom_properties[
+          _PIPELINE_RUN_ID
+      ].string_value
     self._pipeline = None  # lazily set
 
   @classmethod
-  def load_all(cls, mlmd_handle: metadata.Metadata, pipeline_id: str,
-               **kwargs) -> List['PipelineView']:
+  def load_all(
+      cls,
+      mlmd_handle: metadata.Metadata,
+      pipeline_id: str,
+      list_options: Optional[mlmd.ListOptions] = None,
+      **kwargs,
+  ) -> List['PipelineView']:
     """Loads all pipeline views from MLMD.
 
     Args:
       mlmd_handle: A handle to the MLMD db.
       pipeline_id: Id of the pipeline state to load.
+      list_options: List options to customize the query for getting executions.
       **kwargs: Extra option to pass into mlmd store functions.
 
     Returns:
@@ -923,17 +1183,22 @@ class PipelineView:
       with the given pipeline uid exists in MLMD.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_id, **kwargs)
-    list_options = mlmd.ListOptions(
-        order_by=mlmd.OrderByField.CREATE_TIME, is_asc=True)
+    # TODO(b/279798582):
+    # Uncomment the following when the slow sorting MLMD query is fixed.
+    # list_options = mlmd.ListOptions(
+    #    order_by=mlmd.OrderByField.CREATE_TIME, is_asc=True)
     executions = mlmd_handle.store.get_executions_by_context(
-        context.id, list_options=list_options, **kwargs)
-    return [cls(pipeline_id, context, execution) for execution in executions]
+        context.id, list_options=list_options, **kwargs
+    )
+    executions = sorted(executions, key=lambda x: x.create_time_since_epoch)
+    return [cls(pipeline_id, execution) for execution in executions]
 
   @classmethod
   def load(cls,
            mlmd_handle: metadata.Metadata,
            pipeline_id: str,
            pipeline_run_id: Optional[str] = None,
+           non_active_only: Optional[bool] = False,
            **kwargs) -> 'PipelineView':
     """Loads pipeline view from MLMD.
 
@@ -941,6 +1206,7 @@ class PipelineView:
       mlmd_handle: A handle to the MLMD db.
       pipeline_id: Id of the pipeline state to load.
       pipeline_run_id: Run id of the pipeline for the synchronous pipeline.
+      non_active_only: Whether to only load from a non-active pipeline.
       **kwargs: Extra option to pass into mlmd store functions.
 
     Returns:
@@ -951,36 +1217,66 @@ class PipelineView:
       with the given pipeline uid exists in MLMD.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_id, **kwargs)
+    filter_query = ''
+    if non_active_only:
+      filter_query = 'last_known_state != RUNNING AND last_known_state != NEW'
+    list_options = mlmd.ListOptions(
+        order_by=mlmd.OrderByField.CREATE_TIME,
+        is_asc=False,
+        filter_query=filter_query,
+        limit=1,
+    )
+    if pipeline_run_id:
+      # Note(b/281478984):
+      # This optimization is done for requests with pipeline run id
+      # by specifying which pipeline run is queried.
+      # Order by with this filter query is slow with large # of runs.
+      list_options = mlmd.ListOptions(
+          filter_query=(
+              'custom_properties.pipeline_run_id.string_value ='
+              f' "{pipeline_run_id}"'
+          )
+      )
     executions = mlmd_handle.store.get_executions_by_context(
-        context.id, **kwargs)
+        context.id, list_options=list_options, **kwargs
+    )
 
-    if pipeline_run_id is None and executions:
-      execution = _get_latest_execution(executions)
-      return cls(pipeline_id, context, execution)
+    non_active_msg = 'non active ' if non_active_only else ''
+    if executions:
+      if len(executions) != 1:
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.FAILED_PRECONDITION,
+            message=(
+                'Expected 1 but found'
+                f' {len(executions)} {non_active_msg}'
+                f' runs for pipeline id: {pipeline_id} with run_id'
+                f' {pipeline_run_id}'
+            ),
+        )
+      return cls(pipeline_id, executions[0])
 
-    for execution in executions:
-      if execution.custom_properties[
-          _PIPELINE_RUN_ID].string_value == pipeline_run_id:
-        return cls(pipeline_id, context, execution)
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND,
-        message=f'No pipeline with run_id {pipeline_run_id} found.')
+        message=(
+            f'No {non_active_msg} pipeline with run_id {pipeline_run_id} found.'
+        ),
+    )
 
   @property
   def pipeline(self) -> pipeline_pb2.Pipeline:
-    if not self._pipeline:
-      self._pipeline = _get_pipeline_from_orchestrator_execution(self.execution)
+    if self._pipeline is None:
+      try:
+        self._pipeline = _get_pipeline_from_orchestrator_execution(
+            self.execution
+        )
+      except Exception:  # pylint: disable=broad-except
+        logging.exception('Failed to load pipeline IR for %s', self.pipeline_id)
+        self._pipeline = pipeline_pb2.Pipeline()
     return self._pipeline
 
   @property
   def pipeline_execution_mode(self) -> pipeline_pb2.Pipeline.ExecutionMode:
     return _retrieve_pipeline_exec_mode(self.execution)
-
-  @property
-  def pipeline_run_id(self) -> str:
-    if _PIPELINE_RUN_ID in self.execution.custom_properties:
-      return self.execution.custom_properties[_PIPELINE_RUN_ID].string_value
-    return self.pipeline.runtime_spec.pipeline_run_id.field_value.string_value
 
   @property
   def pipeline_status_code(
@@ -1018,7 +1314,7 @@ class PipelineView:
   def get_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to current run state."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
+    node_states_dict = self._node_states_proxy.get()
     for node in get_all_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
       result[node.node_info.id] = node_state.to_run_state()
@@ -1027,7 +1323,7 @@ class PipelineView:
   def get_node_run_states_history(
       self) -> Dict[str, List[run_state_pb2.RunState]]:
     """Returns the history of node run states and timestamps."""
-    node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
+    node_states_dict = self._node_states_proxy.get()
     result = {}
     for node in get_all_nodes(self.pipeline):
       node_state = node_states_dict.get(node.node_info.id, NodeState())
@@ -1037,8 +1333,7 @@ class PipelineView:
   def get_previous_node_run_states(self) -> Dict[str, run_state_pb2.RunState]:
     """Returns a dict mapping node id to previous run state."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution,
-                                             _PREVIOUS_NODE_STATES)
+    node_states_dict = self._node_states_proxy.get(_PREVIOUS_NODE_STATES)
     for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in node_states_dict:
         continue
@@ -1049,8 +1344,7 @@ class PipelineView:
   def get_previous_node_run_states_history(
       self) -> Dict[str, List[run_state_pb2.RunState]]:
     """Returns a dict mapping node id to previous run state and timestamps."""
-    prev_node_states_dict = _get_node_states_dict(self.execution,
-                                                  _PREVIOUS_NODE_STATES)
+    prev_node_states_dict = self._node_states_proxy.get(_PREVIOUS_NODE_STATES)
     result = {}
     for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in prev_node_states_dict:
@@ -1067,7 +1361,7 @@ class PipelineView:
   def get_node_states_dict(self) -> Dict[str, NodeState]:
     """Returns a dict mapping node id to node state."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution, _NODE_STATES)
+    node_states_dict = self._node_states_proxy.get()
     for node in get_all_nodes(self.pipeline):
       result[node.node_info.id] = node_states_dict.get(node.node_info.id,
                                                        NodeState())
@@ -1076,8 +1370,7 @@ class PipelineView:
   def get_previous_node_states_dict(self) -> Dict[str, NodeState]:
     """Returns a dict mapping node id to node state in previous run."""
     result = {}
-    node_states_dict = _get_node_states_dict(self.execution,
-                                             _PREVIOUS_NODE_STATES)
+    node_states_dict = self._node_states_proxy.get(_PREVIOUS_NODE_STATES)
     for node in get_all_nodes(self.pipeline):
       if node.node_info.id not in node_states_dict:
         continue
@@ -1098,6 +1391,12 @@ def pipeline_id_from_orchestrator_context(
   return context.name
 
 
+@deprecation_utils.deprecated(
+    None,
+    'pipeline_state.get_all_nodes has been deprecated in favor of'
+    ' node_proto_view.get_view_for_all_in which has identical behavior.',
+)
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_all_nodes(
     pipeline: pipeline_pb2.Pipeline) -> List[node_proto_view.NodeProtoView]:
   """Returns the views of nodes or inner pipelines in the given pipeline."""
@@ -1108,30 +1407,61 @@ def get_all_nodes(
   ]
 
 
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_all_node_executions(
-    pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
+    pipeline: pipeline_pb2.Pipeline,
+    mlmd_handle: metadata.Metadata,
+    node_filter_options: Optional[metadata_pb2.NodeFilterOptions] = None,
 ) -> Dict[str, List[metadata_store_pb2.Execution]]:
   """Returns all executions of all pipeline nodes if present."""
+  # TODO(b/310712984): Make use of Tflex MLMD filter query builder once
+  # developed.
+  additional_filters = None
+  if node_filter_options is not None:
+    additional_filters = []
+    if node_filter_options.max_create_time.ToMilliseconds() > 0:
+      additional_filters.append(
+          'create_time_since_epoch <='
+          f' {node_filter_options.max_create_time.ToMilliseconds()}'
+      )
+    if node_filter_options.min_create_time.ToMilliseconds() > 0:
+      additional_filters.append(
+          'create_time_since_epoch >='
+          f' {node_filter_options.min_create_time.ToMilliseconds()}'
+      )
+    if node_filter_options.types:
+      type_filter_query = '","'.join(node_filter_options.types)
+      additional_filters.append(f'type IN ("{type_filter_query}")')
   return {
-      node.node_info.id: task_gen_utils.get_executions(mlmd_handle, node)
+      node.node_info.id: task_gen_utils.get_executions(
+          mlmd_handle, node, additional_filters=additional_filters
+      )
       for node in get_all_nodes(pipeline)
   }
 
 
+@telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
 def get_all_node_artifacts(
-    pipeline: pipeline_pb2.Pipeline, mlmd_handle: metadata.Metadata
+    pipeline: pipeline_pb2.Pipeline,
+    mlmd_handle: metadata.Metadata,
+    execution_filter_options: Optional[metadata_pb2.NodeFilterOptions] = None,
 ) -> Dict[str, Dict[int, Dict[str, List[metadata_store_pb2.Artifact]]]]:
   """Returns all output artifacts of all pipeline nodes if present.
 
   Args:
     pipeline: Pipeline proto associated with a `PipelineState` object.
     mlmd_handle: Handle to MLMD db.
+    execution_filter_options: Filter options on executions from which the output
+      artifacts are created.
 
   Returns:
     Dict of node id to Dict of execution id to Dict of key to output artifact
     list.
   """
-  executions_dict = get_all_node_executions(pipeline, mlmd_handle)
+
+  executions_dict = get_all_node_executions(
+      pipeline, mlmd_handle, node_filter_options=execution_filter_options
+  )
   result = {}
   for node_id, executions in executions_dict.items():
     node_artifacts = {}
@@ -1170,17 +1500,6 @@ def _get_pipeline_from_orchestrator_execution(
   return _PipelineIRCodec.get().decode(pipeline_ir)
 
 
-def _get_latest_execution(
-    executions: List[metadata_store_pb2.Execution]
-) -> metadata_store_pb2.Execution:
-  """gets a single latest execution from the executions."""
-
-  def _get_creation_time(execution):
-    return execution.create_time_since_epoch
-
-  return max(executions, key=_get_creation_time)
-
-
 def _get_orchestrator_context(mlmd_handle: metadata.Metadata, pipeline_id: str,
                               **kwargs) -> metadata_store_pb2.Context:
   """Returns the orchestrator context of a particular pipeline."""
@@ -1210,29 +1529,6 @@ def _base64_decode_update_options(
   return result
 
 
-def _get_node_states_dict(
-    pipeline_execution: metadata_store_pb2.Execution,
-    state_type: Optional[str] = _NODE_STATES) -> Dict[str, NodeState]:
-  """Gets node states dict from pipeline execution with specified type."""
-  if state_type not in [_NODE_STATES, _PREVIOUS_NODE_STATES]:
-    raise status_lib.StatusNotOkError(
-        code=status_lib.Code.INVALID_ARGUMENT,
-        message=f'Expected state_type is {_NODE_STATES} or {_PREVIOUS_NODE_STATES}, got {state_type}.'
-    )
-  node_states_json = _get_metadata_value(
-      pipeline_execution.custom_properties.get(state_type))
-  return json_utils.loads(node_states_json) if node_states_json else {}
-
-
-def _save_node_states_dict(pipeline_execution: metadata_store_pb2.Execution,
-                           node_states: Dict[str, NodeState],
-                           state_type: Optional[str] = _NODE_STATES) -> None:
-  """Saves node states dict to pipeline execution with specified type."""
-  data_types_utils.set_metadata_value(
-      pipeline_execution.custom_properties[state_type],
-      json_utils.dumps(node_states))
-
-
 def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
                               reused_pipeline_view: PipelineView,
                               execution: metadata_store_pb2.Execution) -> None:
@@ -1244,8 +1540,11 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
   previous_node_states_dict = {}
   reused_pipeline_node_states_dict = reused_pipeline_view.get_node_states_dict(
   ) if reused_pipeline_view else {}
-  reused_pipeline_previous_node_states_dict = reused_pipeline_view.get_previous_node_states_dict(
-  ) if reused_pipeline_view else {}
+  reused_pipeline_previous_node_states_dict = (
+      reused_pipeline_view.get_previous_node_states_dict()
+      if reused_pipeline_view
+      else {}
+  )
   for node in get_all_nodes(pipeline):
     node_id = node.node_info.id
     if node.execution_options.HasField('skip'):
@@ -1262,11 +1561,12 @@ def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
                   node_id, NodeState())
         else:
           previous_node_states_dict[node_id] = reused_node_state
+  node_states_proxy = _NodeStatesProxy(execution)
   if node_states_dict:
-    _save_node_states_dict(execution, node_states_dict, _NODE_STATES)
+    node_states_proxy.set(node_states_dict, _NODE_STATES)
   if previous_node_states_dict:
-    _save_node_states_dict(execution, previous_node_states_dict,
-                           _PREVIOUS_NODE_STATES)
+    node_states_proxy.set(previous_node_states_dict, _PREVIOUS_NODE_STATES)
+  node_states_proxy.save()
 
 
 def _retrieve_pipeline_exec_mode(
@@ -1275,18 +1575,12 @@ def _retrieve_pipeline_exec_mode(
   """Returns pipeline execution mode given pipeline-level execution."""
   pipeline_exec_mode = _get_metadata_value(
       execution.custom_properties.get(_PIPELINE_EXEC_MODE))
-  if pipeline_exec_mode is None:
-    # Retrieve execution mode from pipeline IR for backward compatibility (this
-    # is more expensive and requires parsing the proto).
-    return _get_pipeline_from_orchestrator_execution(execution).execution_mode
-  elif pipeline_exec_mode == _PIPELINE_EXEC_MODE_SYNC:
+  if pipeline_exec_mode == _PIPELINE_EXEC_MODE_SYNC:
     return pipeline_pb2.Pipeline.SYNC
   elif pipeline_exec_mode == _PIPELINE_EXEC_MODE_ASYNC:
     return pipeline_pb2.Pipeline.ASYNC
   else:
-    raise RuntimeError(
-        f'Unable to determine pipeline execution mode from pipeline execution {execution}'
-    )
+    return pipeline_pb2.Pipeline.EXECUTION_MODE_UNSPECIFIED
 
 
 def _log_pipeline_execution_state_change(

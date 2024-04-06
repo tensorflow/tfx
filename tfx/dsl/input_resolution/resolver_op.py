@@ -15,14 +15,13 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, Generic, Mapping, Type, TypeVar, Union, Sequence, Optional, Set
+from typing import Any, Generic, Literal, Mapping, Optional, Sequence, Set, Type, TypeVar, Union
 
 import attr
 from tfx import types
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
 from tfx.utils import typing_utils
-import typing_extensions
 
 import ml_metadata as mlmd
 
@@ -43,7 +42,7 @@ class Context:
 # or quote the enum parameter (e.g. `Sequence['DataType']`).
 # go/pytype-faq#annotating-with-a-proto-enum-type-caused-a-runtime-error
 DataType = pipeline_pb2.InputGraph.DataType
-_ValidDataType = typing_extensions.Literal[  # pytype: disable=invalid-annotation
+_ValidDataType = Literal[  # pytype: disable=invalid-annotation
     DataType.ARTIFACT_LIST,
     DataType.ARTIFACT_MULTIMAP,
     DataType.ARTIFACT_MULTIMAP_LIST,

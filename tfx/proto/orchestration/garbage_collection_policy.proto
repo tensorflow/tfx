@@ -57,4 +57,23 @@ message GarbageCollectionPolicy {
     KeepMostRecentlyPublished keep_most_recently_published = 1;
     KeepPropertyValueGroups keep_property_value_groups = 2;
   }
+
+  // LINT.IfChange
+  // `PipelineGroup` origins from the MLMD pipeline group.
+  message PipelineGroup {
+    // The owner of pipeline group.
+    // If not specified, the pipeline group annotation will not be considered as
+    // valid.
+    string owner = 1;
+    // The name of pipeline group.
+    // If not specified, the pipeline group annotation will not be considered as
+    // valid.
+    string name = 2;
+  }
+  // LINT.ThenChange(<MLMD Internal Source Code>)
+
+  // User-specified pipeline group annotations that GC should be aware of.
+  // GC should keep artifacts in use by any (producer/consumer) pipelines
+  // in any of those pipeline groups.
+  repeated PipelineGroup keep_if_used_in_pipeline_groups = 3;
 }

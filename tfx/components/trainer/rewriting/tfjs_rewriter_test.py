@@ -27,9 +27,6 @@ except ImportError as err:
   tfjs_rewriter = None
 
 
-@unittest.skipIf(tf.__version__ < '2',
-                 'TFJS requires TF2 which is not satisfied for TF1 environment,'
-                 ' thus skip any TFJS related tests.')
 @unittest.skipIf(tfjs_rewriter is None,
                  'Cannot import tfjs_rewriter. This can happen when tfjs is not'
                  ' available.')

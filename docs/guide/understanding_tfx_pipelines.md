@@ -34,8 +34,8 @@ For instance, the `ExampleGen` standard component emits serialized examples,
 which components such as the `StatisticsGen` standard component use as inputs.
 
 Artifacts must be strongly typed with an **artifact type** registered in the
-[ML Metadata](mlmd) store. Learn more about the
-[concepts used in ML Metadata](mlmd#concepts).
+[ML Metadata](mlmd.md) store. Learn more about the
+[concepts used in ML Metadata](mlmd.md#concepts).
 
 Artifact types have a name and define a schema of its properties. Artifact type
 names must be unique in your ML Metadata store. TFX provides several
@@ -74,10 +74,10 @@ your TFX pipeline. Components are composed of:
 *   A component interface, which packages the component specification and
     executor for use in a pipeline.
 
-TFX provides several [standard components](index#tfx_standard_components) that
-you can use in your pipelines. If these components do not meet your needs, you
-can build custom components.
-[Learn more about custom components](understanding_custom_components).
+TFX provides several [standard components](index.md#tfx-standard-components)
+that you can use in your pipelines. If these components do not meet your needs,
+you can build custom components.
+[Learn more about custom components](understanding_custom_components.md).
 
 ## Pipeline
 
@@ -141,7 +141,7 @@ Based on this analysis, an orchestrator runs:
 *   After the Transform component is complete, the Trainer, Evaluator, and
     custom deployer component instances run sequentially.
 
-Learn more about [building a TFX pipeline](build_tfx_pipeline).
+Learn more about [building a TFX pipeline](build_tfx_pipeline.md).
 
 ## TFX Pipeline Template
 
@@ -149,7 +149,7 @@ TFX Pipeline Templates make it easier to get started with pipeline development
 by providing a prebuilt pipeline that you can customize for your use case.
 
 Learn more about
-[customizing a TFX pipeline template](build_tfx_pipeline#build-a-pipeline-using-a-template).
+[customizing a TFX pipeline template](build_tfx_pipeline.md#pipeline-templates).
 
 ## Pipeline Run
 
@@ -158,7 +158,6 @@ A run is a single execution of a pipeline.
 ## Orchestrator
 
 An Orchestrator is a system where you can execute pipeline runs. TFX supports
-orchestrators such as: [Apache Airflow](airflow),
-[Apache Beam](beam_orchestrator), and [Kubeflow Pipelines](kubeflow). TFX also
-uses the term _DagRunner_ to refer to an implementation that supports an
-orchestrator.
+orchestrators such as: [Apache Airflow](airflow.md), [Apache Beam](beam.md), and
+[Kubeflow Pipelines](kubeflow.md). TFX also uses the term *DagRunner* to refer
+to an implementation that supports an orchestrator.

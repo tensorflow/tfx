@@ -19,6 +19,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow_data_validation as tfdv
 from tfx.components.statistics_gen import executor
+from tfx.components.util import examples_utils
 from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -28,15 +29,41 @@ from tfx.utils import json_utils
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-_EXECUTOR_TEST_PARAMS = [{
-    'testcase_name': 'no_sharded_output',
-    'sharded_output': False
-}]
+_EXECUTOR_TEST_PARAMS = [
+    {
+        'testcase_name': 'no_sharded_output',
+        'sharded_output': False,
+        'custom_split_uri': False,
+        'sample_rate_by_split': 'null',
+    },
+    {
+        'testcase_name': 'custom_split_uri',
+        'sharded_output': False,
+        'custom_split_uri': True,
+        'sample_rate_by_split': 'null',
+    },
+    {
+        'testcase_name': 'sample_rate_by_split',
+        'sharded_output': False,
+        'custom_split_uri': False,
+        # set a higher sample rate since test data is small
+        'sample_rate_by_split': '{"train": 0.4, "eval": 0.6}',
+    },
+    {
+        'testcase_name': 'sample_rate_split_nonexist',
+        'sharded_output': False,
+        'custom_split_uri': False,
+        'sample_rate_by_split': '{"test": 0.05}',
+    },
+]
 if tfdv.default_sharded_output_supported():
   _EXECUTOR_TEST_PARAMS.append({
       'testcase_name': 'yes_sharded_output',
-      'sharded_output': True
+      'sharded_output': True,
+      'custom_split_uri': False,
+      'sample_rate_by_split': 'null',
   })
+_TEST_SPAN_NUMBER = 16000
 
 
 # TODO(b/133421802): Investigate why tensorflow.TestCase could cause a crash
@@ -64,7 +91,12 @@ class ExecutorTest(parameterized.TestCase):
     self._validate_stats(stats)
 
   @parameterized.named_parameters(*_EXECUTOR_TEST_PARAMS)
-  def testDo(self, sharded_output: bool):
+  def testDo(
+      self,
+      sharded_output: bool,
+      custom_split_uri: bool,
+      sample_rate_by_split: str,
+  ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     output_data_dir = os.path.join(
@@ -75,8 +107,21 @@ class ExecutorTest(parameterized.TestCase):
     # Create input dict.
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval', 'test'])
+
+    if custom_split_uri:
+      k, v = examples_utils.get_custom_split_patterns_key_and_property(
+          {
+              'train': 'Split-train/*',
+              'eval': 'Split-eval/*',
+              'test': 'Split-test/*',
+          },
+      )
+      examples.set_string_custom_property(k, v)
+    else:
+      examples.split_names = artifact_utils.encode_split_names(
+          ['train', 'eval', 'test']
+      )
+    examples.span = _TEST_SPAN_NUMBER
 
     input_dict = {
         standard_component_specs.EXAMPLES_KEY: [examples],
@@ -84,10 +129,9 @@ class ExecutorTest(parameterized.TestCase):
 
     exec_properties = {
         # List needs to be serialized before being passed into Do function.
-        standard_component_specs.EXCLUDE_SPLITS_KEY:
-            json_utils.dumps(['test']),
-        standard_component_specs.SHARDED_STATS_OUTPUT_KEY:
-            sharded_output,
+        standard_component_specs.EXCLUDE_SPLITS_KEY: json_utils.dumps(['test']),
+        standard_component_specs.SHARDED_STATS_OUTPUT_KEY: sharded_output,
+        standard_component_specs.SAMPLE_RATE_BY_SPLIT_KEY: sample_rate_by_split,
     }
 
     # Create output dict.
@@ -103,6 +147,9 @@ class ExecutorTest(parameterized.TestCase):
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train', 'eval']), stats.split_names)
+    self.assertEqual(
+        stats.get_string_custom_property(executor.STATS_DASHBOARD_LINK), '')
+    self.assertEqual(stats.span, _TEST_SPAN_NUMBER)
 
     # Check statistics_gen outputs.
     self._validate_stats_output(

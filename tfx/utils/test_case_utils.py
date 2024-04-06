@@ -102,6 +102,47 @@ class TfxTest(tf.test.TestCase):
 
     return self.assertProtoEquals(expected, actual)
 
+  def assertArtifactEqual(
+      self,
+      actual: types.Artifact,
+      expected: types.Artifact,
+  ):
+    """Asserts that two Artifacts are equal."""
+    self.assertProtoEquals(
+        actual.artifact_type,
+        expected.artifact_type,
+        (
+            f'Actual Artifact type {actual.mlmd_artifact} not equal to'
+            f' {expected.mlmd_artifact}'
+        ),
+    )
+    self.assertProtoEquals(
+        expected.mlmd_artifact,
+        actual.mlmd_artifact,
+        (
+            f'Actual Artifact {actual.mlmd_artifact} not equal to'
+            f' {expected.mlmd_artifact}'
+        ),
+    )
+
+  def assertArtifactListEqual(
+      self,
+      actual: Sequence[types.Artifact],
+      expected: Sequence[types.Artifact],
+  ):
+    """Asserts that two Artifact lists are equal."""
+    self.assertEqual(
+        len(actual),
+        len(expected),
+        f'Artifact list length differs: {len(actual)} != {len(expected)}',
+    )
+    for a, e, i in zip(actual, expected, range(len(actual))):
+      try:
+        self.assertArtifactEqual(a, e)
+      except AssertionError as e:
+        e.args = (f'Artifact list item {i} differs: {e}',)
+        raise
+
   def assertArtifactMapsEqual(
       self,
       expected_artifact_map: Mapping[str, Sequence[types.Artifact]],

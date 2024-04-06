@@ -31,13 +31,15 @@ class BaseExecutorOperator(abc.ABC):
 
   def __init__(self,
                executor_spec: message.Message,
-               platform_config: Optional[message.Message] = None):
+               platform_config: Optional[message.Message] = None,
+               pipeline_platform_config: Optional[message.Message] = None):
     """Constructor.
 
     Args:
       executor_spec: The specification of how to initialize the executor.
       platform_config: The specification of how to allocate resource for the
         executor.
+      pipeline_platform_config: Pipeline-level context information.
 
     Raises:
       RuntimeError: if the executor_spec or platform_config is not supported.
@@ -50,13 +52,14 @@ class BaseExecutorOperator(abc.ABC):
       raise RuntimeError('Platform spec not supported: %s' % platform_config)
     self._executor_spec = executor_spec
     self._platform_config = platform_config
+    self._pipeline_platform_config = pipeline_platform_config
     self._execution_watcher_address = None
 
   @abc.abstractmethod
   def run_executor(
       self,
       execution_info: data_types.ExecutionInfo,
-  ) -> execution_result_pb2.ExecutorOutput:
+  ) -> Optional[execution_result_pb2.ExecutorOutput]:
     """Invokes the executor with inputs provided by the Launcher.
 
     Args:
@@ -69,7 +72,7 @@ class BaseExecutorOperator(abc.ABC):
 
   def with_execution_watcher(
       self, execution_watcher_address: str) -> 'BaseExecutorOperator':
-    """Attatch an execution watcher to the executor operator.
+    """Attach an execution watcher to the executor operator.
 
     Args:
       execution_watcher_address: The address to an executor watcher gRPC service

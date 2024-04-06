@@ -15,7 +15,6 @@
 
 import os
 import tempfile
-import unittest
 
 import tensorflow as tf
 
@@ -25,7 +24,6 @@ from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partit
 from google.protobuf import text_format
 
 
-@unittest.skipIf(tf.__version__ < '2', 'Incompatible with TF1')
 class RemoteOpLayerTest(tf.test.TestCase):
   """A test for the class _RemoteOpLayer."""
 
@@ -45,7 +43,6 @@ class RemoteOpLayerTest(tf.test.TestCase):
     self.assertEqual(desired_outputs, list(order))
 
 
-@unittest.skipIf(tf.__version__ < '2', 'Incompatible with TF1')
 class PartitionTest(tf.test.TestCase):
   """A set of tests for the graph partitioning library."""
 

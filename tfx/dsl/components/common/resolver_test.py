@@ -130,7 +130,7 @@ class ResolverDriverTest(tf.test.TestCase):
             component_info=self.component_info,
             output_artifacts={'key': [examples]})
 
-      driver = resolver._ResolverDriver(metadata_handler=m)
+      driver = resolver._ResolverDriver(metadata_handle=m)
       output_dict = self.source_channels.copy()
       with self.subTest('With LatestArtifactStrategy'):
         execution_result = driver.pre_execution(
@@ -177,7 +177,7 @@ class ResolverDriverTest(tf.test.TestCase):
 
   def testResolveArtifactFailIncompleteResult(self):
     with metadata.Metadata(connection_config=self.connection_config) as m:
-      driver = resolver._ResolverDriver(metadata_handler=m)
+      driver = resolver._ResolverDriver(metadata_handle=m)
       driver.pre_execution(
           component_info=self.component_info,
           pipeline_info=self.pipeline_info,

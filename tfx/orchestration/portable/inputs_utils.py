@@ -18,7 +18,6 @@ from absl import logging
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
-from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.input_resolution import node_inputs_resolver
 from tfx.proto.orchestration import pipeline_pb2
@@ -43,13 +42,13 @@ class Skip(tuple, Sequence[typing_utils.ArtifactMultiMap]):
 def resolve_input_artifacts(
     *,
     pipeline_node: pipeline_pb2.PipelineNode,
-    metadata_handler: mlmd_cm.HandleLike,
+    metadata_handle: mlmd_cm.HandleLike,
 ) -> Union[Trigger, Skip]:
   """Resolve input artifacts according to a pipeline node IR definition.
 
   Args:
     pipeline_node: Current PipelineNode on which input resolution is running.
-    metadata_handler: Metadata or MLMDConnectionManager instance for handling
+    metadata_handle: Metadata or MLMDConnectionManager instance for handling
       mlmd db connections.
 
   Raises:
@@ -63,7 +62,7 @@ def resolve_input_artifacts(
   """
   try:
     node_inputs = pipeline_node.inputs
-    resolved = node_inputs_resolver.resolve(metadata_handler, node_inputs)
+    resolved = node_inputs_resolver.resolve(metadata_handle, node_inputs)
     return Trigger(resolved) if resolved else Skip()
   except exceptions.SkipSignal as e:
     logging.info('Input resolution skipped; reason = %s', e)
@@ -129,13 +128,13 @@ def resolve_parameters_with_schema(
 
 def resolve_dynamic_parameters(
     node_parameters: pipeline_pb2.NodeParameters,
-    input_artifacts: typing_utils.ArtifactMultiMap
+    context: placeholder_utils.ResolutionContext,
 ) -> Dict[str, types.ExecPropertyTypes]:
-  """Resolves dynamic execution properties given the input artifacts.
+  """Resolves dynamic execution properties given the context.
 
   Args:
     node_parameters: The spec to get parameters.
-    input_artifacts: The input dict.
+    context: Contextual information for resolving placeholders.
 
   Returns:
     A Dict of resolved dynamic parameters.
@@ -144,17 +143,8 @@ def resolve_dynamic_parameters(
     InputResolutionError: If the resolution of dynamic exec property fails.
   """
   result = {}
-  converted_input_artifacts = {}
-  for key, value in input_artifacts.items():
-    converted_input_artifacts[key] = list(value)
   for key, value in node_parameters.parameters.items():
     if value.HasField('placeholder'):
-      execution_info = data_types.ExecutionInfo(
-          input_dict=converted_input_artifacts,
-          output_dict={},
-          exec_properties={})
-      context = placeholder_utils.ResolutionContext(
-          exec_info=execution_info)
       try:
         resolved_val = placeholder_utils.resolve_placeholder_expression(
             value.placeholder, context)

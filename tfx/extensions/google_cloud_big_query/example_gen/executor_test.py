@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.extensions.google_cloud_big_query.example_gen.executor."""
 
+import json
 import os
 import random
 from unittest import mock
@@ -32,8 +33,8 @@ from tfx.utils import proto_utils
 
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery(pipeline, query):
-  del query  # Unused arg
+def _MockReadFromBigQuery(pipeline, query, big_query_custom_config=None):
+  del query, big_query_custom_config  # Unused arg
   mock_query_results = []
   for i in range(10000):
     mock_query_result = {
@@ -46,8 +47,8 @@ def _MockReadFromBigQuery(pipeline, query):
 
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery2(pipeline, query):
-  del query  # Unused arg
+def _MockReadFromBigQuery2(pipeline, query, big_query_custom_config=None):
+  del query, big_query_custom_config  # Unused arg
   mock_query_results = [{
       'i': 1,
       'i2': [2, 3],
@@ -82,13 +83,18 @@ class ExecutorTest(tf.test.TestCase):
   @mock.patch.object(bigquery, 'Client')
   def testBigQueryToExample(self, mock_client):
     # Mock query result schema for _BigQueryConverter.
-    mock_client.return_value.query.return_value.result.return_value.schema = self._schema
+    mock_client.return_value.query.return_value.result.return_value.schema = (
+        self._schema
+    )
 
     with beam.Pipeline() as pipeline:
-      examples = (
-          pipeline | 'ToTFExample' >> executor._BigQueryToExample(
-              exec_properties={'_beam_pipeline_args': []},
-              split_pattern='SELECT i, i2, b, f, f2, s, s2 FROM `fake`'))
+      examples = pipeline | 'ToTFExample' >> executor._BigQueryToExample(
+          exec_properties={
+              '_beam_pipeline_args': [],
+              'custom_config': json.dumps({'query_key': 'query_value'}),
+          },
+          split_pattern='SELECT i, i2, b, f, f2, s, s2 FROM `fake`',
+      )
 
       feature = {}
       feature['i'] = tf.train.Feature(int64_list=tf.train.Int64List(value=[1]))
@@ -116,7 +122,9 @@ class ExecutorTest(tf.test.TestCase):
   @mock.patch.object(bigquery, 'Client')
   def testDo(self, mock_client):
     # Mock query result schema for _BigQueryConverter.
-    mock_client.return_value.query.return_value.result.return_value.schema = self._schema
+    mock_client.return_value.query.return_value.result.return_value.schema = (
+        self._schema
+    )
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),

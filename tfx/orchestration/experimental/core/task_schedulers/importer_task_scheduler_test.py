@@ -105,12 +105,6 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
             }
           }
           custom_properties {
-            key: "state"
-            value {
-              string_value: "published"
-            }
-          }
-          custom_properties {
             key: "str_custom_property"
             value {
               string_value: "abc"
@@ -125,26 +119,29 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
           state: LIVE""",
           artifact,
           ignored_fields=[
-              'id', 'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'id',
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
 
       [execution
       ] = m.store.get_executions_by_id([self._importer_task.execution_id])
-      del execution.custom_properties['__execution_timestamp__']
       self.assertProtoPartiallyEquals(
           """
           last_known_state: COMPLETE
           custom_properties {
-            key: "__execution_set_size__"
-            value {
-              int_value: 1
-            }
-          }
-          custom_properties {
             key: "__external_execution_index__"
             value {
               int_value: 0
+            }
+          }
+          custom_properties {
+            key: "__stateful_working_dir_index__"
+            value {
+              string_value: "mocked-index-123"
             }
           }
           custom_properties {
@@ -168,9 +165,14 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'id', 'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch', 'name'
-          ])
+              'id',
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+              'name',
+          ],
+      )
 
 
 if __name__ == '__main__':

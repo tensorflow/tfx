@@ -20,6 +20,7 @@ This module file will be used in Transform and generic Trainer.
 import os
 from typing import List
 import absl
+import flatbuffers
 import tensorflow as tf
 import tensorflow_transform as tft
 
@@ -31,7 +32,6 @@ from tfx.components.trainer.rewriting import rewriter_factory
 from tfx.dsl.io import fileio
 from tfx_bsl.tfxio import dataset_options
 
-import flatbuffers
 from tflite_support import metadata_schema_py_generated as _metadata_fb
 from tflite_support import metadata as _metadata
 
@@ -330,7 +330,7 @@ def run_fn(fn_args: FnArgs):
   absl.logging.info('Tensorboard logging to {}'.format(fn_args.model_run_dir))
   # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=fn_args.model_run_dir, update_freq='batch')
+      log_dir=fn_args.model_run_dir, update_freq='epoch')
 
   # Our training regime has two phases: we first freeze the backbone and train
   # the newly added classifier only, then unfreeze part of the backbone and

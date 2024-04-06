@@ -97,7 +97,8 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
 
     with self._mlmd_connection as m:
       resolved_inputs = inputs_utils.resolve_input_artifacts(
-          metadata_handler=m, pipeline_node=self._my_resolver)
+          metadata_handle=m, pipeline_node=self._my_resolver
+      )
       self.assertLen(resolved_inputs, 1)
       self.assertIn('models', resolved_inputs[0])
       self.assertLen(resolved_inputs[0]['models'], 1)
@@ -107,18 +108,17 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           uri: "my_model_uri_2"
           state: LIVE
           custom_properties {{
-            key: 'state'
-            value {{string_value: 'published'}}
-          }}
-          custom_properties {{
             key: '{artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY}'
             value {{string_value: "{version.__version__}"}}
           }}""",
           resolved_inputs[0]['models'][0].mlmd_artifact,
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+          ],
+      )
       [execution] = m.store.get_executions_by_id([execution_info.execution_id])
 
       self.assertProtoPartiallyEquals(
@@ -128,9 +128,13 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'type_id', 'create_time_since_epoch',
-              'last_update_time_since_epoch', 'name'
-          ])
+              'type_id',
+              'type',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+              'name',
+          ],
+      )
 
   @mock.patch.object(inputs_utils, 'resolve_input_artifacts')
   def testRun_InputResolutionError_ExecutionFailed(self, mock_resolve):
@@ -153,9 +157,14 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'type_id', 'custom_properties', 'create_time_since_epoch',
-              'last_update_time_since_epoch', 'name'
-          ])
+              'type_id',
+              'type',
+              'custom_properties',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+              'name',
+          ],
+      )
 
   @mock.patch.object(inputs_utils, 'resolve_input_artifacts')
   def testRun_MultipleInputs_ExecutionFailed(self, mock_resolve):
@@ -181,9 +190,14 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
           """,
           execution,
           ignored_fields=[
-              'type_id', 'custom_properties', 'create_time_since_epoch',
-              'last_update_time_since_epoch', 'name'
-          ])
+              'type_id',
+              'type',
+              'custom_properties',
+              'create_time_since_epoch',
+              'last_update_time_since_epoch',
+              'name',
+          ],
+      )
 
 
 if __name__ == '__main__':

@@ -14,7 +14,6 @@
 """E2E Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_native_keras."""
 
 import os
-import unittest
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -24,8 +23,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
-@unittest.skipIf(tf.__version__ < '2',
-                 'Uses keras Model only compatible with TF 2.x')
 class TaxiPipelineNativeKerasEndToEndTest(
     tf.test.TestCase, parameterized.TestCase):
 
@@ -63,7 +60,10 @@ class TaxiPipelineNativeKerasEndToEndTest(
     self.assertNotEmpty(outputs)
     for output in outputs:
       execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertLen(execution, 1)
+      if output == '.system/stateful_working_dir':
+        self.assertEmpty(execution)
+      else:
+        self.assertLen(execution, 1)
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('CsvExampleGen')

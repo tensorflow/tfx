@@ -275,7 +275,9 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
-    placeholder_pb = predicate.encode_with_keys(lambda c: channel_to_key_map[c])
+    placeholder_pb = channel_utils.encode_placeholder_with_channels(
+        predicate, lambda c: channel_to_key_map[c]
+    )
     self.assertEqual(
         compiler_utils.placeholder_to_cel(placeholder_pb), expected_cel)
 
@@ -286,7 +288,9 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
-    placeholder_pb = predicate.encode_with_keys(lambda c: channel_to_key_map[c])
+    placeholder_pb = channel_utils.encode_placeholder_with_channels(
+        predicate, lambda c: channel_to_key_map[c]
+    )
     self.assertEqual(
         compiler_utils.placeholder_to_cel(placeholder_pb), expected_cel)
 
@@ -297,7 +301,9 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
-    placeholder_pb = predicate.encode_with_keys(lambda c: channel_to_key_map[c])
+    placeholder_pb = channel_utils.encode_placeholder_with_channels(
+        predicate, lambda c: channel_to_key_map[c]
+    )
     self.assertEqual(
         compiler_utils.placeholder_to_cel(placeholder_pb), expected_cel)
 
@@ -309,7 +315,9 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
-    placeholder_pb = predicate.encode_with_keys(lambda c: channel_to_key_map[c])
+    placeholder_pb = channel_utils.encode_placeholder_with_channels(
+        predicate, lambda c: channel_to_key_map[c]
+    )
     self.assertEqual(
         compiler_utils.placeholder_to_cel(placeholder_pb), expected_cel)
 
@@ -318,7 +326,9 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
-    placeholder_pb = predicate.encode_with_keys(lambda c: channel_to_key_map[c])
+    placeholder_pb = channel_utils.encode_placeholder_with_channels(
+        predicate, lambda c: channel_to_key_map[c]
+    )
     with self.assertRaisesRegex(
         ValueError, 'Got unsupported placeholder operator base64_encode_op.'):
       compiler_utils.placeholder_to_cel(placeholder_pb)

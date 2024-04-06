@@ -169,7 +169,6 @@ examples {
 ]
 
 
-@unittest.skipIf(tf.__version__ < '2', reason='TF 1.x not supported.')
 @unittest.skipIf(struct2tensor_parsing_utils is None,
                  'Cannot import required modules. This can happen when'
                  ' struct2tensor is not available.')

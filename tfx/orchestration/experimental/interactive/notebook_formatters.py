@@ -17,7 +17,6 @@ Note: these APIs are **experimental** and major changes to interface and
 functionality are expected.
 """
 
-import abc
 import builtins
 import html
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
@@ -186,8 +185,8 @@ class NotebookFormatter:
       formatted_value = self.render_dict(value, seen_elements)
     if isinstance(value, list):
       formatted_value = self.render_list(value, seen_elements)
-    if value.__class__ != abc.ABCMeta:
-      # abc.ABCMeta.mro() does not work.
+    if not issubclass(value.__class__, type):
+      # Metaclass does not have mro().
       for cls in value.__class__.mro():
         if cls in FORMATTER_REGISTRY:
           formatted_value = FORMATTER_REGISTRY[cls].render(

@@ -51,10 +51,11 @@ else
   arr_version=(${tf_version//./ })
   echo "Detected TensorFlow version as ${tf_version}"
   DLVM_REPO=gcr.io/deeplearning-platform-release
-  BASE_IMAGE=${DLVM_REPO}/tf2-gpu.${arr_version[0]}-${arr_version[1]}
+  DLVM_PY_VERSION=py310
+  BASE_IMAGE=${DLVM_REPO}/tf2-gpu.${arr_version[0]}-${arr_version[1]}.${DLVM_PY_VERSION}
 
   # Check the availability of the DLVM image.
-  if gcloud container images list --repository=${DLVM_REPO} | grep "${BASE_IMAGE}" ; then
+  if gcloud container images list --repository=${DLVM_REPO} | grep -x "${BASE_IMAGE}" ; then
     # TF shouldn't be re-installed so we pin TF version in Pip install.
     installed_tf_version=$(_get_tf_version_of_image "${BASE_IMAGE}")
     if [[ "${installed_tf_version}" =~ rc ]]; then
@@ -67,7 +68,7 @@ else
     # Fallback to the image of the previous version but also install the newest
     # TF version.
     arr_version[1]=$((arr_version[1] - 1))
-    BASE_IMAGE=${DLVM_REPO}/tf2-gpu.${arr_version[0]}-${arr_version[1]}
+    BASE_IMAGE=${DLVM_REPO}/tf2-gpu.${arr_version[0]}-${arr_version[1]}.${DLVM_PY_VERSION}
     ADDITIONAL_PACKAGES="tensorflow==${tf_version}"
   fi
 

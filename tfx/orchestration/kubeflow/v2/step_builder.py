@@ -38,6 +38,7 @@ from tfx.orchestration.kubeflow import decorators
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.v2 import compiler_utils
 from tfx.orchestration.kubeflow.v2 import parameter_utils
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.channel import Channel
 from tfx.utils import deprecation_utils
@@ -276,15 +277,17 @@ class StepBuilder:
       }
       cel_predicates = []
       for predicate in predicates:
-        for channel in predicate.dependent_channels():
+        for channel in channel_utils.get_dependent_channels(predicate):
           implicit_key = tfx_compiler_utils.implicit_channel_key(channel)
           if implicit_key not in implicit_keys_map:
             # Store this channel and add it to the node inputs later.
             implicit_input_channels[implicit_key] = channel
             # Store the producer node and add it to the upstream nodes later.
             implicit_upstream_node_ids.add(channel.producer_component_id)
-        placeholder_pb = predicate.encode_with_keys(
-            tfx_compiler_utils.build_channel_to_key_fn(implicit_keys_map))
+        placeholder_pb = channel_utils.encode_placeholder_with_channels(
+            predicate,
+            tfx_compiler_utils.build_channel_to_key_fn(implicit_keys_map),
+        )
         cel_predicates.append(compiler_utils.placeholder_to_cel(placeholder_pb))
       task_spec.trigger_policy.condition = ' && '.join(cel_predicates)
 
@@ -365,15 +368,21 @@ class StepBuilder:
     for name, value in self._exec_properties.items():
       if value is None:
         continue
-      if isinstance(value, placeholder.ChannelWrappedPlaceholder):
-        input_parameter_spec = pipeline_pb2.TaskInputsSpec.InputParameterSpec()
-        task_output_parameter_spec = pipeline_pb2.TaskInputsSpec.InputParameterSpec.TaskOutputParameterSpec(
+      if isinstance(value, placeholder.Placeholder):
+        try:
+          # This unwraps channel.future()[0].value and disallows any other
+          # placeholder expressions.
+          channel = channel_utils.unwrap_simple_channel_placeholder(value)
+        except ValueError as e:
+          raise ValueError(f'Invalid placeholder for exec prop {name}') from e
+        task_spec.inputs.parameters[name].CopyFrom(
+            pipeline_pb2.TaskInputsSpec.InputParameterSpec(
+                task_output_parameter=pipeline_pb2.TaskInputsSpec.InputParameterSpec.TaskOutputParameterSpec(
+                    producer_task=channel.producer_component_id + '_task',
+                    output_parameter_key=channel.output_key,
+                )
+            )
         )
-        task_output_parameter_spec.producer_task = value.channel.producer_component_id + '_task'
-        task_output_parameter_spec.output_parameter_key = value.channel.output_key
-        input_parameter_spec.task_output_parameter.CopyFrom(
-            task_output_parameter_spec)
-        task_spec.inputs.parameters[name].CopyFrom(input_parameter_spec)
       elif isinstance(value, data_types.RuntimeParameter):
         parameter_utils.attach_parameter(value)
         task_spec.inputs.parameters[name].component_input_parameter = value.name

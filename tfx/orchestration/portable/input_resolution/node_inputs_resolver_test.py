@@ -24,6 +24,7 @@ from tfx.orchestration.portable.input_resolution import partition_utils
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.proto.orchestration import pipeline_pb2
 import tfx.types
+from tfx.types import channel_utils
 from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
@@ -674,15 +675,17 @@ class NodeInputsResolverTest(tf.test.TestCase):
 
     # Only allows artifact.custom_properties['blessed'] == 1,
     # which is a1 and a4.
-    is_blessed = (
-        DummyChannel('x').future()[0].custom_property('blessed') == 1
-    ).encode_with_keys(lambda channel: channel.name)
+    is_blessed = channel_utils.encode_placeholder_with_channels(
+        DummyChannel('x').future()[0].custom_property('blessed') == 1,
+        lambda channel: channel.name,
+    )
 
     # Only allows artifact.custom_properties['tag'] == 'foo'
     # which is a1 and a2.
-    is_foo = (
-        (DummyChannel('x').future()[0].custom_property('tag') == 'foo')
-    ).encode_with_keys(lambda channel: channel.name)
+    is_foo = channel_utils.encode_placeholder_with_channels(
+        (DummyChannel('x').future()[0].custom_property('tag') == 'foo'),
+        lambda channel: channel.name,
+    )
 
     cond_1 = pipeline_pb2.NodeInputs.Conditional(
         placeholder_expression=is_blessed)
@@ -706,6 +709,53 @@ class NodeInputsResolverTest(tf.test.TestCase):
 
       result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
       self.assertEqual(result, [{'x': [a1]}])
+
+  def testConditionals_FalseCondAlwaysReturnsEmpty(self):
+    a = self.create_artifacts(1)
+    a.set_int_custom_property('blessed', 0)
+
+    x1 = self.parse_input_spec("""
+      channels {
+        artifact_query {
+          type {
+            name: "ArtifactForEmptyChannel"
+          }
+        }
+      }
+      min_count: 1
+    """)
+    self.mock_channel_resolution_result(x1, [])
+
+    x2 = self.parse_input_spec("""
+      channels {
+        artifact_query {
+          type {
+            name: "ArtifactToBePopulated"
+          }
+        }
+      }
+      min_count: 1
+    """)
+    self.mock_channel_resolution_result(x2, [a])
+
+    # Only allows artifact.custom_properties['blessed'] == 1,
+    is_blessed = channel_utils.encode_placeholder_with_channels(
+        DummyChannel('b').future()[0].custom_property('blessed') == 1,
+        lambda channel: channel.name,
+    )
+    cond = pipeline_pb2.NodeInputs.Conditional(
+        placeholder_expression=is_blessed
+    )
+
+    node_inputs = NodeInputs(
+        inputs={
+            'a': x1,
+            'b': x2,
+        },
+        conditionals={'cond': cond},
+    )
+    result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
+    self.assertEqual(result, [])
 
   def testMinCount(self):
     a1, a2 = self.create_artifacts(2)

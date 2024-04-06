@@ -112,13 +112,16 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 
   def _prepare_airflow_with_mysql(self):
     self._mysql_container_name = 'airflow_' + test_utils.generate_random_id()
-    db_port = airflow_test_utils.create_mysql_container(
-        self._mysql_container_name)
+    ip_address, db_port = airflow_test_utils.create_mysql_container(
+        self._mysql_container_name
+    )
     self.addCleanup(self._cleanup_mysql_container)
     self.enter_context(
         test_case_utils.override_env_var(
             'AIRFLOW__CORE__SQL_ALCHEMY_CONN',
-            'mysql://tfx@127.0.0.1:%d/airflow' % db_port))
+            'mysql://tfx@%s:%d/airflow' % (ip_address, db_port),
+        )
+    )
     # Do not load examples to make this a bit faster.
     self.enter_context(
         test_case_utils.override_env_var('AIRFLOW__CORE__LOAD_EXAMPLES',

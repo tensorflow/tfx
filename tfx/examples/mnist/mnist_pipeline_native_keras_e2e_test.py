@@ -14,7 +14,6 @@
 """E2E Tests for tfx.examples.mnist.mnist_pipeline_native_keras."""
 
 import os
-import unittest
 
 import tensorflow as tf
 
@@ -24,8 +23,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
-@unittest.skipIf(tf.__version__ < '2',
-                 'Uses keras Model only compatible with TF 2.x')
 class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
@@ -65,7 +62,10 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self.assertNotEmpty(outputs)
     for output in outputs:
       execution = fileio.listdir(os.path.join(component_path, output))
-      self.assertLen(execution, 1)
+      if output == '.system/stateful_working_dir':
+        self.assertEmpty(execution)
+      else:
+        self.assertLen(execution, 1)
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('ImportExampleGen')

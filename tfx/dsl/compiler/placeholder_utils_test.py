@@ -14,6 +14,7 @@
 """Tests for tfx.dsl.compiler.placeholder_utils."""
 
 import base64
+import itertools
 import re
 
 from absl.testing import parameterized
@@ -201,7 +202,11 @@ pipeline_node {
 """
 
 
-class PlaceholderUtilsTest(tf.test.TestCase):
+def _ph_type_to_str(ph_type: placeholder_pb2.Placeholder.Type) -> str:
+  return placeholder_pb2.Placeholder.Type.Name(ph_type)
+
+
+class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -254,6 +259,54 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), "/tmp/Split-train/1")
+
+  def testJoinPath(self):
+    placeholder_expression = text_format.Parse(
+        """
+        operator {
+          join_path_op {
+            expressions {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".stateful_working_dir"
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "foo"
+              }
+            }
+            expressions {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".pipeline_info"
+                  proto_field_path: ".id"
+                }
+              }
+            }
+          }
+        }
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    resolved_str = placeholder_utils.resolve_placeholder_expression(
+        placeholder_expression, self._resolution_context
+    )
+    self.assertEqual(
+        resolved_str,
+        "test_stateful_working_dir/foo/test_pipeline_id",
+    )
 
   def testArtifactProperty(self):
     placeholder_expression = """
@@ -658,6 +711,86 @@ class PlaceholderUtilsTest(tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), expected_result)
 
+  def testMakeDict(self):
+    placeholder_expression = """
+      operator {
+        make_dict_op {
+          entries {
+            key {
+              value {
+                string_value: "plain_key"
+              }
+            }
+            value {
+              operator {
+                artifact_property_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "examples"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                  key: "version"
+                }
+              }
+            }
+          }
+          entries {
+            key {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".stateful_working_dir"
+                }
+              }
+            }
+            value {
+              value {
+                string_value: "plain_value"
+              }
+            }
+          }
+          entries {
+            key {
+              value {
+                string_value: "dropped_because_evaluates_to_none"
+              }
+            }
+            value {
+              placeholder {
+                type: EXEC_PROPERTY
+                key: "does_not_exist"
+              }
+            }
+          }
+        }
+      }
+    """
+    pb = text_format.Parse(
+        placeholder_expression, placeholder_pb2.PlaceholderExpression()
+    )
+    expected_result = {
+        "plain_key": 42,
+        "test_stateful_working_dir": "plain_value",
+    }
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context
+        ),
+        expected_result,
+    )
+
   def testProtoExecPropertyMessageFieldTextFormat(self):
     # Access a message type proto field
     placeholder_expression = """
@@ -969,8 +1102,14 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     self.assertEqual("tfx.orchestration.ExecutionInvocation",
                      message_descriptor.full_name)
 
-  def testBase64EncodeOperator(self):
-    placeholder_expression = """
+  @parameterized.named_parameters(
+      ("_with_url_safe_b64", False),
+      ("_with_standard_b64", True),
+  )
+  def testBase64EncodeOperator(self, standard_b64):
+    standard_b64_str = "true" if standard_b64 else "false"
+    placeholder_expression = (
+        """
       operator {
         base64_encode_op {
           expression {
@@ -993,19 +1132,50 @@ class PlaceholderUtilsTest(tf.test.TestCase):
                     }
                   }
                 }
-                index: 0
+                index: 2
               }
             }
           }
+          is_standard_b64: """ + standard_b64_str + """
         }
       }
     """
+    )
     pb = text_format.Parse(placeholder_expression,
                            placeholder_pb2.PlaceholderExpression())
+    serving_spec_with_different_encoded_vals = self._serving_spec
+    # Add this new tag so that we have different base64 encoded and base64
+    # url-safe encoded values.
+    new_tag = "?x=1test?"
+    serving_spec_with_different_encoded_vals.tensorflow_serving.tags.append(
+        new_tag
+    )
+    new_resolution_context = self._resolution_context
+    new_resolution_context.exec_info.exec_properties["proto_property"] = (
+        proto_utils.proto_to_json(serving_spec_with_different_encoded_vals)
+    )
+    base64_urlsafe_encoded = base64.urlsafe_b64encode(new_tag.encode()).decode(
+        "ASCII"
+    )
+    base64_encoded = base64.b64encode(new_tag.encode()).decode("ASCII")
+    if standard_b64:
+      expected = base64_encoded
+      not_expected = base64_urlsafe_encoded
+    else:
+      expected = base64_urlsafe_encoded
+      not_expected = base64_encoded
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
-            pb, self._resolution_context),
-        base64.urlsafe_b64encode(b"latest").decode("ASCII"))
+            pb, new_resolution_context
+        ),
+        expected,
+    )
+    self.assertNotEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, new_resolution_context
+        ),
+        not_expected,
+    )
 
   def _assert_serialized_proto_b64encode_eq(self, serialize_format, expected):
     placeholder_expression = """
@@ -1082,6 +1252,355 @@ class PlaceholderUtilsTest(tf.test.TestCase):
     self.assertEqual(
         placeholder_utils.debug_str(another_pb),
         "exec_property(\"serving_spec\").tensorflow_serving.serialize(TEXT_FORMAT)"
+    )
+
+  def testDebugJoinPath(self):
+    placeholder_expression = text_format.Parse(
+        """
+        operator {
+          join_path_op {
+            expressions {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".stateful_working_dir"
+                }
+              }
+            }
+            expressions {
+              value {
+                string_value: "foo"
+              }
+            }
+            expressions {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".pipeline_info"
+                  proto_field_path: ".id"
+                }
+              }
+            }
+          }
+        }
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    self.assertEqual(
+        placeholder_utils.debug_str(placeholder_expression),
+        'join_path(execution_invocation().stateful_working_dir, "foo", '
+        "execution_invocation().pipeline_info.id)",
+    )
+
+  def testDebugMakeDictPlaceholder(self):
+    pb = text_format.Parse(
+        """
+      operator {
+        make_dict_op {
+          entries {
+            key {
+              value {
+                string_value: "key_1"
+              }
+            }
+            value {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "channel_1"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          entries {
+            key {
+              value {
+                string_value: "key_2"
+              }
+            }
+            value {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "channel_2"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    self.assertEqual(
+        placeholder_utils.debug_str(pb),
+        "make_dict({"
+        '"key_1": input("channel_1")[0].value, '
+        '"key_2": input("channel_2")[0].value})',
+    )
+
+  def testDebugMakeProtoPlaceholder(self):
+    pb = text_format.Parse(
+        """
+      operator {
+        make_proto_op {
+          base {
+            [type.googleapis.com/tfx.orchestration.ExecutionInvocation] {}
+          }
+          fields {
+            key: "field_1"
+            value {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "channel_1"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          fields {
+            key: "field_2"
+            value {
+              operator {
+                artifact_value_op {
+                  expression {
+                    operator {
+                      index_op {
+                        expression {
+                          placeholder {
+                            type: INPUT_ARTIFACT
+                            key: "channel_2"
+                          }
+                        }
+                        index: 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    self.assertEqual(
+        placeholder_utils.debug_str(pb),
+        "MakeProto("
+        'type_url: "type.googleapis.com/tfx.orchestration.ExecutionInvocation",'
+        ' field_1=input("channel_1")[0].value,'
+        ' field_2=input("channel_2")[0].value)',
+    )
+
+  def testGetAllTypesInPlaceholderExpressionFails(self):
+    self.assertRaises(
+        ValueError,
+        lambda: placeholder_utils.get_all_types_in_placeholder_expression(  # pylint: disable=g-long-lambda
+            placeholder_pb2.PlaceholderExpression()
+        ),
+    )
+
+  @parameterized.named_parameters(
+      (f"{op}-{_ph_type_to_str(ph_type)}", op, ph_type)  # pylint: disable=g-complex-comprehension
+      for op, ph_type in itertools.product(
+          placeholder_utils.get_unary_operator_names(),
+          placeholder_pb2.Placeholder.Type.values(),
+      )
+  )
+  def testGetTypeOfUnaryOperators(self, op, ph_type):
+    placeholder_expression = text_format.Parse(
+        f"""
+          operator {{
+            {op} {{
+              expression {{
+              placeholder {{
+                type: {ph_type}
+                key: "foo"
+              }}
+            }}
+          }}
+        }}
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    actual_types = placeholder_utils.get_all_types_in_placeholder_expression(
+        placeholder_expression
+    )
+    self.assertSetEqual(actual_types, {ph_type})
+
+  @parameterized.named_parameters(
+      (  # pylint: disable=g-complex-comprehension
+          f"{op}-{_ph_type_to_str(lhs_type)}-{_ph_type_to_str(rhs_type)}",
+          op,
+          lhs_type,
+          rhs_type,
+      )
+      for op, (lhs_type, rhs_type) in itertools.product(
+          placeholder_utils.get_binary_operator_names(),
+          itertools.combinations_with_replacement(
+              placeholder_pb2.Placeholder.Type.values(), 2
+          ),
+      )
+  )
+  def testGetTypesOfBinaryOperators(self, op, lhs_type, rhs_type):
+    placeholder_expression = text_format.Parse(
+        f"""
+          operator {{
+            {op} {{
+              lhs {{
+                placeholder {{
+                  type: {lhs_type}
+                  key: "foo"
+                }}
+              }}
+              rhs {{
+                placeholder {{
+                  type: {rhs_type}
+                  key: "bar"
+                }}
+              }}
+            }}
+          }}
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    actual_types = placeholder_utils.get_all_types_in_placeholder_expression(
+        placeholder_expression
+    )
+    self.assertSetEqual(actual_types, {lhs_type, rhs_type})
+
+  @parameterized.named_parameters(
+      (  # pylint: disable=g-complex-comprehension
+          f"{op}-{'-'.join(_ph_type_to_str(ph_type) for ph_type in types)}",
+          op,
+          types,
+      )
+      for op, types in itertools.product(
+          placeholder_utils.get_nary_operator_names(),
+          itertools.combinations_with_replacement(
+              placeholder_pb2.Placeholder.Type.values(),
+              len(placeholder_pb2.Placeholder.Type.values()),
+          ),
+      )
+  )
+  def testGetTypesOfNaryperators(self, op, ph_types):
+    expressions = " ".join(
+        f"expressions: {{placeholder: {{type: {ph_type} key: 'baz'}}}}"
+        for ph_type in ph_types
+    )
+    placeholder_expression = text_format.Parse(
+        f"""
+          operator {{
+            {op} {{
+              {expressions}
+            }}
+          }}
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    actual_types = placeholder_utils.get_all_types_in_placeholder_expression(
+        placeholder_expression
+    )
+    self.assertSetEqual(actual_types, set(ph_types))
+
+  def testGetTypesOfMakeProtoOperator(self):
+    ph_types = placeholder_pb2.Placeholder.Type.values()
+    expressions = " ".join(f"""
+          fields: {{
+            key: "field_{_ph_type_to_str(ph_type)}"
+            value: {{
+              placeholder: {{
+                type: {ph_type}
+                key: 'baz'
+              }}
+            }}
+          }}
+        """ for ph_type in ph_types)
+    placeholder_expression = text_format.Parse(
+        f"""
+          operator {{
+            make_proto_op {{
+              {expressions}
+            }}
+          }}
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    actual_types = placeholder_utils.get_all_types_in_placeholder_expression(
+        placeholder_expression
+    )
+    self.assertSetEqual(actual_types, set(ph_types))
+
+  def testGetsOperatorsFromProtoReflection(self):
+    self.assertSetEqual(
+        placeholder_utils.get_unary_operator_names(),
+        {
+            "artifact_uri_op",
+            "artifact_value_op",
+            "index_op",
+            "proto_op",
+            "base64_encode_op",
+            "unary_logical_op",
+            "artifact_property_op",
+            "list_serialization_op",
+        },
+    )
+    self.assertSetEqual(
+        placeholder_utils.get_binary_operator_names(),
+        {
+            "binary_logical_op",
+            "compare_op",
+        },
+    )
+    self.assertSetEqual(
+        placeholder_utils.get_nary_operator_names(),
+        {
+            "concat_op",
+            "join_path_op",
+            "list_concat_op",
+        },
     )
 
 
@@ -1526,7 +2045,7 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             nested_pb_2, resolution_context), True)
 
-  def testDebugPlaceholder(self):
+  def testDebugPredicatePlaceholder(self):
     pb = text_format.Parse(
         """
       operator {

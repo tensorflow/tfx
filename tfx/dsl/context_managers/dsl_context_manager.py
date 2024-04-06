@@ -89,4 +89,6 @@ class DslContextManager(Generic[_Handle], abc.ABC):
       assert reg.peek_context() == self._pushed
       context = reg.pop_context()
       self._pushed = None
-      context.validate(reg.get_nodes(context))
+      nodes = reg.get_nodes(context)
+      context.validate(nodes)
+      context.on_context_exit(nodes)

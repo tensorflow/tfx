@@ -55,6 +55,11 @@ class ExecutionInfo:
   pipeline_info: Optional[pipeline_pb2.PipelineInfo] = None
   # The id of the pipeline run that this execution is in.
   pipeline_run_id: Optional[str] = None
+  # The id of the pipeline run for the top-level pipeline in this execution. If
+  # the top-level pipeline is ASYNC then this will be the empty string.
+  top_level_pipeline_run_id: Optional[str] = None
+  # URL to the Tflex frontend for this pipeline/run.
+  frontend_url: Optional[str] = None
   # LINT.ThenChange(../../proto/orchestration/execution_invocation.proto)
 
   def to_proto(self) -> execution_invocation_pb2.ExecutionInvocation:
@@ -62,20 +67,26 @@ class ExecutionInfo:
         execution_id=self.execution_id,
         input_dict=data_types_utils.build_artifact_struct_dict(self.input_dict),
         output_dict=data_types_utils.build_artifact_struct_dict(
-            self.output_dict),
+            self.output_dict
+        ),
         # TODO(b/171794016): Deprecate execution_properties once
         # execution_properties_with_schema is used to build execution
         # properties.
         execution_properties=data_types_utils.build_metadata_value_dict(
-            self.exec_properties),
-        execution_properties_with_schema=data_types_utils
-        .build_pipeline_value_dict(self.exec_properties),
+            self.exec_properties
+        ),
+        execution_properties_with_schema=data_types_utils.build_pipeline_value_dict(
+            self.exec_properties
+        ),
         output_metadata_uri=self.execution_output_uri,
         stateful_working_dir=self.stateful_working_dir,
         tmp_dir=self.tmp_dir,
         pipeline_node=self.pipeline_node,
         pipeline_info=self.pipeline_info,
-        pipeline_run_id=self.pipeline_run_id)
+        pipeline_run_id=self.pipeline_run_id,
+        top_level_pipeline_run_id=self.top_level_pipeline_run_id,
+        frontend_url=self.frontend_url,
+    )
 
   @classmethod
   def from_proto(
@@ -91,13 +102,18 @@ class ExecutionInfo:
     return cls(
         execution_id=execution_invocation.execution_id,
         input_dict=data_types_utils.build_artifact_dict(
-            execution_invocation.input_dict),
+            execution_invocation.input_dict
+        ),
         output_dict=data_types_utils.build_artifact_dict(
-            execution_invocation.output_dict),
+            execution_invocation.output_dict
+        ),
         exec_properties=parsed_exec_properties,
         execution_output_uri=execution_invocation.output_metadata_uri,
         stateful_working_dir=execution_invocation.stateful_working_dir,
         tmp_dir=execution_invocation.tmp_dir,
         pipeline_node=execution_invocation.pipeline_node,
         pipeline_info=execution_invocation.pipeline_info,
-        pipeline_run_id=execution_invocation.pipeline_run_id)
+        pipeline_run_id=execution_invocation.pipeline_run_id,
+        top_level_pipeline_run_id=execution_invocation.top_level_pipeline_run_id,
+        frontend_url=execution_invocation.frontend_url,
+    )

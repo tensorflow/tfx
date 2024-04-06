@@ -49,6 +49,8 @@ toc:
   path: /tfx/tutorials/transform/simple
 - title: "Preprocess data (advanced)"
   path: /tfx/tutorials/transform/census
+- title: "Data preprocessing for ML with Google Cloud"
+  path: /tfx/tutorials/transform/data_preprocessing_with_cloud
 
 - heading: "Model Analysis"
 - title: "Get started with TFMA"

@@ -13,8 +13,9 @@
 # limitations under the License.
 """Tests for tfx.orchestration.metadata."""
 
+from typing import Mapping
+
 import tensorflow as tf
-from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
@@ -60,35 +61,33 @@ class MetadataTest(tf.test.TestCase):
         component_id='my_component',
         pipeline_info=self._pipeline_info5)
 
-  def _check_artifact_state(self, metadata_handler: metadata.Metadata,
-                            target: types.Artifact, state: str):
-    [artifact] = metadata_handler.store.get_artifacts_by_id([target.id])
-    if 'state' in artifact.properties:
-      current_artifact_state = artifact.properties['state'].string_value
-    else:
-      # This is for forward compatible for the artifact type cleanup.
-      current_artifact_state = artifact.custom_properties['state'].string_value
-    self.assertEqual(current_artifact_state, state)
-
-  def _get_all_runs(self, metadata_handler: metadata.Metadata,
-                    pipeline_name: str):
+  def _get_all_runs(
+      self, metadata_handle: metadata.Metadata, pipeline_name: str
+  ):
     result = []
-    for context in metadata_handler.store.get_contexts_by_type(
-        metadata._CONTEXT_TYPE_PIPELINE_RUN):  # pylint: disable=protected-access
+    for context in metadata_handle.store.get_contexts_by_type(
+        metadata._CONTEXT_TYPE_PIPELINE_RUN  # pylint: disable=protected-access
+    ):  # pylint: disable=protected-access
       if context.properties['pipeline_name'].string_value == pipeline_name:
         result.append(context.properties['run_id'].string_value)
     return result
 
-  def _get_execution_states(self, metadata_handler: metadata.Metadata,
-                            pipeline_info: data_types.PipelineInfo):
-    pipeline_run_context = metadata_handler.store.get_context_by_type_and_name(
+  def _get_execution_states(
+      self,
+      metadata_handle: metadata.Metadata,
+      pipeline_info: data_types.PipelineInfo,
+  ) -> Mapping[str, str]:
+    """Returns a mapping from component id to execution state."""
+    pipeline_run_context = metadata_handle.store.get_context_by_type_and_name(
         metadata._CONTEXT_TYPE_PIPELINE_RUN,  # pylint: disable=protected-access
-        pipeline_info.pipeline_run_context_name)
+        pipeline_info.pipeline_run_context_name,
+    )
     result = {}
     if not pipeline_run_context:
       return result
-    for execution in metadata_handler.store.get_executions_by_context(
-        pipeline_run_context.id):
+    for execution in metadata_handle.store.get_executions_by_context(
+        pipeline_run_context.id
+    ):
       result[execution.properties['component_id']
              .string_value] = execution.properties['state'].string_value
     return result
@@ -109,6 +108,7 @@ class MetadataTest(tf.test.TestCase):
       [artifact] = m.store.get_artifacts()
       # Skip verifying time sensitive fields.
       artifact.ClearField('type_id')
+      artifact.ClearField('type')
       artifact.ClearField('create_time_since_epoch')
       artifact.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -118,12 +118,6 @@ class MetadataTest(tf.test.TestCase):
           key: "split_names"
           value {
             string_value: "[\\"train\\", \\"eval\\"]"
-          }
-        }
-        custom_properties {
-          key: "state"
-          value {
-            string_value: "published"
           }
         }
         state: LIVE
@@ -138,9 +132,6 @@ class MetadataTest(tf.test.TestCase):
 
       # Test artifact state.
       self.assertEqual(artifact.state, metadata_store_pb2.Artifact.LIVE)
-      self._check_artifact_state(m, artifact, ArtifactState.PUBLISHED)
-      m.update_artifact_state(artifact, ArtifactState.DELETED)
-      self._check_artifact_state(m, artifact, ArtifactState.DELETED)
 
   def testArtifactTypeRegistrationForwardCompatible(self):
     with self.metadata() as m:
@@ -219,6 +210,7 @@ class MetadataTest(tf.test.TestCase):
       [execution] = m.store.get_executions_by_context(contexts[0].id)
       # Skip verifying time sensitive fields.
       execution.ClearField('type_id')
+      execution.ClearField('type')
       execution.ClearField('create_time_since_epoch')
       execution.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -324,6 +316,7 @@ class MetadataTest(tf.test.TestCase):
       ] = m.store.get_executions_by_id([execution_one.id, execution_two.id])
       # Skip verifying time sensitive fields.
       execution_one.ClearField('type_id')
+      execution_one.ClearField('type')
       execution_one.ClearField('create_time_since_epoch')
       execution_one.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -368,6 +361,7 @@ class MetadataTest(tf.test.TestCase):
         }""", execution_one)
       # Skip verifying time sensitive fields.
       execution_two.ClearField('type_id')
+      execution_two.ClearField('type')
       execution_two.ClearField('create_time_since_epoch')
       execution_two.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -467,6 +461,7 @@ class MetadataTest(tf.test.TestCase):
            [execution_one.id, execution_two.id, execution_three.id])
       # Skip verifying time sensitive fields.
       execution_one.ClearField('type_id')
+      execution_one.ClearField('type')
       execution_one.ClearField('create_time_since_epoch')
       execution_one.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -517,6 +512,7 @@ class MetadataTest(tf.test.TestCase):
         }""", execution_one)
       # Skip verifying time sensitive fields.
       execution_two.ClearField('type_id')
+      execution_two.ClearField('type')
       execution_two.ClearField('create_time_since_epoch')
       execution_two.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -561,6 +557,7 @@ class MetadataTest(tf.test.TestCase):
         }""", execution_two)
       # Skip verifying time sensitive fields.
       execution_three.ClearField('type_id')
+      execution_three.ClearField('type')
       execution_three.ClearField('create_time_since_epoch')
       execution_three.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
@@ -666,6 +663,7 @@ class MetadataTest(tf.test.TestCase):
       cached_output_artifact = cached_output_artifacts['output'][
           0].mlmd_artifact
       # Skip verifying time sensitive fields.
+      cached_output_artifact.ClearField('type')
       cached_output_artifact.ClearField('create_time_since_epoch')
       cached_output_artifact.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(cached_output_artifact,
@@ -700,6 +698,7 @@ class MetadataTest(tf.test.TestCase):
       cached_output_artifact = cached_output_artifacts['output'][
           0].mlmd_artifact
       # Skip verifying time sensitive fields.
+      cached_output_artifact.ClearField('type')
       cached_output_artifact.ClearField('create_time_since_epoch')
       cached_output_artifact.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(cached_output_artifact,
@@ -853,7 +852,7 @@ class MetadataTest(tf.test.TestCase):
           m.get_component_run_context(self._component_info).id)
       self.assertLen(artifacts, 2)
       [artifact_b] = (a for a in artifacts if a.id == 2)
-      self._check_artifact_state(m, artifact_b, ArtifactState.PUBLISHED)
+      self.assertEqual(artifact_b.state, metadata_store_pb2.Artifact.LIVE)
 
   def testGetQualifiedArtifacts(self):
     with self.metadata() as m:

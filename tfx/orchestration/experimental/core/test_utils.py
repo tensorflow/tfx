@@ -14,7 +14,7 @@
 """Test utilities."""
 
 import os
-from typing import Optional
+from typing import Dict, Optional
 import uuid
 
 from absl.testing.absltest import mock
@@ -30,6 +30,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import execution_publish_utils
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -40,7 +41,7 @@ from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
-OUTPUT_NUM = 33
+_MOCKED_STATEFUL_WORKING_DIR_INDEX = 'mocked-index-123'
 
 
 class TfxTest(test_case_utils.TfxTest):
@@ -49,6 +50,7 @@ class TfxTest(test_case_utils.TfxTest):
     super().setUp()
     mlmd_state.clear_in_memory_state()
     pstate._PipelineIRCodec.testonly_reset()  # pylint: disable=protected-access
+    pstate._active_pipelines_exist = True  # pylint: disable=protected-access
 
 
 def fake_example_gen_run_with_handle(mlmd_handle,
@@ -89,8 +91,12 @@ def fake_example_gen_run(mlmd_connection,
                                             is_external)
 
 
-def fake_example_gen_execution_with_state(mlmd_connection, example_gen,
-                                          last_known_state):
+def fake_example_gen_execution_with_state(
+    mlmd_connection: metadata.Metadata,
+    example_gen: pipeline_pb2.PipelineNode,
+    last_known_state: metadata_store_pb2.Execution.State,
+    exec_properties: Optional[Dict[str, types.ExecPropertyTypes]] = None,
+) -> metadata_store_pb2.Execution:
   """Writes fake example_gen execution to MLMD."""
   with mlmd_connection as m:
     contexts = context_lib.prepare_contexts(m, example_gen.contexts)
@@ -98,25 +104,28 @@ def fake_example_gen_execution_with_state(mlmd_connection, example_gen,
         m,
         example_gen.node_info.type,
         contexts,
-        last_known_state=last_known_state)
+        last_known_state=last_known_state,
+        exec_properties=exec_properties,
+    )
     return execution
 
 
 def fake_upstream_node_run(mlmd_connection: metadata.Metadata,
                            upstream_node: pipeline_pb2.PipelineNode,
+                           fake_result: str,
                            tmp_path: str) -> metadata_store_pb2.Execution:
   """Writes fake upstream node output and successful execution to MLMD."""
   with mlmd_connection as mlmd_handle:
-    num_output = standard_artifacts.Integer()
-    num_output.uri = tmp_path
-    num_output.value = OUTPUT_NUM
+    result = standard_artifacts.String()
+    result.uri = tmp_path
+    result.value = fake_result
     contexts = context_lib.prepare_contexts(mlmd_handle, upstream_node.contexts)
     execution = execution_publish_utils.register_execution(
         mlmd_handle, upstream_node.node_info.type, contexts)
     execution_publish_utils.publish_succeeded_execution(mlmd_handle,
                                                         execution.id, contexts,
                                                         {
-                                                            'num': [num_output],
+                                                            'result': [result],
                                                         })
     return execution
 
@@ -127,9 +136,15 @@ def fake_component_output_with_handle(mlmd_handle,
                                       active=False,
                                       exec_properties=None):
   """Writes fake component output and execution to MLMD."""
-  output_key, output_value = next(iter(component.outputs.outputs.items()))
-  output = types.Artifact(output_value.artifact_spec.type)
-  output.uri = str(uuid.uuid4())
+  try:
+    output_key, output_value = next(iter(component.outputs.outputs.items()))
+  except StopIteration:
+    # This component does not have an output spec.
+    output_artifacts = None
+  else:
+    output = types.Artifact(output_value.artifact_spec.type)
+    output.uri = str(uuid.uuid4())
+    output_artifacts = {output_key: [output]}
   contexts = context_lib.prepare_contexts(mlmd_handle, component.contexts)
   if not execution:
     execution = execution_publish_utils.register_execution(
@@ -138,9 +153,9 @@ def fake_component_output_with_handle(mlmd_handle,
         contexts,
         exec_properties=exec_properties)
   if not active:
-    execution_publish_utils.publish_succeeded_execution(mlmd_handle,
-                                                        execution.id, contexts,
-                                                        {output_key: [output]})
+    execution_publish_utils.publish_succeeded_execution(
+        mlmd_handle, execution.id, contexts, output_artifacts
+    )
 
 
 def fake_component_output(mlmd_connection,
@@ -163,11 +178,12 @@ def fake_cached_execution(mlmd_connection, cache_context, component):
     contexts = context_lib.prepare_contexts(m, component.contexts)
     execution = execution_publish_utils.register_execution(
         m, component.node_info.type, contexts)
-    execution_publish_utils.publish_cached_execution(
+    execution_publish_utils.publish_cached_executions(
         m,
         contexts=contexts,
-        execution_id=execution.id,
-        output_artifacts=cached_outputs)
+        executions=[execution],
+        output_artifacts_maps=[cached_outputs],
+    )
 
 
 def fake_cached_example_gen_run(mlmd_connection: metadata.Metadata,
@@ -185,11 +201,12 @@ def fake_cached_example_gen_run(mlmd_connection: metadata.Metadata,
     contexts = context_lib.prepare_contexts(m, example_gen.contexts)
     execution = execution_publish_utils.register_execution(
         m, example_gen.node_info.type, contexts)
-    execution_publish_utils.publish_cached_execution(
+    execution_publish_utils.publish_cached_executions(
         m,
         contexts=contexts,
-        execution_id=execution.id,
-        output_artifacts=cached_outputs)
+        executions=[execution],
+        output_artifacts_maps=[cached_outputs],
+    )
 
 
 def get_node(pipeline, node_id):
@@ -242,7 +259,8 @@ def fake_start_node_with_handle(
 
 
 def fake_finish_node_with_handle(
-    mlmd_handle, node, execution_id) -> Optional[typing_utils.ArtifactMultiMap]:
+    mlmd_handle, node, execution_id, success=True
+) -> Optional[typing_utils.ArtifactMultiMap]:
   """Simulates finishing an execution of the given node."""
   if node.HasField('outputs'):
     output_key, output_value = next(iter(node.outputs.outputs.items()))
@@ -252,8 +270,17 @@ def fake_finish_node_with_handle(
   else:
     output_artifacts = None
   contexts = context_lib.prepare_contexts(mlmd_handle, node.contexts)
-  return execution_publish_utils.publish_succeeded_execution(
-      mlmd_handle, execution_id, contexts, output_artifacts)
+
+  if success:
+    output_dict, _ = execution_publish_utils.publish_succeeded_execution(
+        mlmd_handle, execution_id, contexts, output_artifacts
+    )
+    return output_dict
+  else:
+    execution_publish_utils.publish_failed_execution(
+        mlmd_handle, contexts, execution_id
+    )
+    return None
 
 
 def create_exec_node_task(
@@ -311,7 +338,13 @@ def run_generator(mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     if fail_fast is not None:
       generator_params['fail_fast'] = fail_fast
     task_gen = generator_class(**generator_params)
-    tasks = task_gen.generate(pipeline_state)
+    with mock.patch.object(
+        outputs_utils, 'get_stateful_working_dir_index', autospec=True
+    ) as mocked_get_stateful_working_dir_index:
+      mocked_get_stateful_working_dir_index.return_value = (
+          _MOCKED_STATEFUL_WORKING_DIR_INDEX
+      )
+      tasks = task_gen.generate(pipeline_state)
     if use_task_queue:
       for task in tasks:
         if isinstance(task, task_lib.ExecNodeTask):
@@ -447,9 +480,15 @@ def _verify_exec_node_task(test_case, pipeline, node, execution_id, task,
                    str(execution_id), 'executor_output.pb'),
       task.executor_output_uri)
   test_case.assertEqual(
-      os.path.join(pipeline.runtime_spec.pipeline_root.field_value.string_value,
-                   node.node_info.id, '.system', 'stateful_working_dir',
-                   str(execution_id)), task.stateful_working_dir)
+      os.path.join(
+          pipeline.runtime_spec.pipeline_root.field_value.string_value,
+          node.node_info.id,
+          '.system',
+          'stateful_working_dir',
+          _MOCKED_STATEFUL_WORKING_DIR_INDEX,
+      ),
+      task.stateful_working_dir,
+  )
 
 
 def concurrent_pipeline_runs_enabled_env():
@@ -458,5 +497,15 @@ def concurrent_pipeline_runs_enabled_env():
 
     def concurrent_pipeline_runs_enabled(self) -> bool:
       return True
+
+  return _TestEnv()
+
+
+def pipeline_start_postprocess_env():
+
+  class _TestEnv(env._DefaultEnv):  # pylint: disable=protected-access
+
+    def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
+      pipeline.pipeline_info.id = pipeline.pipeline_info.id + '_postprocessed'
 
   return _TestEnv()

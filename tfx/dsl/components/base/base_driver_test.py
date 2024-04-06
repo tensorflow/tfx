@@ -113,7 +113,7 @@ class BaseDriverTest(tf.test.TestCase):
         metadata_store_pb2.Context()
     ]
 
-    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
+    driver = base_driver.BaseDriver(metadata_handle=self._mock_metadata)
     execution_decision = driver.pre_execution(
         input_dict=self._input_dict,
         output_dict=self._output_dict,
@@ -164,7 +164,7 @@ class BaseDriverTest(tf.test.TestCase):
         channel_2.get()
     ]
 
-    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
+    driver = base_driver.BaseDriver(metadata_handle=self._mock_metadata)
     resolved_artifacts = driver.resolve_input_artifacts(
         input_dict=input_dict,
         exec_properties=self._exec_properties,
@@ -190,7 +190,7 @@ class BaseDriverTest(tf.test.TestCase):
         self._output_artifacts
     ]
 
-    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
+    driver = base_driver.BaseDriver(metadata_handle=self._mock_metadata)
     execution_decision = driver.pre_execution(
         input_dict=self._input_dict,
         output_dict=self._output_dict,
@@ -227,7 +227,7 @@ class BaseDriverTest(tf.test.TestCase):
         self._output_artifacts
     ]
 
-    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
+    driver = base_driver.BaseDriver(metadata_handle=self._mock_metadata)
     execution_decision = driver.pre_execution(
         input_dict=self._input_dict,
         output_dict=self._output_dict,
@@ -244,11 +244,11 @@ class BaseDriverTest(tf.test.TestCase):
                           self._output_artifacts)
 
   def testVerifyInputArtifactsOk(self):
-    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
+    driver = base_driver.BaseDriver(metadata_handle=self._mock_metadata)
     driver.verify_input_artifacts(self._input_artifacts)
 
   def testVerifyInputArtifactsNotExists(self):
-    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
+    driver = base_driver.BaseDriver(metadata_handle=self._mock_metadata)
     with self.assertRaises(RuntimeError):
       driver.verify_input_artifacts({'artifact': [_InputArtifact()]})
 

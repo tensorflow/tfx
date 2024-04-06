@@ -69,11 +69,11 @@ class BaseDriver:
   is needed.
 
   Attributes:
-    _metadata_handler: An instance of Metadata.
+    _metadata_handle: An instance of Metadata.
   """
 
-  def __init__(self, metadata_handler: metadata.Metadata):
-    self._metadata_handler = metadata_handler
+  def __init__(self, metadata_handle: metadata.Metadata):
+    self._metadata_handle = metadata_handle
 
   def verify_input_artifacts(
       self, artifacts_dict: Dict[str, List[types.Artifact]]) -> None:
@@ -150,10 +150,11 @@ class BaseDriver:
                   'outputs can be used in downstream components.')
             artifacts_by_id.update({a.id: a for a in artifacts})
         else:
-          artifacts = self._metadata_handler.search_artifacts(
+          artifacts = self._metadata_handle.search_artifacts(
               artifact_name=input_channel.output_key,
               pipeline_info=pipeline_info,
-              producer_component_id=input_channel.producer_component_id)
+              producer_component_id=input_channel.producer_component_id,
+          )
           # TODO(ccy): add this code path to interactive resolution.
           for artifact in artifacts:
             if isinstance(artifact, types.ValueArtifact):
@@ -272,24 +273,27 @@ class BaseDriver:
     self.verify_input_artifacts(artifacts_dict=input_artifacts)
     absl.logging.debug('Resolved input artifacts are: %s', input_artifacts)
     # Step 2. Register execution in metadata.
-    contexts = self._metadata_handler.register_pipeline_contexts_if_not_exists(
-        pipeline_info)
-    execution = self._metadata_handler.register_execution(
+    contexts = self._metadata_handle.register_pipeline_contexts_if_not_exists(
+        pipeline_info
+    )
+    execution = self._metadata_handle.register_execution(
         input_artifacts=input_artifacts,
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,
         component_info=component_info,
-        contexts=contexts)
+        contexts=contexts,
+    )
     use_cached_results = False
     output_artifacts = None
 
     if driver_args.enable_cache:
       # Step 3. Decide whether a new execution is needed.
-      output_artifacts = self._metadata_handler.get_cached_outputs(
+      output_artifacts = self._metadata_handle.get_cached_outputs(
           input_artifacts=input_artifacts,
           exec_properties=exec_properties,
           pipeline_info=pipeline_info,
-          component_info=component_info)
+          component_info=component_info,
+      )
 
       # Check that cached output artifacts will actually be considered a cache
       # hit by downstream components
@@ -304,12 +308,13 @@ class BaseDriver:
     if use_cached_results:
       # If cache should be used, updates execution to reflect that. Note that
       # with this update, publisher should / will be skipped.
-      self._metadata_handler.update_execution(
+      self._metadata_handle.update_execution(
           execution=execution,
           component_info=component_info,
           output_artifacts=output_artifacts,
           execution_state=metadata.EXECUTION_STATE_CACHED,
-          contexts=contexts)
+          contexts=contexts,
+      )
     else:
       absl.logging.debug(
           'Cached results not available, move on to new execution')
@@ -326,12 +331,13 @@ class BaseDriver:
           output_artifacts)
       # Updates the execution to reflect refreshed output artifacts and
       # execution properties.
-      self._metadata_handler.update_execution(
+      self._metadata_handle.update_execution(
           execution=execution,
           component_info=component_info,
           output_artifacts=output_artifacts,
           exec_properties=exec_properties,
-          contexts=contexts)
+          contexts=contexts,
+      )
       absl.logging.debug(
           'Execution properties for the upcoming execution are: %s',
           exec_properties)

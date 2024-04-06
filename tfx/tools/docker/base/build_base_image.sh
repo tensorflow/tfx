@@ -18,7 +18,7 @@
 set -u -x
 
 DOCKER_BASE_IMAGE_REPO=${DOCKER_BASE_IMAGE_REPO:-"gcr.io/tfx-oss-public/tfx_base"}
-DOCKER_BASE_IMAGE_TAG=${DOCKER_BASE_IMAGE_TAG:-"py37-20200729"}
+DOCKER_BASE_IMAGE_TAG=${DOCKER_BASE_IMAGE_TAG:-"py310-20230921"}
 DOCKER_FILE=${DOCKER_FILE:-"Dockerfile"}
 
 # Run docker build command.

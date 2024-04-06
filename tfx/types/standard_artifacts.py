@@ -13,21 +13,31 @@
 # limitations under the License.
 """A set of standard TFX Artifact types.
 
+DO NOT USE THIS MODULE DIRECTLY. This module is a private module, and you should
+use the redirected public module `tfx.v1.types.standard_artifacts`.
+
 Note: the artifact definitions here are expected to change.
 """
 
 import decimal
 import math
+from typing import Sequence
 
-import absl
-from tfx.types.artifact import Artifact
-from tfx.types.artifact import Property
-from tfx.types.artifact import PropertyType
-from tfx.types.system_artifacts import Dataset
-from tfx.types.system_artifacts import Model as SystemModel
-from tfx.types.system_artifacts import Statistics
-from tfx.types.value_artifact import ValueArtifact
+from absl import logging
+from tfx.types import artifact
+from tfx.types import standard_artifact_utils
+from tfx.types import system_artifacts
+from tfx.types import value_artifact
 from tfx.utils import json_utils
+from tfx.utils import pure_typing_utils
+
+Artifact = artifact.Artifact
+Property = artifact.Property
+PropertyType = artifact.PropertyType
+Dataset = system_artifacts.Dataset
+SystemModel = system_artifacts.Model
+Statistics = system_artifacts.Statistics
+ValueArtifact = value_artifact.ValueArtifact
 
 SPAN_PROPERTY = Property(type=PropertyType.INT)
 VERSION_PROPERTY = Property(type=PropertyType.INT)
@@ -84,8 +94,7 @@ class Examples(_TfxArtifact):
   * Properties:
      - `span`: Integer to distinguish group of Examples.
      - `version`: Integer to represent updated data.
-     - `split_names`: JSON string of the list of split names. For example,
-        '["train", "test"]'. Empty string means artifact has no split.
+     - `splits`: A list of split names. For example, ["train", "test"].
 
   * File structure:
      - `{uri}/`
@@ -109,22 +118,92 @@ class Examples(_TfxArtifact):
       'split_names': SPLIT_NAMES_PROPERTY,
   }
 
+  @property
+  def splits(self) -> Sequence[str]:
+    return standard_artifact_utils.decode_split_names(self.split_names)
 
-class ExampleAnomalies(_TfxArtifact):
+  @splits.setter
+  def splits(self, splits: Sequence[str]) -> None:
+    if not pure_typing_utils.is_compatible(splits, Sequence[str]):
+      raise TypeError(f'splits should be Sequence[str] but got {splits}')
+    self.split_names = standard_artifact_utils.encode_split_names(list(splits))
+
+  def path(self, *, split: str) -> str:
+    """Path to the artifact URI's split subdirectory.
+
+    This method DOES NOT create a directory path it returns; caller must make
+    a directory of the returned path value before writing.
+
+    Args:
+      split: A name of the split, e.g. `"train"`, `"validation"`, `"test"`.
+
+    Raises:
+      ValueError: if the `split` is not in the `self.splits`.
+
+    Returns:
+      A path to `{self.uri}/Split-{split}`.
+    """
+    if split not in self.splits:
+      raise ValueError(
+          f'Split {split} not found in {self.splits=}. Did you forget to update'
+          ' Examples.splits first?'
+      )
+    return standard_artifact_utils.get_split_uris([self], split)[0]
+
+
+class ExampleAnomalies(_TfxArtifact):  # pylint: disable=missing-class-docstring
   TYPE_NAME = 'ExampleAnomalies'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
   }
 
+  @property
+  def splits(self) -> Sequence[str]:
+    return standard_artifact_utils.decode_split_names(self.split_names)
 
-class ExampleStatistics(_TfxArtifact):
+  @splits.setter
+  def splits(self, splits: Sequence[str]) -> None:
+    if not pure_typing_utils.is_compatible(splits, Sequence[str]):
+      raise TypeError(f'splits should be Sequence[str] but got {splits}')
+    self.split_names = standard_artifact_utils.encode_split_names(list(splits))
+
+
+class ExampleValidationMetrics(_TfxArtifact):  # pylint: disable=missing-class-docstring
+  TYPE_NAME = 'ExampleValidationMetrics'
+  PROPERTIES = {
+      'span': SPAN_PROPERTY,
+      'split_names': SPLIT_NAMES_PROPERTY,
+  }
+
+  @property
+  def splits(self) -> Sequence[str]:
+    return standard_artifact_utils.decode_split_names(self.split_names)
+
+  @splits.setter
+  def splits(self, splits: Sequence[str]) -> None:
+    if not pure_typing_utils.is_compatible(splits, Sequence[str]):
+      raise TypeError(f'splits should be Sequence[str] but got {splits}')
+    self.split_names = standard_artifact_utils.encode_split_names(list(splits))
+
+
+class ExampleStatistics(_TfxArtifact):  # pylint: disable=missing-class-docstring
   TYPE_NAME = 'ExampleStatistics'
   TYPE_ANNOTATION = Statistics
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
   }
+
+  @property
+  def splits(self) -> Sequence[str]:
+    return standard_artifact_utils.decode_split_names(self.split_names)
+
+  @splits.setter
+  def splits(self, splits: Sequence[str]) -> None:
+    if not pure_typing_utils.is_compatible(splits, Sequence[str]):
+      raise TypeError(f'splits should be Sequence[str] but got {splits}')
+    self.split_names = standard_artifact_utils.encode_split_names(list(splits))
 
 
 class ExamplesDiff(_TfxArtifact):
@@ -180,8 +259,8 @@ class ModelBlessing(_TfxArtifact):
 
   ```python
   # Run pusher if evaluator has blessed the model.
-  with conditional.Cond(evaluator.outputs['blessing'].future()
-                      [0].custom_property('blessed') == 1):
+  with tfx.dsl.Cond(evaluator.outputs['blessing'].future()
+                    [0].custom_property('blessed') == 1):
     pusher = Pusher(...)
   ```
 
@@ -209,6 +288,22 @@ class PushedModel(_TfxArtifact):
 
 
 class Schema(_TfxArtifact):
+  """Artifact that contains the schema of the data.
+
+  Schema artifact is used to store the
+  schema of the data. The schema is a proto that describes the data, including
+  the type of each feature, the range of values for each feature, and other
+  properties. The schema is usually generated by the SchemaGen component, which
+  uses the statistics of the data to infer the schema. The schema can be used by
+  other components in the pipeline to validate the data and to generate models.
+
+  * File structure:
+    - `{uri}/`
+      - `schema.pbtxt`: Text-proto format serialization of
+        [tensorflow_metadata.proto.v0.schema.Schema](https://github.com/tensorflow/metadata/blob/master/tensorflow_metadata/proto/v0/schema.proto)
+        proto message.
+  """
+
   TYPE_NAME = 'Schema'
 
 
@@ -268,8 +363,9 @@ class Boolean(ValueArtifact):
 
   def encode(self, value: bool):
     if not isinstance(value, bool):
-      raise TypeError('Expecting bytes but got value %s of type %s' %
-                      (str(value), type(value)))
+      raise TypeError(
+          f'Expecting bytes but got value {value} of type {type(value)}'
+      )
     return b'1' if value else b'0'
 
   def decode(self, serialized_value: bytes):
@@ -285,8 +381,9 @@ class Integer(ValueArtifact):
 
   def encode(self, value: int) -> bytes:
     if not isinstance(value, int):
-      raise TypeError('Expecting int but got value %s of type %s' %
-                      (str(value), type(value)))
+      raise TypeError(
+          f'Expecting int but got value {value} of type {type(value)}'
+      )
     return str(value).encode('utf-8')
 
   def decode(self, serialized_value: bytes) -> int:
@@ -311,11 +408,12 @@ class Float(ValueArtifact):
 
   def encode(self, value: float) -> bytes:
     if not isinstance(value, float):
-      raise TypeError('Expecting float but got value %s of type %s' %
-                      (str(value), type(value)))
+      raise TypeError(
+          f'Expecting float but got value {value} of type {type(value)}'
+      )
     if math.isinf(value) or math.isnan(value):
-      absl.logging.warning(
-          '! The number "%s" may be unsupported by non-python components.' %
+      logging.warning(
+          '! The number "%s" may be unsupported by non-python components.',
           value)
     str_value = str(value)
     # Special encoding for infinities and NaN to increase comatibility with
@@ -341,9 +439,9 @@ class Float(ValueArtifact):
     is_exact = (decimal.Decimal(serialized_string) ==
                 decimal.Decimal(reserialized_string))
     if not is_exact:
-      absl.logging.warning(
-          'The number "%s" has lost precision when converted to float "%s"' %
-          (serialized_value, reserialized_string))
+      logging.warning(
+          'The number "%s" has lost precision when converted to float "%s"',
+          serialized_value, reserialized_string)
 
     return result
 
@@ -363,3 +461,7 @@ class TunerResults(_TfxArtifact):
 # WIP and subject to change.
 class DataView(_TfxArtifact):
   TYPE_NAME = 'DataView'
+
+
+class Config(_TfxArtifact):
+  TYPE_NAME = 'Config'

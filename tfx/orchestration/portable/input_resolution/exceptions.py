@@ -43,6 +43,10 @@ class FailedPreconditionError(InputResolutionError):
   grpc_code = grpc.StatusCode.FAILED_PRECONDITION
 
 
+class InsufficientInputError(FailedPreconditionError):
+  """When the resolved inputs violates the min_count."""
+
+
 class InternalError(InputResolutionError):
   """For TFX internal errors."""
   grpc_code = grpc.StatusCode.INTERNAL

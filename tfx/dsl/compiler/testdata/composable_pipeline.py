@@ -25,11 +25,13 @@ from tfx.components import Trainer
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental.conditionals import conditional
+from tfx.dsl.experimental.node_execution_options import utils
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel
 
 
@@ -62,11 +64,13 @@ def training_pipeline(examples: channel.BaseChannel,
       schema=pipeline_inputs.inputs["schema"],
       train_args=trainer_pb2.TrainArgs(num_steps=2000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5))
+
   return pipeline.Pipeline(
       pipeline_name="training-pipeline",
       components=[trainer],
       inputs=pipeline_inputs,
-      outputs={"model": trainer.outputs["model"]})
+      outputs={"model": trainer.outputs["model"]},
+  )
 
 
 def infra_validator_pipeline(examples: channel.BaseChannel,
@@ -136,6 +140,10 @@ def create_test_pipeline():
 
   training = training_pipeline(data_ingestion.outputs["examples"],
                                data_ingestion.outputs["schema"])
+  training.node_execution_options = utils.NodeExecutionOptions(
+      max_execution_retries=10,
+      trigger_strategy=pipeline_pb2.NodeExecutionOptions.TriggerStrategy.LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED,
+  )
 
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(signature_name="eval")],

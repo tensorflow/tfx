@@ -30,15 +30,15 @@ jobs:
         # Select proto files.
         (cat $HOME/files_added.txt; echo; cat $HOME/files_modified.txt) | tr ' ' '\n' | grep '\.proto$' > proto_files.txt || true
 
-    - name: Set up Python 3.8
+    - name: Set up Python 3.9
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
-    - name: Set up Bazel 3.4.1
+    - name: Set up Bazel 5.3.0
       run: |
         # Instruction from https://docs.bazel.build/versions/master/install-ubuntu.html
-        curl -sSL https://github.com/bazelbuild/bazel/releases/download/3.4.1/bazel-3.4.1-installer-linux-x86_64.sh -o bazel_installer.sh
+        curl -sSL https://github.com/bazelbuild/bazel/releases/download/5.3.0/bazel-5.3.0-installer-linux-x86_64.sh -o bazel_installer.sh
         chmod +x bazel_installer.sh
         sudo ./bazel_installer.sh
 

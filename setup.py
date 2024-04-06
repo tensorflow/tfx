@@ -224,6 +224,7 @@ ML_PIPELINES_SDK_PACKAGES = [
     # These are the subpackages of `tfx.orchestration` necessary.
     'tfx.orchestration',
     'tfx.orchestration.config',
+    'tfx.orchestration.experimental.core',
     'tfx.orchestration.launcher',
     'tfx.orchestration.local',
     'tfx.orchestration.local.legacy',
@@ -332,9 +333,8 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
@@ -356,7 +356,7 @@ setup(
         'develop': _DevelopCommand,
         'gen_proto': _GenProtoCommand,
     },
-    python_requires='>=3.7,<3.10',
+    python_requires='>=3.9,<3.11',
     packages=packages,
     include_package_data=True,
     description=description,
@@ -366,4 +366,5 @@ setup(
     url='https://www.tensorflow.org/tfx',
     download_url='https://github.com/tensorflow/tfx/tags',
     requires=[],
-    entry_points=entry_points)
+    entry_points=entry_points,
+)

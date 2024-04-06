@@ -141,6 +141,9 @@ _beam_pipeline_args_by_runner = {
         '--disk_size_gb=50',
         '--machine_type=e2-standard-8',
         '--experiments=use_runner_v2',
+        # If you are Dataflow Prime User, please check our newest feature to
+        # help address the OOM for Batch Jobs
+        # see https://cloud.google.com/dataflow/docs/vertical-autoscaling#batch
         '--sdk_container_image=gcr.io/tfx-oss-public/tfx:{}'.format(
             tfx.__version__)
     ],

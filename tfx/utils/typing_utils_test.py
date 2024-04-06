@@ -13,14 +13,18 @@
 # limitations under the License.
 """Tests for tfx.utils.typing_utils."""
 
+import sys
 import typing
-from typing import Any
+from typing import Any, List, Literal, TypedDict
+import unittest
 
 import tensorflow as tf
 import tfx.types
 from tfx.types import standard_artifacts
 from tfx.utils import typing_utils
 import typing_extensions
+
+import ml_metadata as mlmd
 
 
 class TypingUtilsTest(tf.test.TestCase):
@@ -73,13 +77,17 @@ class TypingUtilsTest(tf.test.TestCase):
     no([self._model()])
     no([{'model': self._model()}])
 
-  def test_is_compatible(self):
-
-    def yes(value: Any, tp: Any):
+  def assertIsCompatible(self, value: Any, tp: Any):
+    with self.subTest(f'{value} is compatible with {tp}'):
       self.assertTrue(typing_utils.is_compatible(value, tp))
 
-    def no(value: Any, tp: Any):
+  def assertIsNotCompatible(self, value: Any, tp: Any):
+    with self.subTest(f'{value} is NOT compatible with {tp}'):
       self.assertFalse(typing_utils.is_compatible(value, tp))
+
+  def test_is_compatible(self):
+    yes = self.assertIsCompatible
+    no = self.assertIsNotCompatible
 
     # Any
     yes(0, typing.Any)
@@ -182,12 +190,103 @@ class TypingUtilsTest(tf.test.TestCase):
     yes(None, typing.Optional[typing.Dict[str, int]])
 
     # Literal
-    literal = typing_extensions.Literal['a', 'b', 'c']
+    literal = Literal['a', 'b', 'c']
     yes('a', literal)
     yes('b', literal)
     yes('c', literal)
     no('d', literal)
     no(0, literal)
+
+  def test_is_compatible_typed_dict_total(self):
+    class Total(TypedDict, total=True):
+      x: int
+      y: float
+      z: str
+
+    self.assertIsCompatible({'x': 1, 'y': 0.4, 'z': 'foo'}, Total)
+    self.assertIsNotCompatible({'x': '1', 'y': 0.4, 'z': 'foo'}, Total)
+    self.assertIsNotCompatible({'x': 1, 'z': 'foo'}, Total)
+    self.assertIsNotCompatible(
+        {'w': False, 'x': 1, 'y': 0.4, 'z': 'foo'}, Total
+    )
+
+  def test_is_compatible_typed_dict_not_total(self):
+    class NotTotal(TypedDict, total=False):
+      x: int
+      y: float
+      z: str
+
+    self.assertIsCompatible({'x': 1, 'y': 0.4, 'z': 'foo'}, NotTotal)
+    self.assertIsNotCompatible({'x': '1', 'y': 0.4, 'z': 'foo'}, NotTotal)
+    self.assertIsCompatible({'x': 1, 'z': 'foo'}, NotTotal)
+    self.assertIsCompatible({}, NotTotal)
+    self.assertIsNotCompatible({'w': False}, NotTotal)
+
+  def test_is_compatible_typed_dict_nested(self):
+    class Inner(TypedDict):
+      x: int
+
+    class Outer(TypedDict):
+      x: Inner  # pytype: disable=invalid-annotation
+
+    self.assertIsCompatible({'x': {'x': 42}}, Outer)
+    self.assertIsNotCompatible({'x': {}}, Outer)
+    self.assertIsNotCompatible({'x': 42}, Outer)
+
+  def test_is_compatible_typed_dict_partial(self):
+    class Partial(TypedDict):
+      x: int
+      y: typing_extensions.NotRequired[int]  # type: ignore
+
+    self.assertIsCompatible({'x': 1, 'y': 2}, Partial)
+    if sys.version_info >= (3, 11, 0):
+      self.assertIsCompatible({'x': 1}, Partial)
+    self.assertIsNotCompatible({}, Partial)
+    self.assertIsNotCompatible({'z': 3}, Partial)
+
+  # pytype: disable=not-supported-yet
+  # NOTE: Sadly, these typing_extensions.assert_type() don't work today, i.e.
+  # they don't actually detect bad types. If they still don't work in the Python
+  # 3.10 future, we should switch to pytype_extensions.assert_type() once the
+  # version in dependencies.py is 4.2+.
+  @unittest.skipUnless(
+      hasattr(typing_extensions, 'assert_type'),
+      'Prevent failure on older Python versions',
+  )
+  def test_is_compatible_narrowing(self):
+    value = 'foo'
+    typing_extensions.assert_type(value, str)
+    if typing_utils.is_compatible(value, int):
+      typing_extensions.assert_type(value, int)
+    elif typing_utils.is_compatible(value, List[tfx.types.Artifact]):
+      typing_extensions.assert_type(value, List[tfx.types.Artifact])
+
+  # pytype: enable=not-supported-yet
+
+  def test_str_is_not_compatible_with_iterable_str(self):
+    self.assertIsNotCompatible('abc', typing.Iterable[str])
+    self.assertIsCompatible(['abc'], typing.Iterable[str])
+    self.assertIsNotCompatible('abc', typing.Sequence[str])
+    self.assertIsNotCompatible('abc', typing.Collection[str])
+    self.assertIsNotCompatible('abc', typing.Container[str])
+    # Should explicitly allow union of str or Iterable[Any].
+    # https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables
+    self.assertIsCompatible('abc', typing.Union[typing.Iterable[str], str])
+    self.assertIsCompatible('abc', typing.Iterable[Any])
+
+  def test_is_compatible_proto_enum(self):
+    State = mlmd.proto.Artifact.State  # pylint: disable=invalid-name
+
+    self.assertIsCompatible(State.UNKNOWN, State)
+    self.assertIsCompatible(State.PENDING, State)
+    self.assertIsCompatible(State.LIVE, State)
+    self.assertIsCompatible(0, State)
+    self.assertIsCompatible(1, State)
+    self.assertIsCompatible(2, State)
+
+    self.assertIsNotCompatible(-1, State)  # Out of range.
+    self.assertIsNotCompatible(999, State)  # Out of range.
+    self.assertIsNotCompatible('LIVE', State)  # String name doesn't count.
 
 
 if __name__ == '__main__':

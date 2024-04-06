@@ -15,6 +15,7 @@
 
 from typing import List, Type
 
+from absl.testing import parameterized
 import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import compiler_context
@@ -27,9 +28,11 @@ from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.experimental.node_execution_options import utils as execution_options_utils
 from tfx.dsl.input_resolution import resolver_function
 from tfx.dsl.input_resolution import resolver_op
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
+from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 
@@ -113,7 +116,7 @@ def dummy_dict_list():
   return DummyDictList()
 
 
-class NodeInputsCompilerTest(tf.test.TestCase):
+class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
   pipeline_name = 'dummy-pipeline'
 
   def _prepare_pipeline(
@@ -259,7 +262,8 @@ class NodeInputsCompilerTest(tf.test.TestCase):
             graph_node.input_node.input_key, other_input_key)
 
   def testCompileInputGraph(self):
-    channel = dummy_artifact_list.with_output_type(DummyArtifact)()
+    with dummy_artifact_list.given_output_type(DummyArtifact):
+      channel = dummy_artifact_list()
     node = DummyNode('MyNode', inputs={'x': channel})
     p = self._prepare_pipeline([node])
     ctx = compiler_context.PipelineContext(p)
@@ -288,12 +292,14 @@ class NodeInputsCompilerTest(tf.test.TestCase):
       self.assertEqual(input_graph_id, second_input_graph_id)
 
   def testCompileInputGraphRef(self):
-    x1 = dummy_artifact_list.with_output_type(DummyArtifact)()
-    x2 = dummy_dict.with_output_type({'x': DummyArtifact})()['x']
-    dict_list = dummy_dict_list.with_output_type({'x': DummyArtifact})()
-    with for_each.ForEach(dict_list) as each_dict:
-      x3 = each_dict['x']
-      node = DummyNode('MyNode', inputs={'x1': x1, 'x2': x2, 'x3': x3})
+    with dummy_artifact_list.given_output_type(DummyArtifact):
+      x1 = dummy_artifact_list()
+    with dummy_dict.given_output_type({'x': DummyArtifact}):
+      x2 = dummy_dict()['x']
+    with dummy_dict_list.given_output_type({'x': DummyArtifact}):
+      with for_each.ForEach(dummy_dict_list()) as each_dict:
+        x3 = each_dict['x']
+        node = DummyNode('MyNode', inputs={'x1': x1, 'x2': x2, 'x3': x3})
 
     result = self._compile_node_inputs(node)
 
@@ -363,8 +369,67 @@ class NodeInputsCompilerTest(tf.test.TestCase):
     self.assertFalse(result.inputs[dynamic_prop_input_key].hidden)
     self.assertEqual(result.inputs[dynamic_prop_input_key].min_count, 1)
 
-  def testCompileMinCount(self):
+  def testCompileInputsForComplexDynamicProperties(self):
+    producer = DummyNode('Producer')
+    consumer = DummyNode(
+        'Consumer',
+        exec_properties={
+            'x': (
+                producer.output('x', standard_artifacts.Integer).future().value
+                + 'foo'
+                + ph.execution_invocation().pipeline_run_id
+            )
+        },
+    )
 
+    result = self._compile_node_inputs(
+        consumer, components=[producer, consumer]
+    )
+
+    self.assertLen(result.inputs, 1)
+    dynamic_prop_input_key = list(result.inputs)[0]
+    self.assertFalse(result.inputs[dynamic_prop_input_key].hidden)
+    self.assertEqual(result.inputs[dynamic_prop_input_key].min_count, 1)
+
+  def testCompileInputsForDynamicPropertyWithUri(self):
+    producer = DummyNode('Producer')
+    consumer = DummyNode(
+        'Consumer',
+        exec_properties={
+            'x': producer.output('x', standard_artifacts.Integer).future().uri
+        },
+    )
+
+    result = self._compile_node_inputs(
+        consumer, components=[producer, consumer]
+    )
+
+    self.assertLen(result.inputs, 1)
+    dynamic_prop_input_key = list(result.inputs)[0]
+    self.assertFalse(result.inputs[dynamic_prop_input_key].hidden)
+    self.assertEqual(result.inputs[dynamic_prop_input_key].min_count, 1)
+
+  def testCompileInputsForInvalidDynamicProperty(self):
+    producer = DummyNode('Producer')
+    consumer = DummyNode(
+        'Consumer',
+        exec_properties={
+            'x': (
+                producer.output('x', standard_artifacts.Examples).future().value
+            )
+        },
+    )
+
+    with self.assertRaisesRegex(
+        ValueError, '.*must be of a value artifact type.*Examples.*x.*Consumer'
+    ):
+      self._compile_node_inputs(consumer, components=[producer, consumer])
+
+  @parameterized.parameters(
+      (pipeline_pb2.NodeExecutionOptions.ALL_UPSTREAM_NODES_COMPLETED,),
+      (pipeline_pb2.NodeExecutionOptions.LAZILY_ALL_UPSTREAM_NODES_COMPLETED),
+  )
+  def testCompileMinCount(self, trigger_strategy):
     class DummyComponentSpec(component_spec.ComponentSpec):
       INPUTS = {
           'required': component_spec.ChannelParameter(
@@ -402,8 +467,8 @@ class NodeInputsCompilerTest(tf.test.TestCase):
     c5 = DummyComponent(
         required=producer.output('x')).with_id('Consumer5')
     c5.node_execution_options = execution_options_utils.NodeExecutionOptions(
-        trigger_strategy=pipeline_pb2.NodeExecutionOptions
-        .ALL_UPSTREAM_NODES_COMPLETED)
+        trigger_strategy=trigger_strategy
+    )
 
     p = self._prepare_pipeline(
         [producer, optional_producer, c1, c2, c3, c4, c5])
@@ -430,6 +495,100 @@ class NodeInputsCompilerTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       r5 = pipeline_pb2.NodeInputs()
       node_inputs_compiler.compile_node_inputs(ctx, c5, r5)
+
+  @parameterized.product(
+      explicit_x=[True, False],
+      explicit_y=[True, False],
+      dynamic_z=[True, False],
+  )
+  def testMainInputsShouldNotBeHidden(self, explicit_x, explicit_y, dynamic_z):
+    p = DummyNode('Producer')
+    inputs = {
+        'union': channel_utils.union([
+            p.output('x', standard_artifacts.Integer),
+            p.output('y', standard_artifacts.Integer),
+            p.output('z', standard_artifacts.Integer),
+        ])
+    }
+    exec_properties = {}
+    if explicit_x:
+      inputs['x'] = p.output('x')
+    if explicit_y:
+      inputs['y'] = p.output('y')
+    if dynamic_z:
+      exec_properties['z'] = p.output('z').future().value
+    c = DummyNode('Consumer', inputs=inputs, exec_properties=exec_properties)
+    pipe = self._prepare_pipeline([p, c])
+    ctx = compiler_context.PipelineContext(pipe)
+
+    result = pipeline_pb2.NodeInputs()
+    node_inputs_compiler.compile_node_inputs(ctx, c, result)
+    self.assertEqual(result.inputs['union'].hidden, False)
+    if explicit_x:
+      self.assertIn('x', result.inputs)
+      self.assertEqual(result.inputs['x'].hidden, False)
+    else:
+      self.assertNotIn('x', result.inputs)
+    if explicit_y:
+      self.assertIn('y', result.inputs)
+      self.assertEqual(result.inputs['y'].hidden, False)
+    else:
+      self.assertNotIn('y', result.inputs)
+    self.assertEqual(result.inputs['_Producer.z'].hidden, not dynamic_z)
+
+  def test_min_count_with_allow_empty_from(self):
+    class DummyComponentSpec(component_spec.ComponentSpec):
+      INPUTS = {
+          'required': component_spec.ChannelParameter(
+              DummyArtifact, optional=False
+          ),
+          'optional_but_not_allow_empty': component_spec.ChannelParameter(
+              DummyArtifact, optional=True, allow_empty=False
+          ),
+          'optional_and_allow_empty': component_spec.ChannelParameter(
+              DummyArtifact, optional=True, allow_empty=True
+          ),
+      }
+      OUTPUTS = {}
+      PARAMETERS = {}
+
+    class DummyComponent(base_component.BaseComponent):
+      SPEC_CLASS = DummyComponentSpec
+      EXECUTOR_SPEC = executor_spec.ExecutorSpec()
+
+      def __init__(self, **inputs):
+        super().__init__(DummyComponentSpec(**inputs))
+
+    producer = DummyNode('Producer')
+
+    output_channel = producer.output('x').as_optional()
+
+    c1 = DummyComponent(required=output_channel).with_id('Consumer1')
+    c2 = DummyComponent(
+        required=output_channel,
+        optional_but_not_allow_empty=output_channel,
+    ).with_id('Consumer2')
+    c3 = DummyComponent(
+        required=output_channel, optional_and_allow_empty=output_channel
+    ).with_id('Consumer3')
+
+    p = self._prepare_pipeline([producer, c1, c2, c3])
+    ctx = compiler_context.PipelineContext(p)
+    # Add dummy already compiled output channels to compiler context.
+    ctx.channels[producer.output('x')] = pipeline_pb2.InputSpec.Channel()
+
+    r1 = pipeline_pb2.NodeInputs()
+    node_inputs_compiler.compile_node_inputs(ctx, c1, r1)
+    r3 = pipeline_pb2.NodeInputs()
+    node_inputs_compiler.compile_node_inputs(ctx, c3, r3)
+
+    self.assertEqual(r1.inputs['required'].min_count, 0)
+    self.assertEqual(r3.inputs['required'].min_count, 0)
+    self.assertEqual(r3.inputs['optional_and_allow_empty'].min_count, 0)
+
+    with self.assertRaises(ValueError):
+      r2 = pipeline_pb2.NodeInputs()
+      node_inputs_compiler.compile_node_inputs(ctx, c2, r2)
 
 
 if __name__ == '__main__':

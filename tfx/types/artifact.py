@@ -11,7 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX artifact type definition."""
+"""TFX artifact type definition.
+
+DO NOT USE THIS MODULE DIRECTLY. This module is a private module, and `Artifact`
+class is available from public module `tfx.v1.dsl.Artifact`.
+"""
 
 import builtins
 import copy
@@ -52,16 +56,21 @@ class ArtifactState:
   # Indicates the artifact is abandoned, which is usually due to a failed or
   # cancelled execution.
   ABANDONED = 'abandoned'
+  # Indicates the artifact is a copy for referencing an external artifact.
+  REFERENCE = 'reference'
 
 
 MlmdArtifactState = metadata_store_pb2.Artifact.State
 _TFX_TO_MLMD_ARTIFACT_STATE = {
     ArtifactState.PENDING: MlmdArtifactState.PENDING,
     ArtifactState.PUBLISHED: MlmdArtifactState.LIVE,
-    ArtifactState.MISSING: MlmdArtifactState.UNKNOWN,
     ArtifactState.MARKED_FOR_DELETION: MlmdArtifactState.MARKED_FOR_DELETION,
     ArtifactState.DELETED: MlmdArtifactState.DELETED,
     ArtifactState.ABANDONED: MlmdArtifactState.ABANDONED,
+    ArtifactState.REFERENCE: MlmdArtifactState.REFERENCE,
+}
+_MLMD_TO_TFX_ARTIFACT_STATE = {
+    v: k for k, v in _TFX_TO_MLMD_ARTIFACT_STATE.items()
 }
 
 # Default split of examples data.
@@ -125,17 +134,17 @@ class Artifact(json_utils.Jsonable):
   # Example usage:
   #
   # TYPE_NAME = 'MyTypeName'
-  TYPE_NAME = None
+  TYPE_NAME: Optional[str] = None
 
-  # The system artifact class used to annotate the artifact type. It is a
-  # subclass of SystemArtifact.
-  # These subclasses (system artifact classses) are defined in
-  # third_party/py/tfx/types/system_artifacts.py.
+  # An MLMD type annotations from tfx.v1.dsl.standard_annotations.
   #
   # Example usage:
   #
-  # TYPE_ANNOTATION = system_artifacts.Dataset
-  TYPE_ANNOTATION: Type[SystemArtifact] = None
+  # ```python
+  # from tfx import v1 as tfx
+  # TYPE_ANNOTATION = tfx.dsl.standard_annotations.Dataset
+  # ````
+  TYPE_ANNOTATION: Optional[Type[SystemArtifact]] = None
 
   # Optional dictionary of property name strings as keys and `Property`
   # objects as values, used to specify the artifact type's properties.
@@ -153,7 +162,7 @@ class Artifact(json_utils.Jsonable):
   #
   # Subsequently, these properties can be stored and accessed as
   # `myartifact.span` and `myartifact.split_name`, respectively.
-  PROPERTIES = None
+  PROPERTIES: Optional[Dict[str, Property]] = None
 
   # Initialization flag to support setattr / getattr behavior.
   _initialized = False
@@ -268,6 +277,11 @@ class Artifact(json_utils.Jsonable):
         # Avoid populating empty property protobuf with the [] operator.
         return 0.0
       return self._artifact.properties[name].double_value
+    elif property_mlmd_type == metadata_store_pb2.BOOLEAN:
+      if name not in self._artifact.properties:
+        # Avoid populating empty property protobuf with the [] operator.
+        return False
+      return self._artifact.properties[name].bool_value
     elif property_mlmd_type == metadata_store_pb2.STRUCT:
       if name not in self._artifact.properties:
         # Avoid populating empty property protobuf with the [] operator.
@@ -294,8 +308,9 @@ class Artifact(json_utils.Jsonable):
       self._cached_modifiable_properties[name] = value
       return value
     else:
-      raise Exception('Unknown MLMD type %r for property %r.' %
-                      (property_mlmd_type, name))
+      raise ValueError(
+          'Unknown MLMD type %r for property %r.' % (property_mlmd_type, name)
+      )
 
   def __setattr__(self, name: str, value: Any):
     """Custom __setattr__ to allow access to artifact properties."""
@@ -317,27 +332,41 @@ class Artifact(json_utils.Jsonable):
     property_mlmd_type = self._artifact_type.properties[name]
     if property_mlmd_type == metadata_store_pb2.STRING:
       if not isinstance(value, (str, bytes)):
-        raise Exception(
-            'Expected string value for property %r; got %r instead.' %
-            (name, value))
+        raise ValueError(
+            'Expected string value for property %r; got %r instead.'
+            % (name, value)
+        )
       self._artifact.properties[name].string_value = value
     elif property_mlmd_type == metadata_store_pb2.INT:
       if not isinstance(value, int):
-        raise Exception(
-            'Expected integer value for property %r; got %r instead.' %
-            (name, value))
+        raise ValueError(
+            'Expected integer value for property %r; got %r instead.'
+            % (name, value)
+        )
       self._artifact.properties[name].int_value = value
     elif property_mlmd_type == metadata_store_pb2.DOUBLE:
       if not isinstance(value, float):
-        raise Exception(
-            'Expected float value for property %r; got %r instead.' %
-            (name, value))
+        raise ValueError(
+            'Expected float value for property %r; got %r instead.'
+            % (name, value)
+        )
       self._artifact.properties[name].double_value = value
+    elif property_mlmd_type == metadata_store_pb2.BOOLEAN:
+      if not isinstance(value, bool):
+        raise ValueError(
+            'Expected boolean value for property %r; got %r instead.'
+            % (name, value)
+        )
+      self._artifact.properties[name].bool_value = value
     elif property_mlmd_type == metadata_store_pb2.STRUCT:
       if not isinstance(value, (dict, list, str, float, int, type(None))):
-        raise Exception(
-            ('Expected JSON value (dict, list, string, float, int or None) '
-             'for property %r; got %r instead.') % (name, value))
+        raise ValueError(
+            (
+                'Expected JSON value (dict, list, string, float, int or None) '
+                'for property %r; got %r instead.'
+            )
+            % (name, value)
+        )
       encoded_value = _encode_struct_value(value)
       if encoded_value is None:
         self._artifact.properties[name].struct_value.Clear()
@@ -346,17 +375,19 @@ class Artifact(json_utils.Jsonable):
       self._cached_modifiable_properties[name] = value
     elif property_mlmd_type == metadata_store_pb2.PROTO:
       if not isinstance(value, (message.Message, type(None))):
-        raise Exception(
+        raise ValueError(
             'Expected protobuf message value or None for property %r; got %r '
-            'instead.' % (name, value))
+            'instead.' % (name, value)
+        )
       if value is None:
         self._artifact.properties[name].proto_value.Clear()
       else:
         self._artifact.properties[name].proto_value.Pack(value)
       self._cached_modifiable_properties[name] = value
     else:
-      raise Exception('Unknown MLMD type %r for property %r.' %
-                      (property_mlmd_type, name))
+      raise ValueError(
+          'Unknown MLMD type %r for property %r.' % (property_mlmd_type, name)
+      )
 
   @doc_controls.do_not_doc_inheritable
   def set_mlmd_artifact(self, artifact: metadata_store_pb2.Artifact):
@@ -535,7 +566,12 @@ class Artifact(json_utils.Jsonable):
         key in self._artifact.properties):
       # Legacy artifact types which have explicitly defined system properties.
       return self._artifact.properties[key].string_value
-    return self._artifact.custom_properties[key].string_value
+    elif key in self._artifact.custom_properties:
+      return self._artifact.custom_properties[key].string_value
+    else:
+      # Do not call __getitem__ on properties or custom_properties if key is
+      # missing, so that property mapping is not mutateed.
+      return ''
 
   def _set_system_property(self, key: str, value: str):
     if (key in self._artifact_type.properties and
@@ -560,15 +596,22 @@ class Artifact(json_utils.Jsonable):
   @doc_controls.do_not_doc_in_subclasses
   def state(self) -> str:
     """State of the underlying mlmd artifact."""
-    return self._get_system_property('state')
+    # Backward compatibility behavior; for unknown artifact state string we
+    # uses UNKNOWN and 'state' custom property.
+    if self._artifact.state not in _MLMD_TO_TFX_ARTIFACT_STATE:
+      return self._get_system_property('state')
+    return _MLMD_TO_TFX_ARTIFACT_STATE[self._artifact.state]
 
   @state.setter
   def state(self, state: str):
     """Set state of the underlying artifact."""
-    self._set_system_property('state', state)
-    self._artifact.state = (
-        _TFX_TO_MLMD_ARTIFACT_STATE[state]
-        if state in _TFX_TO_MLMD_ARTIFACT_STATE else MlmdArtifactState.UNKNOWN)
+    if state not in _TFX_TO_MLMD_ARTIFACT_STATE:
+      # Backward compatibility behavior; for unknown artifact state string we
+      # uses UNKNOWN and 'state' custom property.
+      self._artifact.state = MlmdArtifactState.UNKNOWN
+      self._set_system_property('state', state)
+    else:
+      self._artifact.state = _TFX_TO_MLMD_ARTIFACT_STATE[state]
 
   @property
   @doc_controls.do_not_doc_in_subclasses
@@ -621,6 +664,11 @@ class Artifact(json_utils.Jsonable):
     """Sets a custom property of float type."""
     self._artifact.custom_properties[key].double_value = builtins.float(value)
 
+  @doc_controls.do_not_doc_in_subclasses
+  def set_bool_custom_property(self, key: str, value: bool):
+    """Sets a custom property of bool type."""
+    self._artifact.custom_properties[key].bool_value = value
+
   @doc_controls.do_not_doc_inheritable
   def set_json_value_custom_property(self, key: str, value: JsonValueType):
     """Sets a custom property of JSON type."""
@@ -632,8 +680,18 @@ class Artifact(json_utils.Jsonable):
     self._cached_modifiable_custom_properties[key] = value
 
   @doc_controls.do_not_doc_in_subclasses
+  def has_property(self, key: str) -> bool:
+    return (
+        key in self._artifact.properties
+        or key in self._cached_modifiable_properties
+    )
+
+  @doc_controls.do_not_doc_in_subclasses
   def has_custom_property(self, key: str) -> bool:
-    return key in self._artifact.custom_properties
+    return (
+        key in self._artifact.custom_properties
+        or key in self._cached_modifiable_custom_properties
+    )
 
   @doc_controls.do_not_doc_in_subclasses
   def get_string_custom_property(self, key: str) -> str:
@@ -667,8 +725,19 @@ class Artifact(json_utils.Jsonable):
     return self._artifact.custom_properties[key].double_value
 
   @doc_controls.do_not_doc_in_subclasses
+  def get_bool_custom_property(self, key: str) -> bool:
+    """Get a custom property of bool type."""
+    if key not in self._artifact.custom_properties:
+      return False
+    json_value = self.get_json_value_custom_property(key)
+    if isinstance(json_value, bool):
+      return json_value
+    return self._artifact.custom_properties[key].bool_value
+
+  @doc_controls.do_not_doc_in_subclasses
   def get_custom_property(
-      self, key: str) -> Optional[Union[int, float, str, JsonValueType]]:
+      self, key: str
+  ) -> Optional[Union[int, float, str, bool, JsonValueType]]:
     """Gets a custom property with key. Return None if not found."""
     if key not in self._artifact.custom_properties:
       return None
@@ -684,6 +753,8 @@ class Artifact(json_utils.Jsonable):
       return mlmd_value.double_value
     elif mlmd_value.HasField('string_value'):
       return mlmd_value.string_value
+    elif mlmd_value.HasField('bool_value'):
+      return mlmd_value.bool_value
     return None
 
   @doc_controls.do_not_doc_inheritable
@@ -785,8 +856,12 @@ def _ArtifactType(  # pylint: disable=invalid-name
         properties[name] = Property(PropertyType.FLOAT)
       elif property_type == metadata_store_pb2.PropertyType.PROTO:
         properties[name] = Property(PropertyType.PROTO)
+      elif property_type == metadata_store_pb2.PropertyType.STRUCT:
+        properties[name] = Property(PropertyType.JSON_VALUE)
       elif property_type == metadata_store_pb2.PropertyType.STRING:
         properties[name] = Property(PropertyType.STRING)
+      elif property_type == metadata_store_pb2.PropertyType.BOOLEAN:
+        properties[name] = Property(PropertyType.BOOLEAN)
       else:
         raise ValueError('Unsupported MLMD property type: %s.' % property_type)
     annotation = None

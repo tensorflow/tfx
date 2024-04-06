@@ -85,6 +85,25 @@ class CommonUtilsTest(tf.test.TestCase, parameterized.TestCase):
           m, type_without_properties)
       self.assertProtoEquals(result_one, result_two)
 
+  @parameterized.parameters(
+      metadata_store_pb2.ArtifactType,
+      metadata_store_pb2.ContextType,
+      metadata_store_pb2.ExecutionType,
+  )
+  def testRegisterTypeDirectGetExisting(self, metadata_type_class):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      type_with_two_properties = _create_type(metadata_type_class)
+      result_one = common_utils.register_type_if_not_exist(
+          m, type_with_two_properties
+      )
+      # Tries to register a type that shares the same name of the type
+      # previously registered but with same properties. We expect the previously
+      # registered type to be reused.
+      result_two = common_utils.register_type_if_not_exist(
+          m, type_with_two_properties
+      )
+      self.assertEqual(result_one, result_two)
+
   @parameterized.parameters(metadata_store_pb2.ArtifactType,
                             metadata_store_pb2.ContextType,
                             metadata_store_pb2.ExecutionType)

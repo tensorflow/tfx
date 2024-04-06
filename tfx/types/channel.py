@@ -11,7 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX Channel definition."""
+"""TFX Channel definition.
+
+DO NOT USE THIS MODULE DIRECTLY. This module is a private module, and all public
+symbols are already available from one of followings:
+
+- `tfx.v1.types.BaseChannel`
+- `tfx.v1.testing.Channel`
+- `tfx.v1.dsl.union`
+- `tfx.v1.dsl.experimental.artifact_query`
+- `tfx.v1.dsl.experimental.external_pipeline_artifact_query`
+
+Consider other symbols as private.
+"""
+
+from __future__ import annotations
 
 import abc
 import copy
@@ -19,24 +33,29 @@ import dataclasses
 import inspect
 import json
 import textwrap
-from typing import Any, cast, Dict, Iterable, List, Optional, Type, Union, Set, Sequence
-from absl import logging
+from typing import Any, Dict, Generic, Iterable, List, Optional, Sequence, Set, Type, TypeVar, Union, cast
 
-from tfx.dsl.placeholder import placeholder
+from absl import logging
+from tfx.dsl.placeholder import artifact_placeholder
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
+import typing_extensions
+
 from google.protobuf import json_format
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
+
 
 # Property type for artifacts, executions and contexts.
 Property = Union[int, float, str, message.Message]
 ExecPropertyTypes = Union[int, float, str, bool, message.Message, List[Any],
                           Dict[Any, Any]]
 _EXEC_PROPERTY_CLASSES = (int, float, str, bool, message.Message, list, dict)
+
+_AT = TypeVar('_AT', bound=Artifact)
 
 
 def _is_artifact_type(value: Any):
@@ -67,7 +86,7 @@ class TriggerByProperty:
 _InputTrigger = Union[NoTrigger, TriggerByProperty]
 
 
-class BaseChannel(abc.ABC):
+class BaseChannel(abc.ABC, Generic[_AT]):
   """An abstraction for component (BaseNode) artifact inputs.
 
   `BaseChannel` is often interchangeably used with the term 'channel' (not
@@ -96,26 +115,52 @@ class BaseChannel(abc.ABC):
 
   Attributes:
     type: The artifact type class that the Channel takes.
+    is_optional: If this channel is optional (e.g. may trigger components at run
+      time if there are no artifacts in the channel). None if not explicetely
+      set.
   """
 
-  def __init__(self, type: Type[Artifact]):  # pylint: disable=redefined-builtin
+  def __init__(self, type: Type[_AT]):  # pylint: disable=redefined-builtin
     if not _is_artifact_type(type):
       raise ValueError(
           'Argument "type" of BaseChannel constructor must be a subclass of '
           f'tfx.Artifact (got {type}).')
     self._artifact_type = type
     self._input_trigger = None
+    self._original_channel = None
+    self._is_optional = None
 
   @property
-  def type(self):  # pylint: disable=redefined-builtin
+  def is_optional(self) -> Optional[bool]:
+    """If this is an "optional" channel. Changes Pipeline *runtime* behavior."""
+    return self._is_optional
+
+  # TODO(kmonte): Update this to Self once we're on 3.11 everywhere
+  def as_optional(self) -> typing_extensions.Self:
+    """Creates an optional version of self.
+
+    By default component input channels are considered required, meaning
+    if the channel does not contain at least 1 artifact, the component
+    will be skipped. Making channel optional disables this requirement and
+    allows componenst to be executed with no artifacts from this channel.
+
+    Returns:
+      A copy of self which is optional.
+    """
+    new_channel = copy.copy(self)
+    new_channel._is_optional = True  # pylint: disable=protected-access
+    return new_channel
+
+  @property
+  def type(self) -> Type[_AT]:  # pylint: disable=redefined-builtin
     return self._artifact_type
 
   @type.setter
-  def type(self, value: Type[Artifact]):  # pylint: disable=redefined-builtin
+  def type(self, value: Type[_AT]):  # pylint: disable=redefined-builtin
     self._set_type(value)
 
   @doc_controls.do_not_generate_docs
-  def _set_type(self, value: Type[Artifact]):
+  def _set_type(self, value: Type[_AT]):
     raise NotImplementedError('Cannot change artifact type.')
 
   @abc.abstractmethod
@@ -143,24 +188,25 @@ class BaseChannel(abc.ABC):
 
   def _with_input_trigger(self, input_trigger: _InputTrigger):
     """Creates shallow-copied channel with new annotations."""
+    # Save a copy of the original object.
+    self._original_channel = self
+
     result = copy.copy(self)
     result._input_trigger = input_trigger  # pylint: disable=protected-access
     return result
 
   @doc_controls.do_not_generate_docs
-  def notrigger(self):
+  def no_trigger(self):
     return self._with_input_trigger(NoTrigger())
 
   @doc_controls.do_not_generate_docs
   def trigger_by_property(self, *property_keys: str):
     return self._with_input_trigger(TriggerByProperty(property_keys))
 
-  def future(self) -> placeholder.ChannelWrappedPlaceholder:
-    return placeholder.ChannelWrappedPlaceholder(self)
+  def future(self) -> ChannelWrappedPlaceholder:
+    return ChannelWrappedPlaceholder(self)
 
   def __eq__(self, other):
-    if not isinstance(other, BaseChannel):
-      return NotImplemented
     return self is other
 
   def __hash__(self):
@@ -267,8 +313,14 @@ class Channel(json_utils.Jsonable, BaseChannel):
             artifacts: [{}]
             additional_properties: {}
             additional_custom_properties: {}
-        )""").format(self.type_name, artifacts_str, self.additional_properties,
-                     self.additional_custom_properties)
+            _input_trigger: {}
+        )""").format(
+        self.type_name,
+        artifacts_str,
+        self.additional_properties,
+        self.additional_custom_properties,
+        self._input_trigger,
+    )
 
   def _validate_additional_properties(self, value: Any) -> None:
     if not _is_property_dict(value):
@@ -437,6 +489,7 @@ class OutputChannel(Channel):
       output_key: str,
       additional_properties: Optional[Dict[str, Property]] = None,
       additional_custom_properties: Optional[Dict[str, Property]] = None,
+      is_async: bool = False,
   ):
     super().__init__(
         type=artifact_type,
@@ -447,6 +500,7 @@ class OutputChannel(Channel):
     self._producer_component = producer_component
     self._garbage_collection_policy = None
     self._predefined_artifact_uris = None
+    self._is_async = is_async
 
   def __repr__(self) -> str:
     return (
@@ -455,7 +509,10 @@ class OutputChannel(Channel):
         f'producer_component_id={self.producer_component_id}, '
         f'output_key={self.output_key}, '
         f'additional_properties={self.additional_properties}, '
-        f'additional_custom_properties={self.additional_custom_properties})')
+        f'additional_custom_properties={self.additional_custom_properties}, '
+        f'_input_trigger={self._input_trigger}, '
+        f'_is_async={self._is_async})'
+    )
 
   def get_data_dependent_node_ids(self) -> Set[str]:
     return {self.producer_component_id}
@@ -475,6 +532,11 @@ class OutputChannel(Channel):
   def producer_component_id(self) -> str:
     return self._producer_component.id
 
+  @property
+  @doc_controls.do_not_generate_docs
+  def is_async(self) -> bool:
+    return self._is_async
+
   @doc_controls.do_not_generate_docs
   def as_output_channel(
       self, producer_component: Any, output_key: str) -> 'OutputChannel':
@@ -490,6 +552,10 @@ class OutputChannel(Channel):
   @doc_controls.do_not_generate_docs
   def set_external(self, predefined_artifact_uris: List[str]) -> None:
     self._predefined_artifact_uris = predefined_artifact_uris
+
+  @doc_controls.do_not_generate_docs
+  def set_as_async_channel(self) -> None:
+    self._is_async = True
 
 
 @doc_controls.do_not_generate_docs
@@ -519,7 +585,7 @@ class UnionChannel(BaseChannel):
     super().__init__(type=channels[0].type)
 
     for channel in self.channels:
-      if not isinstance(channel, Channel) or channel.type != self.type:
+      if channel.type != self.type:
         raise TypeError(
             'Unioned channels must have the same type. Expected %s (got %s).' %
             (self.type, channel.type))
@@ -531,8 +597,7 @@ class UnionChannel(BaseChannel):
     return set()
 
 
-@deprecation_utils.deprecated(
-    None, 'Please use `tfx.types.channel_utils.union()` instead.')
+@deprecation_utils.deprecated(None, 'Please use `tfx.dsl.union()` instead.')
 def union(input_channels: Iterable[BaseChannel]) -> UnionChannel:
   """Convenient method to combine multiple input channels into union channel."""
   return UnionChannel(input_channels)
@@ -620,7 +685,23 @@ class PipelineInputChannel(BaseChannel):
     self._pipeline = pipeline
 
   def get_data_dependent_node_ids(self) -> Set[str]:
+    if self._pipeline is None:
+      raise ValueError('Pipeline is not available.')
     return {self._pipeline.id}
+
+  # no_trigger only makes semantic sense on ASYNC pipeline, however all
+  # consumers of a PipelineInputs channel must be a SYNC pipeline, so we ban it.
+  def no_trigger(self):
+    raise NotImplementedError(
+        'no_trigger is not implemented for PipelineInputChannel.'
+    )
+
+  # trigger_by_property only makes semantic sense on ASYNC pipeline, however all
+  # consumers of a PipelineInputs channel must be a SYNC pipeline, so we ban it.
+  def trigger_by_property(self, *property_keys: str):
+    raise NotImplementedError(
+        'trigger_by_property is not implemented for PipelineInputChannel.'
+    )
 
 
 class ExternalPipelineChannel(BaseChannel):
@@ -635,20 +716,17 @@ class ExternalPipelineChannel(BaseChannel):
       producer_component_id: str,
       output_key: str,
       pipeline_run_id: str = '',
-      # TODO(b/265337852) Remove project name.
-      project_name: str = '',
   ):
     """Initialization of ExternalPipelineChannel.
 
     Args:
       artifact_type: Subclass of Artifact for this channel.
-      owner: Onwer of the pipeline.
+      owner: Owner of the pipeline.
       pipeline_name: Name of the pipeline the artifacts belong to.
       producer_component_id: Id of the component produces the artifacts.
       output_key: The output key when producer component produces the artifacts
         in this Channel.
       pipeline_run_id: (Optional) Pipeline run id the artifacts belong to.
-      project_name: (Optional) Name of the project.
     """
     super().__init__(type=artifact_type)
     self.owner = owner
@@ -656,7 +734,6 @@ class ExternalPipelineChannel(BaseChannel):
     self.producer_component_id = producer_component_id
     self.output_key = output_key
     self.pipeline_run_id = pipeline_run_id
-    self.project_name = project_name
 
   def get_data_dependent_node_ids(self) -> Set[str]:
     return set()
@@ -670,3 +747,51 @@ class ExternalPipelineChannel(BaseChannel):
         f'output_key={self.output_key}, '
         f'pipeline_run_id={self.pipeline_run_id})'
     )
+
+
+class ChannelWrappedPlaceholder(artifact_placeholder.ArtifactPlaceholder):
+  """Wraps a Channel in a Placeholder.
+
+  This is necessary because Placeholder-based expressions are built (in terms of
+  Python execution order) before they're passed to the Tflex component that uses
+  them. Therefore, when a Channel is passed from an upstream component, we can't
+  yet reference its name/key wrt. the downstream component in which it is used.
+  So a ChannelWrappedPlaceholder simply remembers the original Channel instance
+  that was used. The Placeholder expression tree built from this wrapper is then
+  passed to the component that uses it, and encode_placeholder_with_channels()
+  is used to inject the key only later, when encoding the Placeholder.
+
+  For instance, this allows making Predicates using syntax like:
+    channel.future().value > 5
+  """
+
+  def __init__(
+      self,
+      channel: BaseChannel,
+      key: Optional[str] = None,
+      index: Optional[int] = None,
+  ):
+    super().__init__(is_input=True, key=key, index=index)
+    self.channel = channel
+
+  def set_key(self, key: Optional[str]):
+    """Sets the channel key that this placeholder resolves to.
+
+    It's important to note that placeholders are semantically immutable. This
+    setter technically violates this guarantee, but we control the effects of it
+    by _only_ calling the setter right before an `encode()` operation on this
+    placeholder or a larger placeholder that contains it, and then calling
+    set_key(None) right after. encode_placeholder_with_channels() demonstrates
+    how to do this correctly and should be the preferred way to call set_key().
+
+    Args:
+      key: The new key for the channel.
+    """
+    self._key = key
+
+  def __getitem__(self, index: int) -> ChannelWrappedPlaceholder:
+    if self._index is not None:
+      raise ValueError(
+          'Do not call [0] or [...] twice on a .future() placeholder'
+      )
+    return ChannelWrappedPlaceholder(self.channel, key=self._key, index=index)

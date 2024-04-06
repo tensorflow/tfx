@@ -13,11 +13,10 @@
 # limitations under the License.
 """Utilities to dump and load Jsonable object to/from JSONs."""
 
-import abc
 import importlib
 import inspect
 import json
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, Type, Union, Mapping, Sequence
 
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
@@ -54,7 +53,7 @@ class _ObjectType:
   PROTO = 'proto'
 
 
-class Jsonable(abc.ABC):
+class Jsonable:
   """Base class for serializing and deserializing objects to/from JSON.
 
   The default implementation assumes that the subclass can be restored by
@@ -77,11 +76,15 @@ class Jsonable(abc.ABC):
     return instance
 
 
-JsonableValue = Union[bool, float, int, Jsonable, message.Message, str,
-                      Type, 'JsonableType']
-JsonableList = List[JsonableValue]
-JsonableDict = Dict[str, Union[JsonableValue, JsonableList]]
-JsonableType = Union[JsonableValue, JsonableList, JsonableDict]
+JsonValue = Union[None, bool, float, int, str, 'JsonDict', 'JsonList']
+JsonDict = Mapping[str, JsonValue]
+JsonList = Sequence[JsonValue]
+
+_JsonCompat = Union[Jsonable, message.Message, Type]
+JsonableValue = Union[JsonValue, _JsonCompat, 'JsonableDict', 'JsonableList']
+JsonableDict = Mapping[str, JsonableValue]
+JsonableList = Sequence[JsonableValue]
+JsonableType = JsonableValue
 
 
 class _DefaultEncoder(json.JSONEncoder):
