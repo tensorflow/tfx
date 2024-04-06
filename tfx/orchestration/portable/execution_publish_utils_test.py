@@ -191,10 +191,15 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             value {int_value: 1}
           }
           """, executor_output.output_artifacts[output_key].artifacts.add())
-      output_dict = execution_publish_utils.publish_succeeded_execution(
-          m, execution_id, contexts, {output_key: [output_example]},
-          executor_output)
-      [execution] = m.store.get_executions()
+      output_dict, execution = (
+          execution_publish_utils.publish_succeeded_execution(
+              m,
+              execution_id,
+              contexts,
+              {output_key: [output_example]},
+              executor_output,
+          )
+      )
       self.assertProtoPartiallyEquals(
           """
           id: 1
@@ -303,7 +308,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             }}
             """, executor_output.output_artifacts[output_key].artifacts.add())
 
-      output_dict = execution_publish_utils.publish_succeeded_execution(
+      output_dict, _ = execution_publish_utils.publish_succeeded_execution(
           m, execution_id, contexts, {output_key: [output_example]},
           executor_output)
       self.assertLen(output_dict[output_key], 2)
@@ -361,7 +366,7 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             value {{int_value: 1}}
           }}
           """, executor_output.output_artifacts['key1'].artifacts.add())
-      output_dict = execution_publish_utils.publish_succeeded_execution(
+      output_dict, _ = execution_publish_utils.publish_succeeded_execution(
           m, execution_id, contexts, original_artifacts, executor_output)
       self.assertEmpty(output_dict['key1'])
       self.assertNotEmpty(output_dict['key2'])
@@ -414,10 +419,15 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           }
           """, executor_output.output_artifacts[output_key].artifacts.add())
 
-      output_dict = execution_publish_utils.publish_succeeded_execution(
-          m, execution_id, contexts, {output_key: [output_example]},
-          executor_output)
-      [execution] = m.store.get_executions()
+      output_dict, execution = (
+          execution_publish_utils.publish_succeeded_execution(
+              m,
+              execution_id,
+              contexts,
+              {output_key: [output_example]},
+              executor_output,
+          )
+      )
       self.assertProtoPartiallyEquals(
           """
           id: 1

@@ -23,14 +23,66 @@ from tfx.components.example_validator import labels
 from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.components.util import value_utils
 from tfx.dsl.components.base import base_executor
+from tfx.orchestration.experimental.core import component_generated_alert_pb2
+from tfx.orchestration.experimental.core import constants
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import writer_utils
 
+from google.protobuf import any_pb2
+from tensorflow_metadata.proto.v0 import anomalies_pb2
+
 # Default file name for anomalies output.
 DEFAULT_FILE_NAME = 'SchemaDiff.pb'
+
+# Keys for artifact (custom) properties.
+ARTIFACT_PROPERTY_BLESSED_KEY = 'blessed'
+
+# Values for blessing results.
+BLESSED_VALUE = 1
+NOT_BLESSED_VALUE = 0
+
+
+def _create_anomalies_alerts(
+    anomalies: anomalies_pb2.Anomalies,
+    split: str,
+) -> list[component_generated_alert_pb2.ComponentGeneratedAlertInfo]:
+  """Creates an alert for each anomaly in the anomalies artifact."""
+  result = []
+  # Information about data missing in the dataset.
+  if anomalies.HasField('data_missing'):
+    result.append(
+        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+            alert_name=f'Data missing in split {split}',
+            alert_body=f'Empty input data for {split}.',
+        )
+    )
+  # Information about dataset-level anomalies, such as "Low num examples
+  # in dataset."
+  if anomalies.HasField('dataset_anomaly_info'):
+    result.append(
+        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+            alert_name='Dataset anomalies',
+            alert_body=(
+                f'{anomalies.dataset_anomaly_info.description} in split '
+                f'{split}'),
+        )
+    )
+  # Information about feature-level anomalies, such as "Some examples have
+  # fewer values than expected."
+  for feature_name, anomaly_info in anomalies.anomaly_info.items():
+    result.append(
+        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+            alert_name=anomaly_info.short_description,
+            alert_body=(
+                f'{anomaly_info.description} for feature {feature_name} in '
+                f'split {split}.'),
+        )
+    )
+  return result
 
 
 class Executor(base_executor.BaseExecutor):
@@ -38,7 +90,8 @@ class Executor(base_executor.BaseExecutor):
 
   def Do(self, input_dict: Dict[str, List[types.Artifact]],
          output_dict: Dict[str, List[types.Artifact]],
-         exec_properties: Dict[str, Any]) -> None:
+         exec_properties: Dict[str, Any]
+         ) -> execution_result_pb2.ExecutorOutput:
     """TensorFlow ExampleValidator executor entrypoint.
 
     This validates statistics against the schema.
@@ -60,7 +113,8 @@ class Executor(base_executor.BaseExecutor):
           custom validations with SQL.
 
     Returns:
-      None
+      ExecutionResult proto with anomalies and the component generated alerts
+      execution property set with anomalies alerts, if any.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
@@ -89,6 +143,9 @@ class Executor(base_executor.BaseExecutor):
             artifact_utils.get_single_uri(
                 input_dict[standard_component_specs.SCHEMA_KEY])))
 
+    alerts = component_generated_alert_pb2.ComponentGeneratedAlertList()
+
+    blessed_value_dict = {}
     for split in artifact_utils.decode_split_names(stats_artifact.split_names):
       if split in exclude_splits:
         continue
@@ -110,12 +167,45 @@ class Executor(base_executor.BaseExecutor):
       output_uri = artifact_utils.get_split_uri(
           output_dict[standard_component_specs.ANOMALIES_KEY], split)
       label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
-      self._Validate(label_inputs, label_outputs)
+
+      anomalies = self._Validate(label_inputs, label_outputs)
+      if anomalies.anomaly_info or anomalies.HasField('dataset_anomaly_info'):
+        blessed_value_dict[split] = NOT_BLESSED_VALUE
+      else:
+        blessed_value_dict[split] = BLESSED_VALUE
+
+      alerts.component_generated_alert_list.extend(
+          _create_anomalies_alerts(anomalies, split))
+      logging.info('Anomalies alerts created for split %s.', split)
+
       logging.info(
           'Validation complete for split %s. Anomalies written to '
           '%s.', split, output_uri)
 
-  def _Validate(self, inputs: Dict[str, Any], outputs: Dict[str, Any]) -> None:
+      # Set blessed custom property for anomalies artifact.
+      anomalies_artifact.set_json_value_custom_property(
+          ARTIFACT_PROPERTY_BLESSED_KEY, blessed_value_dict
+      )
+
+    executor_output = execution_result_pb2.ExecutorOutput()
+    executor_output.output_artifacts[
+        standard_component_specs.ANOMALIES_KEY
+        ].artifacts.append(anomalies_artifact.mlmd_artifact)
+
+    # Set component generated alerts execution property in ExecutorOutput if
+    # any anomalies alerts exist.
+    if alerts.component_generated_alert_list:
+      any_proto = any_pb2.Any()
+      any_proto.Pack(alerts)
+      executor_output.execution_properties[
+          constants.COMPONENT_GENERATED_ALERTS_KEY
+      ].proto_value.CopyFrom(any_proto)
+
+    return executor_output
+
+  def _Validate(
+      self, inputs: Dict[str, Any], outputs: Dict[str, Any]
+  ) -> anomalies_pb2.Anomalies:
     """Validate the inputs and put validate result into outputs.
 
       This is the implementation part of example validator executor. This is
@@ -142,6 +232,9 @@ class Executor(base_executor.BaseExecutor):
           external config file.
       outputs: A dictionary of labeled output values, including:
           - labels.SCHEMA_DIFF_PATH: the path to write the schema diff to
+
+    Returns:
+      An Anomalies proto containing anomalies for the split.
     """
     schema = value_utils.GetSoleValue(inputs,
                                       standard_component_specs.SCHEMA_KEY)
@@ -158,3 +251,4 @@ class Executor(base_executor.BaseExecutor):
     writer_utils.write_anomalies(
         os.path.join(schema_diff_path, DEFAULT_FILE_NAME), anomalies
     )
+    return anomalies

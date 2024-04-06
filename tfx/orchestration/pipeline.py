@@ -15,13 +15,13 @@
 
 import copy
 import enum
-from typing import Any, Collection, Dict, Iterator, List, Optional, Tuple, Union, cast
+from typing import Any, Collection, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 import warnings
 
 from tfx.dsl.compiler import constants
 from tfx.dsl.components.base import base_node
 from tfx.dsl.components.base import executor_spec
-from tfx.dsl.context_managers import dsl_context_registry
+from tfx.dsl.context_managers import dsl_context_registry as dsl_context_registry_lib
 from tfx.dsl.experimental.conditionals import conditional
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import data_types
@@ -247,20 +247,24 @@ class Pipeline(base_node.BaseNode):
     platform_config: Pipeline level platform config, in proto form.
   """
 
-  def __init__(self,
-               pipeline_name: str,
-               pipeline_root: Optional[Union[str, ph.Placeholder]] = '',
-               metadata_connection_config: Optional[
-                   metadata.ConnectionConfigType] = None,
-               components: Optional[List[base_node.BaseNode]] = None,
-               enable_cache: Optional[bool] = False,
-               beam_pipeline_args: Optional[List[Union[str,
-                                                       ph.Placeholder]]] = None,
-               platform_config: Optional[message.Message] = None,
-               execution_mode: Optional[ExecutionMode] = ExecutionMode.SYNC,
-               inputs: Optional[PipelineInputs] = None,
-               outputs: Optional[Dict[str, channel.OutputChannel]] = None,
-               **kwargs):
+  def __init__(
+      self,
+      pipeline_name: str,
+      pipeline_root: Optional[Union[str, ph.Placeholder]] = '',
+      metadata_connection_config: Optional[
+          metadata.ConnectionConfigType
+      ] = None,
+      components: Iterable[base_node.BaseNode] = (),
+      enable_cache: bool = False,
+      beam_pipeline_args: Optional[List[Union[str, ph.Placeholder]]] = None,
+      platform_config: Optional[message.Message] = None,
+      execution_mode: ExecutionMode = ExecutionMode.SYNC,
+      inputs: Optional[PipelineInputs] = None,
+      outputs: Optional[Dict[str, channel.OutputChannel]] = None,
+      dsl_context_registry: Optional[
+          dsl_context_registry_lib.DslContextRegistry
+      ] = None,
+  ):
     """Initialize pipeline.
 
     Args:
@@ -279,13 +283,22 @@ class Pipeline(base_node.BaseNode):
       execution_mode: The execution mode of the pipeline, can be SYNC or ASYNC.
       inputs: Optional inputs of a pipeline.
       outputs: Optional outputs of a pipeline.
-      **kwargs: Additional kwargs forwarded as pipeline args.
+      dsl_context_registry: DslContextRegistry to use for this pipeline, if not
+        provided then the current context (potentially a new DslContext) will be
+        used.
     """
     if len(pipeline_name) > _MAX_PIPELINE_NAME_LENGTH:
       raise ValueError(
           f'pipeline {pipeline_name} exceeds maximum allowed length: {_MAX_PIPELINE_NAME_LENGTH}.'
       )
     self.pipeline_name = pipeline_name
+
+    # Registry extraction should come before super().__init__() which put self
+    # to the active DslContextRegistry.
+    self._dsl_context_registry = dsl_context_registry
+    if self._dsl_context_registry is None:
+      parent_reg = dsl_context_registry_lib.get()
+      self._dsl_context_registry = parent_reg.extract_for_pipeline(components)
 
     # Initialize pipeline as a node.
     super().__init__()
@@ -318,20 +331,8 @@ class Pipeline(base_node.BaseNode):
 
     self.platform_config = platform_config
 
-    self.additional_pipeline_args = kwargs.pop(  # pylint: disable=g-missing-from-attributes
-        'additional_pipeline_args', {})
-
-    reg = kwargs.pop('dsl_context_registry', None)
-    if reg:
-      if not isinstance(reg, dsl_context_registry.DslContextRegistry):
-        raise ValueError('dsl_context_registry must be DslContextRegistry type '
-                         f'but got {reg}')
-      self._dsl_context_registry = reg
-    else:
-      self._dsl_context_registry = dsl_context_registry.get()
-      if self._dsl_context_registry.get_contexts(self):
-        self._dsl_context_registry = (
-            self._dsl_context_registry.extract_for_pipeline(self))
+    # TODO: b/324635891 - Remove all references and clean this up.
+    self.additional_pipeline_args = {}
 
     # TODO(b/216581002): Use self._dsl_context_registry to obtain components.
     self._components = []
@@ -349,7 +350,7 @@ class Pipeline(base_node.BaseNode):
 
   @property
   @doc_controls.do_not_generate_docs
-  def dsl_context_registry(self) -> dsl_context_registry.DslContextRegistry:  # pylint: disable=g-missing-from-attributes
+  def dsl_context_registry(self) -> dsl_context_registry_lib.DslContextRegistry:  # pylint: disable=g-missing-from-attributes
     if self._dsl_context_registry is None:
       raise RuntimeError('DslContextRegistry is not persisted yet. Run '
                          'pipeline.finalize() first.')
@@ -368,14 +369,14 @@ class Pipeline(base_node.BaseNode):
   def components(self, components: List[base_node.BaseNode]):
     self._set_components(components)
 
-  def _set_components(self, components: List[base_node.BaseNode]) -> None:
+  def _set_components(self, components: Iterable[base_node.BaseNode]) -> None:
     """Set a full list of components of the pipeline."""
     self._check_mutable()
 
     deduped_components = set(components)
     for upstream_component, component in enumerate_implicit_dependencies(
         list(deduped_components),
-        registry=self.dsl_context_registry,
+        registry=self._dsl_context_registry,
         pipeline=self,
     ):
       component.add_upstream_node(upstream_component)
@@ -401,6 +402,7 @@ class Pipeline(base_node.BaseNode):
 
   def _persist_dsl_context_registry(self):
     """Persist the DslContextRegistry to the pipeline."""
+    assert self._dsl_context_registry is not None
     self._dsl_context_registry = copy.copy(self._dsl_context_registry)
     self._dsl_context_registry.finalize()
 
@@ -437,7 +439,7 @@ class Pipeline(base_node.BaseNode):
 
 def enumerate_implicit_dependencies(
     components: Collection[base_node.BaseNode],
-    registry: dsl_context_registry.DslContextRegistry,
+    registry: dsl_context_registry_lib.DslContextRegistry,
     pipeline: Optional[Pipeline] = None,
 ) -> Iterator[Tuple[base_node.BaseNode, base_node.BaseNode]]:
   """Enumerate component dependencies arising from data deps between them.
@@ -468,7 +470,7 @@ def enumerate_implicit_dependencies(
           f'{component.type}. Try setting a different node_id using '
           '`.with_id()`.'
       )
-    if pipeline and component.id == pipeline.id:
+    if pipeline and component.id == pipeline.pipeline_name:
       raise RuntimeError(
           f'node id {component.id} is the same as its enclosing pipeline id.'
           'Try setting a different node_id using `.with_id()`.'
@@ -481,8 +483,11 @@ def enumerate_implicit_dependencies(
     for exec_property in component.exec_properties.values():
       if isinstance(exec_property, ph.Placeholder):
         channels.extend(channel_utils.get_dependent_channels(exec_property))
-    for predicate in conditional.get_predicates(component, registry):
-      channels.extend(channel_utils.get_dependent_channels(predicate))
+    if component in registry.all_nodes:
+      # Backward compatibility; component might not be part of the current
+      # pipeline registry in the case
+      for predicate in conditional.get_predicates(component, registry):
+        channels.extend(channel_utils.get_dependent_channels(predicate))
 
     pipeline_component_ids = set(
         (component.id for component in pipeline.components)

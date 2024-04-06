@@ -24,10 +24,12 @@ from tfx.orchestration.experimental.core import pipeline_ops
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_scheduler
+from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
+from ml_metadata.proto import metadata_store_pb2
 # TODO(b/242089808): Merge the polling intervals with other places.
 _POLLING_INTERVAL_SECS = flags.DEFINE_float(
     'subpipeline_scheduler_polling_interval_secs', 10.0,
@@ -59,12 +61,64 @@ class SubPipelineTaskScheduler(
           self.mlmd_handle,
           self._pipeline_uid.pipeline_id,
           pipeline_run_id=self._pipeline_run_id)
-    except status_lib.StatusNotOkError:
+    except status_lib.StatusNotOkError as e:
+      logging.info(
+          'Unable to load run %s for %s, probably new run. %s',
+          self._pipeline_run_id,
+          self._pipeline_uid.pipeline_id,
+          e,
+      )
       return None
 
+  def _put_begin_node_execution(self):
+    """Inserts an execution for the subpipeline begin node into MLMD.
+
+    The new begin node execution is just forwarding the inputs to this
+    subpipeline, which is possible via treaing the begin node as a Resolver,
+    however because the begin node *actually* has tasks generated for it twice,
+    once in the outer pipeline where the begin node is a pipeline-as-node, and
+    once in the inner pipeline as a node, we don't want to regenerate tasks.
+
+    Specifically, injecting the execution here is *required* for using ForEach,
+    so that the multiple executions are only taken care of in the outer
+    pipeline, and the inner pipeline only ever sees one artifact at a time from
+    ForEach.
+    """
+    input_artifacts = self.task.input_artifacts
+    begin_node = self._sub_pipeline.nodes[0].pipeline_node
+    begin_node_execution = execution_lib.prepare_execution(
+        metadata_handle=self.mlmd_handle,
+        execution_type=begin_node.node_info.type,
+        state=metadata_store_pb2.Execution.State.COMPLETE,
+    )
+    contexts = context_lib.prepare_contexts(
+        metadata_handle=self.mlmd_handle,
+        node_contexts=begin_node.contexts,
+    )
+    execution_lib.put_execution(
+        metadata_handle=self.mlmd_handle,
+        execution=begin_node_execution,
+        contexts=contexts,
+        input_artifacts=input_artifacts,
+        output_artifacts=input_artifacts,
+        output_event_type=metadata_store_pb2.Event.Type.INTERNAL_OUTPUT,
+    )
+
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
-    if not self._cancel.is_set() or not self._get_pipeline_view():
+    view = None
+    if  self._cancel.is_set() or(view := self._get_pipeline_view()) is not None:
+      logging.info(
+          'Cancel was set OR pipeline view was not none, skipping start,'
+          ' cancel.is_set(): %s, view exists: %s',
+          self._cancel.is_set(),
+          view is not None,
+      )
+    else:
       try:
+        # Only create a begin node execution if we need to start the pipeline.
+        # If we don't need to start the pipeline this likely means the pipeline
+        # was already started so the execution should already exist.
+        self._put_begin_node_execution()
         logging.info('[Subpipeline Task Scheduler]: start subpipeline.')
         pipeline_ops.initiate_pipeline_start(self.mlmd_handle,
                                              self._sub_pipeline, None, None)

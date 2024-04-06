@@ -19,6 +19,7 @@ from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.decorators import component
 from tfx.dsl.control_flow.for_each import ForEach
 from tfx.dsl.experimental.conditionals import conditional
+from tfx.dsl.experimental.node_execution_options import utils
 from tfx.orchestration import pipeline as pipeline_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
@@ -234,6 +235,108 @@ def create_chore_pipeline() -> pipeline_pb2.Pipeline:
           chore_f,
           chore_g,
           chore_c,
+      ],
+      enable_cache=True,
+  )
+  dsl_compiler = compiler.Compiler()
+  return dsl_compiler.compile(pipeline)
+
+
+def create_resource_lifetime_pipeline() -> pipeline_pb2.Pipeline:
+  """Creates a pipeline full of chores to be used for testing resource lifetime.
+
+    ┌───────┐
+    │start_a│
+    └┬──────┘
+    ┌▽──────┐
+    │start_b │
+    └┬───────┘
+    ┌▽─────┐
+    │worker │
+    └┬──────┘
+    ┌▽────┐
+    │end_b │
+    └┬─────┘
+    ┌▽────┐
+    │end_a │
+    └──────┘
+
+  Returns:
+    A pipeline for the above DAG
+  """
+
+  # pylint: disable=no-value-for-parameter
+  start_a = _example_gen().with_id('start_a')
+  start_b = _chore().with_id('start_b')
+  start_b.add_upstream_node(start_a)
+  worker = _chore().with_id('worker')
+  worker.add_upstream_node(start_b)
+  end_b = _chore().with_id('end_b')
+  end_b.add_upstream_nodes([worker, start_b])
+  end_b.node_execution_options = utils.NodeExecutionOptions(
+      trigger_strategy=pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS,
+      lifetime_start=start_b.id,
+  )
+  end_a = _chore().with_id('end_a')
+  end_a.add_upstream_nodes([start_a, start_b, worker, end_b])
+  end_a.node_execution_options = utils.NodeExecutionOptions(
+      trigger_strategy=pipeline_pb2.NodeExecutionOptions.LIFETIME_END_WHEN_SUBGRAPH_CANNOT_PROGRESS,
+      lifetime_start=start_a.id,
+  )
+
+  pipeline = pipeline_lib.Pipeline(
+      pipeline_name='my_pipeline',
+      pipeline_root='/path/to/root',
+      components=[
+          start_a,
+          start_b,
+          worker,
+          end_b,
+          end_a,
+      ],
+      enable_cache=True,
+  )
+  dsl_compiler = compiler.Compiler()
+  return dsl_compiler.compile(pipeline)
+
+
+def create_pipeline_with_subpipeline() -> pipeline_pb2.Pipeline:
+  """Creates a pipeline with a subpipeline."""
+  # pylint: disable=no-value-for-parameter
+  example_gen = _example_gen().with_id('my_example_gen')
+
+  p_in = pipeline_lib.PipelineInputs(
+      {'examples': example_gen.outputs['examples']}
+  )
+  stats_gen = _statistics_gen(examples=p_in['examples']).with_id(
+      'my_statistics_gen'
+  )
+  schema_gen = _schema_gen(statistics=stats_gen.outputs['statistics']).with_id(
+      'my_schema_gen'
+  )
+  p_out = {'schema': schema_gen.outputs['schema']}
+
+  componsable_pipeline = pipeline_lib.Pipeline(
+      pipeline_name='sub-pipeline',
+      pipeline_root='/path/to/root/sub',
+      components=[stats_gen, schema_gen],
+      enable_cache=True,
+      inputs=p_in,
+      outputs=p_out,
+  )
+
+  transform = _transform(
+      examples=example_gen.outputs['examples'],
+      schema=componsable_pipeline.outputs['schema'],
+  ).with_id('my_transform')
+
+  pipeline = pipeline_lib.Pipeline(
+      pipeline_name='my_pipeline',
+      pipeline_root='/path/to/root',
+      components=[
+          example_gen,
+          componsable_pipeline,
+          transform,
       ],
       enable_cache=True,
   )

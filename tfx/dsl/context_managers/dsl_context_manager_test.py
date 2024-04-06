@@ -42,12 +42,12 @@ class _FakeContext(dsl_context.DslContext):
   pass
 
 
-class _FakeContextManager(dsl_context_manager.DslContextManager):
+class _FakeContextManager(dsl_context_manager.DslContextManager[Any]):
 
-  def create_context(self) -> _FakeContext:
+  def create_context(self):
     return _FakeContext()
 
-  def enter(self, context: _FakeContext) -> _FakeContext:
+  def enter(self, context):
     return context
 
 
@@ -143,7 +143,7 @@ class ContextManagerTest(test_case_utils.TfxTest):
 
     class UltimateContextManager(_FakeContextManager):
 
-      def enter(self, context: _FakeContext) -> int:
+      def enter(self, context):
         return 42
 
     with UltimateContextManager() as captured:

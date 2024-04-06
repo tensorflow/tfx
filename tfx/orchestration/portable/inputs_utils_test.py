@@ -72,9 +72,10 @@ class _TestMixin(test_case_utils.TfxTest):
     execution = execution_publish_utils.register_execution(
         metadata_handle, pipeline_node.node_info.type, contexts, input_map
     )
-    return execution_publish_utils.publish_succeeded_execution(
+    output_dict, _ = execution_publish_utils.publish_succeeded_execution(
         metadata_handle, execution.id, contexts, output_map
     )
+    return output_dict
 
   def assertArtifactEqual(self, expected, actual):
     self.assertProtoPartiallyEquals(

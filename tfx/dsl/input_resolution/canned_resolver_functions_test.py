@@ -13,10 +13,9 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.canned_resolver_functions."""
 
-from typing import Sequence
+from typing import Sequence, Union
 
 import tensorflow as tf
-
 from tfx import types
 from tfx.dsl.control_flow import for_each
 from tfx.dsl.input_resolution import canned_resolver_functions
@@ -24,6 +23,7 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration import pipeline
 from tfx.orchestration.portable import inputs_utils
+from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.types import channel_utils
 from tfx.types import resolved_channel
 
@@ -57,6 +57,17 @@ class CannedResolverFunctionsTest(
                        resolved_artifact.properties['span'])
       self.assertEqual(mlmd_artifact.properties['version'],
                        resolved_artifact.properties['version'])
+
+  def assertSpanVersion(
+      self,
+      artifact: Union[types.Artifact, metadata_store_pb2.Artifact],
+      span: int,
+      version: int,
+  ):
+    if isinstance(artifact, types.Artifact):
+      artifact = artifact.mlmd_artifact
+    self.assertEqual(artifact.properties['span'].int_value, span)
+    self.assertEqual(artifact.properties['version'].int_value, version)
 
   def _add_executions_into_mlmd(
       self, mlmd_artifacts: Sequence[metadata_store_pb2.Artifact]
@@ -164,28 +175,58 @@ class CannedResolverFunctionsTest(
   def testStaticRangeResolverFn_E2E(self):
     channel = canned_resolver_functions.static_range(
         channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
+        start_span_number=0,
         end_span_number=5,
         keep_all_versions=True,
-        exclude_span_numbers=[2],
+        exclude_span_numbers=[2, 10],
     )
     pipeline_node = test_utils.compile_inputs({'x': channel})
 
-    spans = [0, 1, 2, 3, 3, 5, 7, 10]
-    versions = [0, 0, 0, 0, 3, 0, 0, 0]
+    spans = [0, 1, 2, 2, 3, 4, 5, 7, 10]
+    versions = [0, 0, 0, 1, 0, 0, 0, 0, 0]
     mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
 
     resolved = inputs_utils.resolve_input_artifacts(
         pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
     )
-    self.assertNotEmpty(resolved)  # Non-empty resolution implies Trigger.
+
+    # min_spans = 5 - 0 + 1 - 1 = 5, so a SkipSignal will not be raised even
+    # though the excluded span 2 is in the range [0, 5]. Non-empty resolution
+    # implies Trigger.
+    self.assertNotEmpty(resolved)
 
     # The resolved artifacts should have (span, version) tuples of:
-    # [(0, 0), (1, 0), (3, 0), (3, 3), (5, 0)].
+    # [(0, 0), (1, 0), (3, 0), (4, 0), (5, 0)].
     actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
-    expected_artifacts = [mlmd_artifacts[i] for i in [0, 1, 3, 4, 5]]
+    expected_artifacts = [
+        ma
+        for ma in mlmd_artifacts
+        if ma.properties['span'].int_value in {0, 1, 3, 4, 5}
+    ]
     self.assertResolvedAndMLMDArtifactListEqual(
         actual_artifacts, expected_artifacts
     )
+
+  def testStaticRangeResolverFn_E2E_SkipRaised(self):
+    channel = canned_resolver_functions.static_range(
+        channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact),
+        start_span_number=0,
+        end_span_number=5,
+        keep_all_versions=True,
+        exclude_span_numbers=[0, 1, 2],
+    )
+    pipeline_node = test_utils.compile_inputs({'x': channel})
+
+    spans = [0, 1, 2]
+    versions = [0, 0, 0]
+    self._insert_artifacts_into_mlmd(spans, versions)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
+
+    # min_spans = 5 - 0 + 1 - 3 = 2, so a SkipSignal will be raised.
+    self.assertIsInstance(resolved, inputs_utils.Skip)
 
   def testStaticRangeResolverFn_MinSpans_RaisesSkip(self):
     channel = canned_resolver_functions.static_range(
@@ -364,6 +405,38 @@ class CannedResolverFunctionsTest(
     )
     self.assertEmpty(resolved)  # Empty resolution implies Skip.
 
+  def testPairedSpans_DefaultArgs(self):
+
+    with for_each.ForEach(
+        canned_resolver_functions.paired_spans({
+            'x': channel_utils.artifact_query(test_utils.DummyArtifact),
+            'examples': channel_utils.artifact_query(test_utils.Examples),
+        })
+    ) as xy:
+      inputs = xy
+
+    compiled_inputs = test_utils.compile_inputs(inputs)
+
+    with self.subTest('keep_all_versions=False'):
+      self._insert_artifacts_into_mlmd([0, 0], [0, 1], 'DummyArtifact')
+      self._insert_artifacts_into_mlmd([0, 0], [0, 1], 'Examples')
+
+      resolved = inputs_utils.resolve_input_artifacts(
+          pipeline_node=compiled_inputs, metadata_handle=self.mlmd_handle
+      )
+
+      self.assertLen(resolved, 1)
+      self.assertSpanVersion(resolved[0]['x'][0], span=0, version=1)
+      self.assertSpanVersion(resolved[0]['examples'][0], span=0, version=1)
+
+    with self.subTest('match_version=True'):
+      # Add one more artifact span=0 version=2
+      self._insert_artifacts_into_mlmd([0], [2], 'DummyArtifact')
+      resolved = inputs_utils.resolve_input_artifacts(
+          pipeline_node=compiled_inputs, metadata_handle=self.mlmd_handle
+      )
+      self.assertEmpty(resolved)
+
   def testPairedInput(self):
     xs = canned_resolver_functions.paired_spans(
         {
@@ -465,6 +538,79 @@ class CannedResolverFunctionsTest(
     self.assertEqual(
         actual_artifacts[0].custom_properties['purity'].int_value, 2
     )
+
+  def testPickResolverFn_E2E(self):
+    spans = [0, 1, 2]
+    versions = [0, 0, 0]
+    self._insert_artifacts_into_mlmd(spans, versions)
+    xs = channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact)
+
+    for i in range(-3, 3):
+      with self.subTest(i=i):
+        x = canned_resolver_functions.pick(xs, i)
+        pipeline_node = test_utils.compile_inputs({'x': x})
+        resolved = inputs_utils.resolve_input_artifacts(
+            pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+        )
+        self.assertLen(resolved, 1)
+        self.assertEqual(resolved[0]['x'][0].span, spans[i])
+
+  def testPickResolverFn_OutOfIndex_E2E(self):
+    self._insert_artifacts_into_mlmd([0], [0])
+    xs = channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact)
+    out_of_index = canned_resolver_functions.pick(xs, 999)
+    pipeline_node = test_utils.compile_inputs({'x': out_of_index})
+
+    with self.assertRaises(exceptions.InsufficientInputError):
+      inputs_utils.resolve_input_artifacts(
+          pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+      )
+
+  def testSlidingWindowResolverFn_E2E(self):
+    mlmd_artifacts = self._insert_artifacts_into_mlmd([0, 1, 2], [0, 0, 0])
+
+    with for_each.ForEach(
+        canned_resolver_functions.sliding_window(
+            channel_utils.artifact_query(
+                artifact_type=test_utils.DummyArtifact
+            ),
+            window_size=2,
+        )
+    ) as artifact_pair:
+      inputs = {'x': artifact_pair}
+    pipeline_node = test_utils.compile_inputs(inputs)
+
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+    )
+    self.assertLen(resolved, 2)
+
+    expected_spans = [[0, 1], [1, 2]]
+    for i, artifacts in enumerate(resolved):
+      actual_artifacts = [r.mlmd_artifact for r in artifacts['x']]
+      expected_artifacts = [mlmd_artifacts[j] for j in expected_spans[i]]
+      self.assertResolvedAndMLMDArtifactListEqual(
+          actual_artifacts, expected_artifacts
+      )
+
+  def testSliceResolverFn_E2E(self):
+    spans = [0, 1, 2]
+    versions = [0, 0, 0]
+    self._insert_artifacts_into_mlmd(spans, versions)
+    xs = channel_utils.artifact_query(artifact_type=test_utils.DummyArtifact)
+
+    for start in (-4, -3, -2, -1, 0, 1, 2, 3, 4, None):
+      for stop in (-4, -3, -2, -1, 0, 1, 2, 3, 4, None):
+        with self.subTest(start=start, stop=stop):
+          x = canned_resolver_functions.slice(xs, start=start, stop=stop)
+          pipeline_node = test_utils.compile_inputs({'x': x})
+          resolved = inputs_utils.resolve_input_artifacts(
+              pipeline_node=pipeline_node, metadata_handle=self.mlmd_handle
+          )
+          self.assertLen(resolved, 1)
+          self.assertEqual(
+              [x.span for x in resolved[0]['x']], spans[start:stop]
+          )
 
   def testResolverFnContext(self):
     channel = canned_resolver_functions.latest_created(

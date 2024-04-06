@@ -13,6 +13,8 @@
 # limitations under the License.
 """TaskGenerator implementation for async pipelines."""
 
+import sys
+import traceback
 from typing import Callable, List, Optional
 
 from absl import logging
@@ -104,12 +106,16 @@ class _Generator:
       node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
       node_id = node.node_info.id
 
+      logging.info(
+          '[AsyncPipelineTaskGenerator._generate_tasks_for_node] generating'
+          ' tasks for node %s',
+          node_id,
+      )
+
       with self._pipeline_state:
         node_state = self._pipeline_state.get_node_state(node_uid)
         if node_state.state in (pstate.NodeState.STOPPING,
                                 pstate.NodeState.STOPPED,
-                                pstate.NodeState.PAUSING,
-                                pstate.NodeState.PAUSED,
                                 pstate.NodeState.FAILED):
           logging.info('Ignoring node in state \'%s\' for task generation: %s',
                        node_state.state, node_uid)
@@ -145,10 +151,7 @@ class _Generator:
               self._pipeline_state, node_id
           )
         elif service_status.code != service_jobs.ServiceStatusCode.RUNNING:
-          error_msg = (
-              f'associated service job failed; node uid: {node_uid}; error'
-              f' message: {service_status.msg}'
-          )
+          error_msg = f'service job failed; error message: {service_status.msg}'
           result.append(
               task_lib.UpdateNodeStateTask(
                   node_uid=node_uid,
@@ -192,11 +195,16 @@ class _Generator:
           task_lib.exec_node_task_id_from_node(self._pipeline, node)):
         continue
 
-      result.extend(
-          self._generate_tasks_for_node(
-              self._mlmd_handle, node, node_state.backfill_token
-          )
+      tasks = self._generate_tasks_for_node(
+          self._mlmd_handle, node, node_state.backfill_token
       )
+      logging.info(
+          '[AsyncPipelineTaskGenerator._generate_tasks_for_node] generated'
+          ' tasks for node %s: %s',
+          node.node_info.id,
+          [t.task_id for t in tasks],
+      )
+      result.extend(tasks)
     return result
 
   def _generate_tasks_for_node(
@@ -217,22 +225,23 @@ class _Generator:
     Returns:
       Returns a `Task` or `None` if task generation is deemed infeasible.
     """
-    logging.info('Generating task for node %s', node.node_info.id)
     result = []
     node_uid = task_lib.NodeUid.from_node(self._pipeline, node)
 
     # Gets the active executions. If the active executions exist, generates a
     # task from the oldest active execution.
     active_executions = task_gen_utils.get_executions(
-        metadata_handle, node, want_active=True
+        metadata_handle,
+        node,
+        additional_filters=['last_known_state IN (NEW, RUNNING)'],
     )
-    oldest_active_execution = task_gen_utils.get_oldest_active_execution(
-        active_executions
+    next_active_execution_to_run = (
+        task_gen_utils.get_next_active_execution_to_run(active_executions)
     )
-    if oldest_active_execution:
+    if next_active_execution_to_run:
       if backfill_token:
         if (
-            oldest_active_execution.custom_properties[
+            next_active_execution_to_run.custom_properties[
                 constants.BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY
             ].string_value
             != backfill_token
@@ -246,7 +255,7 @@ class _Generator:
               ),
               node.node_info.id,
               backfill_token,
-              oldest_active_execution,
+              next_active_execution_to_run,
           )
           result.append(
               task_lib.UpdateNodeStateTask(
@@ -258,19 +267,21 @@ class _Generator:
                           f'Node {node.node_info.id} has active executions that'
                           f' are not for backfill token {backfill_token}.'
                           ' Oldest active execution was'
-                          f' {oldest_active_execution}'
+                          f' {next_active_execution_to_run}'
                       ),
                   ),
                   backfill_token='',
               )
           )
-          return []
+          return result
 
       with mlmd_state.mlmd_execution_atomic_op(
           mlmd_handle=self._mlmd_handle,
-          execution_id=oldest_active_execution.id,
+          execution_id=next_active_execution_to_run.id,
           on_commit=event_observer.make_notify_execution_state_change_fn(
-              node_uid)) as execution:
+              node_uid
+          ),
+      ) as execution:
         execution.last_known_state = metadata_store_pb2.Execution.RUNNING
       result.append(
           task_lib.UpdateNodeStateTask(
@@ -280,21 +291,19 @@ class _Generator:
           )
       )
       result.append(
-          task_gen_utils.generate_task_from_execution(self._mlmd_handle,
-                                                      self._pipeline, node,
-                                                      oldest_active_execution))
+          task_gen_utils.generate_task_from_execution(
+              self._mlmd_handle,
+              self._pipeline,
+              node,
+              next_active_execution_to_run,
+          )
+      )
       return result
 
     with self._pipeline_state:
       node_state = self._pipeline_state.get_node_state(node_uid)
-    if (
-        not backfill_token and node_state.state != pstate.NodeState.STARTED
-    ) or (backfill_token and node_state.state == pstate.NodeState.STARTING):
+    if not backfill_token and node_state.state != pstate.NodeState.STARTED:
       # If there is no active execution, change the node state to STARTED.
-      #
-      # For backfill mode, only make the transition if the current state
-      # is STARTING. This is to avoid transitioning to STARTED state when the
-      # backfill is complete.
       result.append(
           task_lib.UpdateNodeStateTask(
               node_uid=node_uid,
@@ -340,10 +349,48 @@ class _Generator:
           pipeline=self._pipeline,
           skip_errors=[exceptions.InsufficientInputError],
       )
-    except exceptions.InputResolutionError as e:
-      logging.exception(
-          'Task cannot be generated for node %s since no input artifacts '
-          'are resolved. Error: %s', node.node_info.id, e)
+    except exceptions.InputResolutionError:
+      error_msg = (
+          f'failure to resolve inputs; node uid: {node_uid}; '
+          f'error: {traceback.format_exception(*sys.exc_info(), limit=0)}'
+      )
+      if backfill_token:
+        logging.exception(
+            'InputResolutionError raised when resolving input artifacts for'
+            ' node %s during backfill. Setting node to FAILED state with status'
+            ' code FAILED_PRECONDITION.',
+            node.node_info.id,
+        )
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.FAILED,
+                status=status_lib.Status(
+                    code=status_lib.Code.FAILED_PRECONDITION,
+                    message=(
+                        f'Backfill of node {node.node_info.id} failed'
+                        f' Error: {error_msg}'
+                    ),
+                ),
+                backfill_token='',
+            )
+        )
+      else:
+        logging.exception(
+            'InputResolutionError raised when resolving input artifacts for'
+            ' node %s. Setting node to STARTED state with status code'
+            ' UNAVAILABLE.',
+            node.node_info.id,
+        )
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.STARTED,
+                status=status_lib.Status(
+                    code=status_lib.Code.UNAVAILABLE, message=error_msg
+                ),
+            )
+        )
       return result
 
     # Note that some nodes e.g. ImportSchemaGen don't have inputs, and for those
@@ -353,17 +400,18 @@ class _Generator:
          resolved_info.input_and_params[0].input_artifacts is None) or
         (node.inputs.inputs and
          not any(resolved_info.input_and_params[0].input_artifacts.values()))):
-      logging.info(
-          'Task cannot be generated for node %s since no input artifacts '
-          'are resolved.', node.node_info.id)
-
       if backfill_token:
+        error_msg = (
+            f'Backfill of node {node.node_info.id} resvoled no input artifacts'
+        )
         logging.info(
             (
                 'Backfill of node %s resolved no input artifacts. Setting node'
-                ' to STOPPED state'
+                ' to STOPPED state with status code FAIL_PRECONDITION.'
+                ' Error: %s'
             ),
             node.node_info.id,
+            error_msg,
         )
         result.append(
             task_lib.UpdateNodeStateTask(
@@ -371,12 +419,29 @@ class _Generator:
                 state=pstate.NodeState.STOPPED,
                 status=status_lib.Status(
                     code=status_lib.Code.FAILED_PRECONDITION,
-                    message=(
-                        f'Backfill of node {node.node_info.id} resvoled no'
-                        ' input artifacts'
-                    ),
+                    message=error_msg,
                 ),
                 backfill_token='',
+            )
+        )
+      else:
+        logging.info(
+            'No input artifacts resolved for node %s. Setting node to STARTED'
+            ' state with OK status.',
+            node.node_info.id,
+        )
+        result.append(
+            task_lib.UpdateNodeStateTask(
+                node_uid=node_uid,
+                state=pstate.NodeState.STARTED,
+                status=status_lib.Status(
+                    code=status_lib.Code.OK,
+                    message=(
+                        'Waiting for new input artifacts to be processed.'
+                        ' Non-triggering input or insufficient number of'
+                        ' artifacts will not trigger new execution.'
+                    ),
+                ),
             )
         )
 
@@ -386,11 +451,19 @@ class _Generator:
     # manner. Idempotency is guaranteed by the artifact type name.
     # The external artifacts will be copies to local db when we register
     # executions. Idempotency is guaranteed by external_id.
-    # TODO(b/258477751) Add more tests to test the producer/consumer pipelines.
+    updated_external_artifacts = []
     for input_and_params in resolved_info.input_and_params:
       for artifacts in input_and_params.input_artifacts.values():
-        task_gen_utils.update_external_artifact_type(self._mlmd_handle,
-                                                     artifacts)
+        updated_external_artifacts.extend(
+            task_gen_utils.update_external_artifact_type(
+                self._mlmd_handle, artifacts
+            )
+        )
+    if updated_external_artifacts:
+      logging.info(
+          'Updated external artifacts: %s',
+          [a.id for a in updated_external_artifacts],
+      )
 
     if backfill_token:
       # For backfills, ignore all previous executions.

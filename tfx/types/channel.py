@@ -25,6 +25,8 @@ symbols are already available from one of followings:
 Consider other symbols as private.
 """
 
+from __future__ import annotations
+
 import abc
 import copy
 import dataclasses
@@ -32,16 +34,20 @@ import inspect
 import json
 import textwrap
 from typing import Any, Dict, Generic, Iterable, List, Optional, Sequence, Set, Type, TypeVar, Union, cast
+
 from absl import logging
-from tfx.dsl.placeholder import placeholder
+from tfx.dsl.placeholder import artifact_placeholder
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
+import typing_extensions
+
 from google.protobuf import json_format
 from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
+
 
 # Property type for artifacts, executions and contexts.
 Property = Union[int, float, str, message.Message]
@@ -109,6 +115,9 @@ class BaseChannel(abc.ABC, Generic[_AT]):
 
   Attributes:
     type: The artifact type class that the Channel takes.
+    is_optional: If this channel is optional (e.g. may trigger components at run
+      time if there are no artifacts in the channel). None if not explicetely
+      set.
   """
 
   def __init__(self, type: Type[_AT]):  # pylint: disable=redefined-builtin
@@ -119,6 +128,28 @@ class BaseChannel(abc.ABC, Generic[_AT]):
     self._artifact_type = type
     self._input_trigger = None
     self._original_channel = None
+    self._is_optional = None
+
+  @property
+  def is_optional(self) -> Optional[bool]:
+    """If this is an "optional" channel. Changes Pipeline *runtime* behavior."""
+    return self._is_optional
+
+  # TODO(kmonte): Update this to Self once we're on 3.11 everywhere
+  def as_optional(self) -> typing_extensions.Self:
+    """Creates an optional version of self.
+
+    By default component input channels are considered required, meaning
+    if the channel does not contain at least 1 artifact, the component
+    will be skipped. Making channel optional disables this requirement and
+    allows componenst to be executed with no artifacts from this channel.
+
+    Returns:
+      A copy of self which is optional.
+    """
+    new_channel = copy.copy(self)
+    new_channel._is_optional = True  # pylint: disable=protected-access
+    return new_channel
 
   @property
   def type(self) -> Type[_AT]:  # pylint: disable=redefined-builtin
@@ -172,8 +203,8 @@ class BaseChannel(abc.ABC, Generic[_AT]):
   def trigger_by_property(self, *property_keys: str):
     return self._with_input_trigger(TriggerByProperty(property_keys))
 
-  def future(self) -> placeholder.ChannelWrappedPlaceholder:
-    return placeholder.ChannelWrappedPlaceholder(self)
+  def future(self) -> ChannelWrappedPlaceholder:
+    return ChannelWrappedPlaceholder(self)
 
   def __eq__(self, other):
     return self is other
@@ -658,6 +689,20 @@ class PipelineInputChannel(BaseChannel):
       raise ValueError('Pipeline is not available.')
     return {self._pipeline.id}
 
+  # no_trigger only makes semantic sense on ASYNC pipeline, however all
+  # consumers of a PipelineInputs channel must be a SYNC pipeline, so we ban it.
+  def no_trigger(self):
+    raise NotImplementedError(
+        'no_trigger is not implemented for PipelineInputChannel.'
+    )
+
+  # trigger_by_property only makes semantic sense on ASYNC pipeline, however all
+  # consumers of a PipelineInputs channel must be a SYNC pipeline, so we ban it.
+  def trigger_by_property(self, *property_keys: str):
+    raise NotImplementedError(
+        'trigger_by_property is not implemented for PipelineInputChannel.'
+    )
+
 
 class ExternalPipelineChannel(BaseChannel):
   """Channel subtype that is used to get artifacts from external MLMD db."""
@@ -702,3 +747,51 @@ class ExternalPipelineChannel(BaseChannel):
         f'output_key={self.output_key}, '
         f'pipeline_run_id={self.pipeline_run_id})'
     )
+
+
+class ChannelWrappedPlaceholder(artifact_placeholder.ArtifactPlaceholder):
+  """Wraps a Channel in a Placeholder.
+
+  This is necessary because Placeholder-based expressions are built (in terms of
+  Python execution order) before they're passed to the Tflex component that uses
+  them. Therefore, when a Channel is passed from an upstream component, we can't
+  yet reference its name/key wrt. the downstream component in which it is used.
+  So a ChannelWrappedPlaceholder simply remembers the original Channel instance
+  that was used. The Placeholder expression tree built from this wrapper is then
+  passed to the component that uses it, and encode_placeholder_with_channels()
+  is used to inject the key only later, when encoding the Placeholder.
+
+  For instance, this allows making Predicates using syntax like:
+    channel.future().value > 5
+  """
+
+  def __init__(
+      self,
+      channel: BaseChannel,
+      key: Optional[str] = None,
+      index: Optional[int] = None,
+  ):
+    super().__init__(is_input=True, key=key, index=index)
+    self.channel = channel
+
+  def set_key(self, key: Optional[str]):
+    """Sets the channel key that this placeholder resolves to.
+
+    It's important to note that placeholders are semantically immutable. This
+    setter technically violates this guarantee, but we control the effects of it
+    by _only_ calling the setter right before an `encode()` operation on this
+    placeholder or a larger placeholder that contains it, and then calling
+    set_key(None) right after. encode_placeholder_with_channels() demonstrates
+    how to do this correctly and should be the preferred way to call set_key().
+
+    Args:
+      key: The new key for the channel.
+    """
+    self._key = key
+
+  def __getitem__(self, index: int) -> ChannelWrappedPlaceholder:
+    if self._index is not None:
+      raise ValueError(
+          'Do not call [0] or [...] twice on a .future() placeholder'
+      )
+    return ChannelWrappedPlaceholder(self.channel, key=self._key, index=index)

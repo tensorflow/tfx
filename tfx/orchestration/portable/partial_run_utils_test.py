@@ -13,14 +13,13 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.partial_run_utils."""
 
-import collections
+from collections.abc import Sequence
 from typing import Dict, List, Mapping, Optional, Set, Tuple, Union
 from unittest import mock
 
 from absl import logging
 from absl.testing import absltest
 from absl.testing import parameterized
-
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
@@ -45,6 +44,7 @@ from ml_metadata.proto import metadata_store_pb2
 _PIPELINE_RUN_CONTEXT_KEY = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
 
 
+# pylint: disable=invalid-name
 def _to_context_spec(type_name: str, name: str) -> pipeline_pb2.ContextSpec:
   return pipeline_pb2.ContextSpec(
       type=metadata_store_pb2.ContextType(name=type_name),
@@ -78,6 +78,11 @@ def _to_input_channel(
           type=metadata_store_pb2.ArtifactType(name=artifact_type)))
 
 
+@component
+def _TestComponent():
+  pass
+
+
 class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
 
   def _checkNodeExecutionOptions(
@@ -88,100 +93,132 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
       nodes_requiring_snapshot: Set[str],
       nodes_to_skip: Set[str],
       nodes_required_to_reuse: Set[str],
-      nodes_optional_to_reuse: Optional[Set[str]] = None):
-    for node in pipeline.nodes:
-      try:
-        node_id = node.pipeline_node.node_info.id
-        run_or_skip = node.pipeline_node.execution_options.WhichOneof(
-            'partial_run_option')
-        self.assertIsNotNone(run_or_skip)
-        # assert partial_run_option == 'run' iff node_id in nodes_to_run
-        if node_id in nodes_to_run:
-          if node_id in nodes_to_skip:
-            raise ValueError(f'node_id {node_id} appears in both nodes_to_run '
-                             'and nodes_to_skip.')
-          self.assertEqual(run_or_skip, 'run')
-          # assert snapshot_settings is set iff node_id == snapshot_node
-          if node_id == snapshot_node:
-            self.assertTrue(
-                node.pipeline_node.execution_options.run.perform_snapshot)
+      nodes_optional_to_reuse: Optional[Set[str]] = None,
+  ):
+    for pipeline_or_node in pipeline.nodes:
+      node_type = pipeline_or_node.WhichOneof('node')
+      if node_type == 'pipeline_node':
+        node = pipeline_or_node
+      elif node_type == 'sub_pipeline':
+        # Create a "node view" for subpipelines.
+        node = pipeline_pb2.Pipeline.PipelineOrNode()
+        node.pipeline_node.node_info.id = (
+            pipeline_or_node.sub_pipeline.pipeline_info.id
+        )
+        node.pipeline_node.execution_options.CopyFrom(
+            pipeline_or_node.sub_pipeline.nodes[
+                0
+            ].pipeline_node.execution_options
+        )
+      else:
+        raise ValueError(
+            'pipeline_or_node must be PipelineNode or Pipeline, but got'
+            f' {node_type} instead.'
+        )
+      with self.subTest(f'For node {node.pipeline_node.node_info.id}'):
+        try:
+          node_id = node.pipeline_node.node_info.id
+          run_or_skip = node.pipeline_node.execution_options.WhichOneof(
+              'partial_run_option'
+          )
+          self.assertIsNotNone(run_or_skip)
+          # assert partial_run_option == 'run' iff node_id in nodes_to_run
+          if node_id in nodes_to_run:
+            if node_id in nodes_to_skip:
+              raise ValueError(
+                  f'node_id {node_id} appears in both nodes_to_run '
+                  'and nodes_to_skip.'
+              )
+            self.assertEqual(run_or_skip, 'run')
+            # assert snapshot_settings is set iff node_id == snapshot_node
+            if node_id == snapshot_node:
+              self.assertTrue(
+                  node.pipeline_node.execution_options.run.perform_snapshot
+              )
+            else:
+              self.assertFalse(
+                  node.pipeline_node.execution_options.run.perform_snapshot
+              )
+            # assert depends_on_snapshot == node_id in nodes_requiring_snapshot
+            if node.pipeline_node.execution_options.run.depends_on_snapshot:
+              self.assertIn(node_id, nodes_requiring_snapshot)
+            else:
+              self.assertNotIn(node_id, nodes_requiring_snapshot)
+          elif node_id in nodes_to_skip:
+            self.assertEqual(run_or_skip, 'skip')
+            # assert reuse_artifacts iff node_id in nodes_required_to_reuse
+            if node_id in nodes_required_to_reuse:
+              self.assertEqual(
+                  node.pipeline_node.execution_options.skip.reuse_artifacts_mode,
+                  pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED,
+              )
+            elif nodes_optional_to_reuse and node_id in nodes_optional_to_reuse:
+              self.assertEqual(
+                  node.pipeline_node.execution_options.skip.reuse_artifacts_mode,
+                  pipeline_pb2.NodeExecutionOptions.Skip.OPTIONAL,
+              )
+            else:
+              self.assertEqual(
+                  node.pipeline_node.execution_options.skip.reuse_artifacts_mode,
+                  pipeline_pb2.NodeExecutionOptions.Skip.NEVER,
+              )
           else:
-            self.assertFalse(
-                node.pipeline_node.execution_options.run.perform_snapshot)
-          # assert depends_on_snapshot == (node_id in nodes_requiring_snapshot)
-          if node.pipeline_node.execution_options.run.depends_on_snapshot:
-            self.assertIn(node_id, nodes_requiring_snapshot)
-          else:
-            self.assertNotIn(node_id, nodes_requiring_snapshot)
-        elif node_id in nodes_to_skip:
-          self.assertEqual(run_or_skip, 'skip')
-          # assert reuse_artifacts iff node_id in nodes_required_to_reuse
-          if node_id in nodes_required_to_reuse:
-            self.assertEqual(
-                node.pipeline_node.execution_options.skip.reuse_artifacts_mode,
-                pipeline_pb2.NodeExecutionOptions.Skip.REQUIRED)
-          elif nodes_optional_to_reuse and node_id in nodes_optional_to_reuse:
-            self.assertEqual(
-                node.pipeline_node.execution_options.skip.reuse_artifacts_mode,
-                pipeline_pb2.NodeExecutionOptions.Skip.OPTIONAL)
-          else:
-            self.assertEqual(
-                node.pipeline_node.execution_options.skip.reuse_artifacts_mode,
-                pipeline_pb2.NodeExecutionOptions.Skip.NEVER)
-        else:
-          raise ValueError(f'node_id {node_id} appears in neither nodes_to_run '
-                           'nor nodes_to_skip.')
-      except AssertionError:
-        logging.exception('_checkNodeExecutionOptions failed in node: %s',
-                          node.pipeline_node)
-        raise
+            raise ValueError(
+                f'node_id {node_id} appears in neither nodes_to_run '
+                'nor nodes_to_skip.'
+            )
+        except AssertionError:
+          logging.exception(
+              '_checkNodeExecutionOptions failed in node: %s',
+              node.pipeline_node,
+          )
+          raise
 
-  def _createInputPipeline(self, node_to_downstream_nodes: Dict[str,
-                                                                List[str]]):
-    pipeline_name = 'test_pipeline'
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = pipeline_name
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
+  def _createInputPipeline(
+      self,
+      node_to_downstream_nodes: Dict[str, List[str]],
+      subpipelines: Sequence[str] = (),
+  ):
 
-    node_to_upstream_nodes = collections.defaultdict(list)
+    if not all(
+        subpipeline in node_to_downstream_nodes for subpipeline in subpipelines
+    ):
+      raise ValueError(
+          'All provided subpipelines must also be in node_to_downstream_nodes.'
+          f' Subpipelines: {subpipelines}, node_to_downstream_nodes:'
+          f' {node_to_downstream_nodes}'
+      )
+
+    # Only need to setup sufficiently to mark pipeline, since BeamDagRunner does
+    # not support running subpipelines.
+    subpipeline_by_name = {}
+    for s_p in subpipelines:
+      n = _TestComponent().with_id('node')
+      p = pipeline_lib.Pipeline(
+          pipeline_name=s_p,
+          components=[n],
+      )
+      subpipeline_by_name[s_p] = p
+
+    components = {}
+    for node in node_to_downstream_nodes:
+      if node not in subpipeline_by_name:
+        c = _TestComponent().with_id(node)
+      else:
+        c = subpipeline_by_name[node]
+      components[node] = c
+
     for node, downstream_nodes in node_to_downstream_nodes.items():
-      for downstream_node in downstream_nodes:
-        node_to_upstream_nodes[downstream_node].append(node)
+      components[node].add_downstream_nodes(
+          [components[n] for n in downstream_nodes]
+      )
 
-    for node, downstream_nodes in node_to_downstream_nodes.items():
-      # Use upper case of node name as its type.
-      node_type = node.upper()
-      n = input_pipeline.nodes.add()
-      n.pipeline_node.node_info.id = node
-      n.pipeline_node.node_info.type.name = node_type
-      n.pipeline_node.contexts.contexts.extend([
-          _to_context_spec('pipeline', pipeline_name),
-          _to_context_spec('component', node),
-      ])
+    input_pipeline = pipeline_lib.Pipeline(
+        pipeline_name='test_pipeline',
+        components=list(components.values()),
+    )
 
-      if node in node_to_upstream_nodes:
-        for upstream_node in node_to_upstream_nodes[node]:
-          upstream_node_type = upstream_node.upper()
-          n.pipeline_node.inputs.inputs['in'].channels.extend([
-              _to_input_channel(
-                  producer_node_id=upstream_node,
-                  producer_output_key='out',
-                  artifact_type=upstream_node_type + node_type,
-                  context_names={
-                      'pipeline': pipeline_name,
-                      'component': node,
-                  }),
-          ])
-          n.pipeline_node.inputs.inputs['in'].min_count = 1
-          n.pipeline_node.upstream_nodes.extend([upstream_node])
-
-      for downstream_node in downstream_nodes:
-        downstream_node_type = downstream_node.upper()
-        n.pipeline_node.outputs.outputs['out'].CopyFrom(
-            _to_output_spec(node_type + downstream_node_type))
-        n.pipeline_node.downstream_nodes.extend([downstream_node])
-
-    return input_pipeline
+    return compiler.Compiler().compile(input_pipeline)
 
   def testAsyncPipeline_error(self):
     """If Pipeline has execution_mode ASYNC, raise ValueError."""
@@ -196,21 +233,6 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         ValueError,
         'Pipeline filtering is only supported for SYNC execution modes; '
         'found pipeline with execution mode: ASYNC'):
-      partial_run_utils.mark_pipeline(input_pipeline, from_nodes=['a'])
-
-  def testSubpipeline_error(self):
-    """If Pipeline contains sub-pipeline, raise ValueError."""
-    input_pipeline = pipeline_pb2.Pipeline()
-    input_pipeline.pipeline_info.id = 'my_pipeline'
-    input_pipeline.execution_mode = pipeline_pb2.Pipeline.SYNC
-    sub_pipeline_node = input_pipeline.nodes.add()
-    sub_pipeline_node.sub_pipeline.pipeline_info.id = 'my_subpipeline'
-    node_a = sub_pipeline_node.sub_pipeline.nodes.add()
-    node_a.pipeline_node.node_info.id = 'a'
-
-    with self.assertRaisesRegex(
-        ValueError,
-        'Pipeline filtering not supported for pipelines with sub-pipelines.'):
       partial_run_utils.mark_pipeline(input_pipeline, from_nodes=['a'])
 
   def testAlreadyMarked_error(self):
@@ -598,6 +620,26 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
         nodes_required_to_reuse=set([]),
         nodes_optional_to_reuse=set(['a']))
 
+  @parameterized.named_parameters(
+      ('at_start', 'a'),
+      ('in_middle', 'b'),
+      ('at_end', 'c'),
+  )
+  def testComposeablePipeline(self, subpipeline):
+    input_pipeline = self._createInputPipeline(
+        {'a': ['b'], 'b': ['c'], 'c': []}, subpipelines=[subpipeline]
+    )
+
+    partial_run_utils.mark_pipeline(input_pipeline, from_nodes=['b'])
+    self._checkNodeExecutionOptions(
+        input_pipeline,
+        snapshot_node='b',
+        nodes_to_run=set(['b', 'c', 'd']),
+        nodes_requiring_snapshot=set(['b']),
+        nodes_to_skip=set(['a']),
+        nodes_required_to_reuse=set(['a']),
+    )
+
 
 # pylint: disable=invalid-name
 @component
@@ -640,9 +682,6 @@ def Result(result: InputArtifact[standard_artifacts.Integer]):
 
 
 # pytype: enable=wrong-arg-types
-# pylint: enable=invalid-name
-
-
 def _node_inputs_by_id(pipeline: pipeline_pb2.Pipeline,
                        node_id: str) -> pipeline_pb2.PipelineNode:
   """Doesn't make a copy."""
@@ -671,11 +710,12 @@ class PartialRunTest(absltest.TestCase):
         pipeline_root_dir.create_file('mlmd.sqlite').full_path)
     self.result_node_id = Result.__name__
 
-  def make_pipeline(
+  def make_pipeline(  # pylint: disable=invalid-name
       self,
       components,
       run_id: Optional[str] = None,
-      pipeline_name: Optional[str] = None) -> pipeline_pb2.Pipeline:
+      pipeline_name: Optional[str] = None,
+  ) -> pipeline_pb2.Pipeline:
     """Make compiled pipeline from components.
 
     Args:
@@ -741,7 +781,10 @@ class PartialRunTest(absltest.TestCase):
 
     with metadata.Metadata(self.metadata_config) as m:
       artifact_recyler = partial_run_utils._ArtifactRecycler(
-          m, pipeline_name='test_pipeline', new_run_id='new_run_id'
+          m,
+          pipeline_name='test_pipeline',
+          new_run_id='new_run_id',
+          new_pipeline_run_ir=pipeline_pb_run_2,
       )
       self.assertEqual(
           'test_pipeline_run_2',
@@ -749,7 +792,10 @@ class PartialRunTest(absltest.TestCase):
       )
 
       artifact_recyler = partial_run_utils._ArtifactRecycler(
-          m, pipeline_name='second_pipeline', new_run_id='new_run_id'
+          m,
+          pipeline_name='second_pipeline',
+          new_run_id='new_run_id',
+          new_pipeline_run_ir=second_pipeline_pb_run_1,
       )
       self.assertEqual(
           'second_pipeline_run_1',

@@ -30,6 +30,7 @@ from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import execution_publish_utils
+from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
@@ -39,6 +40,8 @@ from tfx.utils import test_case_utils
 from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
+
+_MOCKED_STATEFUL_WORKING_DIR_INDEX = 'mocked-index-123'
 
 
 class TfxTest(test_case_utils.TfxTest):
@@ -256,7 +259,8 @@ def fake_start_node_with_handle(
 
 
 def fake_finish_node_with_handle(
-    mlmd_handle, node, execution_id) -> Optional[typing_utils.ArtifactMultiMap]:
+    mlmd_handle, node, execution_id, success=True
+) -> Optional[typing_utils.ArtifactMultiMap]:
   """Simulates finishing an execution of the given node."""
   if node.HasField('outputs'):
     output_key, output_value = next(iter(node.outputs.outputs.items()))
@@ -266,8 +270,17 @@ def fake_finish_node_with_handle(
   else:
     output_artifacts = None
   contexts = context_lib.prepare_contexts(mlmd_handle, node.contexts)
-  return execution_publish_utils.publish_succeeded_execution(
-      mlmd_handle, execution_id, contexts, output_artifacts)
+
+  if success:
+    output_dict, _ = execution_publish_utils.publish_succeeded_execution(
+        mlmd_handle, execution_id, contexts, output_artifacts
+    )
+    return output_dict
+  else:
+    execution_publish_utils.publish_failed_execution(
+        mlmd_handle, contexts, execution_id
+    )
+    return None
 
 
 def create_exec_node_task(
@@ -325,7 +338,13 @@ def run_generator(mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
     if fail_fast is not None:
       generator_params['fail_fast'] = fail_fast
     task_gen = generator_class(**generator_params)
-    tasks = task_gen.generate(pipeline_state)
+    with mock.patch.object(
+        outputs_utils, 'get_stateful_working_dir_index', autospec=True
+    ) as mocked_get_stateful_working_dir_index:
+      mocked_get_stateful_working_dir_index.return_value = (
+          _MOCKED_STATEFUL_WORKING_DIR_INDEX
+      )
+      tasks = task_gen.generate(pipeline_state)
     if use_task_queue:
       for task in tasks:
         if isinstance(task, task_lib.ExecNodeTask):
@@ -461,9 +480,15 @@ def _verify_exec_node_task(test_case, pipeline, node, execution_id, task,
                    str(execution_id), 'executor_output.pb'),
       task.executor_output_uri)
   test_case.assertEqual(
-      os.path.join(pipeline.runtime_spec.pipeline_root.field_value.string_value,
-                   node.node_info.id, '.system', 'stateful_working_dir',
-                   str(execution_id)), task.stateful_working_dir)
+      os.path.join(
+          pipeline.runtime_spec.pipeline_root.field_value.string_value,
+          node.node_info.id,
+          '.system',
+          'stateful_working_dir',
+          _MOCKED_STATEFUL_WORKING_DIR_INDEX,
+      ),
+      task.stateful_working_dir,
+  )
 
 
 def concurrent_pipeline_runs_enabled_env():
@@ -472,5 +497,15 @@ def concurrent_pipeline_runs_enabled_env():
 
     def concurrent_pipeline_runs_enabled(self) -> bool:
       return True
+
+  return _TestEnv()
+
+
+def pipeline_start_postprocess_env():
+
+  class _TestEnv(env._DefaultEnv):  # pylint: disable=protected-access
+
+    def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
+      pipeline.pipeline_info.id = pipeline.pipeline_info.id + '_postprocessed'
 
   return _TestEnv()

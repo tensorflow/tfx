@@ -42,6 +42,7 @@ from tfx.types.system_executions import Transform
 SCHEMA_KEY = 'schema'
 EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
+EXTERNAL_MODEL_KEY = 'external_model'
 BLESSING_KEY = 'blessing'
 TRAIN_ARGS_KEY = 'train_args'
 CUSTOM_CONFIG_KEY = 'custom_config'
@@ -61,8 +62,10 @@ FAIRNESS_INDICATOR_THRESHOLDS_KEY = 'fairness_indicator_thresholds'
 EXAMPLE_SPLITS_KEY = 'example_splits'
 MODULE_PATH_KEY = 'module_path'
 BASELINE_MODEL_KEY = 'baseline_model'
+EXTERNAL_BASELINE_MODEL_KEY = 'external_baseline_model'
 EVALUATION_KEY = 'evaluation'
 MODEL_SUBFOLDER_KEY = 'model_subfolder'
+ADD_SPLIT_NAME_KEY = 'add_split_name'
 # Key for infra_validator
 SERVING_SPEC_KEY = 'serving_spec'
 VALIDATION_SPEC_KEY = 'validation_spec'
@@ -84,6 +87,7 @@ SCHEMA_FILE_KEY = 'schema_file'
 # Key for statistics_gen
 STATS_OPTIONS_JSON_KEY = 'stats_options_json'
 SHARDED_STATS_OUTPUT_KEY = 'sharded_stats_output'
+SAMPLE_RATE_BY_SPLIT_KEY = 'sample_rate_by_split'
 # Key for example_gen
 INPUT_BASE_KEY = 'input_base'
 INPUT_CONFIG_KEY = 'input_config'
@@ -105,6 +109,9 @@ MODEL_RUN_KEY = 'model_run'
 PREPROCESSING_FN_KEY = 'preprocessing_fn'
 STATS_OPTIONS_UPDATER_FN_KEY = 'stats_options_updater_fn'
 FORCE_TF_COMPAT_V1_KEY = 'force_tf_compat_v1'
+# TODO(tatp): Make save_options available in TFlex:
+# tfx/tflex/components/transform.py
+SAVE_OPTIONS_KEY = 'save_options'
 SPLITS_CONFIG_KEY = 'splits_config'
 ANALYZER_CACHE_KEY = 'analyzer_cache'
 TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'
@@ -124,6 +131,8 @@ INCLUDE_SPLIT_PAIRS_KEY = 'include_split_pairs'
 BASELINE_STATISTICS_KEY = 'baseline_statistics'
 DISTRIBUTION_VALIDATOR_CONFIG_KEY = 'distribution_validator_config'
 VALIDATION_METRICS_KEY = 'validation_metrics'
+ARTIFACT_DISTRIBUTION_VALIDATOR_CONFIG_KEY = (
+        'artifact_distribution_validator_config')
 
 
 class BulkInferrerSpec(ComponentSpec):
@@ -160,22 +169,20 @@ class EvaluatorSpec(ComponentSpec):
   """Evaluator component spec."""
 
   PARAMETERS = {
-      EVAL_CONFIG_KEY:
-          ExecutionParameter(type=tfma.EvalConfig, optional=True),
+      EVAL_CONFIG_KEY: ExecutionParameter(type=tfma.EvalConfig, optional=True),
       # TODO(b/181911822): Deprecated, use eval_config.slicing_specs.
-      FEATURE_SLICING_SPEC_KEY:
-          ExecutionParameter(
-              type=evaluator_pb2.FeatureSlicingSpec, optional=True),
+      FEATURE_SLICING_SPEC_KEY: ExecutionParameter(
+          type=evaluator_pb2.FeatureSlicingSpec, optional=True
+      ),
       # This parameter is experimental: its interface and functionality may
       # change at any time.
-      FAIRNESS_INDICATOR_THRESHOLDS_KEY:
-          ExecutionParameter(type=str, optional=True),
-      EXAMPLE_SPLITS_KEY:
-          ExecutionParameter(type=str, optional=True),
-      MODULE_FILE_KEY:
-          ExecutionParameter(type=str, optional=True),
-      MODULE_PATH_KEY:
-          ExecutionParameter(type=str, optional=True),
+      FAIRNESS_INDICATOR_THRESHOLDS_KEY: ExecutionParameter(
+          type=str, optional=True
+      ),
+      EXAMPLE_SPLITS_KEY: ExecutionParameter(type=str, optional=True),
+      ADD_SPLIT_NAME_KEY: ExecutionParameter(type=bool, optional=True),
+      MODULE_FILE_KEY: ExecutionParameter(type=str, optional=True),
+      MODULE_PATH_KEY: ExecutionParameter(type=str, optional=True),
   }
   INPUTS = {
       EXAMPLES_KEY:
@@ -365,7 +372,8 @@ class StatisticsGenSpec(ComponentSpec):
   PARAMETERS = {
       STATS_OPTIONS_JSON_KEY: ExecutionParameter(type=str, optional=True),
       EXCLUDE_SPLITS_KEY: ExecutionParameter(type=str, optional=True),
-      SHARDED_STATS_OUTPUT_KEY: ExecutionParameter(type=bool, optional=True)
+      SHARDED_STATS_OUTPUT_KEY: ExecutionParameter(type=bool, optional=True),
+      SAMPLE_RATE_BY_SPLIT_KEY: ExecutionParameter(type=str, optional=True),
   }
   INPUTS = {
       EXAMPLES_KEY:

@@ -154,10 +154,16 @@ def _component_has_task_dependency(node: base_node.BaseNode) -> bool:
   return bool(all_deps - data_deps)
 
 
+# TODO: b/313927200 - This should not treat Cond as a task dependency.
 def has_task_dependency(tfx_pipeline: pipeline.Pipeline) -> bool:
   """Checks if a pipeline contains task dependency."""
   return any(_component_has_task_dependency(node)
              for node in tfx_pipeline.components)
+
+
+def has_resolver_node(tfx_pipeline: pipeline.Pipeline) -> bool:
+  """Checks if a pipeline contains Resolver node (not resolver function)."""
+  return any(is_resolver(node) for node in tfx_pipeline.components)
 
 
 def pipeline_begin_node_type_name(p: pipeline.Pipeline) -> str:
@@ -185,6 +191,12 @@ def pipeline_end_node_id_from_pipeline_id(pipeline_id: str) -> str:
   return f"{pipeline_id}{constants.PIPELINE_END_NODE_SUFFIX}"
 
 
+def end_node_context_name_from_subpipeline_id(subpipeline_id: str) -> str:
+  """Builds the end_node context name of a composable pipeline."""
+  end_node_id = pipeline_end_node_id_from_pipeline_id(subpipeline_id)
+  return node_context_name(subpipeline_id, end_node_id)
+
+
 def node_context_name(pipeline_context_name: str, node_id: str):
   """Defines the name used to reference a node context in MLMD."""
   return f"{pipeline_context_name}.{node_id}"
@@ -199,7 +211,7 @@ def implicit_channel_key(channel: types.BaseChannel):
     if channel.producer_component_id and channel.output_key:
       return f"_{channel.producer_component_id}.{channel.output_key}"
     raise ValueError(
-        "Cannot create implicit input key for Channel that has no"
+        "Cannot create implicit input key for Channel that has no "
         "producer_component_id and output_key."
     )
   elif isinstance(channel, channel_types.ExternalPipelineChannel):
@@ -276,6 +288,14 @@ def output_spec_from_channel(channel: types.BaseChannel,
   # Compile OutputSpec.artifact_spec.additional_custom_parameters.
   for property_name, property_value in (
       output_channel.additional_custom_properties.items()):
+    # Ensure no duplicate names between properties and custom properties.
+    if property_name in artifact_type.properties:
+      raise ValueError(
+          f"Node {node_id} has a property name conflict: '{property_name}' is"
+          f" already used in {artifact_type.name}'s properties. Please change"
+          " this custom property to a different name."
+      )
+
     value_field = result.artifact_spec.additional_custom_properties[
         property_name].field_value
     try:

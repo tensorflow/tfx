@@ -16,7 +16,6 @@
 from typing import Sequence
 
 import tensorflow as tf
-
 from tfx import types
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
@@ -235,6 +234,89 @@ class LatestSpanOpTest(tf.test.TestCase):
         artifacts, min_span=2, n=5, keep_all_versions=True
     )
     self.assertEqual(actual, [a20, a30, a31, a71, a82])
+
+  def testLatestSpan_CustomVersionSortKey(self):
+    rolling_range_artifacts = self._get_artifacts_for_rolling_range_tests()
+    a10, a20, a31, a30, _, _ = rolling_range_artifacts
+
+    a11 = test_utils.DummyArtifact()
+    a12 = test_utils.DummyArtifact()
+    a13 = test_utils.DummyArtifact()
+
+    a11.span = 1
+    a12.span = 1
+    a13.span = 1
+
+    a11.version = 1
+    a12.version = 2
+    a13.version = 3
+
+    a11.mlmd_artifact.create_time_since_epoch = 100
+    a12.mlmd_artifact.create_time_since_epoch = 300
+    a13.mlmd_artifact.create_time_since_epoch = 200
+
+    a11.id = 3
+    a12.id = 1
+    a13.id = 2
+    a31.id = 31
+    a30.id = 30
+
+    artifacts = [a11, a12, a13]
+
+    # Keys to sort the versions in a particular span.
+    # Empty key string should get filtered out and does nothing
+    version_sort_keys = (
+        'mlmd_artifact.create_time_since_epoch',
+        'id',
+    )
+
+    actual = self._latest_span(
+        artifacts, n=1, version_sort_keys=version_sort_keys
+    )
+    self.assertEqual(actual, [a12])
+
+    a12.mlmd_artifact.create_time_since_epoch = 200
+    actual = self._latest_span(
+        artifacts, n=1, version_sort_keys=version_sort_keys
+    )
+    self.assertEqual(actual, [a13])
+
+    actual = self._latest_span(
+        artifacts,
+        n=1,
+        keep_all_versions=True,
+        version_sort_keys=version_sort_keys,
+    )
+    self.assertEqual(actual, [a11, a12, a13])
+
+    actual = self._latest_span(
+        [*artifacts, *rolling_range_artifacts],
+        n=3,
+        skip_last_n=2,
+        keep_all_versions=True,
+        version_sort_keys=version_sort_keys,
+    )
+    self.assertEqual(actual, [a10, a11, a12, a13, a20, a30, a31])
+
+    actual = self._latest_span(
+        [*artifacts, *rolling_range_artifacts],
+        n=3,
+        skip_last_n=2,
+        keep_all_versions=False,
+        version_sort_keys=version_sort_keys,
+    )
+    self.assertEqual(actual, [a13, a20, a31])
+
+  def testLatestSpan_EmptyVersionSortKey(self):
+    with self.assertRaisesRegex(
+        ValueError,
+        'Empty string is not allowed in version_sort_keys',
+    ):
+      self._latest_span(
+          self._get_artifacts_for_rolling_range_tests(),
+          n=1,
+          version_sort_keys=('version', '', 'id'),
+      )
 
   def testLatestSpan_AllArguments(self):
     artifacts = self._get_artifacts_for_rolling_range_tests()

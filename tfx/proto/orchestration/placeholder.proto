@@ -15,6 +15,7 @@ syntax = "proto3";
 
 package tfx.orchestration;
 
+import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "ml_metadata/proto/metadata_store.proto";
 
@@ -38,6 +39,7 @@ message PlaceholderExpressionOperator {
     ArtifactUriOperator artifact_uri_op = 1;
     ArtifactValueOperator artifact_value_op = 2;
     ConcatOperator concat_op = 3;
+    JoinPathOperator join_path_op = 15;
     IndexOperator index_op = 4;
     ProtoOperator proto_op = 5;
     Base64EncodeOperator base64_encode_op = 6;
@@ -47,6 +49,8 @@ message PlaceholderExpressionOperator {
     ArtifactPropertyOperator artifact_property_op = 10;
     ListSerializationOperator list_serialization_op = 11;
     ListConcatOperator list_concat_op = 12;
+    MakeDictOperator make_dict_op = 13;
+    MakeProtoOperator make_proto_op = 14;
   }
 }
 
@@ -88,6 +92,12 @@ message ArtifactValueOperator {
 // ConcatOperator: List[String] -> String
 message ConcatOperator {
   // Required. The placeholders to be concatenated.
+  repeated PlaceholderExpression expressions = 1;
+}
+
+// JoinPathOperator calls os.path.join(*args).
+// JoinPathOperator: List[str] -> str
+message JoinPathOperator {
   repeated PlaceholderExpression expressions = 1;
 }
 
@@ -159,12 +169,15 @@ message ProtoOperator {
 }
 
 // Base64EncodeOperator encodes the output of another placeholder using
-// url safe base64.
+// base64 encoding.
 // The output of another placeholder must be string or bytes.
 // Base64EncodeOperator: String/Bytes -> String
 message Base64EncodeOperator {
   // Required. It must evaluate to a String-like type value.
   PlaceholderExpression expression = 1;
+  // Optional. If true, standard base64 encoding will be used.
+  // Otherwise, the url-safe base64 encoding will be used.
+  bool is_standard_b64 = 2;
 }
 
 // ComparisonOperator compares one ArtifactPlaceholder with another, evaluating
@@ -251,6 +264,34 @@ message ListSerializationOperator {
 message ListConcatOperator {
   // Required. The list of placeholders to be encoded.
   repeated PlaceholderExpression expressions = 1;
+}
+
+// MakeDictOperator encodes a dict (aka. map) of placeholders.
+message MakeDictOperator {
+  // Required. The list of dict entries to be encoded.
+  repeated Entry entries = 1;
+  message Entry {
+    PlaceholderExpression key = 1;  // Must evaluate to a string.
+    PlaceholderExpression value = 2;
+  }
+}
+
+// MakeProtoOperator constructs a new proto message based on placeholder fields.
+message MakeProtoOperator {
+  // Required. The base message, which may have some of its fields populated.
+  // This also determines the type of the produced proto message.
+  google.protobuf.Any base = 1;
+  // Optional. Additional proto fields to populate based on sub-placeholders:
+  // * For scalar fields, this must set PlaceholderExpression.value.
+  // * For sub-message fields, this must set
+  //   PlaceholderExpression.operator.make_proto_op.
+  // * For repeated fields, this must set
+  //   PlaceholderExpression.operator.list_concat_op.
+  // * For map<> fields, this must set
+  //   PlaceholderExpression.operator.make_dict_op.
+  map<string, PlaceholderExpression> fields = 2;
+  // Additional descriptors needed to construct the proto.
+  google.protobuf.FileDescriptorSet file_descriptors = 3;
 }
 
 // Placeholder is an inseparable unit in a placeholder expression that

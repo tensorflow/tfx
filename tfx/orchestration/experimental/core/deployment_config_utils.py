@@ -20,6 +20,14 @@ from tfx.utils import proto_utils
 from google.protobuf import message
 
 
+def get_pipeline_platform_config(
+    deployment_config: pipeline_pb2.IntermediateDeploymentConfig,
+) -> Optional[message.Message]:
+  """Unsupported."""
+  del deployment_config
+  return None
+
+
 def get_node_platform_config(
     deployment_config: pipeline_pb2.IntermediateDeploymentConfig,
     node_id: str,

@@ -93,10 +93,17 @@ def _convert_to_kube_env(
 def _convert_to_resource_requirements(
     resources: infra_validator_pb2.Resources
 ) -> k8s_client.V1ResourceRequirements:
-  return k8s_client.V1ResourceRequirements(
-      requests=dict(resources.requests),
-      limits=dict(resources.limits),
-  )
+  if hasattr(k8s_client.V1ResourceRequirements, 'claims'):
+    return k8s_client.V1ResourceRequirements(
+        requests=dict(resources.requests),
+        limits=dict(resources.limits),
+        claims=dict(resources.claims),
+    )
+  else:
+    return k8s_client.V1ResourceRequirements(
+        requests=dict(resources.requests),
+        limits=dict(resources.limits),
+    )
 
 
 class KubernetesRunner(base_runner.BaseModelServerRunner):

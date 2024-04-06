@@ -51,6 +51,9 @@ class DslContext:
   def replace_node(self, node_from: _BaseNode, node_to: _BaseNode):
     """Hook method for replacing associated node to another."""
 
+  def on_context_exit(self, containing_nodes: Sequence[_BaseNode]):
+    """Hook method called when the DSL context is exited."""
+
   @property
   def ancestors(self) -> Iterable['DslContext']:
     """All ancestor DslContexts in parent -> child order."""
@@ -64,3 +67,6 @@ class DslContext:
 
   def __hash__(self):
     return hash(id(self))
+
+  def __str__(self) -> str:
+    return self.__class__.__qualname__

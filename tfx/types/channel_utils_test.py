@@ -106,7 +106,7 @@ class ChannelUtilsTest(tf.test.TestCase):
 
   def testUnwrapSimpleChannelPlaceholderRejectsNoChannel(self):
     with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
-      channel_utils.unwrap_simple_channel_placeholder(ph.to_list([]))
+      channel_utils.unwrap_simple_channel_placeholder(ph.make_list([]))
     with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
       channel_utils.unwrap_simple_channel_placeholder(ph.input('disallowed'))
     with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):

@@ -281,6 +281,7 @@ class Artifact(json_utils.Jsonable):
       if name not in self._artifact.properties:
         # Avoid populating empty property protobuf with the [] operator.
         return False
+      return self._artifact.properties[name].bool_value
     elif property_mlmd_type == metadata_store_pb2.STRUCT:
       if name not in self._artifact.properties:
         # Avoid populating empty property protobuf with the [] operator.
@@ -307,8 +308,9 @@ class Artifact(json_utils.Jsonable):
       self._cached_modifiable_properties[name] = value
       return value
     else:
-      raise Exception('Unknown MLMD type %r for property %r.' %
-                      (property_mlmd_type, name))
+      raise ValueError(
+          'Unknown MLMD type %r for property %r.' % (property_mlmd_type, name)
+      )
 
   def __setattr__(self, name: str, value: Any):
     """Custom __setattr__ to allow access to artifact properties."""
@@ -330,27 +332,41 @@ class Artifact(json_utils.Jsonable):
     property_mlmd_type = self._artifact_type.properties[name]
     if property_mlmd_type == metadata_store_pb2.STRING:
       if not isinstance(value, (str, bytes)):
-        raise Exception(
-            'Expected string value for property %r; got %r instead.' %
-            (name, value))
+        raise ValueError(
+            'Expected string value for property %r; got %r instead.'
+            % (name, value)
+        )
       self._artifact.properties[name].string_value = value
     elif property_mlmd_type == metadata_store_pb2.INT:
       if not isinstance(value, int):
-        raise Exception(
-            'Expected integer value for property %r; got %r instead.' %
-            (name, value))
+        raise ValueError(
+            'Expected integer value for property %r; got %r instead.'
+            % (name, value)
+        )
       self._artifact.properties[name].int_value = value
     elif property_mlmd_type == metadata_store_pb2.DOUBLE:
       if not isinstance(value, float):
-        raise Exception(
-            'Expected float value for property %r; got %r instead.' %
-            (name, value))
+        raise ValueError(
+            'Expected float value for property %r; got %r instead.'
+            % (name, value)
+        )
       self._artifact.properties[name].double_value = value
+    elif property_mlmd_type == metadata_store_pb2.BOOLEAN:
+      if not isinstance(value, bool):
+        raise ValueError(
+            'Expected boolean value for property %r; got %r instead.'
+            % (name, value)
+        )
+      self._artifact.properties[name].bool_value = value
     elif property_mlmd_type == metadata_store_pb2.STRUCT:
       if not isinstance(value, (dict, list, str, float, int, type(None))):
-        raise Exception(
-            ('Expected JSON value (dict, list, string, float, int or None) '
-             'for property %r; got %r instead.') % (name, value))
+        raise ValueError(
+            (
+                'Expected JSON value (dict, list, string, float, int or None) '
+                'for property %r; got %r instead.'
+            )
+            % (name, value)
+        )
       encoded_value = _encode_struct_value(value)
       if encoded_value is None:
         self._artifact.properties[name].struct_value.Clear()
@@ -359,17 +375,19 @@ class Artifact(json_utils.Jsonable):
       self._cached_modifiable_properties[name] = value
     elif property_mlmd_type == metadata_store_pb2.PROTO:
       if not isinstance(value, (message.Message, type(None))):
-        raise Exception(
+        raise ValueError(
             'Expected protobuf message value or None for property %r; got %r '
-            'instead.' % (name, value))
+            'instead.' % (name, value)
+        )
       if value is None:
         self._artifact.properties[name].proto_value.Clear()
       else:
         self._artifact.properties[name].proto_value.Pack(value)
       self._cached_modifiable_properties[name] = value
     else:
-      raise Exception('Unknown MLMD type %r for property %r.' %
-                      (property_mlmd_type, name))
+      raise ValueError(
+          'Unknown MLMD type %r for property %r.' % (property_mlmd_type, name)
+      )
 
   @doc_controls.do_not_doc_inheritable
   def set_mlmd_artifact(self, artifact: metadata_store_pb2.Artifact):

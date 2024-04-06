@@ -56,7 +56,6 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      additional_pipeline_args={},
   )
 
 # We need to guard this in this conditional because this file is loaded multiple

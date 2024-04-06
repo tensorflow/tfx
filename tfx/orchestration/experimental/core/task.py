@@ -129,10 +129,6 @@ class NodeCancelType(enum.Enum):
   # The node is being cancelled with no intention to reuse the same execution.
   CANCEL_EXEC = 1
 
-  # The node is being paused with the intention of resuming the same execution
-  # after restart.
-  PAUSE_EXEC = 2
-
 
 @attr.s(auto_attribs=True, frozen=True)
 class ExecNodeTask(Task):

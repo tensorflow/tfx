@@ -223,6 +223,8 @@ class PipelineBuilder:
       exit_handler_image = _get_component_image(
           self._default_image, self._exit_handler.id
       )
+      with self._pipeline.dsl_context_registry.temporary_mutable():
+        self._pipeline.dsl_context_registry.put_node(self._exit_handler)
       # construct root with exit handler
       exit_handler_task = step_builder.StepBuilder(
           node=self._exit_handler,

@@ -215,7 +215,7 @@ class CacheUtilsTest(test_case_utils.TfxTest):
           })
       execution_two = execution_publish_utils.register_execution(
           m, metadata_store_pb2.ExecutionType(name='my_type'), [cache_context])
-      output_artifacts = execution_publish_utils.publish_succeeded_execution(
+      output_artifacts, _ = execution_publish_utils.publish_succeeded_execution(
           m,
           execution_two.id, [cache_context],
           output_artifacts={

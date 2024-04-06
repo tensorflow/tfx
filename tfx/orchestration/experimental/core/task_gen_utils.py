@@ -15,8 +15,10 @@
 
 import collections
 import itertools
+import json
+import sys
 import textwrap
-from typing import Callable, Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple, Type
+from typing import Callable, Dict, Iterable, List, MutableMapping, Optional, Sequence, Type
 import uuid
 
 from absl import logging
@@ -97,7 +99,7 @@ def generate_task_from_execution(
       executor_output_uri=outputs_resolver.get_executor_output_uri(
           execution.id),
       stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-          execution.id),
+          execution),
       tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
       pipeline=pipeline,
       cancel_type=cancel_type)
@@ -191,6 +193,7 @@ def _create_placeholder_context(
       pipeline_info=pipeline.pipeline_info,
       pipeline_run_id=pipeline.runtime_spec.pipeline_run_id.field_value.string_value,
       top_level_pipeline_run_id=pipeline.runtime_spec.top_level_pipeline_run_id,
+      frontend_url=pipeline.runtime_spec.frontend_url,
   )
 
   if not pipeline.deployment_config.Is(
@@ -206,6 +209,9 @@ def _create_placeholder_context(
       ),
       platform_config=deployment_config_utils.get_node_platform_config(
           depl_config, node.node_info.id
+      ),
+      pipeline_platform_config=deployment_config_utils.get_pipeline_platform_config(
+          depl_config
       ),
   )
 
@@ -287,8 +293,6 @@ def generate_resolved_info(
 def get_executions(
     metadata_handle: metadata.Metadata,
     node: node_proto_view.NodeProtoView,
-    want_active: bool = False,
-    want_successful: bool = False,
     limit: Optional[int] = None,
     backfill_token: str = '',
     additional_filters: Optional[List[str]] = None,
@@ -301,12 +305,6 @@ def get_executions(
   Args:
     metadata_handle: A handler to access MLMD db.
     node: The pipeline node for which to obtain executions.
-    want_active: If set to true, only active executions are returned. Otherwise,
-      all executions are returned. Active executions mean executions with NEW or
-      RUNNING last_known_state.
-    want_successful: If set to true, only successful executions are returned.
-      Otherwise, all executions are returned. successful executions mean
-      executions with COMPLETE or CACHED last_known_state.
     limit: limit the number of executions return by the function. Executions are
       ordered descendingly by CREATE_TIME, so the newest executions will return.
     backfill_token: If non-empty, only executions with custom property
@@ -345,26 +343,6 @@ def get_executions(
             f"contexts_{i}.type = '{context_type}'",
             f"contexts_{i}.name = '{context_name}'",
         ])
-    )
-
-  # If both want_active and want_successful are true, return both active and
-  # successful executions.
-  if want_active and want_successful:
-    filter_query.append(
-        q.Or([
-            'last_known_state = NEW',
-            'last_known_state = RUNNING',
-            'last_known_state = COMPLETE',
-            'last_known_state = CACHED',
-        ])
-    )
-  elif want_active:
-    filter_query.append(
-        q.Or(['last_known_state = NEW', 'last_known_state = RUNNING'])
-    )
-  elif want_successful:
-    filter_query.append(
-        q.Or(['last_known_state = COMPLETE', 'last_known_state = CACHED'])
     )
 
   if backfill_token:
@@ -458,16 +436,18 @@ def get_num_of_failures_from_failed_execution(
   return len(failed_executions)
 
 
-def get_oldest_active_execution(
-    executions: Iterable[metadata_store_pb2.Execution]
+def get_next_active_execution_to_run(
+    executions: Sequence[metadata_store_pb2.Execution],
 ) -> Optional[metadata_store_pb2.Execution]:
-  """Returns the oldest active execution or `None` if no active executions exist.
+  """Returns next active execution to run or `None` if no active executions exist.
+
+  The active execution with lowest index will be returned.
 
   Args:
     executions: A list of executions
 
   Returns:
-    Execution if the oldest active execution exist or `None` if not exist.
+    An active execution or `None` if there is no active execution.
   """
   active_executions = [
       e for e in executions if execution_lib.is_execution_active(e)
@@ -475,25 +455,11 @@ def get_oldest_active_execution(
   if not active_executions:
     return None
 
-  # TODO(b/291772909): Simpliy the sort logic after orchestrator will only see
-  # active executions with _EXTERNAL_EXECUTION_INDEX.
-  if all(
-      [
-          e.custom_properties.get(_EXTERNAL_EXECUTION_INDEX)
-          for e in active_executions
-      ]
-  ):
-    sorted_active_executions = sorted(
-        active_executions,
-        key=lambda e: (  # pylint: disable=g-long-lambda
-            e.create_time_since_epoch,
-            e.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value,
-        ),
-    )
-  else:
-    sorted_active_executions = sorted(
-        active_executions, key=lambda e: e.create_time_since_epoch
-    )
+  # Sorts active executions by index.
+  sorted_active_executions = sorted(
+      active_executions,
+      key=lambda e: e.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value,
+  )
   return sorted_active_executions[0]
 
 
@@ -553,8 +519,25 @@ def register_executions_from_existing_executions(
         exec_properties=combined_exec_properties,
         execution_name=str(uuid.uuid4()),
     )
+    if node.execution_options.reset_stateful_working_dir:
+      # TODO(b/258539860): We may consider removing stateful working dir when
+      # users choose to NOT reuse it upon execution retries.
+      stateful_working_dir_index = (
+          outputs_utils.get_stateful_working_dir_index())
+    else:
+      # Potentially old executions may have been run under a different state of
+      # stateful_working_dir but we only respect the current one in this check.
+      # For SYNC pipelines this should only change after an update,
+      # but for ASYNC it may happen after a stop/start.
+      stateful_working_dir_index = outputs_utils.get_stateful_working_dir_index(
+          existing_execution
+      )
     # Only copy necessary custom_properties from the failed/canceled execution.
     # LINT.IfChange(new_execution_custom_properties)
+    data_types_utils.set_metadata_value(
+        new_execution.custom_properties[constants.STATEFUL_WORKING_DIR_INDEX],
+        stateful_working_dir_index,
+    )
     new_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].CopyFrom(
         existing_execution.custom_properties[_EXTERNAL_EXECUTION_INDEX]
     )
@@ -611,9 +594,13 @@ def register_executions(
         execution_name=str(uuid.uuid4()),
     )
     # LINT.IfChange(execution_custom_properties)
+    data_types_utils.set_metadata_value(
+        execution.custom_properties[constants.STATEFUL_WORKING_DIR_INDEX],
+        outputs_utils.get_stateful_working_dir_index(execution),
+    )
     execution.custom_properties[_EXTERNAL_EXECUTION_INDEX].int_value = index
-    executions.append(execution)
     # LINT.ThenChange(:new_execution_custom_properties)
+    executions.append(execution)
 
   if len(executions) == 1:
     return [
@@ -633,14 +620,20 @@ def register_executions(
   )
 
 
-def update_external_artifact_type(local_mlmd_handle: metadata.Metadata,
-                                  artifacts: Sequence[types.artifact.Artifact]):
+def update_external_artifact_type(
+    local_mlmd_handle: metadata.Metadata,
+    artifacts: Sequence[types.artifact.Artifact],
+) -> Sequence[types.artifact.Artifact]:
   """Copies artifact types of external artifacts to local db.
 
   Args:
     local_mlmd_handle: A handle to access local MLMD db.
     artifacts: A list of artifacts.
+
+  Returns:
+    A list of updated artifacts
   """
+  updated_artifacts = []
   local_type_id_by_name = {}
   for artifact in artifacts:
     if not artifact.artifact_type.HasField('id'):
@@ -659,6 +652,9 @@ def update_external_artifact_type(local_mlmd_handle: metadata.Metadata,
       local_artifact_type_id = local_type_id_by_name[type_name]
       artifact.type_id = local_artifact_type_id
       artifact.artifact_type.id = local_artifact_type_id
+      updated_artifacts.append(artifact)
+
+  return updated_artifacts
 
 
 def get_unprocessed_inputs(
@@ -705,16 +701,24 @@ def get_unprocessed_inputs(
   executions = get_executions(
       metadata_handle,
       node,
-      want_successful=True,
       additional_filters=[
-          'create_time_since_epoch >='
-          f' {min(max_timestamp_in_each_input, default=0)}'
+          (
+              'create_time_since_epoch >='
+              f' {min(max_timestamp_in_each_input, default=0)}'
+          ),
+          q.Or([
+              'last_known_state = COMPLETE',
+              'last_known_state = CACHED',
+              'last_known_state = FAILED',
+              'last_known_state = CANCELED',
+          ]),
       ],
   )
-  logging.info('Fetched %d successful executions.', len(executions))
 
-  # Gets the processed inputs.
-  processed_inputs: List[Dict[str, Tuple[int, ...]]] = []
+  # Get the successful, failed and canceled executions, and group them by input.
+  successful_executions_by_input = collections.defaultdict(list)
+  failed_executions_by_input = collections.defaultdict(list)
+  cancelled_executions_by_input = collections.defaultdict(list)
   events = metadata_handle.store.get_events_by_execution_ids(
       [e.id for e in executions]
   )
@@ -726,17 +730,20 @@ def get_unprocessed_inputs(
         and event_lib.is_valid_input_event(e)
         and e.execution_id == execution.id
     ]
-    ids_by_key = event_lib.reconstruct_artifact_id_multimap(input_events)
-    # Filters out the keys starting with '_' and the keys should be ingored.
-    ids_by_key = {
+    input_ids_by_key = event_lib.reconstruct_artifact_id_multimap(input_events)
+    # Filters out the keys starting with '_' and the keys should be ignored.
+    input_ids_by_key = {
         k: tuple(sorted(v))
-        for k, v in ids_by_key.items()
+        for k, v in input_ids_by_key.items()
         if k not in ignore_keys
     }
-    processed_inputs.append(ids_by_key)
-
-  if not processed_inputs:
-    return resolved_info.input_and_params
+    encoded_input = json.dumps(input_ids_by_key, sort_keys=True)
+    if execution_lib.is_execution_successful(execution):
+      successful_executions_by_input[encoded_input].append(execution)
+    elif execution_lib.is_execution_failed(execution):
+      failed_executions_by_input[encoded_input].append(execution)
+    elif execution_lib.is_execution_canceled(execution):
+      cancelled_executions_by_input[encoded_input].append(execution)
 
   # Some input artifacts are from external pipelines, so we need to find out the
   # external_id to id mapping in the local db.
@@ -760,6 +767,10 @@ def get_unprocessed_inputs(
       return []
 
   # Finds out the unprocessed inputs.
+  # By default, the retry limit in async pipeline is infinite.
+  retry_limit = sys.maxsize
+  if node.execution_options.HasField('max_execution_retries'):
+    retry_limit = node.execution_options.max_execution_retries
   unprocessed_inputs = []
   for input_and_param in resolved_info.input_and_params:
     resolved_input_ids_by_key = collections.defaultdict(list)
@@ -773,17 +784,42 @@ def get_unprocessed_inputs(
           )
       resolved_input_ids_by_key[key] = tuple(resolved_input_ids_by_key[key])
 
-    # Filters out the keys starting with '_' and the keys should be ingored.
+    # Filters out the keys starting with '_' and the keys should be ignored.
     resolved_input_ids_by_key = {
         k: tuple(sorted(v))
         for k, v in resolved_input_ids_by_key.items()
         if k not in ignore_keys
     }
 
-    for processed in processed_inputs:
-      if processed == resolved_input_ids_by_key:
-        break
-    else:
+    encoded_input = json.dumps(resolved_input_ids_by_key, sort_keys=True)
+    if len(failed_executions_by_input[encoded_input]) >= retry_limit + 1:
+      # This input has failed and has also reached its retry limit.
+      logging.info(
+          'Node %s has reach retry limit of %d.',
+          node.node_info.id,
+          retry_limit,
+      )
+    elif encoded_input not in successful_executions_by_input:
+      # This input should be processed.
+      failed_or_cancelled_executions = (
+          failed_executions_by_input[encoded_input]
+          + cancelled_executions_by_input[encoded_input]
+      )
+      # If the previous stateful_working_dir_index should be reused, save the
+      # index into input_and_param.exec_properties
+      if (
+          not node.execution_options.reset_stateful_working_dir
+          and failed_or_cancelled_executions
+      ):
+        execution_for_retry = execution_lib.sort_executions_newest_to_oldest(
+            failed_or_cancelled_executions
+        )[0]
+
+        if input_and_param.exec_properties is None:
+          input_and_param.exec_properties = {}
+        input_and_param.exec_properties[
+            constants.STATEFUL_WORKING_DIR_INDEX
+        ] = outputs_utils.get_stateful_working_dir_index(execution_for_retry)
       unprocessed_inputs.append(input_and_param)
 
   return unprocessed_inputs
@@ -917,7 +953,7 @@ def generate_tasks_from_one_input(
               execution.id
           ),
           stateful_working_dir=outputs_resolver.get_stateful_working_directory(
-              execution.id
+              execution
           ),
           tmp_dir=outputs_resolver.make_tmp_dir(execution.id),
           pipeline=pipeline,

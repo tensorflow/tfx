@@ -38,8 +38,9 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
   def __init__(self,
                executor_spec: message.Message,
-               platform_config: Optional[message.Message] = None):
-    super().__init__(executor_spec, platform_config)
+               platform_config: Optional[message.Message] = None,
+               pipeline_platform_config: Optional[message.Message] = None):
+    super().__init__(executor_spec, platform_config, pipeline_platform_config)
     self._container_executor_spec = cast(
         executable_spec_pb2.ContainerExecutableSpec, self._executor_spec)
 
@@ -66,7 +67,8 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
     context = placeholder_utils.ResolutionContext(
         exec_info=execution_info,
         executor_spec=self._executor_spec,
-        platform_config=self._platform_config)
+        platform_config=self._platform_config,
+        pipeline_platform_config=self._pipeline_platform_config)
 
     container_spec = executor_specs.TemplatedExecutorContainerSpec(
         image=self._container_executor_spec.image,

@@ -19,14 +19,11 @@ from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import merge_utils
-from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
-
-_RESOLVED_AT_RUNTIME = outputs_utils.RESOLVED_AT_RUNTIME
 
 
 def publish_cached_executions(
@@ -78,7 +75,10 @@ def publish_succeeded_execution(
     contexts: Sequence[metadata_store_pb2.Context],
     output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
     executor_output: Optional[execution_result_pb2.ExecutorOutput] = None,
-) -> Optional[typing_utils.ArtifactMultiMap]:
+) -> tuple[
+    Optional[typing_utils.ArtifactMultiMap],
+    metadata_store_pb2.Execution,
+]:
   """Marks an existing execution as success.
 
   Also publishes the output artifacts produced by the execution. This method
@@ -102,9 +102,10 @@ def publish_succeeded_execution(
       artifact should not change the type of the artifact.
 
   Returns:
-    The maybe updated output_artifacts, note that only outputs whose key are in
-    executor_output will be updated and others will be untouched. That said,
-    it can be partially updated.
+    The tuple containing the maybe updated output_artifacts (note that only
+    outputs whose key are in executor_output will be updated and others will be
+    untouched, that said, it can be partially updated) and the written
+    execution.
   Raises:
     RuntimeError: if the executor output to a output channel is partial.
   """
@@ -147,14 +148,14 @@ def publish_succeeded_execution(
       execution.custom_properties[key].CopyFrom(value)
   set_execution_result_if_not_empty(executor_output, execution)
 
-  execution_lib.put_execution(
+  execution = execution_lib.put_execution(
       metadata_handle,
       execution,
       contexts,
       output_artifacts=output_artifacts_to_publish,
   )
 
-  return output_artifacts_to_publish
+  return output_artifacts_to_publish, execution
 
 
 def publish_failed_execution(

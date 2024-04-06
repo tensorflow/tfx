@@ -65,11 +65,9 @@ def _BigQueryToExample(pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
   """
   project = utils.parse_gcp_project(exec_properties['_beam_pipeline_args'])
   converter = _BigQueryConverter(split_pattern, project)
-  big_query_custom_config = (
-      json.loads(exec_properties['custom_config'])
-      if 'custom_config' in exec_properties
-      else None
-  )
+  big_query_custom_config = None
+  if custom_config_str := exec_properties.get('custom_config'):
+    big_query_custom_config = json.loads(custom_config_str)
 
   return (
       pipeline

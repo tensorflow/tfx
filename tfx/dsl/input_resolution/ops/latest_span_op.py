@@ -24,7 +24,8 @@ class LatestSpan(
     resolver_op.ResolverOp,
     canonical_name='tfx.LatestSpan',
     arg_data_types=(resolver_op.DataType.ARTIFACT_LIST,),
-    return_data_type=resolver_op.DataType.ARTIFACT_LIST):
+    return_data_type=resolver_op.DataType.ARTIFACT_LIST,
+):
   """LatestSpan operator."""
 
   # The number of latest spans to return. If n <= 0, then n is set to the total
@@ -41,8 +42,12 @@ class LatestSpan(
   # Number of most recently available (largest) spans to skip.
   skip_last_n = resolver_op.Property(type=int, default=0)
 
-  def apply(self,
-            input_list: Sequence[types.Artifact]) -> Sequence[types.Artifact]:
+  # Custom key to sort versions within the span.
+  version_sort_keys = resolver_op.Property(type=Sequence[str], default=())
+
+  def apply(
+      self, input_list: Sequence[types.Artifact]
+  ) -> Sequence[types.Artifact]:
     """Returns artifacts with the n latest spans.
 
     For example, if n=2, then only 2 artifacts with the latest 2 spans and
@@ -65,15 +70,24 @@ class LatestSpan(
     """
     # Verify that min_span and skip_last_n are >= to their minimum values.
     if self.skip_last_n < 0:
-      raise ValueError(f'skip_last_n must be >= 0, but was set to '
-                       f'{self.skip_last_n}.')
+      raise ValueError(
+          f'skip_last_n must be >= 0, but was set to {self.skip_last_n}.'
+      )
 
     if self.min_span < 0:
-      raise ValueError(f'min_span must be >= 0, but was set to '
-                       f'{self.min_span}.')
+      raise ValueError(
+          f'min_span must be >= 0, but was set to {self.min_span}.'
+      )
+
+    if '' in self.version_sort_keys:
+      raise ValueError(
+          'Empty string is not allowed in version_sort_keys, but got '
+          f'{self.version_sort_keys}.'
+      )
 
     valid_artifacts = ops_utils.get_valid_artifacts(
-        input_list, ops_utils.SPAN_AND_VERSION_PROPERTIES)
+        input_list, ops_utils.SPAN_AND_VERSION_PROPERTIES
+    )
     if not valid_artifacts:
       return []
 
@@ -84,4 +98,5 @@ class LatestSpan(
         min_span=self.min_span,
         skip_last_n=self.skip_last_n,
         keep_all_versions=self.keep_all_versions,
+        version_sort_keys=self.version_sort_keys,
     )

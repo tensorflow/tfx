@@ -710,6 +710,53 @@ class NodeInputsResolverTest(tf.test.TestCase):
       result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
       self.assertEqual(result, [{'x': [a1]}])
 
+  def testConditionals_FalseCondAlwaysReturnsEmpty(self):
+    a = self.create_artifacts(1)
+    a.set_int_custom_property('blessed', 0)
+
+    x1 = self.parse_input_spec("""
+      channels {
+        artifact_query {
+          type {
+            name: "ArtifactForEmptyChannel"
+          }
+        }
+      }
+      min_count: 1
+    """)
+    self.mock_channel_resolution_result(x1, [])
+
+    x2 = self.parse_input_spec("""
+      channels {
+        artifact_query {
+          type {
+            name: "ArtifactToBePopulated"
+          }
+        }
+      }
+      min_count: 1
+    """)
+    self.mock_channel_resolution_result(x2, [a])
+
+    # Only allows artifact.custom_properties['blessed'] == 1,
+    is_blessed = channel_utils.encode_placeholder_with_channels(
+        DummyChannel('b').future()[0].custom_property('blessed') == 1,
+        lambda channel: channel.name,
+    )
+    cond = pipeline_pb2.NodeInputs.Conditional(
+        placeholder_expression=is_blessed
+    )
+
+    node_inputs = NodeInputs(
+        inputs={
+            'a': x1,
+            'b': x2,
+        },
+        conditionals={'cond': cond},
+    )
+    result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
+    self.assertEqual(result, [])
+
   def testMinCount(self):
     a1, a2 = self.create_artifacts(2)
     x1 = self.parse_input_spec("""

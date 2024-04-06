@@ -15,6 +15,8 @@
 
 import collections.abc
 import inspect
+import sys
+import types
 import typing
 from typing import Any, Iterable, Literal, Mapping, Type, TypeVar, TypedDict
 
@@ -29,6 +31,11 @@ from google.protobuf.internal import enum_type_wrapper
 
 _T = TypeVar('_T')
 _TTypedDict = TypeVar('_TTypedDict', bound=TypedDict)
+
+if sys.version_info >= (3, 10):
+  _UNION_ORIGINS = (types.UnionType, typing.Union)
+else:
+  _UNION_ORIGINS = (typing.Union,)
 
 
 # This is intentionally not public as it aims for the annotations resolver only
@@ -94,8 +101,8 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
         return _is_typed_dict_compatible(value, tp)
       return isinstance(value, tp)
   if maybe_origin is not None:
-    # Union[T]
-    if maybe_origin is typing.Union:
+    # Union[T, U] or T | U
+    if maybe_origin in _UNION_ORIGINS:
       assert maybe_args, f'{tp} should be subscripted.'
       return any(is_compatible(value, arg) for arg in maybe_args)
     # Type[T]
@@ -179,3 +186,13 @@ def is_compatible(value: Any, tp: Type[_T]) -> TypeGuard[_T]:
           f'Type {tp} with unsupported origin type {maybe_origin}.'
       )
   raise NotImplementedError(f'Unsupported type {tp}.')
+
+
+def maybe_unwrap_optional(type_hint: Any) -> tuple[bool, Any]:
+  origin = typing.get_origin(type_hint)
+  args = typing.get_args(type_hint)
+  if origin and origin in _UNION_ORIGINS and args and type(None) in args:
+    args_except_none = [t for t in args if t != type(None)]
+    if len(args_except_none) == 1:
+      return True, args_except_none[0]
+  return False, type_hint

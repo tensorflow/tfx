@@ -23,6 +23,7 @@ from absl import logging
 from absl.testing.absltest import mock
 import tensorflow as tf
 from tfx.orchestration import data_types_utils
+from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -49,13 +50,11 @@ def _test_exec_node_task(node_id, pipeline_id, pipeline=None):
   return test_utils.create_exec_node_task(node_uid, pipeline=pipeline)
 
 
-def _test_cancel_node_task(node_id, pipeline_id, pause=False):
+def _test_cancel_node_task(node_id, pipeline_id):
   node_uid = task_lib.NodeUid(
       pipeline_uid=task_lib.PipelineUid(pipeline_id=pipeline_id),
       node_id=node_id)
-  cancel_type = (
-      task_lib.NodeCancelType.PAUSE_EXEC
-      if pause else task_lib.NodeCancelType.CANCEL_EXEC)
+  cancel_type = task_lib.NodeCancelType.CANCEL_EXEC
   return task_lib.CancelNodeTask(node_uid=node_uid, cancel_type=cancel_type)
 
 
@@ -131,8 +130,13 @@ class TaskManagerTest(test_utils.TfxTest):
 
   @contextlib.contextmanager
   def _task_manager(self, task_queue, max_active_task_schedulers=1000):
+    # Use TaskManagerE2ETest below if you want to test MLMD integration.
+    mlmd_handle = mock.create_autospec(metadata.Metadata, instance=True)
+    mlmd_handle.store.get_executions_by_id.return_value = [
+        metadata_store_pb2.Execution()
+    ]
     with tm.TaskManager(
-        mock.Mock(),
+        mlmd_handle,
         task_queue,
         max_active_task_schedulers=max_active_task_schedulers,
         max_dequeue_wait_secs=0.1,
@@ -173,8 +177,7 @@ class TaskManagerTest(test_utils.TfxTest):
       pusher_exec_task = _test_exec_node_task(
           'Pusher', 'test-pipeline', pipeline=self._pipeline)
       task_queue.enqueue(pusher_exec_task)
-      task_queue.enqueue(
-          _test_cancel_node_task('Pusher', 'test-pipeline', pause=True))
+      task_queue.enqueue(_test_cancel_node_task('Pusher', 'test-pipeline'))
 
     self.assertTrue(task_manager.done())
     self.assertIsNone(task_manager.exception())
@@ -212,10 +215,9 @@ class TaskManagerTest(test_utils.TfxTest):
             mlmd_handle=mock.ANY, task=evaluator_exec_task, result=result_ok),
     ],
                                   any_order=True)
-    # It is expected that publish is not called for Pusher because it was
-    # cancelled with pause=True so there must be only 3 calls.
-    self.assertLen(mock_publish.mock_calls, 3)
-    self.assertLen(mock_record_state_change_time.mock_calls, 3)
+
+    self.assertLen(mock_publish.mock_calls, 4)
+    self.assertLen(mock_record_state_change_time.mock_calls, 4)
 
   @mock.patch.object(pstate, 'record_state_change_time')
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
@@ -442,15 +444,16 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     test_utils.fake_example_gen_run(self._mlmd_connection, self._example_gen, 1,
                                     1)
 
-    # Task generator should produce two tasks for transform. The first one is
-    # UpdateNodeStateTask and the second one is ExecNodeTask.
+    # Task generator should produce three tasks for transform. The first one is
+    # UpdateNodeStateTask with state RUNNING, the second one is ExecNodeTask
+    # and the third one is UpdateNodeStateTask with state STARTED
     with self._mlmd_connection_manager as mlmd_connection_manager:
       m = mlmd_connection_manager.primary_mlmd_handle
       pipeline_state = pstate.PipelineState.new(m, self._pipeline)
       tasks = asptg.AsyncPipelineTaskGenerator(
           mlmd_connection_manager, self._task_queue.contains_task_id,
           service_jobs.DummyServiceJobManager()).generate(pipeline_state)
-    self.assertLen(tasks, 2)
+    self.assertLen(tasks, 3)
     self.assertIsInstance(tasks[0], task_lib.UpdateNodeStateTask)
     self.assertEqual('my_transform', tasks[0].node_uid.node_id)
     self.assertEqual(pstate.NodeState.RUNNING, tasks[0].state)
@@ -458,6 +461,9 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertEqual('my_transform', tasks[1].node_uid.node_id)
     self.assertTrue(os.path.exists(tasks[1].stateful_working_dir))
     self.assertTrue(os.path.exists(tasks[1].tmp_dir))
+    self.assertIsInstance(tasks[2], task_lib.UpdateNodeStateTask)
+    self.assertEqual('my_trainer', tasks[2].node_uid.node_id)
+    self.assertEqual(pstate.NodeState.STARTED, tasks[2].state)
 
     self._task = tasks[1]
     self._output_artifact_uri = self._task.output_artifacts['transform_graph'][
@@ -565,9 +571,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   def test_executor_failure(self):
@@ -595,9 +600,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]))
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   def test_scheduler_raises_exception(self):
@@ -613,9 +617,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     self.assertEqual(metadata_store_pb2.Execution.FAILED,
                      execution.last_known_state)
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   def test_scheduler_raises_StatusNotOkError(self):
@@ -643,9 +646,8 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         ].string_value,
     )
 
-    # Check that stateful working dir, tmp_dir and output artifact URI are
-    # removed.
-    self.assertFalse(os.path.exists(self._task.stateful_working_dir))
+    # Check that stateful working dir still exists, but tmp_dir is removed.
+    self.assertTrue(os.path.exists(self._task.stateful_working_dir))
     self.assertFalse(os.path.exists(self._task.tmp_dir))
 
   @mock.patch.object(post_execution_utils, 'publish_execution_results_for_task')
@@ -683,6 +685,26 @@ class TaskManagerE2ETest(test_utils.TfxTest):
         data_types_utils.get_metadata_value(
             execution.custom_properties[constants.EXECUTION_ERROR_MSG_KEY]
         ),
+    )
+
+  @mock.patch.object(time, 'time')
+  def test_execution_start_time_property(self, mock_time):
+    mock_time.return_value = 12345
+    self._register_task_scheduler(
+        ts.TaskSchedulerResult(
+            status=status_lib.Status(code=status_lib.Code.OK),
+            output=ts.ImporterNodeOutput(
+                output_artifacts=self._task.output_artifacts
+            ),
+        )
+    )
+    _ = self._run_task_manager()
+    execution = self._get_execution()
+    self.assertEqual(
+        12345,
+        execution.custom_properties.get(
+            constants.EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY
+        ).int_value,
     )
 
 

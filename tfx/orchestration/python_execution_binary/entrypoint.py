@@ -18,22 +18,16 @@ the python executors in a pipeline. The resulting binary is called by the TFX
 launcher and should not be called directly.
 """
 
-from typing import Union
-
 from absl import flags
 from absl import logging
 from tfx.orchestration.python_execution_binary import python_execution_binary_utils
 from tfx.orchestration.python_execution_binary import python_execution_lib
-from tfx.proto.orchestration import executable_spec_pb2
-from tfx.utils import import_utils
+from tfx.orchestration.python_execution_binary import system_flags
 
 from google.protobuf import text_format
 
 FLAGS = flags.FLAGS
 
-EXECUTION_INVOCATION_FLAG = flags.DEFINE_string(
-    'tfx_execution_info_b64', None, 'url safe base64 encoded binary '
-    'tfx.orchestration.ExecutionInvocation proto')
 EXECUTABLE_SPEC_FLAG = flags.DEFINE_string(
     'tfx_python_class_executable_spec_b64', None,
     'tfx.orchestration.executable_spec.PythonClassExecutableSpec proto')
@@ -46,31 +40,15 @@ MLMD_CONNECTION_CONFIG_FLAG = flags.DEFINE_string(
     'indicates a driver execution')
 
 
-_PythonClassExecutableSpec = executable_spec_pb2.PythonClassExecutableSpec
-_BeamExecutableSpec = executable_spec_pb2.BeamExecutableSpec
-
-
-def _import_class_path(
-    executable_spec: Union[_PythonClassExecutableSpec, _BeamExecutableSpec],
-):
-  """Import the class path from Python or Beam executor spec."""
-  if isinstance(executable_spec, _BeamExecutableSpec):
-    import_utils.import_class_by_path(
-        executable_spec.python_executor_spec.class_path
-    )
-  elif isinstance(executable_spec, _PythonClassExecutableSpec):
-    import_utils.import_class_by_path(executable_spec.class_path)
-  else:
-    raise ValueError(
-        f'Executable spec type {type(executable_spec)} is not supported.'
-    )
-
-
 def main(_):
-  flags.mark_flag_as_required(EXECUTION_INVOCATION_FLAG.name)
-  flags.mark_flags_as_mutual_exclusive(
-      (EXECUTABLE_SPEC_FLAG.name, BEAM_EXECUTABLE_SPEC_FLAG.name),
-      required=True)
+  mutually_exclusive = (EXECUTABLE_SPEC_FLAG.present) ^ (
+      BEAM_EXECUTABLE_SPEC_FLAG.present
+  )
+  if not mutually_exclusive:
+    raise ValueError(
+        f'Exactly one of {EXECUTABLE_SPEC_FLAG.name} and'
+        f' {BEAM_EXECUTABLE_SPEC_FLAG.name} must be set.'
+    )
 
   if BEAM_EXECUTABLE_SPEC_FLAG.value is not None:
     executable_spec = python_execution_binary_utils.deserialize_executable_spec(
@@ -81,11 +59,9 @@ def main(_):
         EXECUTABLE_SPEC_FLAG.value, with_beam=False
     )
   # Eagerly import class path from executable spec such that all artifact
-  # references are resolved.
-  _import_class_path(executable_spec)
-  execution_info = python_execution_binary_utils.deserialize_execution_info(
-      EXECUTION_INVOCATION_FLAG.value
-  )
+  # references are resolved. This should come before parsing execution_info.
+  python_execution_binary_utils.import_class_path(executable_spec)
+  execution_info = system_flags.parse_execution_info()
   logging.info('execution_info = %r\n', execution_info)
   logging.info(
       'executable_spec = %s\n', text_format.MessageToString(executable_spec)

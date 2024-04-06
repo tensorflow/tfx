@@ -90,6 +90,9 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
       'pyarrow>=10,<11',
+      # TODO(b/332616741): Scipy version 1.13 breaks the TFX OSS test.
+      # Unpin once the issue is resolved.
+      'scipy<1.13',
       # TODO(b/291837844): Pinned pyyaml to 5.3.1.
       # Unpin once the issue with installation is resolved.
       'pyyaml>=6,<7',
@@ -97,7 +100,7 @@ def make_required_install_packages():
       # Pip might stuck in a TF 1.15 dependency although there is a working
       # dependency set with TF 2.x without the sync.
       # pylint: disable=line-too-long
-      'tensorflow' + select_constraint('>=2.13.0,<2.14'),
+      'tensorflow' + select_constraint('>=2.15.0,<2.16'),
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.15.0,<0.16',
       'tensorflow-data-validation'
@@ -114,7 +117,7 @@ def make_required_install_packages():
           nightly='>=0.46.0.dev',
           git_master='@git+https://github.com/tensorflow/model-analysis@master',
       ),
-      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3',
+      'tensorflow-serving-api>=2.15,<2.16',
       'tensorflow-transform'
       + select_constraint(
           default='>=1.14.0,<1.15.0',
@@ -200,7 +203,7 @@ def make_extra_packages_tfdf():
   # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
   return [
       # NOTE: TFDF 1.0.1 is only compatible with TF 2.10.x.
-      'tensorflow-decision-forests>=1.0.1,<2',
+      'tensorflow-decision-forests>=1.0.1,<1.9',
   ]
 
 
@@ -209,8 +212,9 @@ def make_extra_packages_flax():
   # Required for the experimental tfx/examples using Flax, e.g.,
   # tfx/examples/penguin.
   return [
-      'jax<1',
-      'jaxlib<1',
+      # TODO(b/324157691): Upgrade jax once we upgrade TF version.
+      'jax<0.4.24',
+      'jaxlib<0.4.24',
       'flax<1',
       'optax<1',
   ]

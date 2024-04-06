@@ -470,6 +470,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
           all splits. If splits_config is set, analyze cannot be empty.
         - force_tf_compat_v1: Whether to use TF in compat.v1 mode
           irrespective of installed/enabled TF behaviors.
+        - save_options: An optional tf.saved_model.SaveOptions object.
         - disable_statistics: Whether to disable computation of pre-transform
           and post-transform statistics.
 
@@ -521,49 +522,59 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     transform_file_formats = []
     for split in splits_config.transform:
       data_uris = artifact_utils.get_split_uris(
-          input_dict[standard_component_specs.EXAMPLES_KEY], split)
+          input_dict[standard_component_specs.EXAMPLES_KEY], split
+      )
       assert len(data_uris) == len(
-          examples_file_formats), 'Length of file formats is different'
+          examples_file_formats
+      ), 'Length of file formats is different'
       for data_uri, file_format in zip(data_uris, examples_file_formats):
         transform_data_paths.append(io_utils.all_files_pattern(data_uri))
         transform_file_formats.append(file_format)
 
     transformed_examples = output_dict.get(
-        standard_component_specs.TRANSFORMED_EXAMPLES_KEY)
+        standard_component_specs.TRANSFORMED_EXAMPLES_KEY
+    )
     executor_utils.SetSplitNames(splits_config.transform, transformed_examples)
     materialize_output_paths = executor_utils.GetSplitPaths(
-        transformed_examples)
+        transformed_examples
+    )
 
     force_tf_compat_v1 = bool(
-        exec_properties.get(standard_component_specs.FORCE_TF_COMPAT_V1_KEY, 0))
+        exec_properties.get(standard_component_specs.FORCE_TF_COMPAT_V1_KEY, 0)
+    )
+
+    save_options = exec_properties.get(
+        standard_component_specs.SAVE_OPTIONS_KEY, None
+    )
 
     # Make sure user packages get propagated to the remote Beam worker.
     user_module_key = exec_properties.get(
-        standard_component_specs.MODULE_PATH_KEY, None)
+        standard_component_specs.MODULE_PATH_KEY, None
+    )
     _, extra_pip_packages = udf_utils.decode_user_module_key(user_module_key)
     for pip_package_path in extra_pip_packages:
       local_pip_package_path = io_utils.ensure_local(pip_package_path)
-      self._beam_pipeline_args.append(_BEAM_EXTRA_PACKAGE_PREFIX +
-                                      local_pip_package_path)
+      self._beam_pipeline_args.append(
+          _BEAM_EXTRA_PACKAGE_PREFIX + local_pip_package_path
+      )
       self._pip_dependencies.append(local_pip_package_path)
 
     inputs_for_fn_resolution = {
-        labels.MODULE_FILE:
-            exec_properties.get(standard_component_specs.MODULE_FILE_KEY, None),
-        labels.MODULE_PATH:
-            user_module_key,
-        labels.PREPROCESSING_FN:
-            exec_properties.get(standard_component_specs.PREPROCESSING_FN_KEY,
-                                None),
-        labels.STATS_OPTIONS_UPDATER_FN:
-            exec_properties.get(
-                standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY, None),
-        labels.CUSTOM_CONFIG:
-            exec_properties.get(standard_component_specs.CUSTOM_CONFIG_KEY,
-                                None),
+        labels.MODULE_FILE: exec_properties.get(
+            standard_component_specs.MODULE_FILE_KEY, None
+        ),
+        labels.MODULE_PATH: user_module_key,
+        labels.PREPROCESSING_FN: exec_properties.get(
+            standard_component_specs.PREPROCESSING_FN_KEY, None
+        ),
+        labels.STATS_OPTIONS_UPDATER_FN: exec_properties.get(
+            standard_component_specs.STATS_OPTIONS_UPDATER_FN_KEY, None
+        ),
+        labels.CUSTOM_CONFIG: exec_properties.get(
+            standard_component_specs.CUSTOM_CONFIG_KEY, None
+        ),
         # Used in nitroml/automl/autodata/transform/executor.py
-        labels.SCHEMA_PATH_LABEL:
-            schema_file,
+        labels.SCHEMA_PATH_LABEL: schema_file,
     }
     # Used in nitroml/automl/autodata/transform/executor.py
     outputs_for_fn_resolution = {
@@ -601,6 +612,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
             self._make_beam_pipeline,
         labels.FORCE_TF_COMPAT_V1_LABEL:
             force_tf_compat_v1,
+        labels.SAVE_OPTIONS_LABEL:
+            save_options,
         **executor_utils.GetCachePathEntry(
             standard_component_specs.ANALYZER_CACHE_KEY, input_dict)
     }
@@ -1133,6 +1146,8 @@ class TransformProcessor:
         inputs, labels.DATA_VIEW_LABEL, strict=False)
     force_tf_compat_v1 = value_utils.GetSoleValue(
         inputs, labels.FORCE_TF_COMPAT_V1_LABEL)
+    save_options = value_utils.GetSoleValue(
+        inputs, labels.SAVE_OPTIONS_LABEL, strict=False)
 
     stats_labels_list = [
         labels.PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL,
@@ -1151,6 +1166,7 @@ class TransformProcessor:
                        ' specified or none.')
 
     logging.debug('Force tf.compat.v1: %s', force_tf_compat_v1)
+    logging.debug('SaveOptions: %s', save_options)
     logging.debug('Analyze data patterns: %s',
                   list(enumerate(analyze_data_paths)))
     logging.debug('Transform data patterns: %s',
@@ -1224,12 +1240,12 @@ class TransformProcessor:
         transform_paths_file_formats[-1] if materialize_output_paths else None)
     self._RunBeamImpl(analyze_data_list, transform_data_list, preprocessing_fn,
                       stats_options_updater_fn, force_tf_compat_v1,
-                      input_dataset_metadata, transform_output_path,
-                      raw_examples_data_format, temp_path, input_cache_dir,
-                      output_cache_dir, disable_statistics,
-                      per_set_stats_output_paths, materialization_format,
-                      len(analyze_data_paths), stats_output_paths,
-                      make_beam_pipeline_fn)
+                      save_options, input_dataset_metadata,
+                      transform_output_path, raw_examples_data_format,
+                      temp_path, input_cache_dir, output_cache_dir,
+                      disable_statistics, per_set_stats_output_paths,
+                      materialization_format, len(analyze_data_paths),
+                      stats_output_paths, make_beam_pipeline_fn)
 
   # pylint: disable=expression-not-assigned, no-value-for-parameter
   def _RunBeamImpl(
@@ -1238,6 +1254,7 @@ class TransformProcessor:
       stats_options_updater_fn: Callable[
           [stats_options_util.StatsType, tfdv.StatsOptions],
           tfdv.StatsOptions], force_tf_compat_v1: bool,
+      save_options: Optional[tf.saved_model.SaveOptions],
       input_dataset_metadata: dataset_metadata.DatasetMetadata,
       transform_output_path: str, raw_examples_data_format: int, temp_path: str,
       input_cache_dir: Optional[str], output_cache_dir: Optional[str],
@@ -1255,6 +1272,8 @@ class TransformProcessor:
         options.
       force_tf_compat_v1: If True, call Transform's API to use Tensorflow in
         tf.compat.v1 mode.
+      save_options: An optional tf.saved_model.SaveOptions object to pass down
+        to the Transform component when saving the model.
       input_dataset_metadata: A DatasetMetadata object for the input data.
       transform_output_path: An absolute path to write the output to.
       raw_examples_data_format: The data format of the raw examples. One of the
@@ -1318,7 +1337,8 @@ class TransformProcessor:
           desired_batch_size=desired_batch_size,
           passthrough_keys=self._GetTFXIOPassthroughKeys(),
           use_deep_copy_optimization=True,
-          force_tf_compat_v1=force_tf_compat_v1):
+          force_tf_compat_v1=force_tf_compat_v1,
+          save_options=save_options):
         (new_analyze_data_dict, input_cache,
          estimated_stage_count_with_cache) = (
              pipeline
