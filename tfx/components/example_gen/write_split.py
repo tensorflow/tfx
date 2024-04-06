@@ -79,8 +79,8 @@ def WriteSplit(
                   codec='snappy'))
     
     custom_config = exec_properties.get('custom_config')
-    num_shards = custom_config.get('num_shards', 0) if custom_config else 0
-    # num_shards = executive_properties['custom_config'].get('num_shards', 0)
+    custom_config = eval(custom_config) if isinstance(custom_config, str)
+    num_shards = custom_config.get('num_shards', 0) if isinstance(custom_config, dict) else 0
 
   else:
     num_shards = 0 
