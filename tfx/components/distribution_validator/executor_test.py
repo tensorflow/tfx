@@ -220,27 +220,13 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                   component_generated_alert_list=[
                       component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                           alert_name=(
-                              '[train_eval] High approximate Jensen-Shannon '
-                              'divergence between current and previous'
+                              '[train_eval][span 0] Feature-level anomalies '
+                              'present'
                           ),
                           alert_body=(
-                              '[train_eval] The approximate Jensen-Shannon '
-                              'divergence between current and previous is '
-                              '0.000917363 (up to six significant digits), '
-                              'above the threshold 0.'
-                          ),
-                      ),
-                      component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                          alert_name=(
-                              '[train_eval] High Linfty distance between '
-                              'current and previous'
-                          ),
-                          alert_body=(
-                              '[train_eval] The Linfty distance between '
-                              'current and previous is 0.0122771 (up to six '
-                              'significant digits), above the threshold 0. The '
-                              'feature value with maximum difference is: '
-                              'Dispatch Taxi Affiliation'
+                              '[train_eval][span 0] Feature(s) company, '
+                              'dropoff_census_tract contain(s) anomalies. See '
+                              'Anomalies artifact for more details.'
                           ),
                       ),
                   ]
@@ -274,14 +260,14 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                   component_generated_alert_list=[
                       component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                           alert_name=(
-                              '[train_eval] High num examples in current '
-                              'dataset versus the previous span.'
+                              '[train_eval][span 0] High num examples in '
+                              'current dataset versus the previous span.'
                           ),
                           alert_body=(
-                              '[train_eval] The ratio of num examples in the '
-                              'current dataset versus the previous span is '
-                              '2.02094 (up to six significant digits), which '
-                              'is above the threshold 1.'
+                              '[train_eval][span 0] The ratio of num examples '
+                              'in the current dataset versus the previous span '
+                              'is 2.02094 (up to six significant digits), '
+                              'which is above the threshold 1.'
                           ),
                       ),
                   ]
@@ -386,15 +372,13 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                   component_generated_alert_list=[
                       component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                           alert_name=(
-                              '[train_eval] Test feature has too few unique '
-                              'values.'
+                              '[train_eval][span 0] Feature-level anomalies '
+                              'present'
                           ),
                           alert_body=(
-                              '[train_eval] Custom validation triggered '
-                              'anomaly. Query: '
-                              'feature_test.string_stats.unique > '
-                              'feature_base.string_stats.unique Test dataset: '
-                              'default slice Base dataset:  Base path: company'
+                              '[train_eval][span 0] Feature(s) company '
+                              'contain(s) anomalies. See Anomalies artifact '
+                              'for more details.'
                           ),
                       )
                   ]
@@ -487,7 +471,20 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         constants.COMPONENT_GENERATED_ALERTS_KEY
     ].proto_value.Unpack(actual_alerts)
     for alert in expected_alerts.component_generated_alert_list:
-      self.assertIn(alert, actual_alerts.component_generated_alert_list)
+      self.assertEqual(
+          alert.alert_name,
+          actual_alerts.component_generated_alert_list[0].alert_name
+      )
+      if 'Feature-level anomalies present' in alert.alert_name:
+        self.assertIn(
+            'See Anomalies artifact for more details.',
+            actual_alerts.component_generated_alert_list[0].alert_body,
+        )
+      else:
+        self.assertEqual(
+            alert.alert_body,
+            actual_alerts.component_generated_alert_list[0].alert_body
+        )
 
   def testMissBaselineStats(self):
 
@@ -687,12 +684,11 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         component_generated_alert_list=[
             component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                 alert_name=(
-                    '[train_eval] High approximate Jensen-Shannon divergence '
-                    'between current and previous'),
+                    '[train_eval][span 0] Feature-level anomalies present'),
                 alert_body=(
-                    '[train_eval] The approximate Jensen-Shannon divergence '
-                    'between current and previous is 1 (up to six significant '
-                    'digits), above the threshold 0.'),
+                    '[train_eval][span 0] Feature(s) '
+                    'parent_feature.value_feature contain(s) anomalies. See '
+                    'Anomalies artifact for more details.'),
             )
         ],
     )
@@ -1104,12 +1100,11 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         component_generated_alert_list=[
             component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                 alert_name=(
-                    '[train_eval] Comparison could not be done.'
+                    '[train_eval][span 0] Feature-level anomalies present'
                 ),
                 alert_body=(
-                    '[train_eval] Validation could not be done, which could be '
-                    'due to missing data, use of a comparator that is not '
-                    'suitable for the feature type, or some other reason.'
+                    '[train_eval][span 0] Feature(s) first_feature contain(s) '
+                    'anomalies. See Anomalies artifact for more details.'
                 ),
             ),
         ]
@@ -1198,12 +1193,12 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         component_generated_alert_list=[
             component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                 alert_name=(
-                    '[train_eval] Comparison could not be done.'
+                    '[train_eval][span 0] Feature-level anomalies present'
                 ),
                 alert_body=(
-                    '[train_eval] Validation could not be done, which could be '
-                    'due to missing data, use of a comparator that is not '
-                    'suitable for the feature type, or some other reason.'
+                    '[train_eval][span 0] Feature(s) '
+                    'parent_feature.value_feature contain(s) anomalies. See '
+                    'Anomalies artifact for more details.'
                 ),
             ),
         ]

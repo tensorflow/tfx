@@ -32,8 +32,38 @@ from tfx.utils import json_utils
 
 from google.protobuf import any_pb2
 from google.protobuf import text_format
-from ml_metadata.proto import metadata_store_pb2
 from tensorflow_metadata.proto.v0 import anomalies_pb2
+
+
+_ANOMALIES_PROTO = text_format.Parse(
+    """
+    anomaly_info {
+      key: 'company'
+      value {
+        path {
+          step: 'company'
+        }
+        severity: ERROR
+        short_description: 'Feature does not have enough values.'
+        description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
+        reason {
+          description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
+          type: CUSTOM_VALIDATION
+          short_description: 'Feature does not have enough values.'
+        }
+      }
+    }
+    dataset_anomaly_info {
+      description: "Low num examples in dataset."
+      severity: ERROR
+      short_description: "Low num examples in dataset."
+      reason {
+          type: DATASET_LOW_NUM_EXAMPLES
+      }
+    }
+    """,
+    anomalies_pb2.Anomalies()
+)
 
 
 class ExecutorTest(parameterized.TestCase):
@@ -43,25 +73,69 @@ class ExecutorTest(parameterized.TestCase):
 
   def _assert_equal_anomalies(self, actual_anomalies, expected_anomalies):
     # Check if the actual anomalies matches with the expected anomalies.
-    for feature_name in expected_anomalies:
+    for feature_name in expected_anomalies.anomaly_info:
       self.assertIn(feature_name, actual_anomalies.anomaly_info)
       # Do not compare diff_regions.
       actual_anomalies.anomaly_info[feature_name].ClearField('diff_regions')
 
       self.assertEqual(actual_anomalies.anomaly_info[feature_name],
-                       expected_anomalies[feature_name])
+                       expected_anomalies.anomaly_info[feature_name])
     self.assertEqual(
-        len(actual_anomalies.anomaly_info), len(expected_anomalies))
+        len(actual_anomalies.anomaly_info),
+        len(expected_anomalies.anomaly_info)
+    )
+
+  def test_create_anomalies_alerts(self):
+    expected_alerts = [
+        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+            alert_name='Feature-level anomalies present',
+            alert_body=(
+                'Feature(s) company contain(s) anomalies for split '
+                'train, span 0. See Anomalies artifact for more '
+                'details.'
+            )
+        ),
+        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+            alert_name='Feature-level anomalies present',
+            alert_body=(
+                'Feature(s) company contain(s) anomalies for split '
+                'eval, span 0. See Anomalies artifact for more '
+                'details.'
+            ),
+        ),
+        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+            alert_name='Dataset anomalies present',
+            alert_body=(
+                'Low num examples in dataset. in split train, span 0.'
+            ),
+        ),
+        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+            alert_name='Dataset anomalies present',
+            alert_body=(
+                'Low num examples in dataset. in split eval, span 0.'
+            ),
+        ),
+    ]
+    actual_alerts = []
+    for split_name in ['train', 'eval']:
+      actual_alerts.extend(
+          executor._create_anomalies_alerts(
+              _ANOMALIES_PROTO, split_name, span=0
+          )
+      )
+    for alert in actual_alerts:
+      self.assertIn(alert, expected_alerts)
 
   @parameterized.named_parameters(
       {
           'testcase_name': 'No_anomalies',
           'custom_validation_config': None,
-          'expected_anomalies': {},
+          'expected_anomalies': anomalies_pb2.Anomalies(),
           'expected_blessing': {
               'train': executor.BLESSED_VALUE,
               'eval': executor.BLESSED_VALUE,
           },
+          'expected_alerts': None,
       },
       {
           'testcase_name': 'Custom_validation',
@@ -75,32 +149,39 @@ class ExecutorTest(parameterized.TestCase):
                 }
               }
               """,
-          'expected_anomalies': {
-              'company': text_format.Parse(
-                  """
-                  path {
-                    step: 'company'
-                  }
-                  severity: ERROR
-                  short_description: 'Feature does not have enough values.'
-                  description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
-                  reason {
-                    description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
-                    type: CUSTOM_VALIDATION
-                    short_description: 'Feature does not have enough values.'
-                  }
-                  """,
-                  anomalies_pb2.AnomalyInfo(),
-              )
-          },
+          'expected_anomalies': _ANOMALIES_PROTO,
           'expected_blessing': {
               'train': executor.NOT_BLESSED_VALUE,
               'eval': executor.NOT_BLESSED_VALUE,
           },
+          'expected_alerts': component_generated_alert_pb2.ComponentGeneratedAlertList(
+              component_generated_alert_list=[
+                  component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+                      alert_name='Feature-level anomalies present',
+                      alert_body=(
+                          'Feature(s) company contain(s) anomalies for split '
+                          'train, span 0. See Anomalies artifact for more '
+                          'details.'
+                      ),
+                  ),
+                  component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+                      alert_name='Feature-level anomalies present',
+                      alert_body=(
+                          'Feature(s) company contain(s) anomalies for split '
+                          'eval, span 0. See Anomalies artifact for more '
+                          'details.'
+                      ),
+                  ),
+              ]
+          ),
       },
   )
   def testDo(
-      self, custom_validation_config, expected_anomalies, expected_blessing
+      self,
+      custom_validation_config,
+      expected_anomalies,
+      expected_blessing,
+      expected_alerts,
   ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
@@ -181,56 +262,21 @@ class ExecutorTest(parameterized.TestCase):
         expected_blessing,
     )
 
-    if expected_anomalies:
-      alerts = component_generated_alert_pb2.ComponentGeneratedAlertList()
-      alerts.component_generated_alert_list.append(
-          component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-              alert_name='Feature does not have enough values.',
-              alert_body=(
-                  'Custom validation triggered anomaly. Query:'
-                  ' feature.string_stats.common_stats.min_num_values > 5 Test'
-                  ' dataset: default slice for feature company in split train.'
-              ),
-          )
-      )
-      alerts.component_generated_alert_list.append(
-          component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-              alert_name='Feature does not have enough values.',
-              alert_body=(
-                  'Custom validation triggered anomaly. Query:'
-                  ' feature.string_stats.common_stats.min_num_values > 5 Test'
-                  ' dataset: default slice for feature company in split eval.'
-              ),
-          )
-      )
+    expected_executor_output = execution_result_pb2.ExecutorOutput(
+        output_artifacts={
+            standard_component_specs.ANOMALIES_KEY: (
+                execution_result_pb2.ExecutorOutput.ArtifactList(
+                    artifacts=[validation_output.mlmd_artifact]))
+        },
+    )
+    if expected_alerts:
       alerts_any_proto = any_pb2.Any()
-      alerts_any_proto.Pack(alerts)
-      self.assertEqual(
-          executor_output,
-          execution_result_pb2.ExecutorOutput(
-              execution_properties={
-                  constants.COMPONENT_GENERATED_ALERTS_KEY: (
-                      metadata_store_pb2.Value(proto_value=alerts_any_proto)
-                  )
-              },
-              output_artifacts={
-                  standard_component_specs.ANOMALIES_KEY: (
-                      execution_result_pb2.ExecutorOutput.ArtifactList(
-                          artifacts=[validation_output.mlmd_artifact]))
-              },
-          ),
-      )
-    else:
-      self.assertEqual(
-          executor_output,
-          execution_result_pb2.ExecutorOutput(
-              output_artifacts={
-                  standard_component_specs.ANOMALIES_KEY: (
-                      execution_result_pb2.ExecutorOutput.ArtifactList(
-                          artifacts=[validation_output.mlmd_artifact]))
-              },
-          ),
-      )
+      alerts_any_proto.Pack(expected_alerts)
+      expected_executor_output.execution_properties[
+          constants.COMPONENT_GENERATED_ALERTS_KEY
+      ].proto_value.CopyFrom(alerts_any_proto)
+
+    self.assertEqual(executor_output, expected_executor_output)
 
 
 if __name__ == '__main__':

@@ -176,38 +176,53 @@ def _add_anomalies_for_missing_comparisons(
   return anomalies
 
 
-def _generate_alerts_info_proto(
-    anomaly_info: anomalies_pb2.AnomalyInfo, split_pair: str
-) -> list[component_generated_alert_pb2.ComponentGeneratedAlertInfo]:
-  """Generates a list of ComponentGeneratedAlertInfo from AnomalyInfo."""
-  result = []
-  for reason in anomaly_info.reason:
-    result.append(
-        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-            alert_name=f'[{split_pair}] {reason.short_description}',
-            alert_body=f'[{split_pair}] {reason.description}',
-        )
-    )
-  return result
-
-
 def _create_anomalies_alerts(
     anomalies: anomalies_pb2.Anomalies,
     split_pair: str,
+    span: str,
 ) -> list[component_generated_alert_pb2.ComponentGeneratedAlertInfo]:
-  """Creates an alert for each anomaly in the anomalies artifact."""
-  result = []
+  """Creates an alert for each anomaly in the anomalies artifact.
+
+  Args:
+    anomalies: The Anomalies proto.
+    split_pair: The tuple name of the data split, like (train, eval).
+    span: The span of the Anomalies.
+
+  Returns:
+    A list of component generated alerts, if any.
+  """
+  results = []
   # Information about dataset-level anomalies, such as "High num examples in
   # current dataset versus the previous span."
   if anomalies.HasField('dataset_anomaly_info'):
-    result.extend(
-        _generate_alerts_info_proto(anomalies.dataset_anomaly_info, split_pair)
+    for reason in anomalies.dataset_anomaly_info.reason:
+      results.append(
+          component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+              alert_name=(
+                  f'[{split_pair}][span {span}] {reason.short_description}'
+              ),
+              alert_body=(
+                  f'[{split_pair}][span {span}] {reason.description}'
+              ),
+          )
+      )
+  # Information about feature-level anomalies. Generates a single alert for all
+  # anomalous features.
+  features_with_anomalies = ', '.join(anomalies.anomaly_info.keys())
+  if features_with_anomalies:
+    results.append(
+        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
+            alert_name=(
+                f'[{split_pair}][span {span}] Feature-level anomalies present'
+            ),
+            alert_body=(
+                f'[{split_pair}][span {span}] Feature(s) '
+                f'{features_with_anomalies} contain(s) anomalies. '
+                f'See Anomalies artifact for more details.'
+            ),
+        )
     )
-  # Information about feature-level anomalies, such as "High Linfty distance
-  # between current and previous."
-  for _, info in anomalies.anomaly_info.items():
-    result.extend(_generate_alerts_info_proto(info, split_pair))
-  return result
+  return results
 
 
 def _get_distribution_validator_config(
@@ -405,7 +420,9 @@ class Executor(base_executor.BaseExecutor):
           validation_metrics_artifact,
       )
       alerts.component_generated_alert_list.extend(
-          _create_anomalies_alerts(anomalies, split_pair)
+          _create_anomalies_alerts(
+              anomalies, split_pair, anomalies_artifact.span
+          )
       )
 
     # Set blessed custom property for Anomalies Artifact
