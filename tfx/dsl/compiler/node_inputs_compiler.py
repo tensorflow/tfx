@@ -26,6 +26,7 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.placeholder import artifact_placeholder
 from tfx.dsl.placeholder import placeholder
 from tfx.orchestration import data_types_utils
+from tfx.orchestration import pipeline
 from tfx.proto.orchestration import metadata_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import channel as channel_types
@@ -439,6 +440,9 @@ def compile_node_inputs(
   for input_key, channel in tfx_node.inputs.items():
     if compiler_utils.is_resolver(tfx_node):
       min_count = 0
+    elif isinstance(tfx_node, pipeline.Pipeline):
+      pipeline_inputs_channel = tfx_node.inputs[input_key]
+      min_count = 0 if pipeline_inputs_channel.is_optional else 1
     elif isinstance(tfx_node, base_component.BaseComponent):
       spec_param = tfx_node.spec.INPUTS[input_key]
       if (

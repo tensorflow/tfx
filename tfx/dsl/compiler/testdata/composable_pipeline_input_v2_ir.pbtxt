@@ -82,7 +82,8 @@ nodes {
           }
         }
         execution_options {
-          caching_options {}
+          caching_options {
+          }
         }
       }
     }
@@ -1169,7 +1170,8 @@ nodes {
         upstream_nodes: "data-ingestion-pipeline"
         downstream_nodes: "Trainer"
         execution_options {
-          caching_options {}
+          caching_options {
+          }
           strategy: LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED
           max_execution_retries: 10
         }
@@ -2206,7 +2208,8 @@ nodes {
         downstream_nodes: "Pusher"
         downstream_nodes: "infra-validator-pipeline"
         execution_options {
-          caching_options {}
+          caching_options {
+          }
         }
       }
     }
@@ -2507,7 +2510,8 @@ nodes {
             upstream_nodes: "validate-and-push-pipeline_begin"
             downstream_nodes: "InfraValidator"
             execution_options {
-              caching_options {}
+              caching_options {
+              }
             }
           }
         }

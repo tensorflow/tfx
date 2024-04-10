@@ -120,7 +120,7 @@ class BaseChannel(abc.ABC, Generic[_AT]):
       set.
   """
 
-  def __init__(self, type: Type[_AT]):  # pylint: disable=redefined-builtin
+  def __init__(self, type: Type[_AT], is_optional: Optional[bool] = None):  # pylint: disable=redefined-builtin
     if not _is_artifact_type(type):
       raise ValueError(
           'Argument "type" of BaseChannel constructor must be a subclass of '
@@ -128,7 +128,7 @@ class BaseChannel(abc.ABC, Generic[_AT]):
     self._artifact_type = type
     self._input_trigger = None
     self._original_channel = None
-    self._is_optional = None
+    self._is_optional = is_optional
 
   @property
   def is_optional(self) -> Optional[bool]:
@@ -663,7 +663,7 @@ class PipelineInputChannel(BaseChannel):
   """
 
   def __init__(self, wrapped: BaseChannel, output_key: str):
-    super().__init__(type=wrapped.type)
+    super().__init__(type=wrapped.type, is_optional=wrapped.is_optional)
     self._wrapped = wrapped
     self._output_key = output_key
     self._pipeline = None
