@@ -207,10 +207,10 @@ class BaseChannel(abc.ABC, Generic[_AT]):
     return ChannelWrappedPlaceholder(self)
 
   def __eq__(self, other):
-    return self is other
+    return hash(self) == hash(other)
 
   def __hash__(self):
-    return hash(id(self))
+    return hash(repr(self))
 
 
 class Channel(json_utils.Jsonable, BaseChannel):
@@ -394,21 +394,20 @@ class Channel(json_utils.Jsonable, BaseChannel):
   @doc_controls.do_not_doc_inheritable
   def to_json_dict(self) -> Dict[str, Any]:
     return {
-        'type':
-            json.loads(
-                json_format.MessageToJson(
-                    message=self.type._get_artifact_type(),  # pylint: disable=protected-access
-                    preserving_proto_field_name=True)),
-        'artifacts':
-            list(a.to_json_dict() for a in self._artifacts),
-        'additional_properties':
-            self.additional_properties,
-        'additional_custom_properties':
-            self.additional_custom_properties,
-        'producer_component_id':
-            (self.producer_component_id if self.producer_component_id else None
-            ),
-        'output_key': (self.output_key if self.output_key else None),
+        'type': json.loads(
+            json_format.MessageToJson(
+                message=self.type._get_artifact_type(),  # pylint: disable=protected-access
+                preserving_proto_field_name=True,
+            )
+        ),
+        'artifacts': list(a.to_json_dict() for a in self._artifacts),
+        'additional_properties': self.additional_properties,
+        'additional_custom_properties': self.additional_custom_properties,
+        'producer_component_id': (
+            self.producer_component_id if self.producer_component_id else None
+        ),
+        'output_key': self.output_key if self.output_key else None,
+        'is_optional': self.is_optional,
     }
 
   @classmethod
@@ -511,7 +510,8 @@ class OutputChannel(Channel):
         f'additional_properties={self.additional_properties}, '
         f'additional_custom_properties={self.additional_custom_properties}, '
         f'_input_trigger={self._input_trigger}, '
-        f'_is_async={self._is_async})'
+        f'_is_async={self._is_async}, '
+        f'_is_optional={self.is_optional})'
     )
 
   def get_data_dependent_node_ids(self) -> Set[str]:
