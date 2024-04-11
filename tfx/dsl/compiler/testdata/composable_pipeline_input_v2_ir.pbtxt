@@ -11,7 +11,6 @@ nodes {
   sub_pipeline {
     pipeline_info {
       id: "data-ingestion-pipeline"
-      parent_ids: "composable-pipeline"
     }
     nodes {
       pipeline_node {
@@ -83,8 +82,7 @@ nodes {
           }
         }
         execution_options {
-          caching_options {
-          }
+          caching_options {}
         }
       }
     }
@@ -944,7 +942,6 @@ nodes {
   sub_pipeline {
     pipeline_info {
       id: "training-pipeline"
-      parent_ids: "composable-pipeline"
     }
     nodes {
       pipeline_node {
@@ -1172,8 +1169,7 @@ nodes {
         upstream_nodes: "data-ingestion-pipeline"
         downstream_nodes: "Trainer"
         execution_options {
-          caching_options {
-          }
+          caching_options {}
           strategy: LAZILY_ALL_UPSTREAM_NODES_SUCCEEDED
           max_execution_retries: 10
         }
@@ -1896,7 +1892,6 @@ nodes {
   sub_pipeline {
     pipeline_info {
       id: "validate-and-push-pipeline"
-      parent_ids: "composable-pipeline"
     }
     nodes {
       pipeline_node {
@@ -2211,8 +2206,7 @@ nodes {
         downstream_nodes: "Pusher"
         downstream_nodes: "infra-validator-pipeline"
         execution_options {
-          caching_options {
-          }
+          caching_options {}
         }
       }
     }
@@ -2220,8 +2214,6 @@ nodes {
       sub_pipeline {
         pipeline_info {
           id: "infra-validator-pipeline"
-          parent_ids: "composable-pipeline"
-          parent_ids: "validate-and-push-pipeline"
         }
         nodes {
           pipeline_node {
@@ -2515,8 +2507,7 @@ nodes {
             upstream_nodes: "validate-and-push-pipeline_begin"
             downstream_nodes: "InfraValidator"
             execution_options {
-              caching_options {
-              }
+              caching_options {}
             }
           }
         }

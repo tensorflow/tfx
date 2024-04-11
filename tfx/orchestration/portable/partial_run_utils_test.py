@@ -79,7 +79,7 @@ def _to_input_channel(
 
 
 @component
-def TestComponent():
+def _TestComponent():
   pass
 
 
@@ -193,7 +193,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     # not support running subpipelines.
     subpipeline_by_name = {}
     for s_p in subpipelines:
-      n = TestComponent().with_id('node')
+      n = _TestComponent().with_id('node')
       p = pipeline_lib.Pipeline(
           pipeline_name=s_p,
           components=[n],
@@ -203,7 +203,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     components = {}
     for node in node_to_downstream_nodes:
       if node not in subpipeline_by_name:
-        c = TestComponent().with_id(node)
+        c = _TestComponent().with_id(node)
       else:
         c = subpipeline_by_name[node]
       components[node] = c

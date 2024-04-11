@@ -6,7 +6,7 @@ executors {
   value {
     importer {
       artifact_uri {
-        constant {
+        constant_value {
           string_value: "m/y/u/r/i"
         }
       }

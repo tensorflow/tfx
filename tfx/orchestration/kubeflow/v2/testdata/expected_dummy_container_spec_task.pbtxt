@@ -9,7 +9,7 @@ inputs {
     key: "param1"
     value {
       runtime_value {
-        constant {
+        constant_value {
           string_value: "value1"
         }
       }
