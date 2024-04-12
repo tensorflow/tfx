@@ -501,11 +501,13 @@ def concurrent_pipeline_runs_enabled_env():
   return _TestEnv()
 
 
-def pipeline_start_postprocess_env():
+def prepare_orchestrator_for_pipeline_run_environment():
 
   class _TestEnv(env._DefaultEnv):  # pylint: disable=protected-access
 
-    def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
-      pipeline.pipeline_info.id = pipeline.pipeline_info.id + '_postprocessed'
+    def prepare_orchestrator_for_pipeline_run(
+        self, pipeline: pipeline_pb2.Pipeline
+    ):
+      pipeline.sdk_version = 'postprocessed'
 
   return _TestEnv()

@@ -949,6 +949,7 @@ class PipelineState:
           message=('Updated pipeline should have the same structure as the '
                    'original.'))
 
+    env.get_env().prepare_orchestrator_for_pipeline_run(updated_pipeline)
     data_types_utils.set_metadata_value(
         self._execution.custom_properties[_UPDATED_PIPELINE_IR],
         _PipelineIRCodec.get().encode(updated_pipeline))

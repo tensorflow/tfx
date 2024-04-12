@@ -249,7 +249,7 @@ def initiate_pipeline_start(
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
       )
-  env.get_env().pipeline_start_postprocess(pipeline)
+  env.get_env().prepare_orchestrator_for_pipeline_run(pipeline)
   return pstate.PipelineState.new(
       mlmd_handle, pipeline, pipeline_run_metadata, reused_pipeline_view
   )
@@ -993,7 +993,7 @@ def resume_pipeline(
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
       )
-
+  env.get_env().prepare_orchestrator_for_pipeline_run(pipeline)
   return pstate.PipelineState.new(
       mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view
   )

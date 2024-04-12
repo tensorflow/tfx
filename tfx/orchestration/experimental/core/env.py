@@ -74,13 +74,15 @@ class Env(abc.ABC):
     """Check if this orchestrator is capable of orchestrating the pipeline."""
 
   @abc.abstractmethod
-  def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
-    """Method for processing a pipeline at the end of its initialization, before it starts running.
+  def prepare_orchestrator_for_pipeline_run(
+      self, pipeline: pipeline_pb2.Pipeline
+  ):
+    """Prepares the orchestrator to execute the provided pipeline.
 
     This *can* mutate the provided IR in-place.
 
     Args:
-      pipeline: The pipeline IR to process.
+      pipeline: The pipeline IR to prepare for.
     """
 
 
@@ -118,7 +120,9 @@ class _DefaultEnv(Env):
   def check_if_can_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> None:
     pass
 
-  def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
+  def prepare_orchestrator_for_pipeline_run(
+      self, pipeline: pipeline_pb2.Pipeline
+  ):
     pass
 
 

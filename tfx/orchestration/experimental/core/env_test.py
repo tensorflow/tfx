@@ -46,7 +46,9 @@ class _TestEnv(env.Env):
   def check_if_can_orchestrate(self, pipeline) -> None:
     raise NotImplementedError()
 
-  def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
+  def prepare_orchestrator_for_pipeline_run(
+      self, pipeline: pipeline_pb2.Pipeline
+  ):
     raise NotImplementedError()
 
 
