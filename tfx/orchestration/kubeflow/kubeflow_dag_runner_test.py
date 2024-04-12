@@ -41,7 +41,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 @component
-def _say_hi(status: Parameter[str]):
+def say_hi(status: Parameter[str]):
   print(status)
 
 
@@ -300,7 +300,7 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
 
   def testExitHandler(self):
     dag_runner = kubeflow_dag_runner.KubeflowDagRunner()
-    dag_runner.set_exit_handler(_say_hi(status=FinalStatusStr()))
+    dag_runner.set_exit_handler(say_hi(status=FinalStatusStr()))
     pipeline = _container_component_pipeline()
     pipeline.enable_cache = True
     dag_runner.run(pipeline)

@@ -253,6 +253,12 @@ def _create_executor_spec_instance(
     an instance of `executor_spec_class` whose executor_class is a subclass of
     `base_executor_class`.
   """
+  if func.__module__ == '__main__' and func.__name__.startswith('_'):
+    raise ValueError(
+        'Custom Python @components declared in the main file must be public. '
+        f'Please remove the leading underscore from {func.__name__}.'
+    )
+
   executor_class = type(
       '%s_Executor' % func.__name__,
       (base_executor_class,),
