@@ -1426,13 +1426,13 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     """,
         placeholder_pb2.PlaceholderExpression(),
     )
-    self.assertEqual(
-        placeholder_utils.debug_str(pb),
-        "MakeProto("
-        'type_url: "type.googleapis.com/tfx.orchestration.ExecutionInvocation",'
-        ' field_1=input("channel_1")[0].value,'
-        ' field_2=input("channel_2")[0].value)',
-    )
+
+    actual = placeholder_utils.debug_str(pb)
+
+    # Note: The exact formatting depends on the Python version and platform.
+    self.assertIn("tfx.orchestration.ExecutionInvocation", actual)
+    self.assertIn('field_1=input("channel_1")[0].value', actual)
+    self.assertIn('field_2=input("channel_2")[0].value', actual)
 
   def testGetAllTypesInPlaceholderExpressionFails(self):
     self.assertRaises(
