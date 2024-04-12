@@ -49,6 +49,11 @@ RUBBER_STAMPED_AND_NOT_BLESSED_VALUE = (
     'Any change thresholds were ignored, but value thresholds were '
     'checked and failed.'
 )
+NOT_RUBBER_STAMPED_AND_NOT_BLESSED_VALUE = (
+    'The model was not rubber stamped (a baseline model was found) and not '
+    'blessed. Change thresholds and value thresholds were checked and there '
+    'were failures.'
+)
 
 
 def get_no_validation_file_value(validation_path: str) -> str:
