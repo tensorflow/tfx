@@ -731,20 +731,6 @@ class _Generator:
     )
 
 
-def _skipped_node_ids(
-    node_states_dict: Dict[task_lib.NodeUid, pstate.NodeState]
-) -> Set[str]:
-  """Returns the nodes that are marked as skipped in partial run or by user."""
-  skipped_node_ids = set()
-  for node_uid, node_state in node_states_dict.items():
-    if node_state.state in (
-        pstate.NodeState.SKIPPED,
-        pstate.NodeState.SKIPPED_PARTIAL_RUN,
-    ):
-      skipped_node_ids.add(node_uid.node_id)
-  return skipped_node_ids
-
-
 def _topsorted_layers(
     pipeline: pipeline_pb2.Pipeline
 ) -> List[List[node_proto_view.NodeProtoView]]:
