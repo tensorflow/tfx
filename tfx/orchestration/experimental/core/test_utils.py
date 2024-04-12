@@ -495,7 +495,7 @@ def concurrent_pipeline_runs_enabled_env():
 
   class _TestEnv(env._DefaultEnv):  # pylint: disable=protected-access
 
-    def concurrent_pipeline_runs_enabled(self) -> bool:
+    def concurrent_pipeline_runs_enabled(self, pipeline) -> bool:
       return True
 
   return _TestEnv()

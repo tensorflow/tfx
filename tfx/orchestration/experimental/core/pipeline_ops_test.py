@@ -656,6 +656,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           node_state.update(pstate.NodeState.STOPPED)
 
       # Mark the subpipeline execution as CANCELLED
+      sub_pipeline_run_id = f'sub-pipeline_run0_{subpipeline_execution.id}'
       with mlmd_state.mlmd_execution_atomic_op(
           m, subpipeline_execution.id
       ) as mlmd_execution:
@@ -665,7 +666,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         # Update the pipeline run for execution to be appropraite form.
         data_types_utils.set_metadata_value(
             mlmd_execution.custom_properties['pipeline_run_id'],
-            f'sub-pipeline_run0_{subpipeline_execution.id}',
+            sub_pipeline_run_id,
         )
         subpipeline_execution = mlmd_execution
       # Associate subpipeline contexts with
@@ -685,7 +686,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         )
 
       with pstate.PipelineState.load(
-          m, task_lib.PipelineUid.from_pipeline(sub_pipeline_proto)
+          m,
+          task_lib.PipelineUid.from_pipeline_id_and_run_id(
+              sub_pipeline_proto.pipeline_info.id, sub_pipeline_run_id
+          ),
       ) as subpipeline_state:
         node_states_dict = subpipeline_state.get_node_states_dict()
         self.assertEqual(
@@ -896,6 +900,11 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           from_nodes=['Transform'], to_nodes=['Transform']
       )
       pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
+
       with pipeline_ops.initiate_pipeline_start(
           m, pipeline, partial_run_option=partial_run_option
       ) as pipeline_state_run1:
@@ -936,6 +945,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           from_nodes=['ExampleGen'], to_nodes=['ExampleGen']
       )
       pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run2'
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
       with pipeline_ops.initiate_pipeline_start(
           m, pipeline, partial_run_option=partial_run_option
       ) as pipeline_state_run2:
@@ -1462,13 +1474,15 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       task_queue.task_done(task)
       self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(
-          test_utils.create_node_uid('pipeline3', 'Trainer'), task.node_uid
+          test_utils.create_node_uid('pipeline3', 'Trainer', 'run0'),
+          task.node_uid,
       )
       task = task_queue.dequeue()
       task_queue.task_done(task)
       self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(
-          test_utils.create_node_uid('pipeline4', 'Validator'), task.node_uid
+          test_utils.create_node_uid('pipeline4', 'Validator', 'run0'),
+          task.node_uid,
       )
       self.assertTrue(task_queue.is_empty())
 
@@ -3113,7 +3127,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline1 = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC, 'run0')
       pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline1)
       self.assertEqual(
-          pipeline_state.pipeline_uid, task_lib.PipelineUid('pipeline')
+          pipeline_state.pipeline_uid, task_lib.PipelineUid('pipeline', 'run0')
       )
 
       # Starting a concurrent run with a different run id is prohibited.
@@ -3416,7 +3430,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       task_queue.task_done(task)
       self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(
-          test_utils.create_node_uid('pipeline1', 'Trainer'), task.node_uid
+          test_utils.create_node_uid('pipeline1', 'Trainer', 'run0'),
+          task.node_uid,
       )
       self.assertTrue(task_queue.is_empty())
 

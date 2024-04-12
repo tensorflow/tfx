@@ -192,7 +192,7 @@ def initiate_pipeline_start(
       for node in pipeline.nodes:
         # Only add to processing queue if it's a subpipeline that we are going
         # to cache. For subpipelines, the begin node's (nodes[0]) execution
-        # options repersent the subpipeline's execution options.
+        # options represent the subpipeline's execution options.
         if node.WhichOneof(
             'node'
         ) == 'sub_pipeline' and partial_run_utils.should_attempt_to_reuse_artifact(
@@ -842,7 +842,9 @@ def _load_reused_pipeline_view(
         pipeline_run_id=base_run_id,
         # If current pipeline run is allowed and base_run_id is not specified,
         # reuse the most recent completed run.
-        non_active_only=env.get_env().concurrent_pipeline_runs_enabled(),
+        non_active_only=env.get_env().concurrent_pipeline_runs_enabled(
+            pipeline
+        ),
     )
   except status_lib.StatusNotOkError as e:
     if e.code == status_lib.Code.NOT_FOUND:
@@ -865,7 +867,7 @@ def _load_reused_pipeline_view(
     )
 
   if execution_lib.is_execution_active(reused_pipeline_view.execution):
-    if base_run_id and env.get_env().concurrent_pipeline_runs_enabled():
+    if base_run_id and env.get_env().concurrent_pipeline_runs_enabled(pipeline):
       # TODO(b/330376413): Ideally we should not allow an active run to be
       # reused, otherwise the new partial run may end up in an invalid state due
       # to race condition. But there are users who already depend on this buggy
@@ -925,10 +927,7 @@ def resume_pipeline(
         ),
     )
 
-  if (
-      env.get_env().concurrent_pipeline_runs_enabled()
-      and not run_id
-  ):
+  if env.get_env().concurrent_pipeline_runs_enabled(pipeline) and not run_id:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.INVALID_ARGUMENT,
         message=(
@@ -1192,7 +1191,7 @@ def revive_pipeline_run(
           code=status_lib.Code.ALREADY_EXISTS,
           message='Cannot revive a live pipeline run.',
       )
-    if not env.get_env().concurrent_pipeline_runs_enabled() and (
+    if not env.get_env().concurrent_pipeline_runs_enabled(pipeline) and (
         all_active := pstate.PipelineState.load_all_active(mlmd_handle)
     ):
       raise status_lib.StatusNotOkError(
