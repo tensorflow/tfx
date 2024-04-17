@@ -19,6 +19,7 @@ from tfx import types
 from tfx.dsl.compiler import compiler_context
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
+from tfx.dsl.compiler import node_contexts_compiler
 from tfx.dsl.compiler import node_execution_options_utils
 from tfx.dsl.compiler import node_inputs_compiler
 from tfx.dsl.components.base import base_component
@@ -56,7 +57,12 @@ class Compiler:
 
     # Step 2: Node Context
     # Inner pipeline's contexts.
-    _set_node_context(node, pipeline_ctx)
+    node.contexts.CopyFrom(
+        node_contexts_compiler.compile_node_contexts(
+            pipeline_ctx,
+            node.node_info.id,
+        )
+    )
 
     # Step 3: Node inputs
     # Pipeline node inputs are stored as the inputs of the PipelineBegin node.
@@ -121,7 +127,12 @@ class Compiler:
 
     # Step 2: Node Context
     # Inner pipeline's contexts.
-    _set_node_context(node, pipeline_ctx)
+    node.contexts.CopyFrom(
+        node_contexts_compiler.compile_node_contexts(
+            pipeline_ctx,
+            node.node_info.id,
+        )
+    )
 
     # Step 3: Node inputs
     node_inputs_compiler.compile_node_inputs(
@@ -194,7 +205,12 @@ class Compiler:
     node.node_info.id = tfx_node.id
 
     # Step 2: Node Context
-    _set_node_context(node, pipeline_ctx)
+    node.contexts.CopyFrom(
+        node_contexts_compiler.compile_node_contexts(
+            pipeline_ctx,
+            node.node_info.id,
+        )
+    )
 
     # Step 3: Node inputs
     node_inputs_compiler.compile_node_inputs(
@@ -384,71 +400,6 @@ def _validate_pipeline(tfx_pipeline: pipeline.Pipeline,
       and tfx_pipeline.execution_mode != pipeline.ExecutionMode.SYNC
   ):
     raise ValueError("Subpipeline has to be Sync execution mode.")
-
-
-def _set_node_context(node: pipeline_pb2.PipelineNode,
-                      pipeline_ctx: compiler_context.PipelineContext):
-  """Compiles the node contexts of a pipeline node."""
-  # Context for the pipeline, across pipeline runs.
-  pipeline_context_pb = node.contexts.contexts.add()
-  pipeline_context_pb.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
-  pipeline_context_pb.name.field_value.string_value = (
-      pipeline_ctx.pipeline_info.pipeline_context_name)
-
-  # Context for the current pipeline run.
-  if pipeline_ctx.is_sync_mode:
-    pipeline_run_context_pb = node.contexts.contexts.add()
-    pipeline_run_context_pb.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
-    # TODO(kennethyang): Miragte pipeline run id to structural_runtime_parameter
-    # To keep existing IR textprotos used in tests unchanged, we only use
-    # structural_runtime_parameter for subpipelines. After the subpipeline being
-    # implemented, we will need to migrate normal pipelines to
-    # structural_runtime_parameter as well for consistency. Similar for below.
-    if pipeline_ctx.is_subpipeline:
-      compiler_utils.set_structural_runtime_parameter_pb(
-          pipeline_run_context_pb.name.structural_runtime_parameter, [
-              f"{pipeline_ctx.pipeline_info.pipeline_context_name}_",
-              (constants.PIPELINE_RUN_ID_PARAMETER_NAME, str)
-          ])
-    else:
-      compiler_utils.set_runtime_parameter_pb(
-          pipeline_run_context_pb.name.runtime_parameter,
-          constants.PIPELINE_RUN_ID_PARAMETER_NAME, str)
-
-  # Contexts inherited from the parent pipelines.
-  for i, parent_pipeline in enumerate(pipeline_ctx.parent_pipelines[::-1]):
-    parent_pipeline_context_pb = node.contexts.contexts.add()
-    parent_pipeline_context_pb.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
-    parent_pipeline_context_pb.name.field_value.string_value = (
-        parent_pipeline.pipeline_info.pipeline_context_name)
-
-    if parent_pipeline.execution_mode == pipeline.ExecutionMode.SYNC:
-      pipeline_run_context_pb = node.contexts.contexts.add()
-      pipeline_run_context_pb.type.name = (
-          constants.PIPELINE_RUN_CONTEXT_TYPE_NAME)
-
-      # TODO(kennethyang): Miragte pipeline run id to structural runtime
-      # parameter for the similar reason mentioned above.
-      # Use structural runtime parameter to represent pipeline_run_id except
-      # for the root level pipeline, for backward compatibility.
-      if i == len(pipeline_ctx.parent_pipelines) - 1:
-        compiler_utils.set_runtime_parameter_pb(
-            pipeline_run_context_pb.name.runtime_parameter,
-            constants.PIPELINE_RUN_ID_PARAMETER_NAME, str)
-      else:
-        compiler_utils.set_structural_runtime_parameter_pb(
-            pipeline_run_context_pb.name.structural_runtime_parameter, [
-                f"{parent_pipeline.pipeline_info.pipeline_context_name}_",
-                (constants.PIPELINE_RUN_ID_PARAMETER_NAME, str)
-            ])
-
-  # Context for the node, across pipeline runs.
-  node_context_pb = node.contexts.contexts.add()
-  node_context_pb.type.name = constants.NODE_CONTEXT_TYPE_NAME
-  node_context_pb.name.field_value.string_value = (
-      compiler_utils.node_context_name(
-          pipeline_ctx.pipeline_info.pipeline_context_name,
-          node.node_info.id))
 
 
 def _set_node_outputs(node: pipeline_pb2.PipelineNode,

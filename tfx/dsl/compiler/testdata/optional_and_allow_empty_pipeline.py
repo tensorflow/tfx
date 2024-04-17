@@ -112,6 +112,15 @@ def create_test_pipeline():
       mandatory=upstream_component.outputs['first_model'],
       optional_but_needed=upstream_component.outputs['second_model'],
       optional_and_not_needed=upstream_component.outputs['third_model'])
+  as_optional_component = MyComponent(
+      mandatory=upstream_component.outputs['second_model'].as_optional(),
+      optional_but_needed=upstream_component.outputs[
+          'second_model'
+      ].as_optional(),
+      optional_and_not_needed=upstream_component.outputs[
+          'third_model'
+      ].as_optional(),
+  ).with_id('as_optional_component')
   p_in = pipeline.PipelineInputs({
       'mandatory': upstream_component.outputs['first_model'],
       'optional': upstream_component.outputs['second_model'].as_optional(),
@@ -129,5 +138,10 @@ def create_test_pipeline():
   return pipeline.Pipeline(
       pipeline_name=_pipeline_name,
       pipeline_root=_pipeline_root,
-      components=[upstream_component, my_component, subpipeline],
+      components=[
+          upstream_component,
+          my_component,
+          as_optional_component,
+          subpipeline,
+      ],
   )

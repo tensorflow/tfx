@@ -55,6 +55,8 @@ class PipelineContext:
     # Mapping from Channel object to compiled Channel proto.
     self.channels = dict()
 
+    self.node_context_protos_cache: dict[str, pipeline_pb2.NodeContexts] = {}
+
     # Node ID -> NodeContext
     self._node_contexts: Dict[str, NodeContext] = {}
 

@@ -145,7 +145,8 @@ class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
         pipeline_name=pipeline_name or self.pipeline_name,
         node_id=node_id,
         output_key=output_key,
-        result=result)
+        result=result,
+    )
     return result
 
   def testCompileAlreadyCompiledInputs(self):

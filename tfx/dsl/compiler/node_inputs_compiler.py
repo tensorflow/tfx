@@ -13,12 +13,14 @@
 # limitations under the License.
 """Compiler submodule specialized for NodeInputs."""
 
+from collections.abc import Iterable
 from typing import Type, cast
 
 from tfx import types
 from tfx.dsl.compiler import compiler_context
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
+from tfx.dsl.compiler import node_contexts_compiler
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_node
 from tfx.dsl.experimental.conditionals import conditional
@@ -36,6 +38,17 @@ from tfx.types import value_artifact
 from tfx.utils import deprecation_utils
 from tfx.utils import name_utils
 from tfx.utils import typing_utils
+
+from ml_metadata.proto import metadata_store_pb2
+
+
+def _get_tfx_value(value: str) -> pipeline_pb2.Value:
+  """Returns a TFX Value containing the provided string."""
+  return pipeline_pb2.Value(
+      field_value=data_types_utils.set_metadata_value(
+          metadata_store_pb2.Value(), value
+      )
+  )
 
 
 def _compile_input_graph(
@@ -121,6 +134,17 @@ def _compile_input_graph(
   return input_graph_id
 
 
+def _compile_channel_pb_contexts(
+    context_types_and_names: Iterable[tuple[str, pipeline_pb2.Value]],
+    result: pipeline_pb2.InputSpec.Channel,
+):
+  """Adds contexts to the channel."""
+  for context_type, context_value in context_types_and_names:
+    ctx = result.context_queries.add()
+    ctx.type.name = context_type
+    ctx.name.CopyFrom(context_value)
+
+
 def _compile_channel_pb(
     artifact_type: Type[types.Artifact],
     pipeline_name: str,
@@ -133,15 +157,19 @@ def _compile_channel_pb(
   result.artifact_query.type.CopyFrom(mlmd_artifact_type)
   result.artifact_query.type.ClearField('properties')
 
-  ctx = result.context_queries.add()
-  ctx.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
-  ctx.name.field_value.string_value = pipeline_name
-
+  contexts_types_and_values = [
+      (constants.PIPELINE_CONTEXT_TYPE_NAME, _get_tfx_value(pipeline_name))
+  ]
   if node_id:
-    ctx = result.context_queries.add()
-    ctx.type.name = constants.NODE_CONTEXT_TYPE_NAME
-    ctx.name.field_value.string_value = compiler_utils.node_context_name(
-        pipeline_name, node_id)
+    contexts_types_and_values.append(
+        (
+            constants.NODE_CONTEXT_TYPE_NAME,
+            _get_tfx_value(
+                compiler_utils.node_context_name(pipeline_name, node_id)
+            ),
+        ),
+    )
+  _compile_channel_pb_contexts(contexts_types_and_values, result)
 
   if output_key:
     result.output_key = output_key
@@ -198,7 +226,8 @@ def _compile_input_spec(
         pipeline_name=channel.pipeline.id,
         node_id=channel.wrapped.producer_component_id,
         output_key=channel.output_key,
-        result=result.inputs[input_key].channels.add())
+        result=result.inputs[input_key].channels.add(),
+    )
 
   elif isinstance(channel, channel_types.ExternalPipelineChannel):
     channel = cast(channel_types.ExternalPipelineChannel, channel)
@@ -208,12 +237,17 @@ def _compile_input_spec(
         pipeline_name=channel.pipeline_name,
         node_id=channel.producer_component_id,
         output_key=channel.output_key,
-        result=result_input_channel)
+        result=result_input_channel,
+    )
 
     if channel.pipeline_run_id:
-      ctx = result_input_channel.context_queries.add()
-      ctx.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
-      ctx.name.field_value.string_value = channel.pipeline_run_id
+      _compile_channel_pb_contexts(
+          [(
+              constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
+              _get_tfx_value(channel.pipeline_run_id),
+          )],
+          result_input_channel,
+      )
 
     if pipeline_ctx.pipeline.platform_config:
       project_config = (
@@ -235,6 +269,33 @@ def _compile_input_spec(
       )
       result_input_channel.metadata_connection_config.Pack(config)
 
+  # Note that this path is *usually* not taken, as most output channels already
+  # exist in pipeline_ctx.channels, as they are added in after
+  # compiler._generate_input_spec_for_outputs is called.
+  # This path gets taken when a channel is copied, for example by
+  # `as_optional()`, as Channel uses `id` for a hash.
+  elif isinstance(channel, channel_types.OutputChannel):
+    channel = cast(channel_types.Channel, channel)
+    result_input_channel = result.inputs[input_key].channels.add()
+    _compile_channel_pb(
+        artifact_type=channel.type,
+        pipeline_name=pipeline_ctx.pipeline_info.pipeline_name,
+        node_id=channel.producer_component_id,
+        output_key=channel.output_key,
+        result=result_input_channel,
+    )
+    node_contexts = node_contexts_compiler.compile_node_contexts(
+        pipeline_ctx, tfx_node.id
+    )
+    contexts_to_add = []
+    for context_spec in node_contexts.contexts:
+      if context_spec.type.name == constants.PIPELINE_RUN_CONTEXT_TYPE_NAME:
+        contexts_to_add.append((
+            constants.PIPELINE_RUN_CONTEXT_TYPE_NAME,
+            context_spec.name,
+        ))
+    _compile_channel_pb_contexts(contexts_to_add, result_input_channel)
+
   elif isinstance(channel, channel_types.Channel):
     channel = cast(channel_types.Channel, channel)
     _compile_channel_pb(
@@ -242,7 +303,8 @@ def _compile_input_spec(
         pipeline_name=pipeline_ctx.pipeline_info.pipeline_name,
         node_id=channel.producer_component_id,
         output_key=channel.output_key,
-        result=result.inputs[input_key].channels.add())
+        result=result.inputs[input_key].channels.add(),
+    )
 
   elif isinstance(channel, channel_types.UnionChannel):
     channel = cast(channel_types.UnionChannel, channel)
