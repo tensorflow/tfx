@@ -350,6 +350,17 @@ class Compiler:
         pipeline_node_pb = self.compile(node, pipeline_ctx)
         pipeline_or_node = pipeline_pb.PipelineOrNode()
         pipeline_or_node.sub_pipeline.CopyFrom(pipeline_node_pb)
+
+        # Set parent_ids of sub-pipelines, in the order of outer -> inner parent
+        # pipelines.
+        pipeline_or_node.sub_pipeline.pipeline_info.parent_ids.extend(
+            parent_pipeline.pipeline_info.pipeline_name
+            for parent_pipeline in pipeline_ctx.parent_pipelines
+        )
+        pipeline_or_node.sub_pipeline.pipeline_info.parent_ids.append(
+            pipeline_ctx.pipeline_info.pipeline_name
+        )
+
         pipeline_pb.nodes.append(pipeline_or_node)
       else:
         node_pb = self._compile_node(node, pipeline_ctx, deployment_config,

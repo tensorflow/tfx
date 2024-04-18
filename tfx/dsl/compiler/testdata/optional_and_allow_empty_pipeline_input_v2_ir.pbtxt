@@ -476,6 +476,7 @@ nodes {
   sub_pipeline {
     pipeline_info {
       id: "subpipeline"
+      parent_ids: "optional_and_allow_empty_pipeline"
     }
     nodes {
       pipeline_node {
