@@ -90,6 +90,7 @@ class SubPipelineTaskScheduler(
         metadata_handle=self.mlmd_handle,
         execution_type=begin_node.node_info.type,
         state=metadata_store_pb2.Execution.State.COMPLETE,
+        exec_properties={'injected_begin_node_execution': True},
     )
     contexts = context_lib.prepare_contexts(
         metadata_handle=self.mlmd_handle,
@@ -102,6 +103,30 @@ class SubPipelineTaskScheduler(
         input_artifacts=input_artifacts,
         output_artifacts=input_artifacts,
         output_event_type=metadata_store_pb2.Event.Type.INTERNAL_OUTPUT,
+    )
+
+  def _set_pipeline_execution_outputs(self):
+    end_node = self._sub_pipeline.nodes[-1].pipeline_node
+    end_node_contexts = context_lib.prepare_contexts(
+        self.mlmd_handle, end_node.contexts
+    )
+    [end_node_execution] = (
+        execution_lib.get_executions_associated_with_all_contexts(
+            self.mlmd_handle, end_node_contexts
+        )
+    )
+    pipeline_outputs = execution_lib.get_output_artifacts(
+        self.mlmd_handle, end_node_execution.id
+    )
+    [pipeline_as_node_execution] = self.mlmd_handle.store.get_executions_by_id(
+        [self.task.execution_id]
+    )
+    execution_lib.put_execution(
+        metadata_handle=self.mlmd_handle,
+        execution=pipeline_as_node_execution,
+        contexts=self.task.contexts,
+        output_artifacts=pipeline_outputs,
+        output_event_type=metadata_store_pb2.Event.Type.OUTPUT,
     )
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
@@ -129,6 +154,7 @@ class SubPipelineTaskScheduler(
       view = self._get_pipeline_view()
       if view:
         if execution_lib.is_execution_successful(view.execution):
+          self._set_pipeline_execution_outputs()
           return task_scheduler.TaskSchedulerResult(
               status=status_lib.Status(code=status_lib.Code.OK))
         if execution_lib.is_execution_failed(view.execution):

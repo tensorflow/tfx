@@ -22,7 +22,9 @@ import uuid
 from absl.testing import flagsaver
 from absl.testing import parameterized
 import tensorflow as tf
+from tfx import v1 as tfx
 from tfx.dsl.compiler import constants
+from tfx.orchestration import data_types_utils
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
 from tfx.orchestration.experimental.core import task as task_lib
@@ -33,6 +35,8 @@ from tfx.orchestration.experimental.core.task_schedulers import subpipeline_task
 from tfx.orchestration.experimental.core.testing import test_subpipeline
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable import runtime_parameter_utils
+from tfx.orchestration.portable.mlmd import context_lib
+from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.utils import status as status_lib
 
 from ml_metadata.proto import metadata_store_pb2
@@ -200,7 +204,28 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest, parameterized.TestCase):
 
         self.assertLen(ts_result, 1)
         self.assertEqual(status_lib.Code.CANCELLED, ts_result[0].status.code)
+        expected_output_artifacts = {}
       else:
+        # directly inject the end node output here...
+        expected_output_artifacts = {
+            'schema': [tfx.types.standard_artifacts.Schema()]
+        }
+        end_node = scheduler._sub_pipeline.nodes[-1].pipeline_node
+        end_node_execution = execution_lib.prepare_execution(
+            mlmd_connection,
+            end_node.node_info.type,
+            state=metadata_store_pb2.Execution.COMPLETE,
+        )
+        end_node_contexts = context_lib.prepare_contexts(
+            mlmd_connection, end_node.contexts
+        )
+        execution_lib.put_execution(
+            mlmd_connection,
+            end_node_execution,
+            end_node_contexts,
+            output_artifacts=expected_output_artifacts,
+            output_event_type=metadata_store_pb2.Event.Type.OUTPUT,
+        )
         # Mark inner pipeline as COMPLETE.
         def _complete(pipeline_state):
           with pipeline_state:
@@ -214,6 +239,38 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertLen(ts_result, 1)
         self.assertEqual(status_lib.Code.OK, ts_result[0].status.code)
         self.assertIsInstance(ts_result[0].output, ts.ExecutorNodeOutput)
+      subpipeline_outputs = execution_lib.get_output_artifacts(
+          mlmd_connection, sub_pipeline_task.execution_id
+      )
+      self.assertCountEqual(
+          subpipeline_outputs.keys(), expected_output_artifacts.keys()
+      )
+      for key, values in expected_output_artifacts.items():
+        output_artifacts = subpipeline_outputs[key]
+        self.assertLen(output_artifacts, 1)
+        self.assertLen(values, 1)
+        expected_artifact = values[0]
+        actual_artifact = output_artifacts[0]
+        self.assertEqual(expected_artifact.id, actual_artifact.id)
+        self.assertEqual(expected_artifact.type_id, actual_artifact.type_id)
+
+      begin_node_contexts = context_lib.prepare_contexts(
+          mlmd_connection,
+          scheduler._sub_pipeline.nodes[0].pipeline_node.contexts,
+      )
+      [begin_node_execution] = (
+          execution_lib.get_executions_associated_with_all_contexts(
+              mlmd_connection, begin_node_contexts
+          )
+      )
+      self.assertEqual(
+          data_types_utils.get_metadata_value(
+              begin_node_execution.custom_properties[
+                  'injected_begin_node_execution'
+              ]
+          ),
+          'true',
+      )
 
 
 if __name__ == '__main__':
