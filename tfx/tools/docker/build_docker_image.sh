@@ -58,12 +58,15 @@ else
   if gcloud container images list --repository=${DLVM_REPO} | grep -x "${BASE_IMAGE}" ; then
     # TF shouldn't be re-installed so we pin TF version in Pip install.
     installed_tf_version=$(_get_tf_version_of_image "${BASE_IMAGE}")
-    if [[ "${installed_tf_version}" =~ rc ]]; then
-      # Overwrite the rc version with a latest regular version.
-      ADDITIONAL_PACKAGES="tensorflow==${tf_version}"
-    else
-      ADDITIONAL_PACKAGES="tensorflow==${installed_tf_version}"
-    fi
+    # TODO(b/333895985): This should be rollbacked after the fix. The TF version
+    # from the BASE_IMAGE is wrongly set (expected: 2.15.1, actually: 2.15.0).
+    ADDITIONAL_PACKAGES="tensorflow==${tf_version}"
+    # if [[ "${installed_tf_version}" =~ rc ]]; then
+    #   # Overwrite the rc version with a latest regular version.
+    #   ADDITIONAL_PACKAGES="tensorflow==${tf_version}"
+    # else
+    #   ADDITIONAL_PACKAGES="tensorflow==${installed_tf_version}"
+    # fi
   else
     # Fallback to the image of the previous version but also install the newest
     # TF version.
@@ -88,10 +91,12 @@ docker build -t ${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG} \
 if [[ -n "${installed_tf_version}" && ! "${installed_tf_version}" =~ rc ]]; then
   # Double-check whether TF is re-installed.
   current_tf_version=$(_get_tf_version_of_image "${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG}")
-  if [[ "${installed_tf_version}" != "${current_tf_version}" ]]; then
-    echo "Error: TF version has changed from ${installed_tf_version} to ${current_tf_version}."
-    exit 1
-  fi
+  # TODO(b/333895985): This should be rollbacked after the fix. The TF version
+  # from the BASE_IMAGE is wrongly set (expected: 2.15.1, actually: 2.15.0).
+  # if [[ "${installed_tf_version}" != "${current_tf_version}" ]]; then
+  #   echo "Error: TF version has changed from ${installed_tf_version} to ${current_tf_version}."
+  #   exit 1
+  # fi
 fi
 
 
