@@ -398,7 +398,7 @@ class LatestPolicyModel(
         return event_lib.is_valid_output_event(event)
 
     mlmd_resolver = metadata_resolver.MetadataResolver(self.context.store)
-    downstream_artifacts_by_model_ids = {}
+    downstream_artifacts_and_types_by_model_ids = {}
 
     # Split `model_artifact_ids` into batches with batch size = 100 while
     # fetching downstream artifacts, because
@@ -417,7 +417,7 @@ class LatestPolicyModel(
               event_filter=event_filter,
           )
       )
-      downstream_artifacts_by_model_ids.update(
+      downstream_artifacts_and_types_by_model_ids.update(
           batch_downstream_artifacts_by_model_ids
       )
     # Populate the ModelRelations associated with each Model artifact and its
@@ -426,12 +426,13 @@ class LatestPolicyModel(
         ModelRelations
     )
 
-    type_ids = set()
+    artifact_type_by_name = {}
     for (
         model_artifact_id,
-        downstream_artifacts,
-    ) in downstream_artifacts_by_model_ids.items():
-      for downstream_artifact in downstream_artifacts:
+        downstream_artifact_and_type,
+    ) in downstream_artifacts_and_types_by_model_ids.items():
+      for downstream_artifact, artifact_type in downstream_artifact_and_type:
+        artifact_type_by_name[artifact_type.name] = artifact_type
         model_relations = model_relations_by_model_artifact_id[
             model_artifact_id
         ]
@@ -450,7 +451,6 @@ class LatestPolicyModel(
           model_relations.model_push_by_artifact_id[downstream_artifact.id] = (
               downstream_artifact
           )
-        type_ids.add(downstream_artifact.type_id)
 
     # Find the latest model and ModelRelations that meets the Policy.
     result = {}
@@ -463,8 +463,7 @@ class LatestPolicyModel(
       return self._raise_skip_signal_or_return_empty_dict(
           f'No model found that meets the Policy {Policy(self.policy).name}'
       )
-    artifact_types = self.context.store.get_artifact_types_by_id(type_ids)
-    artifact_type_by_name = {t.name: t for t in artifact_types}
+
     return _build_result_dictionary(
         result, model_relations, self.policy, artifact_type_by_name
     )
