@@ -192,7 +192,7 @@ def initiate_pipeline_start(
       for node in pipeline.nodes:
         # Only add to processing queue if it's a subpipeline that we are going
         # to cache. For subpipelines, the begin node's (nodes[0]) execution
-        # options represent the subpipeline's execution options.
+        # options repersent the subpipeline's execution options.
         if node.WhichOneof(
             'node'
         ) == 'sub_pipeline' and partial_run_utils.should_attempt_to_reuse_artifact(
@@ -249,7 +249,7 @@ def initiate_pipeline_start(
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
       )
-  env.get_env().prepare_orchestrator_for_pipeline_run(pipeline)
+  env.get_env().pipeline_start_postprocess(pipeline)
   return pstate.PipelineState.new(
       mlmd_handle, pipeline, pipeline_run_metadata, reused_pipeline_view
   )
@@ -259,7 +259,6 @@ def initiate_pipeline_start(
 def stop_pipelines(
     mlmd_handle: metadata.Metadata,
     pipeline_uids: List[task_lib.PipelineUid],
-    return_immediately: bool = False,
     timeout_secs: Optional[float] = None,
     ignore_non_existent_or_inactive: Optional[bool] = False,
 ) -> None:
@@ -271,9 +270,6 @@ def stop_pipelines(
   Args:
     mlmd_handle: A handle to the MLMD db.
     pipeline_uids: UIDs of the pipeline to be stopped.
-    return_immediately: If true, returns immediately to skip waiting for all
-      pipelines to be inactive. If false, waits for all the pipelines to
-      completely stop before returning.
     timeout_secs: Amount of time in seconds total to wait for all pipelines to
       stop. If `None`, waits indefinitely.
     ignore_non_existent_or_inactive: If a pipeline is not found or inactive,
@@ -313,14 +309,6 @@ def stop_pipelines(
           )
           continue
         raise e
-
-  if return_immediately:
-    logging.info(
-        'Skipping wait for all pipelines to be inactive; pipeline ids: %s.',
-        pipeline_ids_str,
-    )
-    return
-
   logging.info(
       'Waiting for pipelines to be stopped; pipeline ids: %s', pipeline_ids_str
   )
@@ -348,7 +336,6 @@ def stop_pipelines(
 def stop_pipeline(
     mlmd_handle: metadata.Metadata,
     pipeline_uid: task_lib.PipelineUid,
-    return_immediately: bool = False,
     timeout_secs: Optional[float] = None,
 ) -> None:
   """Stops a single pipeline. Convenience wrapper around stop_pipelines."""
@@ -356,7 +343,6 @@ def stop_pipeline(
       mlmd_handle=mlmd_handle,
       pipeline_uids=[pipeline_uid],
       timeout_secs=timeout_secs,
-      return_immediately=return_immediately,
   )
 
 
@@ -842,9 +828,7 @@ def _load_reused_pipeline_view(
         pipeline_run_id=base_run_id,
         # If current pipeline run is allowed and base_run_id is not specified,
         # reuse the most recent completed run.
-        non_active_only=env.get_env().concurrent_pipeline_runs_enabled(
-            pipeline
-        ),
+        non_active_only=env.get_env().concurrent_pipeline_runs_enabled(),
     )
   except status_lib.StatusNotOkError as e:
     if e.code == status_lib.Code.NOT_FOUND:
@@ -867,7 +851,7 @@ def _load_reused_pipeline_view(
     )
 
   if execution_lib.is_execution_active(reused_pipeline_view.execution):
-    if base_run_id and env.get_env().concurrent_pipeline_runs_enabled(pipeline):
+    if base_run_id and env.get_env().concurrent_pipeline_runs_enabled():
       # TODO(b/330376413): Ideally we should not allow an active run to be
       # reused, otherwise the new partial run may end up in an invalid state due
       # to race condition. But there are users who already depend on this buggy
@@ -927,7 +911,10 @@ def resume_pipeline(
         ),
     )
 
-  if env.get_env().concurrent_pipeline_runs_enabled(pipeline) and not run_id:
+  if (
+      env.get_env().concurrent_pipeline_runs_enabled()
+      and not run_id
+  ):
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.INVALID_ARGUMENT,
         message=(
@@ -993,7 +980,7 @@ def resume_pipeline(
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
       )
-  env.get_env().prepare_orchestrator_for_pipeline_run(pipeline)
+
   return pstate.PipelineState.new(
       mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view
   )
@@ -1191,7 +1178,7 @@ def revive_pipeline_run(
           code=status_lib.Code.ALREADY_EXISTS,
           message='Cannot revive a live pipeline run.',
       )
-    if not env.get_env().concurrent_pipeline_runs_enabled(pipeline) and (
+    if not env.get_env().concurrent_pipeline_runs_enabled() and (
         all_active := pstate.PipelineState.load_all_active(mlmd_handle)
     ):
       raise status_lib.StatusNotOkError(

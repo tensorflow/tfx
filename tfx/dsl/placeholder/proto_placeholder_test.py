@@ -73,9 +73,9 @@ def parse_text_proto(
 # at pipeline runtime. There are additional DSL-only test cases in
 # ./placeholder_test.py and additional resolution-only test cases in
 # dsl/compiler/placeholder_utils_test.py
-class MakeProtoPlaceholderTest(tf.test.TestCase):
+class ProtoPlaceholderTest(tf.test.TestCase):
 
-  def test_Empty(self):
+  def testMakeProtoPlaceholder_Empty(self):
     self.assertEqual(
         '',
         resolve(
@@ -83,7 +83,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         ),
     )
 
-  def test_BaseOnly(self):
+  def testMakeProtoPlaceholder_BaseOnly(self):
     actual = resolve(
         ph.make_proto(
             execution_invocation_pb2.ExecutionInvocation(tmp_dir='/foo')
@@ -96,7 +96,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_FieldOnly(self):
+  def testMakeProtoPlaceholder_FieldOnly(self):
     actual = resolve(_ExecutionInvocation(tmp_dir='/foo'))
     self.assertProtoEquals(
         """
@@ -105,7 +105,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_ScalarFieldTypes(self):
+  def testMakeProtoPlaceholder_ScalarFieldTypes(self):
     def _resolve_and_parse(p: ph.Placeholder) -> metadata_store_pb2.Value:
       return parse_text_proto(resolve(p), metadata_store_pb2.Value)
 
@@ -127,7 +127,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         _resolve_and_parse(_MetadataStoreValue(bool_value=True)),
     )
 
-  def test_EnumField(self):
+  def testMakeProtoPlaceholder_EnumField(self):
     actual = resolve(
         _UpdateOptions(reload_policy=pipeline_pb2.UpdateOptions.PARTIAL)
     )
@@ -138,7 +138,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.UpdateOptions),
     )
 
-  def test_FieldPlaceholder(self):
+  def testMakeProtoPlaceholder_FieldPlaceholder(self):
     actual = resolve(
         _ExecutionInvocation(tmp_dir=ph.execution_invocation().pipeline_run_id)
     )
@@ -149,7 +149,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_EnumStringPlaceholder(self):
+  def testMakeProtoPlaceholder_EnumStringPlaceholder(self):
     actual = resolve(
         _UpdateOptions(reload_policy=ph.exec_property('reload_policy')),
         exec_properties={'reload_policy': 'ALL'},
@@ -161,7 +161,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.UpdateOptions),
     )
 
-  def test_EnumIntPlaceholder(self):
+  def testMakeProtoPlaceholder_EnumIntPlaceholder(self):
     actual = resolve(
         _UpdateOptions(reload_policy=ph.exec_property('reload_policy')),
         exec_properties={'reload_policy': 1},
@@ -173,7 +173,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.UpdateOptions),
     )
 
-  def test_EmptyFieldPlaceholder(self):
+  def testMakeProtoPlaceholder_EmptyFieldPlaceholder(self):
     actual = resolve(
         _ExecutionInvocation(tmp_dir=ph.execution_invocation().frontend_url)
     )
@@ -184,17 +184,17 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_NoneIntoOptionalField(self):
+  def testMakeProtoPlaceholder_NoneIntoOptionalField(self):
     actual = resolve(_ExecutionInvocation(tmp_dir=None))
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def test_NonePlaceholderIntoOptionalField(self):
+  def testMakeProtoPlaceholder_NonePlaceholderIntoOptionalField(self):
     actual = resolve(
         _ExecutionInvocation(tmp_dir=ph.execution_invocation().frontend_url)
     )
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def test_NoneExecPropIntoOptionalField(self):
+  def testMakeProtoPlaceholder_NoneExecPropIntoOptionalField(self):
     # When an exec prop has type Union[T, None] and the user passes None, it is
     # actually completely absent from the exec_properties dict in
     # ExecutionInvocation.
@@ -207,7 +207,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.UpdateOptions),
     )
 
-  def test_BareSubmessage(self):
+  def testMakeProtoPlaceholder_BareSubmessage(self):
     actual = resolve(
         _ExecutionInvocation(
             pipeline_info=pipeline_pb2.PipelineInfo(id='foo-id')
@@ -222,7 +222,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_SubmessageDict(self):
+  def testMakeProtoPlaceholder_SubmessageDict(self):
     actual = resolve(_ExecutionInvocation(pipeline_info=dict(id='foo-id')))
     self.assertProtoEquals(
         """
@@ -233,7 +233,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_SubmessageMakeProtoPlaceholder(self):
+  def testMakeProtoPlaceholder_SubmessageMakeProtoPlaceholder(self):
     actual = resolve(
         _ExecutionInvocation(
             pipeline_info=ph.make_proto(
@@ -251,7 +251,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_SubmessageProtoGetterPlaceholder(self):
+  def testMakeProtoPlaceholder_SubmessageProtoGetterPlaceholder(self):
     actual = resolve(
         _ExecutionInvocation(
             pipeline_info=ph.execution_invocation().pipeline_info
@@ -266,7 +266,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_SubmessageOverwrite(self):
+  def testMakeProtoPlaceholder_SubmessageOverwrite(self):
     actual = resolve(
         ph.make_proto(
             execution_invocation_pb2.ExecutionInvocation(
@@ -289,11 +289,11 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_NoneIntoSubmessage(self):
+  def testMakeProtoPlaceholder_NoneIntoSubmessage(self):
     actual = resolve(_ExecutionInvocation(pipeline_info=None))
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def test_EmptyPlaceholderIntoSubmessage(self):
+  def testMakeProtoPlaceholder_EmptyPlaceholderIntoSubmessage(self):
     actual = resolve(
         _ExecutionInvocation(
             pipeline_node=ph.execution_invocation().pipeline_node
@@ -306,7 +306,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_RepeatedField(self):
+  def testMakeProtoPlaceholder_RepeatedField(self):
     actual = resolve(
         ph.make_proto(
             execution_invocation_pb2.ExecutionInvocation(
@@ -335,7 +335,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_RepeatedFieldSingleItem(self):
+  def testMakeProtoPlaceholder_RepeatedFieldSingleItem(self):
     actual = resolve(
         _ExecutionInvocation(
             pipeline_node=ph.make_proto(
@@ -355,7 +355,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_RepeatedFieldFalsyItem(self):
+  def testMakeProtoPlaceholder_RepeatedFieldFalsyItem(self):
     actual = resolve(
         ph.make_proto(
             execution_invocation_pb2.ExecutionInvocation(
@@ -379,13 +379,13 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_NoneIntoRepeatedField(self):
+  def testMakeProtoPlaceholder_NoneIntoRepeatedField(self):
     actual = resolve(
         ph.make_proto(pipeline_pb2.PipelineNode(), upstream_nodes=None)
     )
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def test_EmptyPlaceholderListIntoRepeatedField(self):
+  def testMakeProtoPlaceholder_EmptyPlaceholderListIntoRepeatedField(self):
     actual = resolve(
         ph.make_proto(
             pipeline_pb2.PipelineNode(),
@@ -394,7 +394,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
     )
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def test_EmptyListPlaceholderIntoRepeatedField(self):
+  def testMakeProtoPlaceholder_EmptyListPlaceholderIntoRepeatedField(self):
     actual = resolve(
         ph.make_proto(
             pipeline_pb2.PipelineNode(), upstream_nodes=ph.make_list([])
@@ -402,7 +402,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
     )
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def test_RepeatedSubmessage(self):
+  def testMakeProtoPlaceholder_RepeatedSubmessage(self):
     actual = resolve(
         ph.make_proto(
             pipeline_pb2.StructuralRuntimeParameter(),
@@ -429,7 +429,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.StructuralRuntimeParameter),
     )
 
-  def test_AnySubmessageBareMessage(self):
+  def testMakeProtoPlaceholder_AnySubmessageBareMessage(self):
     actual = resolve(
         _MetadataStoreValue(
             proto_value=pipeline_pb2.PipelineNode(
@@ -449,7 +449,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, metadata_store_pb2.Value),
     )
 
-  def test_AnySubmessagePlaceholder(self):
+  def testMakeProtoPlaceholder_AnySubmessagePlaceholder(self):
     actual = resolve(
         _MetadataStoreValue(
             # We can directly assign a message of any type and it will pack it.
@@ -472,7 +472,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, metadata_store_pb2.Value),
     )
 
-  def test_NonePlaceholderIntoAnySubmessage(self):
+  def testMakeProtoPlaceholder_NonePlaceholderIntoAnySubmessage(self):
     actual = resolve(
         _MetadataStoreValue(proto_value=ph.execution_invocation().pipeline_node)
     )
@@ -485,7 +485,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, metadata_store_pb2.Value),
     )
 
-  def test_MapFieldScalarValue(self):
+  def testMakeProtoPlaceholder_MapFieldScalarValue(self):
     actual = resolve(
         _ExecutionInvocation(
             extra_flags={
@@ -508,7 +508,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_MapFieldScalarPlaceholderValue(self):
+  def testMakeProtoPlaceholder_MapFieldScalarPlaceholderValue(self):
     actual = resolve(
         _ExecutionInvocation(
             extra_flags={
@@ -531,7 +531,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_MapFieldScalarNoneValue(self):
+  def testMakeProtoPlaceholder_MapFieldScalarNoneValue(self):
     actual = resolve(
         _ExecutionInvocation(
             extra_flags={
@@ -552,7 +552,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_MapFieldSubmessageValue(self):
+  def testMakeProtoPlaceholder_MapFieldSubmessageValue(self):
     actual = resolve(
         _ExecutionInvocation(
             execution_properties={
@@ -581,7 +581,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_MapFieldSubmessageNoneValue(self):
+  def testMakeProtoPlaceholder_MapFieldSubmessageNoneValue(self):
     actual = resolve(
         _ExecutionInvocation(
             execution_properties={
@@ -603,7 +603,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_MapFieldPlaceholderKey(self):
+  def testMakeProtoPlaceholder_MapFieldPlaceholderKey(self):
     actual = resolve(
         _ExecutionInvocation(
             extra_flags=[
@@ -621,7 +621,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def test_RejectsMapFieldScalarNoneKey(self):
+  def testMakeProtoPlaceholder_RejectsMapFieldScalarNoneKey(self):
     with self.assertRaises(ValueError):
       resolve(
           _ExecutionInvocation(
@@ -635,13 +635,13 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       resolve(_ExecutionInvocation(extra_flags={None: 'foo'}))
 
-  def test_MapFieldScalarValueEmpty(self):
+  def testMakeProtoPlaceholder_MapFieldScalarValueEmpty(self):
     actual = resolve(_ExecutionInvocation(extra_flags={}))
     self.assertProtoEquals('', parse_text_proto(actual))
     actual = resolve(_ExecutionInvocation(extra_flags=[]))
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def test_PlusItemGetter(self):
+  def testMakeProtoPlaceholder_PlusItemGetter(self):
     actual = resolve(
         _ExecutionInvocation(
             pipeline_node=ph.make_proto(
@@ -657,7 +657,7 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
     )
     self.assertProtoEquals('test-run-id-foo', actual)
 
-  def test_BinarySerializationBase64(self):
+  def test_MakeProtoPlaceholder_BinarySerializationBase64(self):
     actual = resolve(
         ph.make_proto(
             execution_invocation_pb2.ExecutionInvocation(

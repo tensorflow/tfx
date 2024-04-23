@@ -656,7 +656,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           node_state.update(pstate.NodeState.STOPPED)
 
       # Mark the subpipeline execution as CANCELLED
-      sub_pipeline_run_id = f'sub-pipeline_run0_{subpipeline_execution.id}'
       with mlmd_state.mlmd_execution_atomic_op(
           m, subpipeline_execution.id
       ) as mlmd_execution:
@@ -666,7 +665,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         # Update the pipeline run for execution to be appropraite form.
         data_types_utils.set_metadata_value(
             mlmd_execution.custom_properties['pipeline_run_id'],
-            sub_pipeline_run_id,
+            f'sub-pipeline_run0_{subpipeline_execution.id}',
         )
         subpipeline_execution = mlmd_execution
       # Associate subpipeline contexts with
@@ -686,10 +685,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         )
 
       with pstate.PipelineState.load(
-          m,
-          task_lib.PipelineUid.from_pipeline_id_and_run_id(
-              sub_pipeline_proto.pipeline_info.id, sub_pipeline_run_id
-          ),
+          m, task_lib.PipelineUid.from_pipeline(sub_pipeline_proto)
       ) as subpipeline_state:
         node_states_dict = subpipeline_state.get_node_states_dict()
         self.assertEqual(
@@ -900,11 +896,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           from_nodes=['Transform'], to_nodes=['Transform']
       )
       pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run1'
-      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-      example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
-      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
-      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
-
       with pipeline_ops.initiate_pipeline_start(
           m, pipeline, partial_run_option=partial_run_option
       ) as pipeline_state_run1:
@@ -945,9 +936,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           from_nodes=['ExampleGen'], to_nodes=['ExampleGen']
       )
       pipeline.runtime_spec.pipeline_run_id.field_value.string_value = 'run2'
-      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
-      transform_node_uid = task_lib.NodeUid(pipeline_uid, 'Transform')
       with pipeline_ops.initiate_pipeline_start(
           m, pipeline, partial_run_option=partial_run_option
       ) as pipeline_state_run2:
@@ -1160,91 +1148,15 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
       mock_snapshot.assert_called()
 
-  def test_update_gets_post_processed(self):
-    def _apply_update(pipeline_state):
-      # Wait for the pipeline to be in update initiated state.
-      while True:
-        with pipeline_state:
-          if pipeline_state.is_update_initiated():
-            break
-        time.sleep(0.5)
-      # Now apply the update.
-      with pipeline_ops._PIPELINE_OPS_LOCK:
-        with pipeline_state:
-          pipeline_state.apply_pipeline_update()
-
-    with self._mlmd_connection as m:
-      with test_utils.prepare_orchestrator_for_pipeline_run_environment():
-        pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
-        # Initiate a pipeline start.
-        pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
-        thread = threading.Thread(target=_apply_update, args=(pipeline_state,))
-        thread.start()
-
-        updated_pipeline = pipeline_pb2.Pipeline()
-        updated_pipeline.CopyFrom(pipeline)
-        updated_pipeline.sdk_version = 'some.sdk.version'
-        pipeline_ops.update_pipeline(
-            m,
-            updated_pipeline,
-            update_options=pipeline_pb2.UpdateOptions(),
-        )
-
-        thread.join()
-        # Pipeline gets postprocessed twice, once for start and once for update.
-        self.assertEqual(
-            pipeline_state.pipeline.sdk_version,
-            'postprocessed',
-        )
-
-  def test_revive_gets_post_processed(self):
-    def _inactivate(pipeline_state):
-      time.sleep(2.0)
-      with pipeline_ops._PIPELINE_OPS_LOCK:
-        with pipeline_state:
-          pipeline_state.set_pipeline_execution_state(
-              metadata_store_pb2.Execution.CANCELED
-          )
-
-    with self._mlmd_connection as m:
-      with test_utils.prepare_orchestrator_for_pipeline_run_environment():
-        pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
-        # Initiate a pipeline start.
-        pipeline_state_run1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
-
-        thread = threading.Thread(
-            target=_inactivate, args=(pipeline_state_run1,)
-        )
-        thread.start()
-        # Stop pipeline so we can revive.
-        pipeline_ops.stop_pipeline(
-            m, task_lib.PipelineUid.from_pipeline(pipeline)
-        )
-        thread.join()
-        updated_pipeline = pipeline_pb2.Pipeline()
-        updated_pipeline.CopyFrom(pipeline)
-        updated_pipeline.sdk_version = 'some.sdk.version'
-        pipeline_state = pipeline_ops.revive_pipeline_run(
-            m,
-            'test_pipeline',
-            pipeline_run_id='run0',
-            pipeline_to_update_with=updated_pipeline,
-        )
-
-        self.assertEqual(
-            pipeline_state.pipeline.sdk_version,
-            'postprocessed',
-        )
-
   def test_initiate_pipeline_start_gets_post_processed(self):
     with self._mlmd_connection as m:
-      with test_utils.prepare_orchestrator_for_pipeline_run_environment():
+      with test_utils.pipeline_start_postprocess_env():
         pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
         pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline)
 
         self.assertEqual(
-            pipeline_state.pipeline.sdk_version,
-            'postprocessed',
+            pipeline_state.pipeline.pipeline_info.id,
+            'test_pipeline_postprocessed',
         )
 
   @parameterized.named_parameters(
@@ -1316,28 +1228,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       )
 
       thread.join()
-
-  @parameterized.named_parameters(
-      dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),
-      dict(
-          testcase_name='sync',
-          pipeline=_test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC),
-      ),
-  )
-  def test_stop_pipeline_returns_immediately(self, pipeline):
-    with self._mlmd_connection as m:
-      mock_wait_for_predicate = self.enter_context(
-          mock.patch.object(pipeline_ops, '_wait_for_predicate', autospec=True)
-      )
-      pipeline_ops.initiate_pipeline_start(m, pipeline)
-
-      pipeline_ops.stop_pipeline(
-          m,
-          task_lib.PipelineUid.from_pipeline(pipeline),
-          timeout_secs=20.0,
-          return_immediately=True,
-      )
-      mock_wait_for_predicate.assert_not_called()
 
   @parameterized.named_parameters(
       dict(testcase_name='async', pipeline=_test_pipeline('pipeline1')),
@@ -1550,15 +1440,13 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       task_queue.task_done(task)
       self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(
-          test_utils.create_node_uid('pipeline3', 'Trainer', 'run0'),
-          task.node_uid,
+          test_utils.create_node_uid('pipeline3', 'Trainer'), task.node_uid
       )
       task = task_queue.dequeue()
       task_queue.task_done(task)
       self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(
-          test_utils.create_node_uid('pipeline4', 'Validator', 'run0'),
-          task.node_uid,
+          test_utils.create_node_uid('pipeline4', 'Validator'), task.node_uid
       )
       self.assertTrue(task_queue.is_empty())
 
@@ -3203,7 +3091,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline1 = _test_pipeline('pipeline', pipeline_pb2.Pipeline.SYNC, 'run0')
       pipeline_state = pipeline_ops.initiate_pipeline_start(m, pipeline1)
       self.assertEqual(
-          pipeline_state.pipeline_uid, task_lib.PipelineUid('pipeline', 'run0')
+          pipeline_state.pipeline_uid, task_lib.PipelineUid('pipeline')
       )
 
       # Starting a concurrent run with a different run id is prohibited.
@@ -3506,8 +3394,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       task_queue.task_done(task)
       self.assertIsInstance(task, task_lib.ExecNodeTask)
       self.assertEqual(
-          test_utils.create_node_uid('pipeline1', 'Trainer', 'run0'),
-          task.node_uid,
+          test_utils.create_node_uid('pipeline1', 'Trainer'), task.node_uid
       )
       self.assertTrue(task_queue.is_empty())
 

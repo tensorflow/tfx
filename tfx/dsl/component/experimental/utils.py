@@ -253,15 +253,8 @@ def _create_executor_spec_instance(
     an instance of `executor_spec_class` whose executor_class is a subclass of
     `base_executor_class`.
   """
-  if func.__module__ == '__main__' and func.__name__.startswith('_'):
-    raise ValueError(
-        'Custom Python @components declared in the main file must be public. '
-        f'Please remove the leading underscore from {func.__name__}.'
-    )
-
-  executor_class_name = f'{func.__name__}_Executor'
   executor_class = type(
-      executor_class_name,
+      '%s_Executor' % func.__name__,
       (base_executor_class,),
       {
           '_ARG_FORMATS': arg_formats,
@@ -280,7 +273,7 @@ def _create_executor_spec_instance(
   # proper module path. One place this is needed is in the Dill pickler used by
   # Apache Beam serialization.
   module = sys.modules[func.__module__]
-  setattr(module, executor_class_name, executor_class)
+  setattr(module, '%s_Executor' % func.__name__, executor_class)
 
   executor_spec_instance = executor_spec_class(executor_class=executor_class)
   return executor_spec_instance

@@ -40,32 +40,23 @@ class RunDriverTest(test_case_utils.TfxTest):
 
     self._executor_invocation = pipeline_pb2.ExecutorInput()
     self._executor_invocation.outputs.output_file = _TEST_OUTPUT_METADATA_JSON
-    self._executor_invocation.inputs.parameter_values[
-        'input_base'
-    ].string_value = _TEST_INPUT_DIR
-    self._executor_invocation.inputs.parameter_values[
-        'output_config'
-    ].string_value = '{}'
-    self._executor_invocation.inputs.parameter_values[
-        'input_config'
-    ].string_value = json_format.MessageToJson(
-        example_gen_pb2.Input(
-            splits=[
+    self._executor_invocation.inputs.parameters[
+        'input_base'].string_value = _TEST_INPUT_DIR
+    self._executor_invocation.inputs.parameters[
+        'output_config'].string_value = '{}'
+    self._executor_invocation.inputs.parameters[
+        'input_config'].string_value = json_format.MessageToJson(
+            example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(
-                    name='s1', pattern='span{SPAN}/split1/*'
-                ),
+                    name='s1', pattern='span{SPAN}/split1/*'),
                 example_gen_pb2.Input.Split(
-                    name='s2', pattern='span{SPAN}/split2/*'
-                ),
-            ]
-        )
-    )
+                    name='s2', pattern='span{SPAN}/split2/*')
+            ]))
     self._executor_invocation.outputs.artifacts['examples'].artifacts.append(
         pipeline_pb2.RuntimeArtifact(
             type=pipeline_pb2.ArtifactTypeSchema(
                 instance_schema=compiler_utils.get_artifact_schema(
                     standard_artifacts.Examples))))
-    self._inputs_spec = pipeline_pb2.ComponentInputsSpec()
 
     self._executor_invocation_from_file = fileio.open(
         os.path.join(
@@ -94,24 +85,15 @@ class RunDriverTest(test_case_utils.TfxTest):
     io_utils.write_string_file(split2, 'testing2')
     os.utime(split2, (0, 3))
 
-    self._executor_invocation.inputs.parameter_values[
-        'input_config'
-    ].string_value = json_format.MessageToJson(
-        example_gen_pb2.Input(
-            splits=[
+    self._executor_invocation.inputs.parameters[
+        'input_config'].string_value = json_format.MessageToJson(
+            example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(name='s1', pattern='split1/*'),
-                example_gen_pb2.Input.Split(name='s2', pattern='split2/*'),
-            ]
-        )
-    )
-    self._inputs_spec.parameters['input_config'].parameter_type = (
-        pipeline_pb2.ParameterType.STRING
-    )
+                example_gen_pb2.Input.Split(name='s2', pattern='split2/*')
+            ]))
     serialized_args = [
         '--json_serialized_invocation_args',
-        json_format.MessageToJson(message=self._executor_invocation),
-        '--json_serialized_inputs_spec_args',
-        json_format.MessageToJson(message=self._inputs_spec),
+        json_format.MessageToJson(message=self._executor_invocation)
     ]
     # Invoke the driver
     driver.main(driver._parse_flags(serialized_args))
@@ -121,27 +103,18 @@ class RunDriverTest(test_case_utils.TfxTest):
       output_metadata = pipeline_pb2.ExecutorOutput()
       json_format.Parse(
           output_meta_json.read(), output_metadata, ignore_unknown_fields=True)
-      self.assertEqual(output_metadata.parameter_values['span'].number_value, 0)
+      self.assertEqual(output_metadata.parameters['span'].int_value, 0)
       self.assertEqual(
-          output_metadata.parameter_values['input_fingerprint'].string_value,
+          output_metadata.parameters['input_fingerprint'].string_value,
           'split:s1,num_files:1,total_bytes:7,xor_checksum:1,sum_checksum:1\n'
-          'split:s2,num_files:1,total_bytes:8,xor_checksum:3,sum_checksum:3',
-      )
+          'split:s2,num_files:1,total_bytes:8,xor_checksum:3,sum_checksum:3')
       self.assertEqual(
-          output_metadata.parameter_values['input_config'].string_value,
+          output_metadata.parameters['input_config'].string_value,
           json_format.MessageToJson(
-              example_gen_pb2.Input(
-                  splits=[
-                      example_gen_pb2.Input.Split(
-                          name='s1', pattern='split1/*'
-                      ),
-                      example_gen_pb2.Input.Split(
-                          name='s2', pattern='split2/*'
-                      ),
-                  ]
-              )
-          ),
-      )
+              example_gen_pb2.Input(splits=[
+                  example_gen_pb2.Input.Split(name='s1', pattern='split1/*'),
+                  example_gen_pb2.Input.Split(name='s2', pattern='split2/*')
+              ])))
 
   def testDriverWithSpan(self):
     # Test align of span number.
@@ -154,9 +127,7 @@ class RunDriverTest(test_case_utils.TfxTest):
 
     serialized_args = [
         '--json_serialized_invocation_args',
-        json_format.MessageToJson(message=self._executor_invocation),
-        '--json_serialized_inputs_spec_args',
-        json_format.MessageToJson(message=self._inputs_spec),
+        json_format.MessageToJson(message=self._executor_invocation)
     ]
     with self.assertRaisesRegex(
         ValueError, 'Latest span should be the same for each split'):
@@ -173,22 +144,16 @@ class RunDriverTest(test_case_utils.TfxTest):
       output_metadata = pipeline_pb2.ExecutorOutput()
       json_format.Parse(
           output_meta_json.read(), output_metadata, ignore_unknown_fields=True)
-      self.assertEqual(output_metadata.parameter_values['span'].number_value, 2)
+      self.assertEqual(output_metadata.parameters['span'].int_value, 2)
       self.assertEqual(
-          output_metadata.parameter_values['input_config'].string_value,
+          output_metadata.parameters['input_config'].string_value,
           json_format.MessageToJson(
-              example_gen_pb2.Input(
-                  splits=[
-                      example_gen_pb2.Input.Split(
-                          name='s1', pattern='span2/split1/*'
-                      ),
-                      example_gen_pb2.Input.Split(
-                          name='s2', pattern='span2/split2/*'
-                      ),
-                  ]
-              )
-          ),
-      )
+              example_gen_pb2.Input(splits=[
+                  example_gen_pb2.Input.Split(
+                      name='s1', pattern='span2/split1/*'),
+                  example_gen_pb2.Input.Split(
+                      name='s2', pattern='span2/split2/*')
+              ])))
 
   def testDriverJsonContract(self):
     # This test is identical to testDriverWithoutSpan, but uses raw JSON strings
@@ -202,10 +167,7 @@ class RunDriverTest(test_case_utils.TfxTest):
     os.utime(split2, (0, 3))
 
     serialized_args = [
-        '--json_serialized_invocation_args',
-        self._executor_invocation_from_file,
-        '--json_serialized_inputs_spec_args',
-        json_format.MessageToJson(message=self._inputs_spec),
+        '--json_serialized_invocation_args', self._executor_invocation_from_file
     ]
 
     # Invoke the driver

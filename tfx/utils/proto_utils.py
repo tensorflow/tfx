@@ -113,11 +113,7 @@ def get_pool_with_descriptors(
         # If the same file_descriptor is already added to the current descriptor
         # pool (and sadly there's no way to check this before calling Add()), we
         # can ignore this.
-        error_message = str(e)
-        if (
-            'A file with this name is already in the pool' in error_message
-            or 'duplicate file name' in error_message
-        ):
+        if 'A file with this name is already in the pool' in str(e):
           continue
         raise
   return pool

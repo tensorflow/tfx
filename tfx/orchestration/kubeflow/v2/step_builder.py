@@ -44,7 +44,6 @@ from tfx.types.channel import Channel
 from tfx.utils import deprecation_utils
 from tfx.utils import name_utils
 
-from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 
 _EXECUTOR_LABEL_PATTERN = '{}_executor'
@@ -326,34 +325,26 @@ class StepBuilder:
 
       parameter_type_spec = compiler_utils.build_parameter_type_spec(value)
       component_def.input_definitions.parameters[name].CopyFrom(
-          parameter_type_spec
-      )
+          parameter_type_spec)
     if self._name not in self._component_defs:
       self._component_defs[self._name] = component_def
     else:
-      raise ValueError(
-          f'Found duplicate component ids {self._name} while '
-          'building component definitions.'
-      )
+      raise ValueError(f'Found duplicate component ids {self._name} while '
+                       'building component definitions.')
 
     # 3. Build task spec.
     task_spec.task_info.name = self._name
-    dependency_ids = sorted(
-        {node.id for node in self._node.upstream_nodes}
-        | implicit_upstream_node_ids
-    )
+    dependency_ids = sorted({node.id for node in self._node.upstream_nodes}
+                            | implicit_upstream_node_ids)
 
-    for name, input_channel in itertools.chain(
-        self._inputs.items(), implicit_input_channels.items()
-    ):
+    for name, input_channel in itertools.chain(self._inputs.items(),
+                                               implicit_input_channels.items()):
       # TODO(b/169573945): Add support for vertex if requested.
       if not isinstance(input_channel, Channel):
         raise TypeError('Only single Channel is supported.')
       if self._is_exit_handler:
-        logging.error(
-            "exit handler component doesn't take input artifact, "
-            'the input will be ignored.'
-        )
+        logging.error('exit handler component doesn\'t take input artifact, '
+                      'the input will be ignored.')
         continue
       # If the redirecting map is provided (usually for latest blessed model
       # resolver, we'll need to redirect accordingly. Also, the upstream node
@@ -500,14 +491,7 @@ class StepBuilder:
     result.args.append('--executor_class_path')
     result.args.append(executor_path)
     result.args.append('--json_serialized_invocation_args')
-    # from kfp dsl: PIPELINE_TASK_EXECUTOR_INPUT_PLACEHOLDER
     result.args.append('{{$}}')
-    result.args.append('--json_serialized_inputs_spec_args')
-    result.args.append(
-        json_format.MessageToJson(
-            self._component_defs[self._name].input_definitions, sort_keys=True
-        )
-    )
     result.args.extend(self._beam_pipeline_args)
 
     if self._node.platform_config:
@@ -539,14 +523,7 @@ class StepBuilder:
             args=[
                 '--json_serialized_invocation_args',
                 '{{$}}',
-                '--json_serialized_inputs_spec_args',
-                json_format.MessageToJson(
-                    self._component_defs[self._name].input_definitions,
-                    sort_keys=True,
-                ),
-            ],
-        )
-    )
+            ]))
     driver_hook.pre_cache_check.args.extend(self._beam_pipeline_args)
     result.lifecycle.CopyFrom(driver_hook)
 
@@ -563,12 +540,6 @@ class StepBuilder:
     result.args.append(executor_path)
     result.args.append('--json_serialized_invocation_args')
     result.args.append('{{$}}')
-    result.args.append('--json_serialized_inputs_spec_args')
-    result.args.append(
-        json_format.MessageToJson(
-            self._component_defs[self._name].input_definitions, sort_keys=True
-        )
-    )
     result.args.extend(self._beam_pipeline_args)
     return result
 

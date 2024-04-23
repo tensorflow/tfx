@@ -5,13 +5,13 @@ input_definitions {
   parameters {
     key: "resolver_class"
     value {
-      parameter_type: STRING
+      type: STRING
     }
   }
   parameters: {
     key: "source_uri"
     value {
-      parameter_type: STRING
+      type: STRING
     }
   }
 }

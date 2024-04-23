@@ -94,38 +94,26 @@ class KubeflowV2EntrypointUtilsTest(tf.test.TestCase):
     # Use two protos to store the testdata.
     artifacts_pb = pipeline_pb2.ExecutorInput()
     io_utils.parse_json_file(
-        os.path.join(source_data_dir, 'artifacts.json'), artifacts_pb
-    )
+        os.path.join(source_data_dir, 'artifacts.json'), artifacts_pb)
     self._artifacts = artifacts_pb.inputs.artifacts
 
     # Test legacy properties/custom properties deserialization.
     artifacts_legacy_pb = pipeline_pb2.ExecutorInput()
     io_utils.parse_json_file(
         os.path.join(source_data_dir, 'artifacts_legacy.json'),
-        artifacts_legacy_pb,
-    )
+        artifacts_legacy_pb)
     self._artifacts_legacy = artifacts_legacy_pb.inputs.artifacts
 
     properties_pb = pipeline_pb2.ExecutorInput()
-    inputs_spec_pb = pipeline_pb2.ComponentInputsSpec()
-    inputs_spec_pb.parameters['input_config'].parameter_type = (
-        pipeline_pb2.ParameterType.STRING
-    )
-    inputs_spec_pb.parameters['output_config'].parameter_type = (
-        pipeline_pb2.ParameterType.STRING
-    )
     io_utils.parse_json_file(
-        os.path.join(source_data_dir, 'exec_properties.json'), properties_pb
-    )
-    self._properties = properties_pb.inputs.parameter_values
-    self._inputs_spec = inputs_spec_pb
+        os.path.join(source_data_dir, 'exec_properties.json'), properties_pb)
+    self._properties = properties_pb.inputs.parameters
 
   def testParseRawArtifactDict(self):
     for artifacts_dict in [self._artifacts, self._artifacts_legacy]:
       name_from_id = {}
       actual_result = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(
-          artifacts_dict, name_from_id
-      )
+          artifacts_dict, name_from_id)
       for key in self._expected_dict:
         (expected_artifact,) = self._expected_dict[key]
         (actual_artifact,) = actual_result[key]
@@ -149,25 +137,16 @@ class KubeflowV2EntrypointUtilsTest(tf.test.TestCase):
     self.assertDictEqual(
         _EXEC_PROPERTIES,
         kubeflow_v2_entrypoint_utils.parse_execution_properties(
-            self._properties, self._inputs_spec
-        ),
-    )
+            self._properties))
 
   def testParseExecutionPropertiesMapsInputBaseUri(self):
     properties_pb = pipeline_pb2.ExecutorInput()
-    properties_pb.inputs.parameter_values['input_base_uri'].string_value = (
-        'gs://input/base'
-    )
-    inputs_spec_pb = pipeline_pb2.ComponentInputsSpec()
-    inputs_spec_pb.parameters['input_base_uri'].parameter_type = (
-        pipeline_pb2.ParameterType.STRING
-    )
+    properties_pb.inputs.parameters[
+        'input_base_uri'].string_value = 'gs://input/base'
     self.assertDictEqual(
         {'input_base': 'gs://input/base'},
         kubeflow_v2_entrypoint_utils.parse_execution_properties(
-            properties_pb.inputs.parameter_values, inputs_spec_pb
-        ),
-    )
+            properties_pb.inputs.parameters))
 
   def testCanChangePropertiesByNameIdMapping(self):
     model_blessing = standard_artifacts.ModelBlessing()

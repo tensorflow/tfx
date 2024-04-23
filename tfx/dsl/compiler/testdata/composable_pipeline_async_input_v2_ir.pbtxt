@@ -11,7 +11,6 @@ nodes {
   sub_pipeline {
     pipeline_info {
       id: "data-ingestion-pipeline"
-      parent_ids: "composable-pipeline"
     }
     nodes {
       pipeline_node {
@@ -845,7 +844,6 @@ nodes {
   sub_pipeline {
     pipeline_info {
       id: "training-pipeline"
-      parent_ids: "composable-pipeline"
     }
     nodes {
       pipeline_node {
@@ -1681,7 +1679,6 @@ nodes {
   sub_pipeline {
     pipeline_info {
       id: "validate-and-push-pipeline"
-      parent_ids: "composable-pipeline"
     }
     nodes {
       pipeline_node {
@@ -1971,8 +1968,6 @@ nodes {
       sub_pipeline {
         pipeline_info {
           id: "infra-validator-pipeline"
-          parent_ids: "composable-pipeline"
-          parent_ids: "validate-and-push-pipeline"
         }
         nodes {
           pipeline_node {

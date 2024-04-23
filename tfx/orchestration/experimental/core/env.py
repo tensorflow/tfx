@@ -50,9 +50,7 @@ class Env(abc.ABC):
     """Returns max size of a string value in MLMD db, `None` if unlimited."""
 
   @abc.abstractmethod
-  def concurrent_pipeline_runs_enabled(
-      self, pipeline: pipeline_pb2.Pipeline
-  ) -> bool:
+  def concurrent_pipeline_runs_enabled(self) -> bool:
     """Returns whether concurrent pipeline runs are enabled."""
 
   @abc.abstractmethod
@@ -74,15 +72,13 @@ class Env(abc.ABC):
     """Check if this orchestrator is capable of orchestrating the pipeline."""
 
   @abc.abstractmethod
-  def prepare_orchestrator_for_pipeline_run(
-      self, pipeline: pipeline_pb2.Pipeline
-  ):
-    """Prepares the orchestrator to execute the provided pipeline.
+  def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
+    """Method for processing a pipeline at the end of its initialization, before it starts running.
 
     This *can* mutate the provided IR in-place.
 
     Args:
-      pipeline: The pipeline IR to prepare for.
+      pipeline: The pipeline IR to process.
     """
 
 
@@ -101,9 +97,7 @@ class _DefaultEnv(Env):
   def max_mlmd_str_value_length(self) -> Optional[int]:
     return None
 
-  def concurrent_pipeline_runs_enabled(
-      self, pipeline: pipeline_pb2.Pipeline
-  ) -> bool:
+  def concurrent_pipeline_runs_enabled(self) -> bool:
     return False
 
   def is_pure_service_node(
@@ -120,9 +114,7 @@ class _DefaultEnv(Env):
   def check_if_can_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> None:
     pass
 
-  def prepare_orchestrator_for_pipeline_run(
-      self, pipeline: pipeline_pb2.Pipeline
-  ):
+  def pipeline_start_postprocess(self, pipeline: pipeline_pb2.Pipeline):
     pass
 
 

@@ -100,11 +100,10 @@ class RuntimeConfigBuilder:
     """Build a RuntimeConfig proto."""
     return pipeline_pb2.PipelineJob.RuntimeConfig(
         gcs_output_directory=self._pipeline_root,
-        parameter_values={
-            k: compiler_utils.get_google_value(v)
+        parameters={
+            k: compiler_utils.get_kubeflow_value(v)
             for k, v in self._parameter_values.items()
-        },
-    )
+        })
 
 
 class PipelineBuilder:
