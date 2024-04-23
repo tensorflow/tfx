@@ -29,13 +29,9 @@
         ]
       }
     },
-    "parameters": {
-      "key_1": {
-        "stringValue": "value_1"
-      },
-      "key_2": {
-        "intValue": "536870911"
-      }
+    "parameter_values": {
+      "key_1": "value_1",
+      "key_2": 536870911
     }
   },
   "outputs": {

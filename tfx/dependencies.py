@@ -145,7 +145,7 @@ def make_extra_packages_kfp():
   return [
       # TODO(b/304892416): Migrate from KFP SDK v1 to v2.
       'kfp>=1.8.14,<2',
-      'kfp-pipeline-spec>=0.1.10,<0.2',
+      'kfp-pipeline-spec>0.1.13,<0.2',
   ]
 
 
@@ -153,9 +153,13 @@ def make_extra_packages_test():
   """Prepare extra packages needed for running unit tests."""
   # Note: It is okay to pin packages to exact versions in this list to minimize
   # conflicts.
-  return make_extra_packages_airflow() + make_extra_packages_kfp() + [
-      'pytest>=5,<7',
-  ]
+  return (
+      make_extra_packages_airflow()
+      + make_extra_packages_kfp()
+      + [
+          'pytest>=5,<7',
+      ]
+  )
 
 
 def make_extra_packages_docker_image():
@@ -163,7 +167,7 @@ def make_extra_packages_docker_image():
   return [
       # TODO(b/304892416): Migrate from KFP SDK v1 to v2.
       'kfp>=1.8.14,<2',
-      'kfp-pipeline-spec>=0.1.10,<0.2',
+      'kfp-pipeline-spec>0.1.13,<0.2',
       'mmh>=2.2,<3',
       'python-snappy>=0.5,<0.6',
       # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
@@ -191,10 +195,12 @@ def make_extra_packages_tf_ranking():
   # Packages needed for tf-ranking which is used in tfx/examples/ranking.
   return [
       'tensorflow-ranking>=0.5,<0.6',
-      'struct2tensor' + select_constraint(
+      'struct2tensor'
+      + select_constraint(
           default='>=0.45,<0.46',
           nightly='>=0.46.0.dev',
-          git_master='@git+https://github.com/google/struct2tensor@master'),
+          git_master='@git+https://github.com/google/struct2tensor@master',
+      ),
   ]
 
 

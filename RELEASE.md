@@ -55,6 +55,7 @@
         can now lead to (justified) type checking errors that were previously
         hidden due to `C` being of type `Any`.
 *   `ph.to_list()` was renamed to `ph.make_list()` for consistency.
+*  Support KFP pipeline spec 2.1.0 version schema
 
 
 ### For Pipeline Authors
@@ -81,6 +82,7 @@
 | `tensorflow-decision-forests` | `>=1.0.1,<1.9` | `>=1.0.1,<2` | |
 | `tensorflow-hub` | `>=0.9.0,<0.14` | `>=0.15.0,<0.16` | |
 | `tensorflow-serving` | `>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3` | `>=2.15,<2.16` | |
+| `kfp-pipeline-spec` | `kfp-pipeline-spec>=0.1.10,<0.2` | `>0.1.13,<0.2` | |
 
 ## Documentation Updates
 
