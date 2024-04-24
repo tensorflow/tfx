@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PTransform for write split."""
+import ast
 import os
 from typing import Optional, Any, Dict, Union
 
@@ -79,7 +80,7 @@ def WriteSplit(
                   codec='snappy'))
     
     custom_config = exec_properties.get('custom_config')
-    custom_config = eval(custom_config) if isinstance(custom_config, str)
+    custom_config = ast.literal_eval(custom_config) if isinstance(custom_config, str)
     num_shards = custom_config.get('num_shards', 0) if isinstance(custom_config, dict) else 0
 
   else:
