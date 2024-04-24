@@ -14,11 +14,13 @@
 """For environment specific extensions."""
 
 import abc
-from typing import Optional
+from typing import Optional, Sequence
 
 from tfx.orchestration.experimental.core import orchestration_options
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
+
+from ml_metadata.proto import metadata_store_pb2
 
 _ENV = None
 
@@ -85,6 +87,17 @@ class Env(abc.ABC):
       pipeline: The pipeline IR to prepare for.
     """
 
+  @abc.abstractmethod
+  def update_pipeline_run_status(
+      self,
+      owner: str,
+      pipeline_name: str,
+      original_execution: metadata_store_pb2.Execution,
+      modified_execution: metadata_store_pb2.Execution,
+      sub_pipeline_ids: Optional[Sequence[str]] = None,
+  ) -> None:
+    """Updates orchestrator storage backends with pipeline run status."""
+
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -123,6 +136,16 @@ class _DefaultEnv(Env):
   def prepare_orchestrator_for_pipeline_run(
       self, pipeline: pipeline_pb2.Pipeline
   ):
+    pass
+
+  def update_pipeline_run_status(
+      self,
+      owner: str,
+      pipeline_name: str,
+      original_execution: metadata_store_pb2.Execution,
+      modified_execution: metadata_store_pb2.Execution,
+      sub_pipeline_ids: Optional[Sequence[str]] = None,
+  ) -> None:
     pass
 
 

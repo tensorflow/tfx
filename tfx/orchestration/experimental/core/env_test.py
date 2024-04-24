@@ -13,11 +13,15 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.env."""
 
+from typing import Optional, Sequence
+
 import tensorflow as tf
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import test_utils
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 class _TestEnv(env.Env):
@@ -49,6 +53,16 @@ class _TestEnv(env.Env):
   def prepare_orchestrator_for_pipeline_run(
       self, pipeline: pipeline_pb2.Pipeline
   ):
+    raise NotImplementedError()
+
+  def update_pipeline_run_status(
+      self,
+      owner: str,
+      pipeline_name: str,
+      original_execution: metadata_store_pb2.Execution,
+      modified_execution: metadata_store_pb2.Execution,
+      sub_pipeline_ids: Optional[Sequence[str]] = None,
+  ) -> None:
     raise NotImplementedError()
 
 
