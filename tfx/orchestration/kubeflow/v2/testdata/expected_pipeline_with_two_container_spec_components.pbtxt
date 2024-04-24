@@ -124,7 +124,7 @@ components {
       parameters {
         key: "param1"
         value {
-          parameter_type: STRING
+          type: STRING
         }
       }
     }
@@ -148,7 +148,7 @@ components {
       parameters {
         key: "param1"
         value {
-          parameter_type: STRING
+          type: STRING
         }
       }
     }
@@ -178,7 +178,7 @@ root {
             key: "param1"
             value {
               runtime_value {
-                constant {
+                constant_value {
                   string_value: "value2"
                 }
               }
@@ -211,7 +211,7 @@ root {
             key: "param1"
             value {
               runtime_value {
-                constant {
+                constant_value {
                   string_value: "value1"
                 }
               }

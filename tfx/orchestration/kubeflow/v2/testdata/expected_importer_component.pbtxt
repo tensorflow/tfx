@@ -5,19 +5,19 @@ input_definitions {
   parameters {
     key: "artifact_uri"
     value {
-      parameter_type: STRING
+      type: STRING
     }
   }
   parameters {
     key: "output_key"
     value {
-      parameter_type: STRING
+      type: STRING
     }
   }
   parameters {
     key: "reimport"
     value {
-      parameter_type: NUMBER_INTEGER
+      type: INT
     }
   }
 }

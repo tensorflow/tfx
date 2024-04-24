@@ -26,7 +26,9 @@
               "parameters": {
                 "exclude_splits": {
                   "runtimeValue": {
-                    "constant": "[]"
+                    "constantValue": {
+                      "stringValue": "[]"
+                    }
                   }
                 }
               }
@@ -37,22 +39,30 @@
               "parameters": {
                 "output_data_format": {
                   "runtimeValue": {
-                    "constant": 6.0
+                    "constantValue": {
+                      "intValue": "6"
+                    }
                   }
                 },
                 "output_file_format": {
                   "runtimeValue": {
-                    "constant": 5.0
+                    "constantValue": {
+                      "intValue": "5"
+                    }
                   }
                 },
                 "input_config": {
                   "runtimeValue": {
-                    "constant": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
+                    "constantValue": {
+                      "stringValue": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
+                    }
                   }
                 },
                 "output_config": {
                   "runtimeValue": {
-                    "constant": "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+                    "constantValue": {
+                      "stringValue": "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+                    }
                   }
                 }
               }
@@ -85,8 +95,6 @@
               "tfx.extensions.google_cloud_big_query.example_gen.executor.Executor",
               "--json_serialized_invocation_args",
               "{{$}}",
-              "--json_serialized_inputs_spec_args",
-              "{\n  \"parameters\": {\n    \"input_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_data_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"output_file_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    }\n  }\n}",
               "--project=my-gcp-project",
               "--runner=DataflowRunner"
             ]
@@ -99,8 +107,6 @@
               "tfx.components.statistics_gen.executor.Executor",
               "--json_serialized_invocation_args",
               "{{$}}",
-              "--json_serialized_inputs_spec_args",
-              "{\n  \"artifacts\": {\n    \"examples\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"exclude_splits\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}",
               "--project=my-gcp-project"
             ],
             "image": "gcr.io/my-tfx:latest",
@@ -134,7 +140,7 @@
           },
           "parameters": {
             "exclude_splits": {
-              "parameterType": "STRING"
+              "type": "STRING"
             }
           }
         },
@@ -144,16 +150,16 @@
         "inputDefinitions": {
           "parameters": {
             "output_config": {
-              "parameterType": "STRING"
+              "type": "STRING"
             },
             "input_config": {
-              "parameterType": "STRING"
+              "type": "STRING"
             },
             "output_data_format": {
-              "parameterType": "NUMBER_INTEGER"
+              "type": "INT"
             },
             "output_file_format": {
-              "parameterType": "NUMBER_INTEGER"
+              "type": "INT"
             }
           }
         },
@@ -170,7 +176,7 @@
       }
     },
     "sdkVersion": "tfx-0.30.0.dev",
-    "schemaVersion": "2.1.0"
+    "schemaVersion": "2.0.0"
   },
   "labels": {
     "tfx_py_version": "3-7",
