@@ -75,6 +75,26 @@ class ModelRelations:
     self.infra_blessing_by_artifact_id = {}
     self.model_push_by_artifact_id = {}
 
+  def add_downstream_artifact(
+      self, downstream_artifact: metadata_store_pb2.Artifact
+  ):
+    """Adds a downstream artifact to the ModelRelations."""
+    artifact_type_name = downstream_artifact.type
+    if _is_eval_blessed(artifact_type_name, downstream_artifact):
+      self.model_blessing_by_artifact_id[downstream_artifact.id] = (
+          downstream_artifact
+      )
+
+    elif _is_infra_blessed(artifact_type_name, downstream_artifact):
+      self.infra_blessing_by_artifact_id[downstream_artifact.id] = (
+          downstream_artifact
+      )
+
+    elif artifact_type_name == ops_utils.MODEL_PUSH_TYPE_NAME:
+      self.model_push_by_artifact_id[downstream_artifact.id] = (
+          downstream_artifact
+      )
+
   def meets_policy(self, policy: Policy) -> bool:
     """Checks if ModelRelations contains artifacts that meet the Policy."""
     if policy == Policy.LATEST_EXPORTED:
@@ -398,7 +418,12 @@ class LatestPolicyModel(
         return event_lib.is_valid_output_event(event)
 
     mlmd_resolver = metadata_resolver.MetadataResolver(self.context.store)
-    downstream_artifacts_and_types_by_model_ids = {}
+    # Populate the ModelRelations associated with each Model artifact and its
+    # children.
+    model_relations_by_model_artifact_id = collections.defaultdict(
+        ModelRelations
+    )
+    artifact_type_by_name: Dict[str, metadata_store_pb2.ArtifactType] = {}
 
     # Split `model_artifact_ids` into batches with batch size = 100 while
     # fetching downstream artifacts, because
@@ -409,7 +434,7 @@ class LatestPolicyModel(
           id_index : id_index + ops_utils.BATCH_SIZE
       ]
       # Set `max_num_hops` to 50, which should be enough for this use case.
-      batch_downstream_artifacts_by_model_ids = (
+      batch_downstream_artifacts_and_types_by_model_ids = (
           mlmd_resolver.get_downstream_artifacts_by_artifact_ids(
               batch_model_artifact_ids,
               max_num_hops=ops_utils.LATEST_POLICY_MODEL_OP_MAX_NUM_HOPS,
@@ -417,40 +442,16 @@ class LatestPolicyModel(
               event_filter=event_filter,
           )
       )
-      downstream_artifacts_and_types_by_model_ids.update(
-          batch_downstream_artifacts_by_model_ids
-      )
-    # Populate the ModelRelations associated with each Model artifact and its
-    # children.
-    model_relations_by_model_artifact_id = collections.defaultdict(
-        ModelRelations
-    )
-
-    artifact_type_by_name = {}
-    for (
-        model_artifact_id,
-        downstream_artifact_and_type,
-    ) in downstream_artifacts_and_types_by_model_ids.items():
-      for downstream_artifact, artifact_type in downstream_artifact_and_type:
-        artifact_type_by_name[artifact_type.name] = artifact_type
-        model_relations = model_relations_by_model_artifact_id[
-            model_artifact_id
-        ]
-        artifact_type_name = downstream_artifact.type
-        if _is_eval_blessed(artifact_type_name, downstream_artifact):
-          model_relations.model_blessing_by_artifact_id[
-              downstream_artifact.id
-          ] = downstream_artifact
-
-        elif _is_infra_blessed(artifact_type_name, downstream_artifact):
-          model_relations.infra_blessing_by_artifact_id[
-              downstream_artifact.id
-          ] = downstream_artifact
-
-        elif artifact_type_name == ops_utils.MODEL_PUSH_TYPE_NAME:
-          model_relations.model_push_by_artifact_id[downstream_artifact.id] = (
-              downstream_artifact
-          )
+      for (
+          model_artifact_id,
+          artifacts_and_types,
+      ) in batch_downstream_artifacts_and_types_by_model_ids.items():
+        for downstream_artifact, artifact_type in artifacts_and_types:
+          artifact_type_by_name[artifact_type.name] = artifact_type
+          model_relations = model_relations_by_model_artifact_id[
+              model_artifact_id
+          ]
+          model_relations.add_downstream_artifact(downstream_artifact)
 
     # Find the latest model and ModelRelations that meets the Policy.
     result = {}

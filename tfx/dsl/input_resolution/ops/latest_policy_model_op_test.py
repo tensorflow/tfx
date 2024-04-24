@@ -20,6 +20,7 @@ from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import latest_policy_model_op
 from tfx.dsl.input_resolution.ops import ops
+from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 
@@ -34,6 +35,81 @@ _LATEST_INFRA_VALIDATOR_BLESSED = (
 )
 _LATEST_BLESSED = latest_policy_model_op.Policy.LATEST_BLESSED
 _LATEST_PUSHED = latest_policy_model_op.Policy.LATEST_PUSHED
+
+
+class ModelRelationsTest(tf.test.TestCase):
+
+  def test_add_downstream_non_blessed_artifact_not_added(self):
+    model_relations = latest_policy_model_op.ModelRelations()
+
+    self.assertEmpty(model_relations.model_blessing_by_artifact_id)
+    self.assertEmpty(model_relations.infra_blessing_by_artifact_id)
+    self.assertEmpty(model_relations.model_push_by_artifact_id)
+
+    artifact = metadata_store_pb2.Artifact(
+        id=0,
+        type=ops_utils.MODEL_BLESSING_TYPE_NAME,
+        custom_properties={'blessed': metadata_store_pb2.Value(int_value=0)},
+    )
+    model_relations.add_downstream_artifact(artifact)
+
+    self.assertEmpty(model_relations.model_blessing_by_artifact_id)
+    self.assertEmpty(model_relations.infra_blessing_by_artifact_id)
+    self.assertEmpty(model_relations.model_push_by_artifact_id)
+
+  def test_add_downstream_artifact_model(self):
+    model_relations = latest_policy_model_op.ModelRelations()
+
+    model_blessing_artifact = metadata_store_pb2.Artifact(
+        id=0,
+        type=ops_utils.MODEL_BLESSING_TYPE_NAME,
+        custom_properties={'blessed': metadata_store_pb2.Value(int_value=1)},
+    )
+    model_relations.add_downstream_artifact(model_blessing_artifact)
+    self.assertDictEqual(
+        model_relations.model_blessing_by_artifact_id,
+        {0: model_blessing_artifact},
+    )
+    self.assertEmpty(model_relations.infra_blessing_by_artifact_id)
+    self.assertEmpty(model_relations.model_push_by_artifact_id)
+
+    infra_blessing_artifact = metadata_store_pb2.Artifact(
+        id=1,
+        type=ops_utils.MODEL_INFRA_BLESSSING_TYPE_NAME,
+        custom_properties={
+            'blessing_status': metadata_store_pb2.Value(
+                string_value='INFRA_BLESSED'
+            )
+        },
+    )
+    model_relations.add_downstream_artifact(infra_blessing_artifact)
+    self.assertDictEqual(
+        model_relations.model_blessing_by_artifact_id,
+        {0: model_blessing_artifact},
+    )
+    self.assertDictEqual(
+        model_relations.infra_blessing_by_artifact_id,
+        {1: infra_blessing_artifact},
+    )
+    self.assertEmpty(model_relations.model_push_by_artifact_id)
+
+    model_push_artifact = metadata_store_pb2.Artifact(
+        id=2,
+        type=ops_utils.MODEL_PUSH_TYPE_NAME,
+    )
+    model_relations.add_downstream_artifact(model_push_artifact)
+    self.assertDictEqual(
+        model_relations.model_blessing_by_artifact_id,
+        {0: model_blessing_artifact},
+    )
+    self.assertDictEqual(
+        model_relations.infra_blessing_by_artifact_id,
+        {1: infra_blessing_artifact},
+    )
+    self.assertDictEqual(
+        model_relations.model_push_by_artifact_id,
+        {2: model_push_artifact},
+    )
 
 
 class LatestPolicyModelOpTest(
