@@ -750,8 +750,8 @@ def get_unprocessed_inputs(
   local_id_by_external_id: Dict[str, int] = {}
   for input_and_param in resolved_info.input_and_params:
     for artifact in itertools.chain(*input_and_param.input_artifacts.values()):
-      if artifact.mlmd_artifact.external_id:
-        local_id_by_external_id[artifact.mlmd_artifact.external_id] = -1
+      if artifact.external_id:
+        local_id_by_external_id[artifact.external_id] = -1
   if local_id_by_external_id:
     try:
       for artifact in metadata_handle.store.get_artifacts_by_external_ids(
@@ -778,9 +778,9 @@ def get_unprocessed_inputs(
       for a in artifacts:
         if a.id:
           resolved_input_ids_by_key[key].append(a.id)
-        elif a.mlmd_artifact.external_id:
+        elif a.external_id:
           resolved_input_ids_by_key[key].append(
-              local_id_by_external_id[a.mlmd_artifact.external_id]
+              local_id_by_external_id[a.external_id]
           )
       resolved_input_ids_by_key[key] = tuple(resolved_input_ids_by_key[key])
 

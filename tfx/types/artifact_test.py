@@ -173,6 +173,7 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual('MyTypeName', instance.type_name)
     self.assertEqual('', instance.state)
     self.assertFalse(instance.is_external)
+    self.assertEqual('', instance.external_id)
 
     # Default property does not have span or split_names.
     with self.assertRaisesRegex(AttributeError, "has no property 'span'"):
@@ -229,6 +230,9 @@ class ArtifactTest(tf.test.TestCase):
     )
     self.assertFalse(instance.get_bool_custom_property('fake_key'))
 
+    instance.mlmd_artifact.external_id = 'external_id'
+    self.assertEqual('external_id', instance.external_id)
+
     self.assertEqual(
         textwrap.dedent("""\
         Artifact(artifact: id: 1
@@ -272,6 +276,7 @@ class ArtifactTest(tf.test.TestCase):
         }
         state: DELETED
         name: "test_artifact"
+        external_id: "external_id"
         , artifact_type: name: "MyTypeName"
         properties {
           key: "bool1"
