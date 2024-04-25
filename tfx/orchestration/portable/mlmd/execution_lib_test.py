@@ -339,13 +339,13 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
     input_example_4.type_id = common_utils.register_type_if_not_exist(
         self._mlmd_handle, input_example_4.artifact_type
     ).id
-    input_example_4.mlmd_artifact.external_id = 'external_id'
+    input_example_4.external_id = 'external_id'
     input_example_5 = standard_artifacts.Examples()
     input_example_5.uri = 'example'
     input_example_5.type_id = common_utils.register_type_if_not_exist(
         self._mlmd_handle, input_example_5.artifact_type
     ).id
-    input_example_5.mlmd_artifact.external_id = 'external_id'
+    input_example_5.external_id = 'external_id'
 
     [input_example_1.id, input_example_2.id,
      input_example_3.id] = self._mlmd_handle.store.put_artifacts([
