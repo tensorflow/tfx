@@ -2,6 +2,24 @@
 
 ## Major Features and Improvements
 
+## Breaking Changes
+
+### For Pipeline Authors
+
+### For Component Authors
+
+## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Dependency Updates
+
+## Documentation Updates
+
+# Version 1.15.0
+
+## Major Features and Improvements
+
 *  Dropped python 3.8 support.
 *  Extend GetPipelineRunExecutions, GetPipelineRunArtifacts APIs to support
    filtering by execution create_time, type.
@@ -62,6 +80,8 @@
 ### For Component Authors
 
 ## Deprecations
+
+*   Deprecated python 3.8
 
 ## Bug Fixes and Other Changes
 
