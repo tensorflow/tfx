@@ -160,7 +160,7 @@ class ExecutorTest(parameterized.TestCase):
                       alert_name='Feature-level anomalies present',
                       alert_body=(
                           'Feature(s) company contain(s) anomalies for split '
-                          'train, span 0. See Anomalies artifact for more '
+                          'train, span 11. See Anomalies artifact for more '
                           'details.'
                       ),
                   ),
@@ -168,7 +168,7 @@ class ExecutorTest(parameterized.TestCase):
                       alert_name='Feature-level anomalies present',
                       alert_body=(
                           'Feature(s) company contain(s) anomalies for split '
-                          'eval, span 0. See Anomalies artifact for more '
+                          'eval, span 11. See Anomalies artifact for more '
                           'details.'
                       ),
                   ),
@@ -190,6 +190,7 @@ class ExecutorTest(parameterized.TestCase):
     eval_stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
     eval_stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval', 'test'])
+    eval_stats_artifact.span = 11
 
     schema_artifact = standard_artifacts.Schema()
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
@@ -231,6 +232,7 @@ class ExecutorTest(parameterized.TestCase):
     self.assertEqual(
         artifact_utils.encode_split_names(['train', 'eval']),
         validation_output.split_names)
+    self.assertEqual(eval_stats_artifact.span, validation_output.span)
 
     # Check example_validator outputs.
     train_anomalies_path = os.path.join(validation_output.uri, 'Split-train',

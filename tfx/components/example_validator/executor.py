@@ -151,6 +151,7 @@ class Executor(base_executor.BaseExecutor):
         output_dict[standard_component_specs.ANOMALIES_KEY])
     anomalies_artifact.split_names = artifact_utils.encode_split_names(
         split_names)
+    anomalies_artifact.span = stats_artifact.span
 
     schema = io_utils.SchemaReader().read(
         io_utils.get_only_uri_in_dir(
