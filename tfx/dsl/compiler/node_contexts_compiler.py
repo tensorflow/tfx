@@ -62,7 +62,16 @@ def compile_node_contexts(
           constants.PIPELINE_RUN_ID_PARAMETER_NAME,
           str,
       )
-
+  # If this is a subpipline then set the subpipeline as node context.
+  if pipeline_ctx.is_subpipeline:
+    subpipeline_context_pb = node_contexts.contexts.add()
+    subpipeline_context_pb.type.name = constants.NODE_CONTEXT_TYPE_NAME
+    subpipeline_context_pb.name.field_value.string_value = (
+        compiler_utils.node_context_name(
+            pipeline_ctx.parent.pipeline_info.pipeline_context_name,
+            pipeline_ctx.pipeline_info.pipeline_context_name,
+        )
+    )
   # Contexts inherited from the parent pipelines.
   for i, parent_pipeline in enumerate(pipeline_ctx.parent_pipelines[::-1]):
     parent_pipeline_context_pb = node_contexts.contexts.add()

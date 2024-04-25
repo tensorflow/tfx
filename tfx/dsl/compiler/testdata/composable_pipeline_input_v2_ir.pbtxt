@@ -52,6 +52,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.data-ingestion-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -122,6 +132,16 @@ nodes {
                     type: STRING
                   }
                 }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.data-ingestion-pipeline"
               }
             }
           }
@@ -272,6 +292,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.data-ingestion-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -335,6 +365,16 @@ nodes {
                           type: STRING
                         }
                       }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.data-ingestion-pipeline"
                     }
                   }
                 }
@@ -460,6 +500,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.data-ingestion-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -523,6 +573,16 @@ nodes {
                           type: STRING
                         }
                       }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.data-ingestion-pipeline"
                     }
                   }
                 }
@@ -646,6 +706,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.data-ingestion-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -709,6 +779,16 @@ nodes {
                           type: STRING
                         }
                       }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.data-ingestion-pipeline"
                     }
                   }
                 }
@@ -786,6 +866,16 @@ nodes {
                           type: STRING
                         }
                       }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.data-ingestion-pipeline"
                     }
                   }
                 }
@@ -985,6 +1075,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.training-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -1030,6 +1130,16 @@ nodes {
                   name {
                     field_value {
                       string_value: "data-ingestion-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.data-ingestion-pipeline"
                     }
                   }
                 }
@@ -1089,6 +1199,16 @@ nodes {
                   name {
                     field_value {
                       string_value: "data-ingestion-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.data-ingestion-pipeline"
                     }
                   }
                 }
@@ -1219,6 +1339,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.training-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -1282,6 +1412,16 @@ nodes {
                           type: STRING
                         }
                       }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.training-pipeline"
                     }
                   }
                 }
@@ -1359,6 +1499,16 @@ nodes {
                           type: STRING
                         }
                       }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.training-pipeline"
                     }
                   }
                 }
@@ -1507,6 +1657,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.training-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -1570,6 +1730,16 @@ nodes {
                           type: STRING
                         }
                       }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.training-pipeline"
                     }
                   }
                 }
@@ -1735,6 +1905,16 @@ nodes {
             }
             context_queries {
               type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "composable-pipeline.data-ingestion-pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
                 name: "pipeline"
               }
               name {
@@ -1789,6 +1969,16 @@ nodes {
               name {
                 field_value {
                   string_value: "training-pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "composable-pipeline.training-pipeline"
                 }
               }
             }
@@ -1937,6 +2127,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.validate-and-push-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -2035,6 +2235,16 @@ nodes {
                 }
                 context_queries {
                   type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.data-ingestion-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
                     name: "pipeline"
                   }
                   name {
@@ -2089,6 +2299,16 @@ nodes {
                   name {
                     field_value {
                       string_value: "training-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.training-pipeline"
                     }
                   }
                 }
@@ -2262,6 +2482,16 @@ nodes {
               }
               contexts {
                 type {
+                  name: "node"
+                }
+                name {
+                  field_value {
+                    string_value: "validate-and-push-pipeline.infra-validator-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
                   name: "pipeline"
                 }
                 name {
@@ -2358,6 +2588,16 @@ nodes {
                     }
                     context_queries {
                       type {
+                        name: "node"
+                      }
+                      name {
+                        field_value {
+                          string_value: "composable-pipeline.validate-and-push-pipeline"
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
                         name: "pipeline"
                       }
                       name {
@@ -2430,6 +2670,16 @@ nodes {
                               type: STRING
                             }
                           }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "node"
+                      }
+                      name {
+                        field_value {
+                          string_value: "composable-pipeline.validate-and-push-pipeline"
                         }
                       }
                     }
@@ -2559,6 +2809,16 @@ nodes {
               }
               contexts {
                 type {
+                  name: "node"
+                }
+                name {
+                  field_value {
+                    string_value: "validate-and-push-pipeline.infra-validator-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
                   name: "pipeline"
                 }
                 name {
@@ -2650,6 +2910,16 @@ nodes {
                               type: STRING
                             }
                           }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "node"
+                      }
+                      name {
+                        field_value {
+                          string_value: "validate-and-push-pipeline.infra-validator-pipeline"
                         }
                       }
                     }
@@ -2754,6 +3024,16 @@ nodes {
                               type: STRING
                             }
                           }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "node"
+                      }
+                      name {
+                        field_value {
+                          string_value: "validate-and-push-pipeline.infra-validator-pipeline"
                         }
                       }
                     }
@@ -2905,6 +3185,16 @@ nodes {
               }
               contexts {
                 type {
+                  name: "node"
+                }
+                name {
+                  field_value {
+                    string_value: "validate-and-push-pipeline.infra-validator-pipeline"
+                  }
+                }
+              }
+              contexts {
+                type {
                   name: "pipeline"
                 }
                 name {
@@ -2996,6 +3286,16 @@ nodes {
                               type: STRING
                             }
                           }
+                        }
+                      }
+                    }
+                    context_queries {
+                      type {
+                        name: "node"
+                      }
+                      name {
+                        field_value {
+                          string_value: "validate-and-push-pipeline.infra-validator-pipeline"
                         }
                       }
                     }
@@ -3164,6 +3464,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.validate-and-push-pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -3209,6 +3519,16 @@ nodes {
                   name {
                     field_value {
                       string_value: "infra-validator-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "validate-and-push-pipeline.infra-validator-pipeline"
                     }
                   }
                 }
@@ -3295,6 +3615,16 @@ nodes {
                           type: STRING
                         }
                       }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.validate-and-push-pipeline"
                     }
                   }
                 }
@@ -3490,6 +3820,16 @@ nodes {
                     type: STRING
                   }
                 }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "composable-pipeline.validate-and-push-pipeline"
               }
             }
           }

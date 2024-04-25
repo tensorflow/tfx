@@ -517,6 +517,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "optional_and_allow_empty_pipeline.subpipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -714,6 +724,16 @@ nodes {
           }
           contexts {
             type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "optional_and_allow_empty_pipeline.subpipeline"
+              }
+            }
+          }
+          contexts {
+            type {
               name: "pipeline"
             }
             name {
@@ -777,6 +797,16 @@ nodes {
                           type: STRING
                         }
                       }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "optional_and_allow_empty_pipeline.subpipeline"
                     }
                   }
                 }
@@ -854,6 +884,16 @@ nodes {
                           type: STRING
                         }
                       }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "optional_and_allow_empty_pipeline.subpipeline"
                     }
                   }
                 }
@@ -940,6 +980,16 @@ nodes {
                     type: STRING
                   }
                 }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "optional_and_allow_empty_pipeline.subpipeline"
               }
             }
           }

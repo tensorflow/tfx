@@ -65,11 +65,11 @@ class NodeContextsCompilerTest(tf.test.TestCase):
         pipeline_pb2.NodeContexts(),
     )
     self.assertProtoEquals(
+        expected_node_contexts,
         node_contexts_compiler.compile_node_contexts(
             compiler_context.PipelineContext(pipeline.Pipeline(_PIPELINE_NAME)),
             _NODE_ID,
         ),
-        expected_node_contexts,
     )
 
   def test_compile_node_contexts_for_subpipeline(self):
@@ -112,6 +112,16 @@ class NodeContextsCompilerTest(tf.test.TestCase):
         }
         contexts {
           type {
+            name: "node"
+          }
+          name {
+            field_value {
+              string_value: "test_pipeline.subpipeline"
+            }
+          }
+        }
+        contexts {
+          type {
             name: "pipeline"
           }
           name {
@@ -145,11 +155,11 @@ class NodeContextsCompilerTest(tf.test.TestCase):
         pipeline_pb2.NodeContexts(),
     )
     self.assertProtoEquals(
+        expected_node_contexts,
         node_contexts_compiler.compile_node_contexts(
             subpipeline_context,
             _NODE_ID,
         ),
-        expected_node_contexts,
     )
 
 
