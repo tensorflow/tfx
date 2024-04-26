@@ -156,10 +156,7 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
         args = [
             "--executor_class_path",
             name_utils.get_full_name(_FakeExecutor),
-            "--json_serialized_invocation_args",
-            serialized_metadata,
-            "--json_serialized_inputs_spec_args",
-            "{}",
+            "--json_serialized_invocation_args", serialized_metadata
         ]
         kubeflow_v2_run_executor.main(
             kubeflow_v2_run_executor._parse_flags(args))
@@ -215,9 +212,7 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
           "--executor_class_path",
           name_utils.get_full_name(_FakeExecutor),
           "--json_serialized_invocation_args",
-          serialized_metadata_dynamic_execution,
-          "--json_serialized_inputs_spec_args",
-          "{}",
+          serialized_metadata_dynamic_execution
       ]
       kubeflow_v2_run_executor.main(kubeflow_v2_run_executor._parse_flags(args))
 
@@ -256,8 +251,8 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
     """Test the entrypoint with Driver's output metadata."""
     # Mock the driver's output metadata.
     output_metadata = pipeline_spec_pb2.ExecutorOutput()
-    output_metadata.parameter_values["key_1"].string_value = "driver"
-    output_metadata.parameter_values["key_3"].string_value = "driver3"
+    output_metadata.parameters["key_1"].string_value = "driver"
+    output_metadata.parameters["key_3"].string_value = "driver3"
     fileio.makedirs(os.path.dirname(_TEST_OUTPUT_METADATA_JSON))
     with fileio.open(_TEST_OUTPUT_METADATA_JSON, "wb") as f:
       f.write(json_format.MessageToJson(output_metadata, sort_keys=True))
@@ -266,10 +261,7 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
       args = [
           "--executor_class_path",
           name_utils.get_full_name(_FakeExecutor),
-          "--json_serialized_invocation_args",
-          self._serialized_metadata,
-          "--json_serialized_inputs_spec_args",
-          "{}",
+          "--json_serialized_invocation_args", self._serialized_metadata
       ]
       kubeflow_v2_run_executor.main(kubeflow_v2_run_executor._parse_flags(args))
       # TODO(b/131417512): Add equal comparison to types.Artifact class so we

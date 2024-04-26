@@ -66,10 +66,13 @@ class PenguinPipelineKubeflowV2Test(base_test_case.BaseKubeflowV2Test):
     self._run_pipeline(
         pipeline=kubeflow_pipeline,
         parameter_values={
-            'train-args': '{"num_steps": 100}',
-            'eval-args': '{"num_steps": 50}',
-        },
-    )
+            'train-args': {
+                'num_steps': 100
+            },
+            'eval-args': {
+                'num_steps': 50
+            }
+        })
     self.assertTrue(fileio.exists(self._serving_model_dir))
 
 

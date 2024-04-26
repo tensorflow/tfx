@@ -131,19 +131,19 @@ components {
       parameters {
         key: "param_float"
         value {
-          parameter_type: NUMBER_DOUBLE
+          type: DOUBLE
         }
       }
       parameters {
         key: "param_int"
         value {
-          parameter_type: NUMBER_INTEGER
+          type: INT
         }
       }
       parameters {
         key: "param_string"
         value {
-          parameter_type: STRING
+          type: STRING
         }
       }
     }
@@ -195,8 +195,8 @@ root {
             key: "param_float"
             value {
               runtime_value {
-                constant {
-                  number_value: 3.14
+                constant_value {
+                  double_value: 3.14
                 }
               }
             }
@@ -205,8 +205,8 @@ root {
             key: "param_int"
             value {
               runtime_value {
-                constant {
-                  number_value: 42.0
+                constant_value {
+                  int_value: 42
                 }
               }
             }
@@ -215,7 +215,7 @@ root {
             key: "param_string"
             value {
               runtime_value {
-                constant {
+                constant_value {
                   string_value: "string value"
                 }
               }
