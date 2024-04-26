@@ -20,13 +20,13 @@ from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.orchestration.portable.input_resolution import exceptions
+from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.types import artifact_utils
 from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
-from ml_metadata.tools.mlmd_resolver import metadata_resolver
 
 # Valid artifact states for LatestPolicyModel.
 #
