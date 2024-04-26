@@ -33,6 +33,7 @@ from tfx.types import component_spec
 from tfx.types.experimental import simple_artifacts
 from tfx.utils import proto_utils
 
+from google.protobuf import struct_pb2
 from google.protobuf import message
 
 _ph = tfx.dsl.placeholders
@@ -51,11 +52,12 @@ _TEST_MODULE_FILE_LOCATION = 'path/to/my/module_utils.py'
 
 TEST_RUNTIME_CONFIG = pipeline_pb2.PipelineJob.RuntimeConfig(
     gcs_output_directory=_TEST_PIPELINE_ROOT,
-    parameters={
-        'string_param': pipeline_pb2.Value(string_value='test-string'),
-        'int_param': pipeline_pb2.Value(int_value=42),
-        'float_param': pipeline_pb2.Value(double_value=3.14)
-    })
+    parameter_values={
+        'string_param': struct_pb2.Value(string_value='test-string'),
+        'int_param': struct_pb2.Value(number_value=42),
+        'float_param': struct_pb2.Value(number_value=3.14),
+    },
+)
 
 
 # TODO(b/158245564): Reevaluate whether to keep this test helper function

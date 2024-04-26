@@ -35,7 +35,10 @@ from tfx.utils import proto_utils
 from google.protobuf import json_format
 
 
-def _run_driver(executor_input: pipeline_spec_pb2.ExecutorInput) -> None:
+def _run_driver(
+    executor_input: pipeline_spec_pb2.ExecutorInput,
+    component_inputs_spec: pipeline_spec_pb2.ComponentInputsSpec,
+) -> None:
   """Runs the driver, writing its output as a ExecutorOutput proto.
 
   The main goal of this driver is to calculate the span and fingerprint of input
@@ -49,10 +52,13 @@ def _run_driver(executor_input: pipeline_spec_pb2.ExecutorInput) -> None:
   Args:
     executor_input: pipeline_spec_pb2.ExecutorInput that contains TFX artifacts
       and exec_properties information.
+    component_inputs_spec: pipeline_spec_pb2.ComponentInputsSpec that contains
+      TFX artifacts and exec_properties metadata.
   """
 
   exec_properties = kubeflow_v2_entrypoint_utils.parse_execution_properties(
-      executor_input.inputs.parameters)
+      executor_input.inputs.parameter_values, component_inputs_spec
+  )
   name_from_id = {}
   outputs_dict = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(
       executor_input.outputs.artifacts, name_from_id)
@@ -95,33 +101,43 @@ def _run_driver(executor_input: pipeline_spec_pb2.ExecutorInput) -> None:
   # Updates the input_config.splits.pattern.
   for split in input_config.splits:
     split.pattern = processor.get_pattern_for_span_version(
-        split.pattern, span, version)
-  exec_properties[standard_component_specs
-                  .INPUT_CONFIG_KEY] = proto_utils.proto_to_json(input_config)
+        split.pattern, span, version
+    )
+  exec_properties[standard_component_specs.INPUT_CONFIG_KEY] = (
+      proto_utils.proto_to_json(input_config)
+  )
 
   if standard_component_specs.EXAMPLES_KEY not in outputs_dict:
     raise ValueError('Example artifact was missing in the ExampleGen outputs.')
   example_artifact = artifact_utils.get_single_instance(
-      outputs_dict[standard_component_specs.EXAMPLES_KEY])
+      outputs_dict[standard_component_specs.EXAMPLES_KEY]
+  )
 
   driver.update_output_artifact(
       exec_properties=exec_properties,
-      output_artifact=example_artifact.mlmd_artifact)
+      output_artifact=example_artifact.mlmd_artifact,
+  )
 
   # Log the output metadata file
   output_metadata = pipeline_spec_pb2.ExecutorOutput()
-  output_metadata.parameters[utils.SPAN_PROPERTY_NAME].int_value = span
-  output_metadata.parameters[
-      utils.FINGERPRINT_PROPERTY_NAME].string_value = fingerprint
+  output_metadata.parameter_values[utils.SPAN_PROPERTY_NAME].number_value = span
+  output_metadata.parameter_values[
+      utils.FINGERPRINT_PROPERTY_NAME
+  ].string_value = fingerprint
   if version is not None:
-    output_metadata.parameters[utils.VERSION_PROPERTY_NAME].int_value = version
-  output_metadata.parameters[
-      standard_component_specs
-      .INPUT_CONFIG_KEY].string_value = proto_utils.proto_to_json(input_config)
+    output_metadata.parameter_values[
+        utils.VERSION_PROPERTY_NAME
+    ].number_value = version
+  output_metadata.parameter_values[
+      standard_component_specs.INPUT_CONFIG_KEY
+  ].string_value = proto_utils.proto_to_json(input_config)
   output_metadata.artifacts[
-      standard_component_specs.EXAMPLES_KEY].artifacts.add().CopyFrom(
-          kubeflow_v2_entrypoint_utils.to_runtime_artifact(
-              example_artifact, name_from_id))
+      standard_component_specs.EXAMPLES_KEY
+  ].artifacts.add().CopyFrom(
+      kubeflow_v2_entrypoint_utils.to_runtime_artifact(
+          example_artifact, name_from_id
+      )
+  )
 
   fileio.makedirs(os.path.dirname(output_metadata_uri))
   with fileio.open(output_metadata_uri, 'wb') as f:
@@ -136,6 +152,12 @@ def _parse_flags(argv: List[str]) -> argparse.Namespace:
       type=str,
       required=True,
       help='JSON-serialized metadata for this execution.')
+  parser.add_argument(
+      '--json_serialized_inputs_spec_args',
+      type=str,
+      required=True,
+      help='JSON-serialized inputs metadata for this execution.',
+  )
   # Ignore unknown args which is expected. Beam related args are also supplied
   # as command line arguments.
   # TODO(b/182333035): Wrap beam related flags into a dedicated flag.
@@ -150,7 +172,14 @@ def main(args):
       executor_input,
       ignore_unknown_fields=True)
 
-  _run_driver(executor_input)
+  component_inputs_spec = pipeline_spec_pb2.ComponentInputsSpec()
+  json_format.Parse(
+      args.json_serialized_inputs_spec_args,
+      component_inputs_spec,
+      ignore_unknown_fields=True,
+  )
+
+  _run_driver(executor_input, component_inputs_spec)
 
 
 if __name__ == '__main__':
