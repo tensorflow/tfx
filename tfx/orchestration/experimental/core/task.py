@@ -19,7 +19,7 @@ core task generation loop based on the state of MLMD db.
 
 import abc
 import enum
-from typing import Dict, Hashable, List, Optional, Sequence, Type, TypeVar
+from typing import Any, Dict, Hashable, List, Optional, Sequence, Type, TypeVar
 
 import attr
 from tfx import types
@@ -27,7 +27,12 @@ from tfx.orchestration import node_proto_view
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import status as status_lib
 
+from tfx.utils import tracecontext_pb2
 from ml_metadata.proto import metadata_store_pb2
+
+
+# Keep Any import for OSS.
+_ = Any
 
 
 @attr.s(auto_attribs=True, frozen=True)
@@ -114,9 +119,9 @@ class Task(abc.ABC):
     return cls.__name__
 
 
+@attr.s(auto_attribs=True, frozen=True)
 class CancelTask(Task):
   """Base class for cancellation task types."""
-  pass
 
 
 @enum.unique
@@ -143,6 +148,8 @@ class ExecNodeTask(Task):
     cancel_type: Indicates whether this is a cancelled execution, and the type
       of the cancellation. The task scheduler is expected to gracefully exit
       after doing any necessary cleanup.
+    trace_parent_proto: An optional trace context proto of which task scheduler
+      will add a child trace context span.
   """
   node_uid: NodeUid
   execution_id: int
@@ -155,6 +162,7 @@ class ExecNodeTask(Task):
   tmp_dir: str
   pipeline: pipeline_pb2.Pipeline
   cancel_type: Optional[NodeCancelType] = None
+  trace_parent_proto: Optional[tracecontext_pb2.TraceContextProto] = None
 
   @property
   def task_id(self) -> TaskId:

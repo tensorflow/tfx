@@ -54,6 +54,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import io_utils
 from tfx.utils import status as status_lib
 
+from tfx.utils import tracing
 from ml_metadata import errors as mlmd_errors
 from ml_metadata.proto import metadata_store_pb2
 
@@ -82,6 +83,11 @@ def _pipeline_op(lock: bool = True):
       with contextlib.ExitStack() as stack:
         if lock:
           stack.enter_context(_PIPELINE_OPS_LOCK)
+        stack.enter_context(
+            tracing.LocalTraceSpan(
+                'Tflex.Orchestrator.PipelineOps', fn.__name__
+            )
+        )
 
         health_status = env.get_env().health_status()
         if health_status.code != status_lib.Code.OK:
@@ -221,10 +227,11 @@ def initiate_pipeline_start(
         # TODO: b/323912217 - Support putting multiple subpipeline executions
         # into MLMD to handle the ForEach case.
         with pstate.PipelineState.new(
-            mlmd_handle,
-            subpipeline,
-            pipeline_run_metadata,
-            reused_subpipeline_view,
+            mlmd_handle=mlmd_handle,
+            pipeline=subpipeline,
+            pipeline_run_metadata=pipeline_run_metadata,
+            reused_pipeline_view=reused_subpipeline_view,
+            trace_context=tracing.current_trace_context(),
         ) as subpipeline_state:
           # TODO: b/320535460 - The new pipeline run should not be stopped if
           # there are still nodes to run in it.
@@ -251,7 +258,11 @@ def initiate_pipeline_start(
       )
   env.get_env().prepare_orchestrator_for_pipeline_run(pipeline)
   return pstate.PipelineState.new(
-      mlmd_handle, pipeline, pipeline_run_metadata, reused_pipeline_view
+      mlmd_handle=mlmd_handle,
+      pipeline=pipeline,
+      pipeline_run_metadata=pipeline_run_metadata,
+      reused_pipeline_view=reused_pipeline_view,
+      trace_context=tracing.current_trace_context(),
   )
 
 
@@ -971,9 +982,7 @@ def resume_pipeline(
         from_nodes=pipeline_nodes,
         to_nodes=pipeline_nodes,
         skip_nodes=previously_succeeded_nodes,
-        skip_snapshot_nodes=_get_previously_skipped_nodes(
-            latest_pipeline_view
-        ),
+        skip_snapshot_nodes=_get_previously_skipped_nodes(latest_pipeline_view),
         snapshot_settings=snapshot_settings,
     )
   except ValueError as e:
@@ -995,7 +1004,10 @@ def resume_pipeline(
       )
   env.get_env().prepare_orchestrator_for_pipeline_run(pipeline)
   return pstate.PipelineState.new(
-      mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view
+      mlmd_handle=mlmd_handle,
+      pipeline=pipeline,
+      reused_pipeline_view=latest_pipeline_view,
+      trace_context=tracing.current_trace_context(),
   )
 
 
@@ -1301,9 +1313,9 @@ def orchestrate(
     logging.info('No active pipelines to run.')
     return False
 
-  active_pipeline_states = []
-  stop_initiated_pipeline_states = []
-  update_initiated_pipeline_states = []
+  active_pipeline_states: list[pstate.PipelineState] = []
+  stop_initiated_pipeline_states: list[pstate.PipelineState] = []
+  update_initiated_pipeline_states: list[pstate.PipelineState] = []
   for pipeline_state in pipeline_states:
     with pipeline_state:
       if pipeline_state.is_stop_initiated():
@@ -1391,12 +1403,17 @@ def orchestrate(
   for pipeline_state in active_pipeline_states:
     logging.info('Orchestrating pipeline: %s', pipeline_state.pipeline_uid)
     try:
-      _orchestrate_active_pipeline(
-          mlmd_connection_manager,
-          task_queue,
-          service_job_manager,
-          pipeline_state,
-      )
+      with tracing.LocalTraceSpan(
+          'Tflex.Orchestrator.PipelineOps',
+          '_orchestrate_active_pipeline',
+          parent_proto=pipeline_state.trace_proto,
+      ):
+        _orchestrate_active_pipeline(
+            mlmd_connection_manager,
+            task_queue,
+            service_job_manager,
+            pipeline_state,
+        )
     except Exception as e:  # pylint: disable=broad-except
       logging.exception(
           'Exception raised while orchestrating active pipeline %s',
