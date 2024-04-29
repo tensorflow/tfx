@@ -102,9 +102,10 @@ def _create_proto_instance_from_name(
 
 def get_pool_with_descriptors(
     file_descriptors: Optional[descriptor_pb2.FileDescriptorSet] = None,
+    pool: Optional[descriptor_pool.DescriptorPool] = None,
 ) -> descriptor_pool.DescriptorPool:
-  """Adds the given files to the default descriptor pool and returns it."""
-  pool = descriptor_pool.Default()
+  """Adds the given files to the given (or default) pool and returns it."""
+  pool = pool or descriptor_pool.Default()
   if file_descriptors:
     for file_descriptor in file_descriptors.file:
       try:
