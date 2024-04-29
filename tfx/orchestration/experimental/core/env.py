@@ -48,6 +48,12 @@ class Env(abc.ABC):
     """Returns the base directory for the pipeline."""
 
   @abc.abstractmethod
+  def label_and_tag_pipeline_run(
+      self, mlmd_handle, pipeline_id, pipeline_run_id, labels, tags
+  ) -> None:
+    """Labels and tags the pipeline run after it starts."""
+
+  @abc.abstractmethod
   def max_mlmd_str_value_length(self) -> Optional[int]:
     """Returns max size of a string value in MLMD db, `None` if unlimited."""
 
@@ -109,6 +115,11 @@ class _DefaultEnv(Env):
     return orchestration_options.OrchestrationOptions()
 
   def get_base_dir(self) -> Optional[str]:
+    return None
+
+  def label_and_tag_pipeline_run(
+      self, mlmd_handle, pipeline_id, pipeline_run_id, labels, tags
+  ) -> None:
     return None
 
   def max_mlmd_str_value_length(self) -> Optional[int]:
