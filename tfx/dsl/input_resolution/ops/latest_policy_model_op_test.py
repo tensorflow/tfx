@@ -42,9 +42,9 @@ class ModelRelationsTest(tf.test.TestCase):
   def test_add_downstream_non_blessed_artifact_not_added(self):
     model_relations = latest_policy_model_op.ModelRelations()
 
-    self.assertEmpty(model_relations.model_blessing_by_artifact_id)
-    self.assertEmpty(model_relations.infra_blessing_by_artifact_id)
-    self.assertEmpty(model_relations.model_push_by_artifact_id)
+    self.assertEmpty(model_relations.model_blessing_artifacts)
+    self.assertEmpty(model_relations.infra_blessing_artifacts)
+    self.assertEmpty(model_relations.model_push_artifacts)
 
     artifact = metadata_store_pb2.Artifact(
         id=0,
@@ -53,9 +53,9 @@ class ModelRelationsTest(tf.test.TestCase):
     )
     model_relations.add_downstream_artifact(artifact)
 
-    self.assertEmpty(model_relations.model_blessing_by_artifact_id)
-    self.assertEmpty(model_relations.infra_blessing_by_artifact_id)
-    self.assertEmpty(model_relations.model_push_by_artifact_id)
+    self.assertEmpty(model_relations.model_blessing_artifacts)
+    self.assertEmpty(model_relations.infra_blessing_artifacts)
+    self.assertEmpty(model_relations.model_push_artifacts)
 
   def test_add_downstream_artifact_model(self):
     model_relations = latest_policy_model_op.ModelRelations()
@@ -66,12 +66,12 @@ class ModelRelationsTest(tf.test.TestCase):
         custom_properties={'blessed': metadata_store_pb2.Value(int_value=1)},
     )
     model_relations.add_downstream_artifact(model_blessing_artifact)
-    self.assertDictEqual(
-        model_relations.model_blessing_by_artifact_id,
-        {0: model_blessing_artifact},
+    self.assertListEqual(
+        model_relations.model_blessing_artifacts,
+        [model_blessing_artifact],
     )
-    self.assertEmpty(model_relations.infra_blessing_by_artifact_id)
-    self.assertEmpty(model_relations.model_push_by_artifact_id)
+    self.assertEmpty(model_relations.infra_blessing_artifacts)
+    self.assertEmpty(model_relations.model_push_artifacts)
 
     infra_blessing_artifact = metadata_store_pb2.Artifact(
         id=1,
@@ -83,32 +83,32 @@ class ModelRelationsTest(tf.test.TestCase):
         },
     )
     model_relations.add_downstream_artifact(infra_blessing_artifact)
-    self.assertDictEqual(
-        model_relations.model_blessing_by_artifact_id,
-        {0: model_blessing_artifact},
+    self.assertListEqual(
+        model_relations.model_blessing_artifacts,
+        [model_blessing_artifact],
     )
-    self.assertDictEqual(
-        model_relations.infra_blessing_by_artifact_id,
-        {1: infra_blessing_artifact},
+    self.assertListEqual(
+        model_relations.infra_blessing_artifacts,
+        [infra_blessing_artifact],
     )
-    self.assertEmpty(model_relations.model_push_by_artifact_id)
+    self.assertEmpty(model_relations.model_push_artifacts)
 
     model_push_artifact = metadata_store_pb2.Artifact(
         id=2,
         type=ops_utils.MODEL_PUSH_TYPE_NAME,
     )
     model_relations.add_downstream_artifact(model_push_artifact)
-    self.assertDictEqual(
-        model_relations.model_blessing_by_artifact_id,
-        {0: model_blessing_artifact},
+    self.assertListEqual(
+        model_relations.model_blessing_artifacts,
+        [model_blessing_artifact],
     )
-    self.assertDictEqual(
-        model_relations.infra_blessing_by_artifact_id,
-        {1: infra_blessing_artifact},
+    self.assertListEqual(
+        model_relations.infra_blessing_artifacts,
+        [infra_blessing_artifact],
     )
-    self.assertDictEqual(
-        model_relations.model_push_by_artifact_id,
-        {2: model_push_artifact},
+    self.assertListEqual(
+        model_relations.model_push_artifacts,
+        [model_push_artifact],
     )
 
 

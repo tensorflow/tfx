@@ -14,7 +14,7 @@
 """Module for LatestPolicyModel operator."""
 import collections
 import enum
-from typing import Dict
+from typing import Dict, List
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
@@ -66,14 +66,10 @@ class Policy(enum.IntEnum):
 class ModelRelations:
   """Stores child ModelBlessing, ModelInfraBlessing, ModelPush for a Model."""
 
-  model_blessing_by_artifact_id: Dict[int, types.Artifact]
-  infra_blessing_by_artifact_id: Dict[int, types.Artifact]
-  model_push_by_artifact_id: Dict[int, types.Artifact]
-
   def __init__(self):
-    self.model_blessing_by_artifact_id = {}
-    self.infra_blessing_by_artifact_id = {}
-    self.model_push_by_artifact_id = {}
+    self.model_blessing_artifacts: List[types.Artifact] = []
+    self.infra_blessing_artifacts: List[types.Artifact] = []
+    self.model_push_artifacts: List[types.Artifact] = []
 
   def add_downstream_artifact(
       self, downstream_artifact: metadata_store_pb2.Artifact
@@ -81,33 +77,27 @@ class ModelRelations:
     """Adds a downstream artifact to the ModelRelations."""
     artifact_type_name = downstream_artifact.type
     if _is_eval_blessed(artifact_type_name, downstream_artifact):
-      self.model_blessing_by_artifact_id[downstream_artifact.id] = (
-          downstream_artifact
-      )
+      self.model_blessing_artifacts.append(downstream_artifact)
 
     elif _is_infra_blessed(artifact_type_name, downstream_artifact):
-      self.infra_blessing_by_artifact_id[downstream_artifact.id] = (
-          downstream_artifact
-      )
+      self.infra_blessing_artifacts.append(downstream_artifact)
 
     elif artifact_type_name == ops_utils.MODEL_PUSH_TYPE_NAME:
-      self.model_push_by_artifact_id[downstream_artifact.id] = (
-          downstream_artifact
-      )
+      self.model_push_artifacts.append(downstream_artifact)
 
   def meets_policy(self, policy: Policy) -> bool:
     """Checks if ModelRelations contains artifacts that meet the Policy."""
     if policy == Policy.LATEST_EXPORTED:
       return True
     elif policy == Policy.LATEST_PUSHED:
-      return bool(self.model_push_by_artifact_id)
+      return bool(self.model_push_artifacts)
     elif policy == Policy.LATEST_EVALUATOR_BLESSED:
-      return bool(self.model_blessing_by_artifact_id)
+      return bool(self.model_blessing_artifacts)
     elif policy == Policy.LATEST_INFRA_VALIDATOR_BLESSED:
-      return bool(self.infra_blessing_by_artifact_id)
+      return bool(self.infra_blessing_artifacts)
     elif policy == Policy.LATEST_BLESSED:
-      return bool(self.model_blessing_by_artifact_id) and bool(
-          self.infra_blessing_by_artifact_id
+      return bool(self.model_blessing_artifacts) and bool(
+          self.infra_blessing_artifacts
       )
 
     return False
@@ -117,11 +107,11 @@ class ModelRelations:
   ) -> types.Artifact:
     """Gets the latest created artifact with matching ArtifactType."""
     if artifact_type.name == ops_utils.MODEL_BLESSING_TYPE_NAME:
-      artifacts = self.model_blessing_by_artifact_id.values()
+      artifacts = self.model_blessing_artifacts
     elif artifact_type.name == ops_utils.MODEL_INFRA_BLESSSING_TYPE_NAME:
-      artifacts = self.infra_blessing_by_artifact_id.values()
+      artifacts = self.infra_blessing_artifacts
     elif artifact_type.name == ops_utils.MODEL_PUSH_TYPE_NAME:
-      artifacts = self.model_push_by_artifact_id.values()
+      artifacts = self.model_push_artifacts
     else:
       raise exceptions.InvalidArgument(
           'ModelRelations.latest_created() can only be called with an '
