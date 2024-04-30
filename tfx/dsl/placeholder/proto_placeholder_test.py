@@ -252,19 +252,15 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
     )
 
   def test_SubmessageProtoGetterPlaceholder(self):
-    actual = resolve(
-        _ExecutionInvocation(
-            pipeline_info=ph.execution_invocation().pipeline_info
-        )
-    )
-    self.assertProtoEquals(
-        """
-        pipeline_info {
-          id: "test-pipeline-id"
-        }
-        """,
-        parse_text_proto(actual),
-    )
+    with self.assertRaises(ValueError):
+      resolve(
+          _ExecutionInvocation(
+              # Assigning an entire sub-proto (PipelineInfo in this case) from a
+              # non-make_proto placeholder is currently not supported. Though
+              # it could be, see b/327639307#comment26.
+              pipeline_info=ph.execution_invocation().pipeline_info
+          )
+      )
 
   def test_SubmessageOverwrite(self):
     actual = resolve(
@@ -292,19 +288,6 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
   def test_NoneIntoSubmessage(self):
     actual = resolve(_ExecutionInvocation(pipeline_info=None))
     self.assertProtoEquals('', parse_text_proto(actual))
-
-  def test_EmptyPlaceholderIntoSubmessage(self):
-    actual = resolve(
-        _ExecutionInvocation(
-            pipeline_node=ph.execution_invocation().pipeline_node
-        )
-    )
-    self.assertProtoEquals(
-        """
-        pipeline_node {}
-        """,
-        parse_text_proto(actual),
-    )
 
   def test_RepeatedField(self):
     actual = resolve(
@@ -472,19 +455,6 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, metadata_store_pb2.Value),
     )
 
-  def test_NonePlaceholderIntoAnySubmessage(self):
-    actual = resolve(
-        _MetadataStoreValue(proto_value=ph.execution_invocation().pipeline_node)
-    )
-    self.assertProtoEquals(
-        """
-        proto_value {
-          [type.googleapis.com/tfx.orchestration.PipelineNode] {}
-        }
-        """,
-        parse_text_proto(actual, metadata_store_pb2.Value),
-    )
-
   def test_MapFieldScalarValue(self):
     actual = resolve(
         _ExecutionInvocation(
@@ -571,28 +541,6 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
             string_value: "test-run-id"
           }
         }
-        execution_properties {
-          key: "barkey"
-          value {
-            int_value: 42
-          }
-        }
-        """,
-        parse_text_proto(actual),
-    )
-
-  def test_MapFieldSubmessageNoneValue(self):
-    actual = resolve(
-        _ExecutionInvocation(
-            execution_properties={
-                'fookey': ph.exec_property('reload_policy'),  # Will be None.
-                'barkey': metadata_store_pb2.Value(int_value=42),
-            }
-        ),
-        exec_properties={},  # Intentionally empty.
-    )
-    self.assertProtoEquals(
-        """
         execution_properties {
           key: "barkey"
           value {

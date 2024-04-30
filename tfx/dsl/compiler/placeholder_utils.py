@@ -576,16 +576,6 @@ class _ExpressionResolver:
     # Any proto.
     if out_msg.DESCRIPTOR.full_name == any_pb2.Any.DESCRIPTOR.full_name:
       cast(any_pb2.Any, out_msg).Pack(new_value)
-    elif not isinstance(new_value, type(out_msg)):
-      if out_msg.DESCRIPTOR.full_name != new_value.DESCRIPTOR.full_name:
-        raise ValueError(
-            "Expected out_msg and new_value to be of the same type, got"
-            f" {type(out_msg)} and {type(new_value)}."
-        )
-      # When we use different descriptor pools, it can happen that the same
-      # proto type is represented by different Python classes. So we serialize
-      # to carry over the data.
-      out_msg.MergeFromString(new_value.SerializeToString())
     else:
       out_msg.MergeFrom(new_value)
 

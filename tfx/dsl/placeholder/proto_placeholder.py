@@ -246,30 +246,24 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
                 descriptor.message_type
             )(**value)
         )
-      elif (
-          not isinstance(value, placeholder_base.Placeholder)
-          or not value._is_maybe_proto_valued()  # pylint: disable=protected-access
-      ):
+      elif not isinstance(value, MakeProtoPlaceholder):
         raise ValueError(
-            f'Expected submessage proto or placeholder for field {field_name}, '
-            f'got {value!r}.'
+            'Expected submessage proto or another make_proto() placeholder '
+            f'for field {field_name}, got {value!r}.'
         )
 
-      # Some best-effort validation for the proto type.
+      # Validate that the sub-proto type matches the field type.
       submsg_type = value.expected_type
-      if isinstance(submsg_type, type) and issubclass(
-          submsg_type, message.Message
+      assert isinstance(submsg_type, type)
+      assert issubclass(submsg_type, message.Message)
+      if descriptor.message_type.full_name not in (
+          submsg_type.DESCRIPTOR.full_name,
+          any_pb2.Any.DESCRIPTOR.full_name,
       ):
-        # The proto placeholder knows exactly which proto type it will resolve
-        # to. So we can verify that it's the right one.
-        if descriptor.message_type.full_name not in (
-            submsg_type.DESCRIPTOR.full_name,
-            any_pb2.Any.DESCRIPTOR.full_name,
-        ):
-          raise ValueError(
-              f'Expected message of type {descriptor.message_type.full_name} '
-              f'for field {field_name}, got {submsg_type.DESCRIPTOR.full_name}.'
-          )
+        raise ValueError(
+            f'Expected message of type {descriptor.message_type.full_name} '
+            f'for field {field_name}, got {submsg_type.DESCRIPTOR.full_name}.'
+        )
       return value
 
     # Now we know it's a scalar field.
