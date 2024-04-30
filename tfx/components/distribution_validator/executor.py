@@ -366,6 +366,7 @@ class Executor(base_executor.BaseExecutor):
     anomalies_artifact.split_names = artifact_utils.encode_split_names(
         ['%s_%s' % (test, baseline) for test, baseline in split_pairs]
     )
+    anomalies_artifact.span = test_statistics.span
 
     validation_metrics_artifact = None
     if standard_component_specs.VALIDATION_METRICS_KEY in output_dict:

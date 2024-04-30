@@ -220,11 +220,11 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                   component_generated_alert_list=[
                       component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                           alert_name=(
-                              '[train_eval][span 0] Feature-level anomalies '
+                              '[train_eval][span 2] Feature-level anomalies '
                               'present'
                           ),
                           alert_body=(
-                              '[train_eval][span 0] Feature(s) company, '
+                              '[train_eval][span 2] Feature(s) company, '
                               'dropoff_census_tract contain(s) anomalies. See '
                               'Anomalies artifact for more details.'
                           ),
@@ -260,11 +260,11 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                   component_generated_alert_list=[
                       component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                           alert_name=(
-                              '[train_eval][span 0] High num examples in '
+                              '[train_eval][span 2] High num examples in '
                               'current dataset versus the previous span.'
                           ),
                           alert_body=(
-                              '[train_eval][span 0] The ratio of num examples '
+                              '[train_eval][span 2] The ratio of num examples '
                               'in the current dataset versus the previous span '
                               'is 2.02094 (up to six significant digits), '
                               'which is above the threshold 1.'
@@ -372,11 +372,11 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                   component_generated_alert_list=[
                       component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                           alert_name=(
-                              '[train_eval][span 0] Feature-level anomalies '
+                              '[train_eval][span 2] Feature-level anomalies '
                               'present'
                           ),
                           alert_body=(
-                              '[train_eval][span 0] Feature(s) company '
+                              '[train_eval][span 2] Feature(s) company '
                               'contain(s) anomalies. See Anomalies artifact '
                               'for more details.'
                           ),
@@ -401,6 +401,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
     stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])
+    stats_artifact.span = 2
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -557,6 +558,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval']
     )
+    stats_artifact.span = 3
 
     struct_stats_train = text_format.Parse(
         """
@@ -684,9 +686,9 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         component_generated_alert_list=[
             component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                 alert_name=(
-                    '[train_eval][span 0] Feature-level anomalies present'),
+                    '[train_eval][span 3] Feature-level anomalies present'),
                 alert_body=(
-                    '[train_eval][span 0] Feature(s) '
+                    '[train_eval][span 3] Feature(s) '
                     'parent_feature.value_feature contain(s) anomalies. See '
                     'Anomalies artifact for more details.'),
             )
@@ -1015,6 +1017,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
     stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])
+    stats_artifact.span = 4
 
     validation_config = text_format.Parse(
         """
@@ -1100,10 +1103,10 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         component_generated_alert_list=[
             component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                 alert_name=(
-                    '[train_eval][span 0] Feature-level anomalies present'
+                    '[train_eval][span 4] Feature-level anomalies present'
                 ),
                 alert_body=(
-                    '[train_eval][span 0] Feature(s) first_feature contain(s) '
+                    '[train_eval][span 4] Feature(s) first_feature contain(s) '
                     'anomalies. See Anomalies artifact for more details.'
                 ),
             ),
@@ -1127,6 +1130,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval']
     )
+    stats_artifact.span = 5
 
     validation_config = text_format.Parse(
         """
@@ -1193,10 +1197,10 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         component_generated_alert_list=[
             component_generated_alert_pb2.ComponentGeneratedAlertInfo(
                 alert_name=(
-                    '[train_eval][span 0] Feature-level anomalies present'
+                    '[train_eval][span 5] Feature-level anomalies present'
                 ),
                 alert_body=(
-                    '[train_eval][span 0] Feature(s) '
+                    '[train_eval][span 5] Feature(s) '
                     'parent_feature.value_feature contain(s) anomalies. See '
                     'Anomalies artifact for more details.'
                 ),
