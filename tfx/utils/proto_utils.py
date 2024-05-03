@@ -120,7 +120,9 @@ def get_pool_with_descriptors(
             or 'duplicate file name' in error_message
         ):
           continue
-        raise
+        raise TypeError(
+            f'Failed to add file descriptor: {file_descriptor}'
+        ) from e
   return pool
 
 

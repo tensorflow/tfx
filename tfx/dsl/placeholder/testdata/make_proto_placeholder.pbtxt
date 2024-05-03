@@ -4,7 +4,7 @@
 # placeholder_test.py asserts that it produces this.
 # placeholder_utils_test.py asserts that it can read this even when the
 # SplitsConfig proto is not in the default descriptor pool. That's why this
-# testdata here contains the entire descriptor.
+# testdata here contains the entire (shrunk) descriptor.
 
 operator {
   proto_op {
@@ -44,12 +44,6 @@ operator {
                 field {
                   name: "analyze"
                   number: 1
-                  label: LABEL_REPEATED
-                  type: TYPE_STRING
-                }
-                field {
-                  name: "transform"
-                  number: 2
                   label: LABEL_REPEATED
                   type: TYPE_STRING
                 }
