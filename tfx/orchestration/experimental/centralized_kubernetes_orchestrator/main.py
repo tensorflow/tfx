@@ -41,8 +41,10 @@ _INACTIVITY_TTL_SECS_FLAG = flags.DEFINE_float(
     'tflex_inactivity_ttl_secs', 30, 'Orchestrator inactivity TTL. If set, '
     'orchestrator will exit after ttl seconds of no orchestration activity.')
 _DEFAULT_POLLING_INTERVAL_SECS_FLAG = flags.DEFINE_float(
-    'tflex_default_polling_interval_secs', 10.0,
-    'Default orchestration polling interval.')
+    'tflex_default_polling_interval_secs',
+    30.0,
+    'Default orchestration polling interval.',
+)
 _MYSQL_HOST_FLAG = flags.DEFINE_string(
     'mysql_host', '127.0.0.1',
     'The name or network address of the instance of MySQL to connect to.')
@@ -128,8 +130,11 @@ def _run() -> None:
 
         time_budget = _DEFAULT_POLLING_INTERVAL_SECS_FLAG.value
         logging.info(
-            'Orchestration loop: waiting %s seconds before next iteration.',
-            time_budget)
+            'Orchestration loop: iteration #%d is finished, waiting %s seconds'
+            ' before next iteration.',
+            iteration,
+            time_budget,
+        )
         while time_budget > 0.0:
           # Task manager should never be "done" unless there was an error.
           if task_manager.done():
@@ -145,9 +150,11 @@ def _run() -> None:
             last_state_change_time_secs = (
                 pipeline_state.last_state_change_time_secs())
             logging.info(
-                'Orchestration loop: detected state change, exiting wait period '
-                'early (with %s of %s seconds remaining).', time_budget,
-                _DEFAULT_POLLING_INTERVAL_SECS_FLAG.value)
+                'Orchestration loop: detected state change, exiting wait period'
+                ' early (with %s of %s seconds remaining).',
+                time_budget,
+                _DEFAULT_POLLING_INTERVAL_SECS_FLAG.value,
+            )
             break
 
           time_budget = _sleep_tick_duration_secs(time_budget)
