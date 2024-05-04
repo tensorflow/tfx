@@ -94,6 +94,18 @@ class Env(abc.ABC):
     """
 
   @abc.abstractmethod
+  def create_pipeline_run(
+      self,
+      owner: str,
+      pipeline_name: str,
+      execution: metadata_store_pb2.Execution,
+      pipeline: pipeline_pb2.Pipeline,
+      pipeline_run_metadata: Optional[str] = None,
+      base_pipeline_run_id: Optional[str] = None,
+  ) -> None:
+    """Creates a (sub-)pipeline run."""
+
+  @abc.abstractmethod
   def update_pipeline_run_status(
       self,
       owner: str,
@@ -147,6 +159,17 @@ class _DefaultEnv(Env):
   def prepare_orchestrator_for_pipeline_run(
       self, pipeline: pipeline_pb2.Pipeline
   ):
+    pass
+
+  def create_pipeline_run(
+      self,
+      owner: str,
+      pipeline_name: str,
+      execution: metadata_store_pb2.Execution,
+      pipeline: pipeline_pb2.Pipeline,
+      pipeline_run_metadata: Optional[str] = None,
+      base_pipeline_run_id: Optional[str] = None,
+  ) -> None:
     pass
 
   def update_pipeline_run_status(
