@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubeflow.v2.e2e_tests.artifact_value_placeholder_integration."""
 
+from absl.testing import parameterized
 import tensorflow as tf
 from tfx import v1 as tfx
 from tfx.dsl.component.experimental import placeholders
@@ -68,10 +69,15 @@ def _tasks_for_pipeline_with_artifact_value_passing():
   return [producer_task, print_task]
 
 
-class ArtifactValuePlaceholderIntegrationTest(base_test_case.BaseKubeflowV2Test
-                                             ):
+class ArtifactValuePlaceholderIntegrationTest(
+    base_test_case.BaseKubeflowV2Test, parameterized.TestCase
+):
 
-  def testArtifactValuePlaceholders(self):
+  @parameterized.named_parameters(
+      dict(testcase_name='use_pipeline_spec_2_1', use_pipeline_spec_2_1=True),
+      dict(testcase_name='use_pipeline_spec_2_0', use_pipeline_spec_2_1=False),
+  )
+  def testArtifactValuePlaceholders(self, use_pipeline_spec_2_1):
     component_instances = (_tasks_for_pipeline_with_artifact_value_passing())
 
     pipeline_name = 'kubeflow-v2-test-artifact-value-{}'.format(
@@ -82,7 +88,7 @@ class ArtifactValuePlaceholderIntegrationTest(base_test_case.BaseKubeflowV2Test
         pipeline_components=component_instances,
     )
 
-    self._run_pipeline(pipeline)
+    self._run_pipeline(pipeline, use_pipeline_spec_2_1=use_pipeline_spec_2_1)
 
 
 if __name__ == '__main__':

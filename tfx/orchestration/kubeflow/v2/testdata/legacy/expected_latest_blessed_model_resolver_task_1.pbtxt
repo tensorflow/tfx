@@ -1,0 +1,9 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "my_resolver2-model-blessing-resolver"
+}
+component_ref {
+  name: "my_resolver2-model-blessing-resolver"
+}

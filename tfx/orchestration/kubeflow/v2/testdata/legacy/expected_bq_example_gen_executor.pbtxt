@@ -1,0 +1,19 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "BigQueryExampleGen_executor"
+  value {
+    container {
+      image: "gcr.io/tensorflow/tfx:latest"
+      args: "--executor_class_path"
+      args: "tfx.extensions.google_cloud_big_query.example_gen.executor.Executor"
+      args: "--json_serialized_invocation_args"
+      args: "{{$}}"
+      resources {
+        cpu_limit: 5.0
+        memory_limit: 10.0
+      }
+    }
+  }
+}

@@ -85,25 +85,41 @@ def _check_default_image(default_image) -> None:
 class RuntimeConfigBuilder:
   """Kubeflow pipelines RuntimeConfig builder."""
 
-  def __init__(self, pipeline_info: data_types.PipelineInfo,
-               parameter_values: Dict[str, Any]):
+  def __init__(
+      self,
+      pipeline_info: data_types.PipelineInfo,
+      parameter_values: Dict[str, Any],
+      use_pipeline_spec_2_1: bool = False,
+  ):
     """Creates a RuntimeConfigBuilder object.
 
     Args:
       pipeline_info: a TFX pipeline info object, containing pipeline root info.
       parameter_values: mapping from runtime parameter names to its values.
+      use_pipeline_spec_2_1: Use the KFP pipeline spec schema 2.1 to support
+        Vertex ML pipeline teamplate gallary.
     """
     self._pipeline_root = pipeline_info.pipeline_root
     self._parameter_values = parameter_values or {}
+    self._use_pipeline_spec_2_1 = use_pipeline_spec_2_1
 
   def build(self) -> pipeline_pb2.PipelineJob.RuntimeConfig:
     """Build a RuntimeConfig proto."""
+    if self._use_pipeline_spec_2_1:
+      return pipeline_pb2.PipelineJob.RuntimeConfig(
+          gcs_output_directory=self._pipeline_root,
+          parameter_values={
+              k: compiler_utils.get_google_value(v)
+              for k, v in self._parameter_values.items()
+          },
+      )
     return pipeline_pb2.PipelineJob.RuntimeConfig(
         gcs_output_directory=self._pipeline_root,
         parameters={
             k: compiler_utils.get_kubeflow_value(v)
             for k, v in self._parameter_values.items()
-        })
+        },
+    )
 
 
 class PipelineBuilder:
@@ -118,6 +134,7 @@ class PipelineBuilder:
       default_image: Union[str, Mapping[str, str]],
       default_commands: Optional[List[str]] = None,
       exit_handler: Optional[base_node.BaseNode] = None,
+      use_pipeline_spec_2_1: bool = False,
   ):
     """Creates a PipelineBuilder object.
 
@@ -139,12 +156,23 @@ class PipelineBuilder:
         https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
       exit_handler: the optional custom component for post actions triggered
         after all pipeline tasks finish.
+      use_pipeline_spec_2_1: Use the KFP pipeline spec schema 2.1 to support
+        Vertex ML pipeline teamplate gallary.
     """
     self._pipeline_info = tfx_pipeline.pipeline_info
     self._pipeline = tfx_pipeline
     self._default_image = default_image
     self._default_commands = default_commands
     self._exit_handler = exit_handler
+    self._use_pipeline_spec_2_1 = use_pipeline_spec_2_1
+    if use_pipeline_spec_2_1:
+      self._parameter_type_spec_builder_func = (
+          compiler_utils.build_parameter_type_spec
+      )
+    else:
+      self._parameter_type_spec_builder_func = (
+          compiler_utils.build_parameter_type_spec_legacy
+      )
 
   def build(self) -> pipeline_pb2.PipelineSpec:
     """Build a pipeline PipelineSpec."""
@@ -209,6 +237,7 @@ class PipelineBuilder:
             enable_cache=self._pipeline.enable_cache,
             pipeline_info=self._pipeline_info,
             channel_redirect_map=channel_redirect_map,
+            use_pipeline_spec_2_1=self._use_pipeline_spec_2_1,
         ).build()
         tfx_tasks.update(built_tasks)
 
@@ -239,6 +268,7 @@ class PipelineBuilder:
           pipeline_info=self._pipeline_info,
           channel_redirect_map=channel_redirect_map,
           is_exit_handler=True,
+          use_pipeline_spec_2_1=self._use_pipeline_spec_2_1,
       ).build()
       result.root.dag.tasks[
           utils.TFX_DAG_NAME].component_ref.name = utils.TFX_DAG_NAME
@@ -257,6 +287,7 @@ class PipelineBuilder:
     # Attach runtime parameter to root's input parameter
     for param in pc.parameters:
       result.root.input_definitions.parameters[param.name].CopyFrom(
-          compiler_utils.build_parameter_type_spec(param))
+          self._parameter_type_spec_builder_func(param)
+      )
 
     return result

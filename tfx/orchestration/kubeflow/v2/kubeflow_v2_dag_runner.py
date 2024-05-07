@@ -16,9 +16,9 @@
 import datetime
 import json
 import os
-from typing import Any, Dict, List, Optional, Union, MutableMapping
-from absl import logging
+from typing import Any, Dict, List, MutableMapping, Optional, Union
 
+from absl import logging
 from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx import version
 from tfx.dsl.components.base import base_component
@@ -33,9 +33,12 @@ from tfx.utils import version_utils
 
 from google.protobuf import json_format
 
+
 KUBEFLOW_TFX_CMD = (
-    'python', '-m',
-    'tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor')
+    'python',
+    '-m',
+    'tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor',
+)
 
 # If the default_image is set to be a map, the value of this key is used for the
 # components whose images are not specified. If not specified, this key will
@@ -43,11 +46,14 @@ KUBEFLOW_TFX_CMD = (
 _DEFAULT_IMAGE_PATH_KEY = pipeline_builder.DEFAULT_IMAGE_PATH_KEY
 
 # Current schema version for the API proto.
-_SCHEMA_VERSION = '2.0.0'
+# Schema version 2.1.0 is required for kfp-pipeline-spec>0.1.13
+_SCHEMA_VERSION_2_1 = '2.1.0'
+_SCHEMA_VERSION_2_0 = '2.0.0'
 
 # Default TFX container image/commands to use in KubeflowV2DagRunner.
 _KUBEFLOW_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(
-    version_utils.get_image_version())
+    version_utils.get_image_version()
+)
 
 
 def _get_current_time():
@@ -63,7 +69,8 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
       display_name: Optional[str] = None,
       default_image: Optional[Union[str, MutableMapping[str, str]]] = None,
       default_commands: Optional[List[str]] = None,
-      **kwargs
+      use_pipeline_spec_2_1: bool = False,
+      **kwargs,
   ):
     """Constructs a Kubeflow V2 runner config.
 
@@ -82,6 +89,8 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
         `ENTRYPOINT` and `CMD` defined in the Dockerfile. One can find more
         details regarding the difference between K8S and Docker conventions at
         https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#notes
+      use_pipeline_spec_2_1: Use the KFP pipeline spec schema 2.1 to support
+        Vertex ML pipeline teamplate gallary.
       **kwargs: Additional args passed to base PipelineConfig.
     """
     super().__init__(**kwargs)
@@ -96,6 +105,7 @@ class KubeflowV2DagRunnerConfig(pipeline_config.PipelineConfig):
       self.default_commands = KUBEFLOW_TFX_CMD
     else:
       self.default_commands = default_commands
+    self.use_pipeline_spec_2_1 = use_pipeline_spec_2_1
 
 
 class KubeflowV2DagRunner(tfx_runner.TfxRunner):
@@ -104,10 +114,12 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
   Builds a pipeline job spec in json format based on TFX pipeline DSL object.
   """
 
-  def __init__(self,
-               config: KubeflowV2DagRunnerConfig,
-               output_dir: Optional[str] = None,
-               output_filename: Optional[str] = None):
+  def __init__(
+      self,
+      config: KubeflowV2DagRunnerConfig,
+      output_dir: Optional[str] = None,
+      output_filename: Optional[str] = None,
+  ):
     """Constructs an KubeflowV2DagRunner for compiling pipelines.
 
     Args:
@@ -141,10 +153,12 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
       return
     self._exit_handler = exit_handler
 
-  def run(self,
-          pipeline: tfx_pipeline.Pipeline,
-          parameter_values: Optional[Dict[str, Any]] = None,
-          write_out: Optional[bool] = True) -> Dict[str, Any]:
+  def run(
+      self,
+      pipeline: tfx_pipeline.Pipeline,
+      parameter_values: Optional[Dict[str, Any]] = None,
+      write_out: Optional[bool] = True,
+  ) -> Dict[str, Any]:
     """Compiles a pipeline DSL object into pipeline file.
 
     Args:
@@ -166,40 +180,53 @@ class KubeflowV2DagRunner(tfx_runner.TfxRunner):
       # component flag.
       if isinstance(component, base_component.BaseComponent):
         component._resolve_pip_dependencies(  # pylint: disable=protected-access
-            pipeline.pipeline_info.pipeline_root)
+            pipeline.pipeline_info.pipeline_root
+        )
 
     # TODO(b/166343606): Support user-provided labels.
     # TODO(b/169095387): Deprecate .run() method in favor of the unified API
     # client.
     display_name = (
-        self._config.display_name or pipeline.pipeline_info.pipeline_name)
+        self._config.display_name or pipeline.pipeline_info.pipeline_name
+    )
     pipeline_spec = pipeline_builder.PipelineBuilder(
         tfx_pipeline=pipeline,
         default_image=self._config.default_image,
         default_commands=self._config.default_commands,
-        exit_handler=self._exit_handler).build()
+        exit_handler=self._exit_handler,
+        use_pipeline_spec_2_1=self._config.use_pipeline_spec_2_1,
+    ).build()
     pipeline_spec.sdk_version = 'tfx-{}'.format(version.__version__)
-    pipeline_spec.schema_version = _SCHEMA_VERSION
+    if self._config.use_pipeline_spec_2_1:
+      pipeline_spec.schema_version = _SCHEMA_VERSION_2_1
+    else:
+      pipeline_spec.schema_version = _SCHEMA_VERSION_2_0
     runtime_config = pipeline_builder.RuntimeConfigBuilder(
         pipeline_info=pipeline.pipeline_info,
-        parameter_values=parameter_values).build()
+        parameter_values=parameter_values,
+        use_pipeline_spec_2_1=self._config.use_pipeline_spec_2_1,
+    ).build()
     with telemetry_utils.scoped_labels(
-        {telemetry_utils.LABEL_TFX_RUNNER: 'kubeflow_v2'}):
+        {telemetry_utils.LABEL_TFX_RUNNER: 'kubeflow_v2'}
+    ):
       result = pipeline_spec_pb2.PipelineJob(
           display_name=display_name or pipeline.pipeline_info.pipeline_name,
           labels=telemetry_utils.make_labels_dict(),
-          runtime_config=runtime_config)
+          runtime_config=runtime_config,
+      )
     result.pipeline_spec.update(json_format.MessageToDict(pipeline_spec))
     pipeline_json_dict = json_format.MessageToDict(result)
     if write_out:
       if fileio.exists(self._output_dir) and not fileio.isdir(self._output_dir):
-        raise RuntimeError('Output path: %s is pointed to a file.' %
-                           self._output_dir)
+        raise RuntimeError(
+            'Output path: %s is pointed to a file.' % self._output_dir
+        )
       if not fileio.exists(self._output_dir):
         fileio.makedirs(self._output_dir)
 
       with fileio.open(
-          os.path.join(self._output_dir, self._output_filename), 'wb') as f:
+          os.path.join(self._output_dir, self._output_filename), 'wb'
+      ) as f:
         f.write(json.dumps(pipeline_json_dict, sort_keys=True))
 
     return pipeline_json_dict

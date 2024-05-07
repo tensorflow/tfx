@@ -1,0 +1,36 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: ComponentSpec
+
+input_definitions {
+  parameters {
+    key: "resolver_class"
+    value {
+      type: STRING
+    }
+  }
+  parameters: {
+    key: "source_uri"
+    value {
+      type: STRING
+    }
+  }
+}
+output_definitions {
+  artifacts {
+    key: "examples"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+      }
+    }
+  }
+  artifacts {
+    key: "model"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Model\ntype: object\n"
+      }
+    }
+  }
+}
+executor_label: "my_resolver_executor"

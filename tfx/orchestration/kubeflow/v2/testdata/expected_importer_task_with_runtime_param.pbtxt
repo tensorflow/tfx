@@ -15,7 +15,7 @@ inputs {
     key: "output_key"
     value {
       runtime_value {
-        constant_value {
+        constant {
           string_value: "result"
         }
       }
@@ -25,8 +25,8 @@ inputs {
     key: "reimport"
     value {
       runtime_value {
-        constant_value {
-          int_value: 0
+        constant {
+          number_value: 0
         }
       }
     }

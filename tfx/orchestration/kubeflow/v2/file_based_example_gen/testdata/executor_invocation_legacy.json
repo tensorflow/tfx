@@ -1,0 +1,34 @@
+{
+  "inputs": {
+    "parameters": {
+      "input_base": {
+        "stringValue": "input_base"
+      },
+      "input_config": {
+        "stringValue": "{ \"splits\": [ { \"name\": \"s1\", \"pattern\": \"split1/*\" }, { \"name\": \"s2\", \"pattern\": \"split2/*\" } ] }"
+      },
+      "output_config": {
+        "stringValue": "{ \"split_config\": { \"splits\": [ { \"hash_buckets\": 2, \"name\": \"train\" }, { \"hash_buckets\": 1, \"name\": \"eval\" } ] } }"
+      },
+      "output_data_format": {
+        "intValue": 6
+      }
+    }
+  },
+  "outputs": {
+    "artifacts": {
+      "examples": {
+        "artifacts": [
+          {
+            "type":{
+              "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+            },
+            "uri": "gs://root/output",
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/1"
+          }
+        ]
+      }
+    },
+    "outputFile": "output/outputmetadata.json"
+  }
+}
