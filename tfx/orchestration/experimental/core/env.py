@@ -94,7 +94,7 @@ class Env(abc.ABC):
     """
 
   @abc.abstractmethod
-  def create_pipeline_run(
+  def create_sync_or_upsert_async_pipeline_run(
       self,
       owner: str,
       pipeline_name: str,
@@ -103,7 +103,7 @@ class Env(abc.ABC):
       pipeline_run_metadata: Optional[str] = None,
       base_pipeline_run_id: Optional[str] = None,
   ) -> None:
-    """Creates a (sub-)pipeline run."""
+    """Creates or updates a (sub-)pipeline run in the storage backend."""
 
   @abc.abstractmethod
   def update_pipeline_run_status(
@@ -161,7 +161,7 @@ class _DefaultEnv(Env):
   ):
     pass
 
-  def create_pipeline_run(
+  def create_sync_or_upsert_async_pipeline_run(
       self,
       owner: str,
       pipeline_name: str,

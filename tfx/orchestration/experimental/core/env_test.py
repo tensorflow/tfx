@@ -60,7 +60,7 @@ class _TestEnv(env.Env):
   ):
     raise NotImplementedError()
 
-  def create_pipeline_run(
+  def create_sync_or_upsert_async_pipeline_run(
       self,
       owner: str,
       pipeline_name: str,
@@ -68,7 +68,7 @@ class _TestEnv(env.Env):
       pipeline: pipeline_pb2.Pipeline,
       pipeline_run_metadata: Optional[str] = None,
       base_pipeline_run_id: Optional[str] = None,
-  ):
+  ) -> None:
     raise NotImplementedError()
 
   def update_pipeline_run_status(
