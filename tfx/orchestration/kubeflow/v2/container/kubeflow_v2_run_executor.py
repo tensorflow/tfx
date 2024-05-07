@@ -43,14 +43,14 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   """Selects a particular executor and run it based on name.
 
   Args:
-    args:
-      --executor_class_path: The import path of the executor class.
+    args: --executor_class_path: The import path of the executor class.
       --json_serialized_invocation_args: Full JSON-serialized parameters for
-        this execution.
+      this execution. --json_serialized_inputs_spec_args: Full JSON-serialized
+      component inputs spec for this execution.
     beam_args: Optional parameter that maps to the optional_pipeline_args
       parameter in the pipeline, which provides additional configuration options
-      for apache-beam and tensorflow.logging.
-    For more about the beam arguments please refer to:
+      for apache-beam and tensorflow.logging. For more about the beam arguments
+      please refer to:
     https://cloud.google.com/dataflow/docs/guides/specifying-exec-params
   """
   logging.set_verbosity(logging.INFO)
@@ -60,10 +60,23 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
   json_format.Parse(
       args.json_serialized_invocation_args,
       executor_input,
-      ignore_unknown_fields=True)
+      ignore_unknown_fields=True,
+  )
+  inputs_spec = None
+  if (
+      hasattr(args, 'json_serialized_inputs_spec_args')
+      and args.json_serialized_inputs_spec_args
+  ):
+    inputs_spec = pipeline_spec_pb2.ComponentInputsSpec()
+    json_format.Parse(
+        args.json_serialized_inputs_spec_args,
+        inputs_spec,
+        ignore_unknown_fields=True,
+    )
 
   inputs_dict = executor_input.inputs.artifacts
   outputs_dict = executor_input.outputs.artifacts
+  inputs_parameter_value = executor_input.inputs.parameter_values
   inputs_parameter = executor_input.inputs.parameters
   outputs_parameters = executor_input.outputs.parameters
 
@@ -75,34 +88,48 @@ def _run_executor(args: argparse.Namespace, beam_args: List[str]) -> None:
 
   if fileio.exists(executor_input.outputs.output_file):
     # It has a driver that outputs the updated exec_properties in this file.
-    with fileio.open(executor_input.outputs.output_file,
-                     'rb') as output_meta_json:
+    with fileio.open(
+        executor_input.outputs.output_file, 'rb'
+    ) as output_meta_json:
       output_metadata = pipeline_spec_pb2.ExecutorOutput()
       json_format.Parse(
-          output_meta_json.read(), output_metadata, ignore_unknown_fields=True)
+          output_meta_json.read(), output_metadata, ignore_unknown_fields=True
+      )
       # Append/Overwrite exec_propertise.
+      for k, v in output_metadata.parameter_values.items():
+        inputs_parameter_value[k].CopyFrom(v)
       for k, v in output_metadata.parameters.items():
         inputs_parameter[k].CopyFrom(v)
 
   name_from_id = {}
 
   inputs = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(
-      inputs_dict, name_from_id)
+      inputs_dict, name_from_id
+  )
   outputs = kubeflow_v2_entrypoint_utils.parse_raw_artifact_dict(
-      outputs_dict, name_from_id)
+      outputs_dict, name_from_id
+  )
   exec_properties = kubeflow_v2_entrypoint_utils.parse_execution_properties(
-      inputs_parameter)
-  logging.info('Executor %s do: inputs: %s, outputs: %s, exec_properties: %s',
-               args.executor_class_path, inputs, outputs, exec_properties)
+      inputs_parameter_value,
+      inputs_parameter,
+      inputs_spec,
+  )
+  logging.info(
+      'Executor %s do: inputs: %s, outputs: %s, exec_properties: %s',
+      args.executor_class_path,
+      inputs,
+      outputs,
+      exec_properties,
+  )
   executor_cls = import_utils.import_class_by_path(args.executor_class_path)
   if issubclass(executor_cls, base_beam_executor.BaseBeamExecutor):
     executor_context = base_beam_executor.BaseBeamExecutor.Context(
-        beam_pipeline_args=beam_args,
-        unique_id=task_unique_id,
-        tmp_dir=tmp_path)
+        beam_pipeline_args=beam_args, unique_id=task_unique_id, tmp_dir=tmp_path
+    )
   else:
     executor_context = base_executor.BaseExecutor.Context(
-        extra_flags=beam_args, unique_id=task_unique_id, tmp_dir=tmp_path)
+        extra_flags=beam_args, unique_id=task_unique_id, tmp_dir=tmp_path
+    )
   executor = executor_cls(executor_context)
   logging.info('Starting executor')
   executor.Do(inputs, outputs, exec_properties)
@@ -187,6 +214,12 @@ def _parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
       type=str,
       required=True,
       help='JSON-serialized metadata for this execution.')
+  parser.add_argument(
+      '--json_serialized_inputs_spec_args',
+      type=str,
+      required=False,
+      help='JSON-serialized component inputs spec for this execution.',
+  )
 
   return parser.parse_known_args(argv)
 

@@ -1,0 +1,214 @@
+# Pipeline spec generated for a 2-step Pipeline using Kubeflow V2 simple
+# artifact types.
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineSpec
+
+pipeline_info {
+  name: "two-step-kubeflow-artifacts-pipeline"
+}
+deployment_spec {
+  fields {
+    key: "executors"
+    value {
+      struct_value {
+        fields {
+          key: "ConsumerComponent_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "args"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "--executor_class_path"
+                          }
+                          values {
+                            string_value: "tfx.dsl.components.base.base_executor.EmptyExecutor"
+                          }
+                          values {
+                            string_value: "--json_serialized_invocation_args"
+                          }
+                          values {
+                            string_value: "{{$}}"
+                          }
+                          values {
+                            string_value: "--project=my-gcp-project"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "gcr.io/my-tfx:latest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "ProducerComponent_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "args"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "--executor_class_path"
+                          }
+                          values {
+                            string_value: "tfx.dsl.components.base.base_executor.EmptyExecutor"
+                          }
+                          values {
+                            string_value: "--json_serialized_invocation_args"
+                          }
+                          values {
+                            string_value: "{{$}}"
+                          }
+                          values {
+                            string_value: "--project=my-gcp-project"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "gcr.io/my-tfx:latest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+components {
+  key: "ConsumerComponent"
+  value {
+    input_definitions {
+      artifacts {
+        key: "examples"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Dataset\ntype: object\n"
+          }
+        }
+      }
+      artifacts {
+        key: "external_data"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.File\ntype: object\n"
+          }
+        }
+      }
+    }
+    output_definitions {
+      artifacts {
+        key: "metrics"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Metrics\ntype: object\n"
+          }
+        }
+      }
+      artifacts {
+        key: "stats"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Statistics\ntype: object\n"
+          }
+        }
+      }
+    }
+    executor_label: "ConsumerComponent_executor"
+  }
+}
+components {
+  key: "ProducerComponent"
+  value {
+    output_definitions {
+      artifacts {
+        key: "examples"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Dataset\ntype: object\n"
+          }
+        }
+      }
+      artifacts {
+        key: "external_data"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.File\ntype: object\n"
+          }
+        }
+      }
+    }
+    executor_label: "ProducerComponent_executor"
+  }
+}
+root {
+  dag {
+    tasks {
+      key: "ConsumerComponent"
+      value {
+        task_info {
+          name: "ConsumerComponent"
+        }
+        inputs {
+          artifacts {
+            key: "examples"
+            value {
+              task_output_artifact {
+                producer_task: "ProducerComponent"
+                output_artifact_key: "examples"
+              }
+            }
+          }
+          artifacts {
+            key: "external_data"
+            value {
+              task_output_artifact {
+                producer_task: "ProducerComponent"
+                output_artifact_key: "external_data"
+              }
+            }
+          }
+        }
+        dependent_tasks: "ProducerComponent"
+        component_ref {
+          name: "ConsumerComponent"
+        }
+      }
+    }
+    tasks {
+      key: "ProducerComponent"
+      value {
+        task_info {
+          name: "ProducerComponent"
+        }
+        component_ref {
+          name: "ProducerComponent"
+        }
+      }
+    }
+  }
+}

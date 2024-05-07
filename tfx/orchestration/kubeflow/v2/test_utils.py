@@ -33,6 +33,7 @@ from tfx.types import component_spec
 from tfx.types.experimental import simple_artifacts
 from tfx.utils import proto_utils
 
+from google.protobuf import struct_pb2
 from google.protobuf import message
 
 _ph = tfx.dsl.placeholders
@@ -49,13 +50,23 @@ _TEST_INPUT_DATA = 'path/to/my/data'
 
 _TEST_MODULE_FILE_LOCATION = 'path/to/my/module_utils.py'
 
-TEST_RUNTIME_CONFIG = pipeline_pb2.PipelineJob.RuntimeConfig(
+TEST_RUNTIME_CONFIG_LEGACY = pipeline_pb2.PipelineJob.RuntimeConfig(
     gcs_output_directory=_TEST_PIPELINE_ROOT,
     parameters={
         'string_param': pipeline_pb2.Value(string_value='test-string'),
         'int_param': pipeline_pb2.Value(int_value=42),
-        'float_param': pipeline_pb2.Value(double_value=3.14)
-    })
+        'float_param': pipeline_pb2.Value(double_value=3.14),
+    },
+)
+
+TEST_RUNTIME_CONFIG = pipeline_pb2.PipelineJob.RuntimeConfig(
+    gcs_output_directory=_TEST_PIPELINE_ROOT,
+    parameter_values={
+        'string_param': struct_pb2.Value(string_value='test-string'),
+        'int_param': struct_pb2.Value(number_value=42),
+        'float_param': struct_pb2.Value(number_value=3.14),
+    },
+)
 
 
 # TODO(b/158245564): Reevaluate whether to keep this test helper function
@@ -532,16 +543,29 @@ def pipeline_with_two_container_spec_components_2() -> tfx.dsl.Pipeline:
   )
 
 
-def get_proto_from_test_data(filename: str,
-                             pb_message: message.Message) -> message.Message:
+def get_proto_from_test_data(
+    filename: str, pb_message: message.Message, use_legacy_data: bool = False
+) -> message.Message:
   """Helper function that gets proto from testdata."""
-  filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
+  if use_legacy_data:
+    filepath = os.path.join(
+        os.path.dirname(__file__), 'testdata', 'legacy', filename
+    )
+  else:
+    filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
   return tfx.utils.parse_pbtxt_file(filepath, pb_message)
 
 
-def get_text_from_test_data(filename: str) -> str:
+def get_text_from_test_data(
+    filename: str, use_legacy_data: bool = False
+) -> str:
   """Helper function that gets raw string from testdata."""
-  filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
+  if use_legacy_data:
+    filepath = os.path.join(
+        os.path.dirname(__file__), 'testdata', 'legacy', filename
+    )
+  else:
+    filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
   return tfx.dsl.io.fileio.open(filepath, 'rb').read().decode('utf-8')
 
 

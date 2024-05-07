@@ -11,7 +11,7 @@ inputs {
     key: "input_config"
     value {
       runtime_value {
-        constant_value {
+        constant {
           string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
         }
       }
@@ -21,7 +21,7 @@ inputs {
     key: "output_config"
     value {
       runtime_value {
-        constant_value {
+        constant {
           string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
         }
       }
@@ -31,8 +31,8 @@ inputs {
     key: "output_data_format"
     value {
       runtime_value {
-        constant_value {
-          int_value: 6
+        constant {
+          number_value: 6
         }
       }
     }
@@ -41,8 +41,8 @@ inputs {
     key: "output_file_format"
     value {
       runtime_value {
-        constant_value {
-          int_value: 5
+        constant {
+          number_value: 5
         }
       }
     }
