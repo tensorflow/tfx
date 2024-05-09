@@ -145,10 +145,17 @@ message PropertyPredicate {
       EQ = 1;
       LT = 2;
     }
-    // The name of the property.
-    string property_name = 1;
-    // The target value to compare with.
-    Value target_value = 2;
+
+    string property_name = 1 [deprecated = true];
+    Value target_value = 2 [deprecated = true];
+
+    // The names and target values of the properties.
+    // They are AND relationship. For example, if the property_names are
+    // ['a', 'b'] and the target_values are [1, 2], then we are looking for an
+    // element that has property 'a' equal to 1 and property 'b' equal to 2.
+    repeated string property_names = 7;
+    repeated Value target_values = 8;
+
     Op op = 3;
     // Users can choose to set 0, 1 or 2 of the following two fields.
     //   - If none of them is set, the predicate is operated on single Artifact.
