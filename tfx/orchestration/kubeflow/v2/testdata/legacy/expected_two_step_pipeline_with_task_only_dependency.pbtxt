@@ -1,0 +1,120 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineSpec
+
+pipeline_info {
+  name: "two-step-task-only-dependency-pipeline"
+}
+deployment_spec {
+  fields {
+    key: "executors"
+    value {
+      struct_value {
+        fields {
+          key: "Step 1_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "run"
+                          }
+                          values {
+                            string_value: "step-1"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "step-1-image"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "Step 2_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "run"
+                          }
+                          values {
+                            string_value: "step-2"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "step-2-image"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+components {
+  key: "Step 1"
+  value {
+    executor_label: "Step 1_executor"
+  }
+}
+components {
+  key: "Step 2"
+  value {
+    executor_label: "Step 2_executor"
+  }
+}
+root {
+  dag {
+    tasks {
+      key: "Step 1"
+      value {
+        task_info {
+          name: "Step 1"
+        }
+        component_ref {
+          name: "Step 1"
+        }
+      }
+    }
+    tasks {
+      key: "Step 2"
+      value {
+        task_info {
+          name: "Step 2"
+        }
+        dependent_tasks: "Step 1"
+        component_ref {
+          name: "Step 2"
+        }
+      }
+    }
+  }
+}

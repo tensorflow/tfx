@@ -1,0 +1,56 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineTaskSpec
+
+# Note: Due to the inconsistent behavior of json_format under Py2 and Py3,
+# running test against this golden file under Py2 will fail.
+task_info {
+  name: "BigQueryExampleGen"
+}
+inputs {
+  parameters {
+    key: "input_config"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_config"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_data_format"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 6
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_file_format"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 5
+        }
+      }
+    }
+  }
+}
+caching_options {
+  enable_cache: true
+}
+component_ref {
+  name: "BigQueryExampleGen"
+}

@@ -1,0 +1,16 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "my_importer_executor"
+  value {
+    importer {
+      artifact_uri {
+        runtime_parameter: "artifact_uri"
+      }
+      type_schema {
+        instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+      }
+    }
+  }
+}

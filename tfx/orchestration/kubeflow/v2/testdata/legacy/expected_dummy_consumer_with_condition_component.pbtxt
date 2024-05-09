@@ -1,0 +1,38 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: ComponentSpec
+
+input_definitions {
+  parameters {
+    key: "param1"
+    value {
+      type: INT
+    }
+  }
+  artifacts {
+    key: "input1"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Model\ntype: object\n"
+      }
+    }
+  }
+  artifacts {
+    key: "_producer_task_2.output1"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Model\ntype: object\n"
+      }
+    }
+  }
+}
+output_definitions {
+  artifacts {
+    key: "output1"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Model\ntype: object\n"
+      }
+    }
+  }
+}
+executor_label: "DummyConsumerComponent_executor"

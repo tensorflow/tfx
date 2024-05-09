@@ -1,0 +1,61 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "CsvExampleGen"
+}
+inputs {
+  parameters {
+    key: "input_base"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "path/to/data/root"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "input_config"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_config"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_data_format"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 6
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_file_format"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 5
+        }
+      }
+    }
+  }
+}
+component_ref {
+  name: "CsvExampleGen"
+}
