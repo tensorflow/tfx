@@ -73,7 +73,7 @@
         can now lead to (justified) type checking errors that were previously
         hidden due to `C` being of type `Any`.
 *   `ph.to_list()` was renamed to `ph.make_list()` for consistency.
-*  Support KFP pipeline spec 2.1.0 version schema and YAML files with KFP v2 DAG runner
+*  Support KFP pipeline spec 2.1.0 version schema
 
 
 ### For Pipeline Authors
