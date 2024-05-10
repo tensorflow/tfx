@@ -54,6 +54,8 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import io_utils
 from tfx.utils import status as status_lib
 
+from tfx.utils import tracecontext_pb2
+from tfx.utils import tracing
 from ml_metadata import errors as mlmd_errors
 from ml_metadata.proto import metadata_store_pb2
 
@@ -82,6 +84,11 @@ def _pipeline_op(lock: bool = True):
       with contextlib.ExitStack() as stack:
         if lock:
           stack.enter_context(_PIPELINE_OPS_LOCK)
+        stack.enter_context(
+            tracing.LocalTraceSpan(
+                'TflexOrchestrator.pipeline_ops', fn.__name__
+            )
+        )
 
         health_status = env.get_env().health_status()
         if health_status.code != status_lib.Code.OK:
@@ -115,6 +122,7 @@ def initiate_pipeline_start(
     pipeline: pipeline_pb2.Pipeline,
     pipeline_run_metadata: Optional[Mapping[str, types.Property]] = None,
     partial_run_option: Optional[pipeline_pb2.PartialRun] = None,
+    trace_proto: Optional[tracecontext_pb2.TraceContextProto] = None,
 ) -> pstate.PipelineState:
   """Initiates a pipeline start operation.
 
@@ -125,6 +133,9 @@ def initiate_pipeline_start(
     pipeline: IR of the pipeline to start.
     pipeline_run_metadata: Pipeline run metadata.
     partial_run_option: Options for partial pipeline run.
+    trace_proto: Optional trace context proto to attach to the pipeline run.
+      This trace context will be extended from the task scheduling and the
+      children job executions.
 
   Returns:
     The `PipelineState` object upon success.
@@ -221,10 +232,11 @@ def initiate_pipeline_start(
         # TODO: b/323912217 - Support putting multiple subpipeline executions
         # into MLMD to handle the ForEach case.
         with pstate.PipelineState.new(
-            mlmd_handle,
-            subpipeline,
-            pipeline_run_metadata,
-            reused_subpipeline_view,
+            mlmd_handle=mlmd_handle,
+            pipeline=subpipeline,
+            pipeline_run_metadata=pipeline_run_metadata,
+            reused_pipeline_view=reused_subpipeline_view,
+            trace_proto=trace_proto,
         ) as subpipeline_state:
           # TODO: b/320535460 - The new pipeline run should not be stopped if
           # there are still nodes to run in it.
@@ -251,7 +263,11 @@ def initiate_pipeline_start(
       )
   env.get_env().prepare_orchestrator_for_pipeline_run(pipeline)
   return pstate.PipelineState.new(
-      mlmd_handle, pipeline, pipeline_run_metadata, reused_pipeline_view
+      mlmd_handle=mlmd_handle,
+      pipeline=pipeline,
+      pipeline_run_metadata=pipeline_run_metadata,
+      reused_pipeline_view=reused_pipeline_view,
+      trace_proto=trace_proto,
   )
 
 
@@ -971,9 +987,7 @@ def resume_pipeline(
         from_nodes=pipeline_nodes,
         to_nodes=pipeline_nodes,
         skip_nodes=previously_succeeded_nodes,
-        skip_snapshot_nodes=_get_previously_skipped_nodes(
-            latest_pipeline_view
-        ),
+        skip_snapshot_nodes=_get_previously_skipped_nodes(latest_pipeline_view),
         snapshot_settings=snapshot_settings,
     )
   except ValueError as e:
@@ -995,7 +1009,9 @@ def resume_pipeline(
       )
   env.get_env().prepare_orchestrator_for_pipeline_run(pipeline)
   return pstate.PipelineState.new(
-      mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view
+      mlmd_handle=mlmd_handle,
+      pipeline=pipeline,
+      reused_pipeline_view=latest_pipeline_view,
   )
 
 

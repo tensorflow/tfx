@@ -50,6 +50,7 @@ from tfx.utils import status as status_lib
 
 from tfx.utils import telemetry_utils
 from google.protobuf import message
+from tfx.utils import tracecontext_pb2
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
@@ -74,6 +75,7 @@ _MAX_STATE_HISTORY_LEN = 10
 _PIPELINE_EXEC_MODE = 'pipeline_exec_mode'
 _PIPELINE_EXEC_MODE_SYNC = 'sync'
 _PIPELINE_EXEC_MODE_ASYNC = 'async'
+_PIPELINE_RUN_TRACE_PROTO = 'trace_proto'
 
 _last_state_change_time_secs = -1.0
 _state_change_time_lock = threading.Lock()
@@ -485,7 +487,28 @@ def _synchronized(f):
   return wrapper
 
 
-class PipelineState:
+def _set_trace_proto(
+    execution: metadata_store_pb2.Execution,
+    trace_proto: tracecontext_pb2.TraceContextProto,
+):
+  execution.custom_properties[_PIPELINE_RUN_TRACE_PROTO].proto_value.Pack(
+      trace_proto
+  )
+
+
+def _get_trace_proto(
+    execution: metadata_store_pb2.Execution,
+) -> Optional[tracecontext_pb2.TraceContextProto]:
+  if _PIPELINE_RUN_TRACE_PROTO in execution.custom_properties:
+    result = tracecontext_pb2.TraceContextProto()
+    execution.custom_properties[_PIPELINE_RUN_TRACE_PROTO].proto_value.Unpack(
+        result
+    )
+    return result
+  return None
+
+
+class PipelineState(contextlib.ExitStack):
   """Context manager class for dealing with pipeline state.
 
   The state of a pipeline is stored as an MLMD execution and this class provides
@@ -512,6 +535,7 @@ class PipelineState:
     execution_id: Id of the underlying execution in MLMD.
     pipeline_uid: Unique id of the pipeline.
     pipeline_run_id: pipeline_run_id in case of sync pipeline, `None` otherwise.
+    trace_proto: Optional TraceContextProto for tracing the pipeline run.
   """
 
   def __init__(
@@ -521,6 +545,7 @@ class PipelineState:
       pipeline_id: str,
   ):
     """Constructor. Use one of the factory methods to initialize."""
+    super().__init__()
     self.mlmd_handle = mlmd_handle
     # TODO(b/201294315): Fix self.pipeline going out of sync with the actual
     # pipeline proto stored in the underlying MLMD execution in some cases.
@@ -540,12 +565,18 @@ class PipelineState:
     self.pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(
         pipeline_id, self.pipeline_run_id
     )
+    # Since TraceContextProto is immutable, use the constructor Execution arg to
+    # retrieve the value instead of lazy parsing self._execution.
+    self._trace_proto = _get_trace_proto(execution)
 
     # Only set within the pipeline state context.
-    self._mlmd_execution_atomic_op_context = None
     self._execution: Optional[metadata_store_pb2.Execution] = None
     self._on_commit_callbacks: List[Callable[[], None]] = []
     self._node_states_proxy: Optional[_NodeStatesProxy] = None
+
+  @property
+  def trace_proto(self) -> Optional[tracecontext_pb2.TraceContextProto]:
+    return self._trace_proto
 
   @classmethod
   @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
@@ -556,6 +587,7 @@ class PipelineState:
       pipeline: pipeline_pb2.Pipeline,
       pipeline_run_metadata: Optional[Mapping[str, types.Property]] = None,
       reused_pipeline_view: Optional['PipelineView'] = None,
+      trace_proto: Optional[tracecontext_pb2.TraceContextProto] = None,
   ) -> 'PipelineState':
     """Creates a `PipelineState` object for a new pipeline.
 
@@ -568,6 +600,9 @@ class PipelineState:
       pipeline_run_metadata: Pipeline run metadata.
       reused_pipeline_view: PipelineView of the previous pipeline reused for a
         partial run.
+      trace_proto: Optional trace context proto to attach to the pipeline run.
+        This trace context will be extended from the task scheduling and the
+        children job executions.
 
     Returns:
       A `PipelineState` object.
@@ -670,6 +705,8 @@ class PipelineState:
         exec_properties=exec_properties,
         execution_name=str(uuid.uuid4()),
     )
+    if trace_proto is not None:
+      _set_trace_proto(execution, trace_proto)
     if pipeline.execution_mode == pipeline_pb2.Pipeline.SYNC:
       data_types_utils.set_metadata_value(
           execution.custom_properties[_PIPELINE_RUN_ID],
@@ -1114,6 +1151,7 @@ class PipelineState:
     return env.get_env().get_orchestration_options(self.pipeline)
 
   def __enter__(self) -> 'PipelineState':
+    super().__enter__()
 
     def _run_on_commit_callbacks(pre_commit_execution, post_commit_execution):
       del pre_commit_execution
@@ -1122,23 +1160,24 @@ class PipelineState:
       for on_commit_cb in self._on_commit_callbacks:
         on_commit_cb()
 
-    mlmd_execution_atomic_op_context = mlmd_state.mlmd_execution_atomic_op(
-        self.mlmd_handle, self.execution_id, _run_on_commit_callbacks)
-    execution = mlmd_execution_atomic_op_context.__enter__()
-    self._mlmd_execution_atomic_op_context = mlmd_execution_atomic_op_context
-    self._execution = execution
-    self._node_states_proxy = _NodeStatesProxy(execution)
+    @contextlib.contextmanager
+    def mlmd_execution():
+      try:
+        with mlmd_state.mlmd_execution_atomic_op(
+            self.mlmd_handle, self.execution_id, _run_on_commit_callbacks
+        ) as execution:
+          yield execution
+      finally:
+        self._on_commit_callbacks.clear()
+
+    self._execution = self.enter_context(mlmd_execution())
+    self._node_states_proxy = _NodeStatesProxy(self._execution)
+    self.callback(self._cleanup)
     return self
 
-  def __exit__(self, exc_type, exc_val, exc_tb):
+  def _cleanup(self):
     self._node_states_proxy.save()
-    mlmd_execution_atomic_op_context = self._mlmd_execution_atomic_op_context
-    self._mlmd_execution_atomic_op_context = None
     self._execution = None
-    try:
-      mlmd_execution_atomic_op_context.__exit__(exc_type, exc_val, exc_tb)
-    finally:
-      self._on_commit_callbacks.clear()
 
   def _check_context(self) -> None:
     if self._execution is None:
