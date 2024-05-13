@@ -18,6 +18,7 @@ import os
 from absl.testing import parameterized
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
+from tfx.dsl.components.base.testing import test_node
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import compiler_utils
@@ -70,7 +71,11 @@ class _MyArtifactWithProperty(artifact.Artifact):
   }
 
 
-_TEST_CHANNEL = channel.Channel(type=_MyArtifactWithProperty)
+_TEST_CHANNEL = channel.OutputChannel(
+    artifact_type=_MyArtifactWithProperty,
+    producer_component=test_node.TestNode('producer'),
+    output_key='foo',
+)
 
 
 class CompilerUtilsTest(tf.test.TestCase):
@@ -133,7 +138,8 @@ class CompilerUtilsTest(tf.test.TestCase):
     with self.assertRaisesRegex(TypeError, 'Property type mismatched at'):
       compiler_utils._validate_properties_schema(
           _MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES,
-          _MyArtifactWithProperty.PROPERTIES)
+          _MyArtifactWithProperty.PROPERTIES,
+      )
 
   def testBuildParameterTypeSpecLegacy(self):
     type_enum = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum

@@ -54,6 +54,9 @@ class ChannelForTesting(channel.BaseChannel):
   def get_data_dependent_node_ids(self) -> Set[str]:
     return set()
 
+  def future(self) -> channel.ChannelWrappedPlaceholder:
+    return channel.ChannelWrappedPlaceholder(self)
+
 
 def as_channel(artifacts: Iterable[artifact.Artifact]) -> channel.Channel:
   """Converts artifact collection of the same artifact type into a Channel.

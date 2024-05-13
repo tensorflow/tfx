@@ -205,10 +205,24 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
   def testCompileDynamicExecPropTypeError(self):
     dsl_compiler = compiler.Compiler()
     test_pipeline = dynamic_exec_properties_pipeline.create_test_pipeline()
+    upstream_component = next(
+        c
+        for c in test_pipeline.components
+        if isinstance(
+            c,
+            type(
+                dynamic_exec_properties_pipeline.UpstreamComponent(start_num=0)
+            ),
+        )
+    )
     downstream_component = next(
-        c for c in test_pipeline.components
-        if isinstance(c, dynamic_exec_properties_pipeline.DownstreamComponent))
-    test_wrong_type_channel = channel.Channel(_MyType).future().value
+        c
+        for c in test_pipeline.components
+        if isinstance(c, dynamic_exec_properties_pipeline.DownstreamComponent)
+    )
+    test_wrong_type_channel = (
+        channel.OutputChannel(_MyType, upstream_component, "foo").future().value
+    )
     downstream_component.exec_properties["input_num"] = test_wrong_type_channel
     with self.assertRaisesRegex(
         ValueError, ".*channel must be of a value artifact type.*"

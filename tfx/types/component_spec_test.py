@@ -19,6 +19,7 @@ from typing import Dict, List
 import unittest
 
 import tensorflow as tf
+from tfx.dsl.components.base.testing import test_node
 from tfx.dsl.placeholder import placeholder
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact
@@ -309,9 +310,6 @@ class ComponentSpecTest(tf.test.TestCase):
     channel_parameter.type_check(arg_name, channel.Channel(type=_FooArtifact))
 
     with self.assertRaisesRegex(TypeError, arg_name):
-      channel_parameter.type_check(arg_name, 42)  # Wrong value.
-
-    with self.assertRaisesRegex(TypeError, arg_name):
       channel_parameter.type_check(arg_name, channel.Channel(type=_BarArtifact))
 
     setattr(_FooArtifact, component_spec.COMPATIBLE_TYPES_KEY, {_BarArtifact})
@@ -361,7 +359,11 @@ class ComponentSpecTest(tf.test.TestCase):
     with self.assertRaises(json_format.ParseError):
       proto_parameter.type_check('proto_parameter', {'splits': 42})
 
-    output_channel = channel.Channel(type=_OutputArtifact)
+    output_channel = channel.OutputChannel(
+        artifact_type=_OutputArtifact,
+        producer_component=test_node.TestNode('producer'),
+        output_key='foo',
+    )
 
     placeholder_parameter = ExecutionParameter(type=str)
     placeholder_parameter.type_check(

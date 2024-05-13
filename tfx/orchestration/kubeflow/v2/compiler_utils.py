@@ -113,7 +113,8 @@ def build_parameter_type_spec(
 
 def _validate_properties_schema(
     instance_schema: str,
-    properties: Optional[Mapping[str, artifact.PropertyType]] = None):
+    properties: Optional[Mapping[str, artifact.Property]] = None,
+):
   """Validates the declared property types are consistent with the schema.
 
   Args:
@@ -145,8 +146,10 @@ def _validate_properties_schema(
         v.type != artifact.PropertyType.STRING or
         schema[k]['type'] == _YAML_DOUBLE_TYPE and
         v.type != artifact.PropertyType.FLOAT):
-      raise TypeError(f'Property type mismatched at {k} for schema: {schema}. '
-                      f'Expected {schema[k]["type"]} but got {v.type}')
+      raise TypeError(
+          f'Property type mismatched at {k} for schema: {schema}. Expected'
+          f' {schema[k]["type"]} but got {v.type}'
+      )
     # pytype: enable=attribute-error  # use-enum-overlay
 
 
