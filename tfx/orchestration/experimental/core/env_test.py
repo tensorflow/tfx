@@ -75,6 +75,7 @@ class _TestEnv(env.Env):
       self,
       owner: str,
       pipeline_name: str,
+      pipeline: pipeline_pb2.Pipeline,
       original_execution: metadata_store_pb2.Execution,
       modified_execution: metadata_store_pb2.Execution,
       sub_pipeline_ids: Optional[Sequence[str]] = None,

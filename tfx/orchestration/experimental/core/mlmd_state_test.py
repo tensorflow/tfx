@@ -120,6 +120,14 @@ class MlmdStateTest(test_utils.TfxTest):
     event_on_commit = threading.Event()
     got_pre_commit_execution = None
     got_post_commit_execution = None
+    last_known_state_changed = None
+
+    def pre_commit(original_execution, modified_execution):
+      nonlocal last_known_state_changed
+      last_known_state_changed = (
+          modified_execution.last_known_state
+          != original_execution.last_known_state
+      )
 
     def on_commit(pre_commit_execution, post_commit_execution):
       nonlocal got_pre_commit_execution
@@ -132,7 +140,8 @@ class MlmdStateTest(test_utils.TfxTest):
       expected_execution = _write_test_execution(m)
       # Mutate execution.
       with mlmd_state.mlmd_execution_atomic_op(
-          m, expected_execution.id, on_commit=on_commit) as execution:
+          m, expected_execution.id, on_commit=on_commit, pre_commit=pre_commit
+      ) as execution:
         self.assertEqual(expected_execution, execution)
         execution.last_known_state = metadata_store_pb2.Execution.CANCELED
         self.assertFalse(event_on_commit.is_set())  # not yet invoked.
@@ -160,6 +169,9 @@ class MlmdStateTest(test_utils.TfxTest):
       with mlmd_state.mlmd_execution_atomic_op(
           m, expected_execution.id) as execution2:
         self.assertEqual(execution, execution2)
+
+      # Test that the diff flag is properly populated.
+      self.assertTrue(last_known_state_changed)
 
   def test_mlmd_execution_absent(self):
     with self._mlmd_connection as m:

@@ -658,10 +658,10 @@ class PipelineState:
         _PIPELINE_IR: _PipelineIRCodec.get().encode(pipeline),
         _PIPELINE_EXEC_MODE: pipeline_exec_mode,
     }
+    pipeline_run_metadata_json = None
     if pipeline_run_metadata:
-      exec_properties[_PIPELINE_RUN_METADATA] = json_utils.dumps(
-          pipeline_run_metadata
-      )
+      pipeline_run_metadata_json = json_utils.dumps(pipeline_run_metadata)
+      exec_properties[_PIPELINE_RUN_METADATA] = pipeline_run_metadata_json
 
     execution = execution_lib.prepare_execution(
         mlmd_handle,
@@ -709,6 +709,19 @@ class PipelineState:
     global _active_pipelines_exist
     _active_pipelines_exist = True
     logging.info('Pipeline start, set active_pipelines_exist=True.')
+    # Skip dual logging if MLMD backend does not have pipeline-asset support.
+    pipeline_asset = mlmd_handle.store.pipeline_asset
+    if pipeline_asset:
+      env.get_env().create_sync_or_upsert_async_pipeline_run(
+          pipeline_asset.owner,
+          pipeline_asset.name,
+          execution,
+          pipeline,
+          pipeline_run_metadata_json,
+          reused_pipeline_view.pipeline_run_id
+          if reused_pipeline_view
+          else None,
+      )
     execution = execution_lib.put_execution(mlmd_handle, execution, [context])
     pipeline_state = cls(mlmd_handle, execution, pipeline_uid.pipeline_id)
     event_observer.notify(
@@ -813,7 +826,7 @@ class PipelineState:
 
     Raises:
       status_lib.StatusNotOkError: With code=NOT_FOUND if no active pipeline
-      with the given pipeline uid exists in MLMD. With code=INVALID_ARGUEMENT if
+      with the given pipeline uid exists in MLMD. With code=INVALID_ARGUMENT if
       there is not exactly 1 active execution for given pipeline uid.
     """
     context = _get_orchestrator_context(mlmd_handle, pipeline_id)
@@ -1115,6 +1128,20 @@ class PipelineState:
 
   def __enter__(self) -> 'PipelineState':
 
+    def _pre_commit(original_execution, modified_execution):
+      pipeline_asset = self.mlmd_handle.store.pipeline_asset
+      if not pipeline_asset:
+        logging.warning('Pipeline asset not found.')
+        return
+      env.get_env().update_pipeline_run_status(
+          pipeline_asset.owner,
+          pipeline_asset.name,
+          self.pipeline,
+          original_execution,
+          modified_execution,
+          _get_sub_pipeline_ids_from_pipeline_info(self.pipeline.pipeline_info),
+      )
+
     def _run_on_commit_callbacks(pre_commit_execution, post_commit_execution):
       del pre_commit_execution
       del post_commit_execution
@@ -1123,7 +1150,11 @@ class PipelineState:
         on_commit_cb()
 
     mlmd_execution_atomic_op_context = mlmd_state.mlmd_execution_atomic_op(
-        self.mlmd_handle, self.execution_id, _run_on_commit_callbacks)
+        self.mlmd_handle,
+        self.execution_id,
+        _run_on_commit_callbacks,
+        _pre_commit,
+    )
     execution = mlmd_execution_atomic_op_context.__enter__()
     self._mlmd_execution_atomic_op_context = mlmd_execution_atomic_op_context
     self._execution = execution
@@ -1611,3 +1642,14 @@ def _notify_node_state_change(execution: metadata_store_pb2.Execution,
           node_id=node_uid.node_id,
           old_state=old_state,
           new_state=new_state))
+
+
+def _get_sub_pipeline_ids_from_pipeline_info(
+    pipeline_info: pipeline_pb2.PipelineInfo,
+) -> Optional[List[str]]:
+  """Returns sub pipeline ids from pipeline info if parent_ids exists."""
+  sub_pipeline_ids = None
+  if pipeline_info.parent_ids:
+    sub_pipeline_ids = pipeline_info.parent_ids[1:]
+    sub_pipeline_ids.append(pipeline_info.id)
+  return sub_pipeline_ids

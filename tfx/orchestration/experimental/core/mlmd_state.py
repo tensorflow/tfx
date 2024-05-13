@@ -115,8 +115,15 @@ def mlmd_execution_atomic_op(
     mlmd_handle: metadata.Metadata,
     execution_id: int,
     on_commit: Optional[
-        Callable[[metadata_store_pb2.Execution, metadata_store_pb2.Execution],
-                 None]] = None,
+        Callable[
+            [metadata_store_pb2.Execution, metadata_store_pb2.Execution], None
+        ]
+    ] = None,
+    pre_commit: Optional[
+        Callable[
+            [metadata_store_pb2.Execution, metadata_store_pb2.Execution], None
+        ]
+    ] = None,
 ) -> Iterator[metadata_store_pb2.Execution]:
   """Context manager for accessing or mutating an execution atomically.
 
@@ -136,6 +143,11 @@ def mlmd_execution_atomic_op(
       MLMD execution commit operation. This won't be invoked if execution is not
       mutated within the context and hence MLMD commit is not needed. The
       callback is passed copies of the pre-commit and post-commit executions.
+    pre_commit: An optional hook function which is invoked before the execution
+      gets committed to MLMD. Note that if the execution is not mutated within
+      the context manager, this function would not be invoked either. The hook
+      function should neither apply any modification to `execution` nor
+      `execution_copy`.
 
   Yields:
     If execution with given id exists in MLMD, the execution is yielded under
@@ -154,6 +166,9 @@ def mlmd_execution_atomic_op(
         raise RuntimeError(
             'Execution id should not be changed within mlmd_execution_atomic_op'
             ' context.')
+
+      if pre_commit is not None:
+        pre_commit(execution, execution_copy)
 
       # Orchestrator code will only update top-level fields and properties/
       # custom properties with diffs.
