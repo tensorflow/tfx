@@ -89,12 +89,12 @@ def _write_pipeline_spec_to_file(
     yaml_comments = _extract_comments_from_pipeline_spec(
         pipeline_spec_dict, pipeline_description
     )
-    with open(package_path, 'w') as yaml_file:
+    with fileio.open(package_path, 'w') as yaml_file:
       yaml_file.write(yaml_comments)
       documents = [pipeline_spec_dict]
       yaml.dump_all(documents, yaml_file, sort_keys=True)
   else:
-    with open(package_path, 'w') as json_file:
+    with fileio.open(package_path, 'w') as json_file
       json.dump(pipeline_job_dict, json_file, sort_keys=True)
 
 
