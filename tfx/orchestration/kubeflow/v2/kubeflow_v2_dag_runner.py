@@ -94,7 +94,7 @@ def _write_pipeline_spec_to_file(
       documents = [pipeline_spec_dict]
       yaml.dump_all(documents, yaml_file, sort_keys=True)
   else:
-    with fileio.open(package_path, 'w') as json_file:
+    with fileio.open(package_path, 'w') as json_file
       json.dump(pipeline_job_dict, json_file, sort_keys=True)
 
 
