@@ -21,6 +21,7 @@
 ## Major Features and Improvements
 
 *  Dropped python 3.8 support.
+*  Dropped experimental TFX Centralized Kubernetes Orchestrator
 *  Extend GetPipelineRunExecutions, GetPipelineRunArtifacts APIs to support
    filtering by execution create_time, type.
 *  ExampleValidator and DistributionValidator now support anomalies alert
