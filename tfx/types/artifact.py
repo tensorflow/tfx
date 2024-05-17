@@ -641,11 +641,6 @@ class Artifact(json_utils.Jsonable):
     """external id of the underlying artifact."""
     return self._artifact.external_id
 
-  @external_id.setter
-  def external_id(self, external_id: str):
-    """Set external id of the underlying artifact."""
-    self._artifact.external_id = external_id
-
   # LINT.IfChange
   @property
   @doc_controls.do_not_doc_in_subclasses
