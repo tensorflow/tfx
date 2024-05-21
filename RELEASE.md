@@ -13,6 +13,9 @@
 ## Bug Fixes and Other Changes
 
 ## Dependency Updates
+| Package Name | Version Constraints | Previously (in `v1.14.0`) | Comments |
+| -- | -- | -- | -- |
+| `requests` | - | `<2.32.0` | https://github.com/psf/requests/issues/6707 |
 
 ## Documentation Updates
 
