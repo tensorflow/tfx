@@ -92,7 +92,8 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
           execution_id=task.execution_id,
           contexts=task.contexts,
           output_artifacts=task.output_artifacts,
-          executor_output=executor_output)
+          executor_output=executor_output,
+          task=task)
     garbage_collection.run_garbage_collection_for_node(mlmd_handle,
                                                        task.node_uid,
                                                        task.get_node())
@@ -125,7 +126,8 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
           mlmd_handle,
           execution_id=task.execution_id,
           contexts=task.contexts,
-          output_artifacts=output_artifacts)
+          output_artifacts=output_artifacts,
+          task=task)
   elif isinstance(result.output, ts.ResolverNodeOutput):
     resolved_input_artifacts = result.output.resolved_input_artifacts
     # TODO(b/262040844): Instead of directly using the context manager here, we
