@@ -238,7 +238,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
 
   def test_new_pipeline_state(self):
     with self._mlmd_connection as m:
-      pstate._active_pipelines_exist = False
+      pstate._active_owned_pipelines_exist = False
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       pipeline_state = pstate.PipelineState.new(m, pipeline)
 
@@ -262,11 +262,11 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
           task_lib.PipelineUid.from_pipeline(pipeline),
           pipeline_state.pipeline_uid,
       )
-      self.assertTrue(pstate._active_pipelines_exist)
+      self.assertTrue(pstate._active_owned_pipelines_exist)
 
   def test_new_pipeline_state_with_sub_pipelines(self):
     with self._mlmd_connection as m:
-      pstate._active_pipelines_exist = False
+      pstate._active_owned_pipelines_exist = False
       pipeline = _test_pipeline('pipeline1')
       # Add 2 additional layers of sub pipelines. Note that there is no normal
       # pipeline node in the first pipeline layer.
@@ -367,21 +367,21 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(pipeline_state.pipeline.ByteSize(), 0)
 
   def test_load_all_active_pipeline_state_flag_false(self):
-    # no MLMD calls when there _active_pipelines_exist is False.
+    # no MLMD calls when there _active_owned_pipelines_exist is False.
     mock_store = mock.create_autospec(mlmd.MetadataStore)
     self._mlmd_connection._store = mock_store
     _ = self.enter_context(
         mock.patch.object(mlmd, 'MetadataStore', autospec=True)
     )
 
-    pstate._active_pipelines_exist = False
-    pipeline_states = pstate.PipelineState.load_all_active(
+    pstate._active_owned_pipelines_exist = False
+    pipeline_states = pstate.PipelineState.load_all_active_and_owned(
         self._mlmd_connection
     )
     self.assertEmpty(pipeline_states)
     mock_store.get_executions_by_context.assert_not_called()
     mock_store.get_contexts_by_type.assert_not_called()
-    self.assertFalse(pstate._active_pipelines_exist)
+    self.assertFalse(pstate._active_owned_pipelines_exist)
 
   def test_load_all_active_pipeline_state_active_pipelines(self):
     with self._mlmd_connection as m:
@@ -406,14 +406,14 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
       mlmd_executions = m.store.get_executions_by_context(mlmd_contexts[0].id)
       self.assertLen(mlmd_executions, 1)
 
-      pipeline_states = pstate.PipelineState.load_all_active(m)
+      pipeline_states = pstate.PipelineState.load_all_active_and_owned(m)
       self.assertLen(pipeline_states, 1)
       execution_mock.assert_called()
       context_mock.assert_called()
-      self.assertTrue(pstate._active_pipelines_exist)
+      self.assertTrue(pstate._active_owned_pipelines_exist)
 
   def test_load_all_active_pipeline_state_no_active_pipelines(self):
-    pstate._active_pipelines_exist = True
+    pstate._active_owned_pipelines_exist = True
     mock_store = mock.create_autospec(mlmd.MetadataStore)
     self._mlmd_connection._store = mock_store
     _ = self.enter_context(
@@ -425,13 +425,13 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
             id=1, type_id=11, name='pipeline1', type='__ORCHESTRATOR__'
         )
     ]
-    pipeline_states = pstate.PipelineState.load_all_active(
+    pipeline_states = pstate.PipelineState.load_all_active_and_owned(
         self._mlmd_connection
     )
     self.assertEmpty(pipeline_states, 0)
     mock_store.get_contexts_by_type.assert_called_once()
     mock_store.get_executions_by_context.assert_called_once()
-    self.assertFalse(pstate._active_pipelines_exist)
+    self.assertFalse(pstate._active_owned_pipelines_exist)
 
   def load_pipeline_state_by_run(self):
     with self._mlmd_connection as m:
@@ -720,7 +720,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
 
   def test_pipeline_resume_initiation(self):
     with self._mlmd_connection as m:
-      pstate._active_pipelines_exist = False
+      pstate._active_owned_pipelines_exist = False
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       with pstate.PipelineState.new(m, pipeline) as pipeline_state:
         self.assertIsNone(pipeline_state.stop_initiated_reason())
@@ -731,7 +731,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(status, pipeline_state.stop_initiated_reason())
         pipeline_state.initiate_resume()
 
-      self.assertTrue(pstate._active_pipelines_exist)
+      self.assertTrue(pstate._active_owned_pipelines_exist)
 
       # Reload from MLMD and verify.
       with pstate.PipelineState.load(

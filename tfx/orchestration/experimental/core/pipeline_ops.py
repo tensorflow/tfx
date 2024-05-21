@@ -1191,17 +1191,6 @@ def revive_pipeline_run(
           code=status_lib.Code.ALREADY_EXISTS,
           message='Cannot revive a live pipeline run.',
       )
-    if not env.get_env().concurrent_pipeline_runs_enabled(pipeline) and (
-        all_active := pstate.PipelineState.load_all_active(mlmd_handle)
-    ):
-      raise status_lib.StatusNotOkError(
-          code=status_lib.Code.INVALID_ARGUMENT,
-          message=(
-              'Concurrent runs must be enabled to revive a pipeline run while'
-              ' another run is active. Active runs: '
-              f'{[p.pipeline_run_id for p in all_active]}'
-          ),
-      )
 
     # Since the pipeline is not active we can apply the update right away.
     if pipeline_to_update_with is not None:
@@ -1293,7 +1282,7 @@ def orchestrate(
   if filter_fn is None:
     filter_fn = lambda _: True
 
-  all_pipeline_states = pstate.PipelineState.load_all_active(
+  all_pipeline_states = pstate.PipelineState.load_all_active_and_owned(
       mlmd_connection_manager.primary_mlmd_handle
   )
   pipeline_states = [s for s in all_pipeline_states if filter_fn(s)]

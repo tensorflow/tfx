@@ -374,27 +374,6 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           m, task_lib.PipelineUid.from_pipeline(pipeline)
       )
 
-      pipeline_2 = copy.deepcopy(pipeline)
-      pipeline_2.runtime_spec.pipeline_run_id.field_value.string_value = 'run2'
-      # Initiate a pipeline start.
-      run_state_2 = pipeline_ops.initiate_pipeline_start(m, pipeline_2)
-      # Error if attempt to revive the pipeline when there concurrent runs are
-      # not enabled and there is another active run.
-      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
-        pipeline_ops.revive_pipeline_run(
-            m, pipeline_id=pipeline_id, pipeline_run_id=run_id
-        )
-      self.assertEqual(
-          status_lib.Code.INVALID_ARGUMENT, exception_context.exception.code
-      )
-
-      thread = threading.Thread(target=_inactivate, args=(run_state_2,))
-      thread.start()
-      # Stop pipeline so we can revive.
-      pipeline_ops.stop_pipeline(
-          m, task_lib.PipelineUid.from_pipeline(pipeline_2)
-      )
-
       with pipeline_state_run1:
         example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
         trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')

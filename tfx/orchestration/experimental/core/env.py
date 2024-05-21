@@ -117,6 +117,22 @@ class Env(abc.ABC):
   ) -> None:
     """Updates orchestrator storage backends with pipeline run status."""
 
+  @abc.abstractmethod
+  def should_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> bool:
+    """Environment specific definition of orchestratable pipeline.
+
+    `pipeline_state.PipelineState.load_all_active` will only load the
+    orchestratable pipeline states according to this definition. For example,
+    sharded orchestrator will only filter the pipeline_run_id that belongs to
+    its own shard index.
+
+    Args:
+      pipeline: The Pipeline IR.
+
+    Returns:
+      Whether the env should orchestrate the pipeline.
+    """
+
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -183,6 +199,10 @@ class _DefaultEnv(Env):
       sub_pipeline_ids: Optional[Sequence[str]] = None,
   ) -> None:
     pass
+
+  def should_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> bool:
+    # By default, all pipeline runs should be orchestrated.
+    return True
 
 
 _ENV = _DefaultEnv()

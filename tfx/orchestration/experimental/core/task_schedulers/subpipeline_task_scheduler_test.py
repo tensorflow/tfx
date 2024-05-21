@@ -145,7 +145,9 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest, parameterized.TestCase):
           ])
 
       # There should be only 1 orchestrator execution for the outer pipeline.
-      pipeline_states = pstate.PipelineState.load_all_active(mlmd_connection)
+      pipeline_states = pstate.PipelineState.load_all_active_and_owned(
+          mlmd_connection
+      )
       self.assertLen(pipeline_states, 1)
 
       ts_result = []
@@ -163,7 +165,9 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest, parameterized.TestCase):
       time.sleep(sleep_time)
 
       # There should be another orchestrator execution for the inner pipeline.
-      pipeline_states = pstate.PipelineState.load_all_active(mlmd_connection)
+      pipeline_states = pstate.PipelineState.load_all_active_and_owned(
+          mlmd_connection
+      )
       self.assertLen(pipeline_states, 2)
       sub_pipeline_states = [
           state

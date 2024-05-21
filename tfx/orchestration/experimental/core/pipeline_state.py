@@ -471,8 +471,12 @@ class _PipelineIRCodec:
 # resume a pipeline), this variable must be toggled to True. Default as True as
 # well to make sure latest executions and contexts are checked when
 # orchestrator starts or gets preempted.
-_active_pipelines_exist = True
-# Lock to serialize the functions changing the _active_pipeline_exist status.
+# Note from sharded orchestrator: this flag ONLY ACCOUNTS FOR the active
+# pipeline states of THIS orchestrator shard. Active pipelines for other
+# orchestrator shards MUST NOT affect this.
+_active_owned_pipelines_exist = True
+# Lock to serialize the functions changing the _active_own_pipeline_exist
+# status.
 _active_pipelines_lock = threading.Lock()
 
 
@@ -703,11 +707,11 @@ class PipelineState:
 
     _prepare_pipeline_node_contexts(pipeline)
 
-    # update _active_pipelines_exist to be True so orchestrator will keep
+    # update _active_owned_pipelines_exist to be True so orchestrator will keep
     # fetching the latest contexts and execution when orchestrating the pipeline
     # run.
-    global _active_pipelines_exist
-    _active_pipelines_exist = True
+    global _active_owned_pipelines_exist
+    _active_owned_pipelines_exist = True
     logging.info('Pipeline start, set active_pipelines_exist=True.')
     # Skip dual logging if MLMD backend does not have pipeline-asset support.
     pipeline_asset = mlmd_handle.store.pipeline_asset
@@ -768,9 +772,16 @@ class PipelineState:
   @classmethod
   @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)
   @_synchronized
-  def load_all_active(cls,
-                      mlmd_handle: metadata.Metadata) -> List['PipelineState']:
-    """Loads all active pipeline states.
+  def load_all_active_and_owned(
+      cls,
+      mlmd_handle: metadata.Metadata,
+  ) -> list['PipelineState']:
+    """Loads all active pipeline states that the current orchestrator owns.
+
+    Whether the pipeline state is owned by the current orchestrator or not is
+    determined by the Env.should_orchestrate(). For example, whether the
+    orchestrator is for the lightning mode or not, or for sharded orchestrator
+    if the pipeline state belongs to the current shard.
 
     Args:
       mlmd_handle: A handle to the MLMD db.
@@ -782,9 +793,9 @@ class PipelineState:
       status_lib.StatusNotOkError: With code=FAILED_PRECONDITION if more than
       one active pipeline are found with the same pipeline uid.
     """
-    result = []
-    global _active_pipelines_exist
-    if _active_pipelines_exist:
+    result: list['PipelineState'] = []
+    global _active_owned_pipelines_exist
+    if _active_owned_pipelines_exist:
       logging.info('Checking active pipelines.')
       contexts = get_orchestrator_contexts(mlmd_handle)
       active_pipeline_uids = set()
@@ -802,9 +813,14 @@ class PipelineState:
           active_pipeline_uids.add(pipeline_uid)
           result.append(pipeline_state)
 
+    result = [
+        ps for ps in result if env.get_env().should_orchestrate(ps.pipeline)
+    ]
     if not result:
-      _active_pipelines_exist = False
-      logging.info('No active pipelines, set _active_pipelines_exist=False.')
+      _active_owned_pipelines_exist = False
+      logging.info(
+          'No active pipelines, set _active_owned_pipelines_exist=False.'
+      )
     return result
 
   @classmethod
@@ -915,8 +931,8 @@ class PipelineState:
 
   @_synchronized
   def initiate_resume(self) -> None:
-    global _active_pipelines_exist
-    _active_pipelines_exist = True
+    global _active_owned_pipelines_exist
+    _active_owned_pipelines_exist = True
     self._check_context()
     self.remove_property(_STOP_INITIATED)
     self.remove_property(_PIPELINE_STATUS_CODE)
