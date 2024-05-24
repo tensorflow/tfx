@@ -186,24 +186,13 @@ message PropertyPredicate {
     PropertyPredicate rhs = 3;
   }
 
-  // Logical operator on multiple elements.
-  // Only "AND" is supported for multi-element operator.
-  message MultiLogicalOperator {
-    enum LogicalOp {
-      OP_UNSPECIFIED = 0;
-      AND = 1;
-    }
-    LogicalOp op = 1;
-
-    repeated PropertyPredicate predicates = 4;
-  }
-
   oneof operator {
     ValueComparator value_comparator = 1;
     UnaryLogicalOperator unary_logical_operator = 2;
     BinaryLogicalOperator binary_logical_operator = 3;
-    MultiLogicalOperator multi_logical_operator = 4;
   }
+
+  reserved 4;
 }
 
 // InputGraph expresses a declarative input resolution logic with a graph of
