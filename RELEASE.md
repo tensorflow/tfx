@@ -5,6 +5,7 @@
 ## Breaking Changes
 
 ### For Pipeline Authors
+*  `Importer` can depend on upstream artifact by setting `input_dependencies`.
 
 ### For Component Authors
 

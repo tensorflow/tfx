@@ -285,13 +285,16 @@ class Importer(base_node.BaseNode):
   ```
   """
 
-  def __init__(self,
-               source_uri: str,
-               artifact_type: Type[types.Artifact],
-               reimport: Optional[bool] = False,
-               properties: Optional[Dict[str, Union[str, int]]] = None,
-               custom_properties: Optional[Dict[str, Union[str, int]]] = None,
-               output_key: Optional[str] = None):
+  def __init__(
+      self,
+      source_uri: str,
+      artifact_type: Type[types.Artifact],
+      reimport: Optional[bool] = False,
+      properties: Optional[Dict[str, Union[str, int]]] = None,
+      custom_properties: Optional[Dict[str, Union[str, int]]] = None,
+      output_key: Optional[str] = None,
+      input_dependencies: Optional[Dict[str, Any]] = None,
+  ):
     """Init function for the Importer.
 
     Args:
@@ -306,6 +309,8 @@ class Importer(base_node.BaseNode):
         Artifact. These properties should be of type Text or int.
       output_key: The key to use for the imported artifact in the Importer's
         output dictionary. Defaults to 'result'.
+      input_dependencies: Make this importer depend on upstream inputs. This can
+        delay the start of the importer until the inputs are available.
     """
     self._source_uri = source_uri
     self._reimport = reimport
@@ -325,13 +330,14 @@ class Importer(base_node.BaseNode):
     # TODO(b/161490287): remove static artifacts.
     output_channel.set_artifacts([artifact])
     self._output_dict = {self._output_key: output_channel}
+    self._input_dependencies = input_dependencies
 
     super().__init__(driver_class=ImporterDriver)
 
   @property
   @doc_controls.do_not_generate_docs
   def inputs(self) -> Dict[str, Any]:
-    return {}
+    return self._input_dependencies or {}
 
   @property
   def outputs(self) -> Dict[str, Any]:
