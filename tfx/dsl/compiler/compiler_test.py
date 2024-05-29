@@ -33,6 +33,7 @@ from tfx.dsl.compiler.testdata import composable_pipeline_async
 from tfx.dsl.compiler.testdata import conditional_pipeline
 from tfx.dsl.compiler.testdata import consumer_pipeline
 from tfx.dsl.compiler.testdata import consumer_pipeline_different_project
+from tfx.dsl.compiler.testdata import consumer_pipeline_with_tags
 from tfx.dsl.compiler.testdata import dynamic_exec_properties_pipeline
 from tfx.dsl.compiler.testdata import external_artifacts_pipeline
 from tfx.dsl.compiler.testdata import foreach_pipeline
@@ -143,6 +144,7 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
           consumer_pipeline,
           external_artifacts_pipeline,
           consumer_pipeline_different_project,
+          consumer_pipeline_with_tags,
       ])
   )
   def testCompile(

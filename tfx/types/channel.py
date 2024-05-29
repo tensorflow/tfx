@@ -722,6 +722,9 @@ class ExternalPipelineChannel(BaseChannel):
       producer_component_id: str,
       output_key: str,
       pipeline_run_id: str = '',
+      run_context_predicates: Sequence[
+          tuple[str, metadata_store_pb2.Value]
+      ] = (),
   ):
     """Initialization of ExternalPipelineChannel.
 
@@ -733,13 +736,22 @@ class ExternalPipelineChannel(BaseChannel):
       output_key: The output key when producer component produces the artifacts
         in this Channel.
       pipeline_run_id: (Optional) Pipeline run id the artifacts belong to.
+      run_context_predicates: (Optional) A list of run context property
+        predicates to filter run contexts.
     """
     super().__init__(type=artifact_type)
+
+    if pipeline_run_id and run_context_predicates:
+      raise ValueError(
+          'pipeline_run_id and run_context_predicates cannot be both set.'
+      )
+
     self.owner = owner
     self.pipeline_name = pipeline_name
     self.producer_component_id = producer_component_id
     self.output_key = output_key
     self.pipeline_run_id = pipeline_run_id
+    self.run_context_predicates = run_context_predicates
 
   def get_data_dependent_node_ids(self) -> Set[str]:
     return set()
@@ -751,7 +763,8 @@ class ExternalPipelineChannel(BaseChannel):
         f'pipeline_name={self.pipeline_name}, '
         f'producer_component_id={self.producer_component_id}, '
         f'output_key={self.output_key}, '
-        f'pipeline_run_id={self.pipeline_run_id})'
+        f'pipeline_run_id={self.pipeline_run_id}), '
+        f'run_context_predicates={self.run_context_predicates}'
     )
 
 

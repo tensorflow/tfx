@@ -33,6 +33,8 @@ from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact
 from tfx.types import channel
 
+from ml_metadata.proto import metadata_store_pb2
+
 
 class ChannelForTesting(channel.BaseChannel):
   """Dummy channel for testing."""
@@ -149,6 +151,7 @@ def external_pipeline_artifact_query(
     producer_component_id: str,
     output_key: str,
     pipeline_run_id: str = '',
+    pipeline_run_tags: Sequence[str] = (),
 ) -> channel.ExternalPipelineChannel:
   """Helper function to construct a query to get artifacts from an external pipeline.
 
@@ -160,15 +163,36 @@ def external_pipeline_artifact_query(
     output_key: The output key when producer component produces the artifacts in
       this Channel.
     pipeline_run_id: (Optional) Pipeline run id the artifacts belong to.
+    pipeline_run_tags: (Optional) A list of tags the artifacts belong to. It is
+      an AND relationship between tags. For example, if tags=['tag1', 'tag2'],
+      then only artifacts belonging to the run with both 'tag1' and 'tag2' will
+      be returned. Only one of pipeline_run_id and pipeline_run_tags can be set.
 
   Returns:
     channel.ExternalPipelineChannel instance.
 
   Raises:
-    ValueError, if owner or pipeline_name is missing.
+    ValueError, if owner or pipeline_name is missing, or both pipeline_run_id
+      and pipeline_run_tags are set.
   """
   if not owner or not pipeline_name:
     raise ValueError('owner or pipeline_name is missing.')
+
+  if pipeline_run_id and pipeline_run_tags:
+    raise ValueError(
+        'pipeline_run_id and pipeline_run_tags cannot be both set.'
+    )
+
+  run_context_predicates = []
+  for tag in pipeline_run_tags:
+    # TODO(b/264728226): Find a better way to construct the tag name that used
+    # in MLMD. Tag names that used in MLMD are constructed in tflex_mlmd_api.py,
+    # but it is not visible in this file.
+    mlmd_store_tag = '__tag_' + tag + '__'
+    run_context_predicates.append((
+        mlmd_store_tag,
+        metadata_store_pb2.Value(bool_value=True),
+    ))
 
   return channel.ExternalPipelineChannel(
       artifact_type=artifact_type,
@@ -177,6 +201,7 @@ def external_pipeline_artifact_query(
       producer_component_id=producer_component_id,
       output_key=output_key,
       pipeline_run_id=pipeline_run_id,
+      run_context_predicates=run_context_predicates,
   )
 
 
