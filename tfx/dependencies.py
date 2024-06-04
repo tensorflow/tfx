@@ -106,7 +106,11 @@ def make_required_install_packages():
       # Pip might stuck in a TF 1.15 dependency although there is a working
       # dependency set with TF 2.x without the sync.
       # pylint: disable=line-too-long
-      'tensorflow' + select_constraint('>=2.15.0,<2.16'),
+      'tensorflow' + select_constraint(
+          default='>=2.15.0,<2.16',
+          nightly='>=2.16.0.dev',
+          git_master='@git+https://github.com/tensorflow/tensorflow@master',
+      ),
       # pylint: enable=line-too-long
       'tensorflow-hub>=0.15.0,<0.16',
       'tensorflow-data-validation'
