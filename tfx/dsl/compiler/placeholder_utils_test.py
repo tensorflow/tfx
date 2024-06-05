@@ -665,6 +665,43 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), expected_result)
 
+  def testListConcatWithAbsentElement(self):
+    # When an exec prop has type Union[T, None] and the user passes None, it is
+    # actually completely absent from the exec_properties dict in
+    # ExecutionInvocation. See also b/172001324 and the corresponding todo in
+    # placeholder_utils.py.
+    placeholder_expression = """
+      operator {
+        list_concat_op {
+          expressions {
+            value {
+              string_value: "random_before"
+            }
+          }
+          expressions {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "doesnotexist"
+            }
+          }
+          expressions {
+            value {
+              string_value: "random_after"
+            }
+          }
+        }
+      }
+    """
+    pb = text_format.Parse(
+        placeholder_expression, placeholder_pb2.PlaceholderExpression()
+    )
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context
+        ),
+        ["random_before", None, "random_after"],
+    )
+
   def testListConcatAndSerialize(self):
     placeholder_expression = """
       operator {

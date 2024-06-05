@@ -433,9 +433,10 @@ class _ExpressionResolver:
     """Evaluates the list concat operator."""
     result = []
     for sub_expression in op.expressions:
-      value = self.resolve(sub_expression, pool)
-      if value is None:
-        raise NullDereferenceError(sub_expression)
+      try:
+        value = self.resolve(sub_expression, pool)
+      except NullDereferenceError:
+        value = None
       result.append(value)
     return result
 

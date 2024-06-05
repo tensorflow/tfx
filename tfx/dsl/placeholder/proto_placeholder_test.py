@@ -220,7 +220,8 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
   def test_NoneExecPropIntoOptionalField(self):
     # When an exec prop has type Union[T, None] and the user passes None, it is
     # actually completely absent from the exec_properties dict in
-    # ExecutionInvocation.
+    # ExecutionInvocation. See also b/172001324 and the corresponding todo in
+    # placeholder_utils.py.
     actual = resolve(
         _UpdateOptions(reload_policy=ph.exec_property('reload_policy')),
         exec_properties={},  # Intentionally empty.
@@ -380,6 +381,33 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
         pipeline_node {
           upstream_nodes: ""
           upstream_nodes: ""
+        }
+        """,
+        parse_text_proto(actual),
+    )
+
+  def test_RepeatedFieldNoneItem(self):
+    actual = resolve(
+        ph.make_proto(
+            execution_invocation_pb2.ExecutionInvocation(
+                pipeline_node=pipeline_pb2.PipelineNode()
+            ),
+            pipeline_node=ph.make_proto(
+                pipeline_pb2.PipelineNode(),
+                upstream_nodes=[
+                    'foo',
+                    ph.exec_property('reload_policy'),  # Will be None.
+                    'bar',
+                ],
+            ),
+        ),
+        exec_properties={},  # Intentionally empty.
+    )
+    self.assertProtoEquals(
+        """
+        pipeline_node {
+          upstream_nodes: "foo"
+          upstream_nodes: "bar"
         }
         """,
         parse_text_proto(actual),

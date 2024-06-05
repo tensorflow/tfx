@@ -354,8 +354,7 @@ class ListPlaceholder(Placeholder):
     """Serializes list-value placeholder to JSON or comma-separated string.
 
     Only supports primitive type list element (a.k.a bool, int, float or str) at
-    the
-    moment; throws runtime error otherwise.
+    the moment; throws runtime error otherwise.
 
     Args:
        serialization_format: The format of how the proto is serialized.
