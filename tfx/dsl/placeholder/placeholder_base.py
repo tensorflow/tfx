@@ -145,6 +145,14 @@ class Placeholder(abc.ABC):
         'Did you miss the ending `,` in your tuple?'
     )
 
+  def __format__(self, format_spec) -> str:
+    raise RuntimeError(
+        'Formatting a placeholder is not supported. Did you accidentally use a '
+        'placeholder inside an f-string or .format() call? That cannot work '
+        'because placeholder values are only known later at runtime. You can '
+        'use the + operator for string concatenation.'
+    )
+
   def b64encode(self, url_safe: bool = True) -> _Base64EncodeOperator:
     """Encodes the value with URL-safe Base64 encoding."""
     return _Base64EncodeOperator(self, url_safe)

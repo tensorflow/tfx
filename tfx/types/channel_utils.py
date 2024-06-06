@@ -248,7 +248,7 @@ def unwrap_simple_channel_placeholder(
   ):
     raise ValueError(
         'Expected placeholder of shape somechannel.future()[0].value, but got'
-        f' {placeholder}.'
+        f' {placeholder!r}.'
     )
 
   # Now that we know there's only one channel inside, we can just extract it:

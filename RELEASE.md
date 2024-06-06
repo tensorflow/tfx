@@ -4,6 +4,12 @@
 
 ## Breaking Changes
 
+*  `Placeholder.__format__()` is now disallowed, so you cannot use placeholders
+   in f-strings and `str.format()` calls anymore. If you get an error from this,
+   most likely you discovered a bug and should not use an f-string in the first
+   place. If it is truly your intention to print the placeholder (not its
+   resolved value) for debugging purposes, use `repr()` or `!r` instead.
+
 ### For Pipeline Authors
 
 ### For Component Authors

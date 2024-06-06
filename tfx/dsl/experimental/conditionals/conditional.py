@@ -36,7 +36,7 @@ class CondContext(dsl_context.DslContext):
         if id(ancestor_context.predicate) == id(self.predicate):
           raise ValueError(
               'Nested conditionals with duplicate predicates:\n'
-              f'{self.predicate} vs\n{ancestor_context.predicate}.\n'
+              f'{self.predicate!r} vs\n{ancestor_context.predicate!r}.\n'
               'Please merge the redundant conditionals.'
           )
 
