@@ -54,6 +54,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
 
+from ml_metadata import errors as mlmd_errors
 from ml_metadata.proto import metadata_store_pb2
 
 

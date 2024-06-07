@@ -1298,9 +1298,15 @@ def orchestrate(
   if filter_fn is None:
     filter_fn = lambda _: True
 
-  all_pipeline_states = pstate.PipelineState.load_all_active_and_owned(
-      mlmd_connection_manager.primary_mlmd_handle
-  )
+  # Try to load active pipelines. If there is a recoverable error, return False
+  # and then retry in the next orchestration iteration.
+  try:
+    all_pipeline_states = pstate.PipelineState.load_all_active_and_owned(
+        mlmd_connection_manager.primary_mlmd_handle
+    )
+  except Exception as e:  # pylint: disable=broad-except
+    raise e
+
   pipeline_states = [s for s in all_pipeline_states if filter_fn(s)]
   if not pipeline_states:
     logging.info('No active pipelines to run.')
