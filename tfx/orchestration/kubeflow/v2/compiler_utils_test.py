@@ -266,36 +266,38 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(
       {
-          'testcase_name':
-              'two_sides_placeholder',
-          'predicate':
-              _TEST_CHANNEL.future()[0].property('int1') <
-              _TEST_CHANNEL.future()[0].property('int2'),
-          'expected_cel':
-              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'int1\'] < '
-              'inputs.artifacts[\'key\'].artifacts[0].metadata[\'int2\'])',
+          'testcase_name': 'two_sides_placeholder',
+          'predicate': _TEST_CHANNEL.future()[0].property(
+              'int1'
+          ) < _TEST_CHANNEL.future()[0].property('int2'),
+          'expected_cel': (
+              "(inputs.artifacts['_producer.foo'].artifacts[0].metadata['int1'] < "
+              "inputs.artifacts['_producer.foo'].artifacts[0].metadata['int2'])"
+          ),
       },
       {
-          'testcase_name':
-              'left_side_placeholder_right_side_int',
-          'predicate':
-              _TEST_CHANNEL.future()[0].property('int') < 1,
-          'expected_cel':
-              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'int\'] < 1.0)',
+          'testcase_name': 'left_side_placeholder_right_side_int',
+          'predicate': _TEST_CHANNEL.future()[0].property('int') < 1,
+          'expected_cel': (
+              "(inputs.artifacts['_producer.foo'].artifacts[0].metadata['int']"
+              ' < 1.0)'
+          ),
       },
       {
           'testcase_name': 'left_side_placeholder_right_side_float',
           'predicate': _TEST_CHANNEL.future()[0].property('float') < 1.1,
-          'expected_cel':
-              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'float\'] < '
-              '1.1)',
+          'expected_cel': (
+              "(inputs.artifacts['_producer.foo'].artifacts[0].metadata['float']"
+              ' < 1.1)'
+          ),
       },
       {
           'testcase_name': 'left_side_placeholder_right_side_string',
           'predicate': _TEST_CHANNEL.future()[0].property('str') == 'test_str',
-          'expected_cel':
-              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'str\'] == '
-              '\'test_str\')',
+          'expected_cel': (
+              "(inputs.artifacts['_producer.foo'].artifacts[0].metadata['str']"
+              " == 'test_str')"
+          ),
       },
   )
   def testComparison(self, predicate, expected_cel):
@@ -310,8 +312,9 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
 
   def testArtifactUri(self):
     predicate = _TEST_CHANNEL.future()[0].uri == 'test_str'
-    expected_cel = ('(inputs.artifacts[\'key\'].artifacts[0].uri == '
-                    '\'test_str\')')
+    expected_cel = (
+        "(inputs.artifacts['_producer.foo'].artifacts[0].uri == 'test_str')"
+    )
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
@@ -323,8 +326,10 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
 
   def testNegation(self):
     predicate = _TEST_CHANNEL.future()[0].property('int') != 1
-    expected_cel = ('!((inputs.artifacts[\'key\'].artifacts[0]'
-                    '.metadata[\'int\'] == 1.0))')
+    expected_cel = (
+        "!((inputs.artifacts['_producer.foo'].artifacts[0]"
+        ".metadata['int'] == 1.0))"
+    )
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
@@ -337,8 +342,9 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
   def testConcat(self):
     predicate = _TEST_CHANNEL.future()[0].uri + 'something' == 'test_str'
     expected_cel = (
-        '((inputs.artifacts[\'key\'].artifacts[0].uri + \'something\') == '
-        '\'test_str\')')
+        "((inputs.artifacts['_producer.foo'].artifacts[0].uri + 'something') =="
+        " 'test_str')"
+    )
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
@@ -358,14 +364,6 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
     )
     with self.assertRaisesRegex(
         ValueError, 'Got unsupported placeholder operator base64_encode_op.'):
-      compiler_utils.placeholder_to_cel(placeholder_pb)
-
-  def testPlaceholderWithoutKey(self):
-    predicate = _TEST_CHANNEL.future()[0].uri == 'test_str'
-    placeholder_pb = predicate.encode()
-    with self.assertRaisesRegex(
-        ValueError,
-        'Only supports accessing placeholders with a key on KFPv2.'):
       compiler_utils.placeholder_to_cel(placeholder_pb)
 
 

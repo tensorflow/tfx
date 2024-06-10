@@ -1,3 +1,9 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+#
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/consumer_pipeline_with_tags.py
+
 pipeline_info {
   id: "consumer-pipeline"
 }

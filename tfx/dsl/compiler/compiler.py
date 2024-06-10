@@ -214,8 +214,8 @@ class Compiler:
 
     # Step 3: Node inputs
     node_inputs_compiler.compile_node_inputs(
-        pipeline_ctx, tfx_node, node.inputs)
-
+        pipeline_ctx, tfx_node, node.inputs
+    )
     # Step 4: Node outputs
     if (isinstance(tfx_node, base_component.BaseComponent) or
         compiler_utils.is_importer(tfx_node)):

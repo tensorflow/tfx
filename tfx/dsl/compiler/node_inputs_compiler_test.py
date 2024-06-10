@@ -577,7 +577,8 @@ class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(result.inputs[cond_input_key].min_count, 1)
     self.assertLen(result.conditionals, 1)
     cond = list(result.conditionals.values())[0]
-    self.assertProtoEquals("""
+    self.assertProtoEquals(
+        """
       operator {
         compare_op {
           op: EQUAL
@@ -594,7 +595,7 @@ class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
                     index_op {
                       expression {
                         placeholder {
-                          key: "%s"
+                          key: "_CondNode.x"
                         }
                       }
                     }
@@ -605,7 +606,9 @@ class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
           }
         }
       }
-    """ % cond_input_key, cond.placeholder_expression)
+    """,
+        cond.placeholder_expression,
+    )
 
   def testCompileInputsForDynamicProperties(self):
     producer = DummyNode('Producer')

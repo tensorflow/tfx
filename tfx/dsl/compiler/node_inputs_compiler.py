@@ -421,20 +421,32 @@ def _compile_conditionals(
     contexts = context.dsl_context_registry.get_contexts(tfx_node)
   except ValueError:
     return
-
   for dsl_context in contexts:
     if not isinstance(dsl_context, conditional.CondContext):
       continue
     cond_context = cast(conditional.CondContext, dsl_context)
     for channel in channel_utils.get_dependent_channels(cond_context.predicate):
+      # Since the channels here are *always* from a CWP, which we now set the
+      # key by default on for OutputChannel, we must re-create the input key if
+      # an output channel is used, otherwise the wrong key may be used by
+      # `get_input_key` (e.g. if the producer component is also used as data
+      # input to the component.)
+      # Note that this means we potentially have several inputs with identical
+      # artifact queries under the hood, which should be optimized away if we
+      # run into performance issues.
+      if isinstance(channel, channel_types.OutputChannel):
+        input_key = compiler_utils.implicit_channel_key(channel)
+      else:
+        input_key = context.get_node_context(tfx_node).get_input_key(channel)
       _compile_input_spec(
           pipeline_ctx=context,
           tfx_node=tfx_node,
-          input_key=context.get_node_context(tfx_node).get_input_key(channel),
+          input_key=input_key,
           channel=channel,
           hidden=False,
           min_count=1,
-          result=result)
+          result=result,
+      )
     cond_id = context.get_conditional_id(cond_context)
     expr = channel_utils.encode_placeholder_with_channels(
         cond_context.predicate, context.get_node_context(tfx_node).get_input_key

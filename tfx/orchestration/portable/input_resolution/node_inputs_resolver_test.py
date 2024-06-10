@@ -715,21 +715,23 @@ class NodeInputsResolverTest(tf.test.TestCase):
 
     with self.subTest('blessed == 1'):
       node_inputs = pipeline_pb2.NodeInputs(
-          inputs={'x': x},
+          inputs={'_foo.x': x},
           input_graphs={'graph_1': graph_1},
-          conditionals={'cond_1': cond_1})
+          conditionals={'cond_1': cond_1},
+      )
 
       result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
-      self.assertEqual(result, [{'x': [a1]}, {'x': [a4]}])
+      self.assertEqual(result, [{'_foo.x': [a1]}, {'_foo.x': [a4]}])
 
     with self.subTest('blessed == 1 and tag == foo'):
       node_inputs = pipeline_pb2.NodeInputs(
-          inputs={'x': x},
+          inputs={'_foo.x': x},
           input_graphs={'graph_1': graph_1},
-          conditionals={'cond_1': cond_1, 'cond_2': cond_2})
+          conditionals={'cond_1': cond_1, 'cond_2': cond_2},
+      )
 
       result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
-      self.assertEqual(result, [{'x': [a1]}])
+      self.assertEqual(result, [{'_foo.x': [a1]}])
 
   def testConditionals_FalseCondAlwaysReturnsEmpty(self):
     a = self.create_artifacts(1)
@@ -778,7 +780,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
     node_inputs = NodeInputs(
         inputs={
             'a': x1,
-            'b': x2,
+            '_foo.x': x2,
         },
         conditionals={'cond': cond},
     )

@@ -558,7 +558,9 @@ class OutputChannel(Channel):
     self._is_async = True
 
   def future(self) -> ChannelWrappedPlaceholder:
-    return ChannelWrappedPlaceholder(self)
+    return ChannelWrappedPlaceholder(
+        self, key=f'_{self.producer_component_id}.{self.output_key}'
+    )
 
 
 @doc_controls.do_not_generate_docs
@@ -806,6 +808,12 @@ class ChannelWrappedPlaceholder(artifact_placeholder.ArtifactPlaceholder):
     Args:
       key: The new key for the channel.
     """
+
+    if self._key is not None and key:
+      raise ValueError(
+          'Do not call set_key() one a ChannelWrappedPlaceholder that already'
+          f' has a key. Trying to set {key} over {self._key}'
+      )
     self._key = key
 
   def __getitem__(self, index: int) -> ChannelWrappedPlaceholder:

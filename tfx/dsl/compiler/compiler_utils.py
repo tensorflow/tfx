@@ -204,6 +204,11 @@ def node_context_name(pipeline_context_name: str, node_id: str):
 
 def implicit_channel_key(channel: types.BaseChannel):
   """Key of a channel to the node that consumes the channel as input."""
+  if (
+      isinstance(channel, channel_types.ChannelWrappedPlaceholder)
+      and channel.key
+  ):
+    return channel.key
   if isinstance(channel, channel_types.PipelineInputChannel):
     channel = cast(channel_types.PipelineInputChannel, channel)
     return f"_{channel.pipeline.id}.{channel.output_key}"

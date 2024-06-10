@@ -1943,6 +1943,43 @@ nodes {
         }
         inputs {
           inputs {
+            key: "_Evaluator.blessing"
+            value {
+              channels {
+                producer_node_query {
+                  id: "Evaluator"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "composable-pipeline.Evaluator"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "ModelBlessing"
+                  }
+                }
+                output_key: "blessing"
+              }
+              min_count: 1
+            }
+          }
+          inputs {
             key: "blessing"
             value {
               channels {
@@ -2109,7 +2146,7 @@ nodes {
                               index_op {
                                 expression {
                                   placeholder {
-                                    key: "blessing"
+                                    key: "_Evaluator.blessing"
                                   }
                                 }
                               }
