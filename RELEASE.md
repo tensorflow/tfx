@@ -19,9 +19,9 @@
 ## Bug Fixes and Other Changes
 
 ## Dependency Updates
-| Package Name | Version Constraints | Previously (in `v1.14.0`) | Comments |
+| Package Name | Version Constraints | Previously (in `v1.15.1`) | Comments |
 | -- | -- | -- | -- |
-| `requests` | - | `<2.32.0` | https://github.com/psf/requests/issues/6707 |
+| `docker` | `>=7,<8` | `>=4.1,<5` | |
 
 ## Documentation Updates
 
@@ -42,7 +42,7 @@
 ## Bug Fixes and Other Changes
 
 ## Dependency Updates
-| Package Name | Version Constraints | Previously (in `v1.14.0`) | Comments |
+| Package Name | Version Constraints | Previously (in `v1.15.0`) | Comments |
 | -- | -- | -- | -- |
 | `kfp-pipeline-spec` | `kfp-pipeline-spec>=0.1.10,<0.2` | `>0.1.13,<0.2` | |
 

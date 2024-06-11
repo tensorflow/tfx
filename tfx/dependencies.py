@@ -63,17 +63,11 @@ def make_pipeline_sdk_required_install_packages():
       'packaging>=22',
       'portpicker>=1.3.1,<2',
       'protobuf>=3.20.3,<5',
-      'docker>=4.1,<5',
+      'docker>=7,<8',
       'google-apitools>=0.5,<1',
       'google-api-python-client>=1.8,<2',
       # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
       'jinja2>=2.7.3,<4',
-      # TODO(b/341782771): Currently, requests(>=2.32.0) and docker-py have a
-      # collision because the docker-py uses internal behavior of the old
-      # requests. This version constraint is a temporary fix, and this may need
-      # to be rollbacked to fix vulnerablity such as CVE-2024-35195. See
-      # https://github.com/psf/requests/issues/6707 for more details.
-      'requests<2.32.0',
       # typing-extensions allows consistent & future-proof interface for typing.
       # Since kfp<2 uses typing-extensions<4, lower bound is the latest 3.x, and
       # upper bound is <5 as the semver started from 4.0 according to their doc.
