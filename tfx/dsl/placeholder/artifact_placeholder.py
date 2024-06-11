@@ -135,6 +135,14 @@ class ArtifactPlaceholder(placeholder_base.Placeholder):
   def custom_property(self, key: str) -> _PropertyOperator:
     return _PropertyOperator(self, key, is_custom_property=True)
 
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, ArtifactPlaceholder)
+        and self._key == other._key  # pylint: disable=protected-access
+        and self._is_input == other._is_input  # pylint: disable=protected-access
+        and self._index == other._index  # pylint: disable=protected-access
+    )
+
   def encode(
       self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
@@ -162,6 +170,13 @@ class _ArtifactUriOperator(placeholder_base.UnaryPlaceholderOperator):
     super().__init__(value, expected_type=str)
     self._split = split
 
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, _ArtifactUriOperator)
+        and self._split == other._split  # pylint: disable=protected-access
+        and super().internal_equals(other)
+    )
+
   def encode(
       self, component_spec: Optional[type['_types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
@@ -183,6 +198,13 @@ class _ArtifactValueOperator(placeholder_base.UnaryPlaceholderOperator):
   def __init__(self, value: placeholder_base.Placeholder, split: str = ''):
     super().__init__(value, expected_type=placeholder_base.ValueType)
     self._split = split
+
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, _ArtifactValueOperator)
+        and self._split == other._split  # pylint: disable=protected-access
+        and super().internal_equals(other)
+    )
 
   def encode(
       self, component_spec: Optional[type['_types.ComponentSpec']] = None
@@ -209,6 +231,14 @@ class _PropertyOperator(placeholder_base.UnaryPlaceholderOperator):
     super().__init__(value, expected_type=placeholder_base.ValueType)
     self._key = key
     self._is_custom_property = is_custom_property
+
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, _PropertyOperator)
+        and self._key == other._key  # pylint: disable=protected-access
+        and self._is_custom_property == other._is_custom_property  # pylint: disable=protected-access
+        and super().internal_equals(other)
+    )
 
   def encode(
       self, component_spec: Optional[type['_types.ComponentSpec']] = None

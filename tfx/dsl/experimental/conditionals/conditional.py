@@ -30,10 +30,7 @@ class CondContext(dsl_context.DslContext):
   def validate(self, containing_nodes: Sequence[base_node.BaseNode]):
     for ancestor_context in self.ancestors:
       if isinstance(ancestor_context, CondContext):
-        # We can't use == on the objects themselves here, because they're magic
-        # placeholders that would return a _ComparisonPredicate, which is always
-        # truthy. TODO(b/297353695): Detect equivalent predicates too.
-        if id(ancestor_context.predicate) == id(self.predicate):
+        if ancestor_context.predicate.internal_equals(self.predicate):
           raise ValueError(
               'Nested conditionals with duplicate predicates:\n'
               f'{self.predicate!r} vs\n{ancestor_context.predicate!r}.\n'

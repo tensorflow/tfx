@@ -124,6 +124,9 @@ class ExecPropertyPlaceholder(placeholder_base.Placeholder):
   def key(self) -> str:
     return self._key
 
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return isinstance(other, ExecPropertyPlaceholder) and self.key == other.key
+
   def encode(
       self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
@@ -146,6 +149,9 @@ class RuntimeInfoPlaceholder(placeholder_base.Placeholder):
       raise ValueError(f'Got unsupported runtime info key: {key}.')
     self._key = key
 
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return isinstance(other, RuntimeInfoPlaceholder) and self._key == other._key  # pylint: disable=protected-access
+
   def encode(
       self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
@@ -166,6 +172,9 @@ class ExecInvocationPlaceholder(placeholder_base.Placeholder):
     """Initializes the class. Consider this private."""
     super().__init__(expected_type=message.Message)
 
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return isinstance(other, ExecInvocationPlaceholder)
+
   def encode(
       self, component_spec: None | Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
@@ -185,6 +194,12 @@ class EnvironmentVariablePlaceholder(placeholder_base.Placeholder):
     """Initializes the class. Consider this private."""
     super().__init__(expected_type=placeholder_base.ValueType)
     self._key = key
+
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, EnvironmentVariablePlaceholder)
+        and self._key == other._key  # pylint: disable=protected-access
+    )
 
   def encode(
       self, component_spec: Any = None

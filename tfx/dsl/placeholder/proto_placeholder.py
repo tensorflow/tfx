@@ -298,6 +298,19 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
       )
     return value  # pytype: disable=bad-return-type
 
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, MakeProtoPlaceholder)
+        and self._base_message == other._base_message  # pylint: disable=protected-access
+        and self._fields.keys() == other._fields.keys()  # pylint: disable=protected-access
+        and all(
+            placeholder_base.internal_equals_value_like(
+                self_value, other._fields[key]  # pylint: disable=protected-access
+            )
+            for key, self_value in self._fields.items()  # pylint: disable=protected-access
+        )
+    )
+
   def traverse(self) -> Iterator[placeholder_base.Placeholder]:
     """Yields all placeholders under and including this one."""
     yield from super().traverse()

@@ -37,6 +37,7 @@ from typing import Any, Dict, Generic, Iterable, List, Optional, Sequence, Set, 
 
 from absl import logging
 from tfx.dsl.placeholder import artifact_placeholder
+from tfx.dsl.placeholder import placeholder_base
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.utils import deprecation_utils
@@ -822,3 +823,10 @@ class ChannelWrappedPlaceholder(artifact_placeholder.ArtifactPlaceholder):
           'Do not call [0] or [...] twice on a .future() placeholder'
       )
     return ChannelWrappedPlaceholder(self.channel, key=self._key, index=index)
+
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, ChannelWrappedPlaceholder)
+        and self.channel == other.channel
+        and self.index == other.index
+    )

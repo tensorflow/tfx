@@ -102,6 +102,31 @@ class ChannelTest(tf.test.TestCase):
     self.assertIsInstance(future[0], placeholder.Placeholder)
     self.assertIsInstance(future.value, placeholder.Placeholder)
 
+  def testFuturePlaceholderEquality(self):
+    # The Cond() implementation in CondContext::validate() relies on placeholder
+    # equality (and non-equality).
+    producer = mock.MagicMock()
+    producer.id = 'x1'
+    future1 = channel.OutputChannel(
+        artifact_type=_MyType, producer_component=producer, output_key='output1'
+    ).future()
+    future2 = channel.OutputChannel(
+        artifact_type=_MyType, producer_component=producer, output_key='output2'
+    ).future()
+    self.assertTrue(future1.internal_equals(future1))
+    self.assertFalse(future1.internal_equals(future2))
+    self.assertTrue(future1[0].value.internal_equals(future1[0].value))
+    self.assertFalse(future1[0].value.internal_equals(future2[0].value))
+    self.assertTrue(future1[0].uri.internal_equals(future1[0].uri))
+    self.assertFalse(future1[0].uri.internal_equals(future2[0].uri))
+    self.assertTrue(future1.value.internal_equals(future1.value))
+    self.assertFalse(future1.value.internal_equals(future2.value))
+    pred1 = future1.value != '0'
+    pred2 = future1.value != '0'
+    self.assertTrue(pred1.internal_equals(pred2))
+    pred3 = future2.value != '0'
+    self.assertFalse(pred1.internal_equals(pred3))
+
   def testValidUnionChannel(self):
     channel1 = channel.Channel(type=_MyType)
     channel2 = channel.Channel(type=_MyType)
