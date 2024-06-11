@@ -13,9 +13,12 @@
 # limitations under the License.
 """Metadata resolver for reasoning about metadata information."""
 
-from typing import Callable, Dict, List, Optional, Tuple
+import collections
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver_utils
+from tfx.types import external_artifact_utils
 
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
@@ -53,8 +56,148 @@ class MetadataResolver:
   )
   """
 
-  def __init__(self, store: mlmd.MetadataStore):
+  def __init__(
+      self,
+      store: mlmd.MetadataStore,
+      mlmd_connection_manager: Optional[mlmd_cm.MLMDConnectionManager] = None,
+  ):
     self._store = store
+    self._mlmd_connection_manager = mlmd_connection_manager
+
+  # TODO(b/302730333) Write a function get_upstream_artifacts_by_artifacts(),
+  # which is similar to get_downstream_artifacts_by_artifacts().
+
+  # TODO(b/302730333) Write unit tests for the new functions.
+
+  def get_downstream_artifacts_by_artifacts(
+      self,
+      artifacts: List[metadata_store_pb2.Artifact],
+      max_num_hops: int = _MAX_NUM_HOPS,
+      filter_query: str = '',
+      event_filter: Optional[Callable[[metadata_store_pb2.Event], bool]] = None,
+  ) -> Dict[
+      Union[str, int],
+      List[Tuple[metadata_store_pb2.Artifact, metadata_store_pb2.ArtifactType]],
+  ]:
+    """Given a list of artifacts, get their provenance successor artifacts.
+
+    For each artifact matched by a given `artifact_id`, treat it as a starting
+    artifact and get artifacts that are connected to them within `max_num_hops`
+    via a path in the downstream direction like:
+    artifact_i -> INPUT_event -> execution_j -> OUTPUT_event -> artifact_k.
+
+    A hop is defined as a jump to the next node following the path of node
+    -> event -> next_node.
+    For example, in the lineage graph artifact_1 -> event -> execution_1
+    -> event -> artifact_2:
+    artifact_2 is 2 hops away from artifact_1, and execution_1 is 1 hop away
+    from artifact_1.
+
+    Args:
+        artifacts: a list of starting artifacts. At most 100 ids are supported.
+          Returns empty result if `artifact_ids` is empty.
+        max_num_hops: maximum number of hops performed for downstream tracing.
+          `max_num_hops` cannot exceed 100 nor be negative.
+        filter_query: a query string filtering downstream artifacts by their own
+          attributes or the attributes of immediate neighbors. Please refer to
+          go/mlmd-filter-query-guide for more detailed guidance. Note: if
+          `filter_query` is specified and `max_num_hops` is 0, it's equivalent
+          to getting filtered artifacts by artifact ids with `get_artifacts()`.
+        event_filter: an optional callable object for filtering events in the
+          paths towards the downstream artifacts. Only an event with
+          `event_filter(event)` evaluated to True will be considered as valid
+          and kept in the path.
+
+    Returns:
+      Mapping of artifact ids to a list of downstream artifacts.
+    """
+    if not artifacts:
+      return {}
+
+    # Precondition check.
+    if len(artifacts) > _MAX_NUM_STARTING_NODES:
+      raise ValueError(
+          'Number of artifacts is larger than supported value of %d.'
+          % _MAX_NUM_STARTING_NODES
+      )
+    if max_num_hops > _MAX_NUM_HOPS or max_num_hops < 0:
+      raise ValueError(
+          'Number of hops %d is larger than supported value of %d or is'
+          ' negative.' % (max_num_hops, _MAX_NUM_HOPS)
+      )
+
+    internal_artifact_ids = [a.id for a in artifacts if not a.external_id]
+    external_artifact_ids = [a.external_id for a in artifacts if a.external_id]
+
+    if not external_artifact_ids:
+      return self.get_downstream_artifacts_by_artifact_ids(
+          internal_artifact_ids, max_num_hops, filter_query, event_filter
+      )
+
+    if not self._mlmd_connection_manager:
+      raise ValueError(
+          'mlmd_connection_manager is not initialized. There are external'
+          'artifacts, so we need it to query the external MLMD instance.'
+      )
+
+    store_by_pipeline_asset: Dict[str, mlmd.MetadataStore] = {}
+    external_ids_by_pipeline_asset: Dict[str, List[str]] = (
+        collections.defaultdict(list)
+    )
+    for external_id in external_artifact_ids:
+      connection_config = (
+          external_artifact_utils.get_external_connection_config(external_id)
+      )
+      store = self._mlmd_connection_manager.get_mlmd_handle(
+          connection_config
+      ).store
+      pipeline_asset = (
+          external_artifact_utils.get_pipeline_asset_from_external_id(
+              external_id
+          )
+      )
+      external_ids_by_pipeline_asset[pipeline_asset].append(external_id)
+      store_by_pipeline_asset[pipeline_asset] = store
+
+    result = {}
+    # Gets artifacts from each external store.
+    for pipeline_asset, external_ids in external_ids_by_pipeline_asset.items():
+      store = store_by_pipeline_asset[pipeline_asset]
+      external_id_by_id = {
+          external_artifact_utils.get_id_from_external_id(e): e
+          for e in external_ids
+      }
+      artifacts_and_types_by_artifact_id = (
+          self.get_downstream_artifacts_by_artifact_ids(
+              list(external_id_by_id.keys()),
+              max_num_hops,
+              filter_query,
+              event_filter,
+              store,
+          )
+      )
+
+      pipeline_owner = pipeline_asset.split('/')[0]
+      pipeline_name = pipeline_asset.split('/')[1]
+      artifacts_by_external_id = {}
+      for (
+          artifact_id,
+          artifacts_and_types,
+      ) in artifacts_and_types_by_artifact_id.items():
+        external_id = external_id_by_id[artifact_id]
+        imported_artifacts_and_types = []
+        for a, t in artifacts_and_types:
+          imported_artifact = external_artifact_utils.cold_import_artifacts(
+              t, [a], pipeline_owner, pipeline_name
+          )[0]
+          imported_artifacts_and_types.append(
+              (imported_artifact.mlmd_artifact, imported_artifact.artifact_type)
+          )
+        artifacts_by_external_id[external_id] = imported_artifacts_and_types
+
+      result.update(artifacts_by_external_id)
+
+    return result
 
   def get_downstream_artifacts_by_artifact_ids(
       self,
@@ -62,6 +205,7 @@ class MetadataResolver:
       max_num_hops: int = _MAX_NUM_HOPS,
       filter_query: str = '',
       event_filter: Optional[Callable[[metadata_store_pb2.Event], bool]] = None,
+      store: Optional[mlmd.MetadataStore] = None,
   ) -> Dict[
       int,
       List[Tuple[metadata_store_pb2.Artifact, metadata_store_pb2.ArtifactType]],
@@ -94,34 +238,45 @@ class MetadataResolver:
           paths towards the downstream artifacts. Only an event with
           `event_filter(event)` evaluated to True will be considered as valid
           and kept in the path.
+        store: A metadata_store.MetadataStore instance.
 
     Returns:
     Mapping of artifact ids to a list of downstream artifacts.
     """
     # Precondition check.
-    if len(artifact_ids) > _MAX_NUM_STARTING_NODES:
-      raise ValueError('Number of artifact ids is larger than supported.')
     if not artifact_ids:
       return {}
+
+    if len(artifact_ids) > _MAX_NUM_STARTING_NODES:
+      raise ValueError(
+          'Number of artifact ids is larger than supported value of %d.'
+          % _MAX_NUM_STARTING_NODES
+      )
     if max_num_hops > _MAX_NUM_HOPS or max_num_hops < 0:
       raise ValueError(
-          'Number of hops is larger than supported or is negative.'
+          'Number of hops %d is larger than supported value of %d or is'
+          ' negative.' % (max_num_hops, _MAX_NUM_HOPS)
       )
+
+    if store is None:
+      store = self._store
+    if store is None:
+      raise ValueError('MetadataStore provided to MetadataResolver is None.')
 
     artifact_ids_str = ','.join(str(id) for id in artifact_ids)
     # If `max_num_hops` is set to 0, we don't need the graph traversal.
     if max_num_hops == 0:
       if not filter_query:
-        artifacts = self._store.get_artifacts_by_id(artifact_ids)
+        artifacts = store.get_artifacts_by_id(artifact_ids)
       else:
-        artifacts = self._store.get_artifacts(
+        artifacts = store.get_artifacts(
             list_options=mlmd.ListOptions(
                 filter_query=f'id IN ({artifact_ids_str}) AND ({filter_query})',
                 limit=_MAX_NUM_STARTING_NODES,
             )
         )
       artifact_type_ids = [a.type_id for a in artifacts]
-      artifact_types = self._store.get_artifact_types_by_id(artifact_type_ids)
+      artifact_types = store.get_artifact_types_by_id(artifact_type_ids)
       artifact_type_by_id = {t.id: t for t in artifact_types}
       return {
           artifact.id: [(artifact, artifact_type_by_id[artifact.type_id])]
@@ -140,7 +295,7 @@ class MetadataResolver:
         _EVENTS_FIELD_MASK_PATH,
         _ARTIFACT_TYPES_MASK_PATH,
     ]
-    lineage_graph = self._store.get_lineage_subgraph(
+    lineage_graph = store.get_lineage_subgraph(
         query_options=options,
         field_mask_paths=field_mask_paths,
     )
@@ -175,7 +330,7 @@ class MetadataResolver:
         )
       artifact_ids_str = ','.join(str(id) for id in candidate_artifact_ids)
       # Send a call to metadata_store to get filtered downstream artifacts.
-      artifacts = self._store.get_artifacts(
+      artifacts = store.get_artifacts(
           list_options=mlmd.ListOptions(
               filter_query=f'id IN ({artifact_ids_str}) AND ({filter_query})'
           )

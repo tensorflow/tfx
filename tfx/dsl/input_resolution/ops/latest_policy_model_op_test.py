@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.latest_policy_model_op."""
+import os
 from typing import Dict, List, Optional
+from unittest import mock
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -22,6 +24,7 @@ from tfx.dsl.input_resolution.ops import latest_policy_model_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.dsl.input_resolution.ops import test_utils
+from tfx.orchestration import metadata
 from tfx.orchestration.portable.input_resolution import exceptions
 
 from ml_metadata.proto import metadata_store_pb2
@@ -146,6 +149,7 @@ class LatestPolicyModelOpTest(
         args=args,
         kwargs=kwargs,
         store=self.store,
+        mlmd_handle_like=self.mlmd_cm,
     )
 
   def setUp(self):
@@ -157,6 +161,7 @@ class LatestPolicyModelOpTest(
     self.model_3 = self.prepare_tfx_artifact(test_utils.Model)
 
     self.artifacts = [self.model_1, self.model_2, self.model_3]
+
 
   def assertDictKeysEmpty(
       self,
