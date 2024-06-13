@@ -37,6 +37,7 @@ from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
+from tfx.orchestration.experimental.core import garbage_collection
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
@@ -2203,6 +2204,7 @@ def publish_intermediate_artifact(
     mlmd_handle: metadata.Metadata,
     execution_id: int,
     output_key: str,
+    node_uid: task_lib.NodeUid,
     properties: Optional[Dict[str, metadata_store_pb2.Value]],
     custom_properties: Optional[Dict[str, metadata_store_pb2.Value]],
     external_uri: Optional[str] = None,
@@ -2214,6 +2216,7 @@ def publish_intermediate_artifact(
     mlmd_handle: A handle to the MLMD database.
     execution_id: The ID of the execution which generates the artifact.
     output_key: The output key of the artifact.
+    node_uid: The node UID of the node which generates the artifact.
     properties: Properties of the artifact.
     custom_properties: Custom properties of the artifact.
     external_uri: The external URI provided by the user. Exactly one of
@@ -2317,6 +2320,16 @@ def publish_intermediate_artifact(
 
   except mlmd_errors.StatusError as e:
     raise status_lib.StatusNotOkError(code=e.error_code, message=str(e))
+
+  try:
+    _, node = pstate.get_pipeline_and_node(
+        mlmd_handle, node_uid, node_uid.pipeline_uid.pipeline_run_id
+    )
+    garbage_collection.run_garbage_collection_for_node(
+        mlmd_handle, node_uid, node
+    )
+  except ValueError:
+    logging.info('Skip garbage collection for node %s.')
 
   logging.info('Published intermediate artifact: %s', intermediate_artifact)
   return intermediate_artifact
