@@ -16,7 +16,7 @@
 import copy
 import inspect
 import itertools
-from typing import Any, Dict, List, Mapping, Optional, Type, cast
+from typing import Any, cast, Dict, List, Mapping, Optional, Type
 
 from tfx.dsl.component.experimental.json_compat import check_strict_json_compat
 from tfx.dsl.placeholder import placeholder
@@ -30,6 +30,13 @@ from google.protobuf import message
 
 # Use Any to avoid cyclic import.
 _BaseNode = Any
+
+# Execution parameters that have `use_proto=True` but cannot be optimized with
+# Placeholder ph.make_proto.
+_EXEMPT_EXEC_PARAMETERS = [
+    'tensorflow_trainer',
+    'example_diff_config'
+]
 
 
 def _is_runtime_param(data: Any) -> bool:
@@ -234,6 +241,8 @@ class ComponentSpec(json_utils.Jsonable):
             value = proto_utils.dict_to_proto(value, arg.type())
           elif isinstance(value, str):
             value = proto_utils.json_to_proto(value, arg.type())
+          if arg_name not in _EXEMPT_EXEC_PARAMETERS:
+            value = placeholder.make_proto(value)
         else:
           # Create deterministic json string as it will be stored in metadata
           # for cache check.
