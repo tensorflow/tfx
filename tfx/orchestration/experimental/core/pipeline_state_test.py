@@ -37,7 +37,6 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import run_state_pb2
 from tfx.utils import json_utils
 from tfx.utils import status as status_lib
-
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
@@ -1546,6 +1545,40 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
             pipeline_state_run1.pipeline_uid,
         )
 
+  def test_get_pipeline_and_node(self):
+    with TestEnv(None, 20000), self._mlmd_connection as m:
+      pipeline = _test_pipeline(
+          'pipeline1',
+          execution_mode=pipeline_pb2.Pipeline.SYNC,
+          pipeline_nodes=['ExampleGen', 'Trainer'],
+          pipeline_run_id='run0',
+      )
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+      pstate.PipelineState.new(m, pipeline)
+      ir, npv = pstate.get_pipeline_and_node(m, trainer_node_uid, 'run0')
+      self.assertEqual(npv.node_info.id, 'Trainer')
+      self.assertEqual(
+          pipeline.pipeline_info,
+          ir.pipeline_info,
+      )
+
+  def test_get_pipeline_and_node_not_found(self):
+    with TestEnv(None, 20000), self._mlmd_connection as m:
+      pipeline = _test_pipeline(
+          'pipeline1',
+          execution_mode=pipeline_pb2.Pipeline.SYNC,
+          pipeline_nodes=['ExampleGen', 'Trainer'],
+          pipeline_run_id='run0',
+      )
+      with pstate.PipelineState.new(m, pipeline) as pipeline_state:
+        node_uid = task_lib.NodeUid(
+            pipeline_uid=pipeline_state.pipeline_uid, node_id='NodeDoesNotExist'
+        )
+
+      with self.assertRaises(status_lib.StatusNotOkError):
+        pstate.get_pipeline_and_node(m, node_uid, 'run0')
+
 
 class NodeStatesProxyTest(test_utils.TfxTest):
 
@@ -1631,7 +1664,6 @@ class NodeStatesProxyTest(test_utils.TfxTest):
           ),
           json_utils.dumps(node_states),
       )
-
 
 if __name__ == '__main__':
   tf.test.main()

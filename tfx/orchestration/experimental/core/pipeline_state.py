@@ -1669,3 +1669,48 @@ def _get_sub_pipeline_ids_from_pipeline_info(
     sub_pipeline_ids = pipeline_info.parent_ids[1:]
     sub_pipeline_ids.append(pipeline_info.id)
   return sub_pipeline_ids
+
+
+def get_pipeline_and_node(
+    mlmd_handle: metadata.Metadata,
+    node_uid: task_lib.NodeUid,
+    pipeline_run_id: str,
+) -> tuple[pipeline_pb2.Pipeline, node_proto_view.PipelineNodeProtoView]:
+  """Gets the pipeline and node for the node_uid.
+
+  This function is experimental, and should only be used when publishing
+  external and intermediate artifacts.
+
+  Args:
+      mlmd_handle: A handle to the MLMD db.
+      node_uid: Node uid of the node to get.
+      pipeline_run_id: Run id of the pipeline for the synchronous pipeline.
+
+  Returns:
+  A tuple with the pipeline and node proto view for the node_uid.
+  """
+  with PipelineState.load(mlmd_handle, node_uid.pipeline_uid) as pipeline_state:
+    if (
+        pipeline_run_id or pipeline_state.pipeline_run_id
+    ) and pipeline_run_id != pipeline_state.pipeline_run_id:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.NOT_FOUND,
+          message=(
+              'Unable to find an active pipeline run for pipeline_run_id: '
+              f'{pipeline_run_id}'
+          ),
+      )
+    nodes = node_proto_view.get_view_for_all_in(pipeline_state.pipeline)
+    filtered_nodes = [n for n in nodes if n.node_info.id == node_uid.node_id]
+    if len(filtered_nodes) != 1:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.NOT_FOUND,
+          message=f'unable to find node: {node_uid}',
+      )
+    node = filtered_nodes[0]
+    if not isinstance(node, node_proto_view.PipelineNodeProtoView):
+      raise ValueError(
+          f'Unexpected type for node {node.node_info.id}. Only '
+          'pipeline nodes are supported for external executions.'
+      )
+    return (pipeline_state.pipeline, node)
