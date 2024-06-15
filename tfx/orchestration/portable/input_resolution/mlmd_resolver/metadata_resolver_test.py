@@ -14,6 +14,8 @@
 """Integration tests for metadata resolver."""
 from typing import Dict, List
 from absl.testing import absltest
+from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver
 from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver_utils
 import ml_metadata as mlmd
@@ -152,7 +154,12 @@ class MetadataResolverTest(absltest.TestCase):
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.fake_database.SetInParent()
     self.store = mlmd.MetadataStore(connection_config)
-    self.resolver = metadata_resolver.MetadataResolver(self.store)
+
+    self._mlmd_connection_manager = None
+
+    self.resolver = metadata_resolver.MetadataResolver(
+        self.store, mlmd_connection_manager=self._mlmd_connection_manager
+    )
 
     self.exp_type = create_artifact_type(self.store, 'Examples')
     self.example_gen_type = create_execution_type(self.store, 'ExampleGen')
@@ -241,6 +248,8 @@ class MetadataResolverTest(absltest.TestCase):
         outputs={'evaluation': [self.ev1]},
         contexts=[self.pipe_ctx, self.run3_ctx, self.evaluator_ctx],
     )
+
+
 
   def test_get_downstream_artifacts_by_artifact_ids(self):
     # Test: get downstream artifacts by example_1, with max_num_hops = 0
@@ -623,6 +632,7 @@ class MetadataResolverTest(absltest.TestCase):
         [(a.name, t.name) for a, t in result_from_exps[self.e2.id]],
         [(self.m1.name, self.model_type.name)],
     )
+
 
   def test_get_upstream_artifacts_by_artifact_ids(self):
     # Test: get upstream artifacts by model_1, with max_num_hops = 0
