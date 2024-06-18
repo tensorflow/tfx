@@ -82,6 +82,9 @@ class _TestEnv(env.Env):
   ) -> None:
     raise NotImplementedError()
 
+  def record_orchestration_time(self, pipeline_run_id: str) -> None:
+    raise NotImplementedError()
+
   def should_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> bool:
     raise NotImplementedError()
 

@@ -118,6 +118,10 @@ class Env(abc.ABC):
     """Updates orchestrator storage backends with pipeline run status."""
 
   @abc.abstractmethod
+  def record_orchestration_time(self, pipeline_run_id: str) -> None:
+    """Records the orchestration time for a pipeline run."""
+
+  @abc.abstractmethod
   def should_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> bool:
     """Environment specific definition of orchestratable pipeline.
 
@@ -198,6 +202,9 @@ class _DefaultEnv(Env):
       modified_execution: metadata_store_pb2.Execution,
       sub_pipeline_ids: Optional[Sequence[str]] = None,
   ) -> None:
+    pass
+
+  def record_orchestration_time(self, pipeline_run_id: str) -> None:
     pass
 
   def should_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> bool:
