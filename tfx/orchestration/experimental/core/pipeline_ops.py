@@ -459,7 +459,7 @@ def _check_nodes_exist(
 ) -> None:
   """Raises an error if node_uid does not exist in the pipeline."""
   node_id_set = set(n.node_id for n in node_uids)
-  nodes = pstate.get_all_nodes(pipeline)
+  nodes = node_proto_view.get_view_for_all_in(pipeline)
   filtered_nodes = [n for n in nodes if n.node_info.id in node_id_set]
   if len(filtered_nodes) != len(node_id_set):
     raise status_lib.StatusNotOkError(
@@ -570,7 +570,7 @@ def resume_manual_node(
       mlmd_handle, node_uid.pipeline_uid
   ) as pipeline_state:
     env.get_env().check_if_can_orchestrate(pipeline_state.pipeline)
-    nodes = pstate.get_all_nodes(pipeline_state.pipeline)
+    nodes = node_proto_view.get_view_for_all_in(pipeline_state.pipeline)
     filtered_nodes = [n for n in nodes if n.node_info.id == node_uid.node_id]
     if len(filtered_nodes) != 1:
       raise status_lib.StatusNotOkError(
@@ -959,7 +959,8 @@ def resume_pipeline(
     if node_state.is_success():
       previously_succeeded_nodes.append(node)
   pipeline_nodes = [
-      node.node_info.id for node in pstate.get_all_nodes(pipeline)
+      node.node_info.id
+      for node in node_proto_view.get_view_for_all_in(pipeline)
   ]
 
   # Mark nodes using partial pipeline run lib.
@@ -1005,7 +1006,7 @@ def _recursively_revive_pipelines(
 ) -> pstate.PipelineState:
   """Recursively revives all pipelines, resuing executions if present."""
   with pipeline_state:
-    nodes = pstate.get_all_nodes(pipeline_state.pipeline)
+    nodes = node_proto_view.get_view_for_all_in(pipeline_state.pipeline)
     node_by_name = {node.node_info.id: node for node in nodes}
     # TODO(b/272015049): Add support for manager start nodes.
     nodes_to_start = [
@@ -1510,7 +1511,7 @@ def _run_end_nodes(
   # Build some dicts and find all paired nodes
   end_nodes = []
   pipeline = pipeline_state.pipeline
-  nodes = pstate.get_all_nodes(pipeline)
+  nodes = node_proto_view.get_view_for_all_in(pipeline)
   node_uid_by_id = {}
   with pipeline_state:
     node_state_by_node_uid = pipeline_state.get_node_states_dict()
@@ -1626,7 +1627,7 @@ def _orchestrate_stop_initiated_pipeline(
     pipeline = pipeline_state.pipeline
     stop_reason = pipeline_state.stop_initiated_reason()
     assert stop_reason is not None
-    for node in pstate.get_all_nodes(pipeline):
+    for node in node_proto_view.get_view_for_all_in(pipeline):
       node_uid = task_lib.NodeUid.from_node(pipeline, node)
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         if node_state.is_stoppable():
@@ -1683,7 +1684,7 @@ def _orchestrate_stop_initiated_pipeline(
       )
     if any(
         n.execution_options.HasField('resource_lifetime')
-        for n in pstate.get_all_nodes(pipeline_state.pipeline)
+        for n in node_proto_view.get_view_for_all_in(pipeline_state.pipeline)
     ):
       logging.info('Pipeline has paired nodes. May launch additional jobs')
       # Note that this is a pretty hacky "best effort" attempt at cleanup, we
@@ -1725,7 +1726,7 @@ def _orchestrate_update_initiated_pipeline(
         else None
     )
     pipeline = pipeline_state.pipeline
-    for node in pstate.get_all_nodes(pipeline):
+    for node in node_proto_view.get_view_for_all_in(pipeline):
       # TODO(b/217584342): Partial reload which excludes service nodes is not
       # fully supported in async pipelines since we don't have a mechanism to
       # reload them later for new executions.
@@ -1774,7 +1775,7 @@ def _orchestrate_update_initiated_pipeline(
   if all_stopped:
     with pipeline_state:
       pipeline = pipeline_state.pipeline
-      for node in pstate.get_all_nodes(pipeline):
+      for node in node_proto_view.get_view_for_all_in(pipeline):
         # TODO(b/217584342): Partial reload which excludes service nodes is not
         # fully supported in async pipelines since we don't have a mechanism to
         # reload them later for new executions.
@@ -2001,7 +2002,7 @@ def _orchestrate_active_pipeline(
 
 def _get_node_infos(pipeline_state: pstate.PipelineState) -> List[_NodeInfo]:
   """Returns a list of `_NodeInfo` object for each node in the pipeline."""
-  nodes = pstate.get_all_nodes(pipeline_state.pipeline)
+  nodes = node_proto_view.get_view_for_all_in(pipeline_state.pipeline)
   result: List[_NodeInfo] = []
   with pipeline_state:
     for node in nodes:

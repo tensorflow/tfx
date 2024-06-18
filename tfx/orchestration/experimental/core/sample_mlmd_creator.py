@@ -14,13 +14,13 @@
 """Creates testing MLMD with TFX data model."""
 import os
 import tempfile
+from typing import Callable, Optional
 
-from typing import Optional, Callable
 from absl import app
 from absl import flags
-
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
+from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import pipeline_ops
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
@@ -69,7 +69,7 @@ def _test_pipeline(ir_path: str, pipeline_id: str, run_id: str,
 def _execute_nodes(handle: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
                    version: int):
   """Creates fake execution of nodes."""
-  for node in pstate.get_all_nodes(pipeline):
+  for node in node_proto_view.get_view_for_all_in(pipeline):
     if node.node_info.id == 'my_example_gen':
       test_utils.fake_example_gen_run_with_handle(handle, node, 1, version)
     else:

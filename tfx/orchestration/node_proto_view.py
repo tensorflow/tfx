@@ -276,7 +276,6 @@ def get_view(
   raise ValueError(f'Got unknown pipeline or node type: {pipeline_or_node}.')
 
 
-# TODO: b/270960179 - Migrate all usages of pipeline_state.get_all_nodes here.
 def get_view_for_all_in(
     pipeline: pipeline_pb2.Pipeline,
 ) -> Sequence[NodeProtoView]:
