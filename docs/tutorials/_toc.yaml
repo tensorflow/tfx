@@ -29,6 +29,8 @@ toc:
   path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 
 - heading: "TFX: Advanced tutorials"
+- title: "LLM finetuning and conversion"
+  path: /tfx/tutorials/tfx/gpt2_finetuning_and_conversion
 - title: "Custom component tutorial"
   path: /tfx/tutorials/tfx/python_function_component
 - title: "Recommenders with TFX"
