@@ -1434,10 +1434,73 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
             (pstate.NodeState.STOPPING, pstate.NodeState.STOPPED),
         )
 
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='async',
+          pipeline=_test_pipeline('pipeline1'),
+          expected_run_id='',
+      ),
+      dict(
+          testcase_name='sync',
+          pipeline=_test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC),
+          expected_run_id='run0',
+      ),
+  )
+  def test_record_orchestration_time(self, pipeline, expected_run_id):
+    with self._mlmd_cm as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+      environment = env.get_env()
+      with mock.patch.object(
+          environment,
+          'record_orchestration_time',
+          wraps=environment.record_orchestration_time,
+      ) as mock_env_record_orchestration_time:
+        task_queue = tq.TaskQueue()
+        pipeline_ops.orchestrate(
+            mlmd_connection_manager,
+            task_queue,
+            self._mock_service_job_manager,
+        )
+        mock_env_record_orchestration_time.assert_called_with(expected_run_id)
+
+  def test_record_orchestration_time_subpipeline(self):
+    with self._mlmd_cm as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
+      pipeline = test_sync_pipeline.create_pipeline_with_subpipeline()
+      runtime_parameter_utils.substitute_runtime_parameter(
+          pipeline,
+          {
+              constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'run0',
+          },
+      )
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+      environment = env.get_env()
+      with mock.patch.object(
+          environment,
+          'record_orchestration_time',
+          wraps=environment.record_orchestration_time,
+      ) as mock_env_record_orchestration_time:
+        task_queue = tq.TaskQueue()
+        pipeline_ops.orchestrate(
+            mlmd_connection_manager,
+            task_queue,
+            self._mock_service_job_manager,
+        )
+        mock_env_record_orchestration_time.assert_called_with('run0')
+
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
+  @mock.patch.object(
+      pipeline_ops,
+      '_record_orchestration_time',
+      wraps=pipeline_ops._record_orchestration_time,
+  )
   def test_orchestrate_active_pipelines(
-      self, mock_async_task_gen, mock_sync_task_gen
+      self,
+      mock_record_orchestration_time,
+      mock_async_task_gen,
+      mock_sync_task_gen,
   ):
     with self._mlmd_cm as mlmd_connection_manager:
       m = mlmd_connection_manager.primary_mlmd_handle
@@ -1509,6 +1572,15 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           service_jobs.DummyServiceJobManager(),
       )
 
+      # Check that the orchestration time was recorded four times. Once for each
+      # of the four pipelines.
+      mock_record_orchestration_time.assert_has_calls([
+          mock.call(mock.ANY),
+          mock.call(mock.ANY),
+          mock.call(mock.ANY),
+          mock.call(mock.ANY),
+      ])
+
       self.assertEqual(2, mock_async_task_gen.return_value.generate.call_count)
       self.assertEqual(2, mock_sync_task_gen.return_value.generate.call_count)
 
@@ -1550,9 +1622,15 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(
       task_gen_utils, 'generate_cancel_task_from_running_execution'
   )
+  @mock.patch.object(
+      pipeline_ops,
+      '_record_orchestration_time',
+      wraps=pipeline_ops._record_orchestration_time,
+  )
   def test_orchestrate_stop_initiated_pipelines(
       self,
       pipeline,
+      mock_record_orchestration_time,
       mock_gen_task_from_active,
       mock_async_task_gen,
       mock_sync_task_gen,
@@ -1617,6 +1695,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
               self._mock_service_job_manager,
           )
       )
+      # We should have recorded the orchestration time once, for one pipeline.
+      # We reset after to verify this is true throughout.
+      mock_record_orchestration_time.assert_called_once()
+      mock_record_orchestration_time.reset_mock()
 
       # PipelineFinished event should not trigger since not all the nodes are
       # stopped.
@@ -1683,6 +1765,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
               self._mock_service_job_manager,
           )
       )
+      mock_record_orchestration_time.assert_called_once()
+      mock_record_orchestration_time.reset_mock()
       self.assertTrue(task_queue.is_empty())
       [execution] = m.store.get_executions_by_id([pipeline_execution_id])
       self.assertEqual(
@@ -1721,6 +1805,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
               self._mock_service_job_manager,
           )
       )
+      mock_record_orchestration_time.assert_not_called()
 
   @mock.patch.object(
       task_gen_utils, 'generate_cancel_task_from_running_execution'
@@ -1890,7 +1975,14 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       _test_pipeline('pipeline1'),
       _test_pipeline('pipeline1', pipeline_pb2.Pipeline.SYNC),
   )
-  def test_orchestrate_update_initiated_pipelines(self, pipeline):
+  @mock.patch.object(
+      pipeline_ops,
+      '_record_orchestration_time',
+      wraps=pipeline_ops._record_orchestration_time,
+  )
+  def test_orchestrate_update_initiated_pipelines(
+      self, pipeline, mock_record_orchestration_time
+  ):
     with self._mlmd_cm as mlmd_connection_manager:
       m = mlmd_connection_manager.primary_mlmd_handle
       pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
@@ -1924,6 +2016,10 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_ops.orchestrate(
           mlmd_connection_manager, task_queue, self._mock_service_job_manager
       )
+      # We should have recorded the orchestration time once, for one pipeline.
+      # We reset after to verify this is true throughout.
+      mock_record_orchestration_time.assert_called_once()
+      mock_record_orchestration_time.reset_mock()
       # stop_node_services should be called for ExampleGen.
       self._mock_service_job_manager.stop_node_services.assert_has_calls(
           [mock.call(mock.ANY, 'ExampleGen')]
@@ -1954,6 +2050,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self._mock_service_job_manager.stop_node_services.assert_has_calls(
           [mock.call(mock.ANY, 'Transform')]
       )
+      # Check that the orchestration time was recorded again.
+      mock_record_orchestration_time.assert_called_once()
+      mock_record_orchestration_time.reset_mock()
 
       # Check that the node states are STARTING.
       [execution] = m.store.get_executions_by_id([pipeline_state.execution_id])
