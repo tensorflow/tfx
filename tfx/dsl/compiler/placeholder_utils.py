@@ -69,11 +69,21 @@ class ResolutionContext:
 #   - basic types from MLMD: int, float, str
 #   - primitive type from proto field access: bool
 #   - container type from list exec property or proto field access: list
+#   - proto type: message.Message
 #
 # Note: Pytype's int includes long from Python3
 # Placeholder does not support bytes, which may result from proto field access.
 # Please use base64 encode operator to explicitly convert it into str.
-_PlaceholderResolvedTypes = (int, float, str, bool, type(None), list, dict)
+_PlaceholderResolvedTypes = (
+    int,
+    float,
+    str,
+    bool,
+    type(None),
+    list,
+    dict,
+    message.Message,
+)
 PlaceholderResolvedTypeHints = Union[_PlaceholderResolvedTypes]
 
 

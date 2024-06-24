@@ -22,6 +22,7 @@ import tensorflow as tf
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration.portable import data_types
 from tfx.proto import infra_validator_pb2
+from tfx.proto import trainer_pb2
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_invocation_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -35,6 +36,9 @@ from google.protobuf import descriptor_pool
 from google.protobuf import json_format
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
+
+
+TrainArgs = trainer_pb2.TrainArgs()
 
 # Concatenate the URI of `examples` input artifact's `train` split with /1
 _CONCAT_SPLIT_URI_EXPRESSION = """
@@ -1080,9 +1084,17 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
     pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
 
-    with self.assertRaises(ValueError):
-      placeholder_utils.resolve_placeholder_expression(pb,
-                                                       self._resolution_context)
+    resolved_pb = placeholder_utils.resolve_placeholder_expression(
+        pb, self._resolution_context)
+    self.assertProtoEquals(
+        """
+        tensorflow_serving {
+          tags: "latest"
+          tags: "1.15.0-gpu"
+        }
+        """,
+        resolved_pb,
+    )
 
   def testExecutionInvocationPlaceholderSimple(self):
     placeholder_expression = """
@@ -1638,6 +1650,52 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
             "join_path_op",
             "list_concat_op",
         },
+    )
+
+  def testMakeProtoOpResolvesProto(self):
+    placeholder_expression = text_format.Parse(
+        r"""
+        operator: {
+          proto_op: {
+            expression: {
+              operator: {
+                make_proto_op: {
+                  base: {
+                    type_url: "type.googleapis.com/tensorflow.service.TrainArgs"
+                    value: "\n\005train"
+                  }
+                  file_descriptors: {
+                    file: {
+                      name: "third_party/tfx/trainer.proto"
+                      package: "tensorflow.service"
+                      message_type: {
+                        name: "TrainArgs"
+                        field: {
+                          name: "splits"
+                          number: 1
+                          label: LABEL_REPEATED
+                          type: TYPE_STRING
+                        }
+                      }
+                      syntax: "proto3"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    resolved_proto = placeholder_utils.resolve_placeholder_expression(
+        placeholder_expression, placeholder_utils.ResolutionContext(
+            exec_info=data_types.ExecutionInfo()))
+    self.assertProtoEquals(
+        """
+        splits: "train"
+        """,
+        resolved_proto,
     )
 
 
