@@ -19,6 +19,7 @@ from unittest import mock
 
 import absl
 import tensorflow as tf
+from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
 
@@ -202,6 +203,37 @@ class StandardArtifactsTest(tf.test.TestCase):
       self.assertEqual(examples.path(split='train'), '/test/Split-train')
       with self.assertRaises(ValueError):
         examples.path(split='non-existing')
+
+    with self.subTest('Payload format'):
+      examples = standard_artifacts.Examples()
+      self.assertEqual(
+          examples.payload_format,
+          example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE,
+      )
+      examples.payload_format = example_gen_pb2.PayloadFormat.FORMAT_PROTO
+      self.assertEqual(
+          examples.payload_format,
+          example_gen_pb2.PayloadFormat.FORMAT_PROTO,
+      )
+
+    with self.subTest('Invalid payload format'):
+      examples = standard_artifacts.Examples()
+      with self.assertRaises(TypeError):
+        examples.payload_format = -1
+
+    with self.subTest('File format'):
+      examples = standard_artifacts.Examples()
+      self.assertEqual(examples.file_format, 'tfrecords_gzip')
+      examples.file_format = 'tfrecords'
+      self.assertEqual(examples.file_format, 'tfrecords')
+
+    with self.subTest('Files pattern'):
+      examples = standard_artifacts.Examples()
+      examples.uri = '/test'
+      examples.splits = ['train']
+      self.assertEqual(
+          examples.files_pattern(split='train'), '/test/Split-train/*'
+      )
 
 
 if __name__ == '__main__':

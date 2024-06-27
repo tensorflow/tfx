@@ -24,10 +24,12 @@ import math
 from typing import Sequence
 
 from absl import logging
+from tfx.proto import example_gen_pb2
 from tfx.types import artifact
 from tfx.types import standard_artifact_utils
 from tfx.types import system_artifacts
 from tfx.types import value_artifact
+from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import pure_typing_utils
 
@@ -118,6 +120,9 @@ class Examples(_TfxArtifact):
       'split_names': SPLIT_NAMES_PROPERTY,
   }
 
+  _default_file_format = 'tfrecords_gzip'
+  _default_payload_format = example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE
+
   @property
   def splits(self) -> Sequence[str]:
     return standard_artifact_utils.decode_split_names(self.split_names)
@@ -127,6 +132,46 @@ class Examples(_TfxArtifact):
     if not pure_typing_utils.is_compatible(splits, Sequence[str]):
       raise TypeError(f'splits should be Sequence[str] but got {splits}')
     self.split_names = standard_artifact_utils.encode_split_names(list(splits))
+
+  @property
+  def payload_format(self) -> example_gen_pb2.PayloadFormat:
+    if self.has_custom_property('payload_format'):
+      return example_gen_pb2.PayloadFormat.Value(
+          self.get_string_custom_property('payload_format')
+      )
+    else:
+      return self._default_payload_format
+
+  @payload_format.setter
+  def payload_format(self, value: example_gen_pb2.PayloadFormat) -> None:
+    if not pure_typing_utils.is_compatible(
+        value, example_gen_pb2.PayloadFormat
+    ):
+      raise TypeError(
+          'payload_format should be example_gen_pb2.PayloadFormat but got'
+          f' {value}'
+      )
+    self.set_string_custom_property(
+        'payload_format', example_gen_pb2.PayloadFormat.Name(value)
+    )
+
+  @property
+  def file_format(self) -> str:
+    if self.has_custom_property('file_format'):
+      return self.get_string_custom_property('file_format')
+    else:
+      return self._default_file_format
+
+  @file_format.setter
+  def file_format(self, value: str) -> None:
+    return self.set_string_custom_property('file_format', value)
+
+  def _ensure_split(self, split: str) -> None:
+    if split not in self.splits:
+      raise ValueError(
+          f'Split {split} not found in {self.splits=}. Did you forget to update'
+          ' Examples.splits first?'
+      )
 
   def path(self, *, split: str) -> str:
     """Path to the artifact URI's split subdirectory.
@@ -143,12 +188,12 @@ class Examples(_TfxArtifact):
     Returns:
       A path to `{self.uri}/Split-{split}`.
     """
-    if split not in self.splits:
-      raise ValueError(
-          f'Split {split} not found in {self.splits=}. Did you forget to update'
-          ' Examples.splits first?'
-      )
+    self._ensure_split(split)
     return standard_artifact_utils.get_split_uris([self], split)[0]
+
+  def files_pattern(self, *, split: str) -> str:
+    self._ensure_split(split)
+    return io_utils.all_files_pattern(self.path(split=split))
 
 
 class ExampleAnomalies(_TfxArtifact):  # pylint: disable=missing-class-docstring
