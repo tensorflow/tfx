@@ -37,7 +37,8 @@ except AttributeError as err:
                   'the TF version doesn\'t match with the TF Serving version. '
                   'We will try importing again with a workaround:%s', err)
   from tensorflow.core.protobuf import error_codes_pb2 as old_error_codes_pb2
-  from tensorflow.tsl.protobuf import error_codes_pb2 as new_error_codes_pb2
+  from tensorflow.compiler.xla.tsl.protobuf import error_codes_pb2 as new_error_codes_pb2
+
   old_error_codes_pb2._CODE = new_error_codes_pb2._CODE  # pylint: disable=protected-access  # pytype: disable=module-attr
 
   # Retry.
