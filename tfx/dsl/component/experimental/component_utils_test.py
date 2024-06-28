@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.component.experimental.component_utils."""
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TypedDict
 
 import tensorflow as tf
 from tfx.dsl.component.experimental import component_utils
@@ -74,6 +74,23 @@ class ComponentUtilsTest(tf.test.TestCase):
           TestComponentSpec, execution
       )
 
+  def _assert_type_check_post_execution_return_ok(
+      self, execution: Callable[..., Any]
+  ):
+    component_utils._type_check_post_execution_return(
+        TestComponentSpec, execution
+    )
+
+  def _assert_type_check_post_execution_return_error(
+      self,
+      execution: Callable[..., Any],
+      expected_error_type: type[Exception] = TypeError,
+  ):
+    with self.assertRaises(expected_error_type):
+      component_utils._type_check_post_execution_return(
+          TestComponentSpec, execution
+      )
+
   def test_type_check_valid_types(self):
     def execution(
         param_int: int,
@@ -111,6 +128,17 @@ class ComponentUtilsTest(tf.test.TestCase):
       del input_model, output_model
 
     self._assert_type_check_execution_function_params_ok(execution)
+
+  def test_type_check_valid_output_typed_dict_for_post_execution(self):
+
+    def execution() -> (
+        TypedDict(
+            'Result', dict(output_integer=int, output_json=dict[str, int])
+        )
+    ):
+      raise NotImplementedError
+
+    self._assert_type_check_post_execution_return_ok(execution)
 
   def test_type_check_raises_error_invalid_types(self):
 
@@ -203,6 +231,30 @@ class ComponentUtilsTest(tf.test.TestCase):
 
     self._assert_type_check_execution_function_params_error(execution)
     self._assert_type_check_execution_function_params_error(execution_optional)
+
+  def test_type_check_raises_error_output_typed_dict_for_non_value_artifact(
+      self,
+  ):
+
+    def execution() -> TypedDict('Result', dict(output_model=_Model)):
+      raise NotImplementedError
+
+    self._assert_type_check_post_execution_return_error(execution)
+
+  def test_type_check_raises_error_output_typed_dict_not_matched_to_spec(
+      self,
+  ):
+
+    def execution_output_int() -> TypedDict('Result', dict(output_int=str)):
+      raise NotImplementedError
+
+    def execution_output_json() -> (
+        TypedDict('Result', dict(output_json=IAmNotJsonable))
+    ):
+      raise NotImplementedError
+
+    self._assert_type_check_post_execution_return_error(execution_output_int)
+    self._assert_type_check_post_execution_return_error(execution_output_json)
 
   def test_type_check_raises_error_no_matching_name_from_spec(self):
 
