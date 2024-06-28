@@ -118,6 +118,7 @@ def get_pool_with_descriptors(
         if (
             'A file with this name is already in the pool' in error_message
             or 'duplicate file name' in error_message
+            or 'is already defined in file' in error_message
         ):
           continue
         raise TypeError(
