@@ -31,6 +31,7 @@ from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.utils import status as status_lib
 
 
+
 class ImporterTaskSchedulerTest(test_utils.TfxTest):
 
   def setUp(self):
@@ -80,6 +81,7 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
     return pipeline
 
   def test_importer_task_scheduler(self):
+
     with self._mlmd_connection as m:
       ts_result = importer_task_scheduler.ImporterTaskScheduler(
           mlmd_handle=m, pipeline=self._pipeline,
