@@ -280,10 +280,11 @@ def generate_resolved_info(
       )
       raise
 
+    exec_properties.update(dynamic_exec_properties)
     result.input_and_params.append(
         InputAndParam(
             input_artifacts=input_artifacts,
-            exec_properties={**exec_properties, **dynamic_exec_properties},
+            exec_properties=exec_properties,
         )
     )
 
