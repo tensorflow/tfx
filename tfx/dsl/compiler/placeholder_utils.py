@@ -129,6 +129,13 @@ def resolve_placeholder_expression(
   return result
 
 
+def empty_placeholder_context() -> ResolutionContext:
+  """Returns an empty placeholder context."""
+  return ResolutionContext(
+      exec_info=data_types.ExecutionInfo(),
+  )
+
+
 class _Operation(enum.Enum):
   """Alias for Operation enum types in placeholder.proto."""
 

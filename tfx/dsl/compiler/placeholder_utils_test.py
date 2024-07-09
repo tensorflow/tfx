@@ -1689,8 +1689,8 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_pb2.PlaceholderExpression(),
     )
     resolved_proto = placeholder_utils.resolve_placeholder_expression(
-        placeholder_expression, placeholder_utils.ResolutionContext(
-            exec_info=data_types.ExecutionInfo()))
+        placeholder_expression, placeholder_utils.empty_placeholder_context()
+    )
     self.assertProtoEquals(
         """
         splits: "train"
