@@ -151,7 +151,8 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     try:
       statistics_artifact.set_string_custom_property(
-          STATS_DASHBOARD_LINK, dashboard_util.generate_stats_dashboard_link()
+          STATS_DASHBOARD_LINK,
+          dashboard_util.generate_stats_dashboard_link(statistics_artifact),
       )
     except Exception as e:  # pylint: disable=broad-except
       # log on failures to not bring down Statsgen jobs
