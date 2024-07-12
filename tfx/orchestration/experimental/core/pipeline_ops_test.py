@@ -54,6 +54,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import status as status_lib
 
+from ml_metadata import errors as mlmd_errors
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -3588,6 +3589,83 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
           task.node_uid,
       )
       self.assertTrue(task_queue.is_empty())
+
+  @parameterized.parameters(
+      (mlmd_errors.DeadlineExceededError('DeadlineExceededError'), 4),
+      (mlmd_errors.InternalError('InternalError'), 13),
+      (mlmd_errors.UnavailableError('UnavailableError'), 14),
+      (mlmd_errors.ResourceExhaustedError('ResourceExhaustedError'), 8),
+      (
+          status_lib.StatusNotOkError(
+              code=status_lib.Code.DEADLINE_EXCEEDED,
+              message='DeadlineExceededError',
+          ),
+          4,
+      ),
+      (
+          status_lib.StatusNotOkError(
+              code=status_lib.Code.INTERNAL, message='InternalError'
+          ),
+          13,
+      ),
+      (
+          status_lib.StatusNotOkError(
+              code=status_lib.Code.UNAVAILABLE, message='UnavailableError'
+          ),
+          14,
+      ),
+      (
+          status_lib.StatusNotOkError(
+              code=status_lib.Code.RESOURCE_EXHAUSTED,
+              message='ResourceExhaustedError',
+          ),
+          8,
+      ),
+  )
+  @mock.patch.object(pstate.PipelineState, 'load_all_active_and_owned')
+  def test_orchestrate_pipelines_with_recoverable_error_from_MLMD(
+      self,
+      error,
+      error_code,
+      mock_load_all_active_and_owned,
+  ):
+    mock_load_all_active_and_owned.side_effect = error
+
+    with test_utils.get_status_code_from_exception_environment(error_code):
+      with self._mlmd_cm as mlmd_connection_manager:
+        task_queue = tq.TaskQueue()
+        orchestrate_result = pipeline_ops.orchestrate(
+            mlmd_connection_manager,
+            task_queue,
+            service_jobs.DummyServiceJobManager(),
+        )
+        self.assertEqual(orchestrate_result, True)
+
+  @parameterized.parameters(
+      mlmd_errors.InvalidArgumentError('InvalidArgumentError'),
+      mlmd_errors.FailedPreconditionError('FailedPreconditionError'),
+      status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT, message='InvalidArgumentError'
+      ),
+      status_lib.StatusNotOkError(
+          code=status_lib.Code.UNKNOWN,
+          message='UNKNOWN',
+      ),
+  )
+  @mock.patch.object(pstate.PipelineState, 'load_all_active_and_owned')
+  def test_orchestrate_pipelines_with_not_recoverable_error_from_MLMD(
+      self, error, mock_load_all_active_and_owned
+  ):
+    mock_load_all_active_and_owned.side_effect = error
+
+    with self._mlmd_cm as mlmd_connection_manager:
+      task_queue = tq.TaskQueue()
+      with self.assertRaises(Exception):
+        pipeline_ops.orchestrate(
+            mlmd_connection_manager,
+            task_queue,
+            service_jobs.DummyServiceJobManager(),
+        )
 
 
 if __name__ == '__main__':

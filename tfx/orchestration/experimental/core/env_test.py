@@ -60,6 +60,11 @@ class _TestEnv(env.Env):
   ):
     raise NotImplementedError()
 
+  def get_status_code_from_exception(
+      self, exception: Optional[BaseException]
+  ) -> Optional[int]:
+    raise NotImplementedError()
+
   def create_sync_or_upsert_async_pipeline_run(
       self,
       owner: str,

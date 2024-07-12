@@ -137,6 +137,20 @@ class Env(abc.ABC):
       Whether the env should orchestrate the pipeline.
     """
 
+  @abc.abstractmethod
+  def get_status_code_from_exception(
+      self, exception: Optional[BaseException]
+  ) -> Optional[int]:
+    """Returns the status code from the given exception.
+
+    Args:
+      exception: An exception.
+
+    Returns:
+      Code of the exception.
+      Returns None if the exception is not a known type.
+    """
+
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -210,6 +224,11 @@ class _DefaultEnv(Env):
   def should_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> bool:
     # By default, all pipeline runs should be orchestrated.
     return True
+
+  def get_status_code_from_exception(
+      self, exception: Optional[BaseException]
+  ) -> Optional[int]:
+    return None
 
 
 _ENV = _DefaultEnv()

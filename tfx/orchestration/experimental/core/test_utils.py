@@ -511,3 +511,15 @@ def prepare_orchestrator_for_pipeline_run_environment():
       pipeline.sdk_version = 'postprocessed'
 
   return _TestEnv()
+
+
+def get_status_code_from_exception_environment(error_code: int):
+
+  class _TestEnv(env._DefaultEnv):  # pylint: disable=protected-access
+
+    def get_status_code_from_exception(
+        self, exception: Optional[BaseException]
+    ) -> Optional[int]:
+      return error_code
+
+  return _TestEnv()
