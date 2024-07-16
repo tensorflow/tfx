@@ -9,6 +9,8 @@
    most likely you discovered a bug and should not use an f-string in the first
    place. If it is truly your intention to print the placeholder (not its
    resolved value) for debugging purposes, use `repr()` or `!r` instead.
+*  Execution parameters that serialize to larger than 262144 bytes are now
+   prohibited, and will cause an error during DSL compilation.
 
 ### For Pipeline Authors
 
@@ -224,7 +226,7 @@
 
 ## Bug Fixes and Other Changes
 
-*  Support to task type "workerpool1" of CLUSTER_SPEC in Vertex AI training's 
+*  Support to task type "workerpool1" of CLUSTER_SPEC in Vertex AI training's
    service according to the changes of task type in Tuner component.
 *  Propagates unexpected import failures in the public v1 module.
 
