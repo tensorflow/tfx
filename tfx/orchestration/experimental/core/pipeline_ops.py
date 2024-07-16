@@ -55,6 +55,7 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import io_utils
 from tfx.utils import status as status_lib
 
+import ml_metadata as mlmd
 from ml_metadata import errors as mlmd_errors
 from ml_metadata.proto import metadata_store_pb2
 
@@ -1193,6 +1194,24 @@ def revive_pipeline_run(
           code=status_lib.Code.ALREADY_EXISTS,
           message='Cannot revive a live pipeline run.',
       )
+    if not env.get_env().concurrent_pipeline_runs_enabled(pipeline):
+      if pstate.PipelineView.load_all(
+          mlmd_handle=mlmd_handle,
+          pipeline_id=pipeline_id,
+          list_options=mlmd.ListOptions(
+              limit=1,
+              filter_query=(
+                  'last_known_state = NEW OR last_known_state = RUNNING'
+              ),
+          ),
+      ):
+        raise status_lib.StatusNotOkError(
+            code=status_lib.Code.INVALID_ARGUMENT,
+            message=(
+                'Cannot revive a pipeline run while another pipeline run is'
+                ' active and concurrent pipeline runs are not enabled.'
+            ),
+        )
 
     # Since the pipeline is not active we can apply the update right away.
     if pipeline_to_update_with is not None:

@@ -509,7 +509,58 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         with pipeline_ops.revive_pipeline_run(
             m, pipeline_id=pipeline_id, pipeline_run_id=run_id
         ) as pipeline_state_run2:
-          pipeline_state_run2.is_active()
+          self.assertTrue(pipeline_state_run2.is_active())
+
+  def test_revive_pipeline_run_active_pipeline_run_concurrent_runs_disabled(
+      self,
+  ):
+    with self._mlmd_connection as m:
+      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      pipeline_id = pipeline.pipeline_info.id
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      node_example_gen = pipeline.nodes.add().pipeline_node
+      node_example_gen.node_info.id = 'ExampleGen'
+      node_example_gen.downstream_nodes.extend(['Trainer'])
+      node_trainer = pipeline.nodes.add().pipeline_node
+      node_trainer.node_info.id = 'Trainer'
+      node_trainer.upstream_nodes.extend(['ExampleGen'])
+
+      # Initiate a pipeline start.
+      pipeline_state_run1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      with pipeline_state_run1:
+        example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+        trainer_node_uid = task_lib.NodeUid(pipeline_uid, 'Trainer')
+        with pipeline_state_run1.node_state_update_context(
+            example_gen_node_uid
+        ) as node_state:
+          node_state.update(pstate.NodeState.COMPLETE)
+        with pipeline_state_run1.node_state_update_context(
+            trainer_node_uid
+        ) as node_state:
+          node_state.update(pstate.NodeState.FAILED)
+        pipeline_state_run1.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.CANCELED
+        )
+        pipeline_state_run1.initiate_stop(
+            status_lib.Status(code=status_lib.Code.ABORTED)
+        )
+
+      # Create a second run.
+      pipeline_2 = _test_pipeline(
+          'test_pipeline', pipeline_pb2.Pipeline.SYNC, pipeline_run_id='run2'
+      )
+      with pipeline_ops.initiate_pipeline_start(
+          m, pipeline_2
+      ) as pipeline_state_run2:
+        pipeline_state_run2.initiate_stop(
+            status_lib.Status(code=status_lib.Code.ABORTED)
+        )
+      with self.assertRaises(status_lib.StatusNotOkError):
+        with pipeline_ops.revive_pipeline_run(
+            m, pipeline_id=pipeline_id, pipeline_run_id='run2'
+        ):
+          self.fail()
 
   def test_revive_pipeline_run_with_subpipelines(self):
     with self._mlmd_connection as m:
