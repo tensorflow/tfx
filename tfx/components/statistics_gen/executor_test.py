@@ -149,6 +149,10 @@ class ExecutorTest(parameterized.TestCase):
         artifact_utils.encode_split_names(['train', 'eval']), stats.split_names)
     self.assertEqual(
         stats.get_string_custom_property(executor.STATS_DASHBOARD_LINK), '')
+    self.assertEqual(
+        stats.has_custom_property(executor.SAMPLE_RATE_BY_SPLIT_PROPERTY_NAME),
+        True,
+    )
     self.assertEqual(stats.span, _TEST_SPAN_NUMBER)
 
     # Check statistics_gen outputs.
@@ -227,6 +231,101 @@ class ExecutorTest(parameterized.TestCase):
         os.path.join(stats.uri, 'Split-train', 'FeatureStats.pb'))
     self._validate_stats_output(
         os.path.join(stats.uri, 'Split-eval', 'FeatureStats.pb'))
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'sample_rate_only',
+          'sample_rate': 0.2,
+          'sample_rate_by_split': 'null',
+          'expected_sample_rate_by_split_property': {'train': 0.2, 'eval': 0.2},
+      },
+      {
+          'testcase_name': 'sample_rate_by_split_only',
+          'sample_rate': None,
+          'sample_rate_by_split': '{"train": 0.4, "eval": 0.6}',
+          'expected_sample_rate_by_split_property': {'train': 0.4, 'eval': 0.6},
+      },
+      {
+          'testcase_name': 'sample_rate_for_some_split_only',
+          'sample_rate': None,
+          'sample_rate_by_split': '{"train": 0.4}',
+          'expected_sample_rate_by_split_property': {'train': 0.4, 'eval': 1.0},
+      },
+      {
+          'testcase_name': 'sample_rate_by_split_override',
+          'sample_rate': 0.2,
+          'sample_rate_by_split': '{"train": 0.4}',
+          'expected_sample_rate_by_split_property': {'train': 0.4, 'eval': 0.2},
+      },
+      {
+          'testcase_name': 'sample_rate_by_split_invalid',
+          'sample_rate': 0.2,
+          'sample_rate_by_split': '{"test": 0.4}',
+          'expected_sample_rate_by_split_property': {'train': 0.2, 'eval': 0.2},
+      },
+  )
+  def testDoWithSamplingProperty(
+      self,
+      sample_rate,
+      sample_rate_by_split,
+      expected_sample_rate_by_split_property
+  ):
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata'
+    )
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName,
+    )
+    fileio.makedirs(output_data_dir)
+
+    # Create input dict.
+    examples = standard_artifacts.Examples()
+    examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+
+    schema = standard_artifacts.Schema()
+    schema.uri = os.path.join(source_data_dir, 'schema_gen')
+
+    input_dict = {
+        standard_component_specs.EXAMPLES_KEY: [examples],
+        standard_component_specs.SCHEMA_KEY: [schema],
+    }
+
+    exec_properties = {
+        standard_component_specs.STATS_OPTIONS_JSON_KEY: tfdv.StatsOptions(
+            sample_rate=sample_rate
+        ).to_json(),
+        standard_component_specs.EXCLUDE_SPLITS_KEY: json_utils.dumps([]),
+        standard_component_specs.SAMPLE_RATE_BY_SPLIT_KEY: sample_rate_by_split,
+    }
+
+    # Create output dict.
+    stats = standard_artifacts.ExampleStatistics()
+    stats.uri = output_data_dir
+    output_dict = {
+        standard_component_specs.STATISTICS_KEY: [stats],
+    }
+
+    # Run executor.
+    stats_gen_executor = executor.Executor()
+    stats_gen_executor.Do(input_dict, output_dict, exec_properties)
+
+    # Check statistics artifact sample_rate_by_split property.
+    self.assertEqual(
+        json_utils.loads(stats.get_json_value_custom_property(
+            executor.SAMPLE_RATE_BY_SPLIT_PROPERTY_NAME
+        )),
+        expected_sample_rate_by_split_property,
+    )
+
+    # Check statistics_gen outputs.
+    self._validate_stats_output(
+        os.path.join(stats.uri, 'Split-train', 'FeatureStats.pb')
+    )
+    self._validate_stats_output(
+        os.path.join(stats.uri, 'Split-eval', 'FeatureStats.pb')
+    )
 
   def testDoWithTwoSchemas(self):
     source_data_dir = os.path.join(

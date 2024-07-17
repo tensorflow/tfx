@@ -35,6 +35,7 @@ DEFAULT_FILE_NAME = 'FeatureStats.pb'
 
 _TELEMETRY_DESCRIPTORS = ['StatisticsGen']
 STATS_DASHBOARD_LINK = 'stats_dashboard_link'
+SAMPLE_RATE_BY_SPLIT_PROPERTY_NAME = 'sample_rate_by_split'
 
 
 class Executor(base_beam_executor.BaseBeamExecutor):
@@ -132,13 +133,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     split_names = [split for split in splits if split not in exclude_splits]
 
-    # Check if sample_rate_by_split contains invalid split names
-    for split in sample_rate_by_split:
-      if split not in split_names:
-        logging.error(
-            'Split %s provided in sample_rate_by_split is not valid.', split
-        )
-
     statistics_artifact = artifact_utils.get_single_instance(
         output_dict[standard_component_specs.STATISTICS_KEY]
     )
@@ -168,6 +162,24 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       # TODO(b/150802589): Move jsonable interface to tfx_bsl and use
       # json_utils
       stats_options = options.StatsOptions.from_json(stats_options_json)
+
+    sample_rate_by_split_property = {
+        split: stats_options.sample_rate or 1.0 for split in split_names
+    }
+    for split in sample_rate_by_split:
+      # Check if sample_rate_by_split contains invalid split names
+      if split not in split_names:
+        logging.error(
+            'Split %s provided in sample_rate_by_split is not valid.', split
+        )
+        continue
+      sample_rate_by_split_property[split] = sample_rate_by_split[split]
+
+    # Add sample_rate_by_split property to statistics artifact
+    statistics_artifact.set_json_value_custom_property(
+        SAMPLE_RATE_BY_SPLIT_PROPERTY_NAME,
+        json_utils.dumps(sample_rate_by_split_property),
+    )
 
     write_sharded_output = exec_properties.get(
         standard_component_specs.SHARDED_STATS_OUTPUT_KEY, False
