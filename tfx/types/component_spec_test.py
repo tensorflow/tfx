@@ -19,8 +19,10 @@ from typing import Dict, List
 import unittest
 
 import tensorflow as tf
+from tfx.dsl.compiler import placeholder_utils
 from tfx.dsl.components.base.testing import test_node
 from tfx.dsl.placeholder import placeholder
+from tfx.orchestration.portable import data_types
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact
 from tfx.types import channel
@@ -32,7 +34,6 @@ from tfx.types.standard_artifacts import Examples
 from tfx.utils import proto_utils
 
 from google.protobuf import json_format
-from google.protobuf import text_format
 
 
 class _InputArtifact(artifact.Artifact):
@@ -432,15 +433,23 @@ class ComponentSpecTest(tf.test.TestCase):
         input=channel.Channel(type=_InputArtifact),
         output=channel.Channel(type=_OutputArtifact))
 
-    # Verify exec_properties store parsed value when use_proto set to True.
-    expected_proto = text_format.Parse(
+    # Verify exec_properties stores the correct placeholder when use_proto set
+    # to True.
+    resolved_proto = placeholder_utils.resolve_placeholder_expression(
+        spec.exec_properties['config_proto'].encode(),
+        placeholder_utils.ResolutionContext(
+            exec_info=data_types.ExecutionInfo()
+        )
+    )
+    self.assertProtoEquals(
         """
-            splits {
-              name: "name"
-              pattern: "pattern"
-            }
-          """, example_gen_pb2.Input())
-    self.assertProtoEquals(expected_proto, spec.exec_properties['config_proto'])
+        splits {
+          name: "name"
+          pattern: "pattern"
+        }
+        """,
+        resolved_proto
+    )
     self.assertEqual(True, spec.exec_properties['boolean'])
     self.assertIsInstance(spec.exec_properties['list_config_proto'], list)
     self.assertEqual(spec.exec_properties['list_boolean'], [False, True])
