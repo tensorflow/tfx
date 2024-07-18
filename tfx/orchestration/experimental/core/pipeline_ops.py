@@ -33,7 +33,6 @@ from tfx.dsl.io import fileio
 from tfx.dsl.io import filesystem
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
-from tfx.orchestration import subpipeline_utils
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import env
@@ -1272,20 +1271,6 @@ def filter_by_pipeline_uid(
   return lambda p: p.pipeline_uid == pipeline_uid
 
 
-def _record_orchestration_time(pipeline_state: pstate.PipelineState) -> None:
-  """Records an orchestration time for the pipeline run."""
-  # We only care about orchestration time for root pipelines, skip any
-  # subpipelines.
-  if subpipeline_utils.is_subpipeline(pipeline_state.pipeline):
-    return
-  pipeline_run_id = pipeline_state.pipeline_run_id
-  # Backend expects an empty string for the pipeline run id, for ASYNC pipeline
-  # runs.
-  if pipeline_run_id is None:
-    pipeline_run_id = ''
-  env.get_env().record_orchestration_time(pipeline_run_id)
-
-
 @_pipeline_op()
 def orchestrate(
     mlmd_connection_manager: mlmd_cm.MLMDConnectionManager,
@@ -1369,7 +1354,6 @@ def orchestrate(
           service_job_manager,
           pipeline_state,
       )
-      _record_orchestration_time(pipeline_state)
     except Exception:  # pylint: disable=broad-except
       # If orchestrating a stop-initiated pipeline raises an exception, we log
       # the exception but do not re-raise since we do not want to crash the
@@ -1393,7 +1377,6 @@ def orchestrate(
           service_job_manager,
           pipeline_state,
       )
-      _record_orchestration_time(pipeline_state)
     except Exception as e:  # pylint: disable=broad-except
       logging.exception(
           'Exception raised while orchestrating update-initiated pipeline %s',
@@ -1413,7 +1396,6 @@ def orchestrate(
                   ),
               )
           )
-          _record_orchestration_time(pipeline_state)
       except Exception:  # pylint: disable=broad-except
         # If stop initiation also raised an exception , we log the exception but
         # do not re-raise since we do not want to crash the orchestrator. If
@@ -1437,7 +1419,6 @@ def orchestrate(
           service_job_manager,
           pipeline_state,
       )
-      _record_orchestration_time(pipeline_state)
     except Exception as e:  # pylint: disable=broad-except
       logging.exception(
           'Exception raised while orchestrating active pipeline %s',
@@ -1455,7 +1436,6 @@ def orchestrate(
                   message=f'Error orchestrating active pipeline: {str(e)}',
               )
           )
-          _record_orchestration_time(pipeline_state)
       except Exception:  # pylint: disable=broad-except
         # If stop initiation also raised an exception , we log the exception but
         # do not re-raise since we do not want to crash the orchestrator. If
