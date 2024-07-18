@@ -473,6 +473,21 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
         resolved_info.input_and_params[0].exec_properties['input_str'],
     )
 
+  def test_generate_resolved_info_with_ph_exec_parameter(self):
+    otu.fake_example_gen_run(self._mlmd_connection, self._example_gen, 2, 1)
+    otu.fake_component_output(self._mlmd_connection, self._transform)
+    resolved_info = task_gen_utils.generate_resolved_info(
+        self._mlmd_connection_manager,
+        node_proto_view.get_view(self._trainer),
+        self._pipeline,
+    )
+    self.assertProtoEquals(
+        """
+        splits: "train"
+        """,
+        resolved_info.input_and_params[0].exec_properties['train_args'],
+    )
+
   @parameterized.named_parameters(
       dict(
           testcase_name='per_execution_idx_latest',
