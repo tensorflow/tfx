@@ -627,8 +627,8 @@ def filter_property_equal(
 
   filter_property_equal(
       [A, B, C],
-      property_key='blessed',
-      property_value=False,
+      key='blessed',
+      value=False,
   )
 
   will return [C].
@@ -649,6 +649,13 @@ def filter_property_equal(
   )
 
 
+@filter_property_equal.output_type_inferrer
+def _infer_filter_property_equal_type(
+    channel: channel_types.BaseChannel, **kwargs  # pylint: disable=unused-argument
+):
+  return channel.type
+
+
 @resolver_function.resolver_function
 def filter_custom_property_equal(
     artifacts,
@@ -665,8 +672,8 @@ def filter_custom_property_equal(
 
   filter_custom_property_equal(
       [A, B, C],
-      property_key='purity',
-      property_value=2,
+      key='purity',
+      value=2,
   )
 
   will return [C].
@@ -685,6 +692,13 @@ def filter_custom_property_equal(
       property_value=value,
       is_custom_property=True,
   )
+
+
+@filter_custom_property_equal.output_type_inferrer
+def _infer_filter_custom_property_equal_type(
+    channel: channel_types.BaseChannel, **kwargs  # pylint: disable=unused-argument
+):
+  return channel.type
 
 
 @resolver_function.resolver_function
