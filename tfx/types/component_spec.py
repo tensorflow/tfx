@@ -44,6 +44,11 @@ _MAKE_PROTO_EXEMPT_EXEC_PARAMETERS = [
     'tensorflow_trainer',
     'example_diff_config',
     'distribution_validator_config',
+    'event_exporter_config',
+    'train_args',
+    'tensorflow_api_option',
+    'eval_args',
+    'model_args',
 ]
 
 
