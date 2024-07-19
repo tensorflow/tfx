@@ -169,6 +169,7 @@ class _Generator:
         ):
           successful_node_ids.add(node_id)
         elif node_state.is_failure():
+          assert node_state.status is not None
           failed_nodes_dict[node_id] = node_state.status
 
     # Collect nodes that cannot be run because they have a failed ancestor.
@@ -545,6 +546,7 @@ class _Generator:
     # executions. Idempotency is guaranteed by external_id.
     updated_external_artifacts = []
     for input_and_params in resolved_info.input_and_params:
+      assert input_and_params.input_artifacts is not None
       for artifacts in input_and_params.input_artifacts.values():
         updated_external_artifacts.extend(
             task_gen_utils.update_external_artifact_type(
