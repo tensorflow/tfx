@@ -424,29 +424,38 @@ class _PipelineIRCodec:
     with cls._lock:
       cls._obj = None
 
-  def __init__(self):
-    self.base_dir = env.get_env().get_base_dir()
-    if self.base_dir:
-      self.pipeline_irs_dir = os.path.join(self.base_dir,
-                                           self._ORCHESTRATOR_METADATA_DIR,
-                                           self._PIPELINE_IRS_DIR)
-      fileio.makedirs(self.pipeline_irs_dir)
-    else:
-      self.pipeline_irs_dir = None
-
   def encode(self, pipeline: pipeline_pb2.Pipeline) -> str:
     """Encodes pipeline IR."""
     # Attempt to store as a base64 encoded string. If base_dir is provided
     # and the length is too large, store the IR on disk and retain the URL.
     # TODO(b/248786921): Always store pipeline IR to base_dir once the
     # accessibility issue is resolved.
+
+    # Note that this setup means that every *subpipeline* will have its own
+    # "irs" dir. This is fine, though ideally we would put all pipeline IRs
+    # under the root pipeline dir, which would require us to *also* store the
+    # root pipeline dir in the IR.
+
+    base_dir = pipeline.runtime_spec.pipeline_root.field_value.string_value
+    if base_dir:
+      pipeline_ir_dir = os.path.join(
+          base_dir, self._ORCHESTRATOR_METADATA_DIR, self._PIPELINE_IRS_DIR
+      )
+      fileio.makedirs(pipeline_ir_dir)
+    else:
+      pipeline_ir_dir = None
     pipeline_encoded = _base64_encode(pipeline)
     max_mlmd_str_value_len = env.get_env().max_mlmd_str_value_length()
-    if self.base_dir and max_mlmd_str_value_len is not None and len(
-        pipeline_encoded) > max_mlmd_str_value_len:
+    if (
+        base_dir
+        and pipeline_ir_dir
+        and max_mlmd_str_value_len is not None
+        and len(pipeline_encoded) > max_mlmd_str_value_len
+    ):
       pipeline_id = task_lib.PipelineUid.from_pipeline(pipeline).pipeline_id
-      pipeline_url = os.path.join(self.pipeline_irs_dir,
-                                  f'{pipeline_id}_{uuid.uuid4()}.pb')
+      pipeline_url = os.path.join(
+          pipeline_ir_dir, f'{pipeline_id}_{uuid.uuid4()}.pb'
+      )
       with fileio.open(pipeline_url, 'wb') as file:
         file.write(pipeline.SerializeToString())
       pipeline_encoded = json.dumps({self._PIPELINE_IR_URL_KEY: pipeline_url})

@@ -564,11 +564,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   def test_revive_pipeline_run_with_subpipelines(self):
     with self._mlmd_connection as m:
-      pipeline = test_sync_pipeline.create_pipeline_with_subpipeline()
+      pipeline = test_sync_pipeline.create_pipeline_with_subpipeline(
+          temp_dir=self.create_tempdir().full_path
+      )
       runtime_parameter_utils.substitute_runtime_parameter(
           pipeline,
           {
-              constants.PIPELINE_ROOT_PARAMETER_NAME: '/path/to/root',
               constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'run0',
           },
       )
@@ -820,11 +821,12 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self, mock_snapshot, run_subpipeline
   ):
     with self._mlmd_connection as m:
-      pipeline = test_sync_pipeline.create_pipeline_with_subpipeline()
+      pipeline = test_sync_pipeline.create_pipeline_with_subpipeline(
+          temp_dir=self.create_tempdir().full_path
+      )
       runtime_parameter_utils.substitute_runtime_parameter(
           pipeline,
           {
-              constants.PIPELINE_ROOT_PARAMETER_NAME: '/my/pipeline/root',
               constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'run-0123',
           },
       )
@@ -1519,7 +1521,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
   def test_record_orchestration_time_subpipeline(self):
     with self._mlmd_cm as mlmd_connection_manager:
       m = mlmd_connection_manager.primary_mlmd_handle
-      pipeline = test_sync_pipeline.create_pipeline_with_subpipeline()
+      pipeline = test_sync_pipeline.create_pipeline_with_subpipeline(
+          temp_dir=self.create_tempdir().full_path
+      )
       runtime_parameter_utils.substitute_runtime_parameter(
           pipeline,
           {
@@ -2653,13 +2657,8 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
         self.assertEqual(pstate.NodeState.STARTED, node_state.state)
 
   @parameterized.named_parameters(
-      dict(
-          testcase_name='async', pipeline=test_async_pipeline.create_pipeline()
-      ),
-      dict(
-          testcase_name='sync',
-          pipeline=test_sync_pipeline.create_pipeline(),
-      ),
+      dict(testcase_name='async', mode='async'),
+      dict(testcase_name='sync', mode='sync'),
   )
   @mock.patch.object(sync_pipeline_task_gen, 'SyncPipelineTaskGenerator')
   @mock.patch.object(async_pipeline_task_gen, 'AsyncPipelineTaskGenerator')
@@ -2667,8 +2666,16 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       self,
       mock_async_task_gen,
       mock_sync_task_gen,
-      pipeline,
+      mode,
   ):
+    if mode == 'async':
+      pipeline = test_async_pipeline.create_pipeline(
+          temp_dir=self.create_tempdir().full_path
+      )
+    else:
+      pipeline = test_sync_pipeline.create_pipeline(
+          temp_dir=self.create_tempdir().full_path
+      )
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline,
         {
@@ -2862,7 +2869,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(mock_sleep.call_count, 2)
 
   def test_resume_manual_node(self):
-    pipeline = test_manual_node.create_pipeline()
+    pipeline = test_manual_node.create_pipeline(
+        temp_dir=self.create_tempdir().full_path
+    )
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline,
         {
@@ -3516,7 +3525,9 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       )
 
   def test_delete_pipeline_run(self):
-    pipeline = test_sync_pipeline.create_pipeline()
+    pipeline = test_sync_pipeline.create_pipeline(
+        temp_dir=self.create_tempdir().full_path
+    )
     runtime_parameter_utils.substitute_runtime_parameter(
         pipeline,
         {

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Async pipeline for testing."""
+import os
 
 from tfx.dsl.compiler import compiler
 from tfx.dsl.component.experimental.annotations import InputArtifact
@@ -51,7 +52,7 @@ def _trainer(examples: InputArtifact[standard_artifacts.Examples],
   del examples, transform_graph, model
 
 
-def create_pipeline() -> pipeline_pb2.Pipeline:
+def create_pipeline(temp_dir: str = '/') -> pipeline_pb2.Pipeline:
   """Creates an async pipeline for testing."""
   # pylint: disable=no-value-for-parameter
   example_gen = _example_gen().with_id('my_example_gen')
@@ -68,13 +69,14 @@ def create_pipeline() -> pipeline_pb2.Pipeline:
 
   pipeline = pipeline_lib.Pipeline(
       pipeline_name='my_pipeline',
-      pipeline_root='/path/to/root',
+      pipeline_root=os.path.join(temp_dir, 'path/to/root'),
       components=[
           example_gen,
           transform,
           trainer,
       ],
-      execution_mode=pipeline_lib.ExecutionMode.ASYNC)
+      execution_mode=pipeline_lib.ExecutionMode.ASYNC,
+  )
   dsl_compiler = compiler.Compiler(use_input_v2=True)
   compiled_pipeline: pipeline_pb2.Pipeline = dsl_compiler.compile(pipeline)
 

@@ -49,6 +49,7 @@ def _test_pipeline(
     param=1,
     pipeline_nodes: List[str] = None,
     pipeline_run_id: str = 'run0',
+    pipeline_root: str = '',
 ):
   pipeline = pipeline_pb2.Pipeline()
   pipeline.pipeline_info.id = pipeline_id
@@ -63,6 +64,7 @@ def _test_pipeline(
     pipeline.runtime_spec.pipeline_run_id.field_value.string_value = (
         pipeline_run_id
     )
+  pipeline.runtime_spec.pipeline_root.field_value.string_value = pipeline_root
   return pipeline
 
 
@@ -202,7 +204,11 @@ class PipelineIRCodecTest(test_utils.TfxTest):
 
   def test_encode_decode_exceeds_max_len(self):
     with TestEnv(self._pipeline_root, 0):
-      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
+      pipeline = _test_pipeline(
+          'pipeline1',
+          pipeline_nodes=['Trainer'],
+          pipeline_root=self.create_tempdir().full_path,
+      )
       pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
     self.assertEqual(
         pipeline, pstate._PipelineIRCodec.get().decode(pipeline_encoded)

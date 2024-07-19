@@ -52,8 +52,12 @@ def _get_mlmd_connection(path: str) -> metadata.Metadata:
   return metadata.Metadata(connection_config=connection_config)
 
 
-def _test_pipeline(ir_path: str, pipeline_id: str, run_id: str,
-                   deployment_config: Optional[message.Message]):
+def _test_pipeline(
+    ir_path: str,
+    pipeline_id: str,
+    run_id: str,
+    deployment_config: Optional[message.Message],
+):
   """Creates test pipeline with pipeline_id and run_id."""
   pipeline = pipeline_pb2.Pipeline()
   io_utils.parse_pbtxt_file(ir_path, pipeline)
@@ -85,25 +89,30 @@ def _execute_nodes(handle: metadata.Metadata, pipeline: pipeline_pb2.Pipeline,
         )
 
 
-def _get_ir_path(external_ir_file: str):
+def _get_ir_path(external_ir_file: str, temp_dir: str = ''):
   if external_ir_file:
     return external_ir_file
   ir_file_path = tempfile.mktemp(suffix='.pbtxt')
-  io_utils.write_pbtxt_file(ir_file_path, test_sync_pipeline.create_pipeline())
+  io_utils.write_pbtxt_file(
+      ir_file_path, test_sync_pipeline.create_pipeline(temp_dir=temp_dir)
+  )
   return ir_file_path
 
 
-def create_sample_pipeline(m: metadata.Metadata,
-                           pipeline_id: str,
-                           run_num: int,
-                           export_ir_path: str = '',
-                           external_ir_file: str = '',
-                           deployment_config: Optional[message.Message] = None,
-                           execute_nodes_func: Callable[
-                               [metadata.Metadata, pipeline_pb2.Pipeline, int],
-                               None] = _execute_nodes):
+def create_sample_pipeline(
+    m: metadata.Metadata,
+    pipeline_id: str,
+    run_num: int,
+    export_ir_path: str = '',
+    external_ir_file: str = '',
+    deployment_config: Optional[message.Message] = None,
+    execute_nodes_func: Callable[
+        [metadata.Metadata, pipeline_pb2.Pipeline, int], None
+    ] = _execute_nodes,
+    temp_dir: str = '',
+):
   """Creates a list of pipeline and node execution."""
-  ir_path = _get_ir_path(external_ir_file)
+  ir_path = _get_ir_path(external_ir_file, temp_dir=temp_dir)
   for i in range(run_num):
     run_id = 'run%02d' % i
     pipeline = _test_pipeline(ir_path, pipeline_id, run_id, deployment_config)

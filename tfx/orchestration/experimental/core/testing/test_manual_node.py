@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test pipeline with only manual node."""
+import os
 
 from tfx.dsl.compiler import compiler
 from tfx.dsl.components.common import manual_node
@@ -19,16 +20,15 @@ from tfx.orchestration import pipeline as pipeline_lib
 from tfx.proto.orchestration import pipeline_pb2
 
 
-def create_pipeline() -> pipeline_pb2.Pipeline:
+def create_pipeline(temp_dir: str = '/') -> pipeline_pb2.Pipeline:
   """Builds a test pipeline with only manual node."""
   manual = manual_node.ManualNode(description='Do something.')
 
   pipeline = pipeline_lib.Pipeline(
       pipeline_name='my_pipeline',
-      pipeline_root='/path/to/root',
-      components=[
-          manual
-      ],
-      enable_cache=True)
+      pipeline_root=os.path.join(temp_dir, 'path/to/root'),
+      components=[manual],
+      enable_cache=True,
+  )
   dsl_compiler = compiler.Compiler()
   return dsl_compiler.compile(pipeline)
