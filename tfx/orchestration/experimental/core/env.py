@@ -44,10 +44,6 @@ class Env(abc.ABC):
     """Gets orchestration options for the pipeline."""
 
   @abc.abstractmethod
-  def get_base_dir(self) -> Optional[str]:
-    """Returns the base directory for the pipeline."""
-
-  @abc.abstractmethod
   def label_and_tag_pipeline_run(
       self, mlmd_handle, pipeline_id, pipeline_run_id, labels, tags
   ) -> None:
@@ -160,9 +156,6 @@ class _DefaultEnv(Env):
   ) -> orchestration_options.OrchestrationOptions:
     del pipeline
     return orchestration_options.OrchestrationOptions()
-
-  def get_base_dir(self) -> Optional[str]:
-    return None
 
   def label_and_tag_pipeline_run(
       self, mlmd_handle, pipeline_id, pipeline_run_id, labels, tags

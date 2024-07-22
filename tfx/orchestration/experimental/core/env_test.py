@@ -29,9 +29,6 @@ class _TestEnv(env.Env):
   def get_orchestration_options(self, pipeline):
     raise NotImplementedError()
 
-  def get_base_dir(self):
-    raise NotImplementedError()
-
   def label_and_tag_pipeline_run(
       self, mlmd_handle, pipeline_id, pipeline_run_id, labels, tags
   ):
