@@ -34,21 +34,21 @@ _BaseNode = Any
 # Execution parameters that have `use_proto=True` but cannot be optimized with
 # Placeholder ph.make_proto.
 # TODO(b/350820714): Placeholder needs to be supported at runtime so that
-# TensorflowTrainerConfig placeholder can be used to create the Trainer and
-# Tuner jobs.
+# TensorflowTrainerConfig, EventExporterConfig, and TensorflowApiOption
+# can be placeholders.
 # TODO(b/349459258): ExampleDiff executor needs to be updated to support
 # placeholder proto fields not being present.
 # TODO(b/352623284); DistributionValidator test needs to be updated to
 # support placeholder proto.
+# TODO(b/354748588): Support ExecutionParameter list of protos as placeholder so
+# that EvalArgs can be optimized.
 _MAKE_PROTO_EXEMPT_EXEC_PARAMETERS = [
     'tensorflow_trainer',
     'example_diff_config',
     'distribution_validator_config',
     'event_exporter_config',
-    'train_args',
     'tensorflow_api_option',
     'eval_args',
-    'model_args',
 ]
 
 
