@@ -17,7 +17,6 @@ syntax = "proto3";
 package tfx.orchestration;
 
 import "ml_metadata/proto/metadata_store.proto";
-import "tfx/proto/orchestration/placeholder.proto";
 
 // Facade spec args of custom component that use placeholder logics. This can be
 // computed from an execution hook on the runtime.
