@@ -44,7 +44,7 @@
 ## Dependency Updates
 | Package Name | Version Constraints | Previously (in `v1.15.0`) | Comments |
 | -- | -- | -- | -- |
-| `kfp-pipeline-spec` | `kfp-pipeline-spec>=0.1.10,<0.2` | `>0.1.13,<0.2` | |
+| `kfp-pipeline-spec` | `>0.1.13,<0.2` | `>=0.1.10,<0.2` | |
 
 ## Documentation Updates
 
@@ -126,15 +126,15 @@
 ## Dependency Updates
 | Package Name | Version Constraints | Previously (in `v1.14.0`) | Comments |
 | -- | -- | -- | -- |
-| `keras-tuner` | `>=1.0.4,<2,!=1.4.0,!=1.4.1` | `>=1.0.4,<2` | |
-| `packaging` | `>=20,<21` | `>=22` | |
-| `attrs` | `19.3.0,<22` | `19.3.0,<24` | |
-| `google-cloud-bigquery` | `>=2.26.0,<3` | `>=3,<4` | |
-| `tensorflow` | `>=2.15,<2.16` | `>=2.13,<2.14` | |
-| `tensorflow-decision-forests` | `>=1.0.1,<1.9` | `>=1.0.1,<2` | |
-| `tensorflow-hub` | `>=0.9.0,<0.14` | `>=0.15.0,<0.16` | |
-| `tensorflow-serving` | `>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3` | `>=2.15,<2.16` | |
-| `kfp-pipeline-spec` | `kfp-pipeline-spec>=0.1.10,<0.2` | `>0.1.13,<0.2` | |
+| `keras-tuner` | `>=1.0.4,<2` | `>=1.0.4,<2,!=1.4.0,!=1.4.1` | |
+| `packaging` | `>=22` | `>=20,<21` | |
+| `attrs` | `19.3.0,<24` | `19.3.0,<22` | |
+| `google-cloud-bigquery` | `>=3,<4` | `>=2.26.0,<3` | |
+| `tensorflow` | `>=2.13,<2.14` | `>=2.15,<2.16` | |
+| `tensorflow-decision-forests` | `>=1.0.1,<2` | `>=1.0.1,<1.9` | |
+| `tensorflow-hub` | `>=0.15.0,<0.16` | `>=0.9.0,<0.14` | |
+| `tensorflow-serving` | `>=2.15,<2.16` | `>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3` | |
+| `kfp-pipeline-spec` | `>0.1.13,<0.2` | `>=0.1.10,<0.2` | |
 
 ## Documentation Updates
 
