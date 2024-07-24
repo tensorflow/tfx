@@ -757,6 +757,25 @@ class _ProtoOperator(UnaryPlaceholderOperator):
     return result
 
 
+def dirname(
+    placeholder: Placeholder,
+) -> _DirNameOperator:
+  """Runs os.path.dirname() on the path resolved from the input placeholder.
+
+  Args:
+    placeholder: Another placeholder to be wrapped in a _DirNameOperator.
+
+  Example:
+  ```
+  ph.dirname(ph.execution_invocation().output_metadata_uri)
+  ```
+
+  Returns:
+    A _DirNameOperator operator.
+  """
+  return _DirNameOperator(placeholder)
+
+
 class _ListSerializationOperator(UnaryPlaceholderOperator):
   """ListSerializationOperator serializes list type placeholder.
 
@@ -808,6 +827,28 @@ class _CompareOp(enum.Enum):
   EQUAL = placeholder_pb2.ComparisonOperator.Operation.EQUAL
   LESS_THAN = placeholder_pb2.ComparisonOperator.Operation.LESS_THAN
   GREATER_THAN = placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN
+
+
+class _DirNameOperator(UnaryPlaceholderOperator):
+  """_DirNameOperator returns directory path given a path."""
+
+  def __init__(
+      self,
+      value: Placeholder,
+  ):
+    super().__init__(
+        value,
+        expected_type=str,
+    )
+
+  def encode(
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    result = placeholder_pb2.PlaceholderExpression()
+    op = result.operator.dir_name_op
+    op.expression.CopyFrom(self._value.encode(component_spec))
+
+    return result
 
 
 def internal_equals_value_like(
