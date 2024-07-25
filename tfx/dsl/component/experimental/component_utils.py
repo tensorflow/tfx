@@ -14,9 +14,10 @@
 """Utils for TFX component types. Intended for internal usage only."""
 
 import inspect
-from typing import Any, Callable, Mapping, Optional, Type
+from typing import Any, Callable, Mapping, Optional, Type, get_type_hints
 
 from tfx import types
+from tfx.dsl import hooks
 from tfx.dsl.component.experimental import json_compat
 from tfx.dsl.component.experimental import utils
 from tfx.dsl.components.base import base_component
@@ -155,6 +156,54 @@ def _type_check_execution_function_params(
       )
 
 
+def _type_check_post_execution_return(
+    spec: type[component_spec.ComponentSpec],
+    fn: Optional[hooks.PostExecutionFunction] = None,
+) -> None:
+  """Validates if the post execution function return type is aligned with the output value artifacts of the component spec."""
+  if (
+      fn is None
+      or (return_annotation := inspect.signature(fn).return_annotation) is None
+  ):
+    return
+  if not utils.is_typeddict(return_annotation):
+    raise TypeError(
+        f'Post execution hook function {fn.__name__} should return'
+        ' either None or a TypedDict.'
+    )
+  return_types = get_type_hints(return_annotation)
+  value_artifact_output_keys = [
+      key
+      for key, channel in spec.OUTPUTS.items()
+      if issubclass(channel.type, standard_artifacts.ValueArtifact)
+  ]
+  for name, type_hint in return_types.items():
+    if name not in value_artifact_output_keys:
+      raise TypeError(
+          f'Unsupported TypedDict entry {name}: {type_hint} from the function'
+          f' {fn.__name__} return type. It should be value artifact'
+          ' outputs of the component. The allowed names are'
+          f' {value_artifact_output_keys}'
+      )
+    output_channel_type = spec.OUTPUTS[name].type
+    if output_channel_type in _VALUE_ARTIFACT_TO_TYPE:
+      if type_hint is not _VALUE_ARTIFACT_TO_TYPE[output_channel_type]:
+        raise TypeError(
+            f'TypedDict entry {name}: {type_hint} from the function'
+            f' {fn.__name__} return type is not matched to the output'
+            f' spec of the component {name}: {output_channel_type.__name__}.'
+        )
+    else:
+      assert output_channel_type is standard_artifacts.JsonValue
+      if not json_compat.is_json_compatible(type_hint):
+        raise TypeError(
+            f'TypedDict entry {name}: {type_hint} from the function'
+            f' {fn.__name__} return type is not json compatible, where'
+            f' the output spec of the component is {name}:'
+            f' {standard_artifacts.JsonValue.__name__}.'
+        )
+
+
 def create_tfx_component_class(
     name: str,
     tfx_executor_spec: base_executor_spec.ExecutorSpec,
@@ -170,8 +219,8 @@ def create_tfx_component_class(
     type_annotation: Optional[Type[SystemExecution]] = None,
     default_init_args: Optional[Mapping[str, Any]] = None,
     # pre_execution and post_execution are not supported in OSS.
-    pre_execution: Optional[Callable[..., Any]] = None,
-    post_execution: Optional[Callable[..., Any]] = None,
+    pre_execution: Optional[hooks.PreExecutionFunction] = None,
+    post_execution: Optional[hooks.PostExecutionFunction] = None,
     base_class: Type[
         base_component.BaseComponent
     ] = base_component.BaseComponent,
@@ -190,6 +239,9 @@ def create_tfx_component_class(
 
   for fn in (pre_execution, post_execution):
     _type_check_execution_function_params(tfx_component_spec_class, fn)
+  _type_check_post_execution_return(
+      tfx_component_spec_class, post_execution
+  )
   try:
     pre_execution_spec, post_execution_spec = [
         _convert_function_to_python_executable_spec(fn)
