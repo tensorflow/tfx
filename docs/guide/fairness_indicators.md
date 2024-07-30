@@ -25,14 +25,6 @@ In particular, Fairness Indicators includes the ability to:
 *   Dive deep into individual slices to explore root causes and opportunities
     for improvement
 
-This
-[case study](https://developers.google.com/machine-learning/practica/fairness-indicators),
-complete with [videos](https://www.youtube.com/watch?v=pHT-ImFXPQo) and
-programming exercises, demonstrates how Fairness Indicators can be used on one
-of your own products to evaluate fairness concerns over time.
-
-[![](http://img.youtube.com/vi/pHT-ImFXPQo/0.jpg)](http://www.youtube.com/watch?v=pHT-ImFXPQo)
-
 The pip package download includes:
 
 *   **[Tensorflow Data Validation (TFDV)](https://www.tensorflow.org/tfx/data_validation/get_started)**
