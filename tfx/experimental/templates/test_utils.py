@@ -18,9 +18,13 @@ import re
 
 from typing import List, Iterable, Tuple
 
+from absl import flags
 from tfx.tools.cli.e2e import test_utils as cli_test_utils
 from tfx.utils import io_utils
 from tfx.utils import test_case_utils
+
+
+flags.FLAGS.mark_as_parsed()
 
 
 class BaseEndToEndTest(test_case_utils.TfxTest):
