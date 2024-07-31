@@ -52,6 +52,7 @@ EVAL_ARGS_KEY = 'eval_args'
 MODULE_FILE_KEY = 'module_file'
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
+COMPONENT_FLAGS = 'component_flags'
 # Key for example_validator
 ANOMALIES_KEY = 'anomalies'
 CUSTOM_VALIDATION_CONFIG_KEY = 'custom_validation_config'
