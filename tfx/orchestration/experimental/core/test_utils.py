@@ -24,6 +24,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import mlmd_state
+from tfx.orchestration.experimental.core import pipeline_ir_codec
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import task as task_lib
@@ -41,6 +42,7 @@ from tfx.utils import typing_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
+
 _MOCKED_STATEFUL_WORKING_DIR_INDEX = 'mocked-index-123'
 
 
@@ -49,7 +51,7 @@ class TfxTest(test_case_utils.TfxTest):
   def setUp(self):
     super().setUp()
     mlmd_state.clear_in_memory_state()
-    pstate._PipelineIRCodec.testonly_reset()  # pylint: disable=protected-access
+    pipeline_ir_codec.PipelineIRCodec.testonly_reset()
     pstate._active_pipelines_exist = True  # pylint: disable=protected-access
 
 

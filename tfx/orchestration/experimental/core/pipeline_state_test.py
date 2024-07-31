@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.experimental.core.pipeline_state."""
 
 import dataclasses
-import json
 import os
 import time
 from typing import List
@@ -165,59 +164,6 @@ class TestEnv(env._DefaultEnv):
 
   def max_mlmd_str_value_length(self):
     return self.max_str_len
-
-
-class PipelineIRCodecTest(test_utils.TfxTest):
-
-  def setUp(self):
-    super().setUp()
-    self._pipeline_root = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self.id(),
-    )
-
-  def test_encode_decode_no_base_dir(self):
-    with TestEnv(None, None):
-      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
-      pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
-    self.assertEqual(
-        pipeline,
-        pstate._base64_decode_pipeline(pipeline_encoded),
-        'Expected pipeline IR to be base64 encoded.',
-    )
-    self.assertEqual(
-        pipeline, pstate._PipelineIRCodec.get().decode(pipeline_encoded)
-    )
-
-  def test_encode_decode_with_base_dir(self):
-    with TestEnv(self._pipeline_root, None):
-      pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
-      pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
-    self.assertEqual(
-        pipeline,
-        pstate._base64_decode_pipeline(pipeline_encoded),
-        'Expected pipeline IR to be base64 encoded.',
-    )
-    self.assertEqual(
-        pipeline, pstate._PipelineIRCodec.get().decode(pipeline_encoded)
-    )
-
-  def test_encode_decode_exceeds_max_len(self):
-    with TestEnv(self._pipeline_root, 0):
-      pipeline = _test_pipeline(
-          'pipeline1',
-          pipeline_nodes=['Trainer'],
-          pipeline_root=self.create_tempdir().full_path,
-      )
-      pipeline_encoded = pstate._PipelineIRCodec.get().encode(pipeline)
-    self.assertEqual(
-        pipeline, pstate._PipelineIRCodec.get().decode(pipeline_encoded)
-    )
-    self.assertEqual(
-        pstate._PipelineIRCodec._PIPELINE_IR_URL_KEY,
-        next(iter(json.loads(pipeline_encoded).keys())),
-        'Expected pipeline IR URL to be stored as json.',
-    )
 
 
 class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):

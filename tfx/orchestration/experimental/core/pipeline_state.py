@@ -18,8 +18,6 @@ import contextlib
 import copy
 import dataclasses
 import functools
-import json
-import os
 import threading
 import time
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Set, Tuple, cast
@@ -28,7 +26,6 @@ import uuid
 from absl import logging
 import attr
 from tfx import types
-from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
@@ -36,6 +33,7 @@ from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import orchestration_options
+from tfx.orchestration.experimental.core import pipeline_ir_codec
 from tfx.utils import metrics_utils
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_gen_utils
@@ -402,77 +400,6 @@ def last_state_change_time_secs() -> float:
     return _last_state_change_time_secs
 
 
-class _PipelineIRCodec:
-  """A class for encoding / decoding pipeline IR."""
-
-  _ORCHESTRATOR_METADATA_DIR = '.orchestrator'
-  _PIPELINE_IRS_DIR = 'pipeline_irs'
-  _PIPELINE_IR_URL_KEY = 'pipeline_ir_url'
-  _obj = None
-  _lock = threading.Lock()
-
-  @classmethod
-  def get(cls) -> '_PipelineIRCodec':
-    with cls._lock:
-      if not cls._obj:
-        cls._obj = cls()
-      return cls._obj
-
-  @classmethod
-  def testonly_reset(cls) -> None:
-    """Reset global state, for tests only."""
-    with cls._lock:
-      cls._obj = None
-
-  def encode(self, pipeline: pipeline_pb2.Pipeline) -> str:
-    """Encodes pipeline IR."""
-    # Attempt to store as a base64 encoded string. If base_dir is provided
-    # and the length is too large, store the IR on disk and retain the URL.
-    # TODO(b/248786921): Always store pipeline IR to base_dir once the
-    # accessibility issue is resolved.
-
-    # Note that this setup means that every *subpipeline* will have its own
-    # "irs" dir. This is fine, though ideally we would put all pipeline IRs
-    # under the root pipeline dir, which would require us to *also* store the
-    # root pipeline dir in the IR.
-
-    base_dir = pipeline.runtime_spec.pipeline_root.field_value.string_value
-    if base_dir:
-      pipeline_ir_dir = os.path.join(
-          base_dir, self._ORCHESTRATOR_METADATA_DIR, self._PIPELINE_IRS_DIR
-      )
-      fileio.makedirs(pipeline_ir_dir)
-    else:
-      pipeline_ir_dir = None
-    pipeline_encoded = _base64_encode(pipeline)
-    max_mlmd_str_value_len = env.get_env().max_mlmd_str_value_length()
-    if (
-        base_dir
-        and pipeline_ir_dir
-        and max_mlmd_str_value_len is not None
-        and len(pipeline_encoded) > max_mlmd_str_value_len
-    ):
-      pipeline_id = task_lib.PipelineUid.from_pipeline(pipeline).pipeline_id
-      pipeline_url = os.path.join(
-          pipeline_ir_dir, f'{pipeline_id}_{uuid.uuid4()}.pb'
-      )
-      with fileio.open(pipeline_url, 'wb') as file:
-        file.write(pipeline.SerializeToString())
-      pipeline_encoded = json.dumps({self._PIPELINE_IR_URL_KEY: pipeline_url})
-    return pipeline_encoded
-
-  def decode(self, value: str) -> pipeline_pb2.Pipeline:
-    """Decodes pipeline IR."""
-    # Attempt to load as JSON. If it fails, fallback to decoding it as a base64
-    # encoded string for backward compatibility.
-    try:
-      pipeline_encoded = json.loads(value)
-      with fileio.open(pipeline_encoded[self._PIPELINE_IR_URL_KEY],
-                       'rb') as file:
-        return pipeline_pb2.Pipeline.FromString(file.read())
-    except json.JSONDecodeError:
-      return _base64_decode_pipeline(value)
-
 # Signal to record whether there are active pipelines, this is an optimization
 # to avoid generating too many RPC calls getting contexts/executions during
 # idle time. Everytime when the pipeline state is updated to active (eg. start,
@@ -668,7 +595,7 @@ class PipelineState:
       raise ValueError('Expected pipeline execution mode to be SYNC or ASYNC')
 
     exec_properties = {
-        _PIPELINE_IR: _PipelineIRCodec.get().encode(pipeline),
+        _PIPELINE_IR: pipeline_ir_codec.PipelineIRCodec.get().encode(pipeline),
         _PIPELINE_EXEC_MODE: pipeline_exec_mode,
     }
     pipeline_run_metadata_json = None
@@ -999,7 +926,7 @@ class PipelineState:
     env.get_env().prepare_orchestrator_for_pipeline_run(updated_pipeline)
     data_types_utils.set_metadata_value(
         self.execution.custom_properties[_UPDATED_PIPELINE_IR],
-        _PipelineIRCodec.get().encode(updated_pipeline),
+        pipeline_ir_codec.PipelineIRCodec.get().encode(updated_pipeline),
     )
     data_types_utils.set_metadata_value(
         self.execution.custom_properties[_UPDATE_OPTIONS],
@@ -1038,7 +965,9 @@ class PipelineState:
     )
     del self.execution.custom_properties[_UPDATED_PIPELINE_IR]
     del self.execution.custom_properties[_UPDATE_OPTIONS]
-    self.pipeline = _PipelineIRCodec.get().decode(updated_pipeline_ir)
+    self.pipeline = pipeline_ir_codec.PipelineIRCodec.get().decode(
+        updated_pipeline_ir
+    )
 
   def is_stop_initiated(self) -> bool:
     self._check_context()
@@ -1550,7 +1479,7 @@ def _get_pipeline_from_orchestrator_execution(
     execution: metadata_store_pb2.Execution) -> pipeline_pb2.Pipeline:
   pipeline_ir = data_types_utils.get_metadata_value(
       execution.properties[_PIPELINE_IR])
-  return _PipelineIRCodec.get().decode(pipeline_ir)
+  return pipeline_ir_codec.PipelineIRCodec.get().decode(pipeline_ir)
 
 
 def _get_orchestrator_context(mlmd_handle: metadata.Metadata, pipeline_id: str,
@@ -1567,12 +1496,6 @@ def _get_orchestrator_context(mlmd_handle: metadata.Metadata, pipeline_id: str,
 
 def _base64_encode(msg: message.Message) -> str:
   return base64.b64encode(msg.SerializeToString()).decode('utf-8')
-
-
-def _base64_decode_pipeline(pipeline_encoded: str) -> pipeline_pb2.Pipeline:
-  result = pipeline_pb2.Pipeline()
-  result.ParseFromString(base64.b64decode(pipeline_encoded))
-  return result
 
 
 def _base64_decode_update_options(
