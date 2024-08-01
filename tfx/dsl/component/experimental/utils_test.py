@@ -30,6 +30,10 @@ def top_level_func() -> None:
   pass
 
 
+def _private_func() -> None:
+  pass
+
+
 class UtilsTest(tf.test.TestCase):
   # pylint: disable=g-error-prone-assert-raises
   # pylint: disable=unused-argument
@@ -39,6 +43,14 @@ class UtilsTest(tf.test.TestCase):
       return 'foo'
 
     utils.assert_is_functype(func)
+
+  def test_assert_no_private_func_in_main_succeeds(self):
+
+    with self.assertRaisesRegex(
+        ValueError,
+        r'Custom Python functions \(both @component and pre/post hooks\)',
+    ):
+      utils.assert_no_private_func_in_main(_private_func)
 
   def test_assert_is_func_type_raises_error(self):
     with self.assertRaisesRegex(

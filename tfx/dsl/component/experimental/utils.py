@@ -151,6 +151,24 @@ def assert_is_top_level_func(func: types.FunctionType) -> None:
     )
 
 
+def assert_no_private_func_in_main(func: types.FunctionType) -> None:
+  """Asserts the func is not a private function in the main file.
+
+
+  Args:
+    func: The function to be checked.
+
+  Raises:
+    ValueError if the func was defined in main and whose name starts with '_'.
+  """
+  if func.__module__ == '__main__' and func.__name__.startswith('_'):
+    raise ValueError(
+        'Custom Python functions (both @component and pre/post hooks) declared'
+        ' in the main file must be public. Please remove the leading'
+        f' underscore from {func.__name__}.'
+    )
+
+
 def _create_component_spec_class(
     func: types.FunctionType,
     arg_defaults: Dict[str, Any],
@@ -253,12 +271,7 @@ def _create_executor_spec_instance(
     an instance of `executor_spec_class` whose executor_class is a subclass of
     `base_executor_class`.
   """
-  if func.__module__ == '__main__' and func.__name__.startswith('_'):
-    raise ValueError(
-        'Custom Python @components declared in the main file must be public. '
-        f'Please remove the leading underscore from {func.__name__}.'
-    )
-
+  assert_no_private_func_in_main(func)
   executor_class_name = f'{func.__name__}_Executor'
   executor_class = type(
       executor_class_name,
