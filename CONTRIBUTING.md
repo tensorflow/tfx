@@ -152,10 +152,16 @@ We have several types of tests in this repo:
 At this point all unit tests are safe to run externally. We are working on
 porting the end to end tests.
 
-Each test can just be invoked with `python`. To invoke all unit tests:
+Each test can just be invoked with `pytest`:
 
 ```shell
-find ./tfx -name '*_test.py' | grep -v e2e | xargs -I {} python {}
+pytest tfx/a_module/a_particular_test.py
+```
+
+To invoke all unit tests:
+
+```shell
+pytest
 ```
 
 ## Running pylint
