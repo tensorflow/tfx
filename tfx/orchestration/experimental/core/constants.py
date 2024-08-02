@@ -27,6 +27,9 @@ BACKFILL_TOKEN_CUSTOM_PROPERTY_KEY = '__backfill_token__'
 COMPONENT_GENERATED_ALERTS_KEY = '__component_generated_alerts__'
 
 IMPORTER_NODE_TYPE = 'tfx.dsl.components.common.importer.Importer'
+INTERNAL_IMPORTER_NODE_TYPE = (
+    'tfx.dsl.components.common.importer.InternalImporter'
+)
 RESOLVER_NODE_TYPE = 'tfx.dsl.components.common.resolver.Resolver'
 MANUAL_NODE_TYPE = 'tfx.dsl.components.common.manual_node.ManualNode'
 SUBPIPELINE_NODE_TYPE = 'tfx.orchestration.pipeline.Pipeline'
