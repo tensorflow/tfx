@@ -158,6 +158,7 @@ def make_extra_packages_test():
   # conflicts.
   return make_extra_packages_airflow() + make_extra_packages_kfp() + [
       'pytest>=5,<=8',
+      'pytest-subtests==0.13.1',
   ]
 
 
