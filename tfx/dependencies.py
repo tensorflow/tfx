@@ -157,7 +157,7 @@ def make_extra_packages_test():
   # Note: It is okay to pin packages to exact versions in this list to minimize
   # conflicts.
   return make_extra_packages_airflow() + make_extra_packages_kfp() + [
-      'pytest>=5,<7',
+      'pytest>=5,<=8',
   ]
 
 
