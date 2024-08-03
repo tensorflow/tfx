@@ -114,6 +114,17 @@ class Env(abc.ABC):
     """Updates orchestrator storage backends with pipeline run status."""
 
   @abc.abstractmethod
+  def create_pipeline_run_node_executions(
+      self,
+      owner: str,
+      pipeline_name: str,
+      pipeline: pipeline_pb2.Pipeline,
+      node_id: str,
+      executions: Sequence[metadata_store_pb2.Execution],
+  ) -> None:
+    """Creates (sub-)pipeline run node executions in the storage backend."""
+
+  @abc.abstractmethod
   def record_orchestration_time(self, pipeline_run_id: str) -> None:
     """Records the orchestration time for a pipeline run."""
 
@@ -208,6 +219,16 @@ class _DefaultEnv(Env):
       original_execution: metadata_store_pb2.Execution,
       modified_execution: metadata_store_pb2.Execution,
       sub_pipeline_ids: Optional[Sequence[str]] = None,
+  ) -> None:
+    pass
+
+  def create_pipeline_run_node_executions(
+      self,
+      owner: str,
+      pipeline_name: str,
+      pipeline: pipeline_pb2.Pipeline,
+      node_id: str,
+      executions: Sequence[metadata_store_pb2.Execution],
   ) -> None:
     pass
 

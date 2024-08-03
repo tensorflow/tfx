@@ -84,6 +84,16 @@ class _TestEnv(env.Env):
   ) -> None:
     raise NotImplementedError()
 
+  def create_pipeline_run_node_executions(
+      self,
+      owner: str,
+      pipeline_name: str,
+      pipeline: pipeline_pb2.Pipeline,
+      node_id: str,
+      executions: Sequence[metadata_store_pb2.Execution],
+  ) -> None:
+    raise NotImplementedError()
+
   def record_orchestration_time(self, pipeline_run_id: str) -> None:
     raise NotImplementedError()
 
