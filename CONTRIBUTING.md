@@ -164,7 +164,7 @@ pytest tfx/a_module/a_particular_test.py
 
 Some tests are slow and are given the `pytest.mark.slow` mark. These are skipped
 by default. As a result, if you wish to invoke a test that has been marked as slow, you must
-add `-m "slow"` to your pytest invokation:
+add `-m "slow"` to your pytest invocation:
 
 ```shell
 pytest tfx/a_module/a_slow_test.py -m "slow"
