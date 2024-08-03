@@ -144,24 +144,54 @@ which is a subclass of
 We have several types of tests in this repo:
 
 *   Unit tests for source code;
-*   End to end tests (filename ends with `_e2e_test.py`): some of this also runs
-    with external environments.
+*   End to end tests (filenames end with `_e2e_test.py`): some of these also run
+    with external environments;
+*   Integration tests (filenames end with `_integration_test.py`): some of these might
+    run with external environments;
+*   Performance tests (filenames end with `_perf_test.py`): some of these might
+    run with external environments.
 
 ### Running Unit Tests
 
 At this point all unit tests are safe to run externally. We are working on
 porting the end to end tests.
 
-Each test can just be invoked with `pytest`:
+Each test can be invoked individually with `pytest`:
 
 ```shell
 pytest tfx/a_module/a_particular_test.py
 ```
 
-To invoke all unit tests:
+Some tests are slow and are given the `pytest.mark.slow` mark. These are skipped
+by default. As a result, if you wish to invoke a test that has been marked as slow, you must
+add `-m "slow"` to your pytest invokation:
+
+```shell
+pytest tfx/a_module/a_slow_test.py -m "slow"
+```
+
+To invoke all unit tests not marked as slow:
 
 ```shell
 pytest
+```
+
+To invoke end to end tests:
+
+```shell
+pytest -m "e2e"
+```
+
+To invoke integration tests:
+
+```shell
+pytest -m "integration"
+```
+
+To invoke performance tests:
+
+```shell
+pytest -m "perf"
 ```
 
 ## Running pylint
