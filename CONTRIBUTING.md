@@ -194,6 +194,10 @@ To invoke performance tests:
 pytest -m "perf"
 ```
 
+If you selected end to end, integration, or performance tests, but they are still deselected,
+they might be marked as slow. You might need to add `-m "slow"` to your pytest invocation to
+include them.
+
 ## Running pylint
 
 We follow
