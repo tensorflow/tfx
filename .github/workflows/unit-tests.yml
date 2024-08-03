@@ -16,19 +16,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Get Changed Files
-      id: changed_files
-      uses: trilom/file-changes-action@v1.2.4
-      with:
-        fileOutput: ' '
-    - name: Select files to check
-      run: |
-        # Filter out non-python files.
-        (cat $HOME/files_added.txt; echo; cat $HOME/files_modified.txt) | tr ' ' '\n' | grep '\.py$' > py_files.txt || true
-        # Filter out non-test python files and e2e or integration tests.
-        cat py_files.txt | grep '_test\.py$' | grep -v _e2e_ | grep -v integration | grep -v 'examples/' > py_test_files.txt || true
-        # Select proto files.
-        (cat $HOME/files_added.txt; echo; cat $HOME/files_modified.txt) | tr ' ' '\n' | grep '\.proto$' > proto_files.txt || true
 
     - name: Set up Python 3.9
       uses: actions/setup-python@v1
@@ -62,4 +49,4 @@ jobs:
     - name: Run unit tests
       shell: bash
       run: |
-        [ ! -s "py_test_files.txt" ] || cat py_test_files.txt | tr '\n' ' ' | pytest
+        pytest
