@@ -26,6 +26,11 @@ from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 class CliLocalEndToEndTest(test_case_utils.TfxTest):
 

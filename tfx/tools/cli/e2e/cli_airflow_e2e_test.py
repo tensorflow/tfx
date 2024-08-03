@@ -33,6 +33,11 @@ from tfx.utils import io_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 

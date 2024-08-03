@@ -21,6 +21,11 @@ from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 from tfx.types.experimental import simple_artifacts
 
+import pytest
+
+
+pytestmark = [pytest.mark.integration, pytest.mark.slow]
+
 
 def _tasks_for_pipeline_with_artifact_value_passing():
   """A simple pipeline with artifact consumed as value."""

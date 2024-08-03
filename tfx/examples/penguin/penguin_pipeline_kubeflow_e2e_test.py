@@ -23,6 +23,11 @@ from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 from tfx.utils import io_utils
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 class PenguinPipelineKubeflowV2Test(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase

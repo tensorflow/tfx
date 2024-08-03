@@ -28,6 +28,11 @@ try:
 except ImportError:
   tensorflowjs = None
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 @unittest.skipIf(tensorflowjs is None,
                  'Cannot import required modules. This can happen when'

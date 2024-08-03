@@ -27,6 +27,12 @@ from tfx.utils import path_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
+
 _OUTPUT_EVENT_TYPES = [
     metadata_store_pb2.Event.OUTPUT,
     metadata_store_pb2.Event.DECLARED_OUTPUT,

@@ -29,6 +29,11 @@ from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
+import pytest
+
+
+pytestmark = [pytest.mark.perf, pytest.mark.slow]
+
 
 class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
 

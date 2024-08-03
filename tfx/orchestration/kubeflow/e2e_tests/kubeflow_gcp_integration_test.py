@@ -40,6 +40,11 @@ from tfx.types import standard_artifacts
 from tfx.utils import path_utils
 from tfx.utils import telemetry_utils
 
+import pytest
+
+
+pytestmark = [pytest.mark.integration, pytest.mark.slow]
+
 
 class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 

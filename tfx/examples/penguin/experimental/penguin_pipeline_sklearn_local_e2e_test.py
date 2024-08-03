@@ -20,6 +20,11 @@ from tfx import v1 as tfx
 from tfx.examples.penguin.experimental import penguin_pipeline_sklearn_local
 from tfx.orchestration import metadata
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 

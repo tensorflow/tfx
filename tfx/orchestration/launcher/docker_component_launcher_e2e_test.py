@@ -23,6 +23,11 @@ from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.types import component_spec
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 class _HelloWorldSpec(component_spec.ComponentSpec):
   INPUTS = {}

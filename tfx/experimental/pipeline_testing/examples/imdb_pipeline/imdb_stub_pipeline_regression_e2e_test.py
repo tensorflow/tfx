@@ -28,6 +28,11 @@ from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from ml_metadata.proto import metadata_store_pb2
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
 

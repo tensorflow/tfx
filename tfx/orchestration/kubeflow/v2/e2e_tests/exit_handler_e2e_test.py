@@ -27,6 +27,11 @@ from tfx.utils import io_utils
 
 from google.protobuf import json_format
 
+import pytest
+
+
+pytestmark = [pytest.mark.slow, pytest.mark.e2e]
+
 
 # The location of test data.
 # This location depends on install path of TFX in the docker image.

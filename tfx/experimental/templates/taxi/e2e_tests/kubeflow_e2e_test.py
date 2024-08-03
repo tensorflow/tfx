@@ -20,6 +20,11 @@ import tensorflow as tf
 from tfx.experimental.templates import container_based_test_case
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 class TaxiTemplateKubeflowE2ETest(
     container_based_test_case.BaseKubeflowEndToEndTest):

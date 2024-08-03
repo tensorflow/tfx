@@ -29,6 +29,11 @@ from tfx.tools.cli.e2e import test_utils
 from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 # Number of seconds between polling pending task states.
 _TASK_POLLING_INTERVAL_SEC = 10

@@ -22,6 +22,11 @@ from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_local
 from tfx.orchestration import metadata
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 class TaxiPipelineLocalEndToEndTest(tf.test.TestCase, parameterized.TestCase):
 

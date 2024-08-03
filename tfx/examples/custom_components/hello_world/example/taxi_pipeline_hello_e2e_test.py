@@ -21,6 +21,10 @@ from tfx.examples.custom_components.hello_world.example import taxi_pipeline_hel
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
 
 class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
 

@@ -32,6 +32,11 @@ from tfx.tools.cli.e2e import test_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
 
+import pytest
+
+
+pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+
 
 class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
 
