@@ -19,9 +19,13 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Set up Python 3.9
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: '3.9'
+        cache: 'pip'
+        cache-dependency-path: |
+          setup.py
+          tfx/dependencies.py
 
     - name: Set up Bazel 5.3.0
       run: |
@@ -29,16 +33,6 @@ jobs:
         curl -sSL https://github.com/bazelbuild/bazel/releases/download/5.3.0/bazel-5.3.0-installer-linux-x86_64.sh -o bazel_installer.sh
         chmod +x bazel_installer.sh
         sudo ./bazel_installer.sh
-
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        # This path is specific to Ubuntu
-        path: ~/.cache/pip
-        # Look to see if there is a cache hit for the corresponding setup.py + TFX version 
-        key: ${{ runner.os }}-pip-${{ hashFiles('tfx/dependencies.py') }}-
-        restore-keys: |
-          ${{ runner.os }}-pip-
 
     - name: Install dependencies
       run: |
