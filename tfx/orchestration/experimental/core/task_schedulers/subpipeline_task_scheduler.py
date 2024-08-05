@@ -13,13 +13,13 @@
 # limitations under the License.
 """A task scheduler for subpipeline."""
 
-import copy
 import threading
-from typing import Callable, Optional
+from typing import Optional
 
 from absl import flags
 from absl import logging
 from tfx.orchestration import metadata
+from tfx.orchestration import subpipeline_utils
 from tfx.orchestration.experimental.core import pipeline_ops
 from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.experimental.core import task as task_lib
@@ -48,8 +48,9 @@ class SubPipelineTaskScheduler(
       self._cancel.set()
 
     pipeline_node = self.task.get_node()
-    self._sub_pipeline = subpipeline_ir_rewrite(pipeline_node.raw_proto(),
-                                                task.execution_id)
+    self._sub_pipeline = subpipeline_utils.subpipeline_ir_rewrite(
+        pipeline_node.raw_proto(), task.execution_id
+    )
     self._pipeline_uid = task_lib.PipelineUid.from_pipeline(self._sub_pipeline)
     self._pipeline_run_id = (
         self._sub_pipeline.runtime_spec.pipeline_run_id.field_value.string_value
@@ -197,55 +198,3 @@ class SubPipelineTaskScheduler(
 
   def cancel(self, cancel_task: task_lib.CancelTask) -> None:
     self._cancel.set()
-
-
-def _visit_pipeline_nodes_recursively(
-    p: pipeline_pb2.Pipeline, visitor: Callable[[pipeline_pb2.PipelineNode],
-                                                None]):
-  """Helper function to visit every node inside a possibly nested pipeline."""
-  for pipeline_or_node in p.nodes:
-    if pipeline_or_node.WhichOneof('node') == 'pipeline_node':
-      visitor(pipeline_or_node.pipeline_node)
-    else:
-      _visit_pipeline_nodes_recursively(pipeline_or_node.sub_pipeline, visitor)
-
-
-def _update_pipeline_run_id(pipeline: pipeline_pb2.Pipeline, execution_id: int):
-  """Rewrites pipeline run id in a given pipeline IR."""
-  old_pipeline_run_id = pipeline.runtime_spec.pipeline_run_id.field_value.string_value
-  new_pipeline_run_id = old_pipeline_run_id + f'_{execution_id}'
-
-  def _node_updater(node: pipeline_pb2.PipelineNode):
-    for context_spec in node.contexts.contexts:
-      if (context_spec.type.name == 'pipeline_run' and
-          context_spec.name.field_value.string_value == old_pipeline_run_id):
-        context_spec.name.field_value.string_value = new_pipeline_run_id
-    for input_spec in node.inputs.inputs.values():
-      for channel in input_spec.channels:
-        for context_query in channel.context_queries:
-          if (context_query.type.name == 'pipeline_run' and
-              context_query.name.field_value.string_value
-              == old_pipeline_run_id):
-            context_query.name.field_value.string_value = new_pipeline_run_id
-
-  _visit_pipeline_nodes_recursively(pipeline, _node_updater)
-  pipeline.runtime_spec.pipeline_run_id.field_value.string_value = new_pipeline_run_id
-
-
-def subpipeline_ir_rewrite(original_ir: pipeline_pb2.Pipeline,
-                           execution_id: int) -> pipeline_pb2.Pipeline:
-  """Rewrites the subpipeline IR so that it can be run independently.
-
-  Args:
-    original_ir: Original subpipeline IR that is produced by compiler.
-    execution_id: The ID of Subpipeline task scheduler Execution. It is used to
-      generated a new pipeline run id.
-
-  Returns:
-    An updated subpipeline IR that can be run independently.
-  """
-  pipeline = copy.deepcopy(original_ir)
-  pipeline.nodes[0].pipeline_node.ClearField('upstream_nodes')
-  pipeline.nodes[-1].pipeline_node.ClearField('downstream_nodes')
-  _update_pipeline_run_id(pipeline, execution_id)
-  return pipeline

@@ -18,6 +18,7 @@ import os
 import threading
 import time
 from typing import Optional
+import uuid
 
 from absl.testing import parameterized
 from absl.testing.absltest import mock
@@ -27,6 +28,7 @@ from tfx.dsl.compiler import constants
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import node_proto_view
+from tfx.orchestration import subpipeline_utils
 from tfx.orchestration.experimental.core import async_pipeline_task_gen
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import event_observer
@@ -411,16 +413,57 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
   def test_revive_pipeline_run_with_updated_ir(self):
     with self._mlmd_connection as m:
-      pipeline = _test_pipeline('test_pipeline', pipeline_pb2.Pipeline.SYNC)
+      pipeline = test_sync_pipeline.create_pipeline_with_subpipeline(
+          temp_dir=self.create_tempdir().full_path
+      )
+      runtime_parameter_utils.substitute_runtime_parameter(
+          pipeline,
+          {
+              constants.PIPELINE_RUN_ID_PARAMETER_NAME: 'run0',
+          },
+      )
       pipeline_id = pipeline.pipeline_info.id
       # Enforce the same run_id
       run_id = pipeline.runtime_spec.pipeline_run_id.field_value.string_value
-      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
-      node_example_gen = pipeline.nodes.add().pipeline_node
-      node_example_gen.node_info.id = 'ExampleGen'
+      example_gen = test_utils.get_node(pipeline, 'my_example_gen')
+      example_gen_uid = task_lib.NodeUid.from_node(pipeline, example_gen)
 
+      # Mock out an execution for the subpipeline so it will be revived and
+      # updated.
+      subpipeline = pipeline.nodes[1].sub_pipeline
+      subpipeline_execution = execution_lib.prepare_execution(
+          metadata_handle=m,
+          execution_type=metadata_store_pb2.ExecutionType(name='subpipeline'),
+          state=metadata_store_pb2.Execution.RUNNING,
+          execution_name=uuid.uuid4().hex,
+      )
+      subpipeline_execution = execution_lib.put_execution(
+          metadata_handle=m,
+          execution=subpipeline_execution,
+          contexts=context_lib.prepare_contexts(
+              metadata_handle=m,
+              node_contexts=node_proto_view.get_view(subpipeline).contexts,
+          ),
+      )
+      subpipeline_run_id = f'subpipeline_{run_id}'
+      subpipeline_run_id_with_execution = (
+          subpipeline_utils.run_id_for_execution(
+              subpipeline_run_id, subpipeline_execution.id
+          )
+      )
+      subpipeline.runtime_spec.pipeline_run_id.field_value.string_value = (
+          subpipeline_run_id
+      )
+      subpipeline_for_run = subpipeline_utils.subpipeline_ir_rewrite(
+          subpipeline, subpipeline_execution.id
+      )
       # Initiate a pipeline start.
-      pipeline_state_run1 = pipeline_ops.initiate_pipeline_start(m, pipeline)
+      original_pipeline_state = pipeline_ops.initiate_pipeline_start(
+          m, pipeline
+      )
+      subpipeline_original_state = pipeline_ops.initiate_pipeline_start(
+          m, subpipeline_for_run
+      )
 
       def _inactivate(pipeline_state):
         time.sleep(2.0)
@@ -430,23 +473,39 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
                 metadata_store_pb2.Execution.CANCELED
             )
 
-      thread = threading.Thread(target=_inactivate, args=(pipeline_state_run1,))
+      thread = threading.Thread(
+          target=_inactivate, args=(original_pipeline_state,)
+      )
       thread.start()
       # Stop pipeline so we can revive.
       pipeline_ops.stop_pipeline(
           m, task_lib.PipelineUid.from_pipeline(pipeline)
       )
 
-      with pipeline_state_run1:
-        example_gen_node_uid = task_lib.NodeUid(pipeline_uid, 'ExampleGen')
-        with pipeline_state_run1.node_state_update_context(
-            example_gen_node_uid
+      thread = threading.Thread(
+          target=_inactivate, args=(subpipeline_original_state,)
+      )
+      thread.start()
+      # Stop pipeline so we can revive.
+      pipeline_ops.stop_pipeline(
+          m, task_lib.PipelineUid.from_pipeline(subpipeline_for_run)
+      )
+
+      with original_pipeline_state:
+        with original_pipeline_state.node_state_update_context(
+            example_gen_uid
         ) as node_state:
           node_state.update(pstate.NodeState.FAILED)
-        pipeline_state_run1.set_pipeline_execution_state(
+        with original_pipeline_state.node_state_update_context(
+            task_lib.NodeUid(
+                task_lib.PipelineUid.from_pipeline(pipeline), 'sub-pipeline'
+            )
+        ) as node_state:
+          node_state.update(pstate.NodeState.FAILED)
+        original_pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.CANCELED
         )
-        pipeline_state_run1.initiate_stop(
+        original_pipeline_state.initiate_stop(
             status_lib.Status(code=status_lib.Code.ABORTED)
         )
 
@@ -454,19 +513,39 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       pipeline_to_update_to.nodes[
           0
       ].pipeline_node.execution_options.max_execution_retries = 10
+      subpipeline_to_update_to = pipeline_to_update_to.nodes[1].sub_pipeline
+      subpipeline_to_update_to.nodes[
+          1
+      ].pipeline_node.execution_options.max_execution_retries = 11
+      pipeline_to_update_to.nodes[1].sub_pipeline.CopyFrom(
+          subpipeline_to_update_to
+      )
       expected_pipeline = copy.deepcopy(pipeline_to_update_to)
       with pipeline_ops.revive_pipeline_run(
           m,
           pipeline_id=pipeline_id,
           pipeline_run_id=run_id,
           pipeline_to_update_with=pipeline_to_update_to,
-      ) as pipeline_state_run2:
+      ) as updated_pipelines_state:
         self.assertEqual(
-            pipeline_state_run2.get_node_state(example_gen_node_uid).state,
+            updated_pipelines_state.get_node_state(example_gen_uid).state,
             pstate.NodeState.STARTED,
         )
-        self.assertEqual(expected_pipeline, pipeline_state_run2.pipeline)
-        pipeline_state_run2.is_active()
+        self.assertProtoEquals(
+            expected_pipeline, updated_pipelines_state.pipeline
+        )
+        self.assertTrue(updated_pipelines_state.is_active())
+
+      with pstate.PipelineState.load_run(
+          m, subpipeline.pipeline_info.id, subpipeline_run_id_with_execution
+      ) as updated_subpipeline_state:
+        self.assertEqual(
+            updated_subpipeline_state.pipeline.nodes[
+                1
+            ].pipeline_node.execution_options.max_execution_retries,
+            11,
+        )
+        self.assertTrue(updated_subpipeline_state.is_active())
 
   def test_revive_pipeline_run_when_concurrent_pipeline_runs_enabled(self):
     with test_utils.concurrent_pipeline_runs_enabled_env():

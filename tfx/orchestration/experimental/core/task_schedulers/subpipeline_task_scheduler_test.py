@@ -76,42 +76,9 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest, parameterized.TestCase):
 
   def test_subpipeline_ir_rewrite(self):
     old_ir = copy.deepcopy(self._sub_pipeline.raw_proto())
-    new_ir = subpipeline_task_scheduler.subpipeline_ir_rewrite(
-        self._sub_pipeline.raw_proto(), execution_id=42)
 
     # Asserts original IR is unmodified.
     self.assertProtoEquals(self._sub_pipeline.raw_proto(), old_ir)
-
-    # Asserts begin node has no upstream and end node has no downstream.
-    self.assertEmpty(new_ir.nodes[0].pipeline_node.upstream_nodes)
-    self.assertEmpty(new_ir.nodes[-1].pipeline_node.downstream_nodes)
-
-    # New run id should be <old_run_id>_<execution_id>.
-    old_run_id = old_ir.runtime_spec.pipeline_run_id.field_value.string_value
-    new_run_id = new_ir.runtime_spec.pipeline_run_id.field_value.string_value
-    self.assertEqual(new_run_id, old_run_id + '_42')
-
-    # All nodes should associate with the new pipeline run id.
-    for node in new_ir.nodes:
-      pipeline_run_context_names = set()
-      for c in node.pipeline_node.contexts.contexts:
-        if c.type.name == 'pipeline_run':
-          pipeline_run_context_names.add(c.name.field_value.string_value)
-      self.assertIn(new_run_id, pipeline_run_context_names)
-      self.assertNotIn(old_run_id, pipeline_run_context_names)
-
-    # All inputs except those of PipelineBeginNode's should associate with the
-    # new pipeline run id.
-    for node in new_ir.nodes[1:]:
-      for input_spec in node.pipeline_node.inputs.inputs.values():
-        for channel in input_spec.channels:
-          pipeline_run_context_names = set()
-          for context_query in channel.context_queries:
-            if context_query.type.name == 'pipeline_run':
-              pipeline_run_context_names.add(
-                  context_query.name.field_value.string_value)
-          self.assertIn(new_run_id, pipeline_run_context_names)
-          self.assertNotIn(old_run_id, pipeline_run_context_names)
 
   @parameterized.named_parameters(
       dict(testcase_name='run_till_finish', cancel_pipeline=False),

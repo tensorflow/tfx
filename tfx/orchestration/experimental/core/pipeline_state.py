@@ -920,8 +920,10 @@ class PipelineState:
     if _structure(self.pipeline) != _structure(updated_pipeline):
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT,
-          message=('Updated pipeline should have the same structure as the '
-                   'original.'))
+          message=(
+              'Updated pipeline should have the same structure as the original.'
+          ),
+      )
 
     env.get_env().prepare_orchestrator_for_pipeline_run(updated_pipeline)
     data_types_utils.set_metadata_value(

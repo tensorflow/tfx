@@ -743,6 +743,9 @@ def update_pipeline(
       'Received request to update pipeline; pipeline uid: %s', pipeline_uid
   )
   env.get_env().check_if_can_orchestrate(pipeline)
+
+  # TODO: b/356697161 - We should also update the IRs of any subpipeline
+  # executions.
   pipeline_state = _initiate_pipeline_update(
       mlmd_handle, pipeline, update_options
   )
@@ -1005,6 +1008,7 @@ def resume_pipeline(
 def _recursively_revive_pipelines(
     mlmd_handle: metadata.Metadata,
     pipeline_state: pstate.PipelineState,
+    pipeline_to_update_with: Optional[pipeline_pb2.Pipeline] = None,
 ) -> pstate.PipelineState:
   """Recursively revives all pipelines, resuing executions if present."""
   with pipeline_state:
@@ -1016,11 +1020,18 @@ def _recursively_revive_pipelines(
         for node_uid, state in pipeline_state.get_node_states_dict().items()
         if state.is_startable()
     ]
-
     logging.info(
         'The following nodes will be attempted to be started: %s',
         [node.node_id for node in nodes_to_start],
     )
+
+    subpipelines_to_update_with_by_id: dict[str, pipeline_pb2.Pipeline] = {}
+    if pipeline_to_update_with:
+      for node in pipeline_to_update_with.nodes:
+        if node.HasField('sub_pipeline'):
+          subpipelines_to_update_with_by_id[
+              node.sub_pipeline.pipeline_info.id
+          ] = node.sub_pipeline
     for node_uid in nodes_to_start:
       new_node_state = pstate.NodeState.STARTED
       node = node_by_name[node_uid.node_id]
@@ -1081,9 +1092,9 @@ def _recursively_revive_pipelines(
               if not execution_lib.is_execution_successful(e)
           ]
           for execution in non_successful_executions:
-            # TODO: b/324962451 - Consolidate all subpipeline run naming into a
-            # utility function.
-            new_run_id = f'{subpipeline_base_run_id}_{execution.id}'
+            new_run_id = subpipeline_utils.run_id_for_execution(
+                subpipeline_base_run_id, execution.id
+            )
             # Potentially, a subpipeline execution can be CANCELLED but have
             # never started, for instance if it's in the second iteration of
             # ForEach. In this case we *do not* want to revive recursively, as
@@ -1100,9 +1111,18 @@ def _recursively_revive_pipelines(
                   node.node_info.id,
               )
             else:
+              # We need to rewrite the subpipeline IR so that it satisfies the
+              # same "structure" as the existing pipeline run.
+              supplied_updated_ir = subpipelines_to_update_with_by_id.get(
+                  node.node_info.id
+              )
+              if supplied_updated_ir:
+                supplied_updated_ir = subpipeline_utils.subpipeline_ir_rewrite(
+                    supplied_updated_ir,
+                    execution.id,
+                )
               _recursively_revive_pipelines(
-                  mlmd_handle,
-                  subpipeline_state,
+                  mlmd_handle, subpipeline_state, supplied_updated_ir
               )
             # Mark the execution as NEW and the node state as RUNNING so we can
             # re-use the existing execution during task generation.
@@ -1138,6 +1158,18 @@ def _recursively_revive_pipelines(
                 ]
       with pipeline_state.node_state_update_context(node_uid) as node_state:
         node_state.update(new_node_state)
+
+    # Since the pipeline is not active we can apply the update right away.
+    if pipeline_to_update_with is not None:
+      logging.info(
+          'Trying to update pipeline %s during revive',
+          pipeline_state.pipeline_uid,
+      )
+      pipeline_state.initiate_update(
+          pipeline_to_update_with, pipeline_pb2.UpdateOptions()
+      )
+      pipeline_state.apply_pipeline_update()
+      logging.info('Applied update')
 
     pipeline_state.initiate_resume()
     new_pipeline_state = metadata_store_pb2.Execution.State.NEW
@@ -1213,18 +1245,8 @@ def revive_pipeline_run(
             ),
         )
 
-    # Since the pipeline is not active we can apply the update right away.
-    if pipeline_to_update_with is not None:
-      logging.info('Trying to update during revive')
-      pipeline_state.initiate_update(
-          pipeline_to_update_with, pipeline_pb2.UpdateOptions()
-      )
-      logging.info('Initiated update')
-      pipeline_state.apply_pipeline_update()
-      logging.info('Applied update')
-
   revived_pipeline_state = _recursively_revive_pipelines(
-      mlmd_handle, pipeline_state
+      mlmd_handle, pipeline_state, pipeline_to_update_with
   )
   return revived_pipeline_state
 
