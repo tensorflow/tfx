@@ -22,7 +22,7 @@ import kfp
 import tensorflow as tf
 
 from tfx.dsl.io import fileio
-from tfx.examples.penguin import penguin_kubeflow_gcp
+from tfx.examples.penguin import _penguin_kubeflow_gcp
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
@@ -246,7 +246,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
         'parameterServerCount': self._PARAMETER_SERVER_COUNT
     }
 
-    pipeline = penguin_kubeflow_gcp.create_pipeline(
+    pipeline = _penguin_kubeflow_gcp.create_pipeline(
         pipeline_name=pipeline_name,
         pipeline_root=self._pipeline_root(pipeline_name),
         module_file=self._MODULE_FILE,
