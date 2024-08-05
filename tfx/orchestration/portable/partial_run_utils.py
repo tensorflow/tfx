@@ -832,8 +832,8 @@ class _ArtifactRecycler:
     if not self._base_run_context or not self._new_pipeline_run_context:
       logging.warning(
           'base run context %s or new pipeline run context %s not found.',
-          self._base_run_context.name,
-          self._new_pipeline_run_context.name,
+          self._base_run_context,
+          self._new_pipeline_run_context,
       )
       return
 
