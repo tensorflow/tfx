@@ -1627,6 +1627,38 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     )
     self.assertSetEqual(actual_types, set(ph_types))
 
+  def testGetTypesOfMakeDictOperator(self):
+    ph_types = placeholder_pb2.Placeholder.Type.values()
+    expressions = " ".join(f"""
+          entries {{
+            key: {{
+              value: {{
+                string_value: "field_{_ph_type_to_str(ph_type)}"
+              }}
+            }}
+            value: {{
+              placeholder: {{
+                type: {ph_type}
+                key: 'baz'
+              }}
+            }}
+          }}
+        """ for ph_type in ph_types)
+    placeholder_expression = text_format.Parse(
+        f"""
+          operator {{
+            make_dict_op {{
+              {expressions}
+            }}
+          }}
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    actual_types = placeholder_utils.get_all_types_in_placeholder_expression(
+        placeholder_expression
+    )
+    self.assertSetEqual(actual_types, set(ph_types))
+
   def testGetsOperatorsFromProtoReflection(self):
     self.assertSetEqual(
         placeholder_utils.get_unary_operator_names(),

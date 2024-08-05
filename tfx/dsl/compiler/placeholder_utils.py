@@ -952,6 +952,9 @@ def get_all_types_in_placeholder_expression(
       expressions = operator_pb.expressions
     elif operator_name == "make_proto_op":
       expressions = operator_pb.fields.values()
+    elif operator_name == "make_dict_op":
+      expressions = [entry.key for entry in operator_pb.entries]
+      expressions += [entry.value for entry in operator_pb.entries]
     else:
       raise ValueError(
           f"Unrecognized placeholder operator {operator_name} in expression: "
