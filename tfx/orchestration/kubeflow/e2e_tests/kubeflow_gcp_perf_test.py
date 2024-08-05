@@ -32,7 +32,7 @@ from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 import pytest
 
 
-pytestmark = [pytest.mark.perf, pytest.mark.slow]
+pytestmark = [pytest.mark.perf, pytest.mark.e2e, pytest.mark.slow]
 
 
 class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
