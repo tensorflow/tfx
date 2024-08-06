@@ -57,12 +57,26 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Build ${{ matrix.platform || matrix.os }} binaries
-      uses: pypa/cibuildwheel@v2.20.0
-      env:
-        CIBW_BUILD: '${{ matrix.python-version }}-*'
-        # Linux wheels are built in manylinux containers
-        CIBW_BUILD_VERBOSITY: 1
+    - name: Install python build dependencies
+      run: |
+          pip install wheel
+
+    - uses: bazel-contrib/setup-bazel@0.8.5
+      name: Set up Bazel
+      with:
+        # Avoid downloading Bazel every time.
+        bazelisk-cache: true
+        # Store build cache per workflow.
+        disk-cache: ${{ github.workflow }}
+        # Share repository cache between workflows.
+        repository-cache: true
+
+    - name: Build wheels
+      run: |
+        package_build/initialize.sh &&
+        python package_build/tfx/setup.py bdist_wheel &&
+        python package_build/ml-pipelines-sdk/setup.py bdist_wheel
+        mv dist/*.whl wheelhouse/
 
     - name: List and check wheels
       run: |
