@@ -26,7 +26,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
   def setUp(self):

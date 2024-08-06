@@ -45,7 +45,6 @@ import pytest
 
 @pytest.mark.integration
 @pytest.mark.e2e
-@pytest.mark.slow
 class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):

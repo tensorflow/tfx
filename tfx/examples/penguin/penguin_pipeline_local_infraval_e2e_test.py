@@ -37,7 +37,6 @@ _OUTPUT_EVENT_TYPES = [
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class PenguinPipelineLocalInfravalEndToEndTest(
     tf.test.TestCase, parameterized.TestCase):
 

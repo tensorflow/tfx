@@ -70,7 +70,6 @@ def _create_pipeline(
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class DockerComponentLauncherE2eTest(tf.test.TestCase):
 
   def setUp(self):

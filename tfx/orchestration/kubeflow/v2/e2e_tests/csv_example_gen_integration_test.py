@@ -34,7 +34,6 @@ _TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_
 
 @pytest.mark.integration
 @pytest.mark.e2e
-@pytest.mark.slow
 class CsvExampleGenIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):

@@ -26,7 +26,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class PenguinTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):
   """This test runs all components in the template."""
 

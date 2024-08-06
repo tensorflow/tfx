@@ -29,7 +29,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class CliBeamEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):

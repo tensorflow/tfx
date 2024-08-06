@@ -32,7 +32,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 @unittest.skipIf(tensorflowjs is None,
                  'Cannot import required modules. This can happen when'
                  ' tensorflowjs is not available.')

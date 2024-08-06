@@ -56,7 +56,6 @@ _BIGQUERY_QUERY = """
 
 @pytest.mark.integration
 @pytest.mark.e2e
-@pytest.mark.slow
 class BigqueryIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):

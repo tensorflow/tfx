@@ -30,7 +30,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class CliLocalEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):

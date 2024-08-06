@@ -49,7 +49,6 @@ _CONTEXT_TYPE_PIPELINE = 'pipeline'
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
 
   @classmethod

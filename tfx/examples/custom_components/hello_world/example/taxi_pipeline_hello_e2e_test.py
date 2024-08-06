@@ -25,7 +25,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
 
   def setUp(self):

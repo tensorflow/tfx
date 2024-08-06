@@ -27,7 +27,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 @unittest.skipIf(tf.__version__ < '2',
                  'Uses keras Model only compatible with TF 2.x')
 class TaxiTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):

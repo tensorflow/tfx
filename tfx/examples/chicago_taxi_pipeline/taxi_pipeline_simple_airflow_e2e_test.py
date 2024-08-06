@@ -43,7 +43,6 @@ _PENDING_TASK_STATES = set(['queued', 'scheduled', 'running', 'none'])
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 @unittest.skipIf(
     platform.system() == 'Darwin',
     'Airflow is not compatible with TF in some environments on macos and '

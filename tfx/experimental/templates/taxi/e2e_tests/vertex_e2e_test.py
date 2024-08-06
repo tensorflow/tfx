@@ -23,7 +23,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class TaxiTemplateKubeflowV2E2ETest(
     container_based_test_case.BaseVertexEndToEndTest):
 

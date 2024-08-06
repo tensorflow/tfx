@@ -34,7 +34,6 @@ import pytest
 
 @pytest.mark.perf
 @pytest.mark.e2e
-@pytest.mark.slow
 class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
 
   # The endpoint of the KFP instance.

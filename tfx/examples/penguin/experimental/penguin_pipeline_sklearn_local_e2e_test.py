@@ -24,7 +24,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
   def setUp(self):

@@ -21,7 +21,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class PenguinTemplateKubeflowE2ETest(
     container_based_test_case.BaseKubeflowEndToEndTest):
 

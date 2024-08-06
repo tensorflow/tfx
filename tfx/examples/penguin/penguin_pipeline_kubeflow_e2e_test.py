@@ -27,7 +27,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class PenguinPipelineKubeflowV2Test(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):
@@ -84,7 +83,6 @@ class PenguinPipelineKubeflowV2Test(
     self.assertTrue(fileio.exists(self._serving_model_dir))
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):

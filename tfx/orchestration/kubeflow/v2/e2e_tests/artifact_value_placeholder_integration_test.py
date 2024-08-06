@@ -73,7 +73,6 @@ def _tasks_for_pipeline_with_artifact_value_passing():
 
 @pytest.mark.integration
 @pytest.mark.e2e
-@pytest.mark.slow
 class ArtifactValuePlaceholderIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):

@@ -37,7 +37,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.slow
 class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
