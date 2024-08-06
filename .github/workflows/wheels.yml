@@ -6,6 +6,9 @@ on:
   release:
     types: [published]
 
+env:
+  USE_BAZEL_VERSION: "7.2.1"
+
 jobs:
   build_sdist:
     name: Build sdist
@@ -45,7 +48,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu]
-        python-version: ['cp39', 'cp310']
+        python-version: ['cp310']
+        # python-version: ['cp39', 'cp310']
 
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     steps:
@@ -67,14 +71,20 @@ jobs:
         # Avoid downloading Bazel every time.
         bazelisk-cache: true
         # Store build cache per workflow.
-        disk-cache: ${{ github.workflow }}
+        disk-cache: ${{ github.workflow }}-${{ hashFiles('.github/workflows/wheels.yml') }}
         # Share repository cache between workflows.
         repository-cache: true
 
+    - name: Verify bazel installation
+      run: |
+        which bazel
+        bazel info
+        bazel version
+
     - name: Build wheels
       run: |
-        package_build/initialize.sh &&
-        python package_build/tfx/setup.py bdist_wheel &&
+        package_build/initialize.sh
+        python package_build/tfx/setup.py bdist_wheel
         python package_build/ml-pipelines-sdk/setup.py bdist_wheel
         mv dist/*.whl wheelhouse/
 
