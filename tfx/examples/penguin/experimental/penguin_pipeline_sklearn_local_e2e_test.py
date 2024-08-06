@@ -23,6 +23,10 @@ from tfx.orchestration import metadata
 import pytest
 
 
+def setup_module():
+  tf.compat.v1.enable_v2_behavior()
+
+
 @pytest.mark.e2e
 class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
@@ -92,5 +96,4 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

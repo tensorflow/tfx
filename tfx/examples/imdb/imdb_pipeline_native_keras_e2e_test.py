@@ -25,6 +25,10 @@ from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 import pytest
 
 
+def setup_module():
+  tf.compat.v1.enable_v2_behavior()
+
+
 @pytest.mark.e2e
 class ImdbPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
@@ -111,5 +115,4 @@ class ImdbPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()
