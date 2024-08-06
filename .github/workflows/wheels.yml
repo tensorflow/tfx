@@ -23,7 +23,7 @@ jobs:
         python-version: '3.10'
 
     - name: install python dependencies
-      run: pip install build
+      run: pip install build twine
 
     - name: build sdist
       run: |
@@ -48,8 +48,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu]
-        python-version: ['cp310']
-        # python-version: ['cp39', 'cp310']
+        python-version: ['cp39', 'cp310']
 
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     steps:
@@ -86,6 +85,7 @@ jobs:
         package_build/initialize.sh
         python package_build/tfx/setup.py bdist_wheel
         python package_build/ml-pipelines-sdk/setup.py bdist_wheel
+        mkdir wheelhouse
         mv dist/*.whl wheelhouse/
 
     - name: List and check wheels
