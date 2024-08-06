@@ -279,5 +279,3 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(output_channel.output_key, "output")
 
 
-if __name__ == "__main__":
-  tf.test.main()

@@ -64,5 +64,3 @@ class TaxiTemplateKubeflowV2E2ETest(
     self._run_pipeline()
 
 
-if __name__ == '__main__':
-  tf.test.main()

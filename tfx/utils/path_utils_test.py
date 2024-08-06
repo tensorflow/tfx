@@ -104,5 +104,3 @@ class PathUtilsTest(tf.test.TestCase, parameterized.TestCase):
         '/my-model/assets.extra/tf_serving_warmup_requests')
 
 
-if __name__ == '__main__':
-  tf.test.main()

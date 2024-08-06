@@ -28,5 +28,3 @@ class ModelTest(tf.test.TestCase):
     self.assertEqual(len(built_model.layers), 9)
 
 
-if __name__ == '__main__':
-  tf.test.main()

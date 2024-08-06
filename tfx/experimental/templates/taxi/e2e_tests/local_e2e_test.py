@@ -69,5 +69,3 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):
     self._run_pipeline()
 
 
-if __name__ == '__main__':
-  tf.test.main()

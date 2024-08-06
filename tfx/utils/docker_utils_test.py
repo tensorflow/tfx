@@ -65,5 +65,3 @@ class DockerUtilsTest(tf.test.TestCase):
 
     mock_check_output.assert_not_called()
 
-if __name__ == '__main__':
-  tf.test.main()

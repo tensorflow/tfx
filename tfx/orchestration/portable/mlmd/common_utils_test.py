@@ -128,5 +128,3 @@ class CommonUtilsTest(tf.test.TestCase, parameterized.TestCase):
                                                 type_with_different_properties)
 
 
-if __name__ == '__main__':
-  tf.test.main()

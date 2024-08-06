@@ -95,5 +95,3 @@ class BigqueryIntegrationTest(
     moke_resolve_dependencies.assert_called()
 
 
-if __name__ == '__main__':
-  tf.test.main()

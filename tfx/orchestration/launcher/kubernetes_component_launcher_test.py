@@ -302,5 +302,3 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
     return client.V1Pod(status=client.V1PodStatus(phase=phase))
 
 
-if __name__ == '__main__':
-  tf.test.main()

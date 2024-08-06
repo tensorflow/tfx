@@ -123,5 +123,3 @@ class DataTypesTest(tf.test.TestCase):
       _ = ComponentSpecWithContainer(x={u'key': parameter_int}, y=[])
 
 
-if __name__ == '__main__':
-  tf.test.main()

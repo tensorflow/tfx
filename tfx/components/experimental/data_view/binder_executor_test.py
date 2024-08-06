@@ -65,5 +65,3 @@ class BinderExecutorTest(tf.test.TestCase):
         input_examples.get_string_custom_property(existing_custom_property))
 
 
-if __name__ == '__main__':
-  tf.test.main()

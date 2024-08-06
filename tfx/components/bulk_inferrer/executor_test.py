@@ -198,5 +198,3 @@ class ExecutorTest(tf.test.TestCase):
             os.path.join(self._output_examples_dir, 'Split-unlabelled2')))
 
 
-if __name__ == '__main__':
-  tf.test.main()

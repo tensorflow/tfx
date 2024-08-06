@@ -37,5 +37,3 @@ class DockerComponentConfigTest(tf.test.TestCase):
     self.assertDictEqual({'2222/tcp': 3333}, run_args['ports'])
 
 
-if __name__ == '__main__':
-  tf.test.main()

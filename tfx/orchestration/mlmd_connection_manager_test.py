@@ -67,5 +67,3 @@ class MlmdConnectionManagerTest(tf.test.TestCase):
       cm.primary_mlmd_handle  # pylint: disable=pointless-statement
 
 
-if __name__ == '__main__':
-  tf.test.main()

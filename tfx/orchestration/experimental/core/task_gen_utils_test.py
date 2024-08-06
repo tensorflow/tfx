@@ -1186,5 +1186,3 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
       self.assertIsInstance(exec_task, task_lib.ExecNodeTask)
 
 
-if __name__ == '__main__':
-  tf.test.main()

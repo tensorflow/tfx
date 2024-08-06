@@ -134,5 +134,3 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
       self.assertLen(m.store.get_executions(), expected_execution_count * 2)
 
 
-if __name__ == '__main__':
-  tf.test.main()

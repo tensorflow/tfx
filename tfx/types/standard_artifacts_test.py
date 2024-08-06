@@ -204,5 +204,3 @@ class StandardArtifactsTest(tf.test.TestCase):
         examples.path(split='non-existing')
 
 
-if __name__ == '__main__':
-  tf.test.main()

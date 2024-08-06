@@ -116,5 +116,3 @@ class AnnotationsTest(tf.test.TestCase):
     _ = annotations.Parameter[annotations_test_proto_pb2.TestMessage]
 
 
-if __name__ == '__main__':
-  tf.test.main()

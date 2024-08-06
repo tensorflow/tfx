@@ -184,5 +184,3 @@ class ContextLibTest(test_case_utils.TfxTest):
                                                    child_id=child_context.id)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -169,5 +169,3 @@ class RunTest(test_case_utils.TfxTest):
     self.assertSucceeded(result)
 
 
-if __name__ == '__main__':
-  tf.test.main()

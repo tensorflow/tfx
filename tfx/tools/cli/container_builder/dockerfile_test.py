@@ -81,5 +81,3 @@ class DockerfileTest(test_case_utils.TfxTest):
         dockerfile.Dockerfile(filename=labels.DOCKERFILE_NAME)
 
 
-if __name__ == '__main__':
-  tf.test.main()

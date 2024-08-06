@@ -302,5 +302,3 @@ class ValidateExecPropertyPlaceholderTest(tf.test.TestCase):
     self.assertProtoEquals(actual, expected)
 
 
-if __name__ == "__main__":
-  tf.test.main()

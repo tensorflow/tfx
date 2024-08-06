@@ -250,5 +250,3 @@ class ExecutorTest(tf.test.TestCase):
           self._output_dict,
           self._exec_properties)
 
-if __name__ == '__main__':
-  tf.test.main()

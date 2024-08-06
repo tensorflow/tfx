@@ -1680,5 +1680,3 @@ class NodeStatesProxyTest(test_utils.TfxTest):
           json_utils.dumps(node_states),
       )
 
-if __name__ == '__main__':
-  tf.test.main()

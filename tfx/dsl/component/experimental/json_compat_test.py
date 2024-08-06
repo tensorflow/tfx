@@ -176,5 +176,3 @@ class JsonCompatTest(tf.test.TestCase):
         }, Dict[str, Union[int, float, str]]))
 
 
-if __name__ == '__main__':
-  tf.test.main()

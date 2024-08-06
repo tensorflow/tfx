@@ -449,5 +449,3 @@ class InputsUtilsTest(_TestMixin):
     )
 
 
-if __name__ == '__main__':
-  tf.test.main()

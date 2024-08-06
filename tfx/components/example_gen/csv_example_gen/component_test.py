@@ -26,5 +26,3 @@ class ComponentTest(tf.test.TestCase):
                      csv_example_gen.outputs['examples'].type_name)
 
 
-if __name__ == '__main__':
-  tf.test.main()

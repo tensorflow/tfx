@@ -209,5 +209,3 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
     self.assertEqual('foo', self.statistics_gen.container_op.name)
 
 
-if __name__ == '__main__':
-  tf.test.main()

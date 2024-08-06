@@ -51,5 +51,3 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(restored_config, config)
 
 
-if __name__ == '__main__':
-  tf.test.main()

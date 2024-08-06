@@ -60,5 +60,3 @@ class PublisherTest(tf.test.TestCase):
             'tfx_version'), version.__version__)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -402,5 +402,3 @@ class ExecutorTest(tf.test.TestCase):
       util.assert_that(elwc_examples, util.equal_to(expected_elwc_examples))
 
 
-if __name__ == '__main__':
-  tf.test.main()

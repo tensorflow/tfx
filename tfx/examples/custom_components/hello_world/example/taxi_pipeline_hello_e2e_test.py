@@ -88,5 +88,3 @@ class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
     self.assertPipelineExecution()
 
 
-if __name__ == '__main__':
-  tf.test.main()

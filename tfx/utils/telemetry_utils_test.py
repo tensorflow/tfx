@@ -99,5 +99,3 @@ class TelemetryUtilsTest(tf.test.TestCase):
                                req.headers['user-agent'])
 
 
-if __name__ == '__main__':
-  tf.test.main()

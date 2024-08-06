@@ -82,5 +82,3 @@ class RankingPipelineTest(tf.test.TestCase):
       self.assertEqual(9, execution_count)
 
 
-if __name__ == '__main__':
-  tf.test.main()

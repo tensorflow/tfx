@@ -241,5 +241,3 @@ class ProvidersTest(tf.test.TestCase):
       m.get('my_list', list[str])
 
 
-if __name__ == '__main__':
-  tf.test.main()

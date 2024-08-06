@@ -279,6 +279,3 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     self.assertEqual(len(artifacts), 1)
 
 
-if __name__ == '__main__':
-  logging.set_verbosity(logging.INFO)
-  tf.test.main()

@@ -274,5 +274,3 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           original_artifacts, _build_output_artifact_dict(updated_artifacts))
 
 
-if __name__ == '__main__':
-  tf.test.main()

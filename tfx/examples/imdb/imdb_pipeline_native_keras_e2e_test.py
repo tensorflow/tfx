@@ -114,5 +114,3 @@ class ImdbPipelineNativeKerasEndToEndTest(tf.test.TestCase):
                        len(m.store.get_executions()))
 
 
-if __name__ == '__main__':
-  tf.test.main()

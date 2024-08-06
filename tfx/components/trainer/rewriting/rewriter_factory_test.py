@@ -48,5 +48,3 @@ class RewriterFactoryTest(parameterized.TestCase):
     self.assertEqual(type(tfrw).__name__, rewriter_factory.TFJS_REWRITER)
     self.assertEqual(tfrw.name, 'my_rewriter')
 
-if __name__ == '__main__':
-  absltest.main()

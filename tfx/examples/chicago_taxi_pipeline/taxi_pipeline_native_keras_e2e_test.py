@@ -143,5 +143,3 @@ class TaxiPipelineNativeKerasEndToEndTest(
       self.assertLen(m.store.get_executions(), expected_execution_count * 3)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -63,5 +63,3 @@ class TensorflowGfileTest(tf.test.TestCase):
         list(TensorflowFilesystem.walk(os.path.join(temp_dir, 'foo'))), [])
 
 
-if __name__ == '__main__':
-  tf.test.main()

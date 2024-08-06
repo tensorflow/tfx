@@ -49,5 +49,3 @@ class CliTest(tf.test.TestCase):
     self.assertNotEqual(0, result.exit_code)
 
 
-if __name__ == '__main__':
-  tf.test.main()

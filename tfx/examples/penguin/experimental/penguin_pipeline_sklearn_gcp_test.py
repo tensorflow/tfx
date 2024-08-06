@@ -72,5 +72,3 @@ class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
     self.assertTrue(tfx.dsl.io.fileio.exists(file_path))
 
 
-if __name__ == '__main__':
-  tf.test.main()

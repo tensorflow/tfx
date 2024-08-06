@@ -44,5 +44,3 @@ class ProviderComponentTest(tf.test.TestCase):
                      provider.outputs['data_view'].type_name)
 
 
-if __name__ == '__main__':
-  tf.test.main()

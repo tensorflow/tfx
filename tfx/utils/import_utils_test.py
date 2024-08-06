@@ -87,5 +87,3 @@ class ImportUtilsTest(tf.test.TestCase):
         'test_fn')
     self.assertEqual(11, fn_3([1, 2, 3, 4]))
 
-if __name__ == '__main__':
-  tf.test.main()

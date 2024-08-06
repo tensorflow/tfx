@@ -215,5 +215,3 @@ class ArtifactUtilsTest(tf.test.TestCase):
     with self.assertRaises(RuntimeError):
       artifact_utils.verify_artifacts(artifact_instance)
 
-if __name__ == '__main__':
-  tf.test.main()

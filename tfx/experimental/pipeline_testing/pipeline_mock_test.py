@@ -95,5 +95,3 @@ class PipelineMockTest(tf.test.TestCase):
     self.assertProtoEquals(expected, pipeline)
 
 
-if __name__ == '__main__':
-  tf.test.main()

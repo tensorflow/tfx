@@ -32,5 +32,3 @@ class SchemaGenTest(tf.test.TestCase):
             standard_component_specs.SCHEMA_FILE_KEY], 'dummy')
 
 
-if __name__ == '__main__':
-  tf.test.main()

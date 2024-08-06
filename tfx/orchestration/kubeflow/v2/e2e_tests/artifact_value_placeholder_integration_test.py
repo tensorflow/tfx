@@ -95,5 +95,3 @@ class ArtifactValuePlaceholderIntegrationTest(
     self._run_pipeline(pipeline, use_pipeline_spec_2_1=use_pipeline_spec_2_1)
 
 
-if __name__ == '__main__':
-  tf.test.main()

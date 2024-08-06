@@ -60,5 +60,3 @@ class LocalTest(tf.test.TestCase):
         list(LocalFilesystem.walk(os.path.join(temp_dir, 'foo'))), [])
 
 
-if __name__ == '__main__':
-  tf.test.main()

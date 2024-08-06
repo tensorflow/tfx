@@ -41,5 +41,3 @@ class StatsArtifactUtilsTest(tf.test.TestCase):
       stats_artifact_utils.load_statistics(stats_artifact, 'not_a_split')
 
 
-if __name__ == '__main__':
-  tf.test.main()

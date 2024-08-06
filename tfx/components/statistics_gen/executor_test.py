@@ -403,5 +403,3 @@ class ExecutorTest(parameterized.TestCase):
       stats_gen_executor.Do(input_dict, output_dict, exec_properties)
 
 
-if __name__ == '__main__':
-  absltest.main()

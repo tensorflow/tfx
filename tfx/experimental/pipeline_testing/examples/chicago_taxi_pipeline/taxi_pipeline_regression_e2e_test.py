@@ -201,5 +201,3 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                                                         recorded_uri)
 
 
-if __name__ == '__main__':
-  tf.test.main()

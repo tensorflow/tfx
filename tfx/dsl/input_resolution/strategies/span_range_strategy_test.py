@@ -83,5 +83,3 @@ class SpanRangeStrategyTest(test_case_utils.TfxTest):
                      [artifact5.uri, artifact4.uri])
 
 
-if __name__ == '__main__':
-  tf.test.main()

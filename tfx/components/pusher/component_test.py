@@ -101,5 +101,3 @@ class ComponentTest(tf.test.TestCase):
           push_destination=self._push_destination)
 
 
-if __name__ == '__main__':
-  tf.test.main()

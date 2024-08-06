@@ -211,5 +211,3 @@ class KubeflowV2EntrypointUtilsTest(tf.test.TestCase):
                          model_blessing.to_json_dict())
 
 
-if __name__ == '__main__':
-  tf.test.main()

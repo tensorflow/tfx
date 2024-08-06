@@ -55,5 +55,3 @@ class ComponentTest(tf.test.TestCase):
         "BeamExecutorSpec"):
       InvalidExecutorComponent._validate_component_class()
 
-if __name__ == "__main__":
-  tf.test.main()

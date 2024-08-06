@@ -453,5 +453,3 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
     self.assertEqual(resolved[0].id, e1.id)
 
 
-if __name__ == '__main__':
-  tf.test.main()

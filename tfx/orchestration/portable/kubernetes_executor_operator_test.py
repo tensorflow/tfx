@@ -240,5 +240,3 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
         pipeline_info=pipeline_pb2.PipelineInfo(id='Test'),
         pipeline_run_id='123')
 
-if __name__ == '__main__':
-  tf.test.main()

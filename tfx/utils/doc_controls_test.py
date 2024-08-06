@@ -34,5 +34,3 @@ class DocControlsTest(tf.test.TestCase):
                      tfx_doc_controls.EXTRA_DOCS.get(id(documented_test_key)))
 
 
-if __name__ == '__main__':
-  tf.test.main()

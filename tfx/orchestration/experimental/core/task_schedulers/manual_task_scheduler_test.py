@@ -119,5 +119,3 @@ class ManualTaskSchedulerTest(test_utils.TfxTest):
     self.assertIsInstance(ts_result[0].output, ts.ExecutorNodeOutput)
 
 
-if __name__ == '__main__':
-  tf.test.main()

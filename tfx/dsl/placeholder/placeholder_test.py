@@ -2166,5 +2166,3 @@ class EncodeValueLikeTest(tf.test.TestCase):
       placeholder_base.encode_value_like(self)
 
 
-if __name__ == '__main__':
-  tf.test.main()

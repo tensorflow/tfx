@@ -124,5 +124,3 @@ class SlidingWindowOpTest(tf.test.TestCase):
     self.assertEqual(actual, [{"window": [a1, a2]}])
 
 
-if __name__ == "__main__":
-  tf.test.main()

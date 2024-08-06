@@ -174,5 +174,3 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
       runner.run(self._getTestPipeline())
 
 
-if __name__ == '__main__':
-  absl.testing.absltest.main()

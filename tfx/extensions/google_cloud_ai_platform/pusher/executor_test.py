@@ -297,5 +297,3 @@ class ExecutorTest(tf.test.TestCase):
         self._model_push.get_string_custom_property('pushed_destination'),
         endpoint_uri)
 
-if __name__ == '__main__':
-  tf.test.main()

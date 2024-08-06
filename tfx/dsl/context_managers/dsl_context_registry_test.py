@@ -206,5 +206,3 @@ class DslContextRegistryTest(tf.test.TestCase):
         Node('B')
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -980,5 +980,3 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
       )
 
 
-if __name__ == '__main__':
-  tf.test.main()

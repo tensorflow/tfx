@@ -98,5 +98,3 @@ class DockerComponentLauncherE2eTest(tf.test.TestCase):
       self.assertEqual(1, len(m.store.get_executions()))
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -133,5 +133,3 @@ class InputProcessorTest(tf.test.TestCase):
     self.assertEqual(pattern, "select * from table where date='19700103'")
 
 
-if __name__ == '__main__':
-  tf.test.main()

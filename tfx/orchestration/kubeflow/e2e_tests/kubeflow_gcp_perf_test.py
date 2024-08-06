@@ -267,5 +267,3 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
     )
 
 
-if __name__ == '__main__':
-  tf.test.main()

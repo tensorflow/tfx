@@ -1723,5 +1723,3 @@ class PartialRunTest(absltest.TestCase):
     self.assertResultEqual(pipeline_pb_run_2, [(result_1_v2.id, 6)])
 
 
-if __name__ == '__main__':
-  absltest.main()

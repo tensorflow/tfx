@@ -76,5 +76,3 @@ class CliCommonEndToEndTest(tf.test.TestCase):
     self.assertIn('--run_id', result.output)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -482,6 +482,3 @@ def _delete_bigquery_dataset(dataset_name, project_id):
       raise
 
 
-if __name__ == '__main__':
-  absl.logging.set_verbosity(absl.logging.INFO)
-  tf.test.main()

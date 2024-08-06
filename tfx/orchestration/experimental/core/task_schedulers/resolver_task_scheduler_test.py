@@ -136,5 +136,3 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
     self.assertEqual('my_model_uri_2', input_models[0].mlmd_artifact.uri)
 
 
-if __name__ == '__main__':
-  tf.test.main()

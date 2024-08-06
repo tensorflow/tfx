@@ -173,5 +173,3 @@ class TaxiUtilsTest(tf.test.TestCase):
       self.assertIsInstance(metagraph_def, tf.compat.v1.MetaGraphDef)
 
 
-if __name__ == '__main__':
-  tf.test.main()

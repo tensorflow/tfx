@@ -145,5 +145,3 @@ class ComponentTest(tf.test.TestCase):
           module_path='python.path.module')
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -53,5 +53,3 @@ class LatestCreateTimeOpTest(tf.test.TestCase):
       self._latest_create_time([a1], n=-1)
 
 
-if __name__ == '__main__':
-  tf.test.main()

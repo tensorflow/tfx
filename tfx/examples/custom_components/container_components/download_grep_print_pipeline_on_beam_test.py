@@ -67,5 +67,3 @@ class PipelineTest(tf.test.TestCase):
     self.assertIsNotNone(pipeline)
 
 
-if __name__ == '__main__':
-  tf.test.main()

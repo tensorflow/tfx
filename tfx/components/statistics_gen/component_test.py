@@ -52,5 +52,3 @@ class ComponentTest(tf.test.TestCase):
             standard_component_specs.STATISTICS_KEY].type_name)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -35,5 +35,3 @@ class BeamDagRunnerPatcherTest(tf.test.TestCase):
       self.assertEqual(context[patcher.PIPELINE_NAME], _PIPELINE_NAME)
 
 
-if __name__ == '__main__':
-  tf.test.main()

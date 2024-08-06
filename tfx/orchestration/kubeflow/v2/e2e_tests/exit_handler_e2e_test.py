@@ -102,5 +102,3 @@ class ExitHandlerE2ETest(
                                         'pipeline_job_resource_name'])
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -281,5 +281,3 @@ class ExecutorTest(parameterized.TestCase):
     self.assertEqual(executor_output, expected_executor_output)
 
 
-if __name__ == '__main__':
-  absltest.main()

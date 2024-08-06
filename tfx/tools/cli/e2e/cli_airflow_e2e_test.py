@@ -370,5 +370,3 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
       self.assertIn('Kubeflow not found', result.output)
 
 
-if __name__ == '__main__':
-  tf.test.main()

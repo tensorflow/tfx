@@ -846,5 +846,3 @@ class NodeInputsCompilerTest(tf.test.TestCase, parameterized.TestCase):
       node_inputs_compiler.compile_node_inputs(ctx, c2, r2)
 
 
-if __name__ == '__main__':
-  tf.test.main()

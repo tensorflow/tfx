@@ -49,5 +49,3 @@ class TFJSRewriterTest(tf.test.TestCase):
     converter.assert_called_once_with(src_model_path, dst_model_path)
 
 
-if __name__ == '__main__':
-  tf.test.main()

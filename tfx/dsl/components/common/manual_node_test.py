@@ -27,5 +27,3 @@ class ManualNodeTest(tf.test.TestCase):
     self.assertEmpty(node.inputs)
     self.assertEmpty(node.outputs)
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -225,5 +225,3 @@ class LocalDockerRunnerTest(tf.test.TestCase):
       runner.WaitUntilRunning(deadline=10)
 
 
-if __name__ == '__main__':
-  tf.test.main()

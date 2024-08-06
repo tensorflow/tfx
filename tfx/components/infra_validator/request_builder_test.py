@@ -517,5 +517,3 @@ class TestBuildRequests(tf.test.TestCase):
         num_examples=1)   # Default num_examples = 1.
 
 
-if __name__ == '__main__':
-  tf.test.main()

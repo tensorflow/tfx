@@ -1385,5 +1385,3 @@ class ArtifactTest(tf.test.TestCase):
                      metadata_store_pb2.Artifact.State.UNKNOWN)
     self.assertEqual(tfx_artifact.state, 'foobar')
 
-if __name__ == '__main__':
-  tf.test.main()

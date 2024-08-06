@@ -78,5 +78,3 @@ class ExecutorSpecTest(tf.test.TestCase):
     self.assertEqual(spec_copy.command, ['command'])
     self.assertEqual(spec_copy.args, ['args'])
 
-if __name__ == '__main__':
-  tf.test.main()

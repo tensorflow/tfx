@@ -58,5 +58,3 @@ class SchemaGenTest(tf.test.TestCase):
         str(infer_shape))
 
 
-if __name__ == '__main__':
-  tf.test.main()

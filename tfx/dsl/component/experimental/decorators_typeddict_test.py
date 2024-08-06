@@ -809,5 +809,3 @@ class ComponentDecoratorTest(tf.test.TestCase):
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
 
-if __name__ == '__main__':
-  tf.test.main()

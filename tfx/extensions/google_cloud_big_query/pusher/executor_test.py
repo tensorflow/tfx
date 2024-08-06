@@ -117,5 +117,3 @@ class ExecutorTest(tf.test.TestCase):
     self.mock_bq.assert_not_called()
     self.assertNotPushed()
 
-if __name__ == '__main__':
-  tf.test.main()

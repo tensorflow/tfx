@@ -66,5 +66,3 @@ class KubeflowV2DagRunnerPatcherTest(test_case_utils.TfxTest):
                      kubeflow_v2_dag_runner_patcher.OUTPUT_FILENAME))
 
 
-if __name__ == '__main__':
-  tf.test.main()

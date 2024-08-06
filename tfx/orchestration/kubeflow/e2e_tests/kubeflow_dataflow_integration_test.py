@@ -108,6 +108,3 @@ class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     self._compile_and_run_pipeline(pipeline)
 
 
-if __name__ == '__main__':
-  absl.logging.set_verbosity(absl.logging.INFO)
-  tf.test.main()

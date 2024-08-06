@@ -28,5 +28,3 @@ class VersionUtilsTest(tf.test.TestCase):
     self.assertEqual(version_utils.get_image_version('0.26.0.dev'), 'latest')
 
 
-if __name__ == '__main__':
-  tf.test.main()

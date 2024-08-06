@@ -373,5 +373,3 @@ class LocalHandlerTest(test_case_utils.TfxTest):
     self.assertIn('Not supported for local orchestrator.', captured.contents())
 
 
-if __name__ == '__main__':
-  tf.test.main()

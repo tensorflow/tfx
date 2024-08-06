@@ -288,5 +288,3 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
       dsl_compiler.compile(test_pipeline)
 
 
-if __name__ == "__main__":
-  tf.test.main()

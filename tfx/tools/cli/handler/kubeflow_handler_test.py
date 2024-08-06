@@ -297,5 +297,3 @@ class KubeflowHandlerTest(test_case_utils.TfxTest):
                   str(err.exception))
 
 
-if __name__ == '__main__':
-  tf.test.main()

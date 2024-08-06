@@ -102,5 +102,3 @@ class LatestBlessedModelStrategyTest(test_case_utils.TfxTest):
         'model_blessing': [],
     })
 
-if __name__ == '__main__':
-  tf.test.main()

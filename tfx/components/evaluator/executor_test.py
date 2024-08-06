@@ -359,5 +359,3 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
           fileio.exists(os.path.join(blessing_output.uri, 'NOT_BLESSED')))
 
 
-if __name__ == '__main__':
-  tf.test.main()

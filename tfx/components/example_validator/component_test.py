@@ -41,5 +41,3 @@ class ExampleValidatorTest(tf.test.TestCase):
             standard_component_specs.EXCLUDE_SPLITS_KEY], '["eval"]')
 
 
-if __name__ == '__main__':
-  tf.test.main()

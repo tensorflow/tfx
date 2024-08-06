@@ -93,5 +93,3 @@ class CleanupHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
         mock.ANY, 'node2')
 
 
-if __name__ == '__main__':
-  tf.test.main()

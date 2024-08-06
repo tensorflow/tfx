@@ -32,5 +32,3 @@ class ExecutorV2Test(executor_test.ExecutorTest):
     return False
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -139,5 +139,3 @@ class ConditionalStrategyTest(test_case_utils.TfxTest):
     with self.assertRaises(exceptions.SkipSignal):
       strategy.resolve_artifacts(self._store, input_dict)
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -43,5 +43,3 @@ class PipUtilsTest(tf.test.TestCase):
     mock_subprocess.assert_called_once()
 
 
-if __name__ == '__main__':
-  tf.test.main()

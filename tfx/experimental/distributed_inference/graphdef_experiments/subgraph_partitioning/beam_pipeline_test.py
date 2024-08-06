@@ -164,5 +164,3 @@ def almost_equal_to(expected):
   return _almost_equal
 
 
-if __name__ == '__main__':
-  tf.test.main()

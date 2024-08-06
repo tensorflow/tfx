@@ -405,6 +405,3 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self.assertIn(self._pipeline_name, result)
 
 
-if __name__ == '__main__':
-  absl.logging.set_verbosity(absl.logging.INFO)
-  tf.test.main()

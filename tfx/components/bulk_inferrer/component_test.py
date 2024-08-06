@@ -53,5 +53,3 @@ class ComponentTest(tf.test.TestCase):
     self.assertNotIn('inference_result', bulk_inferrer.outputs.keys())
 
 
-if __name__ == '__main__':
-  tf.test.main()

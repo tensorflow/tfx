@@ -45,5 +45,3 @@ class SkipIfEmptyOpTest(tf.test.TestCase):
     self.assertEqual(result, [{'x': [x1]}, {'x': [x2]}, {'x': [x3]}])
 
 
-if __name__ == '__main__':
-  tf.test.main()

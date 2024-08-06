@@ -297,5 +297,3 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual(actual_component_class.test_call, func)  # pytype: disable=attribute-error
 
 
-if __name__ == '__main__':
-  tf.test.main()

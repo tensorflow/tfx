@@ -50,5 +50,3 @@ class ExecutorWithSequenceExampleTest(executor_test.ExecutorTest):
   }
 
 
-if __name__ == '__main__':
-  tf.test.main()

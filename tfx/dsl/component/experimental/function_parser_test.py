@@ -542,5 +542,3 @@ class FunctionParserTest(tf.test.TestCase):
     self.assertEqual(parsed.outputs, {'x': standard_artifacts.Integer})
 
 
-if __name__ == '__main__':
-  tf.test.main()

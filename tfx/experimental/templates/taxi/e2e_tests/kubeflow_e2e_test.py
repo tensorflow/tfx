@@ -120,6 +120,3 @@ class TaxiTemplateKubeflowE2ETest(
     self._run_pipeline()
 
 
-if __name__ == '__main__':
-  logging.set_verbosity(logging.INFO)
-  tf.test.main()

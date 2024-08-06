@@ -92,5 +92,3 @@ class BiqueryBeamDataGenerationTest(tf.test.TestCase):
       assert_that(run_result, equal_to(expected_training_examples))
 
 
-if __name__ == '__main__':
-  tf.test.main()

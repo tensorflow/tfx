@@ -315,5 +315,3 @@ class KubeflowV2RunExecutorTest(
     os.remove(_TEST_OUTPUT_METADATA_JSON)
 
 
-if __name__ == "__main__":
-  tf.test.main()

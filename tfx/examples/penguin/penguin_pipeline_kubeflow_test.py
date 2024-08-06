@@ -83,5 +83,3 @@ class PenguinPipelineKubeflowTest(test_case_utils.TfxTest,
       self.assertTrue(fileio.exists(file_path))
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -289,5 +289,3 @@ class TypingUtilsTest(tf.test.TestCase):
     self.assertIsNotCompatible('LIVE', State)  # String name doesn't count.
 
 
-if __name__ == '__main__':
-  tf.test.main()

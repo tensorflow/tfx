@@ -341,5 +341,3 @@ class IoUtilsTest(tf.test.TestCase):
     self.assertEqual(content, read_content)
 
 
-if __name__ == '__main__':
-  tf.test.main()

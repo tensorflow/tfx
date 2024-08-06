@@ -93,5 +93,3 @@ class ContainerUtilsTest(tf.test.TestCase):
         }, pod_dict)
 
 
-if __name__ == '__main__':
-  tf.test.main()

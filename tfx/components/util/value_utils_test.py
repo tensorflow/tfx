@@ -35,5 +35,3 @@ class ValueUtilsTest(tf.test.TestCase):
     self.assertFalse(value_utils.FunctionHasArg(DummyFunctionWithArgs, 'arg3'))
 
 
-if __name__ == '__main__':
-  tf.test.main()

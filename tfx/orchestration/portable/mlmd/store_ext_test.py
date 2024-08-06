@@ -318,5 +318,3 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
       )
 
 
-if __name__ == '__main__':
-  tf.test.main()

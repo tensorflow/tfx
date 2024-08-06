@@ -52,5 +52,3 @@ class WriterUtilsTest(tf.test.TestCase):
     self.assertProtoEquals(read_binary_anomalies, anomalies)
 
 
-if __name__ == '__main__':
-  tf.test.main()

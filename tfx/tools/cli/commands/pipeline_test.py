@@ -154,5 +154,3 @@ class PipelineTest(test_case_utils.TfxTest):
     self.assertNotEqual(0, result.exit_code)
 
 
-if __name__ == '__main__':
-  tf.test.main()

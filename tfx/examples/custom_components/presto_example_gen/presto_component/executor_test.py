@@ -153,5 +153,3 @@ class ExecutorTest(tf.test.TestCase):
         fileio.open(eval_output_file).size())
 
 
-if __name__ == '__main__':
-  tf.test.main()

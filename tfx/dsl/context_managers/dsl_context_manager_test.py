@@ -178,5 +178,3 @@ class ContextManagerTest(test_case_utils.TfxTest):
         reg.get_nodes(context)
 
 
-if __name__ == '__main__':
-  tf.test.main()

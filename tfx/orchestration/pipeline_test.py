@@ -454,5 +454,3 @@ class PipelineTest(test_case_utils.TfxTest):
     self.assert_registry_equal(reg, 'p3')
 
 
-if __name__ == '__main__':
-  tf.test.main()

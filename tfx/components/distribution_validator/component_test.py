@@ -60,5 +60,3 @@ class DistributionValidatorTest(tf.test.TestCase):
     self.assertEqual(config, restored_config)
 
 
-if __name__ == '__main__':
-  tf.test.main()

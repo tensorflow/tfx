@@ -82,5 +82,3 @@ class RunExecutorTest(tf.test.TestCase):
 # - base64 decoding of flags;
 # - write output.
 
-if __name__ == '__main__':
-  tf.test.main()

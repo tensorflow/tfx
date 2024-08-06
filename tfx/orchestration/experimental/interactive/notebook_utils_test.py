@@ -43,5 +43,3 @@ class NotebookUtilsTest(tf.test.TestCase):
     self.assertFalse(self.foo_called)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -133,5 +133,3 @@ class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
     self.assertTrue(fileio.exists(self._serving_model_dir))
 
 
-if __name__ == '__main__':
-  tf.test.main()

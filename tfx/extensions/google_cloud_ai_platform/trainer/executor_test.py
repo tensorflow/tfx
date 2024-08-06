@@ -119,5 +119,3 @@ class ExecutorTest(tf.test.TestCase):
         }, None, {}, enable_vertex, vertex_region)
 
 
-if __name__ == '__main__':
-  tf.test.main()

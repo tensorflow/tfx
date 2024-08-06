@@ -323,5 +323,3 @@ class CliBeamEndToEndTest(test_case_utils.TfxTest):
     self._valid_run_and_check(pipeline_name_1)
 
 
-if __name__ == '__main__':
-  tf.test.main()

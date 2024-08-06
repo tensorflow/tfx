@@ -33,5 +33,3 @@ class BinderComponentTest(tf.test.TestCase):
     self.assertIsNotNone(binder.outputs['output_examples'])
 
 
-if __name__ == '__main__':
-  tf.test.main()

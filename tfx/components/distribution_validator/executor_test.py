@@ -1412,5 +1412,3 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
       )
 
 
-if __name__ == '__main__':
-  absltest.main()

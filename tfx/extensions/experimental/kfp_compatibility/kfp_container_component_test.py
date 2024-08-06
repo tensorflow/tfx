@@ -94,5 +94,3 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
         'constantValue')
 
 
-if __name__ == '__main__':
-  tf.test.main()

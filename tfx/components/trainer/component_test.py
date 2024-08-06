@@ -208,5 +208,3 @@ class ComponentTest(tf.test.TestCase):
         data_types.RuntimeParameter)
 
 
-if __name__ == '__main__':
-  tf.test.main()
