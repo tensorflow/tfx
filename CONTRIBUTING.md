@@ -156,30 +156,41 @@ We have several types of tests in this repo:
 At this point all unit tests are safe to run externally. We are working on
 porting the end to end tests.
 
-Each test can be invoked individually with `pytest`:
+To run all tests:
+
+```shell
+pytest
+```
+
+Each test can be run individually with `pytest`:
 
 ```shell
 pytest tfx/a_module/a_particular_test.py
 ```
 
-Some tests are slow and are given the `pytest.mark.slow` mark. These are skipped
-by default. As a result, if you wish to invoke a test that has been marked as slow, you must
-add `-m "slow"` to your pytest invocation:
+Some tests are slow and are given the `pytest.mark.slow` mark. These tests
+are slow and/or require more dependencies.
 
 ```shell
-pytest tfx/a_module/a_slow_test.py -m "slow"
+pytest -m "slow"
 ```
 
 To invoke all unit tests not marked as slow:
 
 ```shell
-pytest
+pytest -m "not slow"
 ```
 
 To invoke end to end tests:
 
 ```shell
 pytest -m "e2e"
+```
+
+To skip end to end tests:
+
+```shell
+pytest -m "not e2e"
 ```
 
 To invoke integration tests:
@@ -193,10 +204,6 @@ To invoke performance tests:
 ```shell
 pytest -m "perf"
 ```
-
-If you selected end to end, integration, or performance tests, but they are still deselected,
-they might be marked as slow. You might need to add `-m "slow"` to your pytest invocation to
-include them.
 
 ## Running pylint
 
