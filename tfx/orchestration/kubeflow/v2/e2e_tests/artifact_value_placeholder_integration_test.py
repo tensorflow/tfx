@@ -24,9 +24,6 @@ from tfx.types.experimental import simple_artifacts
 import pytest
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.slow]
-
-
 def _tasks_for_pipeline_with_artifact_value_passing():
   """A simple pipeline with artifact consumed as value."""
   producer_component = tfx.dsl.experimental.create_container_component(
@@ -74,6 +71,9 @@ def _tasks_for_pipeline_with_artifact_value_passing():
   return [producer_task, print_task]
 
 
+@pytest.mark.integration
+@pytest.mark.e2e
+@pytest.mark.slow
 class ArtifactValuePlaceholderIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):

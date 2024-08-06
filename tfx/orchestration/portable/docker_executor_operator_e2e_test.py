@@ -26,9 +26,6 @@ from tfx.types import component_spec
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
 class _HelloWorldSpec(component_spec.ComponentSpec):
   INPUTS = {}
   OUTPUTS = {}
@@ -71,6 +68,8 @@ def _create_pipeline(
   )
 
 
+@pytest.mark.e2e
+@pytest.mark.slow
 class DockerComponentLauncherE2eTest(tf.test.TestCase):
 
   def setUp(self):

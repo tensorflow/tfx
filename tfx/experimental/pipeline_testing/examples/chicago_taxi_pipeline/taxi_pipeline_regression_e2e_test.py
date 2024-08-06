@@ -31,9 +31,8 @@ from ml_metadata.proto import metadata_store_pb2
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
+@pytest.mark.e2e
+@pytest.mark.slow
 class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def setUp(self):

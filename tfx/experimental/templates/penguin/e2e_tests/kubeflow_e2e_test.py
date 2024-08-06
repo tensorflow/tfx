@@ -20,9 +20,8 @@ from tfx.experimental.templates import container_based_test_case
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
+@pytest.mark.e2e
+@pytest.mark.slow
 class PenguinTemplateKubeflowE2ETest(
     container_based_test_case.BaseKubeflowEndToEndTest):
 

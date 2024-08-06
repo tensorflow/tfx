@@ -35,9 +35,6 @@ from ml_metadata.proto import metadata_store_service_pb2_grpc
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
 # The range of port-forwarding addresses used by Kubeflow E2E test.
 # If the current specified address is occupied, the test will scan forward until
 # a unused port is met, or stop at _KFP_E2E_TEST_FORWARDING_PORT_END.
@@ -51,6 +48,8 @@ _MAX_ATTEMPTS = 5
 _CONTEXT_TYPE_PIPELINE = 'pipeline'
 
 
+@pytest.mark.e2e
+@pytest.mark.slow
 class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
 
   @classmethod

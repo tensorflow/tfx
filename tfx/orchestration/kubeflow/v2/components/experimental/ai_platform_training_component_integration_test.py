@@ -28,11 +28,11 @@ from tfx.types.experimental import simple_artifacts
 
 import pytest
 
-pytestmark = [pytest.mark.integration]
 
 _PIPELINE_NAME_PREFIX = 'aip-training-component-pipeline-{}'
 
 
+@pytest.mark.integration
 class AiPlatformTrainingComponentIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):

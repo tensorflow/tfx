@@ -36,9 +36,8 @@ from tfx.utils import test_case_utils
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
+@pytest.mark.e2e
+@pytest.mark.slow
 class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):

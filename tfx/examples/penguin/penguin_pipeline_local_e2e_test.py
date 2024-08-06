@@ -32,12 +32,11 @@ from ml_metadata.proto import metadata_store_pb2
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
 _SPAN_PROPERTY_NAME = 'span'
 
 
+@pytest.mark.e2e
+@pytest.mark.slow
 class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
                                        parameterized.TestCase):
 

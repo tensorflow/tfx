@@ -32,9 +32,6 @@ from tfx.utils import test_case_utils
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
 # Number of seconds between polling pending task states.
 _TASK_POLLING_INTERVAL_SEC = 10
 # Maximum duration to allow no task state change.
@@ -45,6 +42,8 @@ _SUCCESS_TASK_STATES = set(['success'])
 _PENDING_TASK_STATES = set(['queued', 'scheduled', 'running', 'none'])
 
 
+@pytest.mark.e2e
+@pytest.mark.slow
 @unittest.skipIf(
     platform.system() == 'Darwin',
     'Airflow is not compatible with TF in some environments on macos and '

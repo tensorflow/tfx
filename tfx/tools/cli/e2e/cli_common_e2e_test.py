@@ -25,9 +25,8 @@ from tfx.tools.cli.cli_main import cli_group
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
+@pytest.mark.e2e
+@pytest.mark.slow
 class CliCommonEndToEndTest(tf.test.TestCase):
 
   def setUp(self):

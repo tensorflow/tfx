@@ -28,9 +28,8 @@ except ImportError:
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
+@pytest.mark.e2e
+@pytest.mark.slow
 @unittest.skipIf(struct2tensor is None,
                  'Cannot import required modules. This can happen when'
                  ' struct2tensor is not available.')

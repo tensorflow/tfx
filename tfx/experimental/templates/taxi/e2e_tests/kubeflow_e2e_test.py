@@ -23,9 +23,8 @@ from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
+@pytest.mark.e2e
+@pytest.mark.slow
 class TaxiTemplateKubeflowE2ETest(
     container_based_test_case.BaseKubeflowEndToEndTest):
 

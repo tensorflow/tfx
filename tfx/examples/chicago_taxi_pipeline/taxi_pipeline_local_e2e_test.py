@@ -25,9 +25,8 @@ from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
+@pytest.mark.e2e
+@pytest.mark.slow
 class TaxiPipelineLocalEndToEndTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):

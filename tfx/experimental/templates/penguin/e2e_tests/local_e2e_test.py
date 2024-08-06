@@ -25,9 +25,8 @@ from tfx.experimental.templates import test_utils
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
+@pytest.mark.e2e
+@pytest.mark.slow
 class PenguinTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):
   """This test runs all components in the template."""
 

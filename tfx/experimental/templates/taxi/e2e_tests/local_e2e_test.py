@@ -26,9 +26,8 @@ from tfx.experimental.templates import test_utils
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
+@pytest.mark.e2e
+@pytest.mark.slow
 @unittest.skipIf(tf.__version__ < '2',
                  'Uses keras Model only compatible with TF 2.x')
 class TaxiTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):

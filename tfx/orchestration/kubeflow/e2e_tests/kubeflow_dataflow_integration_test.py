@@ -30,10 +30,10 @@ from tfx.types import standard_artifacts
 import pytest
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.slow]
-
-
 # TODO(b/202799145): Check whether dataflow jobs have actually been launched.
+@pytest.mark.integration
+@pytest.mark.e2e
+@pytest.mark.slow
 class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):

@@ -30,9 +30,6 @@ from google.protobuf import json_format
 import pytest
 
 
-pytestmark = [pytest.mark.slow, pytest.mark.e2e]
-
-
 # The location of test data.
 # This location depends on install path of TFX in the docker image.
 _TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_taxi_pipeline/data/simple'
@@ -40,6 +37,8 @@ _TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_
 _success_file_name = 'success_final_status.txt'
 
 
+@pytest.mark.slow
+@pytest.mark.e2e
 class ExitHandlerE2ETest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):

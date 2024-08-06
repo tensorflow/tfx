@@ -26,9 +26,6 @@ from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 import pytest
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.slow]
-
-
 # The query to get data from BigQuery.
 # The threshold number (0.0004) is for extracting minimal data to run
 # a test pipeline.
@@ -57,6 +54,9 @@ _BIGQUERY_QUERY = """
           < 0.0004"""
 
 
+@pytest.mark.integration
+@pytest.mark.e2e
+@pytest.mark.slow
 class BigqueryIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):

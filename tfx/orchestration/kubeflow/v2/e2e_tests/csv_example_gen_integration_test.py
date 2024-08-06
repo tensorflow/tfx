@@ -27,14 +27,14 @@ from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 import pytest
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.slow]
-
-
 # The location of test data.
 # This location depends on install path of TFX in the docker image.
 _TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_taxi_pipeline/data/simple'
 
 
+@pytest.mark.integration
+@pytest.mark.e2e
+@pytest.mark.slow
 class CsvExampleGenIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):

@@ -35,9 +35,8 @@ from tfx.utils import test_case_utils
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
-
-
+@pytest.mark.e2e
+@pytest.mark.slow
 class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
 
   def _get_endpoint(self, config: str) -> str:
