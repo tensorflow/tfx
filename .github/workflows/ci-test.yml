@@ -9,6 +9,9 @@ on:
       - 'docs/**'
   workflow_dispatch:
 
+env:
+  USE_BAZEL_VERSION: "7.2.1"
+
 jobs:
   unit-tests:
     if: github.actor != 'copybara-service[bot]'
@@ -27,12 +30,15 @@ jobs:
           setup.py
           tfx/dependencies.py
 
-    - name: Set up Bazel 5.3.0
-      run: |
-        # Instruction from https://docs.bazel.build/versions/master/install-ubuntu.html
-        curl -sSL https://github.com/bazelbuild/bazel/releases/download/5.3.0/bazel-5.3.0-installer-linux-x86_64.sh -o bazel_installer.sh
-        chmod +x bazel_installer.sh
-        sudo ./bazel_installer.sh
+    - name: Set up Bazel
+      uses: bazel-contrib/setup-bazel@0.8.5
+      with:
+        # Avoid downloading Bazel every time.
+        bazelisk-cache: true
+        # Store build cache per workflow.
+        disk-cache: ${{ github.workflow }}-${{ hashFiles('.github/workflows/ci-test.yml') }}
+        # Share repository cache between workflows.
+        repository-cache: true
 
     - name: Install dependencies
       run: |
@@ -63,12 +69,15 @@ jobs:
           setup.py
           tfx/dependencies.py
 
-    - name: Set up Bazel 5.3.0
-      run: |
-        # Instruction from https://docs.bazel.build/versions/master/install-ubuntu.html
-        curl -sSL https://github.com/bazelbuild/bazel/releases/download/5.3.0/bazel-5.3.0-installer-linux-x86_64.sh -o bazel_installer.sh
-        chmod +x bazel_installer.sh
-        sudo ./bazel_installer.sh
+    - name: Set up Bazel
+      uses: bazel-contrib/setup-bazel@0.8.5
+      with:
+        # Avoid downloading Bazel every time.
+        bazelisk-cache: true
+        # Store build cache per workflow.
+        disk-cache: ${{ github.workflow }}-${{ hashFiles('.github/workflows/ci-test.yml') }}
+        # Share repository cache between workflows.
+        repository-cache: true
 
     - name: Install dependencies
       run: |
