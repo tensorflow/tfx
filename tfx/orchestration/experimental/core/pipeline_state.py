@@ -14,6 +14,7 @@
 """Pipeline state management functionality."""
 
 import base64
+import collections
 import contextlib
 import copy
 import dataclasses
@@ -515,6 +516,34 @@ class PipelineState:
     Raises:
       status_lib.StatusNotOkError: If a pipeline with same UID already exists.
     """
+    num_subpipelines = 0
+    to_process = collections.deque([pipeline])
+    while to_process:
+      p = to_process.popleft()
+      for node in p.nodes:
+        if node.WhichOneof('node') == 'sub_pipeline':
+          num_subpipelines += 1
+          to_process.append(node.sub_pipeline)
+    # If the number of active task schedulers is less than the maximum number of
+    # active task schedulers, subpipelines may not work.
+    # This is because when scheduling the subpipeline, the start node
+    # and end node will be scheduled immediately, potentially causing contention
+    # where the end node is waiting on some intermediary node to finish, but the
+    # intermediary node cannot be scheduled as the end node is running.
+    # Note that this number is an overestimate - in reality if subpipelines are
+    # dependent on each other we may not need so many task schedulers.
+    max_task_schedulers = env.get_env().maximum_active_task_schedulers()
+    if max_task_schedulers < num_subpipelines:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.FAILED_PRECONDITION,
+          message=(
+              f'The maximum number of task schedulers ({max_task_schedulers})'
+              f' is less than the number of subpipelines ({num_subpipelines}).'
+              ' Please set the maximum number of task schedulers to at least'
+              f' {num_subpipelines} in'
+              ' OrchestrationOptions.max_running_components.'
+          ),
+      )
     pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
     context = context_lib.register_context_if_not_exists(
         mlmd_handle,
