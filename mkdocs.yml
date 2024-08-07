@@ -70,3 +70,52 @@ markdown_extensions:
 
 watch:
   - tfx
+nav:
+  - Home: index.md
+  - Guide:
+    - Guide: guide/index.md
+    - "What's New":
+      - "TFX-Addons": addons
+      - "TFX Cloud Solutions": guide/solutions.md
+      - "Using Keras with TFX": guide/keras
+      - "Using Non-TensorFlow Frameworks in TFX": guide/non_tf
+      - "Mobile & IoT: TFX for TensorFlow Lite": tutorials/tfx_for_mobile
+
+    - "TFX Pipelines":
+        - "Understanding TFX pipelines": guide/understanding_tfx_pipelines
+        - "Building a TFX pipeline": guide/build_tfx_pipeline
+        - "Local Pipelines": guide/build_local_pipeline
+
+    - "TFX Standard Components":
+      - "ExampleGen": guide/examplegen
+      - "StatisticsGen": guide/statsgen
+      - "SchemaGen": guide/schemagen
+      - "ExampleValidator": guide/exampleval
+      - "Transform": guide/transform
+      - "Trainer": guide/trainer
+      - "Tuner": guide/tuner
+      - "Evaluator": guide/evaluator
+      - "InfraValidator": guide/infra_validator
+      - "Pusher": guide/pusher
+      - "BulkInferrer": guide/bulkinferrer
+
+    - "TFX Custom Components":
+      - "Understanding custom components": guide/understanding_custom_components
+      - "Python function-based components": guide/custom_function_component
+      - "Container-based components": guide/container_component
+      - "Fully custom components": guide/custom_component
+
+    - "Orchestrators":
+      - "Local orchestrator": guide/local_orchestrator
+      - "Vertex AI Pipelines": guide/vertex
+      - "Apache Airflow": guide/airflow
+      - "Kubeflow Pipelines": guide/kubeflow
+
+    - "TFX CLI":
+      - "Using the TFX CLI": guide/cli
+
+    - "Related projects":
+        - "Apache Beam": "https://beam.apache.org/"
+        - "MLTransform": "https://cloud.google.com/dataflow/docs/machine-learning/ml-preprocess-data"
+        - "ML Metadata": guide/mlmd
+        - "TensorBoard": "https://www.tensorflow.org/tensorboard"
