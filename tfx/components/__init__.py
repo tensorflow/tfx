@@ -13,6 +13,26 @@
 # limitations under the License.
 """Subpackage for TFX components."""
 # For component user to direct use tfx.components.[...] as an alias.
+
+__all__ = [
+    "BulkInferrer",
+    "DistributionValidator",
+    "Evaluator",
+    "ExampleDiff",
+    "FileBasedExampleGen",
+    "CsvExampleGen",
+    "ImportExampleGen",
+    "ExampleValidator",
+    "InfraValidator",
+    "ModelValidator",
+    "Pusher",
+    "SchemaGen",
+    "StatisticsGen",
+    "Trainer",
+    "Transform",
+    "Tuner"
+    ]
+
 from tfx.components.bulk_inferrer.component import BulkInferrer
 from tfx.components.distribution_validator.component import DistributionValidator
 from tfx.components.evaluator.component import Evaluator
@@ -29,3 +49,4 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.components.tuner.component import Tuner
+
