@@ -72,8 +72,10 @@ watch:
   - tfx
 nav:
   - Home: index.md
+
   - Guide:
     - Guide: guide/index.md
+
     - "What's New":
       - "TFX-Addons": addons
       - "TFX Cloud Solutions": guide/solutions.md
@@ -113,6 +115,50 @@ nav:
 
     - "TFX CLI":
       - "Using the TFX CLI": guide/cli
+
+    - "Libraries":
+        - "Data Validation":
+          - "Check and analyze data": guide/tfdv
+          - "Install": https://www.tensorflow.org/tfx/data_validation/install
+          - "Get started": https://www.tensorflow.org/tfx/data_validation/get_started
+
+        - "Transform":
+          - "Preprocess and transform data": guide/tft
+          - "Install": "https://www.tensorflow.org/tfx/transform/install"
+          - "Get started": "https://www.tensorflow.org/tfx/transform/get_started"
+          - "Using `tf.Transform` with TensorFlow 2.x": "https://www.tensorflow.org/tfx/transform/tf2_support"
+          - "Common transformations": "https://www.tensorflow.org/tfx/transform/common_transformations"
+          - "Data preprocessing best practices": guide/tft_bestpractices
+
+        - "Modeling":
+          - "Design modeling code": guide/train
+
+        - "Model Analysis":
+          - "Improving Model Quality": guide/tfma
+          - "Install": https://www.tensorflow.org/tfx/model_analysis/install
+          - "Get started": https://www.tensorflow.org/tfx/model_analysis/get_started
+          - "Setup": https://www.tensorflow.org/tfx/model_analysis/setup
+          - "Metrics and Plots": https://www.tensorflow.org/tfx/model_analysis/metrics
+          - "Visualizations": https://www.tensorflow.org/tfx/model_analysis/visualizations
+          - "Model Validations": https://www.tensorflow.org/tfx/model_analysis/model_validations
+          - "Using Fairness Indicators": guide/fairness_indicators
+          - "Using Fairness Indicators with Pandas DataFrames": https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Pandas_Case_Study
+          - "Architecture": https://www.tensorflow.org/tfx/model_analysis/architecture
+          - "FAQ": https://www.tensorflow.org/tfx/model_analysis/faq
+
+        - "Serving":
+          - "Serving models": guide/serving
+          - TensorFlow Serving with Docker: https://www.tensorflow.org/tfx/serving/docker
+          - Installation: https://www.tensorflow.org/tfx/serving/setup
+          - Serve a TensorFlow model: https://www.tensorflow.org/tfx/serving/serving_basic
+          - Architecture: https://www.tensorflow.org/tfx/serving/architecture
+          - Advanced model server configuration: https://www.tensorflow.org/tfx/serving/serving_config
+          - Build a TensorFlow ModelServer: https://www.tensorflow.org/tfx/serving/serving_advanced
+          - Use TensorFlow Serving with Kubernetes: https://www.tensorflow.org/tfx/serving/serving_kubernetes
+          - Create a new kind of servable: https://www.tensorflow.org/tfx/serving/custom_servable
+          - Create a module that discovers new servable paths: https://www.tensorflow.org/tfx/serving/custom_source
+          - Serving TensorFlow models with custom ops: https://www.tensorflow.org/tfx/serving/custom_op
+          - SignatureDefs in SavedModel for TensorFlow Serving: https://www.tensorflow.org/tfx/serving/signature_defs
 
     - "Related projects":
         - "Apache Beam": "https://beam.apache.org/"
