@@ -20,6 +20,8 @@ from tfx import types
 from tfx.dsl.components.common import importer
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import env
+from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
@@ -57,7 +59,7 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
 
     Args:
       mlmd_connection: ML metadata connection.
-      pipeline_node: The specification of the node that this launcher lauches.
+      pipeline_node: The specification of the node that this launcher launches.
       pipeline_info: The information of the pipeline that this node runs in.
       pipeline_runtime_spec: The runtime information of the pipeline that this
         node runs in.
@@ -78,13 +80,29 @@ class ImporterNodeHandler(system_node_handler.SystemNodeHandler):
           inputs_utils.resolve_parameters_with_schema(
               node_parameters=pipeline_node.parameters))
 
-      # 3. Registers execution in metadata.
+      # 3. Registers execution in storage backend.
       execution = execution_publish_utils.register_execution(
           metadata_handle=m,
           execution_type=pipeline_node.node_info.type,
           contexts=contexts,
           exec_properties=exec_properties,
       )
+      pipeline_asset = m.store.pipeline_asset
+      if pipeline_asset:
+        env.get_env().create_pipeline_run_node_executions(
+            pipeline_asset.owner,
+            pipeline_asset.name,
+            pstate.get_pipeline(m, pipeline_info.id),
+            pipeline_node.node_info.id,
+            [execution],
+        )
+      else:
+        logging.warning(
+            'Pipeline asset %s not found in MLMD. Unable to create pipeline run'
+            ' node execution %s.',
+            pipeline_asset,
+            execution,
+        )
 
       # 4. Generate output artifacts to represent the imported artifacts.
       output_key = cast(str, exec_properties[importer.OUTPUT_KEY_KEY])

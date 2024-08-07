@@ -20,6 +20,8 @@ from absl import logging
 import grpc
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
+from tfx.orchestration.experimental.core import env
+from tfx.orchestration.experimental.core import pipeline_state as pstate
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
@@ -86,6 +88,22 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
             contexts=contexts,
             exec_properties=exec_properties,
         )
+        pipeline_asset = m.store.pipeline_asset
+        if pipeline_asset:
+          env.get_env().create_pipeline_run_node_executions(
+              pipeline_asset.owner,
+              pipeline_asset.name,
+              pstate.get_pipeline(m, pipeline_info.id),
+              pipeline_node.node_info.id,
+              [execution],
+          )
+        else:
+          logging.warning(
+              'Pipeline asset %s not found in MLMD. Unable to create pipeline'
+              ' run node execution %s.',
+              pipeline_asset,
+              execution,
+          )
         execution_publish_utils.publish_failed_execution(
             metadata_handle=m,
             contexts=contexts,
@@ -103,14 +121,29 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
       if isinstance(resolved_inputs, inputs_utils.Skip):
         return data_types.ExecutionInfo()
 
-      # 3. Registers execution in metadata.
+      # 3. Registers execution in storage backends.
       execution = execution_publish_utils.register_execution(
           metadata_handle=m,
           execution_type=pipeline_node.node_info.type,
           contexts=contexts,
           exec_properties=exec_properties,
       )
-
+      pipeline_asset = m.store.pipeline_asset
+      if pipeline_asset:
+        env.get_env().create_pipeline_run_node_executions(
+            pipeline_asset.owner,
+            pipeline_asset.name,
+            pstate.get_pipeline(m, pipeline_info.id),
+            pipeline_node.node_info.id,
+            [execution],
+        )
+      else:
+        logging.warning(
+            'Pipeline asset %s not found in MLMD. Unable to create pipeline'
+            ' run node execution %s.',
+            pipeline_asset,
+            execution,
+        )
       # TODO(b/197741942): Support len > 1.
       if len(resolved_inputs) > 1:
         execution_publish_utils.publish_failed_execution(

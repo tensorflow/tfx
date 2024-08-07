@@ -564,6 +564,8 @@ class _Generator:
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
         input_and_params=resolved_info.input_and_params,
+        pipeline=self._pipeline,
+        node_id=node.node_info.id,
     )
 
     result.extend(
