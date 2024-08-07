@@ -100,6 +100,9 @@ class _TestEnv(env.Env):
   def should_orchestrate(self, pipeline: pipeline_pb2.Pipeline) -> bool:
     raise NotImplementedError()
 
+  def maximum_active_task_schedulers(self) -> int:
+    raise NotImplementedError()
+
 
 class EnvTest(test_utils.TfxTest):
 

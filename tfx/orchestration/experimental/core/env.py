@@ -158,6 +158,10 @@ class Env(abc.ABC):
       Returns None if the exception is not a known type.
     """
 
+  @abc.abstractmethod
+  def maximum_active_task_schedulers(self) -> int:
+    """Returns the maximum number of active task schedulers."""
+
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -243,6 +247,9 @@ class _DefaultEnv(Env):
       self, exception: Optional[BaseException]
   ) -> Optional[int]:
     return None
+
+  def maximum_active_task_schedulers(self) -> int:
+    return 1
 
 
 _ENV = _DefaultEnv()
