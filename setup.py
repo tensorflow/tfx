@@ -202,6 +202,7 @@ tfx_extras_requires = {
     'tflite-support': dependencies.make_extra_packages_tflite_support(),
     'examples': dependencies.make_extra_packages_examples(),
     'test': dependencies.make_extra_packages_test(),
+    'docs': dependencies.make_extra_packages_docs(),
     'all': dependencies.make_extra_packages_all(),
 }
 
