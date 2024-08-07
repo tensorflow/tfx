@@ -54,6 +54,7 @@ plugins:
               - griffe_inherited_docstrings
           import:
             - https://docs.python.org/3/objects.inv
+  - mkdocs-jupyter:
 markdown_extensions:
   - admonition
   - attr_list
@@ -166,5 +167,5 @@ nav:
         - "ML Metadata": guide/mlmd
         - "TensorBoard": "https://www.tensorflow.org/tensorboard"
   - API:
-    - "Overview": api/root.md
-    - "Components": api/components.md
+    - "Overview": api/root
+    - "Components": api/components
