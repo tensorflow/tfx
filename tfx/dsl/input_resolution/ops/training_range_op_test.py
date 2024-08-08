@@ -127,7 +127,7 @@ class TrainingRangeOpTest(
     actual = test_utils.run_resolver_op(
         ops.TrainingRange,
         [],
-        context=resolver_op.Context(store=self.store),
+        context=resolver_op.Context(self.mlmd_cm),
     )
     self.assertEmpty(actual)
 
@@ -150,14 +150,14 @@ class TrainingRangeOpTest(
       test_utils.run_resolver_op(
           ops.TrainingRange,
           [self.model, self.model],
-          context=resolver_op.Context(store=self.store),
+          context=resolver_op.Context(self.mlmd_cm),
       )
 
       # Incorret input artifact type.
       test_utils.run_resolver_op(
           ops.TrainingRange,
           [self.transform_graph],
-          context=resolver_op.Context(store=self.store),
+          context=resolver_op.Context(self.mlmd_cm),
       )
 
   def testTrainingRangeOp_BulkInferrerProducesExamples(self):

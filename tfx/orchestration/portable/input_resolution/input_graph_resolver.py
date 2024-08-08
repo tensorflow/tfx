@@ -137,7 +137,6 @@ def _evaluate_op_node(
     op: resolver_op.ResolverOp = op_type.create(**kwargs)
     op.set_context(
         resolver_op.Context(
-            store=mlmd_cm.get_handle(ctx.mlmd_handle_like).store,
             mlmd_handle_like=ctx.mlmd_handle_like,
         )
     )

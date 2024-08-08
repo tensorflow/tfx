@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Testing utility for builtin resolver ops."""
+
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 from unittest import mock
 
@@ -25,6 +26,7 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
+from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.proto.orchestration import pipeline_pb2
@@ -423,11 +425,18 @@ def strict_run_resolver_op(
               f'Expected ARTIFACT_MULTIMAP_LIST but arg[{i}] = {arg}'
           )
   op = op_type.create(**kwargs)
+
+  if mlmd_handle_like is not None:
+    mlmd_handle = mlmd_handle_like
+  else:
+    mlmd_handle = metadata.Metadata(
+        connection_config=metadata_store_pb2.ConnectionConfig(),
+    )
+    mlmd_handle._store = (  # pylint: disable=protected-access
+        store if store is not None else mock.MagicMock(spec=mlmd.MetadataStore)
+    )
   context = resolver_op.Context(
-      store=store
-      if store is not None
-      else mock.MagicMock(spec=mlmd.MetadataStore),
-      mlmd_handle_like=mlmd_handle_like,
+      mlmd_handle_like=mlmd_handle,
   )
   op.set_context(context)
   result = op.apply(*args)

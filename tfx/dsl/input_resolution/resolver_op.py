@@ -25,8 +25,6 @@ from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import json_utils
 from tfx.utils import typing_utils
 
-import ml_metadata as mlmd
-
 
 # Mark frozen as context instance may be used across multiple operator
 # invocations.
@@ -35,18 +33,13 @@ class Context:
 
   def __init__(
       self,
-      store=mlmd.MetadataStore,
-      mlmd_handle_like: Optional[mlmd_cm.HandleLike] = None,
+      mlmd_handle_like: mlmd_cm.HandleLike,
   ):
-    # TODO(b/302730333) We could remove self._store, and only use
-    # self._mlmd_handle_like. Keeping it for now to preserve backward
-    # compatibility with other resolve ops.
-    self._store = store
     self._mlmd_handle_like = mlmd_handle_like
 
   @property
   def store(self):
-    return self._store
+    return mlmd_cm.get_handle(self._mlmd_handle_like).store
 
   @property
   def mlmd_connection_manager(self):

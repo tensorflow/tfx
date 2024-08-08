@@ -188,7 +188,7 @@ class LatestPolicyModelOpTest(
           {},
           policy=_LATEST_EXPORTED,
           raise_skip_signal=True,
-          context=resolver_op.Context(store=self.store),
+          context=resolver_op.Context(self.mlmd_cm),
       )
 
       # Keys present in input_dict but contains no artifacts.
@@ -214,7 +214,7 @@ class LatestPolicyModelOpTest(
             {},
             policy=_LATEST_EXPORTED,
             raise_skip_signal=False,
-            context=resolver_op.Context(store=self.store),
+            context=resolver_op.Context(self.mlmd_cm),
         ),
         policy=_LATEST_EXPORTED,
     )
