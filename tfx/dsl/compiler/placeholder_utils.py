@@ -24,6 +24,7 @@ from absl import logging
 import attr
 from tfx.dsl.io import fileio
 from tfx.orchestration.portable import data_types
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
@@ -58,11 +59,13 @@ class ResolutionContext:
     platform_config: A platform config proto for rendering context placeholder.
     pipeline_platform_config: A pipeline-level config proto for rendering
       context placeholder.
+    pipeline: A pipeline proto for rendering context placeholder.
   """
   exec_info: data_types.ExecutionInfo = None
   executor_spec: message.Message = None
   platform_config: message.Message = None
   pipeline_platform_config: message.Message = None
+  pipeline: pipeline_pb2.Pipeline = None
 
 
 # A Placeholder Expression can be resolved to the following types:
