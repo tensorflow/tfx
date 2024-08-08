@@ -131,7 +131,7 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
         custom_properties {
           key: 'p3'
           value {
-            string_value: 'true'
+            bool_value: true
           }
         }
         custom_properties {
@@ -152,7 +152,9 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
             string_value: '{\\n  \\"value_type\\": {\\n    \\"list_type\\": {}\\n  }\\n}'
           }
         }
-        """, result)
+        """,
+        result,
+    )
 
   def testPrepareExecutionWithName(self):
     execution_type = metadata_store_pb2.ExecutionType()
