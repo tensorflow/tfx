@@ -18,6 +18,7 @@ import inspect
 from typing import Dict, List
 import tensorflow as tf
 from tfx.dsl.component.experimental import annotations
+from tfx.dsl.component.experimental import annotations_test_proto_pb2
 from tfx.dsl.component.experimental import decorators
 from tfx.dsl.component.experimental import function_parser
 from tfx.dsl.component.experimental import utils
@@ -106,6 +107,9 @@ class UtilsTest(tf.test.TestCase):
         float_param: annotations.Parameter[float],
         str_param: annotations.Parameter[str],
         bool_param: annotations.Parameter[bool],
+        proto_param: annotations.Parameter[
+            annotations_test_proto_pb2.TestMessage
+        ],
         dict_int_param: annotations.Parameter[Dict[str, int]],
         list_bool_param: annotations.Parameter[List[bool]],
         dict_list_bool_param: annotations.Parameter[Dict[str, List[bool]]],
@@ -124,6 +128,7 @@ class UtilsTest(tf.test.TestCase):
         'float_param': float,
         'str_param': str,
         'bool_param': bool,
+        'proto_param': annotations_test_proto_pb2.TestMessage,
         'dict_int_param': Dict[str, int],
         'list_bool_param': List[bool],
         'dict_list_bool_param': Dict[str, List[bool]],
@@ -193,6 +198,9 @@ class UtilsTest(tf.test.TestCase):
             standard_artifacts.Examples
         ],
         int_param: annotations.Parameter[int],
+        proto_param: annotations.Parameter[
+            annotations_test_proto_pb2.TestMessage
+        ],
         json_compat_param: annotations.Parameter[Dict[str, int]],
         str_param: annotations.Parameter[str] = 'foo',
     ) -> annotations.OutputDict(
@@ -257,11 +265,15 @@ class UtilsTest(tf.test.TestCase):
         spec_outputs['map_str_float_output'].type, standard_artifacts.JsonValue
     )
     spec_parameter = actual_spec_class.PARAMETERS
-    self.assertLen(spec_parameter, 3)
+    self.assertLen(spec_parameter, 4)
     self.assertEqual(spec_parameter['int_param'].type, int)
     self.assertEqual(spec_parameter['int_param'].optional, False)
     self.assertEqual(spec_parameter['str_param'].type, str)
     self.assertEqual(spec_parameter['str_param'].optional, True)
+    self.assertEqual(
+        spec_parameter['proto_param'].type,
+        annotations_test_proto_pb2.TestMessage,
+    )
     self.assertEqual(spec_parameter['json_compat_param'].type, Dict[str, int])
     self.assertEqual(spec_parameter['json_compat_param'].optional, False)
     self.assertEqual(actual_spec_class.TYPE_ANNOTATION, type_annotation)

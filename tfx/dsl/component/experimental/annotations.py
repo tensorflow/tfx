@@ -23,6 +23,8 @@ from tfx.dsl.component.experimental import json_compat
 from tfx.types import artifact
 from tfx.utils import deprecation_utils
 
+from google.protobuf import message
+
 try:
   import apache_beam as beam  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
 
@@ -107,23 +109,35 @@ class _ArtifactGeneric(metaclass=_ArtifactGenericMeta):
     return '%s[%s]' % (self.__class__.__name__, self.type)
 
 
-class _PrimitiveTypeGenericMeta(type):
+class _PrimitiveAndProtoTypeGenericMeta(type):
   """Metaclass for _PrimitiveTypeGeneric, to enable primitive type indexing."""
 
   def __getitem__(
-      cls: Type['_PrimitiveTypeGeneric'],
-      params: Type[Union[int, float, str, bool, List[Any], Dict[Any, Any]]],
+      cls: Type['_PrimitiveAndProtoTypeGeneric'],
+      params: Type[
+          Union[
+              int,
+              float,
+              str,
+              bool,
+              List[Any],
+              Dict[Any, Any],
+              message.Message,
+          ],
+      ],
   ):
     """Metaclass method allowing indexing class (`_PrimitiveTypeGeneric[T]`)."""
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 
 
-class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
+class _PrimitiveAndProtoTypeGeneric(
+    metaclass=_PrimitiveAndProtoTypeGenericMeta
+):
   """A generic that takes a primitive type as its single argument."""
 
   def __init__(  # pylint: disable=invalid-name
       self,
-      artifact_type: Type[Union[int, float, str, bool]],
+      artifact_type: Type[Union[int, float, str, bool, message.Message]],
       _init_via_getitem=False,
   ):
     if not _init_via_getitem:
@@ -131,7 +145,7 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
       raise ValueError(
           (
               '%s should be instantiated via the syntax `%s[T]`, where T is '
-              '`int`, `float`, `str`, or `bool`.'
+              '`int`, `float`, `str`, `bool` or proto type.'
           )
           % (class_name, class_name)
       )
@@ -143,7 +157,10 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
     # Check that the given parameter is a primitive type.
     if (
         inspect.isclass(params)
-        and params in (int, float, str, bool)
+        and (
+            params in (int, float, str, bool)
+            or issubclass(params, message.Message)
+        )
         or json_compat.is_json_compatible(params)
     ):
       return cls(params, _init_via_getitem=True)
@@ -151,9 +168,9 @@ class _PrimitiveTypeGeneric(metaclass=_PrimitiveTypeGenericMeta):
       class_name = cls.__name__
       raise ValueError(
           (
-              'Generic type `%s[T]` expects the single parameter T to be '
-              '`int`, `float`, `str`, `bool` or JSON-compatible types '
-              '(Dict[str, T], List[T]) (got %r instead).'
+              'Generic type `%s[T]` expects the single parameter T to be `int`,'
+              ' `float`, `str`, `bool`, JSON-compatible types (Dict[str, T],'
+              ' List[T]) or a proto type. (got %r instead).'
           )
           % (class_name, params)
       )
@@ -252,7 +269,7 @@ class AsyncOutputArtifact(Generic[T]):
   """Intermediate artifact object type annotation."""
 
 
-class Parameter(_PrimitiveTypeGeneric):
+class Parameter(_PrimitiveAndProtoTypeGeneric):
   """Component parameter type annotation."""
 
 
