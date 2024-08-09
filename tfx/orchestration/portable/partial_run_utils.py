@@ -24,6 +24,7 @@ from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
+from tfx.orchestration.experimental.core import env
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -599,6 +600,8 @@ class _ArtifactRecycler:
         for node in node_proto_view.get_view_for_all_in(new_pipeline_run_ir)
     }
 
+    self._pipeline = new_pipeline_run_ir
+
   def _get_base_pipeline_run_context(
       self, base_run_id: Optional[str] = None
   ) -> metadata_store_pb2.Context:
@@ -788,7 +791,12 @@ class _ArtifactRecycler:
             contexts=[self._new_pipeline_run_context] + node_contexts,
         )
     )
-    if not prev_cache_executions:
+
+    # If there are no previous attempts to cache and publish, we will create new
+    # cache executions.
+    create_new_cache_executions: bool = not prev_cache_executions
+
+    if create_new_cache_executions:
       new_cached_executions = []
       for e in existing_executions:
         new_cached_executions.append(
@@ -820,12 +828,36 @@ class _ArtifactRecycler:
         execution_lib.get_output_artifacts(self._mlmd, e.id)
         for e in existing_executions
     ]
-    execution_publish_utils.publish_cached_executions(
-        self._mlmd,
-        contexts=cached_execution_contexts,
-        executions=new_cached_executions,
-        output_artifacts_maps=output_artifacts_maps,
-    )
+
+    if create_new_cache_executions:
+      new_executions = execution_publish_utils.publish_cached_executions(
+          self._mlmd,
+          contexts=cached_execution_contexts,
+          executions=new_cached_executions,
+          output_artifacts_maps=output_artifacts_maps,
+      )
+      pipeline_asset = self._mlmd.store.pipeline_asset
+      if pipeline_asset:
+        env.get_env().create_pipeline_run_node_executions(
+            pipeline_asset.owner,
+            pipeline_asset.name,
+            self._pipeline,
+            node.node_info.id,
+            new_executions,
+        )
+      else:
+        logging.warning(
+            'Pipeline asset %s not found in MLMD. Unable to create pipeline run'
+            ' node executions.',
+            pipeline_asset,
+        )
+    else:
+      execution_publish_utils.publish_cached_executions(
+          self._mlmd,
+          contexts=cached_execution_contexts,
+          executions=new_cached_executions,
+          output_artifacts_maps=output_artifacts_maps,
+      )
 
   def put_parent_context(self):
     """Puts a ParentContext edge in MLMD."""

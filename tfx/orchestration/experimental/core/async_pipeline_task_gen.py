@@ -490,6 +490,8 @@ class _Generator:
         execution_type=node.node_info.type,
         contexts=resolved_info.contexts,
         input_and_params=unprocessed_inputs,
+        pipeline=self._pipeline,
+        node_id=node.node_info.id,
     )
 
     for execution in executions:
