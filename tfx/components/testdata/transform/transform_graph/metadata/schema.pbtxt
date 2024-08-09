@@ -8,19 +8,6 @@ feature {
   }
 }
 feature {
-  name: "payment_type"
-  value_count {
-    min: 1
-    max: 1
-  }
-  type: BYTES
-  domain: "payment_type"
-  presence {
-    min_fraction: 1.0
-    min_count: 1
-  }
-}
-feature {
   name: "dropoff_census_tract"
   type: INT
   presence {
@@ -54,14 +41,29 @@ feature {
 }
 feature {
   name: "fare"
-  value_count {
-    min: 1
-    max: 1
-  }
   type: FLOAT
   presence {
     min_fraction: 1.0
     min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "payment_type"
+  type: BYTES
+  domain: "payment_type"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
   }
 }
 feature {
@@ -98,26 +100,28 @@ feature {
 }
 feature {
   name: "tips"
-  value_count {
-    min: 1
-    max: 1
-  }
   type: FLOAT
   presence {
     min_fraction: 1.0
     min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
   }
 }
 feature {
   name: "trip_miles"
-  value_count {
-    min: 1
-    max: 1
-  }
   type: FLOAT
   presence {
     min_fraction: 1.0
     min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
   }
 }
 feature {
@@ -130,50 +134,54 @@ feature {
 }
 feature {
   name: "trip_start_day"
-  value_count {
-    min: 1
-    max: 1
-  }
   type: INT
   presence {
     min_fraction: 1.0
     min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
   }
 }
 feature {
   name: "trip_start_hour"
-  value_count {
-    min: 1
-    max: 1
-  }
   type: INT
   presence {
     min_fraction: 1.0
     min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
   }
 }
 feature {
   name: "trip_start_month"
-  value_count {
-    min: 1
-    max: 1
-  }
   type: INT
   presence {
     min_fraction: 1.0
     min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
   }
 }
 feature {
   name: "trip_start_timestamp"
-  value_count {
-    min: 1
-    max: 1
-  }
   type: INT
   presence {
     min_fraction: 1.0
     min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
   }
 }
 string_domain {
@@ -250,3 +258,4 @@ string_domain {
   value: "Unknown"
   value: "Prcard"
 }
+# generate_legacy_feature_spec: false
