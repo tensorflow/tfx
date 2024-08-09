@@ -194,8 +194,10 @@ class Launcher:
 
     self._executor_operator = None
     if executor_spec:
-      self._executor_operator = self._executor_operators[type(executor_spec)](
-          executor_spec, platform_config)
+        self._executor_operator = self._executor_operators[type(executor_spec)](
+            executor_spec=executor_spec, platform_config=platform_config
+        )
+
     self._output_resolver = outputs_utils.OutputsResolver(
         pipeline_node=self._pipeline_node,
         pipeline_info=self._pipeline_info,
