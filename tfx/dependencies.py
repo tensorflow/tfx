@@ -90,6 +90,9 @@ def make_required_install_packages():
       'kubernetes>=10.0.1,<13',
       'numpy>=1.16,<2',
       'pyarrow>=10,<11',
+      # TODO: b/358471141 - Orjson 3.10.7 breaks TFX OSS tests.
+      # Unpin once the issue with installation is resolved.
+      'orjson!=3.10.7',
       # TODO(b/332616741): Scipy version 1.13 breaks the TFX OSS test.
       # Unpin once the issue is resolved.
       'scipy<1.13',
