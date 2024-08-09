@@ -22,7 +22,10 @@ from tfx.examples.mnist import mnist_pipeline_native_keras
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
+import pytest
 
+
+@pytest.mark.e2e
 class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
@@ -131,5 +134,3 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
       self.assertLen(m.store.get_executions(), expected_execution_count * 2)
 
 
-if __name__ == '__main__':
-  tf.test.main()

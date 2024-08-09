@@ -78,5 +78,3 @@ class TaskQueueTest(tu.TfxTest):
       tq.task_done(t2)
 
 
-if __name__ == '__main__':
-  tf.test.main()

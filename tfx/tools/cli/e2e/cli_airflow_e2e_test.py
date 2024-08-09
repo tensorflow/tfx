@@ -33,7 +33,10 @@ from tfx.utils import io_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
 
+import pytest
 
+
+@pytest.mark.e2e
 class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
@@ -367,5 +370,3 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
       self.assertIn('Kubeflow not found', result.output)
 
 
-if __name__ == '__main__':
-  tf.test.main()

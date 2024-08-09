@@ -39,5 +39,3 @@ class SqliteMetadataTest(metadata_test_utils.MetadataTest):
         m.store()
 
 
-if __name__ == '__main__':
-  tf.test.main()

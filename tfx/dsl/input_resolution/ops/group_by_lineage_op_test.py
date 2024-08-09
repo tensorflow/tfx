@@ -346,5 +346,3 @@ class GroupByPivotTest(tf.test.TestCase, _LineageUtils):
     self.assertEqual(result, [{'a': [a]}, {'a': [a]}])
 
 
-if __name__ == '__main__':
-  tf.test.main()

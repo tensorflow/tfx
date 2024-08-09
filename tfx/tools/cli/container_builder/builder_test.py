@@ -57,5 +57,3 @@ class BuilderTest(tf.test.TestCase):
     self.assertEqual(built_image, 'gcr.io/test/myimage@sha256:01234')
 
 
-if __name__ == '__main__':
-  tf.test.main()

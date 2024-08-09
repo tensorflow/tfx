@@ -325,5 +325,3 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
       self.assertIn('enableCache', first_component_args)
 
 
-if __name__ == '__main__':
-  tf.test.main()

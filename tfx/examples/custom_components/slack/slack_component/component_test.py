@@ -38,5 +38,3 @@ class ComponentTest(tf.test.TestCase):
                      slack_component.outputs['slack_blessing'].type_name)
 
 
-if __name__ == '__main__':
-  tf.test.main()

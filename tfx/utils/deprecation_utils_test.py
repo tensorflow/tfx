@@ -131,5 +131,3 @@ Please use MyClass1 instead."""))
     self.assertEqual(MyClass2.__init__.call_count, 3)
 
 
-if __name__ == '__main__':
-  tf.test.main()

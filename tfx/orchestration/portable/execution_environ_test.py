@@ -199,5 +199,3 @@ class ExecutionEnvironTest(parameterized.TestCase, test_utils.TfxTest):
       self._environ.strict_get('unknown_name', str)
 
 
-if __name__ == '__main__':
-  tf.test.main()

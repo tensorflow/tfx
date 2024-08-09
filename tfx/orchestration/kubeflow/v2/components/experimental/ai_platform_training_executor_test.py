@@ -153,5 +153,3 @@ class AiPlatformTrainingExecutorTest(test_case_utils.TfxTest):
     self.assertEqual('tfx_',
                      self._mock_create.call_args[1]['body']['job_id'][:4])
 
-if __name__ == '__main__':
-  tf.test.main()

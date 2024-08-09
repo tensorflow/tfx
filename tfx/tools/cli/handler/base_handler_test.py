@@ -152,5 +152,3 @@ class BaseHandlerTest(tf.test.TestCase):
                               [[1, '234', None], ['xxx', '', []]]))
 
 
-if __name__ == '__main__':
-  tf.test.main()

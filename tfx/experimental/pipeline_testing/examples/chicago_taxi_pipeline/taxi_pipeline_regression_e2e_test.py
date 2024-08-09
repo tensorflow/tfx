@@ -28,7 +28,10 @@ from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 from ml_metadata.proto import metadata_store_pb2
 
+import pytest
 
+
+@pytest.mark.e2e
 class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
@@ -198,5 +201,3 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                                                         recorded_uri)
 
 
-if __name__ == '__main__':
-  tf.test.main()

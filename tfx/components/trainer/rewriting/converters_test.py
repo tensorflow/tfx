@@ -174,5 +174,3 @@ class RewriteSavedModelTest(tf.test.TestCase):
                                                  rewriter.ModelType.SAVED_MODEL)
 
 
-if __name__ == '__main__':
-  tf.test.main()

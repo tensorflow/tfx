@@ -393,5 +393,3 @@ class EventLibTest(tf.test.TestCase, parameterized.TestCase):
       self.assertFalse(event_lib.contains_key(event, 'bar'))
 
 
-if __name__ == '__main__':
-  tf.test.main()

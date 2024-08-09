@@ -84,5 +84,3 @@ class FnArgsUtilsTest(tf.test.TestCase):
     self.assertIsInstance(fn_args.data_accessor, fn_args_utils.DataAccessor)
 
 
-if __name__ == '__main__':
-  tf.test.main()

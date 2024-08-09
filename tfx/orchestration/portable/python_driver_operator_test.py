@@ -44,5 +44,3 @@ class PythonDriverOperatorTest(tf.test.TestCase):
     self.assertEqual(driver_output, _DEFAULT_DRIVER_OUTPUT)
 
 
-if __name__ == '__main__':
-  tf.test.main()

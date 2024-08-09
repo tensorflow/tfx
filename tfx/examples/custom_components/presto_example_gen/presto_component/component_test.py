@@ -63,5 +63,3 @@ class ComponentTest(tf.test.TestCase):
         query='')
 
 
-if __name__ == '__main__':
-  tf.test.main()

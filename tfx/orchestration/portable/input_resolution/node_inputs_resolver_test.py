@@ -913,5 +913,3 @@ class LiveTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
       node_inputs_resolver.resolve(self.mlmd_cm, node_inputs)
 
 
-if __name__ == '__main__':
-  tf.test.main()

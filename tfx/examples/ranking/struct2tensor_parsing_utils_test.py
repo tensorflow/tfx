@@ -250,5 +250,3 @@ class ELWCDecoderTest(tf.test.TestCase):
     self.assertEqual(result['example_list_size'].to_list(), [[2], [1]])
 
 
-if __name__ == '__main__':
-  tf.test.main()

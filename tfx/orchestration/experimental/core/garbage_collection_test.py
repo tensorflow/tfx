@@ -457,5 +457,3 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
           self._metadata, example_gen_node_uid, self._example_gen)
 
 
-if __name__ == '__main__':
-  tf.test.main()

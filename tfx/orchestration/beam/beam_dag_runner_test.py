@@ -358,5 +358,3 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
     self.assertIs(runner._beam_orchestrator_args, beam_orchestrator_args)
 
 
-if __name__ == '__main__':
-  tf.test.main()

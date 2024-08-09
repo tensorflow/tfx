@@ -187,5 +187,3 @@ class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
     mock_notify.assert_called_once()
 
 
-if __name__ == '__main__':
-  tf.test.main()

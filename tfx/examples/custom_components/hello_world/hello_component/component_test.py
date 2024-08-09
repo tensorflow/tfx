@@ -47,5 +47,3 @@ class HelloComponentTest(tf.test.TestCase):
                        split_list.sort())
 
 
-if __name__ == '__main__':
-  tf.test.main()

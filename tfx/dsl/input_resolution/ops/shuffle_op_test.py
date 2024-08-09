@@ -53,5 +53,3 @@ class ShuffleOpTest(tf.test.TestCase):
     self.assertEqual(actual, [])
 
 
-if __name__ == '__main__':
-  tf.test.main()

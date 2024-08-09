@@ -253,5 +253,3 @@ class BaseDriverTest(tf.test.TestCase):
       driver.verify_input_artifacts({'artifact': [_InputArtifact()]})
 
 
-if __name__ == '__main__':
-  tf.test.main()

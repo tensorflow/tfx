@@ -1693,5 +1693,3 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self.assertIsInstance(finalize_task_2, task_lib.FinalizePipelineTask)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -76,5 +76,3 @@ class BaseBeamExecutorTest(tf.test.TestCase):
     executor._make_beam_pipeline()
     mock_fn.assert_called_once_with()
 
-if __name__ == '__main__':
-  tf.test.main()

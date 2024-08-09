@@ -207,5 +207,3 @@ class ExecutorTest(parameterized.TestCase):
         self.assertIn(split_pair, expected_split_pair_names)
 
 
-if __name__ == '__main__':
-  absltest.main()

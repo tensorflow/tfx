@@ -225,5 +225,3 @@ class ExecutorTest(tf.test.TestCase):
     self._verify_model_run_exports()
 
 
-if __name__ == '__main__':
-  tf.test.main()

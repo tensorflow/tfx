@@ -119,5 +119,3 @@ class FilesystemRegistryTest(tf.test.TestCase):
       registry.get_filesystem_for_path(123)
 
 
-if __name__ == '__main__':
-  tf.test.main()

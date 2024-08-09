@@ -27,8 +27,12 @@ from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts
 
+import pytest
+
 
 # TODO(b/202799145): Check whether dataflow jobs have actually been launched.
+@pytest.mark.integration
+@pytest.mark.e2e
 class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):
@@ -104,6 +108,3 @@ class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     self._compile_and_run_pipeline(pipeline)
 
 
-if __name__ == '__main__':
-  absl.logging.set_verbosity(absl.logging.INFO)
-  tf.test.main()

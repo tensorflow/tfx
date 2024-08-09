@@ -28,7 +28,14 @@ from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from ml_metadata.proto import metadata_store_pb2
 
+import pytest
 
+
+def setup_module():
+  tf.compat.v1.enable_v2_behavior()
+
+
+@pytest.mark.e2e
 class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
@@ -184,6 +191,3 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
                                                         recorded_uri)
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

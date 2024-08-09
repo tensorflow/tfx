@@ -117,5 +117,3 @@ class WriteSplitTest(tf.test.TestCase):
                          'data_parquet-00000-of-00001.parquet')))
 
 
-if __name__ == '__main__':
-  tf.test.main()

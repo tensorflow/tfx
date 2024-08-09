@@ -708,5 +708,3 @@ class TaskManagerE2ETest(test_utils.TfxTest):
     )
 
 
-if __name__ == '__main__':
-  tf.test.main()

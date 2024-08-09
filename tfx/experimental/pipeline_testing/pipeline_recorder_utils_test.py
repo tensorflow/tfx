@@ -142,5 +142,3 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
           self.content)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -79,5 +79,3 @@ class TunerTest(tf.test.TestCase):
           tuner_fn='path.to.tuner_fn')
 
 
-if __name__ == '__main__':
-  tf.test.main()

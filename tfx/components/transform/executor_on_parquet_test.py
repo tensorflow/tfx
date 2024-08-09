@@ -95,5 +95,3 @@ class ExecutorOnParquetTest(executor_test.ExecutorTest):
       io_utils.copy_file(filepath, os.path.join(directory, 'dup_' + filename))
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -197,5 +197,3 @@ class TrainingRangeOpTest(
     self.assertArtifactListEqual(actual, self.examples)
 
 
-if __name__ == '__main__':
-  tf.test.main()

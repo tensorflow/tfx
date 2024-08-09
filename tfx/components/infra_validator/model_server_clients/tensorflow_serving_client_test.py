@@ -169,5 +169,3 @@ class TensorflowServingClientTest(tf.test.TestCase):
       client.SendRequests([request])
 
 
-if __name__ == '__main__':
-  tf.test.main()

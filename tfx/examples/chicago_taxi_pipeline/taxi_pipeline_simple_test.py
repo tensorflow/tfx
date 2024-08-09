@@ -63,5 +63,3 @@ class TaxiPipelineSimpleTest(test_case_utils.TfxTest):
     self.assertIsInstance(pipeline, models.DAG)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -107,5 +107,3 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
                      direct_running_mode)
 
 
-if __name__ == '__main__':
-  absl.testing.absltest.main()

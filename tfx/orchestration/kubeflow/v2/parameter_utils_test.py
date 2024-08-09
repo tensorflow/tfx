@@ -62,5 +62,3 @@ class ParameterUtilsTest(tf.test.TestCase):
       parameter_utils.attach_parameter(param)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -20,7 +20,10 @@ import tensorflow as tf
 from tfx.experimental.templates import container_based_test_case
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
+import pytest
 
+
+@pytest.mark.e2e
 class TaxiTemplateKubeflowE2ETest(
     container_based_test_case.BaseKubeflowEndToEndTest):
 
@@ -117,6 +120,3 @@ class TaxiTemplateKubeflowE2ETest(
     self._run_pipeline()
 
 
-if __name__ == '__main__':
-  logging.set_verbosity(logging.INFO)
-  tf.test.main()

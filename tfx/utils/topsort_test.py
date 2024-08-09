@@ -144,5 +144,3 @@ class TopsortTest(tf.test.TestCase):
     self.assertEqual([], layers)
 
 
-if __name__ == '__main__':
-  tf.test.main()

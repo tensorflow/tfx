@@ -94,5 +94,3 @@ class ExecutorTest(tf.test.TestCase):
       schema_gen_executor.Do(input_dict, output_dict, exec_properties)
 
 
-if __name__ == '__main__':
-  tf.test.main()

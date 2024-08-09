@@ -180,5 +180,3 @@ class ProtoUtilsTest(test_case_utils.TfxTest):
     unpacked_proto = proto_utils.unpack_proto_any(any_proto)
     self.assertEqual(unpacked_proto.string_value, 'x')
 
-if __name__ == '__main__':
-  tf.test.main()

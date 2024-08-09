@@ -608,5 +608,3 @@ class SpanDrivenEvaluatorInputsOpTest(
     self.assertArtifactMapsEqual(actual, expected)
 
 
-if __name__ == '__main__':
-  tf.test.main()

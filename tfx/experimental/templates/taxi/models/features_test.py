@@ -33,5 +33,3 @@ class FeaturesTest(tf.test.TestCase):
     self.assertEqual(["f1_xf", "cf_xf"], features.transformed_names(names))
 
 
-if __name__ == "__main__":
-  tf.test.main()

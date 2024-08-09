@@ -262,5 +262,3 @@ class AirflowDagRunnerTest(tf.test.TestCase):
               airflow_dag_config=airflow_config)).run(test_pipeline)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -117,5 +117,3 @@ class TestCaseUtilsTest(test_case_utils.TfxTest):
     with self.assertRaises(AssertionError):
       self.assertArtifactMapsEqual(expected_artifacts, actual_artifacts)
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -26,9 +26,13 @@ from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 from tfx.types import standard_artifacts
 from tfx.types.experimental import simple_artifacts
 
+import pytest
+
+
 _PIPELINE_NAME_PREFIX = 'aip-training-component-pipeline-{}'
 
 
+@pytest.mark.integration
 class AiPlatformTrainingComponentIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):
@@ -78,5 +82,3 @@ class AiPlatformTrainingComponentIntegrationTest(
     )
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -67,5 +67,3 @@ class KubeflowDagRunnerPatcherTest(test_case_utils.TfxTest):
     self.assertEqual(runner._output_filename, output_filename)
 
 
-if __name__ == '__main__':
-  tf.test.main()

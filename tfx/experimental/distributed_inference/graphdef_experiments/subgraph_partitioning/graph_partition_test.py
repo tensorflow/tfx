@@ -125,5 +125,3 @@ def _get_node_names(graph_def):
   return {node.name for node in graph_def.node}
 
 
-if __name__ == '__main__':
-  tf.test.main()

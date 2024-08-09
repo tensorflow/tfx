@@ -279,5 +279,3 @@ class NodeTest(tf.test.TestCase):
         [input_x, input_y, input_z])
 
 
-if __name__ == '__main__':
-  tf.test.main()

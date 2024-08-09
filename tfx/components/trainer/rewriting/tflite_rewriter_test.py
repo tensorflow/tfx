@@ -267,5 +267,3 @@ class TFLiteRewriterTest(tf.test.TestCase):
         output_arrays=['head'])
 
 
-if __name__ == '__main__':
-  tf.test.main()

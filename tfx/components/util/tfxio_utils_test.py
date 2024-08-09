@@ -367,5 +367,3 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
               _FAKE_FILE_PATTERN)
 
 
-if __name__ == '__main__':
-  tf.test.main()

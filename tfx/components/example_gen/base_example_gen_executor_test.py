@@ -290,5 +290,3 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
 
-if __name__ == '__main__':
-  tf.test.main()

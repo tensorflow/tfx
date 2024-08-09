@@ -367,5 +367,3 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
       compiler_utils.placeholder_to_cel(placeholder_pb)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -24,5 +24,3 @@ class ModelTest(tf.test.TestCase):
     self.assertEqual(len(built_model.inputs), 2)
 
 
-if __name__ == '__main__':
-  tf.test.main()

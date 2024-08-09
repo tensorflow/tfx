@@ -945,5 +945,3 @@ class RunnerTest(tf.test.TestCase):
     self._assertDeleteVertexEndpointMockCalls()
 
 
-if __name__ == '__main__':
-  tf.test.main()

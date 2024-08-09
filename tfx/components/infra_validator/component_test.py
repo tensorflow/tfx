@@ -47,5 +47,3 @@ class ComponentTest(tf.test.TestCase):
                   infra_validator.exec_properties)
 
 
-if __name__ == '__main__':
-  tf.test.main()

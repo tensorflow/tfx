@@ -89,5 +89,3 @@ class RunComponentTest(absltest.TestCase):
     self.assertTrue(
         fileio.exists(os.path.join(output_data_dir, 'schema.pbtxt')))
 
-if __name__ == '__main__':
-  tf.test.main()

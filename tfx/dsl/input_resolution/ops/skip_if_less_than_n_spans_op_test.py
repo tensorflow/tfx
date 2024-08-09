@@ -67,5 +67,3 @@ class SkipIfLessThanNSpansOpTest(tf.test.TestCase):
     self.assertEqual(result, self.artifacts)
 
 
-if __name__ == '__main__':
-  tf.test.main()

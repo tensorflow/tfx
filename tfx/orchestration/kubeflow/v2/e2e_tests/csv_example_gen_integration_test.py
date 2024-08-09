@@ -23,11 +23,17 @@ from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 
+
+import pytest
+
+
 # The location of test data.
 # This location depends on install path of TFX in the docker image.
 _TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_taxi_pipeline/data/simple'
 
 
+@pytest.mark.integration
+@pytest.mark.e2e
 class CsvExampleGenIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):
@@ -69,5 +75,3 @@ class CsvExampleGenIntegrationTest(
     moke_resolve_dependencies.assert_called()
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -52,5 +52,3 @@ class ChannelTest(test_case_utils.TfxTest):
         'tfx.types.channel_utils.unwrap_channel_dict')
 
 
-if __name__ == '__main__':
-  tf.test.main()

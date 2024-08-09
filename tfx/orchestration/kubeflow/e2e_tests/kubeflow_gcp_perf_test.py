@@ -22,14 +22,18 @@ import kfp
 import tensorflow as tf
 
 from tfx.dsl.io import fileio
-from tfx.examples.penguin import penguin_kubeflow_gcp
+from tfx.examples.penguin import penguin_pipeline_kubeflow
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
+import pytest
 
+
+@pytest.mark.perf
+@pytest.mark.e2e
 class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
 
   # The endpoint of the KFP instance.
@@ -241,7 +245,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
         'parameterServerCount': self._PARAMETER_SERVER_COUNT
     }
 
-    pipeline = penguin_kubeflow_gcp.create_pipeline(
+    pipeline = penguin_pipeline_kubeflow.create_pipeline(
         pipeline_name=pipeline_name,
         pipeline_root=self._pipeline_root(pipeline_name),
         module_file=self._MODULE_FILE,
@@ -263,5 +267,3 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
     )
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -22,7 +22,14 @@ from tfx.examples.imdb import imdb_pipeline_native_keras
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
+import pytest
 
+
+def setup_module():
+  tf.compat.v1.enable_v2_behavior()
+
+
+@pytest.mark.e2e
 class ImdbPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
@@ -107,6 +114,3 @@ class ImdbPipelineNativeKerasEndToEndTest(tf.test.TestCase):
                        len(m.store.get_executions()))
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

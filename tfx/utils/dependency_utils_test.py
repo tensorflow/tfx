@@ -90,5 +90,3 @@ class DependencyUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(expected_package, os.path.basename(package))
 
 
-if __name__ == '__main__':
-  tf.test.main()

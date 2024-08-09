@@ -31,5 +31,3 @@ class ComponentTest(tf.test.TestCase):
                      model_validator.outputs['blessing'].type_name)
 
 
-if __name__ == '__main__':
-  tf.test.main()

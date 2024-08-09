@@ -172,5 +172,3 @@ class UdfUtilsTest(tf.test.TestCase):
       import my_user_module  # pylint: disable=g-import-not-at-top
 
 
-if __name__ == '__main__':
-  tf.test.main()

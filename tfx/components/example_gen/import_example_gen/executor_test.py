@@ -155,5 +155,3 @@ class ExecutorTest(tf.test.TestCase):
             utils.PAYLOAD_FORMAT_PROPERTY_NAME))
 
 
-if __name__ == '__main__':
-  tf.test.main()

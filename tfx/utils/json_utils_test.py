@@ -125,5 +125,3 @@ class JsonUtilsTest(tf.test.TestCase):
     self.assertEqual(_DefaultJsonableObject, actual_obj)
 
 
-if __name__ == '__main__':
-  tf.test.main()

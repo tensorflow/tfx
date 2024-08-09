@@ -59,5 +59,3 @@ class UtilsTest(tf.test.TestCase):
     self.assertProtoEquals(read_binary_config, expected_config)
 
 
-if __name__ == '__main__':
-  tf.test.main()

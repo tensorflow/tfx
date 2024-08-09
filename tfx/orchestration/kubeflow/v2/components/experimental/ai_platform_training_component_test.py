@@ -159,5 +159,3 @@ class AiPlatformTrainingComponentTest(tf.test.TestCase):
           training_input=training_input)
 
 
-if __name__ == '__main__':
-  tf.test.main()

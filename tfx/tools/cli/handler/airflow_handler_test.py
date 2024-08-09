@@ -450,5 +450,3 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
       _ = airflow_handler.AirflowHandler({})
 
 
-if __name__ == '__main__':
-  tf.test.main()

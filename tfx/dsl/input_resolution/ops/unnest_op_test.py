@@ -86,5 +86,3 @@ class UnnestOpTest(tf.test.TestCase):
     self.assertEmpty(result)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -874,5 +874,3 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
         expected_result,
         execution_lib._artifact_maps_contain_same_uris(left, right))
 
-if __name__ == '__main__':
-  tf.test.main()

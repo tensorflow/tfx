@@ -114,5 +114,3 @@ class HandlerFactoryTest(tf.test.TestCase):
         'Multiple orchestrators found. Choose one using --engine flag.')
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -346,10 +346,6 @@ setup(
     namespace_packages=[],
     install_requires=install_requires,
     extras_require=extras_require,
-    # TODO(b/158761800): Move to [build-system] requires in pyproject.toml.
-    setup_requires=[
-        'pytest-runner',
-    ],
     cmdclass={
         'bdist_wheel': build_wheel_command,
         'build': _BuildCommand,

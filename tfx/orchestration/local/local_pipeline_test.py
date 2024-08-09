@@ -217,5 +217,3 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train'])
 
 
-if __name__ == '__main__':
-  absl.testing.absltest.main()

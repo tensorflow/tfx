@@ -95,5 +95,3 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     self.assertTrue(fileio.exists(os.path.join(pipeline_root, example_gen.id)))
 
 
-if __name__ == '__main__':
-  tf.test.main()

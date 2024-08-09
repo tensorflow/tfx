@@ -69,5 +69,3 @@ class ClassUtilsTest(tf.test.TestCase):
       name_utils.resolve_full_name('non_existing_module_name.meh.FakeClass')
 
 
-if __name__ == '__main__':
-  tf.test.main()

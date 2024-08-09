@@ -26,7 +26,10 @@ from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
+import pytest
 
+
+@pytest.mark.e2e
 class CliLocalEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
@@ -322,5 +325,3 @@ class CliLocalEndToEndTest(test_case_utils.TfxTest):
     self._valid_run_and_check(pipeline_name_1)
 
 
-if __name__ == '__main__':
-  tf.test.main()

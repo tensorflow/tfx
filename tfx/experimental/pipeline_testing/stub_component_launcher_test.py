@@ -124,5 +124,3 @@ class StubComponentLauncherTest(tf.test.TestCase):
     self.assertEqual('test', contents)
 
 
-if __name__ == '__main__':
-  tf.test.main()

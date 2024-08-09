@@ -45,5 +45,3 @@ class PureTypingUtilsTest(tf.test.TestCase):
     assert_not_unwrapped(Union[list, dict, None])
 
 
-if __name__ == '__main__':
-  tf.test.main()

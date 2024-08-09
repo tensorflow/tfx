@@ -231,5 +231,3 @@ class ChannelTest(tf.test.TestCase):
     self.assertFalse(required_output_channel.is_async)
 
 
-if __name__ == '__main__':
-  tf.test.main()

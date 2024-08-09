@@ -118,5 +118,3 @@ class TaskSchedulerRegistryTest(tu.TfxTest):
                                                      self._pipeline, task)
 
 
-if __name__ == '__main__':
-  tf.test.main()

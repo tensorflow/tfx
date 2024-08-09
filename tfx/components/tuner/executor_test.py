@@ -193,5 +193,3 @@ class ExecutorTest(tf.test.TestCase):
     self._verify_output()
 
 
-if __name__ == '__main__':
-  tf.test.main()

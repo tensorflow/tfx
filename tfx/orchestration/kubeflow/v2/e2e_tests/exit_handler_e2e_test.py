@@ -27,6 +27,8 @@ from tfx.utils import io_utils
 
 from google.protobuf import json_format
 
+import pytest
+
 
 # The location of test data.
 # This location depends on install path of TFX in the docker image.
@@ -35,6 +37,7 @@ _TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_
 _success_file_name = 'success_final_status.txt'
 
 
+@pytest.mark.e2e
 class ExitHandlerE2ETest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):
@@ -99,5 +102,3 @@ class ExitHandlerE2ETest(
                                         'pipeline_job_resource_name'])
 
 
-if __name__ == '__main__':
-  tf.test.main()

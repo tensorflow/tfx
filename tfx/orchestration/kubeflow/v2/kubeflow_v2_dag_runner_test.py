@@ -299,5 +299,3 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest, parameterized.TestCase):
     moke_resolve_dependencies.assert_called()
 
 
-if __name__ == '__main__':
-  tf.test.main()

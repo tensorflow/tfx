@@ -32,7 +32,10 @@ from tfx.tools.cli.e2e import test_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
 
+import pytest
 
+
+@pytest.mark.e2e
 class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
 
   def _get_endpoint(self, config: str) -> str:
@@ -402,6 +405,3 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self.assertIn(self._pipeline_name, result)
 
 
-if __name__ == '__main__':
-  absl.logging.set_verbosity(absl.logging.INFO)
-  tf.test.main()

@@ -219,5 +219,3 @@ class VertexHandlerTest(test_case_utils.TfxTest):
     mock_pipeline_job.return_value.submit.assert_called_once()
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -219,5 +219,3 @@ class LatestPipelineRunOutputsTest(
         self.assertAllEqual(result_ids, expected_ids)
 
 
-if __name__ == '__main__':
-  tf.test.main()

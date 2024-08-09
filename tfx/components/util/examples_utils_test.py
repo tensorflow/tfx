@@ -88,5 +88,3 @@ class ExamplesUtilsTest(tf.test.TestCase):
           artifact, example_gen_pb2.PayloadFormat.FORMAT_PROTO)
 
 
-if __name__ == '__main__':
-  tf.test.main()

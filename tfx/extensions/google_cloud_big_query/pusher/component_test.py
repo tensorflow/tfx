@@ -34,5 +34,3 @@ class PusherTest(tf.test.TestCase):
         pusher.outputs[standard_component_specs.PUSHED_MODEL_KEY].type_name)
 
 
-if __name__ == '__main__':
-  tf.test.main()

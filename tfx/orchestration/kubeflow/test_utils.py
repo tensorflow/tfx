@@ -59,6 +59,8 @@ from tfx.utils import kube_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
 
+import pytest
+
 
 # TODO(jiyongjung): Merge with kube_utils.PodStatus
 # Various execution status of a KFP pipeline.
@@ -387,24 +389,27 @@ class BaseKubeflowTest(test_case_utils.TfxTest):
   # The following environment variables need to be set prior to calling the test
   # in this file. All variables are required and do not have a default.
 
-  # The base container image name to use when building the image used in tests.
-  _BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
+  try:
+    # The base container image name to use when building the image used in tests.
+    _BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
 
-  # The src path to use to build docker image
-  _REPO_BASE = os.environ['KFP_E2E_SRC']
+    # The src path to use to build docker image
+    _REPO_BASE = os.environ['KFP_E2E_SRC']
 
-  # The project id to use to run tests.
-  _GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
+    # The project id to use to run tests.
+    _GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
 
-  # The GCP region in which the end-to-end test is run.
-  _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
+    # The GCP region in which the end-to-end test is run.
+    _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
 
-  # The GCP bucket to use to write output artifacts.
-  _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
+    # The GCP bucket to use to write output artifacts.
+    _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
 
-  # The location of test data. The input files are copied to a test-local
-  # location for each invocation, and cleaned up at the end of test.
-  _TEST_DATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
+    # The location of test data. The input files are copied to a test-local
+    # location for each invocation, and cleaned up at the end of test.
+    _TEST_DATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
+  except KeyError as err:
+    pytest.skip(f"Environment variable {err} not found.", allow_module_level=True)
 
   # The location of test user module. Will be packaged and copied to under the
   # pipeline root before pipeline execution.

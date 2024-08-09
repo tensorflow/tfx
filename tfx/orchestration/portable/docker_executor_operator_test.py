@@ -177,5 +177,3 @@ class DockerComponentLauncherTest(tf.test.TestCase):
     return {'operator': operator, 'input_artifact': input_artifact}
 
 
-if __name__ == '__main__':
-  tf.test.main()

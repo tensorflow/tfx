@@ -25,7 +25,10 @@ try:
 except ImportError:
   struct2tensor = None
 
+import pytest
 
+
+@pytest.mark.e2e
 @unittest.skipIf(struct2tensor is None,
                  'Cannot import required modules. This can happen when'
                  ' struct2tensor is not available.')
@@ -79,5 +82,3 @@ class RankingPipelineTest(tf.test.TestCase):
       self.assertEqual(9, execution_count)
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -115,5 +115,3 @@ class EnvTest(test_utils.TfxTest):
     self.assertIs(env.get_env(), default_env)
 
 
-if __name__ == '__main__':
-  tf.test.main()

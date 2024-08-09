@@ -64,5 +64,3 @@ class SliceOpTest(test_utils.ResolverTestCase, parameterized.TestCase):
       self._slice(inputs, start=1, stop=2, min_count=1)
 
 
-if __name__ == '__main__':
-  tf.test.main()

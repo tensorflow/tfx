@@ -241,5 +241,3 @@ class MLMDConfigTest(test_case_utils.TfxTest):
             container_entrypoint._KFP_POD_NAME_PROPERTY_KEY], 'test_pod_name')
 
 
-if __name__ == '__main__':
-  tf.test.main()

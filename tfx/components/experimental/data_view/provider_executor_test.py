@@ -68,5 +68,3 @@ class DataViewProviderExecutorTest(tf.test.TestCase):
         loaded_decoder, tf_graph_record_decoder.LoadedDecoder)
 
 
-if __name__ == '__main__':
-  tf.test.main()

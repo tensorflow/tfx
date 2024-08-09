@@ -26,5 +26,3 @@ class ComponentTest(tf.test.TestCase):
                      import_example_gen.outputs['examples'].type_name)
 
 
-if __name__ == '__main__':
-  tf.test.main()

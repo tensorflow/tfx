@@ -237,5 +237,3 @@ class InteractiveContextTest(tf.test.TestCase):
                   ' '.join(fake_launcher.recorded_labels))
 
 
-if __name__ == '__main__':
-  tf.test.main()

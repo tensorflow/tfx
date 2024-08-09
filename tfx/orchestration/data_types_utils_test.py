@@ -544,5 +544,3 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
                      data_types_utils.set_parameter_value(actual_list, value))
 
 
-if __name__ == '__main__':
-  tf.test.main()

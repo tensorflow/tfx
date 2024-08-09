@@ -472,5 +472,3 @@ class PredictionToExampleUtilsTest(tf.test.TestCase, parameterized.TestCase):
       utils.convert(prediction_log, output_example_spec)
 
 
-if __name__ == '__main__':
-  tf.test.main()

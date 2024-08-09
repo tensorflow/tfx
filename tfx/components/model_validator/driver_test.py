@@ -78,5 +78,3 @@ class DriverTest(tf.test.TestCase):
                          pipeline_name, component_id))
 
 
-if __name__ == '__main__':
-  tf.test.main()

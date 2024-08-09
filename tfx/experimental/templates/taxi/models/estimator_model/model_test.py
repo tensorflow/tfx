@@ -40,5 +40,3 @@ class ModelTest(tf.test.TestCase):
     self.assertTrue(callable(result['eval_input_receiver_fn']))
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -84,5 +84,3 @@ class TemplateHandlerTest(tf.test.TestCase):
     self.assertEqual(dst.read_text(), self._PLACEHOLDER_TEST_DATA_AFTER)
 
 
-if __name__ == '__main__':
-  tf.test.main()

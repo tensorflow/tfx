@@ -75,5 +75,3 @@ class ExecutorTest(test_case_utils.TfxTest):
     self.assertEqual(expected_proto, imported_proto)
 
 
-if __name__ == '__main__':
-  tf.test.main()

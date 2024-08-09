@@ -198,5 +198,3 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         ['_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c'])
 
 
-if __name__ == '__main__':
-  absl.testing.absltest.main()

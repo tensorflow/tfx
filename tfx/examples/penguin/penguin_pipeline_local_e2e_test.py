@@ -29,9 +29,17 @@ from tfx.v1.orchestration import metadata
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
+import pytest
+
+
+def setup_module():
+  tf.compat.v1.enable_v2_behavior()
+
+
 _SPAN_PROPERTY_NAME = 'span'
 
 
+@pytest.mark.e2e
 class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
                                        parameterized.TestCase):
 
@@ -516,6 +524,3 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     self.assertLen(store.get_executions(), expected_execution_count * 3)
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

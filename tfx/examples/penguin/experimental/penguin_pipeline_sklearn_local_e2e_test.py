@@ -20,7 +20,14 @@ from tfx import v1 as tfx
 from tfx.examples.penguin.experimental import penguin_pipeline_sklearn_local
 from tfx.orchestration import metadata
 
+import pytest
 
+
+def setup_module():
+  tf.compat.v1.enable_v2_behavior()
+
+
+@pytest.mark.e2e
 class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
@@ -88,6 +95,3 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
     self.assertPipelineExecution()
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

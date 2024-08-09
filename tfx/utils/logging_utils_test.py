@@ -56,5 +56,3 @@ class LoggingUtilsTest(tf.test.TestCase):
     self.assertEqual(config.pipeline_name, 'pipe')
     self.assertEqual(config.worker_name, 'wrk')
 
-if __name__ == '__main__':
-  tf.test.main()

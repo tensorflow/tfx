@@ -517,5 +517,3 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(result, {'y': [Integer(42)]})
 
 
-if __name__ == '__main__':
-  tf.test.main()

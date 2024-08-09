@@ -67,5 +67,3 @@ class StaticSpanRangeOpTest(tf.test.TestCase):
     self.assertEqual(actual, [self.a1, self.a2, self.a3])
 
 
-if __name__ == '__main__':
-  tf.test.main()

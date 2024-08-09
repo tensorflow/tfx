@@ -79,5 +79,3 @@ class ConfigUtilsTest(tf.test.TestCase):
       config_utils.find_component_launch_info(p_config, component)
 
 
-if __name__ == '__main__':
-  tf.test.main()

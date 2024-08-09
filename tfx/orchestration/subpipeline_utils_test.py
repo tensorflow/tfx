@@ -106,5 +106,3 @@ class SubpipelineUtilsTest(parameterized.TestCase):
           self.assertNotIn(old_run_id, pipeline_run_context_names)
 
 
-if __name__ == '__main__':
-  absltest.main()

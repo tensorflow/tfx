@@ -33,5 +33,3 @@ class ExecutorWithSequenceExampleV2Test(
     return False
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -22,7 +22,14 @@ from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_native_keras
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
+import pytest
 
+
+def setup_module():
+  tf.compat.v1.enable_v2_behavior()
+
+
+@pytest.mark.e2e
 class TaxiPipelineNativeKerasEndToEndTest(
     tf.test.TestCase, parameterized.TestCase):
 
@@ -136,6 +143,3 @@ class TaxiPipelineNativeKerasEndToEndTest(
       self.assertLen(m.store.get_executions(), expected_execution_count * 3)
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

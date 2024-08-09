@@ -245,5 +245,3 @@ class ExecutorTest(tf.test.TestCase):
         delete_model_endpoint=True)
 
 
-if __name__ == '__main__':
-  tf.test.main()

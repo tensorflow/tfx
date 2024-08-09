@@ -46,5 +46,3 @@ class TaskTest(tu.TfxTest):
     self.assertEqual(('CancelNodeTask', node_uid), cancel_node_task.task_id)
 
 
-if __name__ == '__main__':
-  tf.test.main()

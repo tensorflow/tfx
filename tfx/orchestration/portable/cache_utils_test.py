@@ -283,5 +283,3 @@ class CacheUtilsTest(test_case_utils.TfxTest):
       self.assertEmpty(cached_output)
 
 
-if __name__ == '__main__':
-  tf.test.main()

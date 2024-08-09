@@ -351,5 +351,3 @@ class ResolverFunctionTest(tf.test.TestCase):
       self.assertEqual(x2.output_key, 'x2')
 
 
-if __name__ == '__main__':
-  tf.test.main()

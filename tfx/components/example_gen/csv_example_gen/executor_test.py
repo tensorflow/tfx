@@ -152,5 +152,3 @@ class ExecutorTest(absltest.TestCase):
         fileio.open(eval_output_file).size())
 
 
-if __name__ == '__main__':
-  absltest.main()

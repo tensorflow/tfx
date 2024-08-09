@@ -31,6 +31,10 @@ from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
 
+def setup_module():
+  tf.compat.v1.enable_v2_behavior()
+
+
 class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -355,6 +359,3 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
           fileio.exists(os.path.join(blessing_output.uri, 'NOT_BLESSED')))
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

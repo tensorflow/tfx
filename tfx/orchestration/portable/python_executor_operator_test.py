@@ -196,5 +196,3 @@ class PythonExecutorOperatorTest(test_case_utils.TfxTest):
           }""", executor_output)
 
 
-if __name__ == '__main__':
-  tf.test.main()

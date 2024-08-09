@@ -50,5 +50,3 @@ class LatestArtifactStrategyTest(test_case_utils.TfxTest):
                      [expected_artifact.uri])
 
 
-if __name__ == '__main__':
-  tf.test.main()

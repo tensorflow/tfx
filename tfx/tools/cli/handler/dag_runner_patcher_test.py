@@ -86,5 +86,3 @@ class DagRunnerPatcherTest(tf.test.TestCase, parameterized.TestCase):
       mock_run.assert_not_called()
 
 
-if __name__ == '__main__':
-  tf.test.main()
