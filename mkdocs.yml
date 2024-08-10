@@ -74,6 +74,43 @@ watch:
 nav:
   - Home: index.md
 
+  - Tutorials:
+    - Get started with TFX: tutorials/
+    - 'TFX: Getting started tutorials':
+      - 1. Starter pipeline: tutorials/tfx/penguin_simple
+      - 2. Adding data validation: tutorials/tfx/penguin_tfdv
+      - 3. Adding feature engineering: tutorials/tfx/penguin_tft
+      - 4. Adding model analysis: tutorials/tfx/penguin_tfma
+    - 'TFX: Interactive tutorials':
+      - Interactive tutorial (TF2 Keras): tutorials/tfx/components_keras
+      - Interactive tutorial (Estimator): tutorials/tfx/components
+    - TFX on Google Cloud:
+      - Running on Vertex Pipelines: tutorials/tfx/gcp/vertex_pipelines_simple
+      - Read data from BigQuery: tutorials/tfx/gcp/vertex_pipelines_bq
+      - Vertex AI Training and Serving: tutorials/tfx/gcp/vertex_pipelines_vertex_training
+      - Cloud AI Platform Pipelines tutorial: tutorials/tfx/cloud-ai-platform-pipelines
+    - 'TFX: Advanced tutorials':
+      - LLM finetuning and conversion: tutorials/tfx/gpt2_finetuning_and_conversion
+      - Custom component tutorial: tutorials/tfx/python_function_component
+      - Recommenders with TFX: tutorials/tfx/recommenders
+      - Ranking with TFX: mmenders/examples/ranking_tfx
+      - Airflow tutorial: tutorials/tfx/airflow_workshop
+      - Neural Structured Learning in TFX: tutorials/tfx/neural_structured_learning
+    - Data Validation:
+      - Get started with TFDV: tutorials/data_validation/tfdv_basic
+    - Transform:
+      - Preprocess data (beginner): tutorials/transform/simple
+      - Preprocess data (advanced): tutorials/transform/census
+      - Data preprocessing for ML with Google Cloud: tutorials/transform/data_preprocessing_with_cloud
+    - Model Analysis:
+      - Get started with TFMA: tutorials/model_analysis/tfma_basic
+      - Fairness Indicators tutorial: onsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab
+    - Deploy a trained model:
+      - 'Servers: TFX for TensorFlow Serving': tutorials/serving/rest_simple
+      - 'Mobile & IoT: TFX for TensorFlow Lite': tutorials/tfx/tfx_for_mobile
+    - ML Metadata:
+      - Get started with MLMD: tutorials/mlmd/mlmd_tutorial
+
   - Guide:
     - Guide: guide/index.md
 
