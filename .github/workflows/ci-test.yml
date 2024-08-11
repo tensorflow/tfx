@@ -10,7 +10,9 @@ on:
   workflow_dispatch:
 
 env:
-  USE_BAZEL_VERSION: "7.2.1"
+  USE_BAZEL_VERSION: "6.5.0"
+  # Changed to match tensorflow
+  # https://github.com/tensorflow/tensorflow/blob/master/.bazelversion
 
 jobs:
   unit-tests:
