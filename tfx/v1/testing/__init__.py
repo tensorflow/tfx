@@ -13,8 +13,6 @@
 # limitations under the License.
 """Public testing modules for TFX."""
 
-from tfx.types import channel_utils
+from tfx.types.channel_utils import ChannelForTesting as Channel
 
-Channel = channel_utils.ChannelForTesting
-
-del channel_utils
+__all__ = ["Channel"]

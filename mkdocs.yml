@@ -43,7 +43,12 @@ plugins:
             separate_signature: true
             signature_crossrefs: true
             group_by_category: true
+            show_category_heading: true
             inherited_members: true
+            show_submodules: true
+            show_object_full_path: false
+            show_root_full_path: true
+            docstring_section_style: "spacy"
             summary: true
             filters:
               - "!^_"
@@ -205,4 +210,11 @@ nav:
         - "TensorBoard": "https://www.tensorflow.org/tensorboard"
   - API:
     - "Overview": api/root
-    - "Components": api/components
+    - "components": api/components
+    - "dsl": api/dsl
+    - "extensions": api/extensions
+    - "orchestration": api/orchestration
+    - "proto": api/proto
+    - "testing": api/testing
+    - "types": api/types
+    - "utils": api/utils

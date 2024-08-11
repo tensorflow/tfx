@@ -1,17 +1,17 @@
 ## Modules
 
-[components][tfx.components] module: TFX components module.
+[components][tfx.v1.components] module: TFX components module.
 
-dsl module: TFX DSL module.
+[dsl][tfx.v1.dsl] module: TFX DSL module.
 
-extensions module: TFX extensions module.
+[extensions][tfx.v1.extensions] module: TFX extensions module.
 
-orchestration module: TFX orchestration module.
+[orchestration][tfx.v1.orchestration] module: TFX orchestration module.
 
-proto module: TFX proto module.
+[proto][tfx.v1.proto] module: TFX proto module.
 
-testing module: Public testing modules for TFX.
+[testing][tfx.v1.testing] module: Public testing modules for TFX.
 
-types module: TFX types module.
+[types][tfx.v1.types] module: TFX types module.
 
-utils module: TFX utils module.
+[utils][tfx.v1.utils] module: TFX utils module.

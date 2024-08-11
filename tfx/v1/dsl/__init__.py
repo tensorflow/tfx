@@ -16,8 +16,10 @@
 
 from tfx.dsl.components.common.importer import Importer
 from tfx.dsl.components.common.resolver import Resolver
+
 # TODO(b/273382055): Conditional should graduate experimental.
 from tfx.dsl.experimental.conditionals.conditional import Cond
+
 # TODO(b/184980265): move Pipeline implementation to tfx/dsl.
 from tfx.orchestration.pipeline import ExecutionMode
 from tfx.orchestration.pipeline import Pipeline
@@ -27,3 +29,17 @@ from tfx.v1.dsl import components
 from tfx.v1.dsl import experimental
 from tfx.v1.dsl import io
 from tfx.v1.dsl import placeholders
+
+__all__ = [
+    "Artifact",
+    "Channel",
+    "Cond",
+    "ExecutionMode",
+    "Importer",
+    "Pipeline",
+    "Resolver",
+    "components",
+    "experimental",
+    "io",
+    "placeholders",
+]

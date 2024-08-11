@@ -1,3 +1,3 @@
 # Components
 
-::: tfx.components
+::: tfx.v1.components
