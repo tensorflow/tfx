@@ -39,6 +39,7 @@ TFX_SUPPORTED_TF2_MAX_VERSION="4"
 set -ex
 
 PYTHON_BINARY=$(which python)
+PYTEST_BINARY=$(which pytest)
 # We need to upgrade scipy to '>1.7.1' to avoid ImportError saying "version `GLIBCXX_3.4.26' not found"
 ${PYTHON_BINARY} -m pip install --upgrade "pip" "scipy>1.7.1"
 
@@ -113,7 +114,8 @@ SKIP_LIST+=(
 # xargs stops only when the exit code is 255, so we convert any
 # failure to exit code 255.
 
+# pytest is used now
+
 set -f  # Disable bash asterisk expansion.
-find src -name '*_test.py' \
-  ${SKIP_LIST[@]/#tfx/-not -path src} \
-  |  xargs -I {} sh -c "${PYTHON_BINARY} {} || exit 255"
+${PYTEST_BINARY} $(find src -name '*_test.py' \
+  ${SKIP_LIST[@]/#tfx/-not -path src} | tr '\n' ' ')
