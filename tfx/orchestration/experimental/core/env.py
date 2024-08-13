@@ -162,6 +162,10 @@ class Env(abc.ABC):
   def maximum_active_task_schedulers(self) -> int:
     """Returns the maximum number of active task schedulers."""
 
+  @abc.abstractmethod
+  def get_pipeline_service_address(self) -> Optional[str]:
+    """Returns the pipeline service address."""
+
 
 class _DefaultEnv(Env):
   """Default environment."""
@@ -250,6 +254,9 @@ class _DefaultEnv(Env):
 
   def maximum_active_task_schedulers(self) -> int:
     return 1
+
+  def get_pipeline_service_address(self) -> Optional[str]:
+    return None
 
 
 _ENV = _DefaultEnv()

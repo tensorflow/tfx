@@ -103,6 +103,9 @@ class _TestEnv(env.Env):
   def maximum_active_task_schedulers(self) -> int:
     raise NotImplementedError()
 
+  def get_pipeline_service_address(self) -> Optional[str]:
+    raise NotImplementedError()
+
 
 class EnvTest(test_utils.TfxTest):
 
