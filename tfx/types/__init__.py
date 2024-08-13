@@ -31,3 +31,9 @@ from tfx.types.channel import OutputChannel
 from tfx.types.channel import Property  # Type alias.
 from tfx.types.component_spec import ComponentSpec
 from tfx.types.value_artifact import ValueArtifact
+
+__all__ = [
+    "Artifact",
+    "BaseChannel",
+    "Channel",
+]
