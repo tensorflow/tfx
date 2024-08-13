@@ -42,7 +42,7 @@ class ResolverNodeHandler(system_node_handler.SystemNodeHandler):
     extract_mlmd_value = lambda v: getattr(v, v.WhichOneof('value'))
     return {k: extract_mlmd_value(v.field_value) for k, v in proto_map.items()}
 
-  def run(
+  def run(  # pytype: disable=signature-mismatch  # dont-delete-module-type
       self, mlmd_connection: metadata.Metadata,
       pipeline_node: pipeline_pb2.PipelineNode,
       pipeline_info: pipeline_pb2.PipelineInfo,

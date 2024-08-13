@@ -267,7 +267,7 @@ class Metadata:
   @staticmethod
   def _get_legacy_producer_component_id(
       execution: metadata_store_pb2.Execution) -> str:
-    return execution.properties[_EXECUTION_TYPE_KEY_COMPONENT_ID].string_value
+    return execution.properties[_EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pytype: disable=bad-return-type  # dont-delete-module-type
 
   def get_qualified_artifacts(
       self,
