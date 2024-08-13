@@ -209,12 +209,13 @@ nav:
         - "ML Metadata": guide/mlmd
         - "TensorBoard": "https://www.tensorflow.org/tensorboard"
   - API:
-    - "Overview": api/root
-    - "components": api/components
-    - "dsl": api/dsl
-    - "extensions": api/extensions
-    - "orchestration": api/orchestration
-    - "proto": api/proto
-    - "testing": api/testing
-    - "types": api/types
-    - "utils": api/utils
+    - v1:
+      - "Overview": api/v1/root
+      - "components": api/v1/components
+      - "dsl": api/v1/dsl
+      - "extensions": api/v1/extensions
+      - "orchestration": api/v1/orchestration
+      - "proto": api/v1/proto
+      - "testing": api/v1/testing
+      - "types": api/v1/types
+      - "utils": api/v1/utils
