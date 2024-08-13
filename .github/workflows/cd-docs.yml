@@ -26,5 +26,5 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - run: pip install mkdocs mkdocs-material mkdocstrings[python] griffe-inherited-docstrings mkdocs-autorefs black
+      - run: pip install mkdocs mkdocs-material mkdocstrings[python] griffe-inherited-docstrings mkdocs-autorefs black mkdocs-jupyter
       - run: mkdocs gh-deploy --force
