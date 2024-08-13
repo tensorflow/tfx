@@ -198,7 +198,7 @@ and can also be pushed by the [Pusher](pusher.md), just like `Model` artifact.
 
 Current InfraValidator is not complete yet, and has some limitations.
 
--   Only TensorFlow [SavedModel](/guide/saved_model) model format can be
+-   Only TensorFlow [SavedModel](https://www.tensorflow.org/guide/saved_model) model format can be
     validated.
 -   When running TFX on Kubernetes, the pipeline should be executed by
     `KubeflowDagRunner` inside Kubeflow Pipelines. The model server will be
@@ -206,13 +206,13 @@ Current InfraValidator is not complete yet, and has some limitations.
     using.
 -   InfraValidator is primarily focused on deployments to
     [TensorFlow Serving](serving.md), and while still useful it is less accurate
-    for deployments to [TensorFlow Lite](/lite) and [TensorFlow.js](/js), or
+    for deployments to [TensorFlow Lite](https://www.tensorflow.org/lite) and [TensorFlow.js](https://www.tensorflow.org/js), or
     other inference frameworks.
 -   There's a limited support on `LOAD_AND_QUERY` mode for the
     [Predict](/versions/r1.15/api_docs/python/tf/saved_model/predict_signature_def)
     method signature (which is the only exportable method in TensorFlow 2).
     InfraValidator requires the Predict signature to consume a serialized
-    [`tf.Example`](/tutorials/load_data/tfrecord#tfexample) as the only input.
+    [`tf.Example`](https://www.tensorflow.org/tutorials/load_data/tfrecord#tfexample) as the only input.
 
     ```python
     @tf.function

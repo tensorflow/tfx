@@ -15,5 +15,5 @@ Pipelines SDK allows for creation and sharing of components and composition and
 of pipelines programmatically.
 
 See the
-[TFX example on Kubeflow Pipelines](https://www.tensorflow.org/tfx/tutorials/tfx/cloud-ai-platform-pipelines)
+[TFX example on Kubeflow Pipelines](../../tutorials/tfx/cloud-ai-platform-pipelines)
 for details on running TFX at scale on Google cloud.

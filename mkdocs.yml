@@ -24,7 +24,9 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
-
+  features:
+    - content.code.copy
+    - content.code.select
 plugins:
   - search
   - autorefs
@@ -60,10 +62,11 @@ plugins:
           import:
             - https://docs.python.org/3/objects.inv
   - mkdocs-jupyter:
-      execute: true
+      execute: false
       execute_ignore: # There are issues with executing these notebooks
         - tutorials/serving/rest_simple.ipynb
         - tutorials/tfx/gcp/*.ipynb
+  - caption:
 markdown_extensions:
   - admonition
   - attr_list
@@ -77,6 +80,12 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 watch:
   - tfx

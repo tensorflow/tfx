@@ -11,17 +11,43 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Configure Git Credentials
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-      - name: Set up Python
+
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: 3.x
-      - name: Save time for cache
+          python-version: '3.9'
+          cache: 'pip'
+          cache-dependency-path: |
+            setup.py
+            tfx/dependencies.py
+
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@0.8.5
+        with:
+          # Avoid downloading Bazel every time.
+          bazelisk-cache: true
+          # Store build cache per workflow.
+          disk-cache: ${{ github.workflow }}-${{ hashFiles('.github/workflows/ci-test.yml') }}
+          # Share repository cache between workflows.
+          repository-cache: true
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel
+          # TODO(b/232490018): Cython need to be installed separately to build pycocotools.
+          python -m pip install Cython -c ./test_constraints.txt
+          TFX_DEPENDENCY_SELECTOR=NIGHTLY pip install -c ./test_constraints.txt --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre --editable .[all]
+
+      - name: Save time for cache for mkdocs
         run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
+
       - name: Caching
         uses: actions/cache@v4
         with:
@@ -29,7 +55,9 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
+
       - name: Install Dependencies
         run: pip install mkdocs mkdocs-material mkdocstrings[python] griffe-inherited-docstrings mkdocs-autorefs black mkdocs-jupyter
+
       - name: Deploy to GitHub Pages
         run: mkdocs gh-deploy --force

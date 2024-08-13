@@ -56,9 +56,9 @@ Please follow one of the paths in
 [Managing Python Pipeline Dependencies](https://beam.apache.org/documentation/sdks/python-pipeline-dependencies/)
 to provide this using one of the following beam_pipeline_args:
 
-*   --setup_file
-*   --extra_package
-*   --requirements_file
+*   `--setup_file`
+*   `--extra_package`
+*   `--requirements_file`
 
 Notice: In any of above cases, please make sure that the same version of `tfx`
 is listed as a dependency.

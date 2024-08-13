@@ -34,7 +34,7 @@ components for these data sources and formats:
 * [Parquet](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/custom_executors/parquet_executor.py)
 
 See the usage examples in the source code and
-[this discussion](/tfx/guide/examplegen#custom_examplegen) for more information on
+[this discussion](examplegen.md#custom_examplegen) for more information on
 how to use and develop custom executors.
 
 Note: In most case it's better to inherit from `base_example_gen_executor`
@@ -42,7 +42,7 @@ instead of `base_executor`. So following the Avro or Parquet example in the
 Executor source code may be advisable.
 
 In addition, these data sources and formats are available as
-[custom component](/tfx/guide/understanding_custom_components) examples:
+[custom component](understanding_custom_components.md) examples:
 
 * [Presto](https://github.com/tensorflow/tfx/tree/master/tfx/examples/custom_components/presto_example_gen)
 
@@ -629,7 +629,7 @@ evaluator = Evaluator(
 ```
 
 More details are available in the
-[CsvExampleGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/CsvExampleGen),
-[FileBasedExampleGen API implementation](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/component.py)
+[CsvExampleGen API reference][tfx.v1.components.CsvExampleGen],
+[FileBasedExampleGen API implementation][tfx.v1.components.example_gen.component],
 and
-[ImportExampleGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/ImportExampleGen).
+[ImportExampleGen API reference][tfx.v1.components/ImportExampleGen].

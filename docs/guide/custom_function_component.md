@@ -64,7 +64,7 @@ def MyDataProcessor(
 ```
 
 If you are new to TFX pipelines,
-[learn more about the core concepts of TFX pipelines](understanding_tfx_pipelines).
+[learn more about the core concepts of TFX pipelines](understanding_tfx_pipelines.md).
 
 ## Inputs, outputs, and parameters
 
