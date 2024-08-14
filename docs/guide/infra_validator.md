@@ -54,7 +54,7 @@ modes:
 Usually InfraValidator is defined next to an Evaluator component, and its output
 is fed to a Pusher. If InfraValidator fails, the model will not be pushed.
 
-```python {highlight="lines:8-11 context:infra_blessing,1"}
+```python hl_lines="8-11"
 evaluator = Evaluator(
     model=trainer.outputs['model'],
     examples=example_gen.outputs['examples'],
@@ -108,7 +108,7 @@ block of the `ServingSpec`. For example to use TensorFlow Serving binary running
 on the Kubernetes cluster, `tensorflow_serving` and `kubernetes` field should be
 set.
 
-```python {highlight="lines:4:9-4:26,7:9-7:18"}
+```python hl_lines="4 7"
 infra_validator=InfraValidator(
     model=trainer.outputs['model'],
     serving_spec=tfx.proto.ServingSpec(
@@ -127,7 +127,7 @@ To further configure `ServingSpec`, please check out the
 
 Optional configuration to adjust the infra validation criteria or workflow.
 
-```python {highlight="lines:4-10"}
+```python hl_lines="4-10"
 infra_validator=InfraValidator(
     model=trainer.outputs['model'],
     serving_spec=tfx.proto.ServingSpec(...),
@@ -151,7 +151,7 @@ infra validation in `LOAD_AND_QUERY` mode. In order to use `LOAD_AND_QUERY`
 mode, it is required to specify both `request_spec` execution properties as well
 as `examples` input channel in the component definition.
 
-```python {highlight="lines:7:9-7:62 lines:10-16"}
+```python hl_lines="8 11-17"
 infra_validator = InfraValidator(
     model=trainer.outputs['model'],
     # This is the source for the data that will be used to build a request.
