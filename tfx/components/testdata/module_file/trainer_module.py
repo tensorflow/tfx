@@ -20,8 +20,6 @@ This file is equivalent to examples/chicago_taxi/trainer/model.py and
 examples/chicago_taxi/preprocess.py.
 """
 
-# Test PR to see if it can be copied to google internal code source
-
 import absl
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
