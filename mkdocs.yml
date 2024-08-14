@@ -1,4 +1,4 @@
-site_name: tfx
+site_name: TFX
 repo_name: "Tensorflow TFX"
 repo_url: https://github.com/tensorflow/tfx
 
@@ -7,12 +7,16 @@ theme:
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-auto
         name: Switch to light mode
 
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
+      primary: custom
+      accent: custom
       scheme: default
       toggle:
         icon: material/brightness-7
@@ -20,10 +24,15 @@ theme:
 
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
+      primary: custom
+      accent: custom
       scheme: slate
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
+  logo: assets/tf_full_color_primary_icon.svg
+  favicon: assets/tf_full_color_primary_icon.svg
+
   features:
     - content.code.copy
     - content.code.select
@@ -67,6 +76,9 @@ plugins:
         - tutorials/serving/rest_simple.ipynb
         - tutorials/tfx/gcp/*.ipynb
   - caption:
+      figure:
+        ignore_alt: true
+
 markdown_extensions:
   - admonition
   - attr_list
