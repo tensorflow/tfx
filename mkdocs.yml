@@ -74,7 +74,7 @@ markdown_extensions:
       permalink: true
   - pymdownx.highlight:
       anchor_linenums: true
-      linenums: true
+      linenums: false
       line_spans: __span
       pygments_lang_class: true
   - pymdownx.inlinehilite
@@ -82,6 +82,13 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.arithmatex:
       generic: true
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra_css:
+  - stylesheets/extra.css
 
 extra_javascript:
   - javascripts/mathjax.js
@@ -90,10 +97,10 @@ extra_javascript:
 watch:
   - tfx
 nav:
-  - Home: index.md
+  - Overview: index.md
 
   - Tutorials:
-    - Get started with TFX: tutorials/
+    - Get started with TFX: tutorials/index.md
     - 'TFX: Getting started tutorials':
       - 1. Starter pipeline: tutorials/tfx/penguin_simple
       - 2. Adding data validation: tutorials/tfx/penguin_tfdv
