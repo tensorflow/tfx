@@ -344,5 +344,3 @@ class GroupByPivotTest(tf.test.TestCase, _LineageUtils):
     [a] = self._prepare_tfx_artifacts(1)
     result = self._group_by_pivot({'a': [a, a]}, pivot_key='a')
     self.assertEqual(result, [{'a': [a]}, {'a': [a]}])
-
-

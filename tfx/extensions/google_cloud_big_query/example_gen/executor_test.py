@@ -176,5 +176,3 @@ class ExecutorTest(tf.test.TestCase):
     self.assertGreater(
         fileio.open(train_output_file).size(),
         fileio.open(eval_output_file).size())
-
-

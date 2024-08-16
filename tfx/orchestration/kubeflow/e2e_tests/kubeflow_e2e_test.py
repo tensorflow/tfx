@@ -20,7 +20,6 @@ from typing import List
 
 from absl import logging
 from grpc import insecure_channel
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import test_utils
 from tfx.orchestration.experimental.core.testing import test_dynamic_exec_properties_pipeline
@@ -277,5 +276,3 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     artifacts = self._get_artifacts_with_type_and_pipeline(
         type_name='String', pipeline_name=pipeline_name)
     self.assertEqual(len(artifacts), 1)
-
-

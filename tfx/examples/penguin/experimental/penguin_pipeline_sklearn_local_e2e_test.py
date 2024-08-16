@@ -93,5 +93,3 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
       self.assertEqual(expected_execution_count, execution_count)
 
     self.assertPipelineExecution()
-
-

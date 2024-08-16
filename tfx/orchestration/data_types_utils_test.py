@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.data_types_utils."""
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import execution_result_pb2
@@ -542,5 +541,3 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     text_format.Parse(expected, expected_list)
     self.assertEqual(expected_list,
                      data_types_utils.set_parameter_value(actual_list, value))
-
-

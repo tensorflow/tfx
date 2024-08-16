@@ -235,5 +235,3 @@ class InteractiveContextTest(tf.test.TestCase):
     context.run(_FakeComponent())
     self.assertIn('--labels tfx_runner=interactivecontext',
                   ' '.join(fake_launcher.recorded_labels))
-
-

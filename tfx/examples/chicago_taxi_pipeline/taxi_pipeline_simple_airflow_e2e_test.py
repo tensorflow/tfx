@@ -218,5 +218,3 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
               'No pending tasks in %s finished within %d secs'
               % (pending_tasks, _MAX_TASK_STATE_CHANGE_SEC)
           )
-
-

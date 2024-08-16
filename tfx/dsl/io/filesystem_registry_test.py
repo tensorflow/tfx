@@ -117,5 +117,3 @@ class FilesystemRegistryTest(tf.test.TestCase):
         registry.get_filesystem_for_path(b'hdfs://bucket/tmp/my/file'))
     with self.assertRaisesRegex(ValueError, 'Invalid path type'):
       registry.get_filesystem_for_path(123)
-
-

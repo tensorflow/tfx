@@ -204,5 +204,3 @@ class DslContextRegistryTest(tf.test.TestCase):
       reg.finalize()
       with self.assertRaises(RuntimeError):
         Node('B')
-
-

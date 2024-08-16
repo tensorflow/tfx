@@ -15,8 +15,6 @@
 
 import os
 
-import absl
-import tensorflow as tf
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.statistics_gen.component import StatisticsGen
@@ -106,5 +104,3 @@ class KubeflowDataflowIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
             ]))
     ])
     self._compile_and_run_pipeline(pipeline)
-
-

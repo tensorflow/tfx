@@ -20,7 +20,6 @@ from unittest import mock
 from google.cloud import aiplatform
 from google.cloud.aiplatform import pipeline_jobs
 
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import vertex_handler
@@ -217,5 +216,3 @@ class VertexHandlerTest(test_case_utils.TfxTest):
             'b': '2'
         })
     mock_pipeline_job.return_value.submit.assert_called_once()
-
-

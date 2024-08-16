@@ -470,5 +470,3 @@ class PredictionToExampleUtilsTest(tf.test.TestCase, parameterized.TestCase):
     """, bulk_inferrer_pb2.OutputExampleSpec())
     with self.assertRaises(ValueError):
       utils.convert(prediction_log, output_example_spec)
-
-

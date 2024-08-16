@@ -42,5 +42,3 @@ class PythonDriverOperatorTest(tf.test.TestCase):
         custom_driver_spec, None, None, None)
     driver_output = driver_operator.run_driver(None, None, None)
     self.assertEqual(driver_output, _DEFAULT_DRIVER_OUTPUT)
-
-

@@ -22,7 +22,6 @@ import time
 
 import absl
 from click import testing as click_testing
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration.airflow import test_utils as airflow_test_utils
 from tfx.tools.cli import labels
@@ -368,5 +367,3 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
     # When only Airflow is installed.
     if labels.KUBEFLOW_PACKAGE_NAME not in self._pip_list:
       self.assertIn('Kubeflow not found', result.output)
-
-

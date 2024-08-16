@@ -51,5 +51,3 @@ class ComponentTest(tf.test.TestCase):
         'Examples', bulk_inferrer.outputs[
             standard_component_specs.OUTPUT_EXAMPLES_KEY].type_name)
     self.assertNotIn('inference_result', bulk_inferrer.outputs.keys())
-
-

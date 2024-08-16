@@ -117,5 +117,3 @@ class ExecutorTest(tf.test.TestCase):
             'project': self._project_id,
             'jobDir': self._job_dir,
         }, None, {}, enable_vertex, vertex_region)
-
-

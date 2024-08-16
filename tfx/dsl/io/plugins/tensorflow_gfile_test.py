@@ -61,5 +61,3 @@ class TensorflowGfileTest(tf.test.TestCase):
     # No exception raised.
     self.assertEqual(
         list(TensorflowFilesystem.walk(os.path.join(temp_dir, 'foo'))), [])
-
-

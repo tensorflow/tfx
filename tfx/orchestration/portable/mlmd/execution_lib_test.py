@@ -19,7 +19,6 @@ import random
 from typing import Sequence
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import types
 from tfx import version
 from tfx.orchestration import metadata
@@ -873,4 +872,3 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(
         expected_result,
         execution_lib._artifact_maps_contain_same_uris(left, right))
-

@@ -943,5 +943,3 @@ class RunnerTest(tf.test.TestCase):
         enable_vertex=True)
 
     self._assertDeleteVertexEndpointMockCalls()
-
-

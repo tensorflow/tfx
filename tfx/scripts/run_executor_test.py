@@ -81,4 +81,3 @@ class RunExecutorTest(tf.test.TestCase):
 # TODO(zhitaoli): Add tests for:
 # - base64 decoding of flags;
 # - write output.
-

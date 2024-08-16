@@ -229,5 +229,3 @@ class ChannelTest(tf.test.TestCase):
     optional_output_channel.set_as_async_channel()
     self.assertTrue(optional_output_channel.is_async)
     self.assertFalse(required_output_channel.is_async)
-
-

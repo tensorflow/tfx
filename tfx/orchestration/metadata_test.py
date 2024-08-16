@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.metadata."""
 
-import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration import metadata_test_utils
 
@@ -37,5 +36,3 @@ class SqliteMetadataTest(metadata_test_utils.MetadataTest):
     with self.assertRaisesRegex(RuntimeError, 'unable to open database file'):
       with metadata.Metadata(connection_config=invalid_config) as m:
         m.store()
-
-

@@ -123,5 +123,3 @@ def _generate_unique_filename(input_names):
 
 def _get_node_names(graph_def):
   return {node.name for node in graph_def.node}
-
-

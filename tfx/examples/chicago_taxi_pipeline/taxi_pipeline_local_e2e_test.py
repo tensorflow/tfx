@@ -98,5 +98,3 @@ class TaxiPipelineLocalEndToEndTest(tf.test.TestCase, parameterized.TestCase):
       self.assertEqual(10, execution_count)
 
     self.assertPipelineExecution()
-
-

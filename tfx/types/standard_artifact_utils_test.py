@@ -150,5 +150,3 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertFalse(
         standard_artifact_utils.is_artifact_version_older_than(examples, '0.1')
     )
-
-

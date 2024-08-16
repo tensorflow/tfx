@@ -271,5 +271,3 @@ class ImporterDriverTest(tf.test.TestCase, parameterized.TestCase):
           expected_custom_properties,
           data_types_utils.build_value_dict(
               result.mlmd_artifact.custom_properties))
-
-

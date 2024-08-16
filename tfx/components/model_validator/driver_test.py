@@ -76,5 +76,3 @@ class DriverTest(tf.test.TestCase):
     self.assertEqual(('uri-3', 3),
                      model_validator_driver._fetch_last_blessed_model(
                          pipeline_name, component_id))
-
-

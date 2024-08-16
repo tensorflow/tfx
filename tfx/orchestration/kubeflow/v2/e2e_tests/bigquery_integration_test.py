@@ -17,7 +17,6 @@ import os
 from unittest import mock
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.components.base import base_component
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
@@ -93,5 +92,3 @@ class BigqueryIntegrationTest(
 
     self._run_pipeline(pipeline, use_pipeline_spec_2_1=use_pipeline_spec_2_1)
     moke_resolve_dependencies.assert_called()
-
-

@@ -50,5 +50,3 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(
         standard_artifacts.ExampleStatistics.TYPE_NAME, statistics_gen.outputs[
             standard_component_specs.STATISTICS_KEY].type_name)
-
-

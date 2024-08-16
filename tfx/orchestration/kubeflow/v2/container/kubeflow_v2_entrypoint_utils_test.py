@@ -209,5 +209,3 @@ class KubeflowV2EntrypointUtilsTest(tf.test.TestCase):
 
     self.assertDictEqual(expected_model_blessing.to_json_dict(),
                          model_blessing.to_json_dict())
-
-

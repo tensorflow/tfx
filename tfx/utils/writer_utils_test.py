@@ -50,5 +50,3 @@ class WriterUtilsTest(tf.test.TestCase):
         io_utils.read_bytes_file(binary_proto_filepath)
     )
     self.assertProtoEquals(read_binary_anomalies, anomalies)
-
-

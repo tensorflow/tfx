@@ -17,7 +17,6 @@ import os
 import tempfile
 
 from absl import flags
-from absl.testing import absltest
 from absl.testing import parameterized
 from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.distribution_validator import executor
@@ -1410,5 +1409,3 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
       _ = distribution_validator_executor.Do(
           input_dict, output_dict, exec_properties
       )
-
-

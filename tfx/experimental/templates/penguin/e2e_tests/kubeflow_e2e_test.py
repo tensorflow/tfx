@@ -14,7 +14,6 @@
 """E2E test using kubeflow orchestrator for penguin template."""
 
 from absl import logging
-import tensorflow as tf
 from tfx.experimental.templates import container_based_test_case
 
 import pytest
@@ -51,5 +50,3 @@ class PenguinTemplateKubeflowE2ETest(
                  updated_pipeline_file)
     self._update_pipeline()
     self._run_pipeline()
-
-

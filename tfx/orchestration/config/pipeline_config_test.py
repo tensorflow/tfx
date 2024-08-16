@@ -49,5 +49,3 @@ class PipelineConfigTest(tf.test.TestCase):
           docker_component_config.DockerComponentConfig(),
           docker_component_config.DockerComponentConfig(),
       ])
-
-

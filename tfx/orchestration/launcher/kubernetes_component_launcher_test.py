@@ -300,5 +300,3 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
 
   def _mock_executor_pod(self, phase):
     return client.V1Pod(status=client.V1PodStatus(phase=phase))
-
-

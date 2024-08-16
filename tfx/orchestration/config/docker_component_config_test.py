@@ -35,5 +35,3 @@ class DockerComponentConfigTest(tf.test.TestCase):
     self.assertTrue(run_args['privileged'])
     self.assertListEqual(['/local/etc:/local/etc'], run_args['volumes'])
     self.assertDictEqual({'2222/tcp': 3333}, run_args['ports'])
-
-

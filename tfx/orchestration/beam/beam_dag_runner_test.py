@@ -16,7 +16,6 @@ import os
 from typing import Optional
 
 from unittest import mock
-import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.beam import beam_dag_runner
@@ -356,5 +355,3 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
     self.assertIs(runner.__class__, legacy_beam_dag_runner.BeamDagRunner)
     self.assertIs(runner._config, config)
     self.assertIs(runner._beam_orchestrator_args, beam_orchestrator_args)
-
-

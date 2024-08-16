@@ -157,5 +157,3 @@ class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
     )
 
     self.assertProtoEquals(rehydrated_connection_config, connection_config)
-
-

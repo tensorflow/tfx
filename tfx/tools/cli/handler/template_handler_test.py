@@ -82,5 +82,3 @@ class TemplateHandlerTest(tf.test.TestCase):
                                                         replace_dict)
     # pylint: enable=protected-access
     self.assertEqual(dst.read_text(), self._PLACEHOLDER_TEST_DATA_AFTER)
-
-

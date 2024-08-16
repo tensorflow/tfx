@@ -515,5 +515,3 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(input_keys, ['x'])
     result = graph_fn({'x': [Integer(42)]})
     self.assertEqual(result, {'y': [Integer(42)]})
-
-

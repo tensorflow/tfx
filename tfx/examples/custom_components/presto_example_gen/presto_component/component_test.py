@@ -61,5 +61,3 @@ class ComponentTest(tf.test.TestCase):
         component.PrestoExampleGen,
         conn_config=port_only_config,
         query='')
-
-

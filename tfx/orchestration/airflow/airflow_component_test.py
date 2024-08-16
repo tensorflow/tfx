@@ -136,5 +136,3 @@ class AirflowComponentTest(tf.test.TestCase):
             'additional_pipeline_args': {},
             'component_config': None,
         })
-
-

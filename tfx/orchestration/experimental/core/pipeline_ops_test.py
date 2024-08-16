@@ -22,7 +22,6 @@ import uuid
 
 from absl.testing import parameterized
 from absl.testing.absltest import mock
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import constants
 from tfx.dsl.io import fileio
@@ -3807,5 +3806,3 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
             task_queue,
             service_jobs.DummyServiceJobManager(),
         )
-
-

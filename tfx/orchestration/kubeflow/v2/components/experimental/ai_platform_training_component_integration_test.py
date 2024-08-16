@@ -16,7 +16,6 @@
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.common import importer
 from tfx.orchestration import pipeline
@@ -80,5 +79,3 @@ class AiPlatformTrainingComponentIntegrationTest(
     self._run_pipeline(
         aip_training_pipeline, use_pipeline_spec_2_1=use_pipeline_spec_2_1
     )
-
-

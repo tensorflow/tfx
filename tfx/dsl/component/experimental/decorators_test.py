@@ -775,5 +775,3 @@ class ComponentDecoratorTest(tf.test.TestCase):
     )
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
-
-

@@ -30,5 +30,3 @@ class SchemaGenTest(tf.test.TestCase):
     self.assertEqual(
         schema_gen.spec.exec_properties[
             standard_component_specs.SCHEMA_FILE_KEY], 'dummy')
-
-

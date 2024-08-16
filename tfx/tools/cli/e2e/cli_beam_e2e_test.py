@@ -18,7 +18,6 @@ import locale
 import os
 
 from click import testing as click_testing
-import tensorflow as tf
 
 from tfx.dsl.io import fileio
 from tfx.tools.cli.cli_main import cli_group
@@ -321,5 +320,3 @@ class CliBeamEndToEndTest(test_case_utils.TfxTest):
 
     # Now run the pipeline
     self._valid_run_and_check(pipeline_name_1)
-
-

@@ -16,7 +16,6 @@
 import os
 
 from absl import logging
-import tensorflow as tf
 from tfx.experimental.templates import container_based_test_case
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
@@ -118,5 +117,3 @@ class TaxiTemplateKubeflowE2ETest(
     logging.info('Using CAIP trainer and pusher.')
     self._update_pipeline()
     self._run_pipeline()
-
-

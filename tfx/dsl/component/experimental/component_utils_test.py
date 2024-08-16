@@ -212,5 +212,3 @@ class ComponentUtilsTest(tf.test.TestCase):
     self._assert_type_check_execution_function_params_error(
         execution, expected_error_type=AttributeError
     )
-
-

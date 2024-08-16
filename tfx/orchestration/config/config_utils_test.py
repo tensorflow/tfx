@@ -77,5 +77,3 @@ class ConfigUtilsTest(tf.test.TestCase):
     with self.assertRaises(RuntimeError):
       # DockerComponentLauncher cannot launch class executor.
       config_utils.find_component_launch_info(p_config, component)
-
-

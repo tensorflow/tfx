@@ -24,7 +24,6 @@ import absl
 from google.cloud import storage
 import kfp
 import kfp_server_api
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
 from tfx.tools.cli import pip_utils
@@ -403,5 +402,3 @@ class CliKubeflowEndToEndTest(test_case_utils.TfxTest):
     self.assertIn(str(run_1.id), result)
     self.assertIn(str(run_2.id), result)
     self.assertIn(self._pipeline_name, result)
-
-

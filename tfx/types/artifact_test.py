@@ -1384,4 +1384,3 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(tfx_artifact.mlmd_artifact.state,
                      metadata_store_pb2.Artifact.State.UNKNOWN)
     self.assertEqual(tfx_artifact.state, 'foobar')
-

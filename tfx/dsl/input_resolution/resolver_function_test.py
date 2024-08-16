@@ -349,5 +349,3 @@ class ResolverFunctionTest(tf.test.TestCase):
       self.assertEqual(x2.type, X)
       self.assertEqual(x1.output_key, 'x1')
       self.assertEqual(x2.output_key, 'x2')
-
-

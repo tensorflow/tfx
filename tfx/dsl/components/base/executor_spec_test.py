@@ -77,4 +77,3 @@ class ExecutorSpecTest(tf.test.TestCase):
     self.assertEqual(spec_copy.image, 'path/to:image')
     self.assertEqual(spec_copy.command, ['command'])
     self.assertEqual(spec_copy.args, ['args'])
-

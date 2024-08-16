@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.context_managers.for_each."""
 import unittest
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_node
 from tfx.dsl.context_managers import dsl_context_registry
@@ -133,5 +132,3 @@ class ForEachTest(test_case_utils.TfxTest):
       pipeline_lib.Pipeline(
           pipeline_name='foo', components=[b], inputs=p_in, outputs={}
       )
-
-

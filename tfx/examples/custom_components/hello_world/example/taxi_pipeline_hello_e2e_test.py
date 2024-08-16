@@ -86,5 +86,3 @@ class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
       self.assertEqual(artifact_count, len(m.store.get_artifacts()))
 
     self.assertPipelineExecution()
-
-

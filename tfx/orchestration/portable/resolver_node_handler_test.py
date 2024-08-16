@@ -16,7 +16,6 @@
 import os
 from unittest import mock
 
-import tensorflow as tf
 from tfx import types
 from tfx import version
 from tfx.dsl.compiler import constants
@@ -198,5 +197,3 @@ class ResolverNodeHandlerTest(test_case_utils.TfxTest):
               'name',
           ],
       )
-
-

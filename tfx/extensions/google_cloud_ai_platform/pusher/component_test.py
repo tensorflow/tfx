@@ -31,4 +31,3 @@ class PusherTest(tf.test.TestCase):
     self.assertEqual(
         standard_artifacts.PushedModel.TYPE_NAME,
         pusher.outputs[standard_component_specs.PUSHED_MODEL_KEY].type_name)
-

@@ -140,5 +140,3 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
       self.assertEqual(
           io_utils.read_string_file(os.path.join(self.dest_uri, files[0])),
           self.content)
-
-

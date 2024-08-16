@@ -1405,5 +1405,3 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
             )
         ),
     )
-
-

@@ -15,7 +15,6 @@
 import os
 import tempfile
 
-from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow_data_validation as tfdv
 from tensorflow_data_validation.skew import feature_skew_detector
@@ -205,5 +204,3 @@ class ExecutorTest(parameterized.TestCase):
       for output in all_outputs:
         split_pair = output.split('SplitPair-')[1]
         self.assertIn(split_pair, expected_split_pair_names)
-
-

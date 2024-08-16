@@ -15,7 +15,6 @@
 import os
 import tempfile
 
-from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow_data_validation as tfdv
 from tfx.components.statistics_gen import executor
@@ -401,5 +400,3 @@ class ExecutorTest(parameterized.TestCase):
     stats_gen_executor = executor.Executor()
     with self.assertRaises(ValueError):
       stats_gen_executor.Do(input_dict, output_dict, exec_properties)
-
-

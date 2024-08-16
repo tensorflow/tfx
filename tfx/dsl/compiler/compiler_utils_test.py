@@ -300,5 +300,3 @@ class ValidateExecPropertyPlaceholderTest(tf.test.TestCase):
         pipeline_pb2.OutputSpec(),
     )
     self.assertProtoEquals(actual, expected)
-
-

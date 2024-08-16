@@ -15,7 +15,6 @@
 import json
 import os
 from typing import List, Optional
-import tensorflow as tf
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import pipeline_ir_codec
 from tfx.orchestration.experimental.core import test_utils
@@ -122,5 +121,3 @@ class PipelineIRCodecTest(test_utils.TfxTest):
         next(iter(json.loads(pipeline_encoded).keys())),
         'Expected pipeline IR URL to be stored as json.',
     )
-
-

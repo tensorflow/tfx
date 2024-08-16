@@ -66,5 +66,3 @@ class DataViewProviderExecutorTest(tf.test.TestCase):
     loaded_decoder = tf_graph_record_decoder.load_decoder(output.uri)
     self.assertIsInstance(
         loaded_decoder, tf_graph_record_decoder.LoadedDecoder)
-
-

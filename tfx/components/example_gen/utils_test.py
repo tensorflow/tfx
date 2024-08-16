@@ -765,5 +765,3 @@ class UtilsTest(tf.test.TestCase):
         utils.get_query_for_span(query, 2),
         'select * from table where ts>=TIMESTAMP_SECONDS(172800) and ts<TIMESTAMP_SECONDS(259200)'
     )
-
-

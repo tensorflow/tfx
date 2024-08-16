@@ -97,5 +97,3 @@ class DockerComponentLauncherE2eTest(tf.test.TestCase):
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
       self.assertEqual(1, len(m.store.get_executions()))
-
-

@@ -80,5 +80,3 @@ class RankingPipelineTest(tf.test.TestCase):
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(9, execution_count)
-
-

@@ -52,5 +52,3 @@ class VisualizationsTest(tf.test.TestCase):
         MyVisualization,
         visualizations.get_registry().get_visualization(
             standard_artifacts.Examples.TYPE_NAME).__class__)
-
-

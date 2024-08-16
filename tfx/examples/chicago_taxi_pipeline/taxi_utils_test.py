@@ -173,5 +173,3 @@ class TaxiUtilsTest(tf.test.TestCase):
       metagraph_def = tf.compat.v1.saved_model.loader.load(
           sess, [tf.saved_model.SERVING], exports[0])
       self.assertIsInstance(metagraph_def, tf.compat.v1.MetaGraphDef)
-
-

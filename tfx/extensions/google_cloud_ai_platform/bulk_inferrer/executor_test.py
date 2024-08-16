@@ -243,5 +243,3 @@ class ExecutorTest(tf.test.TestCase):
         ai_platform_serving_args=ai_platform_serving_args,
         api=mock.ANY,
         delete_model_endpoint=True)
-
-

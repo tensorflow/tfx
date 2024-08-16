@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.input_resolution.ops.span_driven_evaluator_inputs_op."""
 from typing import List, Optional
 
-import tensorflow as tf
 
 from tfx import types
 from tfx.dsl.input_resolution.ops import ops
@@ -606,5 +605,3 @@ class SpanDrivenEvaluatorInputsOpTest(
         ],
     }
     self.assertArtifactMapsEqual(actual, expected)
-
-

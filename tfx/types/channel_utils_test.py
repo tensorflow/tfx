@@ -155,5 +155,3 @@ class ChannelUtilsTest(absltest.TestCase):
       channel_utils.unwrap_simple_channel_placeholder(
           str1.future()[0].value + ph.execution_invocation().pipeline_run_id
       )
-
-

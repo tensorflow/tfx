@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.kubeflow.v2.e2e_tests.artifact_value_placeholder_integration."""
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import v1 as tfx
 from tfx.dsl.component.experimental import placeholders
 from tfx.orchestration import test_utils
@@ -93,5 +92,3 @@ class ArtifactValuePlaceholderIntegrationTest(
     )
 
     self._run_pipeline(pipeline, use_pipeline_spec_2_1=use_pipeline_spec_2_1)
-
-

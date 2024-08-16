@@ -51,5 +51,3 @@ class LatestCreateTimeOpTest(tf.test.TestCase):
 
     with self.assertRaisesRegex(ValueError, 'n must be > 0'):
       self._latest_create_time([a1], n=-1)
-
-

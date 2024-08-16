@@ -217,5 +217,3 @@ class LatestPipelineRunOutputsTest(
         result_ids = [a.mlmd_artifact.id for a in result[key]]
         expected_ids = [a.id for a in expected_result[key]]
         self.assertAllEqual(result_ids, expected_ids)
-
-

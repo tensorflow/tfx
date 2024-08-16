@@ -142,5 +142,3 @@ class TopsortTest(tf.test.TestCase):
         get_parent_nodes=lambda n: [],
         get_child_nodes=lambda n: [])
     self.assertEqual([], layers)
-
-

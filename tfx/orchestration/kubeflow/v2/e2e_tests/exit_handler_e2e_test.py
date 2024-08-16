@@ -17,7 +17,6 @@ import os
 
 from absl.testing import parameterized
 from kfp.pipeline_spec import pipeline_spec_pb2
-import tensorflow as tf
 from tfx import v1 as tfx
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils
@@ -100,5 +99,3 @@ class ExitHandlerE2ETest(
                                     actual_final_status,
                                     ignored_fields=[
                                         'pipeline_job_resource_name'])
-
-

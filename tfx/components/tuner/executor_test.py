@@ -191,5 +191,3 @@ class ExecutorTest(tf.test.TestCase):
         exec_properties=self._exec_properties)
 
     self._verify_output()
-
-

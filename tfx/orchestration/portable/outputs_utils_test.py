@@ -16,7 +16,6 @@ import os
 from unittest import mock
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration.experimental.core import constants
@@ -577,5 +576,3 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         artifacts['checkpoint_model'][0].state,
         tfx_artifact.ArtifactState.REFERENCE,
     )
-
-

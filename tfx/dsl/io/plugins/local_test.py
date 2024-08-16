@@ -58,5 +58,3 @@ class LocalTest(tf.test.TestCase):
     # No exception raised.
     self.assertEqual(
         list(LocalFilesystem.walk(os.path.join(temp_dir, 'foo'))), [])
-
-

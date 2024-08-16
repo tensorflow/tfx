@@ -316,5 +316,3 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
           result,
           {'y': [[y6], [y5], [y3, y4], [y1]], 'z': [[z4], [], [z2], [z1]]},
       )
-
-

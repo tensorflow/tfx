@@ -1721,5 +1721,3 @@ class PartialRunTest(absltest.TestCase):
         pipeline_pb_run_2, from_nodes=[add_num_1_v2.id])
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
     self.assertResultEqual(pipeline_pb_run_2, [(result_1_v2.id, 6)])
-
-

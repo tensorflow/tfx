@@ -265,5 +265,3 @@ class TFLiteRewriterTest(tf.test.TestCase):
         representative_dataset=None,
         signature_key=None,
         output_arrays=['head'])
-
-

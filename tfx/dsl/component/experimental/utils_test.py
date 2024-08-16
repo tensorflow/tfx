@@ -295,5 +295,3 @@ class UtilsTest(tf.test.TestCase):
     self.assertIsInstance(actual_component_class, type(base_component_class))
     self.assertEqual(actual_component_class.__module__, func.__module__)
     self.assertEqual(actual_component_class.test_call, func)  # pytype: disable=attribute-error
-
-

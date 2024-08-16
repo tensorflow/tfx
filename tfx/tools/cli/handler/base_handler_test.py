@@ -150,5 +150,3 @@ class BaseHandlerTest(tf.test.TestCase):
       """),
         handler._format_table(('abc', 'd', False),
                               [[1, '234', None], ['xxx', '', []]]))
-
-

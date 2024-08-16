@@ -134,5 +134,3 @@ class DockerComponentLauncherTest(tf.test.TestCase):
         component_config=component_config)
 
     return {'launcher': launcher, 'input_artifact': input_artifact}
-
-

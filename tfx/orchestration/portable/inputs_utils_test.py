@@ -15,7 +15,6 @@
 import collections
 import os
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import metadata
@@ -447,5 +446,3 @@ class InputsUtilsTest(_TestMixin):
         """,
         exec_params_resolved['train_args'],
     )
-
-

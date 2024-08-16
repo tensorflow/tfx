@@ -57,5 +57,3 @@ class UtilsTest(tf.test.TestCase):
 
     read_binary_config = utils.load_config_from_artifact(config_artifact)
     self.assertProtoEquals(read_binary_config, expected_config)
-
-

@@ -34,5 +34,3 @@ class AirflowDagRunnerPatcherTest(tf.test.TestCase):
           tfx_pipeline.Pipeline(_PIPELINE_NAME, ''))
       mock_run.assert_called_once()
       self.assertEqual(context[patcher.PIPELINE_NAME], _PIPELINE_NAME)
-
-

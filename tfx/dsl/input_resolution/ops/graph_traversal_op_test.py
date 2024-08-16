@@ -15,7 +15,6 @@
 
 from typing import Sequence
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
@@ -336,5 +335,3 @@ class GraphTraversalOpTest(
             'TransformGraph': [self.transform_graph],
         },
     )
-
-

@@ -65,5 +65,3 @@ class SkipIfLessThanNSpansOpTest(tf.test.TestCase):
 
     result = self._skip_if_lt_n_spans(self.artifacts, n=-1)
     self.assertEqual(result, self.artifacts)
-
-

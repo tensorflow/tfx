@@ -114,5 +114,3 @@ class AnnotationsTest(tf.test.TestCase):
     _ = annotations.Parameter[str]
     _ = annotations.Parameter[bool]
     _ = annotations.Parameter[annotations_test_proto_pb2.TestMessage]
-
-

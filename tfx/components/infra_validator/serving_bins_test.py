@@ -48,5 +48,3 @@ class ServingBinsTest(tf.test.TestCase):
     self.assertLen(result, 1)
     self.assertIsInstance(result[0], serving_bins.TensorFlowServing)
     self.assertEqual(result[0].image, 'tensorflow/serving:latest')
-
-

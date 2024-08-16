@@ -99,5 +99,3 @@ class ComponentTest(tf.test.TestCase):
           model_blessing=self._model_blessing,
           # infra_blessing=self._infra_blessing,  # No infra_blessing.
           push_destination=self._push_destination)
-
-

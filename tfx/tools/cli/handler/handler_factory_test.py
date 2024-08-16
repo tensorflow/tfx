@@ -112,5 +112,3 @@ class HandlerFactoryTest(tf.test.TestCase):
     self.assertEqual(
         str(cm.exception),
         'Multiple orchestrators found. Choose one using --engine flag.')
-
-

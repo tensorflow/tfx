@@ -196,5 +196,3 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     self.assertEqual(
         _executed_components,
         ['_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c'])
-
-

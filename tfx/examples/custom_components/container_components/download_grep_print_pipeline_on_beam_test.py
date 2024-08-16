@@ -65,5 +65,3 @@ class PipelineTest(tf.test.TestCase):
   def test_create_pipeline(self):
     pipeline = create_pipeline()
     self.assertIsNotNone(pipeline)
-
-

@@ -157,5 +157,3 @@ class AiPlatformTrainingComponentTest(tf.test.TestCase):
           name='my_training_step',
           project_id='my-project',
           training_input=training_input)
-
-

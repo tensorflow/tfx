@@ -60,5 +60,3 @@ class TunerTest(tf.test.TestCase):
         module_file='/path/to/module/file',
     )
     self._verify_output(tuner)
-
-

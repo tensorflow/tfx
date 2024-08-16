@@ -202,5 +202,3 @@ class StandardArtifactsTest(tf.test.TestCase):
       self.assertEqual(examples.path(split='train'), '/test/Split-train')
       with self.assertRaises(ValueError):
         examples.path(split='non-existing')
-
-

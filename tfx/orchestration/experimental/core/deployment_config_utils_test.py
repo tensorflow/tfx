@@ -78,5 +78,3 @@ class DeploymentConfigUtilsTest(tf.test.TestCase):
             pipeline_pb2.IntermediateDeploymentConfig(), _NODE_ID
         )
     )
-
-

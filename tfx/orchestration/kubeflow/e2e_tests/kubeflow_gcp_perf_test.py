@@ -19,7 +19,6 @@ import subprocess
 
 from absl import logging
 import kfp
-import tensorflow as tf
 
 from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_pipeline_kubeflow
@@ -265,5 +264,3 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
         worker_count=20,
         parameter_server_count=3,
     )
-
-

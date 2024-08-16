@@ -49,4 +49,3 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(
         module_file,
         trainer.spec.exec_properties[standard_component_specs.MODULE_FILE_KEY])
-

@@ -98,5 +98,3 @@ class RetryTest(tf.test.TestCase):
 
     self.assertIsNone(fail())
     self.assertEqual(mock_fn.call_count, 1 + 2)
-
-

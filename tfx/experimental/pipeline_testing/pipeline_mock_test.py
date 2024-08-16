@@ -93,5 +93,3 @@ class PipelineMockTest(tf.test.TestCase):
         }"""
     pipeline_mock.replace_executor_with_stub(pipeline, '/mock/a', [])
     self.assertProtoEquals(expected, pipeline)
-
-

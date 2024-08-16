@@ -141,5 +141,3 @@ class TaxiPipelineNativeKerasEndToEndTest(
       # Artifact count is unchanged.
       self.assertLen(m.store.get_artifacts(), artifact_count)
       self.assertLen(m.store.get_executions(), expected_execution_count * 3)
-
-

@@ -16,7 +16,6 @@ import copy
 from unittest import mock
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import version
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import task as task_lib
@@ -978,5 +977,3 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
               'last_update_time_since_epoch',
           ],
       )
-
-

@@ -93,5 +93,3 @@ class ExecutorOnParquetTest(executor_test.ExecutorTest):
     for filepath in artifact2_files:
       directory, filename = os.path.split(filepath)
       io_utils.copy_file(filepath, os.path.join(directory, 'dup_' + filename))
-
-

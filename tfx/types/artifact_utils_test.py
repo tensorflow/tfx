@@ -214,4 +214,3 @@ class ArtifactUtilsTest(tf.test.TestCase):
     mock_fileio.exists.side_effect = lambda path: False
     with self.assertRaises(RuntimeError):
       artifact_utils.verify_artifacts(artifact_instance)
-

@@ -41,5 +41,3 @@ class NotebookUtilsTest(tf.test.TestCase):
       self.foo_called = True
     notebook_utils.requires_ipython(foo)()
     self.assertFalse(self.foo_called)
-
-

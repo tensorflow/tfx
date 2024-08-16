@@ -29,5 +29,3 @@ class ComponentTest(tf.test.TestCase):
         model=channel_utils.as_channel([model]))
     self.assertEqual(standard_artifacts.ModelBlessing.TYPE_NAME,
                      model_validator.outputs['blessing'].type_name)
-
-

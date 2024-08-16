@@ -112,5 +112,3 @@ class ImdbPipelineNativeKerasEndToEndTest(tf.test.TestCase):
       self.assertEqual(artifact_count, len(m.store.get_artifacts()))
       self.assertEqual(expected_execution_count * 3,
                        len(m.store.get_executions()))
-
-

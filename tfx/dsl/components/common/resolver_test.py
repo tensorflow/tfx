@@ -189,5 +189,3 @@ class ResolverDriverTest(tf.test.TestCase):
                   latest_artifact_strategy.LatestArtifactStrategy,
               resolver.RESOLVER_CONFIG: {}
           })
-
-

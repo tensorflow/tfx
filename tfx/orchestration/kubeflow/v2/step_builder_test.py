@@ -720,5 +720,3 @@ class StepBuilderTest(tf.test.TestCase, parameterized.TestCase):
         ),
         deployment_config,
     )
-
-

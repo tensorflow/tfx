@@ -277,5 +277,3 @@ class ComponentTest(tf.test.TestCase):
     output_channel = component.outputs["output"]
     self.assertEqual(output_channel.producer_component_id, "foo")
     self.assertEqual(output_channel.output_key, "output")
-
-

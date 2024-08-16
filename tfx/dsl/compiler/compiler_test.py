@@ -286,5 +286,3 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
         ValueError, "Resolver nodes can not be used in ASYNC mode."
     ):
       dsl_compiler.compile(test_pipeline)
-
-

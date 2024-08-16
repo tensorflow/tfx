@@ -90,5 +90,3 @@ class BiqueryBeamDataGenerationTest(tf.test.TestCase):
           p | beam.Create([expected_ga_session])
           | beam.ParDo(bigquery_beam_data_generation.ExampleGeneratingDoFn()))
       assert_that(run_result, equal_to(expected_training_examples))
-
-

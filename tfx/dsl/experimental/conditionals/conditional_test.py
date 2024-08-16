@@ -92,5 +92,3 @@ class ConditionalTest(tf.test.TestCase):
     self.assertCountEqual(
         conditional.get_predicates(p, p_out.dsl_context_registry), [pred]
     )
-
-

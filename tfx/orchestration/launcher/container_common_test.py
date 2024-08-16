@@ -91,5 +91,3 @@ class ContainerUtilsTest(tf.test.TestCase):
                 'serviceAccount': 'sa-1'
             }
         }, pod_dict)
-
-

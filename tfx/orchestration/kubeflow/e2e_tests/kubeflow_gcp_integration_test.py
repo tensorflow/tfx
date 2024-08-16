@@ -18,7 +18,6 @@ import os
 import absl
 from googleapiclient import discovery
 from googleapiclient import errors as googleapiclient_errors
-import tensorflow as tf
 from tfx import v1 as tfx
 from tfx.components.pusher.component import Pusher
 from tfx.components.trainer.component import Trainer
@@ -480,5 +479,3 @@ def _delete_bigquery_dataset(dataset_name, project_id):
       pass
     else:
       raise
-
-

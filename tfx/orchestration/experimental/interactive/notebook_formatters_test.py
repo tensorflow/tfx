@@ -52,4 +52,3 @@ class NotebookFormattersTest(tf.test.TestCase):
         ValueError,
         'Expected object of type .*Artifact.* but got .*object object'):
       formatter.render(object())
-

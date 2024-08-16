@@ -67,5 +67,3 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):
     logging.info('Updated pipeline to use user provided schema.')
     self._update_pipeline()
     self._run_pipeline()
-
-

@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.portable.mlmd.artifact_lib."""
 from typing import Optional, Sequence
 
-import tensorflow as tf
 from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import artifact_lib
@@ -137,5 +136,3 @@ class ArtifactLibTest(test_case_utils.TfxTest):
       artifact_lib.update_artifacts(self._mlmd_handle, {
           'key': [artifact1, artifact2],
       })
-
-

@@ -16,7 +16,6 @@
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_pipeline_kubeflow
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
@@ -131,5 +130,3 @@ class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
     self._compile_and_run_pipeline(
         pipeline=kubeflow_pipeline, parameters=parameters)
     self.assertTrue(fileio.exists(self._serving_model_dir))
-
-

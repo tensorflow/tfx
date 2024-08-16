@@ -92,5 +92,3 @@ class ExecutorTest(tf.test.TestCase):
     schema_gen_executor = executor.Executor()
     with self.assertRaises(ValueError):
       schema_gen_executor.Do(input_dict, output_dict, exec_properties)
-
-

@@ -161,5 +161,3 @@ class NodeContextsCompilerTest(tf.test.TestCase):
             _NODE_ID,
         ),
     )
-
-

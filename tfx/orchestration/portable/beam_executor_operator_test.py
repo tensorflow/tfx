@@ -16,7 +16,6 @@
 import os
 from typing import Any, Dict, List
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_beam_executor
 from tfx.orchestration.portable import beam_executor_operator
@@ -86,5 +85,3 @@ class BeamExecutorOperatorTest(test_case_utils.TfxTest):
               }
             }
           }""", executor_output)
-
-

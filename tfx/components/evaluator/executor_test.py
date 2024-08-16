@@ -357,5 +357,3 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     else:
       self.assertTrue(
           fileio.exists(os.path.join(blessing_output.uri, 'NOT_BLESSED')))
-
-

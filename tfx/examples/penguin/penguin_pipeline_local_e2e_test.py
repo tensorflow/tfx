@@ -522,5 +522,3 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     # Artifact count is unchanged.
     self.assertLen(store.get_artifacts(), artifact_count)
     self.assertLen(store.get_executions(), expected_execution_count * 3)
-
-

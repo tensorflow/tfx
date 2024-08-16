@@ -296,4 +296,3 @@ class ExecutorTest(tf.test.TestCase):
     self.assertEqual(
         self._model_push.get_string_custom_property('pushed_destination'),
         endpoint_uri)
-

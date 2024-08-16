@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.strategies.conditional_strategy."""
 
-import tensorflow as tf
 from tfx.dsl.input_resolution.strategies import conditional_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -138,4 +137,3 @@ class ConditionalStrategyTest(test_case_utils.TfxTest):
     input_dict = {'channel_1_key': [artifact_1], 'channel_2_key': [artifact_2]}
     with self.assertRaises(exceptions.SkipSignal):
       strategy.resolve_artifacts(self._store, input_dict)
-

@@ -74,5 +74,3 @@ class CliCommonEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Missing option', result.output)
     self.assertIn('--run_id', result.output)
-
-

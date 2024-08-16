@@ -196,5 +196,3 @@ class ExecutorTest(tf.test.TestCase):
     self.assertFalse(
         fileio.exists(
             os.path.join(self._output_examples_dir, 'Split-unlabelled2')))
-
-

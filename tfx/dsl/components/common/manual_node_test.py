@@ -26,4 +26,3 @@ class ManualNodeTest(tf.test.TestCase):
         })
     self.assertEmpty(node.inputs)
     self.assertEmpty(node.outputs)
-

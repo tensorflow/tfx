@@ -189,5 +189,3 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
                                       key, str(idx))
           verifier_map.get(key, self._verify_file_path)(artifact.uri,
                                                         recorded_uri)
-
-

@@ -60,5 +60,3 @@ class NodeExecutionOptionsUtilsTest(absltest.TestCase):
             ),
         ),
     )
-
-

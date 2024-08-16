@@ -21,7 +21,6 @@ from typing import List, Optional
 from unittest import mock
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
@@ -1679,4 +1678,3 @@ class NodeStatesProxyTest(test_utils.TfxTest):
           ),
           json_utils.dumps(node_states),
       )
-

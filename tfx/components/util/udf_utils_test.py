@@ -170,5 +170,3 @@ class UdfUtilsTest(tf.test.TestCase):
     # longer be imported.
     with self.assertRaises(ModuleNotFoundError):
       import my_user_module  # pylint: disable=g-import-not-at-top
-
-

@@ -17,7 +17,6 @@ import json
 import os
 from unittest import mock
 
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration.kubeflow import container_entrypoint
@@ -239,5 +238,3 @@ class MLMDConfigTest(test_case_utils.TfxTest):
     self.assertEqual(
         kwargs['exec_properties'][
             container_entrypoint._KFP_POD_NAME_PROPERTY_KEY], 'test_pod_name')
-
-

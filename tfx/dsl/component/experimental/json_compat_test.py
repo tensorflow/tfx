@@ -174,5 +174,3 @@ class JsonCompatTest(tf.test.TestCase):
             'a': True,
             'b': 2.
         }, Dict[str, Union[int, float, str]]))
-
-

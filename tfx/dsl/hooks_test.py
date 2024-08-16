@@ -78,5 +78,3 @@ class HooksTest(tf.test.TestCase, parameterized.TestCase):
             execution_hook_pb2.PreExecutionOutput(),
         ),
     )
-
-

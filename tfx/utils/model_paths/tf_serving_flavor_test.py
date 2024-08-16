@@ -76,4 +76,3 @@ class TFServingFlavorTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       tfs_flavor.parse_model_path('/foo/bar/other-model/123',
                                   expected_model_name='my-model')
-

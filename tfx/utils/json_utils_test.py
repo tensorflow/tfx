@@ -123,5 +123,3 @@ class JsonUtilsTest(tf.test.TestCase):
 
     actual_obj = json_utils.loads(json_text)
     self.assertEqual(_DefaultJsonableObject, actual_obj)
-
-

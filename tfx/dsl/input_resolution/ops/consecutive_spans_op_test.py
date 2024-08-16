@@ -313,5 +313,3 @@ class ConsecutiveSpansOpTest(tf.test.TestCase):
         keep_all_versions=True,
     )
     self.assertEqual(actual, [])
-
-

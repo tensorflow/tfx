@@ -2164,5 +2164,3 @@ class EncodeValueLikeTest(tf.test.TestCase):
   def testFailsOnInvalidInput(self):
     with self.assertRaises(ValueError):
       placeholder_base.encode_value_like(self)
-
-

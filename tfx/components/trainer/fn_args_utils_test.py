@@ -82,5 +82,3 @@ class FnArgsUtilsTest(tf.test.TestCase):
                      r'Format-(Servo|Serving)/export/chicago-taxi/\d+'))
     self.assertEqual(fn_args.transform_graph_path, transform_output.uri)
     self.assertIsInstance(fn_args.data_accessor, fn_args_utils.DataAccessor)
-
-

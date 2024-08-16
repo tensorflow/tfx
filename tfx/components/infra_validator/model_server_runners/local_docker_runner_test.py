@@ -223,5 +223,3 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     # Act.
     with self.assertRaises(error_types.JobAborted):
       runner.WaitUntilRunning(deadline=10)
-
-

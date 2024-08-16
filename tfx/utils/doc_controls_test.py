@@ -32,5 +32,3 @@ class DocControlsTest(tf.test.TestCase):
     self.assertEqual(1, len(tfx_doc_controls.EXTRA_DOCS))
     self.assertEqual('test value',
                      tfx_doc_controls.EXTRA_DOCS.get(id(documented_test_key)))
-
-

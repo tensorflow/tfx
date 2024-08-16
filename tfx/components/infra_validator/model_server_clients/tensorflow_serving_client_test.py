@@ -167,5 +167,3 @@ class TensorflowServingClientTest(tf.test.TestCase):
     # Call.
     with self.assertRaises(error_types.ValidationFailed):
       client.SendRequests([request])
-
-
