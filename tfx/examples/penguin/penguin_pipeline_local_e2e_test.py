@@ -32,14 +32,11 @@ from ml_metadata.proto import metadata_store_pb2
 import pytest
 
 
-def setup_module():
-  tf.compat.v1.enable_v2_behavior()
-
-
 _SPAN_PROPERTY_NAME = 'span'
 
 
 @pytest.mark.e2e
+@pytest.mark.usefixtures("v2_behavior")
 class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
                                        parameterized.TestCase):
 

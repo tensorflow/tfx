@@ -30,9 +30,6 @@ from ml_metadata.proto import metadata_store_pb2
 import pytest
 
 
-def setup_module():
-  tf.compat.v1.enable_v2_behavior()
-
 
 _OUTPUT_EVENT_TYPES = [
     metadata_store_pb2.Event.OUTPUT,
@@ -41,6 +38,7 @@ _OUTPUT_EVENT_TYPES = [
 
 
 @pytest.mark.e2e
+@pytest.mark.usefixtures("v2_behavior")
 class PenguinPipelineLocalInfravalEndToEndTest(
     tf.test.TestCase, parameterized.TestCase):
 

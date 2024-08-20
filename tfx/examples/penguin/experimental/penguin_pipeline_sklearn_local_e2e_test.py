@@ -23,11 +23,8 @@ from tfx.orchestration import metadata
 import pytest
 
 
-def setup_module():
-  tf.compat.v1.enable_v2_behavior()
-
-
 @pytest.mark.e2e
+@pytest.mark.usefixtures("v2_behavior")
 class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
