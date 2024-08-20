@@ -29,7 +29,7 @@ from tfx.tools.cli.handler import local_handler
 class _MockClientClass:
 
   def __init__(self, host, client_id, namespace):
-    config = {'host': host, 'client_id': client_id, 'namespace': namespace}  # pylint: disable=invalid-name, unused-variable
+    config = {'host': host, 'client_id': client_id, 'namespace': namespace}  # noqa: F841
     self._output_dir = os.path.join(tempfile.gettempdir(), 'output_dir')
 
 

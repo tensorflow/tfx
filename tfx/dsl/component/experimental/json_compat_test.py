@@ -35,7 +35,8 @@ class JsonCompatTest(tf.test.TestCase):
         dict, Dict, Union,
         # Invalid Dict, Union or List parameters.
         Dict[str, Dict], Dict[str, bytes], Dict[int, float],
-        Union[Dict[str, int], float], List[bytes], List['Y'],
+        Union[Dict[str, int], float], List[bytes],
+        List['Y'], # noqa: F821
         # Primitive types.
         int, str, float, dict, bytes, bool, type(None), Any):
       self.assertFalse(is_json_compatible(typehint))

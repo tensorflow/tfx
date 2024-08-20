@@ -335,7 +335,8 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
       garbage_collection.run_garbage_collection_for_node(
           self._metadata, example_gen_node_uid, self._example_gen
       )
-    except:  # pylint: disable=bare-except
+    except Exception as e:
+      logging.exception("An unexpected error occured", exc_info=e)
       self.fail('Error was raised')
     logs = logging_exception.call_args_list
     self.assertLen(logs, 1)
@@ -357,7 +358,8 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
       garbage_collection.run_garbage_collection_for_node(
           self._metadata, example_gen_node_uid, self._example_gen
       )
-    except:  # pylint: disable=bare-except
+    except Exception as e:
+      logging.exception("An unexpected error occured", exc_info=e)
       self.fail('Error was raised')
     logs = logging_exception.call_args_list
     self.assertLen(logs, 1)

@@ -181,7 +181,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       # post-export metric is registered.  This may raise an ImportError if the
       # currently-installed version of TFMA does not support fairness
       # indicators.
-      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-import
+      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # noqa: F401
       exec_properties[
           standard_component_specs
           .FAIRNESS_INDICATOR_THRESHOLDS_KEY] = '[0.1, 0.3, 0.5, 0.7, 0.9]'

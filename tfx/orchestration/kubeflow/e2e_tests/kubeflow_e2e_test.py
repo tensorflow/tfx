@@ -110,7 +110,8 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
               poll_grpc_port_command,
               stdout=subprocess.PIPE)
 
-      except:  # pylint: disable=bare-except
+      except Exception as e:
+        logging.exception("An unexpected error occurred", exc_info = e)
         # Kill the process in case unexpected error occurred.
         proc.kill()
 
