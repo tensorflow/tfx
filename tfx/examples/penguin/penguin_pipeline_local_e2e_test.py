@@ -36,7 +36,6 @@ _SPAN_PROPERTY_NAME = 'span'
 
 
 @pytest.mark.e2e
-@pytest.mark.usefixtures("v2_behavior")
 class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
                                        parameterized.TestCase):
 

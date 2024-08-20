@@ -14,17 +14,9 @@
 """Settings for pytest."""
 
 import sys
-import pytest
-from tensorflow.compat.v1 import disable_v2_behavior, enable_v2_behavior
 
 collect_ignore = []
 if sys.version_info.major == 2:
   collect_ignore.append(
       'tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow_test.py')
   collect_ignore.append('tfx/orchestration/kubeflow')
-
-@pytest.fixture(scope="class")
-def v2_behavior():
-    enable_v2_behavior()
-    yield
-    disable_v2_behavior()

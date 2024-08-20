@@ -38,7 +38,6 @@ _OUTPUT_EVENT_TYPES = [
 
 
 @pytest.mark.e2e
-@pytest.mark.usefixtures("v2_behavior")
 class PenguinPipelineLocalInfravalEndToEndTest(
     tf.test.TestCase, parameterized.TestCase):
 

@@ -30,10 +30,8 @@ from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
 
-import pytest
 
 
-@pytest.mark.usefixtures("v2_behavior")
 class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(

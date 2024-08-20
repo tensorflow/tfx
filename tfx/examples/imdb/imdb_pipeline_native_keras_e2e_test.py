@@ -26,7 +26,6 @@ import pytest
 
 
 @pytest.mark.e2e
-@pytest.mark.usefixtures("v2_behavior")
 class ImdbPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
