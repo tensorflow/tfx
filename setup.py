@@ -30,8 +30,6 @@ from setuptools.command import develop
 from distutils.command import build
 # pylint: enable=g-bad-import-order
 
-from tfx import dependencies
-from tfx import version
 from wheel import bdist_wheel
 
 # Prefer to import `package_config` from the setup.py script's directory. The
@@ -40,9 +38,11 @@ from wheel import bdist_wheel
 # package build README at `package_build/README.md`.
 sys.path.insert(0, os.path.dirname(__file__))
 # pylint: disable=g-bad-import-order,g-import-not-at-top
+
+from tfx import dependencies
+from tfx import version
 import package_config
 # pylint: enable=g-bad-import-order,g-import-not-at-top
-
 
 class _BdistWheelCommand(bdist_wheel.bdist_wheel):
   """Overrided bdist_wheel command.
@@ -257,10 +257,9 @@ EXCLUDED_PACKAGES = [
 # that should be generated, the second part is the import path followed by a
 # colon (:) with the Click command group. After installation, the user can
 # invoke the CLI using "tfx <command_group> <sub_command> <flags>"
-TFX_ENTRY_POINTS = """
-    [console_scripts]
-    tfx=tfx.tools.cli.cli_main:cli_group
-"""
+TFX_ENTRY_POINTS = {
+    "console_scripts": ["tfx=tfx.tools.cli.cli_main:cli_group"]
+}
 ML_PIPELINES_SDK_ENTRY_POINTS = None
 
 # This `setup.py` file can be used to build packages in 3 configurations. See
@@ -317,32 +316,9 @@ else:
   raise ValueError('Invalid package config: %r.' % package_config.PACKAGE_NAME)
 
 logging.info('Executing build for package %r.', package_name)
-
 setup(
-    name=package_name,
+    # name=package_name,
     version=version.__version__,
-    author='Google LLC',
-    author_email='tensorflow-extended-dev@googlegroups.com',
-    license='Apache 2.0',
-    classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
-        'Intended Audience :: Education',
-        'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: Apache Software License',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
-        'Programming Language :: Python :: 3 :: Only',
-        'Topic :: Scientific/Engineering',
-        'Topic :: Scientific/Engineering :: Artificial Intelligence',
-        'Topic :: Scientific/Engineering :: Mathematics',
-        'Topic :: Software Development',
-        'Topic :: Software Development :: Libraries',
-        'Topic :: Software Development :: Libraries :: Python Modules',
-    ],
     namespace_packages=[],
     install_requires=install_requires,
     extras_require=extras_require,
