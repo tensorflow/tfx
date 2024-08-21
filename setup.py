@@ -41,8 +41,13 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from tfx import dependencies
 from tfx import version
-import package_config
 # pylint: enable=g-bad-import-order,g-import-not-at-top
+
+import tomli
+
+pyproject_toml = tomli.load(open('pyproject.toml', 'rb'))
+package_name = pyproject_toml['project']['name']
+
 
 class _BdistWheelCommand(bdist_wheel.bdist_wheel):
   """Overrided bdist_wheel command.
@@ -190,7 +195,6 @@ with open('README.md') as fp:
 with open('README.ml-pipelines-sdk.md') as fp:
   _PIPELINES_SDK_LONG_DESCRIPTION = fp.read()
 
-package_name = package_config.PACKAGE_NAME
 tfx_extras_requires = {
     # In order to use 'docker-image' or 'all', system libraries specified
     # under 'tfx/tools/docker/Dockerfile' are required
@@ -265,11 +269,11 @@ ML_PIPELINES_SDK_ENTRY_POINTS = None
 # This `setup.py` file can be used to build packages in 3 configurations. See
 # the discussion in `package_build/README.md` for an overview. The `tfx` and
 # `ml-pipelines-sdk` pip packages can be built for distribution using the
-# selectable `package_config.PACKAGE_NAME` specifier. Additionally, for
+# selectable `package_name` specifier. Additionally, for
 # development convenience, the `tfx-dev` package containing the union of the
 # the `tfx` and `ml-pipelines-sdk` package can be installed as an editable
 # package using `pip install -e .`, but should not be built for distribution.
-if package_config.PACKAGE_NAME == 'tfx-dev':
+if package_name == 'tfx-dev':
   # Monolithic development package with the entirety of `tfx.*` and the full
   # set of dependencies. Functionally equivalent to the union of the "tfx" and
   # "tfx-pipeline-sdk" packages.
@@ -283,7 +287,7 @@ if package_config.PACKAGE_NAME == 'tfx-dev':
   build_wheel_command = _UnsupportedDevBuildWheelCommand  # pylint: disable=invalid-name
   # Include TFX entrypoints.
   entry_points = TFX_ENTRY_POINTS
-elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
+elif package_name == 'ml-pipelines-sdk':
   # Core TFX pipeline authoring SDK, without dependency on component-specific
   # packages like "tensorflow" and "apache-beam".
   install_requires = dependencies.make_pipeline_sdk_required_install_packages()
@@ -296,7 +300,7 @@ elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
   build_wheel_command = bdist_wheel.bdist_wheel  # pylint: disable=invalid-name
   # Include ML Pipelines SDK entrypoints.
   entry_points = ML_PIPELINES_SDK_ENTRY_POINTS
-elif package_config.PACKAGE_NAME == 'tfx':
+elif package_name == 'tfx':
   # Recommended installation package for TFX. This package builds on top of
   # the "ml-pipelines-sdk" pipeline authoring SDK package and adds first-party
   # TFX components and additional functionality.
@@ -313,11 +317,10 @@ elif package_config.PACKAGE_NAME == 'tfx':
   # Include TFX entrypoints.
   entry_points = TFX_ENTRY_POINTS
 else:
-  raise ValueError('Invalid package config: %r.' % package_config.PACKAGE_NAME)
+  raise ValueError('Invalid package config: %r.' % package_name)
 
 logging.info('Executing build for package %r.', package_name)
 setup(
-    # name=package_name,
     version=version.__version__,
     namespace_packages=[],
     install_requires=install_requires,
