@@ -14,7 +14,6 @@
 """Tests for tfx.tools.cli.cmd.helper."""
 
 
-import pytest
 import os
 import sys
 import tempfile

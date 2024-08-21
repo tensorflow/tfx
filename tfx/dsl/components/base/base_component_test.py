@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.components.base.base_component."""
 
 
-import pytest
 import tensorflow as tf
 
 from tfx import types

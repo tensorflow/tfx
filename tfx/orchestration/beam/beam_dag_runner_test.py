@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.beam_dag_runner."""
 
-import pytest
 import os
 from typing import Optional
 

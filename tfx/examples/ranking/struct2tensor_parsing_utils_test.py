@@ -14,7 +14,6 @@
 """Tests for tfx.examples.ranking.struct2tensor_parsing_utils."""
 
 
-import pytest
 import itertools
 import unittest
 
