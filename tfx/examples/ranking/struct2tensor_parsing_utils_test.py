@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.examples.ranking.struct2tensor_parsing_utils."""
 
+
+import pytest
 import itertools
 import unittest
 
@@ -174,6 +176,8 @@ examples {
                  ' struct2tensor is not available.')
 class ELWCDecoderTest(tf.test.TestCase):
 
+  #@pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+#"If this test passes, please remove this mark.", strict=True)
   def testAllDTypes(self):
     context_features = [
         struct2tensor_parsing_utils.Feature('ctx.int', tf.int64),

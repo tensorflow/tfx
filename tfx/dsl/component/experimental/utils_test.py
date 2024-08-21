@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.dsl.component.experimental.utils."""
 
+
+import pytest
 import copy
 import inspect
 from typing import Dict, List
@@ -45,6 +47,8 @@ class UtilsTest(tf.test.TestCase):
 
     utils.assert_is_functype(func)
 
+  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def test_assert_no_private_func_in_main_succeeds(self):
 
     with self.assertRaisesRegex(

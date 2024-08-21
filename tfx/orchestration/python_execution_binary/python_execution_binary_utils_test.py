@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.orchestration.python_execution_binary.python_execution_binary_utils."""
 
+
+import pytest
 from typing import Dict, List, Union
 
 import tensorflow as tf

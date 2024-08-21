@@ -17,6 +17,7 @@ import json
 import os
 from typing import Any, Mapping, Sequence
 from unittest import mock
+import pytest
 
 from absl.testing import parameterized
 from kfp.pipeline_spec import pipeline_spec_pb2

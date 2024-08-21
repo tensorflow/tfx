@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.utils.doc_controls."""
 
+
+import pytest
 import tensorflow as tf
 
 from tfx.utils import doc_controls as tfx_doc_controls
