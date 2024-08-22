@@ -26,7 +26,7 @@ from typing import Sequence
 from absl import logging
 from tfx.types.artifact import Artifact, Property, PropertyType
 from tfx.types import standard_artifact_utils
-from tfx.types.system_artifacts import Dataset, Model, Statistics
+from tfx.types.system_artifacts import Dataset, Model as SystemModel, Statistics
 from tfx.types.value_artifact import ValueArtifact
 from tfx.utils import json_utils
 from tfx.utils import pure_typing_utils
@@ -62,7 +62,7 @@ class _TfxArtifact(Artifact):
             try:
                 # `extensions` is not included in ml_pipelines_sdk and doesn't have any
                 # transitive import.
-                import tfx.extensions as _  # type: ignore  # pylint: disable=g-import-not-at-top
+                import tfx.extensions as _  # type: ignore  # noqa: F401 # pylint: disable=g-import-not-at-top
             except ModuleNotFoundError as err:
                 # The following condition detects exactly whether only the DSL package
                 # is installed, and is bypassed when tests run in Bazel.

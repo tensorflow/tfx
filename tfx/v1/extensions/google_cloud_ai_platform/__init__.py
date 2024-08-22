@@ -34,7 +34,7 @@ from tfx.extensions.google_cloud_ai_platform.trainer.executor import TRAINING_AR
 # UCAIP_REGION_KEY is deprecated, please use VERTEX_REGION_KEY instead
 from tfx.extensions.google_cloud_ai_platform.trainer.executor import UCAIP_REGION_KEY
 from tfx.extensions.google_cloud_ai_platform.tuner.component import Tuner
-from tfx.v1.extensions.google_cloud_ai_platform import experimental
+from tfx.v1.extensions.google_cloud_ai_platform import experimental  # noqa: F401
 
 __all__ = [
     "BulkInferrer",

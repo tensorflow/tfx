@@ -26,11 +26,11 @@ public symbols from `tfx.v1`:
 from tfx.types.artifact import Artifact
 from tfx.types.channel import BaseChannel
 from tfx.types.channel import Channel
-from tfx.types.channel import ExecPropertyTypes
-from tfx.types.channel import OutputChannel
-from tfx.types.channel import Property  # Type alias.
-from tfx.types.component_spec import ComponentSpec
-from tfx.types.value_artifact import ValueArtifact
+from tfx.types.channel import ExecPropertyTypes  # noqa: F401
+from tfx.types.channel import OutputChannel  # noqa: F401
+from tfx.types.channel import Property  # Type alias. # noqa: F401
+from tfx.types.component_spec import ComponentSpec  # noqa: F401
+from tfx.types.value_artifact import ValueArtifact  # noqa: F401
 
 __all__ = [
     "Artifact",
