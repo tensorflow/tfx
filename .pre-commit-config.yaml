@@ -28,7 +28,7 @@ repos:
         exclude: '\.svg$'
       - id: check-json
       - id: check-yaml
-        args: [--allow-multiple-documents]
+        args: [--allow-multiple-documents, --unsafe]
       - id: check-toml
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
