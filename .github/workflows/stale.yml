@@ -22,7 +22,7 @@ name: Mark and close stale PRs/issues
 on:
   schedule:
   - cron: "30 1 * * *"
-  
+
 
 permissions:
   contents: read
@@ -37,12 +37,12 @@ jobs:
     - uses: actions/stale@v7
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-        #Comma separated list of labels that can be assigned to issues to exclude them from being marked as stale 
-        exempt-issue-labels: 'override-stale' 
-        #Comma separated list of labels that can be assigned to PRs to exclude them from being marked as stale 
-        exempt-pr-labels: "override-stale" 
-        #Limit the No. of API calls in one run default value is 30. 
-        operations-per-run: 1000 
+        #Comma separated list of labels that can be assigned to issues to exclude them from being marked as stale
+        exempt-issue-labels: 'override-stale'
+        #Comma separated list of labels that can be assigned to PRs to exclude them from being marked as stale
+        exempt-pr-labels: "override-stale"
+        #Limit the No. of API calls in one run default value is 30.
+        operations-per-run: 1000
         # Prevent to remove stale label when PRs or issues are updated.
         remove-stale-when-updated: true
         # List of labels to remove when issues/PRs unstale.
@@ -50,28 +50,28 @@ jobs:
         stale-pr-message: 'This PR is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days'
         days-before-stale: 30
         days-before-close: 5
-        
-        #comment on PR if stale for more then 30 days. 
+
+        #comment on PR if stale for more then 30 days.
         close-pr-message: This PR was closed due to lack of activity after being marked stale for past 30 days.
-        
+
         # comment on issues if not active for more then 7 days.
         stale-issue-message: 'This issue has been marked stale because it has no recent activity since 7 days. It will be closed if no further activity occurs. Thank you.'
-        
-        #comment on issues if stale for more then 7 days. 
+
+        #comment on issues if stale for more then 7 days.
         close-issue-message: 'This issue was closed due to lack of activity after being marked stale for past 7 days.'
-              
-        # reason for closed the issue default value is not_planned 
+
+        # reason for closed the issue default value is not_planned
         close-issue-reason: completed
-        
+
         # Number of days of inactivity before a stale issue is closed
         days-before-issue-close: 7
-        
+
         # Number of days of inactivity before an issue Request becomes stale
         days-before-issue-stale: 7
-                
+
         #Check for label to stale or close the issue/PR
         any-of-labels: 'stat:awaiting response'
-         
+
         #stale label for PRs
         stale-pr-label: 'stale'
 

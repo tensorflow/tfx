@@ -20,8 +20,6 @@ from tfx.dsl.io import filesystem_registry
 from tfx.dsl.io.filesystem import PathType
 
 # Import modules that may provide filesystem plugins.
-import tfx.dsl.io.plugins.tensorflow_gfile  # pylint: disable=unused-import, g-import-not-at-top
-import tfx.dsl.io.plugins.local  # pylint: disable=unused-import, g-import-not-at-top
 
 
 # Expose `NotFoundError` as `fileio.NotFoundError`.

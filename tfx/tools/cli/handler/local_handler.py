@@ -24,4 +24,3 @@ class LocalHandler(beam_handler.BeamHandler):
 
   def _get_dag_runner_patcher(self) -> dag_runner_patcher.DagRunnerPatcher:
     return local_dag_runner_patcher.LocalDagRunnerPatcher()
-

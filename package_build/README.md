@@ -60,4 +60,3 @@ building and installation of a single `tfx-dev` pip package containing the union
 of the `tfx` and `ml-pipelines-sdk` packages. This workaround may lead to
 package namespace conflicts and is not recommended or supported, and will be
 removed in a future version.
-

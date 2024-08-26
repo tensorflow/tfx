@@ -109,4 +109,3 @@ is analyzed, the output of the `Evaluator` will have exactly the same structure.
 
 However, please note that the Evaluator assumes that the TFLite model is saved
 in a file named `tflite` within trainer_lite.outputs['model'].
-

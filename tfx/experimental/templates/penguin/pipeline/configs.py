@@ -16,7 +16,6 @@
 This file defines environments for a TFX penguin pipeline.
 """
 
-import os  # pylint: disable=unused-import
 
 # TODO(b/149347293): Move more TFX CLI flags into python configuration.
 

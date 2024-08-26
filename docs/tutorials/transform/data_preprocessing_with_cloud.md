@@ -53,12 +53,12 @@ an entire day, use the preconfigured
 ## Before you begin
 
 1. In the Google Cloud console, on the project selector page, select or
-  [create a Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects). 
+  [create a Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects).
 
   Note: If you don't plan to keep the resources that you create in this
       procedure, create a project instead of selecting an existing project.
       After you finish these steps, you can delete the project, removing all
-      resources associated with the project. 
+      resources associated with the project.
 
   [Go to project selector](https://console.cloud.google.com/projectselector2/home/dashboard){: class="button button-primary" target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
 
@@ -1156,7 +1156,7 @@ resources used in this tutorial, delete the project that contains the resources.
    go to the **Manage resources** page.
 
    [Go to Manage resources](https://console.cloud.google.com/iam-admin/projects){: class="button button-primary" target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
-   
+
 1. In the project list, select the project that you want to delete, and then
    click **Delete**.
 1. In the dialog, type the project ID, and then click **Shut down** to delete
