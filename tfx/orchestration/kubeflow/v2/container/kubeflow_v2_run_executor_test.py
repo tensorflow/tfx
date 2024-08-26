@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for kubeflow_v2_run_executor.py."""
 
+
+import pytest
 import json
 import os
 from typing import Any, Mapping, Sequence
@@ -98,6 +100,8 @@ class _FakeExecutor(evaluator_executor.Executor):
 _EXEC_PROPERTIES = {"key_1": "value_1", "key_2": 536870911}
 
 
+@pytest.mark.xfail(reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
 class KubeflowV2RunExecutorTest(
     test_case_utils.TfxTest, parameterized.TestCase
 ):

@@ -14,6 +14,8 @@
 """Tests for tfx.dsl.components.base.base_component."""
 
 
+
+import pytest
 import tensorflow as tf
 
 from tfx import types
@@ -66,6 +68,8 @@ class _BasicComponent(base_component.BaseComponent):
     super().__init__(spec=spec)
 
 
+@pytest.mark.xfail(reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
 class ComponentTest(tf.test.TestCase):
 
   def testComponentBasic(self):

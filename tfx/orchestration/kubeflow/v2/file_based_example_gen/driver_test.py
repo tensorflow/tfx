@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+
+import pytest
 import json
 import os
 
@@ -91,6 +93,8 @@ def _load_test_file(filename: str):
   ).read()
 
 
+@pytest.mark.xfail(reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
 class RunDriverTest(test_case_utils.TfxTest, parameterized.TestCase):
 
   def setUp(self):

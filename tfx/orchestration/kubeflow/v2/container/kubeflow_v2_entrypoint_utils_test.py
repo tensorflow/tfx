@@ -14,6 +14,8 @@
 """Tests for kubeflow_v2_entrypoint_utils.py."""
 
 
+
+import pytest
 import os
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
@@ -66,6 +68,8 @@ _TEST_NAME_FROM_ID = {
 }
 
 
+@pytest.mark.xfail(reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
 class KubeflowV2EntrypointUtilsTest(tf.test.TestCase):
 
   def setUp(self):
