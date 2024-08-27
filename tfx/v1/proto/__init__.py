@@ -13,48 +13,45 @@
 # limitations under the License.
 """TFX proto module."""
 
+from tfx.proto import distribution_validator_pb2, example_diff_pb2
 from tfx.proto.bulk_inferrer_pb2 import (
-    ModelSpec,
-    DataSpec,
-    OutputExampleSpec,
-    OutputColumnsSpec,
     ClassifyOutput,
-    RegressOutput,
+    DataSpec,
+    ModelSpec,
+    OutputColumnsSpec,
+    OutputExampleSpec,
     PredictOutput,
     PredictOutputCol,
+    RegressOutput,
 )
-from tfx.proto import distribution_validator_pb2
 from tfx.proto.evaluator_pb2 import FeatureSlicingSpec, SingleSlicingSpec
-from tfx.proto import example_diff_pb2
 from tfx.proto.example_gen_pb2 import (
     CustomConfig,
     Input,
     Output,
-    SplitConfig,
     PayloadFormat,
+    SplitConfig,
 )
 from tfx.proto.infra_validator_pb2 import (
-    ServingSpec,
-    ValidationSpec,
-    TensorFlowServing,
-    LocalDockerConfig,
-    KubernetesConfig,
-    PodOverrides,
     EnvVar,
     EnvVarSource,
-    SecretKeySelector,
+    KubernetesConfig,
+    LocalDockerConfig,
+    PodOverrides,
     RequestSpec,
+    SecretKeySelector,
+    ServingSpec,
+    TensorFlowServing,
     TensorFlowServingRequestSpec,
+    ValidationSpec,
 )
 from tfx.proto.pusher_pb2 import PushDestination, Versioning
 from tfx.proto.pusher_pb2.PushDestination import Filesystem
 from tfx.proto.range_config_pb2 import RangeConfig, RollingRange, StaticRange
-from tfx.proto.trainer_pb2 import TrainArgs, EvalArgs
+from tfx.proto.trainer_pb2 import EvalArgs, TrainArgs
 from tfx.proto.transform_pb2 import SplitsConfig
 from tfx.proto.tuner_pb2 import TuneArgs
-
 from tfx.v1.proto import orchestration
-
 
 ModelSpec.__doc__ = """
 Specifies the signature name to run the inference in `components.BulkInferrer`.
@@ -75,11 +72,6 @@ specified in your bulk inferrer.
 """
 
 ClassifyOutput.__doc__ = """
-One type of output_type under `proto.OutputColumnsSpec`.
-"""
-
-ClassifyOutput
-"""
 One type of output_type under `proto.OutputColumnsSpec`.
 """
 
@@ -244,15 +236,7 @@ PairedExampleSkew.__doc__ = """
 Configurations related to Example Diff on feature pairing level.
 """
 
-class DummyClass:
-    #"""dummy docstring"""
-    pass
-
-DummyClass
-"""dummy docstring"""
-
 __all__ = [
-    "DummyClass",
     "orchestration",
     "ClassifyOutput",
     "CustomConfig",

@@ -24,13 +24,13 @@ import math
 from typing import Sequence
 
 from absl import logging
-from tfx.types.artifact import Artifact, Property, PropertyType
-from tfx.types import standard_artifact_utils
-from tfx.types.system_artifacts import Dataset, Model as SystemModel, Statistics
-from tfx.types.value_artifact import ValueArtifact
-from tfx.utils import json_utils
-from tfx.utils import pure_typing_utils
 
+from tfx.types import standard_artifact_utils
+from tfx.types.artifact import Artifact, Property, PropertyType
+from tfx.types.system_artifacts import Dataset, Statistics
+from tfx.types.system_artifacts import Model as SystemModel
+from tfx.types.value_artifact import ValueArtifact
+from tfx.utils import json_utils, pure_typing_utils
 
 SPAN_PROPERTY = Property(type=PropertyType.INT)
 VERSION_PROPERTY = Property(type=PropertyType.INT)
@@ -56,7 +56,7 @@ class _TfxArtifact(Artifact):
         # Do not allow usage of TFX-specific artifact if only the core pipeline
         # SDK package is installed.
         try:
-            import setuptools as _  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
+            import setuptools # pytype: disable=import-error  # noqa: F401
 
             # Test import only when setuptools is available.
             try:
@@ -106,7 +106,6 @@ class Examples(_TfxArtifact):
       - `payload_format`: int (enum) value of the data payload format.
         See tfx/proto/example_gen.proto:PayloadFormat for available formats.
     """
-
     TYPE_NAME = "Examples"
     TYPE_ANNOTATION = Dataset
     PROPERTIES = {
@@ -149,10 +148,7 @@ class Examples(_TfxArtifact):
 
 
 class ExampleAnomalies(_TfxArtifact):
-    """
-    TFX first-party component artifact definition.
-    """
-
+    """TFX first-party component artifact definition."""
     TYPE_NAME = "ExampleAnomalies"
     PROPERTIES = {
         "span": SPAN_PROPERTY,
@@ -170,7 +166,8 @@ class ExampleAnomalies(_TfxArtifact):
         self.split_names = standard_artifact_utils.encode_split_names(list(splits))
 
 
-class ExampleValidationMetrics(_TfxArtifact):  # pylint: disable=missing-class-docstring
+class ExampleValidationMetrics(_TfxArtifact):
+    """TFX first-party component artifact definition."""
     TYPE_NAME = "ExampleValidationMetrics"
     PROPERTIES = {
         "span": SPAN_PROPERTY,
@@ -189,10 +186,7 @@ class ExampleValidationMetrics(_TfxArtifact):  # pylint: disable=missing-class-d
 
 
 class ExampleStatistics(_TfxArtifact):
-    """
-    TFX first-party component artifact definition.
-    """
-
+    """TFX first-party component artifact definition."""
     TYPE_NAME = "ExampleStatistics"
     TYPE_ANNOTATION = Statistics
     PROPERTIES = {
@@ -212,23 +206,23 @@ class ExampleStatistics(_TfxArtifact):
 
 
 class ExamplesDiff(_TfxArtifact):
+    """TFX first-party component artifact definition."""
     TYPE_NAME = "ExamplesDiff"
 
 
 # TODO(b/158334890): deprecate ExternalArtifact.
 class ExternalArtifact(_TfxArtifact):
+    """TFX first-party component artifact definition."""
     TYPE_NAME = "ExternalArtifact"
 
 
 class InferenceResult(_TfxArtifact):
     """TFX first-party component artifact definition."""
-
     TYPE_NAME = "InferenceResult"
 
 
 class InfraBlessing(_TfxArtifact):
     """TFX first-party component artifact definition."""
-
     TYPE_NAME = "InfraBlessing"
 
 
@@ -251,14 +245,12 @@ class Model(_TfxArtifact):
 
     * Commonly used custom properties of the Model artifact:
     """
-
     TYPE_NAME = "Model"
     TYPE_ANNOTATION = SystemModel
 
 
 class ModelRun(_TfxArtifact):
     """TFX first-party component artifact definition."""
-
     TYPE_NAME = "ModelRun"
 
 
@@ -287,19 +279,16 @@ class ModelBlessing(_TfxArtifact):
       - `blessed`: int value that represents whether the evaluator has blessed its
       model or not.
     """
-
     TYPE_NAME = "ModelBlessing"
 
 
 class ModelEvaluation(_TfxArtifact):
     """TFX first-party component artifact definition."""
-
     TYPE_NAME = "ModelEvaluation"
 
 
 class PushedModel(_TfxArtifact):
     """TFX first-party component artifact definition."""
-
     TYPE_NAME = "PushedModel"
     TYPE_ANNOTATION = SystemModel
 
@@ -320,19 +309,16 @@ class Schema(_TfxArtifact):
           [tensorflow_metadata.proto.v0.schema.Schema](https://github.com/tensorflow/metadata/blob/master/tensorflow_metadata/proto/v0/schema.proto)
           proto message.
     """
-
     TYPE_NAME = "Schema"
 
 
 class TransformCache(_TfxArtifact):
     """TFX first-party component artifact definition."""
-
     TYPE_NAME = "TransformCache"
 
 
 class JsonValue(ValueArtifact):
     """Artifacts representing a Jsonable value."""
-
     TYPE_NAME = "JsonValue"
 
     def encode(self, value: json_utils.JsonableType) -> str:
@@ -344,7 +330,6 @@ class JsonValue(ValueArtifact):
 
 class Bytes(ValueArtifact):
     """Artifacts representing raw bytes."""
-
     TYPE_NAME = "Bytes"
 
     def encode(self, value: bytes):
@@ -364,7 +349,6 @@ class String(ValueArtifact):
 
     String value artifacts are encoded using UTF-8.
     """
-
     TYPE_NAME = "String"
 
     # Note, currently we enforce unicode-encoded string.
@@ -384,7 +368,6 @@ class Boolean(ValueArtifact):
 
     Boolean value artifacts are encoded as "1" for True and "0" for False.
     """
-
     TYPE_NAME = "Boolean"
 
     def encode(self, value: bool):
@@ -403,7 +386,6 @@ class Integer(ValueArtifact):
 
     Integer value artifacts are encoded as a decimal string.
     """
-
     TYPE_NAME = "Integer"
 
     def encode(self, value: int) -> bytes:
@@ -424,7 +406,6 @@ class Float(ValueArtifact):
     Nan and Infinity are handled separately. See string constants in the
     class.
     """
-
     TYPE_NAME = "Float"
 
     _POSITIVE_INFINITY = float("Inf")
@@ -478,44 +459,47 @@ class Float(ValueArtifact):
 
 
 class TransformGraph(_TfxArtifact):
-    """
-    TFX first-party component artifact definition.
-    """
-
+    """TFX first-party component artifact definition."""
     TYPE_NAME = "TransformGraph"
 
 
 class HyperParameters(_TfxArtifact):
-    """
-    TFX first-party component artifact definition.
-    """
-
+    """TFX first-party component artifact definition."""
     TYPE_NAME = "HyperParameters"
 
 
 class TunerResults(_TfxArtifact):
+    """TFX first-party component artifact definition."""
     TYPE_NAME = "TunerResults"
 
 
 # WIP and subject to change.
 class DataView(_TfxArtifact):
+    """TFX first-party component artifact definition."""
     TYPE_NAME = "DataView"
 
 
 class Config(_TfxArtifact):
+    """TFX first-party component artifact definition."""
     TYPE_NAME = "Config"
 
 
 __all__ = [
     "Boolean",
     "Bytes",
+    "Config",
+    "DataView",
     "ExampleAnomalies",
     "ExampleStatistics",
+    "ExampleValidationMetrics",
     "Examples",
+    "ExamplesDiff",
+    "ExternalArtifact",
     "Float",
     "HyperParameters",
     "InferenceResult",
     "InfraBlessing",
+    "Integer",
     "Integer",
     "JsonValue",
     "Model",
@@ -527,4 +511,5 @@ __all__ = [
     "String",
     "TransformCache",
     "TransformGraph",
+    "TunerResults",
 ]

@@ -13,17 +13,17 @@
 # limitations under the License.
 """TFX orchestration.experimental module."""
 
-try:  # pylint: disable=g-statement-before-imports
+try:
     from tfx.orchestration.kubeflow import (
         kubeflow_dag_runner,
-    )  # pylint: disable=g-import-not-at-top
+    )
     from tfx.orchestration.kubeflow.decorators import (
         exit_handler,
-    )  # pylint: disable=g-import-not-at-top
+    )
     from tfx.orchestration.kubeflow.decorators import (
         FinalStatusStr,
-    )  # pylint: disable=g-import-not-at-top
-    from tfx.utils import telemetry_utils  # pylint: disable=g-import-not-at-top
+    )
+    from tfx.utils import telemetry_utils
 
     KubeflowDagRunner = kubeflow_dag_runner.KubeflowDagRunner
     KubeflowDagRunnerConfig = kubeflow_dag_runner.KubeflowDagRunnerConfig
@@ -40,7 +40,7 @@ except ImportError:  # Import will fail without kfp package.
 try:
     from tfx.orchestration.kubeflow.v2 import (
         kubeflow_v2_dag_runner,
-    )  # pylint: disable=g-import-not-at-top
+    )
 
     KubeflowV2DagRunner = kubeflow_v2_dag_runner.KubeflowV2DagRunner
     KubeflowV2DagRunnerConfig = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig
@@ -55,7 +55,7 @@ __all__ = [
     "KubeflowDagRunnerConfig",
     "KubeflowV2DagRunner",
     "KubeflowV2DagRunnerConfig",
+    "LABEL_KFP_SDK_ENV",
     "exit_handler",
     "get_default_kubeflow_metadata_config",
-    "LABEL_KFP_SDK_ENV",
 ]

@@ -33,6 +33,7 @@ dependency string once wheel is built.
   branch HEAD.
 - For the release, we use a range of version, which is also used as a default.
 """
+from __future__ import annotations
 
 import os
 
@@ -252,8 +253,14 @@ def make_extra_packages_examples():
     ]
 
 
-def make_extra_packages_docs():
-    # Packages required for building docs as HTML
+def make_extra_packages_docs() -> list[str]:
+    """Get a list of packages required for building docs as HTML.
+
+    Returns
+    -------
+    list[str]
+        List of packages required for building docs
+    """
     return [
         "mkdocs",
         "mkdocstrings[python]",
