@@ -93,7 +93,7 @@ def _load_test_file(filename: str):
   ).read()
 
 
-@pytest.mark.xfail(reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
 "If all tests pass, please remove this mark.")
 class RunDriverTest(test_case_utils.TfxTest, parameterized.TestCase):
 

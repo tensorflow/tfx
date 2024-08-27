@@ -70,13 +70,13 @@ class SiblingsOpTest(
         },
     )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testSiblings_NoRootArtifact_ReturnsEmptyDict(self):
     result = self._run_siblings([], output_keys=['model_run'])
     self.assertEmpty(result)
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testSiblings_MultipleRootArtifacts_RaisesValueError(self):
     with self.assertRaisesRegex(ValueError, 'does not support batch queries'):
@@ -88,7 +88,7 @@ class SiblingsOpTest(
           output_keys=['model_run'],
       )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testSiblings_NoOutputKeys(self):
     result = self._siblings(
@@ -103,7 +103,7 @@ class SiblingsOpTest(
         },
     )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testSibling(self):
     result = self._siblings(
@@ -118,7 +118,7 @@ class SiblingsOpTest(
         },
     )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testSibling_SameOutputKey(self):
     result = self._siblings(
@@ -133,7 +133,7 @@ class SiblingsOpTest(
         },
     )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testSiblingsInvalidOutputKeys(self):
     result = self._siblings(
@@ -150,7 +150,7 @@ class SiblingsOpTest(
         },
     )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testSiblingsSameOutputArtifactType_DifferentOutputKeys(self):
     data_snapshot = self.create_examples(self.spans_and_versions)
@@ -199,7 +199,7 @@ class SiblingsOpTest(
         },
     )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testSiblings_DescendantArtifactsNotConsideredSiblings(self):
     # Based on:

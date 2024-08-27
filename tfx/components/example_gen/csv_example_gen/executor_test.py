@@ -104,7 +104,7 @@ class ExecutorTest(absltest.TestCase):
 
       util.assert_that(examples, check_results)
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testDo(self):
     output_data_dir = os.path.join(

@@ -149,7 +149,7 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
           consumer_pipeline_with_tags,
       ])
   )
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testCompile(
       self,

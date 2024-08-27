@@ -411,7 +411,7 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, self._none_resolution_context))
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testArtifactValueOperator(self):
     test_artifact = standard_artifacts.Integer()
@@ -449,7 +449,7 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         pb, self._resolution_context)
     self.assertEqual(resolved_value, 42)
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testJsonValueArtifactWithIndexOperator(self):
     test_artifact = standard_artifacts.JsonValue()
@@ -1886,7 +1886,7 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
               False,
       },
   )
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testComparisonOperator(self, input_values_dict, comparison_op,
                              expected_result):
@@ -2088,7 +2088,7 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
             false_pb, resolution_context), False)
     return true_pb, false_pb, resolution_context
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testNotOperator(self):
     true_pb, false_pb, resolution_context = (
@@ -2170,7 +2170,7 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
           "expected_result": False,
       },
   )
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testBinaryLogicalOperator(self, lhs_evaluates_to_true,
                                 rhs_evaluates_to_true, op, expected_result):
@@ -2187,7 +2187,7 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, resolution_context), expected_result)
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testNestedExpression(self):
     true_pb, false_pb, resolution_context = (

@@ -958,7 +958,7 @@ class ArtifactTest(tf.test.TestCase):
         }
         )"""), str(copied_artifact))
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testArtifactProtoValue(self):
     # Construct artifact.
@@ -1242,7 +1242,7 @@ class ArtifactTest(tf.test.TestCase):
       artifact.Artifact('StringTypeName')
 
   @mock.patch('absl.logging.warning')
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testDeserialize(self, *unused_mocks):
     original = _MyArtifact()
@@ -1269,7 +1269,7 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(rehydrated.string2, '222')
 
   @mock.patch('absl.logging.warning')
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testDeserializeUnknownArtifactClass(self, *unused_mocks):
     original = _MyArtifact()

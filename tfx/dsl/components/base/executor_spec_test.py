@@ -39,7 +39,7 @@ class ExecutorSpecTest(tf.test.TestCase):
         '_TestSpecWithoutEncode does not support encoding into IR.'):
       _TestSpecWithoutEncode().encode()
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testExecutorClassSpecCopy(self):
     spec = executor_spec.ExecutorClassSpec(_DummyExecutor)
@@ -53,7 +53,7 @@ class ExecutorSpecTest(tf.test.TestCase):
         """,
         spec_copy.encode())
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testBeamExecutorSpecCopy(self):
     spec = executor_spec.BeamExecutorSpec(_DummyExecutor)

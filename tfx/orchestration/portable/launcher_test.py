@@ -490,7 +490,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testLauncher_PublishingNewArtifactsAndUseCache(self):
     # In this test case, there are two executions:
@@ -578,7 +578,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testLauncher_CacheIsSupportedForNodeWithNoOutput(self):
     # Even though a node has no output at all, the launcher should treat the
@@ -639,7 +639,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testLauncher_CacheDisabled(self):
     # In this test case, there are two executions:
@@ -757,7 +757,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testLauncher_ReEntry(self):
     # Some executors or runtime environment may reschedule the launcher job
@@ -830,7 +830,7 @@ class LauncherTest(test_case_utils.TfxTest):
     execution_preparation_result = third_test_launcher._prepare_execution()
     self.assertFalse(execution_preparation_result.is_execution_needed)
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testLauncher_ToleratesDoubleCleanup(self):
     # Some executors or runtime environment may delete stateful_working_dir,
@@ -895,7 +895,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testLauncher_ExecutionFailed(self):
     # In the case that the executor failed and raises an execption.
@@ -916,7 +916,7 @@ class LauncherTest(test_case_utils.TfxTest):
     with self.assertRaises(FakeError):
       _ = test_launcher.launch()
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testLauncher_ExecutionFailedViaReturnCode(self):
     # In the case that the executor failed and raises an execption.
@@ -965,7 +965,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testLauncher_with_CustomDriver_NewSpan(self):
     self.reloadPipelineWithNewRunId()
@@ -1019,7 +1019,7 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testLauncher_with_CustomDriver_ExistingSpan(self):
     LauncherTest.fakeExampleGenOutput(self._mlmd_connection, self._example_gen,

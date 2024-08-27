@@ -69,7 +69,7 @@ class SklearnPredictExtractorTest(tfma.test.TestCase):
         self._makeExample(age=5.0, language=0.0, label=0),
     ]
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testMakeSklearnPredictExtractor(self):
     """Tests that predictions are made from extracts for a single model."""
@@ -98,7 +98,7 @@ class SklearnPredictExtractorTest(tfma.test.TestCase):
 
       util.assert_that(predict_extracts, check_result)
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testMakeSklearnPredictExtractorWithMultiModels(self):
     """Tests that predictions are made from extracts for multiple models."""

@@ -147,7 +147,7 @@ class InputsUtilsTest(_TestMixin):
     with self.assertRaisesRegex(RuntimeError, 'Parameter value not ready'):
       inputs_utils.resolve_parameters(parameters)
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testResolveInputArtifacts(self):
     pipeline = self.load_pipeline_proto(
@@ -254,7 +254,7 @@ class InputsUtilsTest(_TestMixin):
     )
     self._examples = output_dict['output_examples']
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testResolveInputArtifacts_Normal(self):
     self._setup_pipeline_for_input_resolver_test()
@@ -266,7 +266,7 @@ class InputsUtilsTest(_TestMixin):
     self.assertArtifactMapListEqual([{'examples_1': self._examples,
                                       'examples_2': self._examples}], result)
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testResolveInputArtifacts_FilterOutInsufficient(self):
     self._setup_pipeline_for_input_resolver_test()

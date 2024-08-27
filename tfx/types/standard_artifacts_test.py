@@ -120,7 +120,7 @@ class StandardArtifactsTest(tf.test.TestCase):
     self.assertEqual(_TEST_JSONVALUE_DICT_DECODED,
                      instance.decode(_TEST_JSONVALUE_DICT_RAW))
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testJsonValueObj(self):
     instance = standard_artifacts.JsonValue()

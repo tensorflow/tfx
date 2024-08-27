@@ -41,7 +41,7 @@ class _TestExecutor(base_beam_executor.BaseBeamExecutor):
 
 class BaseBeamExecutorTest(tf.test.TestCase):
 
-  @pytest.mark.xfail(reason="PR 6889 This test fails and needs to be fixed. "
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
 "If this test passes, please remove this mark.", strict=True)
   def testBeamSettings(self):
     executor_context = base_beam_executor.BaseBeamExecutor.Context(

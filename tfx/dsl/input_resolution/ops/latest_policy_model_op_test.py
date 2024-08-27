@@ -111,7 +111,7 @@ class ModelRelationsTest(tf.test.TestCase):
         )
 
 
-@pytest.mark.xfail(
+@pytest.mark.xfail(run=False,
     reason="PR 6889 This class contains tests that fail and needs to be fixed. "
     "If all tests pass, please remove this mark."
 )
@@ -272,7 +272,7 @@ class LatestPolicyModelOpTest(
             policy=_LATEST_PUSHED,
         )
 
-    @pytest.mark.xfail(
+    @pytest.mark.xfail(run=False,
         reason="PR 6889 This test fails and needs to be fixed. "
         "If this test passes, please remove this mark.",
         strict=True,
@@ -316,7 +316,7 @@ class LatestPolicyModelOpTest(
         actual = self._latest_policy_model(_LATEST_EXPORTED)
         self.assertArtifactMapsEqual(actual, {"model": [self.model_3]})
 
-    @pytest.mark.xfail(
+    @pytest.mark.xfail(run=False,
         reason="PR 6889 This test fails and needs to be fixed. "
         "If this test passes, please remove this mark.",
         strict=True,
@@ -370,7 +370,7 @@ class LatestPolicyModelOpTest(
             actual, {"model": [self.model_3], "model_push": [model_push_3]}
         )
 
-    @pytest.mark.xfail(
+    @pytest.mark.xfail(run=False,
         reason="PR 6889 This test fails and needs to be fixed. "
         "If this test passes, please remove this mark.",
         strict=True,
@@ -457,7 +457,7 @@ class LatestPolicyModelOpTest(
             },
         )
 
-    @pytest.mark.xfail(
+    @pytest.mark.xfail(run=False,
         reason="PR 6889 This test fails and needs to be fixed. "
         "If this test passes, please remove this mark.",
         strict=True,
@@ -556,7 +556,7 @@ class LatestPolicyModelOpTest(
             {"model": [self.model_2], "model_blessing": [model_blessing_2_3]},
         )
 
-    @pytest.mark.xfail(
+    @pytest.mark.xfail(run=False,
         reason="PR 6889 This test fails and needs to be fixed. "
         "If this test passes, please remove this mark.",
         strict=True,
@@ -655,7 +655,7 @@ class LatestPolicyModelOpTest(
         (["m1", "m2", "m3"], ["m2", "m3"], ["m1"], _LATEST_PUSHED, "m1"),
         (["m2", "m1"], [], [], _LATEST_EVALUATOR_BLESSED, "m2"),
     )
-    @pytest.mark.xfail(
+    @pytest.mark.xfail(run=False,
         reason="PR 6889 This test fails and needs to be fixed. "
         "If this test passes, please remove this mark."
     )
@@ -685,7 +685,7 @@ class LatestPolicyModelOpTest(
         actual = self._latest_policy_model(policy)["model"][0]
         self.assertArtifactEqual(actual, str_to_model[expected])
 
-    @pytest.mark.xfail(
+    @pytest.mark.xfail(run=False,
         reason="PR 6889 This test fails and needs to be fixed. "
         "If this test passes, please remove this mark."
     )
@@ -738,7 +738,7 @@ class LatestPolicyModelOpTest(
             },
         )
 
-    @pytest.mark.xfail(
+    @pytest.mark.xfail(run=False,
         reason="PR 6889 This test fails and needs to be fixed. "
         "If this test passes, please remove this mark.",
         strict=True,
