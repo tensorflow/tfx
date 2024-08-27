@@ -25,7 +25,7 @@ from google.protobuf.message import Message
 
 try:
   from tensorflow_metadata.proto.v0.schema_pb2 import Schema as schema_pb2_Schema  # pylint: disable=g-import-not-at-top,g-importing-member
-except ModuleNotFoundError:
+except ModuleNotFoundError as e:
   schema_pb2_Schema = None  # pylint: disable=invalid-name
 
 # Nano seconds per second.

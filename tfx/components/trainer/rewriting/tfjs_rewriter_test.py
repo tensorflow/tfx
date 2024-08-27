@@ -23,7 +23,7 @@ from tfx.components.trainer.rewriting import rewriter
 
 try:
   from tfx.components.trainer.rewriting import tfjs_rewriter  # pylint: disable=g-import-not-at-top
-except ImportError:
+except ImportError as err:
   tfjs_rewriter = None
 
 

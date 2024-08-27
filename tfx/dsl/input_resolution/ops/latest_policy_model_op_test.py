@@ -14,7 +14,9 @@
 """Tests for tfx.dsl.input_resolution.ops.latest_policy_model_op."""
 
 import pytest
+import os
 from typing import Dict, List, Optional
+from unittest import mock
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -24,6 +26,7 @@ from tfx.dsl.input_resolution.ops import latest_policy_model_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.dsl.input_resolution.ops import test_utils
+from tfx.orchestration import metadata
 from tfx.orchestration.portable.input_resolution import exceptions
 
 from ml_metadata.proto import metadata_store_pb2

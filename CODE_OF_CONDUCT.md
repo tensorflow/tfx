@@ -75,7 +75,7 @@ immediate escalation, please see below.
 However, for the vast majority of issues, we aim to empower individuals to first
 resolve conflicts themselves, asking for help when needed, and only after that
 fails to escalate further. This approach gives people more control over the
-outcome of their dispute.
+outcome of their dispute. 
 
 If you are experiencing or witnessing conflict, we ask you to use the following
 escalation strategy to address the conflict:

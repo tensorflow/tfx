@@ -14,7 +14,7 @@
 """Docker component launcher which launches a container in docker environment ."""
 
 import collections
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 from absl import logging
 from kubernetes import client
