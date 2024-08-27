@@ -113,8 +113,9 @@ jobs:
     steps:
       - name: Retrieve wheels and sdist
         uses: actions/download-artifact@v4
-        merge-multiple: true
-        path: wheels/
+        with:
+          merge-multiple: true
+          path: wheels/
 
       - name: List the build artifacts
         run: |
