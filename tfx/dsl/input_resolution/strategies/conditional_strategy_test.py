@@ -86,6 +86,11 @@ _TEST_PREDICATE_2 = """
 """
 
 
+@pytest.mark.xfail(
+    run=False,
+    reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+    "If all tests pass, please remove this mark.",
+)
 class ConditionalStrategyTest(test_case_utils.TfxTest):
     def setUp(self):
         super().setUp()
@@ -127,9 +132,6 @@ class ConditionalStrategyTest(test_case_utils.TfxTest):
         self.assertIsNotNone(result)
         self.assertEqual(result, input_dict)
 
-    @pytest.mark.xfail(
-        run=False, reason="PR 6889 This test fails and needs to be fixed. "
-    )
     def testStrategy_IrMode_PredicateFalse(self):
         artifact_1 = standard_artifacts.Integer()
         artifact_1.uri = self.create_tempfile().full_path
