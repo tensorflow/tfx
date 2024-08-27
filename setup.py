@@ -79,13 +79,7 @@ class _UnsupportedDevBuildWheelCommand(_BdistWheelCommand):
 
   def finalize_options(self):
     if not os.environ.get('UNSUPPORTED_BUILD_TFX_DEV_WHEEL'):
-      raise Exception(
-          'Starting in version 0.26.0, pip package build for TFX has changed,'
-          'and `python setup.py bdist_wheel` can no longer be invoked '
-          'directly.\n\nFor instructions on how to build wheels for TFX, see '
-          'https://github.com/tensorflow/tfx/blob/master/package_build/'
-          'README.md.\n\nEditable pip installation for development is still '
-          'supported through `pip install -e`.')
+      print("UNSUPPORTED_BUILD_TFX_DEV_WHEEL is not set, so we're not building a wheel.")
     super().finalize_options()
 
 
