@@ -17,6 +17,7 @@ import json
 import sys
 from typing import Dict, List
 import unittest
+from unittest import mock
 
 import tensorflow as tf
 from tfx.dsl.compiler import placeholder_utils
@@ -86,9 +87,14 @@ class ComponentSpecTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='name3', pattern='pattern3'),
     ])
     input_channel = channel.Channel(type=_InputArtifact)
-    output_channel = channel.Channel(type=_OutputArtifact)
+    output_channel = channel.OutputChannel(
+        artifact_type=_OutputArtifact,
+        producer_component=mock.Mock(),
+        output_key='output',
+    )
     spec = _BasicComponentSpec(
         folds=10, proto=proto, input=input_channel, output=output_channel)
+    spec.bind_node(mock.Mock())
     # Verify proto property.
     self.assertIsInstance(spec.exec_properties['proto'], str)
     decoded_proto = json.loads(spec.exec_properties['proto'])
@@ -136,7 +142,11 @@ class ComponentSpecTest(tf.test.TestCase):
   def testComponentSpec_WithUnionChannel(self):
     input_channel_1 = channel.Channel(type=_InputArtifact)
     input_channel_2 = channel.Channel(type=_InputArtifact)
-    output_channel = channel.Channel(type=_OutputArtifact)
+    output_channel = channel.OutputChannel(
+        artifact_type=_OutputArtifact,
+        producer_component=mock.Mock(),
+        output_key='output',
+    )
     spec = _BasicComponentSpec(
         folds=10,
         input=channel.union([input_channel_1, input_channel_2]),
@@ -278,9 +288,11 @@ class ComponentSpecTest(tf.test.TestCase):
       OUTPUTS = {'x': ChannelParameter(type=_Z, optional=True)}
 
     optional_not_specified = SpecWithOptionalOutput()
+    optional_not_specified.bind_node(mock.Mock())
     self.assertNotIn('x', optional_not_specified.outputs.keys())
     self.assertTrue(optional_not_specified.is_optional_output('x'))
     optional_specified = SpecWithOptionalOutput(x=channel.Channel(type=_Z))
+    optional_specified.bind_node(mock.Mock())
     self.assertIn('x', optional_specified.outputs.keys())
 
   def testIsIntermediateChannel(self):
@@ -453,6 +465,30 @@ class ComponentSpecTest(tf.test.TestCase):
     self.assertEqual(True, spec.exec_properties['boolean'])
     self.assertIsInstance(spec.exec_properties['list_config_proto'], list)
     self.assertEqual(spec.exec_properties['list_boolean'], [False, True])
+
+  def testConstructor_UnknownArg_Error(self):
+    class SimpleSpec(ComponentSpec):
+      INPUTS = {'x': ChannelParameter(type=_X)}
+      OUTPUTS = {}
+      PARAMETERS = {}
+
+    with self.assertRaises(TypeError):
+      SimpleSpec(x=channel.Channel(type=_X), z=channel.Channel(type=_Z))
+
+  def testConstructor_OmitOutputChannel_Ok(self):
+    class SimpleSpec(ComponentSpec):
+      INPUTS = {}
+      OUTPUTS = {'x': ChannelParameter(type=_X)}
+      PARAMETERS = {}
+
+    spec = SimpleSpec()
+
+    with self.assertRaises(RuntimeError):
+      _ = spec.outputs['x']
+
+    spec.bind_node(mock.Mock(id='foo'))
+    self.assertIsInstance(spec.outputs['x'], channel.OutputChannel)
+    self.assertEqual(spec.outputs['x'].producer_component_id, 'foo')
 
 
 if __name__ == '__main__':
