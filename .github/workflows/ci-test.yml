@@ -23,6 +23,7 @@ jobs:
       matrix:
         python-version: ['3.9', '3.10']
         which-tests: ["not e2e", "e2e"]
+        dependency-selector: ["NIGHTLY", "GIT_MASTER"]
 
     steps:
     - uses: actions/checkout@v4
@@ -51,7 +52,9 @@ jobs:
         python -m pip install --upgrade pip wheel
         # TODO(b/232490018): Cython need to be installed separately to build pycocotools.
         python -m pip install Cython -c ./test_constraints.txt
-        TFX_DEPENDENCY_SELECTOR=NIGHTLY pip install -c ./test_constraints.txt --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre --editable .[all]
+        pip install -c ./test_constraints.txt --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre --editable .[all]
+      env:
+        TFX_DEPENDENCY_SELECTOR: ${{ matrix.dependency-selector }}
 
     - name: Run unit tests
       shell: bash
