@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ml-pipelines-sdk"
-dynamic = ["version"]
+dynamic = ["version", "dependencies", "optional-dependencies", "scripts"]
 description = "A dependency-light distribution of the core pipeline authoring functionality of TensorFlow Extended (TFX)."
 readme = "README.md"
 license = { file = "LICENSE" }

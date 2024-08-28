@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tfx"
-dynamic = ["version"]
+dynamic = ["version", "dependencies", "optional-dependencies", "scripts"]
 description = "TensorFlow Extended (TFX) is a TensorFlow-based general-purpose machine learning platform implemented at Google."
 readme = "README.md"
 license = { file = "LICENSE" }

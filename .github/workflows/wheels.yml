@@ -80,11 +80,14 @@ jobs:
         bazel info
         bazel version
 
+    - name: Install build
+      run: python -m pip install --upgrade pip build
+
     - name: Build wheels
       run: |
         package_build/initialize.sh
-        python package_build/tfx/setup.py bdist_wheel
-        python package_build/ml-pipelines-sdk/setup.py bdist_wheel
+        python -m build --wheel package_build/tfx/
+        python -m build --wheel package_build/ml-pipelines-sdk/
         mkdir wheelhouse
         mv dist/*.whl wheelhouse/
 

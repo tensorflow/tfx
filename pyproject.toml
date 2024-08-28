@@ -35,3 +35,12 @@ requires-python = ">=3.9,<3.11"
 [project.urls]
 Homepage = "https://www.tensorflow.org/tfx"
 Repository = "https://github.com/tensorflow/tfx"
+
+[tool.pytest.ini_options]
+addopts = "--verbose -m 'not end_to_end'"
+python_files = "*_test.py"
+norecursedirs = ["custom_components", ".*", "*.egg"]
+markers = [
+    "end_to_end: end-to-end tests which are slow and require more dependencies (deselect with '-m \"not end_to_end\"')",
+    "serial: mark tests that should not run in parallel"
+]

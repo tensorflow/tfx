@@ -86,7 +86,7 @@ class _UnsupportedDevBuildWheelCommand(_BdistWheelCommand):
 class _BuildCommand(build.build):
   """Build everything that is needed to install.
 
-  This overrides the original distutils "build" command to to run gen_proto
+  This overrides the original distutils "build" command to run gen_proto
   command before any sub_commands.
 
   build command is also invoked from bdist_wheel and install command, therefore
