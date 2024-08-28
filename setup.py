@@ -79,7 +79,7 @@ class _UnsupportedDevBuildWheelCommand(_BdistWheelCommand):
 
   def finalize_options(self):
     if not os.environ.get('UNSUPPORTED_BUILD_TFX_DEV_WHEEL'):
-      print("UNSUPPORTED_BUILD_TFX_DEV_WHEEL is not set, so we're not building a wheel.")
+        logging.info("UNSUPPORTED_BUILD_TFX_DEV_WHEEL is not set, so we're not building a wheel.")
     super().finalize_options()
 
 
