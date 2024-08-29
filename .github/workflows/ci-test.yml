@@ -23,7 +23,7 @@ jobs:
       matrix:
         python-version: ['3.9', '3.10']
         which-tests: ["not e2e", "e2e"]
-        dependency-selector: ["NIGHTLY", "GIT_MASTER"]
+        dependency-selector: ["NIGHTLY", "DEFAULT"]
 
     steps:
     - uses: actions/checkout@v4
