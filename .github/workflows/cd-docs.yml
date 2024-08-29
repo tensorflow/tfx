@@ -57,7 +57,7 @@ jobs:
             mkdocs-material-
 
       - name: Install Dependencies
-        run: pip install mkdocs mkdocs-material mkdocstrings[python] griffe-inherited-docstrings mkdocs-autorefs black mkdocs-jupyter
+        run: pip install mkdocs mkdocs-material mkdocstrings[python] griffe-inherited-docstrings mkdocs-autorefs black mkdocs-jupyter mkdocs-caption
 
       - name: Deploy to GitHub Pages
         run: mkdocs gh-deploy --force
