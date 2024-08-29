@@ -29,6 +29,7 @@ from tfx.v1.orchestration import metadata
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
+# some comment
 _SPAN_PROPERTY_NAME = 'span'
 
 
