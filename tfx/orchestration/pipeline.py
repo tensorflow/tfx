@@ -40,7 +40,7 @@ from google.protobuf import message
 _MAX_PIPELINE_NAME_LENGTH = 63
 
 # Pipeline root is by default specified as a RuntimeParameter when runnning on
-# KubeflowDagRunner. This constant offers users an easy access to the pipeline
+# KubeflowV2DagRunner. This constant offers users an easy access to the pipeline
 # root placeholder when defining a pipeline. For example,
 #
 # pusher = Pusher(

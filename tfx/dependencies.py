@@ -69,9 +69,8 @@ def make_pipeline_sdk_required_install_packages():
       # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
       'jinja2>=2.7.3,<4',
       # typing-extensions allows consistent & future-proof interface for typing.
-      # Since kfp<2 uses typing-extensions<4, lower bound is the latest 3.x, and
-      # upper bound is <5 as the semver started from 4.0 according to their doc.
-      'typing-extensions>=3.10.0.2,<5',
+      # Upper bound is <5 as the semver started from 4.0 according to their doc.
+      'typing-extensions<5',
   ]
 
 
@@ -87,7 +86,7 @@ def make_required_install_packages():
       'google-cloud-bigquery>=3,<4',
       'grpcio>=1.28.1,<2',
       'keras-tuner>=1.0.4,<2,!=1.4.0,!=1.4.1',
-      'kubernetes>=10.0.1,<13',
+      'kubernetes>=10.0.1,<27',
       'numpy>=1.16,<2',
       'pyarrow>=10,<11',
       # TODO: b/358471141 - Orjson 3.10.7 breaks TFX OSS tests.
@@ -146,9 +145,8 @@ def make_extra_packages_airflow():
 def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
-      # TODO(b/304892416): Migrate from KFP SDK v1 to v2.
-      'kfp>=1.8.14,<2',
-      'kfp-pipeline-spec>0.1.13,<0.2',
+      'kfp>=2',
+      'kfp-pipeline-spec>=0.2.2',
   ]
 
 
@@ -156,17 +154,20 @@ def make_extra_packages_test():
   """Prepare extra packages needed for running unit tests."""
   # Note: It is okay to pin packages to exact versions in this list to minimize
   # conflicts.
-  return make_extra_packages_airflow() + make_extra_packages_kfp() + [
-      'pytest>=5,<7',
-  ]
+  return (
+      make_extra_packages_airflow()
+      + make_extra_packages_kfp()
+      + [
+          'pytest>=5,<7',
+      ]
+  )
 
 
 def make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
-      # TODO(b/304892416): Migrate from KFP SDK v1 to v2.
-      'kfp>=1.8.14,<2',
-      'kfp-pipeline-spec>0.1.13,<0.2',
+      'kfp>=2',
+      'kfp-pipeline-spec>=0.3.0',
       'mmh>=2.2,<3',
       'python-snappy>=0.5,<0.6',
       # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
@@ -194,10 +195,12 @@ def make_extra_packages_tf_ranking():
   # Packages needed for tf-ranking which is used in tfx/examples/ranking.
   return [
       'tensorflow-ranking>=0.5,<0.6',
-      'struct2tensor' + select_constraint(
+      'struct2tensor'
+      + select_constraint(
           default='>=0.46.0,<0.47.0',
           nightly='>=0.47.0.dev',
-          git_master='@git+https://github.com/google/struct2tensor@master'),
+          git_master='@git+https://github.com/google/struct2tensor@master',
+      ),
   ]
 
 
