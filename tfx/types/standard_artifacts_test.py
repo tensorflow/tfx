@@ -50,7 +50,7 @@ _TEST_JSONVALUE_DICT_RAW = '{\"x\": 42}'
 _TEST_JSONVALUE_DICT_DECODED = {'x': 42}
 
 
-class TestJsonableCls(json_utils.Jsonable):
+class TfxTestJsonableCls(json_utils.Jsonable):
   """A test class that implements the Jsonable interface."""
 
   def __init__(self, x):
@@ -60,18 +60,18 @@ class TestJsonableCls(json_utils.Jsonable):
     return {'x': self._x}
 
   @classmethod
-  def from_json_dict(cls, dict_data: Dict[str, Any]) -> 'TestJsonableCls':
-    return TestJsonableCls(dict_data['x'])
+  def from_json_dict(cls, dict_data: Dict[str, Any]) -> 'TfxTestJsonableCls':
+    return TfxTestJsonableCls(dict_data['x'])
 
   def __eq__(self, other):
-    return isinstance(other, TestJsonableCls) and other._x == self._x
+    return isinstance(other, TfxTestJsonableCls) and other._x == self._x
 
 
 _TEST_JSONVALUE_OBJ_RAW = (
-    '{\"__class__\": \"TestJsonableCls\", \"__module__\":'
+    '{\"__class__\": \"TfxTestJsonableCls\", \"__module__\":'
     ' \"__main__\", \"__tfx_object_type__\": '
     '\"jsonable\", \"x\": 42}')
-_TEST_JSONVALUE_OBJ_DECODED = TestJsonableCls(42)
+_TEST_JSONVALUE_OBJ_DECODED = TfxTestJsonableCls(42)
 
 
 class StandardArtifactsTest(tf.test.TestCase):
