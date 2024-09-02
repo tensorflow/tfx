@@ -631,6 +631,41 @@ class CannedResolverFunctionsTest(
 
     self.assertEqual(channel.invocation.kwargs, {'n': 2})
 
+  def testMostRecentNSpans_E2E(self):
+    num_spans = 2
+    queries = []
+    for i in range(num_spans):
+      querie = canned_resolver_functions.latest_created(
+          canned_resolver_functions.rolling_range(
+              channel_utils.artifact_query(
+                  artifact_type=test_utils.DummyArtifact
+              ),
+              num_spans=1,
+              keep_all_versions=True,
+              skip_num_recent_spans=i,
+          ),
+          n=1,
+      )
+      queries.append(querie)
+
+    channel = channel_utils.union(queries)
+    pipeline_node = test_utils.compile_inputs({'x': channel})
+
+    # Add a newer version of
+    spans = [0, 1, 2, 2]
+    versions = [0, 0, 1, 0]
+    mlmd_artifacts = self._insert_artifacts_into_mlmd(spans, versions)
+    resolved = inputs_utils.resolve_input_artifacts(
+        pipeline_node=pipeline_node, metadata_handler=self.mlmd_handle
+    )
+    self.assertNotEmpty(resolved)  # Non-empty resolution implies Trigger.
+
+    actual_artifacts = [r.mlmd_artifact for r in resolved[0]['x']]
+    expected_artifacts = [mlmd_artifacts[3], mlmd_artifacts[1]]
+    self.assertResolvedAndMLMDArtifactListEqual(
+        actual_artifacts, expected_artifacts
+    )
+
 
 if __name__ == '__main__':
   tf.test.main()
