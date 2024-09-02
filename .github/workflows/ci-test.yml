@@ -47,7 +47,7 @@ jobs:
       with:
         # This path is specific to Ubuntu
         path: ~/.cache/pip
-        # Look to see if there is a cache hit for the corresponding setup.py + TFX version 
+        # Look to see if there is a cache hit for the corresponding setup.py + TFX version
         key: ${{ runner.os }}-pip-${{ hashFiles('tfx/dependencies.py') }}-
         restore-keys: |
           ${{ runner.os }}-pip-
@@ -57,7 +57,7 @@ jobs:
         python -m pip install --upgrade pip wheel
         # TODO(b/232490018): Cython need to be installed separately to build pycocotools.
         python -m pip install Cython -c ./test_constraints.txt
-        TFX_DEPENDENCY_SELECTOR=NIGHTLY pip install -c ./test_constraints.txt --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre --editable .[all]
+        TFX_DEPENDENCY_SELECTOR=NIGHTLY pip install -c ./test_constraints.txt --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre .[all]
 
     - name: Run unit tests
       shell: bash
