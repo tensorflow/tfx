@@ -150,7 +150,3 @@ class BaseHandlerTest(tf.test.TestCase):
       """),
         handler._format_table(('abc', 'd', False),
                               [[1, '234', None], ['xxx', '', []]]))
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -39,7 +39,3 @@ class ExampleValidatorTest(tf.test.TestCase):
     self.assertEqual(
         example_validator.spec.exec_properties[
             standard_component_specs.EXCLUDE_SPLITS_KEY], '["eval"]')
-
-
-if __name__ == '__main__':
-  tf.test.main()

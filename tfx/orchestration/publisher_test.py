@@ -58,7 +58,3 @@ class PublisherTest(tf.test.TestCase):
     self.assertEqual(
         self._output_dict['output_data'][0].get_string_custom_property(
             'tfx_version'), version.__version__)
-
-
-if __name__ == '__main__':
-  tf.test.main()

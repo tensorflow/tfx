@@ -19,7 +19,6 @@ import subprocess
 import sys
 from unittest import mock
 
-import tensorflow as tf
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
 from tfx.tools.cli import labels
@@ -359,7 +358,3 @@ class BeamHandlerTest(test_case_utils.TfxTest):
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.get_run()
     self.assertIn('Not supported for beam orchestrator.', captured.contents())
-
-
-if __name__ == '__main__':
-  tf.test.main()

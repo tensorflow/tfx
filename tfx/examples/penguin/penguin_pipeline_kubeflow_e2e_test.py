@@ -16,14 +16,16 @@
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_pipeline_kubeflow
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 from tfx.utils import io_utils
 
+import pytest
 
+
+@pytest.mark.e2e
 class PenguinPipelineKubeflowV2Test(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):
@@ -79,7 +81,7 @@ class PenguinPipelineKubeflowV2Test(
     )
     self.assertTrue(fileio.exists(self._serving_model_dir))
 
-
+@pytest.mark.e2e
 class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):
@@ -128,7 +130,3 @@ class PenguinPipelineKubeflowTest(kubeflow_test_utils.BaseKubeflowTest):
     self._compile_and_run_pipeline(
         pipeline=kubeflow_pipeline, parameters=parameters)
     self.assertTrue(fileio.exists(self._serving_model_dir))
-
-
-if __name__ == '__main__':
-  tf.test.main()

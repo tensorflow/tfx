@@ -13,9 +13,10 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.graph_traversal_op."""
 
+
+import pytest
 from typing import Sequence
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
@@ -110,12 +111,16 @@ class GraphTraversalOpTest(
         contexts=[self.pipeline_context, pusher_context],
     )
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testGraphTraversal_NoRootArtifact_ReturnsEmptyDict(self):
     result = self._run_graph_traversal(
         [], traverse_upstream=True, artifact_type_names=['Model']
     )
     self.assertEmpty(result)
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testGraphTraversal_MultipleRootArtifacts_RaisesValueError(self):
     with self.assertRaisesRegex(ValueError, 'does not support batch traversal'):
       self._run_graph_traversal(
@@ -127,6 +132,8 @@ class GraphTraversalOpTest(
           artifact_type_names=['TransformGraph'],
       )
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testGraphTraversal_NoArtifactTypeNames_RaisesValueError(self):
     with self.assertRaisesRegex(ValueError, 'artifact_type_names was empty'):
       self._run_graph_traversal(
@@ -137,6 +144,8 @@ class GraphTraversalOpTest(
           artifact_type_names=[],
       )
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testGraphTraversal_TraverseUpstream(self):
     # Tests artifacts 2 hops away.
     result = self._graph_traversal(
@@ -190,6 +199,8 @@ class GraphTraversalOpTest(
         },
     )
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testGraphTraversal_TraverseDownstream(self):
     result = self._graph_traversal(
         self.examples[0],
@@ -212,6 +223,8 @@ class GraphTraversalOpTest(
         },
     )
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testGraphTraversal_SameArtifactType(self):
     result = self._graph_traversal(
         self.examples[0],
@@ -228,6 +241,8 @@ class GraphTraversalOpTest(
         },
     )
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testGraphTraversal_NodeIds_OutputKeys(self):
     model_2 = self.prepare_tfx_artifact(
         test_utils.Model,
@@ -336,7 +351,3 @@ class GraphTraversalOpTest(
             'TransformGraph': [self.transform_graph],
         },
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -20,7 +20,6 @@ import sys
 from unittest import mock
 
 import click
-import tensorflow as tf
 
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
@@ -448,7 +447,3 @@ class AirflowHandlerTest(test_case_utils.TfxTest):
     self._mock_get_airflow_version.return_value = '1.10.10'
     with self.assertRaises(RuntimeError):
       _ = airflow_handler.AirflowHandler({})
-
-
-if __name__ == '__main__':
-  tf.test.main()

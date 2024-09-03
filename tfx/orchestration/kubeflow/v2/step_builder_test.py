@@ -720,7 +720,3 @@ class StepBuilderTest(tf.test.TestCase, parameterized.TestCase):
         ),
         deployment_config,
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

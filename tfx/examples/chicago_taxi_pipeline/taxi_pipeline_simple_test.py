@@ -18,7 +18,6 @@ import os
 
 from airflow import models
 
-import tensorflow as tf
 
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
@@ -61,7 +60,3 @@ class TaxiPipelineSimpleTest(test_case_utils.TfxTest):
     pipeline = AirflowDagRunner(
         AirflowPipelineConfig(airflow_config)).run(logical_pipeline)
     self.assertIsInstance(pipeline, models.DAG)
-
-
-if __name__ == '__main__':
-  tf.test.main()

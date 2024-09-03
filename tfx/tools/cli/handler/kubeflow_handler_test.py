@@ -19,7 +19,6 @@ import sys
 from unittest import mock
 
 import kfp
-import tensorflow as tf
 
 from tfx.dsl.components.base import base_driver
 from tfx.dsl.io import fileio
@@ -295,7 +294,3 @@ class KubeflowHandlerTest(test_case_utils.TfxTest):
       handler.list_runs()
     self.assertIn(f'Cannot find pipeline "{self.pipeline_name}".',
                   str(err.exception))
-
-
-if __name__ == '__main__':
-  tf.test.main()

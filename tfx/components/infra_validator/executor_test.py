@@ -317,6 +317,3 @@ class ExecutorTest(tf.test.TestCase):
 
   def assertFileDoesNotExist(self, path: str):
     self.assertFalse(fileio.exists(path))
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -75,7 +75,3 @@ class UtilsTest(tf.test.TestCase):
     )
     component.node_execution_options = None
     self.assertIsNone(component.node_execution_options)
-
-
-if __name__ == "__main__":
-  tf.test.main()

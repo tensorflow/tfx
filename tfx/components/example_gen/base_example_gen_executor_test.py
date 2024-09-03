@@ -288,7 +288,3 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
         RuntimeError, 'Split by `partition_feature_name` is only supported '
         'for FORMAT_TF_EXAMPLE and FORMAT_TF_SEQUENCE_EXAMPLE payload format.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)
-
-
-if __name__ == '__main__':
-  tf.test.main()

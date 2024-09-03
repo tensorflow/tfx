@@ -978,7 +978,3 @@ class PredicateTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_pb2.PlaceholderExpression(),
     )
     self.assertProtoEquals(actual_pb, expected_pb)
-
-
-if __name__ == '__main__':
-  tf.test.main()

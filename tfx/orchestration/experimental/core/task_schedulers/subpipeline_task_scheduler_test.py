@@ -21,7 +21,6 @@ import uuid
 
 from absl.testing import flagsaver
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import v1 as tfx
 from tfx.dsl.compiler import constants
 from tfx.orchestration import data_types_utils
@@ -242,7 +241,3 @@ class SubpipelineTaskSchedulerTest(test_utils.TfxTest, parameterized.TestCase):
           ),
           'true',
       )
-
-
-if __name__ == '__main__':
-  tf.test.main()

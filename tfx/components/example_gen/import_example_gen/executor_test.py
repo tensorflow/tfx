@@ -153,7 +153,3 @@ class ExecutorTest(tf.test.TestCase):
             example_gen_pb2.PayloadFormat.FORMAT_PARQUET),
         self.examples.get_string_custom_property(
             utils.PAYLOAD_FORMAT_PROPERTY_NAME))
-
-
-if __name__ == '__main__':
-  tf.test.main()

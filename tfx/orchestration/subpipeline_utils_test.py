@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.subpipeline_utils."""
 
-from absl.testing import absltest
 from absl.testing import parameterized
 from tfx.dsl.compiler import compiler
 from tfx.dsl.compiler import constants
@@ -104,7 +103,3 @@ class SubpipelineUtilsTest(parameterized.TestCase):
               )
           self.assertIn(new_run_id, pipeline_run_context_names)
           self.assertNotIn(old_run_id, pipeline_run_context_names)
-
-
-if __name__ == '__main__':
-  absltest.main()

@@ -17,7 +17,6 @@ import itertools
 import os
 from typing import Any, Dict, Optional, Type
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.components.base import base_beam_component
 from tfx.dsl.components.base import base_component
@@ -452,7 +451,3 @@ class PipelineTest(test_case_utils.TfxTest):
         """,
     )
     self.assert_registry_equal(reg, 'p3')
-
-
-if __name__ == '__main__':
-  tf.test.main()

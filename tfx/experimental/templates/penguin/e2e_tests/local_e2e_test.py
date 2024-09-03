@@ -18,11 +18,13 @@ import subprocess
 import sys
 
 from absl import logging
-import tensorflow as tf
 
 from tfx.experimental.templates import test_utils
 
+import pytest
 
+
+@pytest.mark.e2e
 class PenguinTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):
   """This test runs all components in the template."""
 
@@ -68,7 +70,3 @@ class PenguinTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):
         'Updated pipeline to add all components and use user provided schema.')
     self._update_pipeline()
     self._run_pipeline()
-
-
-if __name__ == '__main__':
-  tf.test.main()

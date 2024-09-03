@@ -15,7 +15,6 @@
 
 from unittest import mock
 
-import tensorflow as tf
 from tfx.types import standard_artifacts
 from tfx.utils import channel
 from tfx.utils import deprecation_utils
@@ -50,7 +49,3 @@ class ChannelTest(test_case_utils.TfxTest):
     self._assertDeprecatedWarningRegex(
         'tfx.utils.channel.unwrap_channel_dict has been renamed to '
         'tfx.types.channel_utils.unwrap_channel_dict')
-
-
-if __name__ == '__main__':
-  tf.test.main()

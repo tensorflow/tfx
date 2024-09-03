@@ -22,7 +22,10 @@ from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_local
 from tfx.orchestration import metadata
 from tfx.orchestration.local.local_dag_runner import LocalDagRunner
 
+import pytest
 
+
+@pytest.mark.e2e
 class TaxiPipelineLocalEndToEndTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
@@ -95,7 +98,3 @@ class TaxiPipelineLocalEndToEndTest(tf.test.TestCase, parameterized.TestCase):
       self.assertEqual(10, execution_count)
 
     self.assertPipelineExecution()
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -28,7 +28,10 @@ try:
 except ImportError:
   tensorflowjs = None
 
+import pytest
 
+
+@pytest.mark.e2e
 @unittest.skipIf(tensorflowjs is None,
                  'Cannot import required modules. This can happen when'
                  ' tensorflowjs is not available.')
@@ -105,7 +108,3 @@ class TFJSNextPagePredictionPipelineEndToEndTest(tf.test.TestCase):
       self.assertEqual(expected_execution_count, execution_count)
 
     self.assertPipelineExecution()
-
-
-if __name__ == '__main__':
-  tf.test.main()

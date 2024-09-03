@@ -92,7 +92,3 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
     self.assertEqual(
         kfp_container_component._get_command_line_argument_type(command),
         'constantValue')
-
-
-if __name__ == '__main__':
-  tf.test.main()

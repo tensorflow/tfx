@@ -21,7 +21,6 @@ import time
 
 from absl import logging
 from absl.testing.absltest import mock
-import tensorflow as tf
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
@@ -706,7 +705,3 @@ class TaskManagerE2ETest(test_utils.TfxTest):
             constants.EXECUTION_START_TIME_CUSTOM_PROPERTY_KEY
         ).int_value,
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

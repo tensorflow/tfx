@@ -206,7 +206,3 @@ class ComponentTest(tf.test.TestCase):
         trainer.spec.exec_properties[
             standard_component_specs.CUSTOM_CONFIG_KEY],
         data_types.RuntimeParameter)
-
-
-if __name__ == '__main__':
-  tf.test.main()

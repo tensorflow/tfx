@@ -21,7 +21,6 @@ from typing import List, Optional
 from unittest import mock
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
@@ -155,7 +154,7 @@ class NodeStateTest(test_utils.TfxTest):
     self.assertTrue(hasattr(node_state, 'last_updated_time'))
 
 
-class TestEnv(env._DefaultEnv):
+class _TestEnv(env._DefaultEnv):
 
   def __init__(
       self,
@@ -228,7 +227,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertTrue(pstate._active_owned_pipelines_exist)
 
   def test_new_pipeline_state_with_sub_pipelines(self):
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=20000, max_task_schedulers=2
     ), self._mlmd_connection as m:
       pstate._active_owned_pipelines_exist = False
@@ -293,7 +292,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   def test_new_pipeline_state_with_sub_pipelines_fails_when_not_enough_task_schedulers(
       self,
   ):
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=20000, max_task_schedulers=1
     ), self._mlmd_connection as m:
       pstate._active_owned_pipelines_exist = False
@@ -813,7 +812,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
     def recorder(event):
       events.append(event)
 
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=2000, max_task_schedulers=sys.maxsize
     ), event_observer.init(), self._mlmd_connection as m:
       event_observer.register_observer(recorder)
@@ -945,7 +944,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(pstate, 'time')
   def test_get_node_states_dict(self, mock_time):
     mock_time.time.return_value = time.time()
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=20000, max_task_schedulers=sys.maxsize
     ), self._mlmd_connection as m:
       pipeline = _test_pipeline(
@@ -1167,7 +1166,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(pstate, 'time')
   def test_pipeline_view_get_node_run_states(self, mock_time):
     mock_time.time.return_value = time.time()
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=20000, max_task_schedulers=sys.maxsize
     ), self._mlmd_connection as m:
       pipeline = _test_pipeline(
@@ -1254,7 +1253,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   @mock.patch.object(pstate, 'time')
   def test_pipeline_view_get_node_run_state_history(self, mock_time):
     mock_time.time.return_value = time.time()
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=20000, max_task_schedulers=sys.maxsize
     ), self._mlmd_connection as m:
       pipeline = _test_pipeline(
@@ -1303,7 +1302,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   ):
     """Tests that nodes marked to be skipped have the right node state and previous node state."""
     mock_time.time.return_value = time.time()
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=20000, max_task_schedulers=sys.maxsize
     ), self._mlmd_connection as m:
       pipeline = _test_pipeline(
@@ -1424,7 +1423,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   def test_get_previous_node_run_states_for_skipped_nodes(self, mock_time):
     """Tests that nodes marked to be skipped have the right previous run state."""
     mock_time.time.return_value = time.time()
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=20000, max_task_schedulers=sys.maxsize
     ), self._mlmd_connection as m:
       pipeline = _test_pipeline(
@@ -1553,7 +1552,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
         )
 
   def test_get_pipeline_and_node(self):
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=20000, max_task_schedulers=sys.maxsize
     ), self._mlmd_connection as m:
       pipeline = _test_pipeline(
@@ -1573,7 +1572,7 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
       )
 
   def test_get_pipeline_and_node_not_found(self):
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=20000, max_task_schedulers=sys.maxsize
     ), self._mlmd_connection as m:
       pipeline = _test_pipeline(
@@ -1653,7 +1652,7 @@ class NodeStatesProxyTest(test_utils.TfxTest):
             state=pstate.NodeState.COMPLETE,
         )
     }
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=20, max_task_schedulers=sys.maxsize
     ):
       execution = metadata_store_pb2.Execution()
@@ -1666,7 +1665,7 @@ class NodeStatesProxyTest(test_utils.TfxTest):
           ),
           json_utils.dumps(node_states_without_state_history),
       )
-    with TestEnv(
+    with _TestEnv(
         base_dir=None, max_str_len=2000, max_task_schedulers=sys.maxsize
     ):
       execution = metadata_store_pb2.Execution()
@@ -1679,6 +1678,3 @@ class NodeStatesProxyTest(test_utils.TfxTest):
           ),
           json_utils.dumps(node_states),
       )
-
-if __name__ == '__main__':
-  tf.test.main()

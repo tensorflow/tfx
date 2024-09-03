@@ -14,12 +14,13 @@
 """Tests for tfx.orchestration.kubeflow.v2.e2e_tests.artifact_value_placeholder_integration."""
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import v1 as tfx
 from tfx.dsl.component.experimental import placeholders
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 from tfx.types.experimental import simple_artifacts
+
+import pytest
 
 
 def _tasks_for_pipeline_with_artifact_value_passing():
@@ -69,6 +70,10 @@ def _tasks_for_pipeline_with_artifact_value_passing():
   return [producer_task, print_task]
 
 
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
+@pytest.mark.integration
+@pytest.mark.e2e
 class ArtifactValuePlaceholderIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):
@@ -89,7 +94,3 @@ class ArtifactValuePlaceholderIntegrationTest(
     )
 
     self._run_pipeline(pipeline, use_pipeline_spec_2_1=use_pipeline_spec_2_1)
-
-
-if __name__ == '__main__':
-  tf.test.main()

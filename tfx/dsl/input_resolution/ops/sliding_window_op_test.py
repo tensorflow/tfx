@@ -122,7 +122,3 @@ class SlidingWindowOpTest(tf.test.TestCase):
     # since it does not fit into a full window_size of 2.
     actual = self._sliding_window(artifacts, window_size=2, stride=3)
     self.assertEqual(actual, [{"window": [a1, a2]}])
-
-
-if __name__ == "__main__":
-  tf.test.main()

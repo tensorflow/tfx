@@ -15,7 +15,6 @@
 import json
 import os
 from typing import List, Optional
-import tensorflow as tf
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import pipeline_ir_codec
 from tfx.orchestration.experimental.core import test_utils
@@ -49,7 +48,7 @@ def _test_pipeline(
   return pipeline
 
 
-class TestEnv(env._DefaultEnv):
+class _TestEnv(env._DefaultEnv):
 
   def __init__(self, base_dir, max_str_len):
     self.base_dir = base_dir
@@ -72,7 +71,7 @@ class PipelineIRCodecTest(test_utils.TfxTest):
     )
 
   def test_encode_decode_no_base_dir(self):
-    with TestEnv(None, None):
+    with _TestEnv(None, None):
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       pipeline_encoded = pipeline_ir_codec.PipelineIRCodec.get().encode(
           pipeline
@@ -88,7 +87,7 @@ class PipelineIRCodecTest(test_utils.TfxTest):
     )
 
   def test_encode_decode_with_base_dir(self):
-    with TestEnv(self._pipeline_root, None):
+    with _TestEnv(self._pipeline_root, None):
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
       pipeline_encoded = pipeline_ir_codec.PipelineIRCodec.get().encode(
           pipeline
@@ -104,7 +103,7 @@ class PipelineIRCodecTest(test_utils.TfxTest):
     )
 
   def test_encode_decode_exceeds_max_len(self):
-    with TestEnv(self._pipeline_root, 0):
+    with _TestEnv(self._pipeline_root, 0):
       pipeline = _test_pipeline(
           'pipeline1',
           pipeline_nodes=['Trainer'],
@@ -122,7 +121,3 @@ class PipelineIRCodecTest(test_utils.TfxTest):
         next(iter(json.loads(pipeline_encoded).keys())),
         'Expected pipeline IR URL to be stored as json.',
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

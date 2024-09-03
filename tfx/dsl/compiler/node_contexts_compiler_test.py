@@ -161,7 +161,3 @@ class NodeContextsCompilerTest(tf.test.TestCase):
             _NODE_ID,
         ),
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

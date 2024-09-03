@@ -17,7 +17,6 @@ from concurrent import futures
 import os
 import threading
 
-import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import test_utils
@@ -262,7 +261,3 @@ class MlmdStateTest(test_utils.TfxTest):
         mlmd_state.get_field_mask_paths(execution, execution_copy),
         want_field_paths,
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

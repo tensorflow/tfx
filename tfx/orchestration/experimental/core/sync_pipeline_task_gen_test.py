@@ -20,7 +20,6 @@ import uuid
 
 from absl.testing import parameterized
 from absl.testing.absltest import mock
-import tensorflow as tf
 from tfx.dsl.compiler import constants as compiler_constants
 from tfx.orchestration import data_types_utils
 from tfx.orchestration.experimental.core import constants
@@ -1691,7 +1690,3 @@ class SyncPipelineTaskGeneratorTest(test_utils.TfxTest, parameterized.TestCase):
     self._run_next(False, expect_nodes=[self.worker])
     [finalize_task_2] = self._generate(False, True)
     self.assertIsInstance(finalize_task_2, task_lib.FinalizePipelineTask)
-
-
-if __name__ == '__main__':
-  tf.test.main()

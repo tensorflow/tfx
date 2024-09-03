@@ -18,7 +18,6 @@ import copy
 from unittest import mock
 
 from googleapiclient import discovery
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx.dsl.component.experimental import placeholders
 from tfx.orchestration.kubeflow.v2.components.experimental import ai_platform_training_executor
 from tfx.types import artifact_utils
@@ -152,6 +151,3 @@ class AiPlatformTrainingExecutorTest(test_case_utils.TfxTest):
     print(self._mock_create.call_args[1]['body'])
     self.assertEqual('tfx_',
                      self._mock_create.call_args[1]['body']['job_id'][:4])
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -19,7 +19,6 @@ import time
 import typing
 import uuid
 
-import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
@@ -117,7 +116,3 @@ class ManualTaskSchedulerTest(test_utils.TfxTest):
     self.assertEqual(len(ts_result), 1)
     self.assertEqual(status_lib.Code.OK, ts_result[0].status.code)
     self.assertIsInstance(ts_result[0].output, ts.ExecutorNodeOutput)
-
-
-if __name__ == '__main__':
-  tf.test.main()

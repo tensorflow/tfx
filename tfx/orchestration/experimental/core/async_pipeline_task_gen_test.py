@@ -17,7 +17,6 @@ import os
 
 from absl.testing import parameterized
 from absl.testing.absltest import mock
-import tensorflow as tf
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import async_pipeline_task_gen as asptg
 from tfx.orchestration.experimental.core import pipeline_state as pstate
@@ -963,7 +962,3 @@ class AsyncPipelineTaskGeneratorTest(test_utils.TfxTest,
     self._mock_service_job_manager.stop_node_services.assert_called_once_with(
         mock.ANY, self._example_gen.node_info.id
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

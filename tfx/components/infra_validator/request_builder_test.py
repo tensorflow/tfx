@@ -515,7 +515,3 @@ class TestBuildRequests(tf.test.TestCase):
         self._examples,
         split_name=None,  # Without split_name (will choose any split).
         num_examples=1)   # Default num_examples = 1.
-
-
-if __name__ == '__main__':
-  tf.test.main()

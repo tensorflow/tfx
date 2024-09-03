@@ -20,7 +20,6 @@ from typing import List
 
 from absl import logging
 from grpc import insecure_channel
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import test_utils
 from tfx.orchestration.experimental.core.testing import test_dynamic_exec_properties_pipeline
@@ -31,6 +30,9 @@ from tfx.types import standard_artifacts
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
 from ml_metadata.proto import metadata_store_service_pb2_grpc
+
+import pytest
+
 
 # The range of port-forwarding addresses used by Kubeflow E2E test.
 # If the current specified address is occupied, the test will scan forward until
@@ -45,6 +47,7 @@ _MAX_ATTEMPTS = 5
 _CONTEXT_TYPE_PIPELINE = 'pipeline'
 
 
+@pytest.mark.e2e
 class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
 
   @classmethod
@@ -107,7 +110,8 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
               poll_grpc_port_command,
               stdout=subprocess.PIPE)
 
-      except:  # pylint: disable=bare-except
+      except Exception as e:
+        logging.exception("An unexpected error occurred", exc_info = e)
         # Kill the process in case unexpected error occurred.
         proc.kill()
 
@@ -273,8 +277,3 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     artifacts = self._get_artifacts_with_type_and_pipeline(
         type_name='String', pipeline_name=pipeline_name)
     self.assertEqual(len(artifacts), 1)
-
-
-if __name__ == '__main__':
-  logging.set_verbosity(logging.INFO)
-  tf.test.main()

@@ -172,7 +172,3 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     runner = local_dag_runner.LocalDagRunner(config=config)
     with self.assertRaisesRegex(RuntimeError, 'No launcher info can be found'):
       runner.run(self._getTestPipeline())
-
-
-if __name__ == '__main__':
-  absl.testing.absltest.main()

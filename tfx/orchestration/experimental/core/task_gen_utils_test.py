@@ -19,7 +19,6 @@ from unittest import mock
 import uuid
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import types
 from tfx import version
 from tfx.orchestration import data_types_utils
@@ -1184,7 +1183,3 @@ class TaskGenUtilsTest(parameterized.TestCase, tu.TfxTest):
           ),
       )
       self.assertIsInstance(exec_task, task_lib.ExecNodeTask)
-
-
-if __name__ == '__main__':
-  tf.test.main()

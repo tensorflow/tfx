@@ -17,7 +17,6 @@ import os
 from unittest import mock
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_pipeline_kubeflow
 from tfx.utils import test_case_utils
@@ -81,7 +80,3 @@ class PenguinPipelineKubeflowTest(test_case_utils.TfxTest,
       v1_dag_runner.run(kubeflow_pipeline)
       file_path = os.path.join(self.tmp_dir, 'penguin-kubeflow.tar.gz')
       self.assertTrue(fileio.exists(file_path))
-
-
-if __name__ == '__main__':
-  tf.test.main()

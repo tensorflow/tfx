@@ -38,7 +38,3 @@ class ModelTest(tf.test.TestCase):
     self.assertIsInstance(result['train_spec'], tf_estimator.TrainSpec)
     self.assertIsInstance(result['eval_spec'], tf_estimator.EvalSpec)
     self.assertTrue(callable(result['eval_input_receiver_fn']))
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -88,7 +88,3 @@ class DependencyUtilsTest(tf.test.TestCase, parameterized.TestCase):
     mock_mkdtemp.return_value = self._tmp_dir
     package = dependency_utils.build_ephemeral_package()
     self.assertEqual(expected_package, os.path.basename(package))
-
-
-if __name__ == '__main__':
-  tf.test.main()

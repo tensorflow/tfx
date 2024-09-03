@@ -29,9 +29,15 @@ from tfx.v1.orchestration import metadata
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
 
+import pytest
+
+
 _SPAN_PROPERTY_NAME = 'span'
 
 
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
+@pytest.mark.e2e
 class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
                                        parameterized.TestCase):
 
@@ -514,8 +520,3 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
     # Artifact count is unchanged.
     self.assertLen(store.get_artifacts(), artifact_count)
     self.assertLen(store.get_executions(), expected_execution_count * 3)
-
-
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

@@ -69,6 +69,3 @@ class ComponentTest(tf.test.TestCase):
         big_query_example_gen.exec_properties[
             standard_component_specs.RANGE_CONFIG_KEY], stored_range_config)
     self.assertEqual(range_config, stored_range_config)
-
-if __name__ == '__main__':
-  tf.test.main()

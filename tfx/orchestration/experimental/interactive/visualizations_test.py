@@ -52,7 +52,3 @@ class VisualizationsTest(tf.test.TestCase):
         MyVisualization,
         visualizations.get_registry().get_visualization(
             standard_artifacts.Examples.TYPE_NAME).__class__)
-
-
-if __name__ == '__main__':
-  tf.test.main()

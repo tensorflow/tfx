@@ -78,7 +78,3 @@ class HooksTest(tf.test.TestCase, parameterized.TestCase):
             execution_hook_pb2.PreExecutionOutput(),
         ),
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

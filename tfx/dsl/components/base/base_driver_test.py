@@ -251,7 +251,3 @@ class BaseDriverTest(tf.test.TestCase):
     driver = base_driver.BaseDriver(metadata_handle=self._mock_metadata)
     with self.assertRaises(RuntimeError):
       driver.verify_input_artifacts({'artifact': [_InputArtifact()]})
-
-
-if __name__ == '__main__':
-  tf.test.main()

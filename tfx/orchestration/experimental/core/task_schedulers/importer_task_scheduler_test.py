@@ -17,7 +17,6 @@ import os
 from unittest import mock
 import uuid
 
-import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration.experimental.core import post_execution_utils
 from tfx.orchestration.experimental.core import sync_pipeline_task_gen as sptg
@@ -173,7 +172,3 @@ class ImporterTaskSchedulerTest(test_utils.TfxTest):
               'name',
           ],
       )
-
-
-if __name__ == '__main__':
-  tf.test.main()

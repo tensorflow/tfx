@@ -122,7 +122,3 @@ class StubComponentLauncherTest(tf.test.TestCase):
     self.assertTrue(fileio.exists(output_path))
     contents = io_utils.read_string_file(output_path)
     self.assertEqual('test', contents)
-
-
-if __name__ == '__main__':
-  tf.test.main()

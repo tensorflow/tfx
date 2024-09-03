@@ -58,7 +58,3 @@ class AllSpansOpTest(tf.test.TestCase):
 
     actual = self._all_spans(artifacts, keep_all_versions=True)
     self.assertEqual(actual, [a10, a20, a30, a31, a71, a82])
-
-
-if __name__ == '__main__':
-  tf.test.main()

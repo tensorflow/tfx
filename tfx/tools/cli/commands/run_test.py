@@ -19,7 +19,6 @@ import os
 from unittest import mock
 
 from click import testing as click_testing
-import tensorflow as tf
 
 from tfx.tools.cli.commands.run import run_group
 from tfx.tools.cli.handler import handler_factory
@@ -167,7 +166,3 @@ class RunTest(test_case_utils.TfxTest):
     ])
     self.assertIn('Deleting run', result.output)
     self.assertSucceeded(result)
-
-
-if __name__ == '__main__':
-  tf.test.main()

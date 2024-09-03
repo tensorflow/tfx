@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.experimental.core.task_scheduler."""
 
 from absl.testing.absltest import mock
-import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.experimental.core import task as task_lib
@@ -116,7 +115,3 @@ class TaskSchedulerRegistryTest(tu.TfxTest):
                                 'No task scheduler class or builder found'):
       ts.TaskSchedulerRegistry.create_task_scheduler(mock.Mock(),
                                                      self._pipeline, task)
-
-
-if __name__ == '__main__':
-  tf.test.main()

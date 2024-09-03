@@ -14,8 +14,6 @@
 """Integration tests for metadata resolver."""
 from typing import Dict, List
 from absl.testing import absltest
-from tfx.orchestration import metadata
-from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver
 from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver_utils
 import ml_metadata as mlmd
@@ -960,7 +958,3 @@ class MetadataResolverTest(absltest.TestCase):
         [(a.name, t.name) for a, t in result_from_m12[self.m2.id]],
         [(self.m2.name, self.model_type.name)],
     )
-
-
-if __name__ == '__main__':
-  absltest.main()

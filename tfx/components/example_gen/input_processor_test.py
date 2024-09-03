@@ -131,7 +131,3 @@ class InputProcessorTest(tf.test.TestCase):
     pattern = processor.get_pattern_for_span_version(
         input_config_span.splits[0].pattern, span, version)
     self.assertEqual(pattern, "select * from table where date='19700103'")
-
-
-if __name__ == '__main__':
-  tf.test.main()

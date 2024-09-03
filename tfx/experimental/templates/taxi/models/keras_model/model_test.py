@@ -26,7 +26,3 @@ class ModelTest(tf.test.TestCase):
 
     built_model = model._build_keras_model(hidden_units=[1], learning_rate=0.1)  # pylint: disable=protected-access
     self.assertEqual(len(built_model.layers), 9)
-
-
-if __name__ == '__main__':
-  tf.test.main()

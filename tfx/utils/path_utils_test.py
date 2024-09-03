@@ -102,7 +102,3 @@ class PathUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(
         path_utils.warmup_file_path('/my-model'),
         '/my-model/assets.extra/tf_serving_warmup_requests')
-
-
-if __name__ == '__main__':
-  tf.test.main()

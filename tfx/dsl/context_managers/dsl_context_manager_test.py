@@ -15,7 +15,6 @@
 
 from typing import Dict, Any
 
-import tensorflow as tf
 from tfx.dsl.components.base import base_node
 from tfx.dsl.context_managers import dsl_context
 from tfx.dsl.context_managers import dsl_context_manager
@@ -176,7 +175,3 @@ class ContextManagerTest(test_case_utils.TfxTest):
     for reg, context in [(inner, c1), (outer, c2)]:
       with self.assertRaisesRegex(ValueError, 'does not exist in the registry'):
         reg.get_nodes(context)
-
-
-if __name__ == '__main__':
-  tf.test.main()

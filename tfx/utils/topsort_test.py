@@ -142,7 +142,3 @@ class TopsortTest(tf.test.TestCase):
         get_parent_nodes=lambda n: [],
         get_child_nodes=lambda n: [])
     self.assertEqual([], layers)
-
-
-if __name__ == '__main__':
-  tf.test.main()

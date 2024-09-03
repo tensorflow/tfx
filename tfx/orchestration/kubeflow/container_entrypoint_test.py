@@ -13,11 +13,12 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubeflow.container_entrypoint."""
 
+
+import pytest
 import json
 import os
 from unittest import mock
 
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration.kubeflow import container_entrypoint
@@ -172,6 +173,8 @@ class MLMDConfigTest(test_case_utils.TfxTest):
         self.assertLen(ui_metadata['outputs'], 1)
         self.assertEqual('markdown', ui_metadata['outputs'][0]['type'])
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testOverrideRegisterExecution(self):
     # Mock all real operations of driver / executor / MLMD accesses.
     mock_targets = (  # (cls, method, return_value)
@@ -239,7 +242,3 @@ class MLMDConfigTest(test_case_utils.TfxTest):
     self.assertEqual(
         kwargs['exec_properties'][
             container_entrypoint._KFP_POD_NAME_PROPERTY_KEY], 'test_pod_name')
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -17,7 +17,6 @@ With the native TF2 code path being exercised.
 """
 import os
 
-import tensorflow as tf
 
 from tfx.components.transform import executor_sequence_example_test
 
@@ -31,7 +30,3 @@ class ExecutorWithSequenceExampleV2Test(
 
   def _use_force_tf_compat_v1(self):
     return False
-
-
-if __name__ == '__main__':
-  tf.test.main()

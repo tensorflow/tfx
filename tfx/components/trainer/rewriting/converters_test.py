@@ -172,7 +172,3 @@ class RewriteSavedModelTest(tf.test.TestCase):
     invoke_rewriter_mock.assert_called_once_with(src, dst, rewriter_inst,
                                                  rewriter.ModelType.SAVED_MODEL,
                                                  rewriter.ModelType.SAVED_MODEL)
-
-
-if __name__ == '__main__':
-  tf.test.main()

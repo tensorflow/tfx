@@ -15,7 +15,6 @@
 
 from typing import Sequence, Union
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.control_flow import for_each
 from tfx.dsl.input_resolution import canned_resolver_functions
@@ -630,7 +629,3 @@ class CannedResolverFunctionsTest(
     self.assertIsInstance(channel.invocation.args[0], resolver_op.InputNode)
 
     self.assertEqual(channel.invocation.kwargs, {'n': 2})
-
-
-if __name__ == '__main__':
-  tf.test.main()

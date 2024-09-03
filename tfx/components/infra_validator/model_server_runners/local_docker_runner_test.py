@@ -223,7 +223,3 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     # Act.
     with self.assertRaises(error_types.JobAborted):
       runner.WaitUntilRunning(deadline=10)
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -116,7 +116,3 @@ class PerformRewriteTest(absltest.TestCase):
     self.assertTrue(rw.pre_rewrite_validate_called)
     self.assertTrue(rw.rewrite_called)
     self.assertTrue(rw.post_rewrite_validate_called)
-
-
-if __name__ == '__main__':
-  absltest.main()

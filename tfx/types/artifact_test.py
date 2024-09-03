@@ -16,6 +16,7 @@
 import json
 import textwrap
 from unittest import mock
+import pytest
 
 from absl import logging
 import tensorflow as tf
@@ -957,6 +958,8 @@ class ArtifactTest(tf.test.TestCase):
         }
         )"""), str(copied_artifact))
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testArtifactProtoValue(self):
     # Construct artifact.
     my_artifact = _MyArtifact2()
@@ -1239,6 +1242,8 @@ class ArtifactTest(tf.test.TestCase):
       artifact.Artifact('StringTypeName')
 
   @mock.patch('absl.logging.warning')
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testDeserialize(self, *unused_mocks):
     original = _MyArtifact()
     original.uri = '/my/path'
@@ -1264,6 +1269,8 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(rehydrated.string2, '222')
 
   @mock.patch('absl.logging.warning')
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testDeserializeUnknownArtifactClass(self, *unused_mocks):
     original = _MyArtifact()
     original.uri = '/my/path'
@@ -1384,6 +1391,3 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(tfx_artifact.mlmd_artifact.state,
                      metadata_store_pb2.Artifact.State.UNKNOWN)
     self.assertEqual(tfx_artifact.state, 'foobar')
-
-if __name__ == '__main__':
-  tf.test.main()

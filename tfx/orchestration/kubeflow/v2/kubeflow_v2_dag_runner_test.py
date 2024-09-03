@@ -20,7 +20,6 @@ import os
 from unittest import mock
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import version
 from tfx.dsl.components.base import base_component
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -297,7 +296,3 @@ class KubeflowV2DagRunnerTest(test_case_utils.TfxTest, parameterized.TestCase):
         use_yaml_file=use_yaml_file,
     )
     moke_resolve_dependencies.assert_called()
-
-
-if __name__ == '__main__':
-  tf.test.main()

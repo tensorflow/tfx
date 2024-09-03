@@ -15,7 +15,6 @@
 
 from typing import List
 
-import tensorflow as tf
 
 from tfx import types
 from tfx.dsl.input_resolution import resolver_op
@@ -195,7 +194,3 @@ class TrainingRangeOpTest(
 
     actual = self._training_range([self.model])
     self.assertArtifactListEqual(actual, self.examples)
-
-
-if __name__ == '__main__':
-  tf.test.main()

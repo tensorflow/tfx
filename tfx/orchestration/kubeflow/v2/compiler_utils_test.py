@@ -365,7 +365,3 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
     with self.assertRaisesRegex(
         ValueError, 'Got unsupported placeholder operator base64_encode_op.'):
       compiler_utils.placeholder_to_cel(placeholder_pb)
-
-
-if __name__ == '__main__':
-  tf.test.main()

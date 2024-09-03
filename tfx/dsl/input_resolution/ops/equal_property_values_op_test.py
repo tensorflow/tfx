@@ -99,6 +99,3 @@ class DummyArtifactNoCustomArtifact(tfx.dsl.Artifact):
   PROPERTIES = {
       "num_steps": tfx_artifact.Property(type=tfx_artifact.PropertyType.INT),
   }
-
-if __name__ == "__main__":
-  tf.test.main()

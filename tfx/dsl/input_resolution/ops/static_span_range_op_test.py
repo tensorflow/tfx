@@ -65,7 +65,3 @@ class StaticSpanRangeOpTest(tf.test.TestCase):
   def testStaticSpanRange(self):
     actual = self._static_span_range(self.artifacts, start_span=1, end_span=3)
     self.assertEqual(actual, [self.a1, self.a2, self.a3])
-
-
-if __name__ == '__main__':
-  tf.test.main()

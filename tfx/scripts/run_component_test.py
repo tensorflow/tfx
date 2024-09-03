@@ -18,7 +18,6 @@ import pathlib
 import tempfile
 
 from absl.testing import absltest
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.scripts import run_component
 from tfx.types import artifact_utils
@@ -88,6 +87,3 @@ class RunComponentTest(absltest.TestCase):
     # Checking the schema_gen outputs
     self.assertTrue(
         fileio.exists(os.path.join(output_data_dir, 'schema.pbtxt')))
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -64,6 +64,3 @@ class DockerUtilsTest(tf.test.TestCase):
     docker_utils.delete_image(image_name, remote=False)
 
     mock_check_output.assert_not_called()
-
-if __name__ == '__main__':
-  tf.test.main()

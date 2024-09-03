@@ -16,7 +16,6 @@
 import importlib
 import unittest
 
-from absl.testing import absltest
 from absl.testing import parameterized
 from tfx.components.trainer.rewriting import rewriter_factory
 
@@ -47,6 +46,3 @@ class RewriterFactoryTest(parameterized.TestCase):
     self.assertTrue(tfrw)
     self.assertEqual(type(tfrw).__name__, rewriter_factory.TFJS_REWRITER)
     self.assertEqual(tfrw.name, 'my_rewriter')
-
-if __name__ == '__main__':
-  absltest.main()

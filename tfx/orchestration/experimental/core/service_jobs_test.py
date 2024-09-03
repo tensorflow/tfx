@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.experimental.core.service_jobs."""
 
 from absl.testing.absltest import mock
-import tensorflow as tf
 from tfx.orchestration.experimental.core import service_jobs
 from tfx.orchestration.experimental.core import test_utils
 
@@ -91,7 +90,3 @@ class CleanupHandlingServiceJobManagerWrapperTest(test_utils.TfxTest):
     self.assertFalse(self._wrapper.stop_node_services(mock.Mock(), 'node2'))
     self._mock_service_job_manager.stop_node_services.assert_called_once_with(
         mock.ANY, 'node2')
-
-
-if __name__ == '__main__':
-  tf.test.main()

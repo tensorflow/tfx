@@ -223,7 +223,3 @@ class ExecutorTest(tf.test.TestCase):
     self._do(self._trainer_executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
-
-
-if __name__ == '__main__':
-  tf.test.main()

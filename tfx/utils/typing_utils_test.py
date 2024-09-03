@@ -287,7 +287,3 @@ class TypingUtilsTest(tf.test.TestCase):
     self.assertIsNotCompatible(-1, State)  # Out of range.
     self.assertIsNotCompatible(999, State)  # Out of range.
     self.assertIsNotCompatible('LIVE', State)  # String name doesn't count.
-
-
-if __name__ == '__main__':
-  tf.test.main()

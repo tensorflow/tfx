@@ -338,7 +338,3 @@ class PipelineBuilderTest(tf.test.TestCase, parameterized.TestCase):
           default_image='gcr.io/my-tfx:latest',
           use_pipeline_spec_2_1=use_pipeline_spec_2_1,
       ).build()
-
-
-if __name__ == '__main__':
-  tf.test.main()

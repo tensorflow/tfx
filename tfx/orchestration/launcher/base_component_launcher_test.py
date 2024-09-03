@@ -78,7 +78,3 @@ class ComponentRunnerTest(tf.test.TestCase):
     self.assertTrue(fileio.exists(output_path))
     contents = file_io.read_file_to_string(output_path)
     self.assertEqual('test', contents)
-
-
-if __name__ == '__main__':
-  tf.test.main()

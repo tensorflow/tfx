@@ -159,7 +159,3 @@ class BeamDagRunnerTest(tf.test.TestCase):
         '_FakeComponent.A', '_FakeComponent.B', '_FakeComponent.C',
         '_FakeComponent.D', '_FakeComponent.E'
     ])
-
-
-if __name__ == '__main__':
-  tf.test.main()

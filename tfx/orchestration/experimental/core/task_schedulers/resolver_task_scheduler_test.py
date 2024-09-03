@@ -16,7 +16,6 @@
 import os
 import uuid
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import constants
 from tfx.orchestration.experimental.core import post_execution_utils
@@ -134,7 +133,3 @@ class ResolverTaskSchedulerTest(test_utils.TfxTest):
     input_models = consumer_task.input_artifacts['resolved_model']
     self.assertLen(input_models, 1)
     self.assertEqual('my_model_uri_2', input_models[0].mlmd_artifact.uri)
-
-
-if __name__ == '__main__':
-  tf.test.main()

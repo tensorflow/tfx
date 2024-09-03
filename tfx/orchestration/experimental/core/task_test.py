@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.task."""
 
-import tensorflow as tf
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import test_utils
 from tfx.proto.orchestration import pipeline_pb2
@@ -44,7 +43,3 @@ class TaskTest(tu.TfxTest):
     self.assertEqual(('ExecNodeTask', node_uid), exec_node_task.task_id)
     cancel_node_task = task_lib.CancelNodeTask(node_uid=node_uid)
     self.assertEqual(('CancelNodeTask', node_uid), cancel_node_task.task_id)
-
-
-if __name__ == '__main__':
-  tf.test.main()

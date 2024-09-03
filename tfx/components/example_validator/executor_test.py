@@ -16,7 +16,6 @@
 import os
 import tempfile
 
-from absl.testing import absltest
 from absl.testing import parameterized
 from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.example_validator import executor
@@ -279,7 +278,3 @@ class ExecutorTest(parameterized.TestCase):
       ].proto_value.CopyFrom(alerts_any_proto)
 
     self.assertEqual(executor_output, expected_executor_output)
-
-
-if __name__ == '__main__':
-  absltest.main()

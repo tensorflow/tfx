@@ -63,18 +63,18 @@ class ConditionalTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         ValueError, 'Nested conditionals with duplicate predicates'):
       with conditional.Cond(pred):
-        unused_node1 = Node('node1')
+        unused_node1 = Node('node1') # noqa: F841
         with conditional.Cond(pred):
-          unused_node2 = Node('node2')
+          unused_node2 = Node('node2') # noqa: F841
 
   def testNestedConditionWithDuplicatePredicates_EquivalentPredicate(self):
     with self.assertRaisesRegex(
         ValueError, 'Nested conditionals with duplicate predicates'
     ):
       with conditional.Cond(placeholder.input('foo') == 'bar'):
-        unused_node1 = Node('node1')
+        unused_node1 = Node('node1') # noqa: F841
         with conditional.Cond(placeholder.input('foo') == 'bar'):
-          unused_node2 = Node('node2')
+          unused_node2 = Node('node2') # noqa: F841
 
   def testCond_Subpipeline(self):
     pred = placeholder.input('foo') == 'bar'
@@ -92,7 +92,3 @@ class ConditionalTest(tf.test.TestCase):
     self.assertCountEqual(
         conditional.get_predicates(p, p_out.dsl_context_registry), [pred]
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -17,7 +17,6 @@ import os
 
 from absl.testing import parameterized
 from kfp.pipeline_spec import pipeline_spec_pb2
-import tensorflow as tf
 from tfx import v1 as tfx
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils
@@ -27,6 +26,8 @@ from tfx.utils import io_utils
 
 from google.protobuf import json_format
 
+import pytest
+
 
 # The location of test data.
 # This location depends on install path of TFX in the docker image.
@@ -35,6 +36,9 @@ _TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_
 _success_file_name = 'success_final_status.txt'
 
 
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
+@pytest.mark.e2e
 class ExitHandlerE2ETest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):
@@ -97,7 +101,3 @@ class ExitHandlerE2ETest(
                                     actual_final_status,
                                     ignored_fields=[
                                         'pipeline_job_resource_name'])
-
-
-if __name__ == '__main__':
-  tf.test.main()

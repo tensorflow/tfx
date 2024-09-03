@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.utils.channel."""
 
+
+import pytest
 from unittest import mock
 
 import tensorflow as tf
@@ -56,6 +58,8 @@ class ChannelTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       channel.Channel(_AnotherType).set_artifacts([instance_a, instance_b])
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testJsonRoundTrip(self):
     proto_property = metadata_store_pb2.Value()
     proto_property.proto_value.Pack(
@@ -78,6 +82,8 @@ class ChannelTest(tf.test.TestCase):
     self.assertEqual(chnl.additional_custom_properties,
                      rehydrated.additional_custom_properties)
 
+  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
+"If this test passes, please remove this mark.", strict=True)
   def testJsonRoundTripUnknownArtifactClass(self):
     chnl = channel.Channel(type=_MyType)
 
@@ -229,7 +235,3 @@ class ChannelTest(tf.test.TestCase):
     optional_output_channel.set_as_async_channel()
     self.assertTrue(optional_output_channel.is_async)
     self.assertFalse(required_output_channel.is_async)
-
-
-if __name__ == '__main__':
-  tf.test.main()

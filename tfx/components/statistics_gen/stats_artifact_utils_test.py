@@ -39,7 +39,3 @@ class StatsArtifactUtilsTest(tf.test.TestCase):
         ValueError,
         'Split does not exist over all example artifacts: not_a_split'):
       stats_artifact_utils.load_statistics(stats_artifact, 'not_a_split')
-
-
-if __name__ == '__main__':
-  tf.test.main()

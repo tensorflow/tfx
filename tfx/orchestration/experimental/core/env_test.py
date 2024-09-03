@@ -15,7 +15,6 @@
 
 from typing import Optional, Sequence
 
-import tensorflow as tf
 from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import test_utils
 from tfx.proto.orchestration import pipeline_pb2
@@ -116,7 +115,3 @@ class EnvTest(test_utils.TfxTest):
     with test_env:
       self.assertIs(env.get_env(), test_env)
     self.assertIs(env.get_env(), default_env)
-
-
-if __name__ == '__main__':
-  tf.test.main()

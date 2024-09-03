@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.mlmd.context_lib."""
 import os
-import tensorflow as tf
 
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import context_lib
@@ -182,7 +181,3 @@ class ContextLibTest(test_case_utils.TfxTest):
       context_lib.put_parent_context_if_not_exists(m,
                                                    parent_id=parent_context.id,
                                                    child_id=child_context.id)
-
-
-if __name__ == '__main__':
-  tf.test.main()

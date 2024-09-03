@@ -20,7 +20,6 @@ from typing import Iterable, Optional, Union
 from absl import logging
 from absl.testing import parameterized
 from absl.testing.absltest import mock
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.core import garbage_collection
@@ -336,7 +335,8 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
       garbage_collection.run_garbage_collection_for_node(
           self._metadata, example_gen_node_uid, self._example_gen
       )
-    except:  # pylint: disable=bare-except
+    except Exception as e:
+      logging.exception("An unexpected error occured", exc_info=e)
       self.fail('Error was raised')
     logs = logging_exception.call_args_list
     self.assertLen(logs, 1)
@@ -358,7 +358,8 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
       garbage_collection.run_garbage_collection_for_node(
           self._metadata, example_gen_node_uid, self._example_gen
       )
-    except:  # pylint: disable=bare-except
+    except Exception as e:
+      logging.exception("An unexpected error occured", exc_info=e)
       self.fail('Error was raised')
     logs = logging_exception.call_args_list
     self.assertLen(logs, 1)
@@ -455,7 +456,3 @@ class GarbageCollectionTest(test_utils.TfxTest, parameterized.TestCase):
                      f'{expected_error_message % ("int", "str")})')):
       garbage_collection.get_artifacts_to_garbage_collect_for_node(
           self._metadata, example_gen_node_uid, self._example_gen)
-
-
-if __name__ == '__main__':
-  tf.test.main()

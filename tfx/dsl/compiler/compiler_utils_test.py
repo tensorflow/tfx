@@ -300,7 +300,3 @@ class ValidateExecPropertyPlaceholderTest(tf.test.TestCase):
         pipeline_pb2.OutputSpec(),
     )
     self.assertProtoEquals(actual, expected)
-
-
-if __name__ == "__main__":
-  tf.test.main()

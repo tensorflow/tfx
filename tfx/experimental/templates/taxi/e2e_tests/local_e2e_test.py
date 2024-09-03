@@ -23,7 +23,10 @@ import tensorflow as tf
 
 from tfx.experimental.templates import test_utils
 
+import pytest
 
+
+@pytest.mark.e2e
 @unittest.skipIf(tf.__version__ < '2',
                  'Uses keras Model only compatible with TF 2.x')
 class TaxiTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):
@@ -64,7 +67,3 @@ class TaxiTemplateLocalEndToEndTest(test_utils.BaseLocalEndToEndTest):
     logging.info('Updated pipeline to use user provided schema.')
     self._update_pipeline()
     self._run_pipeline()
-
-
-if __name__ == '__main__':
-  tf.test.main()

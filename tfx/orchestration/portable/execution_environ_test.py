@@ -15,7 +15,6 @@
 
 from typing import Any, Callable, List, Optional, Type, Union
 from absl.testing import parameterized
-import tensorflow as tf
 
 from tfx.orchestration.experimental.core import test_utils
 from tfx.orchestration.portable import data_types
@@ -197,7 +196,3 @@ class ExecutionEnvironTest(parameterized.TestCase, test_utils.TfxTest):
         r' \'str\'>\. Available providers: (.*?)',
     ):
       self._environ.strict_get('unknown_name', str)
-
-
-if __name__ == '__main__':
-  tf.test.main()

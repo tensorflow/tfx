@@ -67,7 +67,3 @@ class ClassUtilsTest(tf.test.TestCase):
 
     with self.assertRaisesRegex(ValueError, 'Cannot find'):
       name_utils.resolve_full_name('non_existing_module_name.meh.FakeClass')
-
-
-if __name__ == '__main__':
-  tf.test.main()

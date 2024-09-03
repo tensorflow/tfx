@@ -19,7 +19,6 @@ import tarfile
 from typing import List
 
 from kfp import onprem
-import tensorflow as tf
 from tfx.components.statistics_gen import component as statistics_gen_component
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental.annotations import Parameter
@@ -323,7 +322,3 @@ class KubeflowDagRunnerTest(test_case_utils.TfxTest):
       first_component_args = ' '.join(containers[0]['container']['args'])
       self.assertNotIn('{{workflow.status}}', first_component_args)
       self.assertIn('enableCache', first_component_args)
-
-
-if __name__ == '__main__':
-  tf.test.main()

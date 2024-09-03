@@ -15,7 +15,6 @@
 
 from unittest import mock
 
-import tensorflow as tf
 from tfx.utils import deprecation_utils
 from tfx.utils import test_case_utils
 
@@ -129,7 +128,3 @@ Please use MyClass1 instead."""))
     DeprecatedAliasClass2()
     self.assertEqual(self._mock_warn.call_count, 3)
     self.assertEqual(MyClass2.__init__.call_count, 3)
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -13,7 +13,6 @@
 # limitations under the License.
 """Test for LatestBlessedModelStrategy."""
 
-import tensorflow as tf
 from tfx import types
 from tfx.components.model_validator import constants as model_validator
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
@@ -101,6 +100,3 @@ class LatestBlessedModelStrategyTest(test_case_utils.TfxTest):
         'model': [],
         'model_blessing': [],
     })
-
-if __name__ == '__main__':
-  tf.test.main()

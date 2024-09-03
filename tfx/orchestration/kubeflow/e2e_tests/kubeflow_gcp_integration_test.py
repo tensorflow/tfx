@@ -18,7 +18,6 @@ import os
 import absl
 from googleapiclient import discovery
 from googleapiclient import errors as googleapiclient_errors
-import tensorflow as tf
 from tfx import v1 as tfx
 from tfx.components.pusher.component import Pusher
 from tfx.components.trainer.component import Trainer
@@ -40,7 +39,11 @@ from tfx.types import standard_artifacts
 from tfx.utils import path_utils
 from tfx.utils import telemetry_utils
 
+import pytest
 
+
+@pytest.mark.integration
+@pytest.mark.e2e
 class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def setUp(self):
@@ -476,8 +479,3 @@ def _delete_bigquery_dataset(dataset_name, project_id):
       pass
     else:
       raise
-
-
-if __name__ == '__main__':
-  absl.logging.set_verbosity(absl.logging.INFO)
-  tf.test.main()

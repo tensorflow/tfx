@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.portable.cache_utils."""
 import os
 from unittest import mock
-import tensorflow as tf
 
 from tfx.dsl.io import fileio
 from tfx.orchestration import metadata
@@ -281,7 +280,3 @@ class CacheUtilsTest(test_case_utils.TfxTest):
       # output is not None but an empty dict.
       self.assertIsNotNone(cached_output)
       self.assertEmpty(cached_output)
-
-
-if __name__ == '__main__':
-  tf.test.main()

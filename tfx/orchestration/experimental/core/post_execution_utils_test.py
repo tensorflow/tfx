@@ -16,7 +16,6 @@ import os
 
 from absl.testing import parameterized
 from absl.testing.absltest import mock
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
@@ -185,7 +184,3 @@ class PostExecutionUtilsTest(tu.TfxTest, parameterized.TestCase):
         self.mlmd_handle, task, result
     )
     mock_notify.assert_called_once()
-
-
-if __name__ == '__main__':
-  tf.test.main()

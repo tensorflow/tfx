@@ -116,6 +116,3 @@ class ExecutorTest(tf.test.TestCase):
                       self._serialize_custom_config_under_test())
     self.mock_bq.assert_not_called()
     self.assertNotPushed()
-
-if __name__ == '__main__':
-  tf.test.main()

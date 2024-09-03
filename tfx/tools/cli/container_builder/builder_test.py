@@ -55,7 +55,3 @@ class BuilderTest(tf.test.TestCase):
     mock_push_fn.assert_called_once()
     mock_get_registry_data_fn.assert_called_once_with(target_image)
     self.assertEqual(built_image, 'gcr.io/test/myimage@sha256:01234')
-
-
-if __name__ == '__main__':
-  tf.test.main()

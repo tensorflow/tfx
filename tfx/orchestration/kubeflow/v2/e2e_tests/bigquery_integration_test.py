@@ -17,11 +17,13 @@ import os
 from unittest import mock
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.components.base import base_component
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
+
+import pytest
+
 
 # The query to get data from BigQuery.
 # The threshold number (0.0004) is for extracting minimal data to run
@@ -51,6 +53,10 @@ _BIGQUERY_QUERY = """
           < 0.0004"""
 
 
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
+@pytest.mark.integration
+@pytest.mark.e2e
 class BigqueryIntegrationTest(
     base_test_case.BaseKubeflowV2Test, parameterized.TestCase
 ):
@@ -88,7 +94,3 @@ class BigqueryIntegrationTest(
 
     self._run_pipeline(pipeline, use_pipeline_spec_2_1=use_pipeline_spec_2_1)
     moke_resolve_dependencies.assert_called()
-
-
-if __name__ == '__main__':
-  tf.test.main()

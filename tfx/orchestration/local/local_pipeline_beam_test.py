@@ -105,7 +105,3 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
                      direct_num_workers)
     self.assertEqual(self.BEAM_ARG_VALUES['direct_running_mode'],
                      direct_running_mode)
-
-
-if __name__ == '__main__':
-  absl.testing.absltest.main()

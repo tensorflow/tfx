@@ -453,7 +453,3 @@ class ComponentSpecTest(tf.test.TestCase):
     self.assertEqual(True, spec.exec_properties['boolean'])
     self.assertIsInstance(spec.exec_properties['list_config_proto'], list)
     self.assertEqual(spec.exec_properties['list_boolean'], [False, True])
-
-
-if __name__ == '__main__':
-  tf.test.main()

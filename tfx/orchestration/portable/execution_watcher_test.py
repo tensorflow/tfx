@@ -17,7 +17,6 @@ import os
 
 import grpc
 import portpicker
-import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import execution_watcher
@@ -103,7 +102,3 @@ class ExecutionWatcherTest(test_case_utils.TfxTest):
             'name',
         ],
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

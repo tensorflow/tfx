@@ -60,7 +60,3 @@ class ParameterUtilsTest(tf.test.TestCase):
         RuntimeError,
         r'attach_parameter\(\) must run under ParameterContext\.'):
       parameter_utils.attach_parameter(param)
-
-
-if __name__ == '__main__':
-  tf.test.main()

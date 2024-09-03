@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.task_queue."""
 
-import tensorflow as tf
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration.experimental.core import task_queue
 from tfx.orchestration.experimental.core import test_utils
@@ -76,7 +75,3 @@ class TaskQueueTest(tu.TfxTest):
     # Error since t2 is not in the queue.
     with self.assertRaisesRegex(RuntimeError, 'Task not present'):
       tq.task_done(t2)
-
-
-if __name__ == '__main__':
-  tf.test.main()

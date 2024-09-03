@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.input_resolution.ops.slice_op."""
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration.portable.input_resolution import exceptions
@@ -62,7 +61,3 @@ class SliceOpTest(test_utils.ResolverTestCase, parameterized.TestCase):
     inputs = self._artifacts[:1]
     with self.assertRaises(exceptions.InsufficientInputError):
       self._slice(inputs, start=1, stop=2, min_count=1)
-
-
-if __name__ == '__main__':
-  tf.test.main()

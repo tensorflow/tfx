@@ -14,10 +14,12 @@
 """E2E test using kubeflow orchestrator for penguin template."""
 
 from absl import logging
-import tensorflow as tf
 from tfx.experimental.templates import container_based_test_case
 
+import pytest
 
+
+@pytest.mark.e2e
 class PenguinTemplateKubeflowE2ETest(
     container_based_test_case.BaseKubeflowEndToEndTest):
 
@@ -48,8 +50,3 @@ class PenguinTemplateKubeflowE2ETest(
                  updated_pipeline_file)
     self._update_pipeline()
     self._run_pipeline()
-
-
-if __name__ == '__main__':
-  logging.set_verbosity(logging.INFO)
-  tf.test.main()

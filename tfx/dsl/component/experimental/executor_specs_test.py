@@ -226,7 +226,3 @@ class ExecutorSpecsTest(tf.test.TestCase):
           string_value: "texttext1text2"
         }
       }""", encode_result)
-
-
-if __name__ == '__main__':
-  tf.test.main()

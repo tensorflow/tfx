@@ -90,7 +90,3 @@ class ExecutorTest(tf.test.TestCase):
     self.assertTrue(
         fileio.exists(
             os.path.join(self._blessing.uri, constants.BLESSED_FILE_NAME)))
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -17,7 +17,6 @@ import copy
 import os
 import unittest
 
-import tensorflow as tf
 from tfx import types
 from tfx.types import standard_artifacts
 from tfx.utils import test_case_utils
@@ -116,6 +115,3 @@ class TestCaseUtilsTest(test_case_utils.TfxTest):
     actual_artifacts['artifact1'][1].set_int_custom_property('key', 5)
     with self.assertRaises(AssertionError):
       self.assertArtifactMapsEqual(expected_artifacts, actual_artifacts)
-
-if __name__ == '__main__':
-  tf.test.main()
