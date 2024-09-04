@@ -5,7 +5,7 @@ any language into your pipeline, so long as you can execute that code in a
 Docker container.
 
 If you are new to TFX pipelines,
-[learn more about the core concepts of TFX pipelines](understanding_tfx_pipelines).
+[learn more about the core concepts of TFX pipelines](understanding_tfx_pipelines.md).
 
 ## Creating a Container-based Component
 

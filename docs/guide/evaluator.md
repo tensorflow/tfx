@@ -15,7 +15,7 @@ the [Pusher](pusher.md) that it is ok to push the model to production.
 
 *   Consumes:
     *   An eval split from
-        [Examples](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/types/standard_artifacts/Examples)
+        [Examples][tfx.v1.types.standard_artifacts.Examples]
     *   A trained model from [Trainer](trainer.md)
     *   A previously blessed model (if validation to be performed)
 *   Emits:
@@ -142,4 +142,4 @@ if not validation_result.validation_ok:
 ```
 
 More details are available in the
-[Evaluator API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/Evaluator).
+[Evaluator API reference][tfx.v1.components.Evaluator].

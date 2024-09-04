@@ -2,7 +2,7 @@
 
 The BulkInferrer TFX component performs batch inference on unlabeled data. The
 generated
-InferenceResult([tensorflow_serving.apis.prediction_log_pb2.PredictionLog](https://github.com/tensorflow/serving/blob/master/tensorflow_serving/apis/prediction_log.proto))
+InferenceResult([`tensorflow_serving.apis.prediction_log_pb2.PredictionLog`](https://github.com/tensorflow/serving/blob/master/tensorflow_serving/apis/prediction_log.proto))
 contains the original features and the prediction results.
 
 BulkInferrer consumes:
@@ -11,7 +11,7 @@ BulkInferrer consumes:
     [SavedModel](https://www.tensorflow.org/guide/saved_model.md) format.
 *   Unlabelled tf.Examples that contain features.
 *   (Optional) Validation result from
-    [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator.md) component.
+    [Evaluator](evaluator.md) component.
 
 BulkInferrer emits:
 
@@ -21,9 +21,9 @@ BulkInferrer emits:
 
 A BulkInferrer TFX component is used to perform batch inference on unlabeled
 tf.Examples. It is typically deployed after an
-[Evaluator](https://www.tensorflow.org/tfx/guide/evaluator.md) component to
+[Evaluator](evaluator.md) component to
 perform inference with a validated model, or after a
-[Trainer](https://www.tensorflow.org/tfx/guide/trainer.md) component to directly
+[Trainer](trainer.md) component to directly
 perform inference on exported model.
 
 It currently performs in-memory model inference and remote inference.
@@ -42,4 +42,4 @@ bulk_inferrer = BulkInferrer(
 ```
 
 More details are available in the
-[BulkInferrer API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/BulkInferrer).
+[BulkInferrer API reference][tfx.v1.components.BulkInferrer].

@@ -18,19 +18,19 @@ interface might change as new versions are released.
 The TFX CLI is installed as a part of the TFX package. All CLI commands follow
 the structure below:
 
-<pre class="devsite-terminal">
-tfx <var>command-group</var> <var>command</var> <var>flags</var>
-</pre>
+```bash
+tfx <command-group> <command> <flags>
+```
 
-The following <var>command-group</var> options are currently supported:
+The following command-group options are currently supported:
 
-*   [tfx pipeline](#tfx-pipeline) - Create and manage TFX pipelines.
-*   [tfx run](#tfx-run) - Create and manage runs of TFX pipelines on various
+*   [`tfx pipeline`](#tfx-pipeline) - Create and manage TFX pipelines.
+*   [`tfx run`](#tfx-run) - Create and manage runs of TFX pipelines on various
     orchestration platforms.
-*   [tfx template](#tfx-template-experimental) - Experimental commands for
+*   [`tfx template`](#tfx-template-experimental) - Experimental commands for
     listing and copying TFX pipeline templates.
 
-Each command group provides a set of <var>commands</var>. Follow the
+Each command group provides a set of commands. Follow the
 instructions in the [pipeline commands](#tfx-pipeline),
 [run commands](#tfx-run), and [template commands](#tfx-template-experimental)
 sections to learn more about using these commands.
@@ -42,15 +42,15 @@ Flags let you pass arguments into CLI commands. Words in flags are separated
 with either a hyphen (`-`) or an underscore (`_`). For example, the pipeline
 name flag can be specified as either `--pipeline-name` or `--pipeline_name`.
 This document specifies flags with underscores for brevity. Learn more about
-[<var>flags</var> used in the TFX CLI](#understanding-tfx-cli-flags).
+[flags used in the TFX CLI](#understanding-tfx-cli-flags).
 
 ## tfx pipeline
 
 The structure for commands in the `tfx pipeline` command group is as follows:
 
-<pre class="devsite-terminal">
-tfx pipeline <var>command</var> <var>required-flags</var> [<var>optional-flags</var>]
-</pre>
+```bash
+tfx pipeline command required-flags [optional-flags]
+```
 
 Use the following sections to learn more about the commands in the `tfx
 pipeline` command group.
@@ -61,11 +61,11 @@ Creates a new pipeline in the given orchestrator.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> \
 --build_image --build_base_image=<var>build-base-image</var>]
-</pre>
+```
 
 <dl>
   <dt>--pipeline_path=<var>pipeline-path</var></dt>
@@ -154,35 +154,35 @@ tfx pipeline create --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
   </dd>
 </dl>
 
-#### Examples:
+#### Examples
 
 Kubeflow:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline create --engine=kubeflow --pipeline_path=<var>pipeline-path</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --endpoint=<var>endpoint</var> \
 --build_image
-</pre>
+```
 
 Local:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline create --engine=local --pipeline_path=<var>pipeline-path</var>
-</pre>
+```
 
 Vertex:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline create --engine=vertex --pipeline_path=<var>pipeline-path</var> \
 --build_image
-</pre>
+```
 
 To autodetect engine from user environment, simply avoid using the engine flag
 like the example below. For more details, check the flags section.
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline create --pipeline_path=<var>pipeline-path</var>
-</pre>
+```
 
 ### update
 
@@ -190,10 +190,10 @@ Updates an existing pipeline in the given orchestrator.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx pipeline update --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --build_image]
-</pre>
+```
 
 <dl>
   <dt>--pipeline_path=<var>pipeline-path</var></dt>
@@ -271,28 +271,28 @@ tfx pipeline update --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
   </dd>
 </dl>
 
-#### Examples:
+#### Examples
 
 Kubeflow:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline update --engine=kubeflow --pipeline_path=<var>pipeline-path</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --endpoint=<var>endpoint</var> \
 --build_image
-</pre>
+```
 
 Local:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline update --engine=local --pipeline_path=<var>pipeline-path</var>
-</pre>
+```
 
 Vertex:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline update --engine=vertex --pipeline_path=<var>pipeline-path</var> \
 --build_image
-</pre>
+```
 
 ### compile
 
@@ -310,9 +310,9 @@ Recommended to use before creating or updating a pipeline.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>engine</var>]
-</pre>
+```
 
 <dl>
   <dt>--pipeline_path=<var>pipeline-path</var></dt>
@@ -344,25 +344,25 @@ tfx pipeline compile --pipeline_path=<var>pipeline-path</var> [--engine=<var>eng
   </dd>
 </dl>
 
-#### Examples:
+#### Examples
 
 Kubeflow:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline compile --engine=kubeflow --pipeline_path=<var>pipeline-path</var>
-</pre>
+```
 
 Local:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline compile --engine=local --pipeline_path=<var>pipeline-path</var>
-</pre>
+```
 
 Vertex:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline compile --engine=vertex --pipeline_path=<var>pipeline-path</var>
-</pre>
+```
 
 ### delete
 
@@ -370,10 +370,10 @@ Deletes a pipeline from the given orchestrator.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx pipeline delete --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var>]
-</pre>
+```
 
 <dl>
   <dt>--pipeline_path=<var>pipeline-path</var></dt>
@@ -439,26 +439,26 @@ tfx pipeline delete --pipeline_path=<var>pipeline-path</var> [--endpoint=<var>en
   </dd>
 </dl>
 
-#### Examples:
+#### Examples
 
 Kubeflow:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline delete --engine=kubeflow --pipeline_name=<var>pipeline-name</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
-</pre>
+```
 
 Local:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline delete --engine=local --pipeline_name=<var>pipeline-name</var>
-</pre>
+```
 
 Vertex:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline delete --engine=vertex --pipeline_name=<var>pipeline-name</var>
-</pre>
+```
 
 ### list
 
@@ -466,10 +466,10 @@ Lists all the pipelines in the given orchestrator.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx pipeline list [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var>]
-</pre>
+```
 
 <dl>
   <dt>--endpoint=<var>endpoint</var></dt>
@@ -533,34 +533,34 @@ tfx pipeline list [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
   </dd>
 </dl>
 
-#### Examples:
+#### Examples
 
 Kubeflow:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline list --engine=kubeflow --iap_client_id=<var>iap-client-id</var> \
 --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
-</pre>
+```
 
 Local:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline list --engine=local
-</pre>
+```
 
 Vertex:
 
-<pre class="devsite-terminal">
+```bash
 tfx pipeline list --engine=vertex
-</pre>
+```
 
 ## tfx run
 
 The structure for commands in the `tfx run` command group is as follows:
 
-<pre class="devsite-terminal">
+```bash
 tfx run <var>command</var> <var>required-flags</var> [<var>optional-flags</var>]
-</pre>
+```
 
 Use the following sections to learn more about the commands in the `tfx run`
 command group.
@@ -572,10 +572,10 @@ most recent pipeline version of the pipeline in the cluster is used.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx run create --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoint</var> \
 --engine=<var>engine</var> --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var>]
-</pre>
+```
 
 <dl>
   <dt>--pipeline_name=<var>pipeline-name</var></dt>
@@ -660,28 +660,28 @@ tfx run create --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoin
 
 </dl>
 
-#### Examples:
+#### Examples
 
 Kubeflow:
 
-<pre class="devsite-terminal">
+```bash
 tfx run create --engine=kubeflow --pipeline_name=<var>pipeline-name</var> --iap_client_id=<var>iap-client-id</var> \
 --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
-</pre>
+```
 
 Local:
 
-<pre class="devsite-terminal">
+```bash
 tfx run create --engine=local --pipeline_name=<var>pipeline-name</var>
-</pre>
+```
 
 Vertex:
 
-<pre class="devsite-terminal">
+```bash
 tfx run create --engine=vertex --pipeline_name=<var>pipeline-name</var> \
   --runtime_parameter=<var>var_name</var>=<var>var_value</var> \
   --project=<var>gcp-project-id</var> --region=<var>gcp-region</var>
-</pre>
+```
 
 ### terminate
 
@@ -691,10 +691,10 @@ Stops a run of a given pipeline.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx run terminate --run_id=<var>run-id</var> [--endpoint=<var>endpoint</var> --engine=<var>engine</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var>]
-</pre>
+```
 
 <dl>
   <dt>--run_id=<var>run-id</var></dt>
@@ -756,14 +756,14 @@ tfx run terminate --run_id=<var>run-id</var> [--endpoint=<var>endpoint</var> --e
   </dd>
 </dl>
 
-#### Examples:
+#### Examples
 
 Kubeflow:
 
-<pre class="devsite-terminal">
+```bash
 tfx run delete --engine=kubeflow --run_id=<var>run-id</var> --iap_client_id=<var>iap-client-id</var> \
 --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
-</pre>
+```
 
 ### list
 
@@ -773,10 +773,10 @@ Lists all runs of a pipeline.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx run list --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoint</var> \
 --engine=<var>engine</var> --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var>]
-</pre>
+```
 
 <dl>
   <dt>--pipeline_name=<var>pipeline-name</var></dt>
@@ -839,14 +839,14 @@ tfx run list --pipeline_name=<var>pipeline-name</var> [--endpoint=<var>endpoint<
   </dd>
 </dl>
 
-#### Examples:
+#### Examples
 
 Kubeflow:
 
-<pre class="devsite-terminal">
+```bash
 tfx run list --engine=kubeflow --pipeline_name=<var>pipeline-name</var> --iap_client_id=<var>iap-client-id</var> \
 --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
-</pre>
+```
 
 ### status
 
@@ -856,10 +856,10 @@ Returns the current status of a run.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx run status --pipeline_name=<var>pipeline-name</var> --run_id=<var>run-id</var> [--endpoint=<var>endpoint</var> \
 --engine=<var>engine</var> --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var>]
-</pre>
+```
 
 <dl>
   <dt>--pipeline_name=<var>pipeline-name</var></dt>
@@ -924,14 +924,14 @@ tfx run status --pipeline_name=<var>pipeline-name</var> --run_id=<var>run-id</va
   </dd>
 </dl>
 
-#### Examples:
+#### Examples
 
 Kubeflow:
 
-<pre class="devsite-terminal">
+```bash
 tfx run status --engine=kubeflow --run_id=<var>run-id</var> --pipeline_name=<var>pipeline-name</var> \
 --iap_client_id=<var>iap-client-id</var> --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
-</pre>
+```
 
 ### delete
 
@@ -941,10 +941,10 @@ Deletes a run of a given pipeline.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx run delete --run_id=<var>run-id</var> [--engine=<var>engine</var> --iap_client_id=<var>iap-client-id</var> \
 --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>]
-</pre>
+```
 
 <dl>
   <dt>--run_id=<var>run-id</var></dt>
@@ -1006,22 +1006,22 @@ tfx run delete --run_id=<var>run-id</var> [--engine=<var>engine</var> --iap_clie
   </dd>
 </dl>
 
-#### Examples:
+#### Examples
 
 Kubeflow:
 
-<pre class="devsite-terminal">
+```bash
 tfx run delete --engine=kubeflow --run_id=<var>run-id</var> --iap_client_id=<var>iap-client-id</var> \
 --namespace=<var>namespace</var> --endpoint=<var>endpoint</var>
-</pre>
+```
 
 ## tfx template [Experimental]
 
 The structure for commands in the `tfx template` command group is as follows:
 
-<pre class="devsite-terminal">
+```bash
 tfx template <var>command</var> <var>required-flags</var> [<var>optional-flags</var>]
-</pre>
+```
 
 Use the following sections to learn more about the commands in the `tfx
 template` command group. Template is an experimental feature and subject to
@@ -1033,9 +1033,9 @@ List available TFX pipeline templates.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx template list
-</pre>
+```
 
 ### copy
 
@@ -1043,10 +1043,10 @@ Copy a template to the destination directory.
 
 Usage:
 
-<pre class="devsite-click-to-copy devsite-terminal">
+```bash
 tfx template copy --model=<var>model</var> --pipeline_name=<var>pipeline-name</var> \
 --destination_path=<var>destination-path</var>
-</pre>
+```
 
 <dl>
   <dt>--model=<var>model</var></dt>

@@ -6,7 +6,7 @@ specification, executor, and component interface classes. This approach lets you
 reuse and extend a standard component to fit your needs.
 
 If you are new to TFX pipelines,
-[learn more about the core concepts of TFX pipelines](understanding_tfx_pipelines).
+[learn more about the core concepts of TFX pipelines](understanding_tfx_pipelines.md).
 
 ## Custom executor or custom component
 

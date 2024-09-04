@@ -29,3 +29,21 @@ from tfx.dsl.io.fileio import rename
 from tfx.dsl.io.fileio import rmtree
 from tfx.dsl.io.fileio import stat
 from tfx.dsl.io.fileio import walk
+
+__all__ = [
+    "NotFoundError",
+    "copy",
+    "exists",
+    "glob",
+    "isdir",
+    "listdir",
+    "makedirs",
+    "mkdir",
+    "open",
+    "remove",
+    "rename",
+    "rmtree",
+    "stat",
+    "walk",
+    "PathType",
+]

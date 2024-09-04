@@ -22,7 +22,7 @@ and the TensorFlow
 [Keras](https://www.tensorflow.org/guide/keras/overview) API.
 
 The second document,
-[Data preprocessing for ML with Google Cloud](../tutorials/transform/data_preprocessing_with_cloud),
+[Data preprocessing for ML with Google Cloud](../../tutorials/transform/data_preprocessing_with_cloud),
 provides a step-by-step tutorial for how to implement a `tf.Transform` pipeline.
 
 ## Introduction
@@ -100,7 +100,7 @@ meanings:
     features that are created by performing certain ML-specific operations on
     the columns in the prepared dataset, and creating new features for your
     model during training and prediction, as described later in
-    [Preprocessing operations](#preprocessing_operations).
+    [Preprocessing operations](#preprocessing-operations).
     Examples of these operations include scaling numerical columns to a value
     between 0 and 1, clipping values, and
     [one-hot-encoding](https://developers.google.com/machine-learning/glossary/#one-hot_encoding){: .external }
@@ -109,12 +109,17 @@ meanings:
 The following diagram, figure 1, shows the steps that are involved in preparing
 preprocessed data:
 
-<figure id="data-flow-raw-prepared-engineered-features">
+
+Figure: The flow of data from raw data to prepared data to engineered features to machine learning. {data-flow-raw-prepared-engineered-features}
+
+![Flow diagram showing raw data moving to prepared data moving to engineered features.](images/data-preprocessing-for-ml-with-tf-transform-data-preprocessing-flow.svg)
+
+<!--<figure id="data-flow-raw-prepared-engineered-features">
   <img src="images/data-preprocessing-for-ml-with-tf-transform-data-preprocessing-flow.svg"
     alt="Flow diagram showing raw data moving to prepared data moving to engineered features.">
   <figcaption><b>Figure 1.</b> The flow of data from raw data to prepared data to engineered
 features to machine learning.</figcaption>
-</figure>
+</figure>-->
 
 In practice, data from the same source is often at different stages of
 readiness. For example, a field from a table in your data warehouse might be
@@ -216,7 +221,7 @@ on operation granularity:
     then the model behaves poorly because it is presented with data that has a
     distribution of values that it wasn't trained with. For more information,
     see the discussion of training-serving skew in the
-    [Preprocessing challenges](#preprocessing_challenges)
+    [Preprocessing challenges](#preprocessing-challenges)
     section.
 -   **Full-pass transformations during training, but instance-level
     transformations during prediction**. In this scenario, transformations are
@@ -233,7 +238,7 @@ on operation granularity:
     values that are computed during training are used to adjust the feature
     value, which is the following simple *instance-level* operation:
 
-    <div> $$ value_{scaled} = (value_{raw} - \mu) \div \sigma $$ </div>
+    \[ value_{scaled} = (value_{raw} - \mu) \div \sigma \]
 
     Full-pass transformations include the following:
 
@@ -308,7 +313,7 @@ train and serve TensorFlow ML models on Google Cloud using
 managed services. It also discusses where you can implement different categories
 of the data preprocessing operations, and common challenges that you might face
 when you implement such transformations. The
-[How tf.Transform works](#how_tftransform_works)
+[How tf.Transform works](#how-tftransform-works)
 section shows how the TensorFlow Transform library helps to
 address these challenges.
 
@@ -320,12 +325,16 @@ labels A, B, and C in the diagram refer to the different places in the pipeline
 where data preprocessing can take place. Details about these steps are provided
 in the following section.
 
-<figure id="high-level-architecture-for-training-and-serving">
+Figure: High-level architecture for ML training and serving on Google Cloud. {#high-level-architecture-for-training-and-serving}
+
+![Architecture diagram showing stages for processing data.](images/data-preprocessing-for-ml-with-tf-transform-ml-training-serving-architecture.svg)
+
+<!--<figure id="high-level-architecture-for-training-and-serving">
   <img src="images/data-preprocessing-for-ml-with-tf-transform-ml-training-serving-architecture.svg"
     alt="Architecture diagram showing stages for processing data.">
   <figcaption><b>Figure 2.</b> High-level architecture for ML training and
     serving on Google Cloud.</figcaption>
-</figure>
+</figure>-->
 
 The pipeline consists of the following steps:
 
@@ -369,7 +378,7 @@ take place in BigQuery, Dataflow, or
 TensorFlow. The following sections describe how each of these
 options work.
 
-#### Option A: BigQuery{: id="option_a_bigquery"}
+#### Option A: BigQuery
 
 Typically, logic is implemented in BigQuery for the following
 operations:
@@ -402,7 +411,7 @@ prediction.
 For example, if your client app is written in Java, you need to reimplement the
 logic in Java. This can introduce errors due to implementation discrepancies, as
 described in the training-serving skew section of
-[Preprocessing challenges](#preprocessing_challenges)
+[Preprocessing challenges](#preprocessing-challenges)
 later in this document. It's also extra overhead to maintain two different
 implementations. Whenever you change the logic in SQL to preprocess the training
 data, you need to change the Java implementation accordingly to preprocess data
@@ -424,7 +433,7 @@ features. Further, implementation of full-pass transformations using SQL on
 BigQuery creates increased complexity in the SQL scripts, and
 creates intricate dependency between training and the scoring SQL scripts.
 
-#### Option B: Dataflow{: id="option_b_cloud_dataflow"}
+#### Option B: Dataflow
 
 As shown in figure 2, you can implement computationally expensive preprocessing
 operations in Apache Beam, and run them at scale using Dataflow.
@@ -441,19 +450,23 @@ Apache Beam
 can compute these features based on aggregating the values of time windows of
 real-time (streaming) events data (for example, click events). In the earlier
 discussion of
-[granularity of transformations](#preprocessing_granularity),
+[granularity of transformations](#preprocessing-granularity),
 this was referred to as "Historical aggregations during training, but real-time
 aggregations during prediction."
 
 The following diagram, figure 3, shows the role of Dataflow in
 processing stream data for near real-time predictions.
 
-<figure id="high-level-architecture-for-stream-data">
+Figure: High-level architecture using stream data for prediction in Dataflow. {#high-level-architecture-for-stream-data}
+
+![Architecture for using stream data for prediction.](images/data-preprocessing-for-ml-with-tf-transform-streaming-data-with-dataflow-architecture.svg)
+
+<!--<figure id="high-level-architecture-for-stream-data">
   <img src="images/data-preprocessing-for-ml-with-tf-transform-streaming-data-with-dataflow-architecture.svg"
     alt="Architecture for using stream data for prediction.">
   <figcaption><b>Figure 3.</b> High-level architecture using stream data
     for prediction in Dataflow.</figcaption>
-</figure>
+</figure>-->
 
 As shown in figure 3, during processing, events called *data points* are
 ingested into [Pub/Sub](https://cloud.google.com/pubsub/docs){: .external }.
@@ -485,9 +498,9 @@ stored somewhere to be used during prediction to transform prediction data
 points. By using the TensorFlow Transform (`tf.Transform`)
 library, you can directly embed these statistics in the model instead of storing
 them elsewhere. This approach is explained later in
-[How tf.Transform works](#how_tftransform_works).
+[How tf.Transform works](#how-tftransform-works).
 
-#### Option C: TensorFlow{: id="option_c_tensorflow"}
+#### Option C: TensorFlow
 
 As shown in figure 2, you can implement data preprocessing and transformation
 operations in the TensorFlow model itself. As shown in the
@@ -538,7 +551,7 @@ The following are the primary challenges of implementing data preprocessing:
     If the transformations become part of the model itself, it can be
     straightforward to handle instance-level transformations, as described
     earlier in
-    [Option C: TensorFlow](#option_c_tensorflow).
+    [Option C: TensorFlow](#option-c-tensorflow).
     In that case, the model serving interface (the
     [`serving_fn`](https://www.tensorflow.org/guide/saved_model#savedmodels_from_estimators)
     function) expects raw data, while the model internally transforms this data
@@ -550,14 +563,14 @@ The following are the primary challenges of implementing data preprocessing:
     TensorFlow model. In full-pass transformations, some
     statistics (for example, `max` and `min` values to scale numeric features)
     must be computed on the training data beforehand, as described in
-    [Option B: Dataflow](#option_b_dataflow).
+    [Option B: Dataflow](#option-b-dataflow).
     The values then have to be stored somewhere to be used during model serving
     for prediction to transform the new raw data points as instance-level
     transformations, which avoids training-serving skew. You can use the
     TensorFlow Transform (`tf.Transform`) library to directly
     embed the statistics in your TensorFlow model. This approach
     is explained later in
-    [How tf.Transform works](#how_tftransform_works).
+    [How tf.Transform works](#how-tftransform-works).
 -   **Preparing the data up front for better training efficiency**.
     Implementing instance-level transformations as part of the model can
     degrade the efficiency of the training process. This degradation occurs
@@ -573,7 +586,7 @@ The following are the primary challenges of implementing data preprocessing:
 
     Ideally, the training data is transformed before training, using the
     technique described under
-    [Option B: Dataflow](#option_b_dataflow),
+    [Option B: Dataflow](#option-b-dataflow),
     where the 10,000 transformation operations are applied only once on each
     training instance. The transformed training data is then presented to the
     model. No further transformations are applied, and the accelerators are
@@ -583,9 +596,9 @@ The following are the primary challenges of implementing data preprocessing:
     Preparing the training data up front can improve training efficiency.
     However, implementing the transformation logic outside of the model (the
     approaches described in
-    [Option A: BigQuery](#option_a_bigquery)
+    [Option A: BigQuery](#option-a-bigquery)
     or
-    [Option B: Dataflow](#option_b_dataflow))
+    [Option B: Dataflow](#option-b-dataflow))
     doesn't resolve the issue of training-serving skew. Unless you store the
     engineered feature in the feature store to be used for both training and
     prediction, the transformation logic must be implemented somewhere to be
@@ -594,7 +607,7 @@ The following are the primary challenges of implementing data preprocessing:
     (`tf.Transform`) library can help you to address this issue, as described in
     the following section.
 
-## How tf.Transform works{:#how_tftransform_works}
+## How tf.Transform works
 
 The `tf.Transform` library is useful for transformations that require a full
 pass. The output of the `tf.Transform` library is exported as a
@@ -610,12 +623,16 @@ The following diagram, figure 4, shows how the `tf.Transform` library
 preprocesses and transforms data for training and prediction. The process is
 described in the following sections.
 
-<figure id="tf-Transform-preprocessing--transforming-data-for-training-and-prediction">
+Figure: Behavior of `tf.Transform` for preprocessing and transforming data.
+
+![Diagram showing flow from raw data through tf.Transform to predictions.](images/data-preprocessing-for-ml-with-tf-transform-tf-transform-behavior-flow.svg)
+
+<!--<figure id="tf-Transform-preprocessing--transforming-data-for-training-and-prediction">
   <img src="images/data-preprocessing-for-ml-with-tf-transform-tf-transform-behavior-flow.svg"
     alt="Diagram showing flow from raw data through tf.Transform to predictions.">
   <figcaption><b>Figure 4.</b> Behavior of <code>tf.Transform</code> for
     preprocessing and transforming data.</figcaption>
-</figure>
+</figure>-->
 
 
 ### Transform training and evaluation data
@@ -637,7 +654,7 @@ Dataflow. The preprocessing occurs in the following phases:
     columns) in an instance-level fashion.
 
 A two-phase approach like this addresses the
-[preprocessing challenge](#preprocessing_challenges)
+[preprocessing challenge](#preprocessing-challenges)
 of performing full-pass transformations.
 
 When the evaluation data is preprocessed, only instance-level operations are
@@ -651,7 +668,7 @@ an instance-level fashion.
 The transformed training and evaluation data are prepared at scale using
 Dataflow, before they are used to train the model. This batch
 data-preparation process addresses the
-[preprocessing challenge](#preprocessing_challenges)
+[preprocessing challenge](#preprocessing-challenges)
 of preparing the data up front to improve training efficiency. As shown in
 figure 4, the model internal interface expects transformed features.
 
@@ -678,7 +695,7 @@ the model internal interface in order to produce prediction, as shown in figure
 4.
 
 This mechanism resolves the
-[preprocessing challenge](#preprocessing_challenges)
+[preprocessing challenge](#preprocessing-challenges)
 of the training-serving skew, because the same logic (implementation) that is
 used to transform the training and evaluation data is applied to transform the
 new data points during prediction serving.

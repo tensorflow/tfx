@@ -51,7 +51,7 @@ model, please see the “Model-Agnostic TFMA” section below.
 
 After your Estimator is trained, you will need to export a saved model for
 evaluation purposes. To learn more, see the
-[TFMA guide](/tfx/model_analysis/get_started).
+[TFMA guide](https://www.tensorflow.org/tfx/model_analysis/get_started).
 
 ### Configuring Slices
 

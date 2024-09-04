@@ -106,7 +106,7 @@ Here are several examples with native Keras:
     end-to-end example with advanced Transform usage.
 
 We also have a per-component
-[Keras Colab](https://www.tensorflow.org/tfx/tutorials/tfx/components_keras).
+[Keras Colab](../../tutorials/tfx/components_keras).
 
 ### TFX Components
 

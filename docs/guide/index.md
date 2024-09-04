@@ -62,19 +62,19 @@ environment. TFX provides the following:
     ML workflow on several platforms, such as: Apache Airflow, Apache Beam, and
     Kubeflow Pipelines.
 
-    [Learn more about TFX pipelines](https://www.tensorflow.org/tfx/guide/understanding_tfx_pipelines).
+    [Learn more about TFX pipelines](understanding_tfx_pipelines.md).
 
 *   A set of standard components that you can use as a part of a pipeline, or as
     a part of your ML training script. TFX standard components provide proven
     functionality to help you get started building an ML process easily.
 
-    [Learn more about TFX standard components](#tfx_standard_components).
+    [Learn more about TFX standard components](#tfx-standard-components).
 
 *   Libraries which provide the base functionality for many of the standard
     components. You can use the TFX libraries to add this functionality to your
     own custom components, or use them separately.
 
-    [Learn more about the TFX libraries](#tfx_libraries).
+    [Learn more about the TFX libraries](#tfx-libraries).
 
 TFX is a Google-production-scale machine learning toolkit based on TensorFlow.
 It provides a configuration framework and shared libraries to integrate common
@@ -412,7 +412,7 @@ A typical TFX pipeline will include a [Transform](transform.md) component, which
 will perform feature engineering by leveraging the capabilities of the
 [TensorFlow Transform (TFT)](tft.md) library. A Transform component consumes the
 schema created by a SchemaGen component, and applies
-[data transformations](https://www.tensorflow.org/tfx/tutorials/transform/simple)
+[data transformations](../tutorials/transform/simple)
 to create, combine, and transform the features that will be used to train your
 model. Cleanup of missing values and conversion of types should also be done in
 the Transform component if there is ever a possibility that these will also be
@@ -568,7 +568,7 @@ on using TensorFlow JS.
 ## Creating a TFX Pipeline With Airflow
 
 Check
-[airflow workshop](https://www.tensorflow.org/tfx/tutorials/tfx/airflow_workshop/)
+[airflow workshop](../tutorials/tfx/airflow_workshop/)
 for details
 
 ## Creating a TFX Pipeline With Kubeflow
@@ -582,7 +582,7 @@ Kubeflow deployment guideline that guide through the options for
 ### Configure and run TFX pipeline
 
 Please follow the
-[TFX on Cloud AI Platform Pipeline tutorial](https://www.tensorflow.org/tfx/tutorials/tfx/cloud-ai-platform-pipelines)
+[TFX on Cloud AI Platform Pipeline tutorial](../tutorials/tfx/cloud-ai-platform-pipelines/)
 to run the TFX example pipeline on Kubeflow. TFX components have been
 containerized to compose the Kubeflow pipeline and the sample illustrates the
 ability to configure the pipeline to read large public dataset and execute

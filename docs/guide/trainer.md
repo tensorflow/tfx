@@ -91,4 +91,4 @@ trainer = Trainer(
 ```
 
 More details are available in the
-[Trainer API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/Trainer).
+[Trainer API reference][tfx.v1.components.Trainer].
