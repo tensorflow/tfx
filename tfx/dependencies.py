@@ -98,7 +98,7 @@ def make_required_install_packages():
         # TODO(b/332616741): Scipy version 1.13 breaks the TFX OSS test.
         # Unpin once the issue is resolved.
         "scipy<1.13",
-        "scikit-learn>=1.0,<2",
+        'scikit-learn==1.5.1',
         # TODO(b/291837844): Pinned pyyaml to 5.3.1.
         # Unpin once the issue with installation is resolved.
         "pyyaml>=6,<7",
@@ -267,7 +267,6 @@ def make_extra_packages_docs() -> list[str]:
         "mkdocs-material",
         "griffe-inherited-docstrings",
         "mkdocs-autorefs",
-        "black",
         "mkdocs-jupyter",
         "mkdocs-caption",
         "pymdown-extensions",
@@ -275,7 +274,7 @@ def make_extra_packages_docs() -> list[str]:
 
 
 def make_extra_packages_all():
-    # All extra dependencies.
+    # All extra dependencies, not including lint or docs dependencies
     return [
         *make_extra_packages_test(),
         *make_extra_packages_tfjs(),
@@ -284,5 +283,4 @@ def make_extra_packages_all():
         *make_extra_packages_tfdf(),
         *make_extra_packages_flax(),
         *make_extra_packages_examples(),
-        *make_extra_packages_docs(),
     ]

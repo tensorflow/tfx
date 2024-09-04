@@ -13,7 +13,6 @@
 # limitations under the License.
 """TFX proto module."""
 
-from tfx.proto import distribution_validator_pb2, example_diff_pb2
 from tfx.proto.bulk_inferrer_pb2 import (
     ClassifyOutput,
     DataSpec,
@@ -24,7 +23,15 @@ from tfx.proto.bulk_inferrer_pb2 import (
     PredictOutputCol,
     RegressOutput,
 )
+from tfx.proto.distribution_validator_pb2 import (
+    DistributionValidatorConfig,
+    FeatureComparator,
+)
 from tfx.proto.evaluator_pb2 import FeatureSlicingSpec, SingleSlicingSpec
+from tfx.proto.example_diff_pb2 import (
+    ExampleDiffConfig,
+    PairedExampleSkew,
+)
 from tfx.proto.example_gen_pb2 import (
     CustomConfig,
     Input,
@@ -46,7 +53,6 @@ from tfx.proto.infra_validator_pb2 import (
     ValidationSpec,
 )
 from tfx.proto.pusher_pb2 import PushDestination, Versioning
-from tfx.proto.pusher_pb2.PushDestination import Filesystem
 from tfx.proto.range_config_pb2 import RangeConfig, RollingRange, StaticRange
 from tfx.proto.trainer_pb2 import EvalArgs, TrainArgs
 from tfx.proto.transform_pb2 import SplitsConfig
@@ -172,7 +178,7 @@ Versioning method for the model to be pushed. Note that This is the semantic TFX
 For example TF Serving only accepts an integer version that is monotonically increasing.
 """
 
-Filesystem.__doc__ = """
+PushDestination.Filesystem.__doc__ = """
 File system based destination definition.
 """
 
@@ -212,25 +218,17 @@ TuneArgs.__doc__ = """
 Args specific to tuning in `components.Tuner`.
 """
 
-ExampleDiffConfig = example_diff_pb2.ExampleDiffConfig
-
 ExampleDiffConfig.__doc__ = """
 Configurations related to Example Diff.
 """
-
-FeatureComparator = distribution_validator_pb2.FeatureComparator
 
 FeatureComparator.__doc__ = """
 Per feature configuration in Distribution Validator.
 """
 
-DistributionValidatorConfig = distribution_validator_pb2.DistributionValidatorConfig
-
 DistributionValidatorConfig.__doc__ = """
 Configurations related to Distribution Validator.
 """
-
-PairedExampleSkew = example_diff_pb2.PairedExampleSkew
 
 PairedExampleSkew.__doc__ = """
 Configurations related to Example Diff on feature pairing level.
