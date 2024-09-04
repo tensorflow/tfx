@@ -14,8 +14,6 @@
 """Integration tests for metadata resolver."""
 from typing import Dict, List
 from absl.testing import absltest
-from tfx.orchestration import metadata
-from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver
 from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver_utils
 import ml_metadata as mlmd
