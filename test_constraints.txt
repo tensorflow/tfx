@@ -10,7 +10,3 @@
 
 # TODO(b/321609768): Remove pinned Flask-session version after resolving the issue.
 Flask-session<0.6.0
-
-#TODO(b/329181965): Remove once we migrate TFX to 2.16.
-tensorflow<2.16
-tensorflow-text<2.16
