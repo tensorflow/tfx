@@ -11,16 +11,16 @@ and they create as byproducts a TensorFlow graph to apply the
 same transformations during prediction as when the model is served.
 
 This tutorial provides an end-to-end example using
-[Dataflow](https://cloud.google.com/dataflow/docs){: .external }
+[Dataflow](https://cloud.google.com/dataflow/docs)
 as a runner for Apache Beam. It assumes that you're familiar with
-[BigQuery](https://cloud.google.com/bigquery/docs){: .external },
+[BigQuery](https://cloud.google.com/bigquery/docs),
 Dataflow,
-[Vertex AI](https://cloud.google.com/vertex-ai/docs/start/introduction-unified-platform){: .external },
+[Vertex AI](https://cloud.google.com/vertex-ai/docs/start/introduction-unified-platform),
 and the TensorFlow
 [Keras](https://www.tensorflow.org/guide/keras/overview)
 API. It also assumes that you have some experience using Jupyter Notebooks, such
 as with
-[Vertex AI Workbench](https://cloud.google.com/vertex-ai/docs/workbench/introduction){: .external }.
+[Vertex AI Workbench](https://cloud.google.com/vertex-ai/docs/workbench/introduction).
 
 This tutorial also assumes that you're familiar with the concepts of
 preprocessing types, challenges, and options on Google Cloud, as described in
@@ -47,7 +47,7 @@ This tutorial uses the following billable components of Google Cloud:
 
 To estimate the cost to run this tutorial, assuming you use every resource for
 an entire day, use the preconfigured
-[pricing calculator](/products/calculator/#id=fad408d8-dd68-45b8-954e-5a5619a5d148){: .external }.
+[pricing calculator](/products/calculator/#id=fad408d8-dd68-45b8-954e-5a5619a5d148).
 
 
 ## Before you begin
@@ -72,11 +72,11 @@ an entire day, use the preconfigured
 
 The following Jupyter notebooks show the implementation example:
 
-*   [Notebook 1](https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/blogs/babyweight_tft/babyweight_tft_keras_01.ipynb){: .external }
+*   [Notebook 1](https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/blogs/babyweight_tft/babyweight_tft_keras_01.ipynb)
     covers data preprocessing. Details are provided in the
     [Implementing the Apache Beam pipeline](#implement-the-apache-beam-pipeline)
     section later.
-*   [Notebook 2](https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/blogs/babyweight_tft/babyweight_tft_keras_02.ipynb){: .external }
+*   [Notebook 2](https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/blogs/babyweight_tft/babyweight_tft_keras_02.ipynb)
     covers model training. Details are provided in the
     [Implementing the TensorFlow model](#implement-the-tensorflow-model)
     section later.
@@ -176,7 +176,7 @@ the pipeline. The overall pipeline steps are as follows:
 1.  Read training data from BigQuery.
 1.  Analyze and transform training data using the `tf.Transform` library.
 1.  Write transformed training data to Cloud Storage in the
-    [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord){: target="external" class="external" track-type="solution" track-name="externalLink" track-metadata-position="body" }
+    [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord)
     format.
 1.  Read evaluation data from BigQuery.
 1.  Transform evaluation data using the `transform_fn` graph produced by step 2.
@@ -232,7 +232,7 @@ def run_transformation_pipeline(args):
                 write_text(transformed_train_dataset, transformed_data_location, step)
 ```
 
-### Read raw training data from BigQuery{: id="read_raw_training_data"}
+### Read raw training data from BigQuery
 
 The first step is to read the raw training data from BigQuery
 using the `read_from_bq` function. This function returns a `raw_dataset` object
@@ -425,7 +425,7 @@ def preprocess_fn(input_features):
 ```
 
 The `tf.Transform`
-[framework](https://github.com/tensorflow/transform){: .external }
+[framework](https://github.com/tensorflow/transform)
 has several other transformations in addition to those in the preceding example,
 including those listed in the following table:
 
@@ -536,7 +536,7 @@ produces two outputs:
 -   `transform_fn`: a TensorFlow graph that contains the
     computed stats from the analyze phase and the transformation logic (which
     uses the stats) as instance-level operations. As discussed later in
-    [Save the graph](#save_the_graph){: track-type="solution" track-name="internalLink" track-metadata-position="body" },
+    [Save the graph](#save-the-graph),
     the `transform_fn` graph is saved to be attached to the model `serving_fn`
     function. This makes it possible to apply the same transformation to the
     online prediction data points.
@@ -552,7 +552,7 @@ The analyze phase is illustrated in the following diagram, figure 1:
 </figure>
 
 The `tf.Transform`
-[analyzers](https://github.com/tensorflow/transform/blob/master/tensorflow_transform/beam/analyzer_impls.py){: target="github" class="external" track-type="solution" track-name="gitHubLink" track-metadata-position="body" }
+[analyzers](https://github.com/tensorflow/transform/blob/master/tensorflow_transform/beam/analyzer_impls.py)
 include `min`, `max`, `sum`, `size`, `mean`, `var`, `covariance`, `quantiles`,
 `vocabulary`, and `pca`.
 
@@ -602,7 +602,7 @@ categorical features are represented by integer values. In the
 columns indicates whether the column represents a categorical feature or a true
 numeric feature.
 
-### Write transformed training data{: id="step_3_write_transformed_training_data"}
+### Write transformed training data
 
 After the training data is preprocessed with the `preprocess_fn` function
 through the analyze and transform phases, you can write the data to a sink to be
@@ -640,7 +640,7 @@ After you transform the training data and produce the `transform_fn` graph, you
 can use it to transform the evaluation data. First, you read and clean the
 evaluation data from BigQuery using the `read_from_bq` function
 described earlier in
-[Read raw training data from BigQuery](#read-raw-training-data-from-bigquery){: track-type="solution" track-name="internalLink" track-metadata-position="body" },
+[Read raw training data from BigQuery](#read-raw-training-data-from-bigquery),
 and passing a value of `eval` for the `step` parameter. Then, you use the
 following code to transform the raw evaluation dataset (`raw_dataset`) to the
 expected transformed format (`transformed_dataset`):
@@ -673,7 +673,7 @@ You then write the data to a sink (Cloud Storage or local disk,
 depending on the runner) in the TFRecord format for evaluating the
 TensorFlow model during the training process. To do this, you use
 the `write_tfrecords` function that's discussed in
-[Write transformed training data](#step_3_write_transformed_training_data){: track-type="solution" track-name="internalLink" track-metadata-position="body" }.
+[Write transformed training data](#write-transformed-training-data).
 The following diagram, figure 3, shows how the `transform_fn` graph that's
 produced in the analyze phase of the training data is used to transform the
 evaluation data.
@@ -777,10 +777,10 @@ gs://YOUR_BUCKET_NAME/babyweight_tft/transform/transform_fn/assets/is_multiple
 gs://YOUR_BUCKET_NAME/babyweight_tft/transform/transform_fn/assets/mother_race
 ```
 
-## Implement the TensorFlow model{: id="implementing_the_tensorflow_model"}
+## Implement the TensorFlow model
 
 This section and the next section,
-[Train and use the model for predictions](#train_and_use_the_model_for_predictions){: track-type="solution" track-name="internalLink" track-metadata-position="body" },
+[Train and use the model for predictions](#train-and-use-the-model-for-predictions),
 provide an overview and context for Notebook 2. The notebook provides
 an example ML model to predict baby weights. In this example, a
 TensorFlow model is implemented using the Keras API. The model
@@ -866,7 +866,7 @@ the previous step:
 
 1.  Create a `TFTransformOutput` object from the artifacts that are generated
     and saved in the previous preprocessing step, as described in the
-    [Save the graph](#save_the_graph){: track-type="solution" track-name="internalLink" track-metadata-position="body" }
+    [Save the graph](#save-the-graph)
     section:
 
     ```py
@@ -965,7 +965,7 @@ features, and a `tf.feature_column.categorical_column_with_identity` column for
 categorical features.
 
 You can also create extended feature columns, as described in
-[Option C: TensorFlow](/architecture/data-preprocessing-for-ml-with-tf-transform-pt1#option_c_tensorflow){: track-type="solution" track-name="internalLink" track-metadata-position="body" }
+[Option C: TensorFlow](../../../guide/tft_bestpractices#option-c-tensorflow)
 in the first part of this series. In the example used for this series, a new
 feature is created, `mother_race_X_mother_age_bucketized`, by crossing the
 `mother_race` and `mother_age_bucketized` features using the
@@ -1074,7 +1074,7 @@ for serving:
 You can train the model locally by executing the cells of the notebook. For
 examples of how to package the code and train your model at scale using
 Vertex AI Training, see the samples and guides in the Google Cloud
-[cloudml-samples](https://github.com/GoogleCloudPlatform/cloudml-samples){: .external }
+[cloudml-samples](https://github.com/GoogleCloudPlatform/cloudml-samples)
 GitHub repository.
 
 When you inspect the exported SavedModel object using the `saved_model_cli`
@@ -1170,11 +1170,11 @@ resources used in this tutorial, delete the project that contains the resources.
     [Data preprocessing for ML: options and recommendations](../guide/tft_bestpractices).
 -   For more information about how to implement, package, and run a
     tf.Transform pipeline on Dataflow, see the
-    [Predicting income with Census Dataset](https://github.com/GoogleCloudPlatform/cloudml-samples/tree/master/census/tftransformestimator){: .external }
+    [Predicting income with Census Dataset](https://github.com/GoogleCloudPlatform/cloudml-samples/tree/master/census/tftransformestimator)
     sample.
 -   Take the Coursera specialization on ML with
-    [TensorFlow on Google Cloud](https://www.coursera.org/specializations/machine-learning-tensorflow-gcp){: .external }.
+    [TensorFlow on Google Cloud](https://www.coursera.org/specializations/machine-learning-tensorflow-gcp).
 -   Learn about best practices for ML engineering in
-    [Rules of ML](https://developers.google.com/machine-learning/guides/rules-of-ml/){: .external }.
+    [Rules of ML](https://developers.google.com/machine-learning/guides/rules-of-ml/).
 -   For more reference architectures, diagrams, and best practices, explore the
     [Cloud Architecture Center](https://cloud.google.com/architecture).
