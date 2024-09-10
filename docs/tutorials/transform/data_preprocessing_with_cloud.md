@@ -1118,25 +1118,15 @@ resources used in this tutorial, delete the project that contains the resources.
 
 ### Delete the project
 
-  <aside class="caution">
-    <strong>Caution</strong>: Deleting a project has the following effects:
-    <ul>
-      <li>
-        <strong>Everything in the project is deleted.</strong> If you used an existing project for
-        this tutorial, when you delete it, you also delete any other work you've done in the project.
-      </li>
-      <li>
-        <strong>Custom project IDs are lost.</strong>
-        When you created this project, you might have created a custom project ID that you want to use in
-        the future. To preserve the URLs that use the project ID, such as an <code translate="no" dir="ltr">appspot.com</code>
-        URL, delete selected resources inside the project instead of deleting the whole project.
-      </li>
-    </ul>
-    <p>
-      If you plan to explore multiple tutorials and quickstarts, reusing projects can help you avoid
-      exceeding project quota limits.
-    </p>
-  </aside>
+!!! danger
+
+    Deleting a project has the following effects:
+
+    - __Everything in the project is deleted.__ If you used an existing project for
+      this tutorial, when you delete it, you also delete any other work you've done in the project.
+    - __Custom project IDs are lost.__ When you created this project, you might have created a custom project ID that you want to use in the future. To preserve the URLs that use the project ID, such as an `appspot.com`{translate="no" dir="ltr"} URL, delete selected resources inside the project instead of deleting the whole project.
+
+    If you plan to explore multiple tutorials and quickstarts, reusing projects can help you avoid exceeding project quota limits.
 
 1. In the Google Cloud console,
    go to the **Manage resources** page.
