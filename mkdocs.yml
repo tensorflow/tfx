@@ -130,7 +130,7 @@ nav:
       - LLM finetuning and conversion: tutorials/tfx/gpt2_finetuning_and_conversion
       - Custom component tutorial: tutorials/tfx/python_function_component
       - Recommenders with TFX: tutorials/tfx/recommenders
-      - Ranking with TFX: mmenders/examples/ranking_tfx
+      - Ranking with TFX: https://www.tensorflow.org/recommenders/examples/ranking_tfx
       - Airflow tutorial: tutorials/tfx/airflow_workshop
       - Neural Structured Learning in TFX: tutorials/tfx/neural_structured_learning
     - Data Validation:
