@@ -60,13 +60,14 @@ an entire day, use the preconfigured
       After you finish these steps, you can delete the project, removing all
       resources associated with the project.
 
-  [Go to project selector](https://console.cloud.google.com/projectselector2/home/dashboard){: class="button button-primary" target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
+  [Go to project selector](https://console.cloud.google.com/projectselector2/home/dashboard){ .md-button .md-button--primary }
 
 2. Make sure that billing is enabled for your Cloud project. Learn how to
   [check if billing is enabled on a project](https://cloud.google.com/billing/docs/how-to/verify-billing-enabled).
 
 3. Enable the Dataflow, Vertex AI, and Notebooks APIs.
-  [Enable the APIs](https://console.cloud.google.com/flows/enableapi?apiid=dataflow,aiplatform.googleapis.com,notebooks.googleapis.com){: class="button button-primary" target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
+
+  [Enable the APIs](https://console.cloud.google.com/flows/enableapi?apiid=dataflow,aiplatform.googleapis.com,notebooks.googleapis.com){ .md-button .md-button--primary }
 
 ## Jupyter notebooks for this solution
 
@@ -88,7 +89,7 @@ notebooks to learn how the implementation example works.
 
 1.  In the Google Cloud console, go to the **Vertex AI Workbench** page.
 
-    [Go to Workbench](https://console.cloud.google.com/ai-platform/notebooks/list/instances){: class="button button-primary" target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
+    [Go to Workbench](https://console.cloud.google.com/ai-platform/notebooks/list/instances){ .md-button .md-button--primary }
 
 1.  On the **User-managed notebooks** tab, click **+New notebook**.
 1.  Select **TensorFlow Enterprise 2.8 (with LTS) without GPUs** for the
@@ -1155,7 +1156,7 @@ resources used in this tutorial, delete the project that contains the resources.
 1. In the Google Cloud console,
    go to the **Manage resources** page.
 
-   [Go to Manage resources](https://console.cloud.google.com/iam-admin/projects){: class="button button-primary" target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
+   [Go to Manage resources](https://console.cloud.google.com/iam-admin/projects){ .md-button .md-button--primary }
 
 1. In the project list, select the project that you want to delete, and then
    click **Delete**.
