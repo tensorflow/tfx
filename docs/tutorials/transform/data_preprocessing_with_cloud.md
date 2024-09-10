@@ -139,7 +139,7 @@ table in BigQuery.
 
     The last part of the output is the following:
 
-    ```none{:.devsite-disable-click-to-copy}
+    ``` { .yaml .no-copy }
     Successfully installed ...
     ```
 
@@ -149,7 +149,7 @@ table in BigQuery.
 1.  Execute the second cell to run the `pip install tensorflow-transform
     `command. The last part of the output is the following:
 
-    ```none{:.devsite-disable-click-to-copy}
+    ``` { .yaml .no-copy }
     Successfully installed ...
     Note: you may need to restart the kernel to use updated packages.
     ```
@@ -188,7 +188,7 @@ the pipeline. The overall pipeline steps are as follows:
 The following example shows the Python code for the overall pipeline. The
 sections that follow provide explanations and code listings for each step.
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def run_transformation_pipeline(args):
 
     pipeline_options = beam.pipeline.PipelineOptions(flags=[], **args)
@@ -241,7 +241,7 @@ pass a `step` value of `train` or `eval`. The BigQuery source
 query is constructed using the `get_source_query` function, as shown in the
 following example:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def read_from_bq(pipeline, step, data_size):
 
     source_query = get_source_query(step, data_size)
@@ -270,7 +270,7 @@ In addition, to use the `tf.Transform` library to analyze and transform the
 The `raw_metadata` object is created using the `create_raw_metadata` function,
 as follows:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 CATEGORICAL_FEATURE_NAMES = ['is_male', 'mother_race']
 NUMERIC_FEATURE_NAMES = ['mother_age', 'plurality', 'gestation_weeks']
 TARGET_FEATURE_NAME = 'weight_pounds'
@@ -393,7 +393,7 @@ The following code shows the implementation of the `preprocess_fn` function,
 using the `tf.Transform` full-pass transformation APIs (prefixed with `tft.`),
 and TensorFlow (prefixed with `tf.`) instance-level operations:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def preprocess_fn(input_features):
 
     output_features = {}
@@ -508,7 +508,7 @@ the `raw_dataset` object as input, applies the `preprocess_fn` function, and it
 produces the `transformed_dataset` object and the `transform_fn` graph. The
 following code illustrates this processing:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def analyze_and_transform(raw_dataset, step):
 
     transformed_dataset, transform_fn = (
@@ -619,7 +619,7 @@ converted into tensors when they are fed to the model for training. The
 following code writes the transformed dataset to TFRecord files in the specified
 location:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def write_tfrecords(transformed_dataset, location, step):
     from tfx_bsl.coders import example_coder
 
@@ -645,7 +645,7 @@ and passing a value of `eval` for the `step` parameter. Then, you use the
 following code to transform the raw evaluation dataset (`raw_dataset`) to the
 expected transformed format (`transformed_dataset`):
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def transform(raw_dataset, transform_fn, step):
 
     transformed_dataset = (
@@ -691,7 +691,7 @@ artifacts, which includes the `transform_fn` graph that's produced by the
 analyze phase on the training data. The code for storing the artifacts is shown
 in the following `write_transform_artefacts` function:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def write_transform_artefacts(transform_fn, location):
 
     (
@@ -740,20 +740,20 @@ bucket.
 The transformed training and evaluation data in TFRecord format are stored at
 the following location:
 
-```none{:.devsite-disable-click-to-copy}
+``` { .yaml .no-copy }
 gs://YOUR_BUCKET_NAME/babyweight_tft/transformed
 ```
 
 The transform artifacts are produced at the following location:
 
-```none{:.devsite-disable-click-to-copy}
+``` { .yaml .no-copy }
 gs://YOUR_BUCKET_NAME/babyweight_tft/transform
 ```
 
 The following list is the output of the pipeline, showing the produced data
 objects and artifacts:
 
-```none{:.devsite-disable-click-to-copy}
+``` { .yaml .no-copy }
 transformed data:
 gs://YOUR_BUCKET_NAME/babyweight_tft/transformed/eval-00000-of-00001.tfrecords
 gs://YOUR_BUCKET_NAME/babyweight_tft/transformed/train-00000-of-00002.tfrecords
@@ -802,7 +802,7 @@ preprocessing pipeline explained earlier.
 
     The last part of the output is the following:
 
-    ```none{:.devsite-disable-click-to-copy}
+    ``` { .yaml .no-copy }
     Successfully installed ...
     Note: you may need to restart the kernel to use updated packages.
     ```
@@ -993,7 +993,7 @@ interface—that is, the input features schema that is expected during serving.
 This input features schema is defined in the `serving_fn` function, as shown in
 the following code:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def export_serving_model(model, output_dir):
 
     tf_transform_output = tft.TFTransformOutput(TRANSFORM_ARTEFACTS_DIR)
@@ -1081,7 +1081,7 @@ When you inspect the exported SavedModel object using the `saved_model_cli`
 tool, you see that the `inputs` elements of the signature definition
 `signature_def` include the raw features, as shown in the following example:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 signature_def['serving_default']:
   The given SavedModel SignatureDef contains the following input(s):
     inputs['gestation_weeks'] tensor_info:
