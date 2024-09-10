@@ -122,7 +122,7 @@ provide an overview and context for Notebook 1. The notebook provides a
 practical example to describe how to use the `tf.Transform` library to
 preprocess data. This example uses the Natality dataset, which is used to
 predict baby weights based on various inputs. The data is stored in the public
-[natality](https://console.cloud.google.com/bigquery?p=bigquery-public-data&amp;d=samples&amp;t=natality&amp;page=table&amp;_ga=2.267763789.2122871960.1676620306-376763843.1676620306){: target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
+[natality](https://console.cloud.google.com/bigquery?p=bigquery-public-data&amp;d=samples&amp;t=natality&amp;page=table&amp;_ga=2.267763789.2122871960.1676620306-376763843.1676620306)
 table in BigQuery.
 
 ### Run Notebook 1
