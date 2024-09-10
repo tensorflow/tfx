@@ -116,7 +116,7 @@ notebook name.
 ## Implement the Apache Beam pipeline
 
 This section and the next section
-[Run the pipeline in Dataflow](#run-the-pipeline-in-dataflow){: track-type="solution" track-name="internalLink" track-metadata-position="body" }
+[Run the pipeline in Dataflow](#run-the-pipeline-in-dataflow)
 provide an overview and context for Notebook 1. The notebook provides a
 practical example to describe how to use the `tf.Transform` library to
 preprocess data. This example uses the Natality dataset, which is used to
@@ -716,7 +716,7 @@ The following artifacts are also produced, as shown in the next section:
 -   `transformed_metadata`: a directory that contains the `schema.json` file
     that describes the schema of the transformed data.
 
-## Run the pipeline in Dataflow{:#run_the_pipeline_in_dataflow}
+## Run the pipeline in Dataflow
 
 After you define the `tf.Transform` pipeline, you run the pipeline using
 Dataflow. The following diagram, figure 4, shows the
