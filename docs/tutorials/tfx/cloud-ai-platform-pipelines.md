@@ -14,14 +14,16 @@ At the end of this tutorial, you will have created and run an ML Pipeline,
 hosted on Google Cloud. You'll be able to visualize the results of each run, and
 view the lineage of the created artifacts.
 
-Key Term: A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often
-refer to pipelines as DAGs.
+!!! abstract "Key Term"
+    A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often
+    refer to pipelines as DAGs.
 
 You'll follow a typical ML development process, starting by examining the
 dataset, and ending up with a complete working pipeline. Along the way you'll
 explore ways to debug and update your pipeline, and measure performance.
 
-Note: Completing this tutorial may take 45-60 minutes.
+!!! Note
+    Completing this tutorial may take 45-60 minutes.
 
 ### Chicago Taxi Dataset
 
@@ -35,12 +37,13 @@ You're using the
 [Taxi Trips dataset](https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew)
 released by the City of Chicago.
 
-Note: This site provides applications using data that has been modified for use
-from its original source, www.cityofchicago.org, the official website of the
-City of Chicago. The City of Chicago makes no claims as to the content,
-accuracy, timeliness, or completeness of any of the data provided at this site.
-The data provided at this site is subject to change at any time. It is
-understood that the data provided at this site is being used at one’s own risk.
+!!! Note
+    This site provides applications using data that has been modified for use
+    from its original source, www.cityofchicago.org, the official website of the
+    City of Chicago. The City of Chicago makes no claims as to the content,
+    accuracy, timeliness, or completeness of any of the data provided at this site.
+    The data provided at this site is subject to change at any time. It is
+    understood that the data provided at this site is being used at one’s own risk.
 
 You can [read more](https://cloud.google.com/bigquery/public-data/chicago-taxi)
 about the dataset in [Google BigQuery](https://cloud.google.com/bigquery/).
@@ -58,11 +61,12 @@ Will the customer tip more or less than 20%?
 To get started, you need a Google Cloud Account. If you already have one, skip
 ahead to [Create New Project](#create_project).
 
-Warning: This demo is designed to not exceed
-[Google Cloud's Free Tier](https://cloud.google.com/free) limits. If you already
-have a Google Account, you may have reached your Free Tier limits, or exhausted
-any free Google Cloud credits given to new users. **If that is the case,
-following this demo will result in charges to your Google Cloud account**.
+!!! Warning
+    This demo is designed to not exceed
+    [Google Cloud's Free Tier](https://cloud.google.com/free) limits. If you already
+    have a Google Account, you may have reached your Free Tier limits, or exhausted
+    any free Google Cloud credits given to new users. **If that is the case,
+    following this demo will result in charges to your Google Cloud account**.
 
 1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
 
@@ -85,19 +89,22 @@ following this demo will result in charges to your Google Cloud account**.
         [Google Cloud Free Tier](https://cloud.google.com/free) limits, which
         includes a max of 8 cores running at the same time.
 
-Note: You can choose at this point to become a paid user instead of relying on
-the free trial. Since this tutorial stays within the Free Tier limits, you still
-won't be charged if this is your only project and you stay within those limits.
-For more details, see
-[Google Cloud Cost Calculator](https://cloud.google.com/products/calculator/)
-and [Google Cloud Platform Free Tier](https://cloud.google.com/free).
+!!! Note
+    You can choose at this point to become a paid user instead of relying on
+    the free trial. Since this tutorial stays within the Free Tier limits, you still
+    won't be charged if this is your only project and you stay within those limits.
+    For more details, see
+    [Google Cloud Cost Calculator](https://cloud.google.com/products/calculator/)
+    and [Google Cloud Platform Free Tier](https://cloud.google.com/free).
 
 ### 1.b Create a new project.<a name='create_project' />
 
-Note: This tutorial assumes you want to work on this demo in a new project. You
-can, if you want, work in an existing project.
+!!! Note
+    This tutorial assumes you want to work on this demo in a new project. You
+    can, if you want, work in an existing project.
 
-Note: You must have a verified credit card on file before creating the project.
+!!! Note
+    You must have a verified credit card on file before creating the project.
 
 1.  From the
     [main Google Cloud dashboard](https://console.cloud.google.com/home/dashboard),
@@ -109,8 +116,9 @@ drop-down.**
 
 ## 2. Set up and deploy an AI Platform Pipeline on a new Kubernetes cluster
 
-Note: This will take up to 10 minutes, as it requires waiting at several points
-for resources to be provisioned.
+!!! Note
+    This will take up to 10 minutes, as it requires waiting at several points
+    for resources to be provisioned.
 
 1.  Go to the
     [AI Platform Pipelines Clusters](https://console.cloud.google.com/ai-platform/pipelines)
@@ -130,7 +138,8 @@ for resources to be provisioned.
 
     <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/enable_api.png">
 
-    Note: You may have to wait several minutes before moving on, while the Kubernetes Engine APIs are being enabled for you.
+    !!! Note
+        You may have to wait several minutes before moving on, while the Kubernetes Engine APIs are being enabled for you.
 
 1.  On the **Deploy Kubeflow Pipelines** page:
 
@@ -190,15 +199,16 @@ for resources to be provisioned.
     1. Wait for the new notebook to be created, and then click **Enable
        Notebooks API**
 
-Note: You may experience slow performance in your notebook if you use 1 or 2
-vCPUs instead of the default or higher. This should not seriously hinder your
-completion of this tutorial. If would like to use the default settings,
-[upgrade your account](https://cloud.google.com/free/docs/gcp-free-tier#to_upgrade_your_account)
-to at least 12 vCPUs. This will accrue charges. See
-[Google Kubernetes Engine Pricing](https://cloud.google.com/kubernetes-engine/pricing/)
-for more details on pricing, including a
-[pricing calculator](https://cloud.google.com/products/calculator) and
-information about the [Google Cloud Free Tier](https://cloud.google.com/free).
+!!! Note
+    You may experience slow performance in your notebook if you use 1 or 2
+    vCPUs instead of the default or higher. This should not seriously hinder your
+    completion of this tutorial. If would like to use the default settings,
+    [upgrade your account](https://cloud.google.com/free/docs/gcp-free-tier#to_upgrade_your_account)
+    to at least 12 vCPUs. This will accrue charges. See
+    [Google Kubernetes Engine Pricing](https://cloud.google.com/kubernetes-engine/pricing/)
+    for more details on pricing, including a
+    [pricing calculator](https://cloud.google.com/products/calculator) and
+    information about the [Google Cloud Free Tier](https://cloud.google.com/free).
 
 ## 4. Launch the Getting Started Notebook
 
@@ -379,13 +389,14 @@ Kubeflow Pipelines Dashboard.
 
 You can view your pipeline from the Kubeflow Pipelines Dashboard.
 
-Note: If your pipeline run fails, you can see detailed logs in the KFP
-Dashboard. One of the major sources of failure is permission related problems.
-Make sure your KFP cluster has permissions to access Google Cloud APIs. This can
-be configured
-[when you create a KFP cluster in GCP](https://cloud.google.com/ai-platform/pipelines/docs/setting-up),
-or see
-[Troubleshooting document in GCP](https://cloud.google.com/ai-platform/pipelines/docs/troubleshooting).
+!!! Note
+    If your pipeline run fails, you can see detailed logs in the KFP
+    Dashboard. One of the major sources of failure is permission related problems.
+    Make sure your KFP cluster has permissions to access Google Cloud APIs. This can
+    be configured
+    [when you create a KFP cluster in GCP](https://cloud.google.com/ai-platform/pipelines/docs/setting-up),
+    or see
+    [Troubleshooting document in GCP](https://cloud.google.com/ai-platform/pipelines/docs/troubleshooting).
 
 ## 8. Validate your data
 
@@ -713,8 +724,9 @@ setting `--project` in `beam_pipeline_args` when creating a pipeline.
 should replace the project id and the region value in this file with the correct
 values for your GCP project.
 
->**Note: You MUST set your GCP project ID and region in the `configs.py` file
-before proceeding.**
+!!! Note
+    You MUST set your GCP project ID and region in the `configs.py` file
+    before proceeding.
 
 **Change directory one level up.** Click the name of the directory above the
 file list. The name of the directory is the name of the pipeline which is
@@ -746,9 +758,10 @@ processing workloads using
 will set the Kubeflow orchestrator to use Dataflow as the data processing
 back-end for Apache Beam.
 
->**Note:** If the Dataflow API is not already enabled, you can enable it using
-the console, or from the CLI using this command (for example, in the Cloud
-Shell):
+!!! Note
+    If the Dataflow API is not already enabled, you can enable it using
+    the console, or from the CLI using this command (for example, in the Cloud
+    Shell):
 
 ```bash
 # Select your project:
@@ -765,15 +778,16 @@ gcloud services list --available | grep Dataflow
 gcloud services enable dataflow.googleapis.com
 ```
 
-> **Note:** Execution speed may be limited by default
-> [Google Compute Engine (GCE)](https://cloud.google.com/compute) quota. We
-> recommend setting a sufficient quota for approximately 250 Dataflow VMs: **250
-> CPUs, 250 IP Addresses, and 62500 GB of Persistent Disk**. For more details,
-> please see the [GCE Quota](https://cloud.google.com/compute/quotas) and
-> [Dataflow Quota](https://cloud.google.com/dataflow/quotas) documentation. If
-> you are blocked by IP Address quota, using a bigger
-> [`worker_type`](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options)
-> will reduce the number of needed IPs.
+!!! Note
+    Execution speed may be limited by default
+    [Google Compute Engine (GCE)](https://cloud.google.com/compute) quota. We
+    recommend setting a sufficient quota for approximately 250 Dataflow VMs: **250
+    CPUs, 250 IP Addresses, and 62500 GB of Persistent Disk**. For more details,
+    please see the [GCE Quota](https://cloud.google.com/compute/quotas) and
+    [Dataflow Quota](https://cloud.google.com/dataflow/quotas) documentation. If
+    you are blocked by IP Address quota, using a bigger
+    [`worker_type`](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options)
+    will reduce the number of needed IPs.
 
 **Double-click `pipeline` to change directory, and double-click to open
 `configs.py`**. Uncomment the definition of `GOOGLE_CLOUD_REGION`, and
@@ -825,11 +839,12 @@ the same value as `CUSTOM_TFX_IMAGE` above.
 `kubeflow_runner.py`**. Uncomment `ai_platform_training_args` and
 `ai_platform_serving_args`.
 
-> Note: If you receive a permissions error in the Training step, you may need to
-> provide Storage Object Viewer permissions to the Cloud Machine Learning Engine
-> (AI Platform Prediction & Training) service account. More information is
-> available in the
-> [Container Registry documentation](https://cloud.google.com/container-registry/docs/access-control#grant).
+!!! Note
+    If you receive a permissions error in the Training step, you may need to
+    provide Storage Object Viewer permissions to the Cloud Machine Learning Engine
+    (AI Platform Prediction & Training) service account. More information is
+    available in the
+    [Container Registry documentation](https://cloud.google.com/container-registry/docs/access-control#grant).
 
 #### Update the pipeline and re-run it
 
