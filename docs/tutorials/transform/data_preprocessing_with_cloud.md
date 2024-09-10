@@ -546,11 +546,9 @@ produces two outputs:
 
 The analyze phase is illustrated in the following diagram, figure 1:
 
-<figure id="tf-transform-analyze-phase">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-tf-transform-analyze-phase.svg"
-    alt="The tf.Transform analyze phase.">
-  <figcaption><b>Figure 1.</b> The <code>tf.Transform</code> analyze phase.</figcaption>
-</figure>
+Figure: The `tf.Transform` analyze phase. { #tf-transform-analyze-phase }
+
+![The tf.Transform analyze phase.](images/data-preprocessing-for-ml-with-tf-transform-tf-transform-analyze-phase.svg)
 
 The `tf.Transform`
 [analyzers](https://github.com/tensorflow/transform/blob/master/tensorflow_transform/beam/analyzer_impls.py)
@@ -567,11 +565,9 @@ the `transformed_train_dataset` dataset.
 
 The transform phase is illustrated in the following diagram, figure 2:
 
-<figure id="tf-transform-transform-phase">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-tf-transform-transform-phase.svg"
-    alt="The tf.Transform transform phase.">
-  <figcaption><b>Figure 2.</b> The <code>tf.Transform</code> transform phase.</figcaption>
-</figure>
+Figure: The `tf.Transform` transform phase. { #tf-transform-transform-phase }
+
+![The tf.Transform transform phase.](images/data-preprocessing-for-ml-with-tf-transform-tf-transform-transform-phase.svg)
 
 To preprocess the features, you call the required `tensorflow_transform`
 transformations (imported as `tft` in the code) in your implementation of the
@@ -679,11 +675,9 @@ The following diagram, figure 3, shows how the `transform_fn` graph that's
 produced in the analyze phase of the training data is used to transform the
 evaluation data.
 
-<figure id="transform-eval-data-using-transform-fn">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-transforming-eval-data-using-transform_fn.svg"
-    alt="Transforming evaluation data using the transform_fn graph.">
-  <figcaption><b>Figure 3.</b> Transforming evaluation data using the <code>transform_fn</code> graph.</figcaption>
-</figure>
+Figure: Transforming evaluation data using the `transform_fn` graph. { #transform-eval-data-using-transform-fn }
+
+![Transforming evaluation data using the transform_fn graph.](images/data-preprocessing-for-ml-with-tf-transform-transforming-eval-data-using-transform_fn.svg)
 
 ### Save the graph
 
@@ -724,12 +718,9 @@ Dataflow. The following diagram, figure 4, shows the
 Dataflow execution graph of the `tf.Transform` pipeline described
 in the example.
 
-<figure id="dataflow-execution-graph">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-dataflow-execution-graph.png"
-    alt="Dataflow execution graph of the tf.Transform pipeline." class="screenshot">
-  <figcaption><b>Figure 4.</b> Dataflow execution graph
-     of the <code>tf.Transform</code> pipeline.</figcaption>
-</figure>
+Figure: Dataflow execution graph of the `tf.Transform` pipeline. { #dataflow-execution-graph }
+
+![Dataflow execution graph of the tf.Transform pipeline.](images/data-preprocessing-for-ml-with-tf-transform-dataflow-execution-graph.png)
 
 After you execute the Dataflow pipeline to preprocess the
 training and evaluation data, you can explore the produced objects in
@@ -978,12 +969,9 @@ The following diagram, figure 5, shows the transformed data and how the
 transformed metadata is used to define and train the TensorFlow
 model:
 
-<figure id="training-tf-with-transformed-data">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-training-tf-model-with-transformed-data.svg"
-    alt="Training the TensorFlow model with transformed data.">
-  <figcaption><b>Figure 5.</b> Training the TensorFlow model with
-    the transformed data.</figcaption>
-</figure>
+Figure: Training the TensorFlow model with the transformed data. { #training-tf-with-transformed-data }
+
+![Training the TensorFlow model with transformed data.](images/data-preprocessing-for-ml-with-tf-transform-training-tf-model-with-transformed-data.svg)
 
 ### Export the model for serving prediction
 
@@ -1063,12 +1051,9 @@ following steps:
 The following diagram, figure 6, illustrates the final step of exporting a model
 for serving:
 
-<figure id="exporting-model-for-serving-with-transform_fn">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-exporting-model-for-serving-with-transform_fn.svg"
-    alt="Exporting the model for serving with the transform_fn graph attached.">
-  <figcaption><b>Figure 6.</b> Exporting the model for serving with the
-    <code>transform_fn</code> graph attached.</figcaption>
-</figure>
+Figure: Exporting the model for serving with the `transform_fn` graph attached. { #exporting-model-for-serving-with-transform_fn }
+
+![Exporting the model for serving with the transform_fn graph attached.](images/data-preprocessing-for-ml-with-tf-transform-exporting-model-for-serving-with-transform_fn.svg)
 
 ## Train and use the model for predictions
 
