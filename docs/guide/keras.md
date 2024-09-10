@@ -87,9 +87,10 @@ unchanged.
 
 ## Native Keras (i.e. Keras without `model_to_estimator`)
 
-Note: Full support for all features in Keras is in progress, in most cases,
-Keras in TFX will work as expected. It does not yet work with Sparse Features
-for FeatureColumns.
+!!! Note
+    Full support for all features in Keras is in progress, in most cases,
+    Keras in TFX will work as expected. It does not yet work with Sparse Features
+    for FeatureColumns.
 
 ### Examples and Colab
 
@@ -125,8 +126,9 @@ ops.
 The serving function and eval function are changed for native Keras. Details
 will be discussed in the following Trainer and Evaluator sections.
 
-Note: Transformations within the `preprocessing_fn` cannot be applied to the
-label feature for training or eval.
+!!! Note
+    Transformations within the `preprocessing_fn` cannot be applied to the
+    label feature for training or eval.
 
 #### Trainer
 
@@ -280,9 +282,10 @@ logging.getLogger("tensorflow").setLevel(logging.INFO)
 and you should be able to see `Using MirroredStrategy with devices (...)` in the
 log.
 
-Note: The environment variable `TF_FORCE_GPU_ALLOW_GROWTH=true` might be needed
-for a GPU out of memory issue. For details, please refer to
-[tensorflow GPU guide](https://www.tensorflow.org/guide/gpu#limiting_gpu_memory_growth).
+!!! Note
+    The environment variable `TF_FORCE_GPU_ALLOW_GROWTH=true` might be needed
+    for a GPU out of memory issue. For details, please refer to
+    [tensorflow GPU guide](https://www.tensorflow.org/guide/gpu#limiting_gpu_memory_growth).
 
 #### Evaluator
 
