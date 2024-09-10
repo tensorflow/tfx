@@ -72,7 +72,7 @@ ahead to [Create New Project](#create_project).
 
 1.  Agree to Google Cloud terms and conditions
 
-    <img style="width: 50%;" src="images/cloud-ai-platform-pipelines/welcome-popup.png">
+    ![](images/cloud-ai-platform-pipelines/welcome-popup.png){ width="65%" }
 
 1.  If you would like to start with a free trial account, click on
     [**Try For Free**](https://console.cloud.google.com/freetrial) (or
@@ -128,15 +128,15 @@ drop-down.**
 
 1.  Click **+ New Instance** to create a new cluster.
 
-    <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/new-instance.png">
+    ![](images/cloud-ai-platform-pipelines/new-instance.png){ width="65%" }
 
 1.  On the **Kubeflow Pipelines** overview page, click **Configure**.
 
-    <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/configure.png">
+    ![](images/cloud-ai-platform-pipelines/configure.png){ width="65%" }
 
 1.  Click "Enable" to enable the Kubernetes Engine API
 
-    <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/enable_api.png">
+    ![](images/cloud-ai-platform-pipelines/enable_api.png){ width="65%" }
 
     !!! Note
         You may have to wait several minutes before moving on, while the Kubernetes Engine APIs are being enabled for you.
@@ -151,7 +151,7 @@ drop-down.**
         APIs*. (This is required for this cluster to access the other pieces of
         your project. If you miss this step, fixing it later is a bit tricky.)
 
-        <img style="width: 50%;" src="images/cloud-ai-platform-pipelines/check-the-box.png">
+        ![](images/cloud-ai-platform-pipelines/check-the-box.png){ width="50%" }
 
     1.  Click **Create New Cluster**, and wait several minutes until the cluster
         has been created.  This will take a few minutes.  When it completes you
@@ -181,7 +181,7 @@ drop-down.**
 1.  Create a **New Notebook** with TensorFlow Enterprise 2.7 (or above)
     installed.
 
-    <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/new-notebook.png">
+    ![](images/cloud-ai-platform-pipelines/new-notebook.png){ width="65%" }
 
     New Notebook -> TensorFlow Enterprise 2.7 -> Without GPU
 
@@ -195,7 +195,8 @@ drop-down.**
     1.  Under **Machine configuration** you may want to select a configuration
         with 1 or 2 vCPUs if you need to stay in the free tier.
 
-        <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/two-cpus.png">
+        ![](images/cloud-ai-platform-pipelines/two-cpus.png){ width="65%" }
+
     1. Wait for the new notebook to be created, and then click **Enable
        Notebooks API**
 
@@ -220,12 +221,12 @@ drop-down.**
 1.  On the line for the cluster you are using in this tutorial, click **Open
     Pipelines Dashboard**.
 
-    <img src="images/cloud-ai-platform-pipelines/open-dashboard.png">
+    ![](images/cloud-ai-platform-pipelines/open-dashboard.png)
 
 1.  On the **Getting Started** page, click **Open a Cloud AI Platform
     Notebook on Google Cloud**.
 
-    <img src="images/cloud-ai-platform-pipelines/open-template.png">
+    ![](images/cloud-ai-platform-pipelines/open-template.png)
 
 1.  Select the Notebook instance you are using for this tutorial and
     **Continue**, and then **Confirm**.
