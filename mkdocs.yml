@@ -156,7 +156,7 @@ nav:
       - "TFX Cloud Solutions": guide/solutions.md
       - "Using Keras with TFX": guide/keras
       - "Using Non-TensorFlow Frameworks in TFX": guide/non_tf
-      - "Mobile & IoT: TFX for TensorFlow Lite": tutorials/tfx_for_mobile
+      - "Mobile & IoT: TFX for TensorFlow Lite": tutorials/tfx/tfx_for_mobile
 
     - "TFX Pipelines":
         - "Understanding TFX pipelines": guide/understanding_tfx_pipelines
