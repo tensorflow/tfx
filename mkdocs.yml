@@ -1,5 +1,5 @@
 site_name: TFX
-repo_name: "Tensorflow TFX"
+repo_name: "TFX"
 repo_url: https://github.com/tensorflow/tfx
 
 theme:
