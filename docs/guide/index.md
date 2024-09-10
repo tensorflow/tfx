@@ -26,16 +26,18 @@ https://github.com/tensorflow/tfx)
 pip install tfx
 ```
 
-Note: See the
-[TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving),
-[TensorFlow JS](https://js.tensorflow.org/), and/or
-[TensorFlow Lite](https://www.tensorflow.org/lite) documentation for installing
-those optional components.
+!!! Note
+    See the
+    [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving),
+    [TensorFlow JS](https://js.tensorflow.org/), and/or
+    [TensorFlow Lite](https://www.tensorflow.org/lite) documentation for installing
+    those optional components.
 
-Note: This installs [Apache Beam](beam.md) with the DirectRunner.  You can also
-separately install runners that perform distributed computation, such as
-[Apache Flink](https://flink.apache.org/) or
-[Apache Spark](https://spark.apache.org/).
+!!! Note
+    This installs [Apache Beam](beam.md) with the DirectRunner.  You can also
+    separately install runners that perform distributed computation, such as
+    [Apache Flink](https://flink.apache.org/) or
+    [Apache Spark](https://spark.apache.org/).
 
 ### Nightly Packages
 
@@ -50,8 +52,9 @@ This will install the nightly packages for the major dependencies of TFX such as
 TensorFlow Model Analysis (TFMA), TensorFlow Data Validation (TFDV), TensorFlow
 Transform (TFT), TFX Basic Shared Libraries (TFX-BSL), ML Metadata (MLMD).
 
-Note: These nightly packages are unstable and breakages are likely to happen.
-The fix could often take a week or more depending on the complexity involved.
+!!! Note
+    These nightly packages are unstable and breakages are likely to happen.
+    The fix could often take a week or more depending on the complexity involved.
 
 ## About TFX
 
@@ -170,8 +173,9 @@ TFX libraries include:
     [KerasTuner](https://www.tensorflow.org/tutorials/keras/keras_tuner) is used
     for tuning hyperparameters for model.
 
-    Note: TFX supports TensorFlow 1.15 and, with some exceptions, 2.x. For
-    details, see [Designing TensorFlow Modeling Code For TFX](train.md).
+    !!! Note
+        TFX supports TensorFlow 1.15 and, with some exceptions, 2.x. For
+        details, see [Designing TensorFlow Modeling Code For TFX](train.md).
 
 *   [**TensorFlow Model Analysis (TFMA)**](tfma.md) is a library for evaluating
     TensorFlow models. It is used along with TensorFlow to create an
@@ -250,8 +254,9 @@ TFX interoperates with serveral managed GCP services, such as
 [Cloud Dataflow](https://cloud.google.com/dataflow/) for distributed data
 processing for several other aspects of the ML lifecycle.
 
-Note: The current revision of this user guide primarily discusses deployment
-on a bare-metal system using Apache Airflow for orchestration.
+!!! Note
+    The current revision of this user guide primarily discusses deployment
+    on a bare-metal system using Apache Airflow for orchestration.
 
 ### Model vs. SavedModel
 
@@ -336,9 +341,10 @@ The following components use the schema:
 In a typical TFX pipeline TensorFlow Data Validation generates a schema, which
 is consumed by the other components.
 
-Note: The auto-generated schema is best-effort and only tries to infer basic
-properties of the data. It is expected that developers review and modify it as
-needed.
+!!! Note
+    The auto-generated schema is best-effort and only tries to infer basic
+    properties of the data. It is expected that developers review and modify it as
+    needed.
 
 ## Developing with TFX
 
