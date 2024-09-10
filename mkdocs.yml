@@ -242,7 +242,7 @@ nav:
         - "TensorBoard": "https://www.tensorflow.org/tensorboard"
   - API:
     - v1:
-      - "Overview": api/v1/root
+      - "Overview": api/v1/index.md
       - "components": api/v1/components
       - "dsl": api/v1/dsl
       - "extensions": api/v1/extensions
