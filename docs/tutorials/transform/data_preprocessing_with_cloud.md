@@ -1118,7 +1118,7 @@ resources used in this tutorial, delete the project that contains the resources.
 
 ### Delete the project
 
-!!! danger
+!!! danger "Caution"
 
     Deleting a project has the following effects:
 
