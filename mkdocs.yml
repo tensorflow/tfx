@@ -152,7 +152,7 @@ nav:
     - Guide: guide/index.md
 
     - "What's New":
-      - "TFX-Addons": addons
+      - "TFX-Addons": guide/addons
       - "TFX Cloud Solutions": guide/solutions.md
       - "Using Keras with TFX": guide/keras
       - "Using Non-TensorFlow Frameworks in TFX": guide/non_tf
