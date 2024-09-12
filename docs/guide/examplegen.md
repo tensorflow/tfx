@@ -636,6 +636,6 @@ evaluator = Evaluator(
 
 More details are available in the
 [CsvExampleGen API reference][tfx.v1.components.CsvExampleGen],
-[FileBasedExampleGen API implementation][tfx.v1.components.example_gen.component],
+[FileBasedExampleGen API implementation](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/component.py),
 and
-[ImportExampleGen API reference][tfx.v1.components/ImportExampleGen].
+[ImportExampleGen API reference][tfx.v1.components.ImportExampleGen].
