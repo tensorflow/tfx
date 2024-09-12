@@ -10,8 +10,9 @@ can use the CLI to:
 *   Run a pipeline and monitor the run on various orchestrators.
 *   List pipelines and pipeline runs.
 
-Note: The TFX CLI doesn't currently provide compatibility guarantees. The CLI
-interface might change as new versions are released.
+!!! Note
+    The TFX CLI doesn't currently provide compatibility guarantees. The CLI
+    interface might change as new versions are released.
 
 ## About the TFX CLI
 
@@ -35,8 +36,9 @@ instructions in the [pipeline commands](#tfx-pipeline),
 [run commands](#tfx-run), and [template commands](#tfx-template-experimental)
 sections to learn more about using these commands.
 
-Warning: Currently not all commands are supported in every orchestrator. Such
-commands explicitly mention the engines supported.
+!!! Warning
+    Currently not all commands are supported in every orchestrator. Such
+    commands explicitly mention the engines supported.
 
 Flags let you pass arguments into CLI commands. Words in flags are separated
 with either a hyphen (`-`) or an underscore (`_`). For example, the pipeline
