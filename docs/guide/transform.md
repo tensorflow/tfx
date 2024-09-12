@@ -78,8 +78,9 @@ By contrast, TensorFlow Transform is designed for transformations that require a
 full pass over the data to compute values that are not known in advance. For
 example, vocabulary generation requires a full pass over the data.
 
-Note: These computations are implemented in [Apache Beam](https://beam.apache.org/)
-under the hood.
+!!! Note
+    These computations are implemented in [Apache Beam](https://beam.apache.org/)
+    under the hood.
 
 In addition to computing values using Apache Beam, TensorFlow Transform allows
 users to embed these values into a TensorFlow graph, which can then be loaded
