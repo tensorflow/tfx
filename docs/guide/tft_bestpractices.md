@@ -114,13 +114,6 @@ Figure: The flow of data from raw data to prepared data to engineered features t
 
 ![Flow diagram showing raw data moving to prepared data moving to engineered features.](images/data-preprocessing-for-ml-with-tf-transform-data-preprocessing-flow.svg)
 
-<!--<figure id="data-flow-raw-prepared-engineered-features">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-data-preprocessing-flow.svg"
-    alt="Flow diagram showing raw data moving to prepared data moving to engineered features.">
-  <figcaption><b>Figure 1.</b> The flow of data from raw data to prepared data to engineered
-features to machine learning.</figcaption>
-</figure>-->
-
 In practice, data from the same source is often at different stages of
 readiness. For example, a field from a table in your data warehouse might be
 used directly as an engineered feature. At the same time, another field in the
@@ -238,7 +231,7 @@ on operation granularity:
     values that are computed during training are used to adjust the feature
     value, which is the following simple *instance-level* operation:
 
-    \[ value_{scaled} = (value_{raw} - \mu) \div \sigma \]
+    \[ value_{\text{scaled}} = \frac{value_{\text{raw}} - \mu}{\sigma} \]
 
     Full-pass transformations include the following:
 
@@ -306,7 +299,7 @@ on operation granularity:
     before training and prediction.
 
 
-## ML pipeline on Google Cloud{: id="machine_learning_pipeline_on_gcp" }
+## ML pipeline on Google Cloud
 
 This section discusses the core components of a typical end-to-end pipeline to
 train and serve TensorFlow ML models on Google Cloud using
@@ -328,13 +321,6 @@ in the following section.
 Figure: High-level architecture for ML training and serving on Google Cloud. {#high-level-architecture-for-training-and-serving}
 
 ![Architecture diagram showing stages for processing data.](images/data-preprocessing-for-ml-with-tf-transform-ml-training-serving-architecture.svg)
-
-<!--<figure id="high-level-architecture-for-training-and-serving">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-ml-training-serving-architecture.svg"
-    alt="Architecture diagram showing stages for processing data.">
-  <figcaption><b>Figure 2.</b> High-level architecture for ML training and
-    serving on Google Cloud.</figcaption>
-</figure>-->
 
 The pipeline consists of the following steps:
 
@@ -460,13 +446,6 @@ processing stream data for near real-time predictions.
 Figure: High-level architecture using stream data for prediction in Dataflow. {#high-level-architecture-for-stream-data}
 
 ![Architecture for using stream data for prediction.](images/data-preprocessing-for-ml-with-tf-transform-streaming-data-with-dataflow-architecture.svg)
-
-<!--<figure id="high-level-architecture-for-stream-data">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-streaming-data-with-dataflow-architecture.svg"
-    alt="Architecture for using stream data for prediction.">
-  <figcaption><b>Figure 3.</b> High-level architecture using stream data
-    for prediction in Dataflow.</figcaption>
-</figure>-->
 
 As shown in figure 3, during processing, events called *data points* are
 ingested into [Pub/Sub](https://cloud.google.com/pubsub/docs){: .external }.
@@ -626,14 +605,6 @@ described in the following sections.
 Figure: Behavior of `tf.Transform` for preprocessing and transforming data.
 
 ![Diagram showing flow from raw data through tf.Transform to predictions.](images/data-preprocessing-for-ml-with-tf-transform-tf-transform-behavior-flow.svg)
-
-<!--<figure id="tf-Transform-preprocessing--transforming-data-for-training-and-prediction">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-tf-transform-behavior-flow.svg"
-    alt="Diagram showing flow from raw data through tf.Transform to predictions.">
-  <figcaption><b>Figure 4.</b> Behavior of <code>tf.Transform</code> for
-    preprocessing and transforming data.</figcaption>
-</figure>-->
-
 
 ### Transform training and evaluation data
 
