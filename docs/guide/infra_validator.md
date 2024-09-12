@@ -91,11 +91,12 @@ For model server types (called serving binary) we support
 
 -   [TensorFlow Serving](serving.md)
 
-Note: InfraValidator allows specifying multiple versions of the same model
-server type in order to upgrade the model server version without affecting model
-compatibility. For example, user can test `tensorflow/serving` image with both
-`2.1.0` and `latest` versions, to ensure the model will be compatible with the
-latest `tensorflow/serving` version as well.
+!!! Note
+    InfraValidator allows specifying multiple versions of the same model
+    server type in order to upgrade the model server version without affecting model
+    compatibility. For example, user can test `tensorflow/serving` image with both
+    `2.1.0` and `latest` versions, to ensure the model will be compatible with the
+    latest `tensorflow/serving` version as well.
 
 Following serving platforms are currently supported:
 
