@@ -36,7 +36,7 @@ Under the hood, this defines a custom component that is a subclass of
 and its Spec and Executor classes.
 
 !!! Note
-    the feature (BaseBeamComponent based component by annotating a function
+    The feature (BaseBeamComponent based component by annotating a function
     with `@component(use_beam=True)`) described below is experimental and there is
     no public backwards compatibility guarantees.
 
