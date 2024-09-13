@@ -413,13 +413,13 @@ data.
 ![Data Components](images/airflow_workshop/examplegen1.png)
 ![Data Components](images/airflow_workshop/examplegen2.png)
 
-*   [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) ingests and
+*   [ExampleGen](../../../guide/examplegen) ingests and
     splits the input dataset.
-*   [StatisticsGen](https://www.tensorflow.org/tfx/guide/statsgen) calculates
+*   [StatisticsGen](../../../guide/statsgen) calculates
     statistics for the dataset.
-*   [SchemaGen](https://www.tensorflow.org/tfx/guide/schemagen) SchemaGen
+*   [SchemaGen](../../../guide/schemagen) SchemaGen
     examines the statistics and creates a data schema.
-*   [ExampleValidator](https://www.tensorflow.org/tfx/guide/exampleval) looks
+*   [ExampleValidator](../../../guide/exampleval) looks
     for anomalies and missing values in the dataset.
 
 ### In Jupyter lab file editor:
@@ -481,13 +481,13 @@ serving.
 
 ![Transform](images/airflow_workshop/transform.png)
 
-*   [Transform](https://www.tensorflow.org/tfx/guide/transform) performs feature
+*   [Transform](../../../guide/transform) performs feature
     engineering on the dataset.
 
 ### In Jupyter lab file editor:
 
 In `pipeline`/`pipeline.py`, find and uncomment the line which appends
-[Transform](https://www.tensorflow.org/tfx/guide/transform) to the pipeline.
+[Transform](../../../guide/transform) to the pipeline.
 
 ```python
 # components.append(transform)
@@ -529,7 +529,7 @@ Train a TensorFlow model with your nice, clean, transformed data.
 
 ### Components
 
-*   [Trainer](https://www.tensorflow.org/tfx/guide/trainer) trains a TensorFlow
+*   [Trainer](../../../guide/trainer) trains a TensorFlow
     model.
 
 ### In Jupyter lab file editor:
@@ -580,7 +580,7 @@ Understanding more than just the top level metrics.
 
 ### Components
 
-*   [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) performs deep
+*   [Evaluator](../../../guide/evaluator) performs deep
     analysis of the training results.
 
 ### In Jupyter lab file editor:
@@ -625,7 +625,7 @@ Deployment targets receive new models from well-known locations
 
 ### Components
 
-*   [Pusher](https://www.tensorflow.org/tfx/guide/pusher) deploys the model to a
+*   [Pusher](../../../guide/pusher) deploys the model to a
     serving infrastructure.
 
 ### In Jupyter lab file editor:
@@ -650,7 +650,7 @@ You have now trained and validated your model, and your model is now ready for
 production. You can now deploy your model to any of the TensorFlow deployment
 targets, including:
 
-*   [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving), for
+*   [TensorFlow Serving](../../../guide/serving), for
     serving your model on a server or server farm and processing REST and/or
     gRPC inference requests.
 *   [TensorFlow Lite](https://www.tensorflow.org/lite), for including your model
@@ -752,7 +752,7 @@ pipeline as before and create a new execution run as we did in step 5 and 6.
 
 ### Try Dataflow
 Several
-[TFX Components use Apache Beam](https://www.tensorflow.org/tfx/guide/beam) to
+[TFX Components use Apache Beam](../../../guide/beam) to
 implement data-parallel pipelines, and it means that you can distribute data
 processing workloads using
 [Google Cloud Dataflow](https://cloud.google.com/dataflow/). In this step, we
@@ -881,13 +881,13 @@ You need to modify the pipeline definition to accommodate your data.
 1.  Modify `BIG_QUERY_QUERY` in configs.py to your query statement.
 1.  Add features in `models`/`features.py`.
 1.  Modify `models`/`preprocessing.py` to
-    [transform input data for training](https://www.tensorflow.org/tfx/guide/transform).
+    [transform input data for training](../../../guide/transform).
 1.  Modify `models`/`keras`/`model.py` and `models`/`keras`/`constants.py` to
-    [describe your ML model](https://www.tensorflow.org/tfx/guide/trainer).
+    [describe your ML model](../../../guide/trainer).
 
 ### Learn more about Trainer
 
-See [Trainer component guide](https://www.tensorflow.org/tfx/guide/trainer) for
+See [Trainer component guide](../../../guide/trainer) for
 more details on Training pipelines.
 
 ## Cleaning up

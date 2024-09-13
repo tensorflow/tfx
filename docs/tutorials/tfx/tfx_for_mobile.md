@@ -21,7 +21,7 @@ then please see this [tutorial](https://www.tensorflow.org/tfx/tutorials/tfx/com
 ## Steps
 Only two steps are required to create and evaluate a TFLite model in TFX. The
 first step is invoking the TFLite rewriter within the context of the
-[TFX Trainer](https://www.tensorflow.org/tfx/guide/trainer) to convert the
+[TFX Trainer](../../../guide/trainer) to convert the
 trained TensorFlow model into a TFLite one. The second step is
 configuring the Evaluator to evaluate TFLite models. We now discuss each in turn.
 
@@ -79,7 +79,7 @@ components will be expecting to find the model.
 
 
 ### Evaluating the TFLite model.
-The [TFX Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) provides the
+The [TFX Evaluator](../../../guide/evaluator) provides the
 ability to analyze trained models to understand their quality across a wide range
 of metrics. In addition to analyzing SavedModels, the TFX Evaluator is now able
 to analyze TFLite models as well.

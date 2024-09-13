@@ -26,7 +26,7 @@ over the artifacts from the recorded outputs.
 
 Since this tutorial assumes that you have completed `template.ipynb` up to step
 6, a successful pipeline run must have been saved in the
-[MLMD](https://www.tensorflow.org/tfx/guide/mlmd). The execution information in
+[MLMD](../../../guide/mlmd). The execution information in
 MLMD can be accessed using gRPC server.
 
 Open a Terminal and run the following commands:
