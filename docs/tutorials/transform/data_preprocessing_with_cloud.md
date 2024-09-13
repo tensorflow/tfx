@@ -307,84 +307,17 @@ input raw features of the training data in order to prepare it for ML. These
 transformations include both full-pass and instance-level operations, as shown
 in the following table:
 
-<table>
-<thead>
-  <tr>
-    <th>Input feature</th>
-    <th>Transformation</th>
-    <th>Stats needed</th>
-    <th>Type</th>
-    <th>Output feature</th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td><code>weight_pound</code></td>
-    <td>None</td>
-    <td>None</td>
-    <td>NA</td>
-    <td><code>weight_pound</code></td>
-  </tr>
-  <tr>
-    <td><code>mother_age</code></td>
-    <td>Normalize</td>
-    <td>mean, var</td>
-    <td>Full-pass</td>
-    <td><code>mother_age_normalized</code></td>
-  </tr>
-  <tr>
-    <td><code>mother_age</code></td>
-    <td>Equal size bucketization</td>
-    <td>quantiles</td>
-    <td>Full-pass</td>
-    <td><code>mother_age_bucketized</code></td>
-  </tr>
-  <tr>
-    <td><code>mother_age</code></td>
-    <td>Compute the log</td>
-    <td>None</td>
-    <td>Instance-level</td>
-    <td>
-        <code>mother_age_log</code>
-    </td>
-  </tr>
-  <tr>
-    <td><code>plurality</code></td>
-    <td>Indicate if it is single or multiple babies</td>
-    <td>None</td>
-    <td>Instance-level</td>
-    <td><code>is_multiple</code></td>
-  </tr>
-  <tr>
-    <td><code>is_multiple</code></td>
-    <td>Convert nominal values to numerical index</td>
-    <td>vocab</td>
-    <td>Full-pass</td>
-    <td><code>is_multiple_index</code></td>
-  </tr>
-  <tr>
-    <td><code>gestation_weeks</code></td>
-    <td>Scale between 0 and 1</td>
-    <td>min, max</td>
-    <td>Full-pass</td>
-    <td><code>gestation_weeks_scaled</code></td>
-  </tr>
-  <tr>
-    <td><code>mother_race</code></td>
-    <td>Convert nominal values to numerical index</td>
-    <td>vocab</td>
-    <td>Full-pass</td>
-    <td><code>mother_race_index</code></td>
-  </tr>
-  <tr>
-    <td><code>is_male</code></td>
-    <td>Convert nominal values to numerical index</td>
-    <td>vocab</td>
-    <td>Full-pass</td>
-    <td><code>is_male_index</code></td>
-  </tr>
-</tbody>
-</table>
+ | Input feature       | Transformation                                | Stats needed   | Type             | Output feature
+ | ------------------- | --------------------------------------------- | -------------- | ---------------- | -------------------------- |
+ | `weight_pound`      | None                                          | None           | NA               | `weight_pound`             |
+ | `mother_age`        | Normalize                                     | mean, var      | Full-pass        | `mother_age_normalized`    |
+ | `mother_age`        | Equal size bucketization                      | quantiles      | Full-pass        | `mother_age_bucketized`    |
+ | `mother_age`        | Compute the log                               | None           | Instance-level   | `mother_age_log`           |
+ | `plurality`         | Indicate if it is single or multiple babies   | None           | Instance-level   | `is_multiple`              |
+ | `is_multiple`       | Convert nominal values to numerical index     | vocab          | Full-pass        | `is_multiple_index`        |
+ | `gestation_weeks`   | Scale between 0 and 1                         | min, max       | Full-pass        | `gestation_weeks_scaled`   |
+ | `mother_race`       | Convert nominal values to numerical index     | vocab          | Full-pass        | `mother_race_index`        |
+ | `is_male`           | Convert nominal values to numerical index     | vocab          | Full-pass        | `is_male_index`            |
 
 These transformations are implemented in a `preprocess_fn` function, which
 expects a dictionary of tensors (`input_features`) and returns a dictionary of
@@ -430,77 +363,18 @@ The `tf.Transform`
 has several other transformations in addition to those in the preceding example,
 including those listed in the following table:
 
-<table>
-<thead>
-  <tr>
-  <th>Transformation</th>
-  <th>Applies to</th>
-  <th>Description</th>
-  </tr>
-</thead>
-<tbody>
-    <tr>
-    <td><code>scale_by_min_max</code></td>
-    <td>Numeric features</td>
-    <td>
-      Scales a numerical column into the range [<code>output_min</code>,
-      <code>output_max</code>]
-    </td>
-  </tr>
-  <tr>
-    <td><code>scale_to_0_1</code></td>
-    <td>Numeric features</td>
-    <td>
-      Returns a column which is the input column scaled to have range
-      [<code>0</code>,<code>1</code>]
-    </td>
-  </tr>
-  <tr>
-    <td><code>scale_to_z_score</code></td>
-    <td>Numeric features</td>
-    <td>Returns a standardized column with mean 0 and variance 1</td>
-  </tr>
-  <tr>
-    <td><code>tfidf</code></td>
-    <td>Text features</td>
-    <td>
-      Maps the terms in <i>x</i> to their term frequency * inverse document
-      frequency
-    </td>
-  </tr>
-  <tr>
-    <td><code>compute_and_apply_vocabulary</code></td>
-    <td>Categorical features</td>
-    <td>
-      Generates a vocabulary for a categorical feature and maps it to
-      an integer with this vocab
-    </td>
-  </tr>
-  <tr>
-    <td><code>ngrams</code></td>
-    <td>Text features</td>
-    <td>Creates a <code>SparseTensor</code> of n-grams</td>
-  </tr>
-  <tr>
-    <td><code>hash_strings</code></td>
-    <td>Categorical features</td>
-    <td>Hashes strings into buckets</td>
-  </tr>
-  <tr>
-    <td><code>pca</code></td>
-    <td>Numeric features</td>
-    <td>Computes PCA on the dataset using biased covariance</td>
-  </tr>
-  <tr>
-    <td><code>bucketize</code></td>
-    <td>Numeric features</td>
-    <td>
-      Returns an equal-sized (quantiles-based) bucketized column, with
-      a bucket index assigned to each input
-    </td>
-  </tr>
-</tbody>
-</table>
+ | Transformation                   | Applies to             | Description                                                                                              |
+ | -------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------- |
+ | `scale_by_min_max`               | Numeric features       | Scales a numerical column into the range \[`output_min`, `output_max`\]                                  |
+ | `scale_to_0_1`                   | Numeric features       | Returns a column which is the input column scaled to have range \[`0`,`1`\]                              |
+ | `scale_to_z_score`               | Numeric features       | Returns a standardized column with mean 0 and variance 1                                                 |
+ | `tfidf`                          | Text features          | Maps the terms in *x* to their term frequency \* inverse document frequency                              |
+ | `compute_and_apply_vocabulary`   | Categorical features   | Generates a vocabulary for a categorical feature and maps it to an integer with this vocab               |
+ | `ngrams`                         | Text features          | Creates a `SparseTensor` of n-grams                                                                      |
+ | `hash_strings`                   | Categorical features   | Hashes strings into buckets                                                                              |
+ | `pca`                            | Numeric features       | Computes PCA on the dataset using biased covariance                                                      |
+ | `bucketize`                      | Numeric features       | Returns an equal-sized (quantiles-based) bucketized column, with a bucket index assigned to each input   |
+
 
 In order to apply the transformations implemented in the `preprocess_fn`
 function to the `raw_train_dataset` object produced in the previous step of the
