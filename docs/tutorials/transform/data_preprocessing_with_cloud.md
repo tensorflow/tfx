@@ -55,10 +55,11 @@ an entire day, use the preconfigured
 1. In the Google Cloud console, on the project selector page, select or
   [create a Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects).
 
-  Note: If you don't plan to keep the resources that you create in this
-      procedure, create a project instead of selecting an existing project.
-      After you finish these steps, you can delete the project, removing all
-      resources associated with the project.
+    !!! Note
+        If you don't plan to keep the resources that you create in this
+        procedure, create a project instead of selecting an existing project.
+        After you finish these steps, you can delete the project, removing all
+        resources associated with the project.
 
   [Go to project selector](https://console.cloud.google.com/projectselector2/home/dashboard){ .md-button .md-button--primary }
 
@@ -140,7 +141,7 @@ table in BigQuery.
 
     The last part of the output is the following:
 
-    ``` { .yaml .no-copy }
+    ``` {.no-copy }
     Successfully installed ...
     ```
 
@@ -150,7 +151,7 @@ table in BigQuery.
 1.  Execute the second cell to run the `pip install tensorflow-transform
     `command. The last part of the output is the following:
 
-    ``` { .yaml .no-copy }
+    ``` { .no-copy }
     Successfully installed ...
     Note: you may need to restart the kernel to use updated packages.
     ```

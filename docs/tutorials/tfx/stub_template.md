@@ -92,9 +92,10 @@ following two files in the copied source files.
         test_component_ids=test_component_ids)
     ```
 
-    NOTE: This stub component launcher cannot be defined within
-    `kubeflow_dag_runner.py` because launcher class is imported by the module
-    path.
+    !!! Note
+        This stub component launcher cannot be defined within
+        `kubeflow_dag_runner.py` because launcher class is imported by the module
+        path.
 
 1.  Set component ids to be list of component ids that are to be tested (in
     other words, other components' executors are replaced with BaseStubExecutor)

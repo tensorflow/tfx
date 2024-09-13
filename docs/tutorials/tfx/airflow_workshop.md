@@ -80,13 +80,14 @@ You'll be using the
 [Taxi Trips dataset](https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew)
 released by the City of Chicago.
 
-Note: This tutorial builds an application using data that has been modified for
-use from its original source, www.cityofchicago.org, the official website of the
-City of Chicago. The City of Chicago makes no claims as to the content,
-accuracy, timeliness, or completeness of any of the data provided at in this
-tutorial. The data provided at this site is subject to change at any time. It is
-understood that the data provided in this tutorial is being used at one’s own
-risk.
+!!! Note
+    This tutorial builds an application using data that has been modified for
+    use from its original source, www.cityofchicago.org, the official website of the
+    City of Chicago. The City of Chicago makes no claims as to the content,
+    accuracy, timeliness, or completeness of any of the data provided at in this
+    tutorial. The data provided at this site is subject to change at any time. It is
+    understood that the data provided in this tutorial is being used at one’s own
+    risk.
 
 ### Model Goal - Binary classification
 Will the customer tip more or less than 20%?
@@ -107,11 +108,13 @@ the duration of the lab.
 *   Access to a standard internet browser (Chrome browser recommended).
 *   Time to complete the lab.
 
-**Note:** If you already have your own personal Google Cloud account or project,
-do not use it for this lab.
+!!! Note
+    If you already have your own personal Google Cloud account or project,
+    do not use it for this lab.
 
-**Note:** If you are using a Chrome OS device, open an Incognito window to run
-this lab.
+!!! Note
+    If you are using a Chrome OS device, open an Incognito window to run
+    this lab.
 
 **How to start your lab and sign in to the Google Cloud Console** 1. Click the
 **Start Lab** button. If you need to pay for the lab, a pop-up opens for you to
@@ -146,8 +149,9 @@ account, do not use it for this lab (avoids incurring charges).
 
 After a few moments, the Cloud Console opens in this tab.
 
-**Note:** You can view the menu with a list of Google Cloud Products and
-Services by clicking the **Navigation menu** at the top-left.
+!!! Note
+    You can view the menu with a list of Google Cloud Products and
+    Services by clicking the **Navigation menu** at the top-left.
 
 ![qwiksetup4.png](images/airflow_workshop/qwiksetup4.png)
 
@@ -242,8 +246,9 @@ followed by **Open Jupyterlab**.
 Next you'll clone the `tfx` repository in your JupyterLab instance. 1. In
 JupyterLab, click the **Terminal** icon to open a new terminal.
 
-<ql-infobox><strong>Note:</strong> If prompted, click <code>Cancel</code> for
-Build Recommended.</ql-infobox>
+!!! Note
+    If prompted, click `Cancel` for
+    Build Recommended.
 
 1.  To clone the `tfx` Github repository, type in the following command, and
     press **Enter**.
