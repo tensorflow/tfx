@@ -32,37 +32,41 @@ class Pusher(base_component.BaseComponent):
   """A TFX component to push validated TensorFlow models to a model serving platform.
 
   The `Pusher` component can be used to push an validated SavedModel from output
-  of the [Trainer component](https://www.tensorflow.org/tfx/guide/trainer) to
+  of the [Trainer component](../../../guide/trainer) to
   [TensorFlow Serving](https://www.tensorflow.org/tfx/serving).  The Pusher
   will check the validation results from the [Evaluator
-  component](https://www.tensorflow.org/tfx/guide/evaluator) and [InfraValidator
-  component](https://www.tensorflow.org/tfx/guide/infra_validator)
+  component](../../../guide/evaluator) and [InfraValidator
+  component](../../../guide/infra_validator)
   before deploying the model.  If the model has not been blessed, then the model
   will not be pushed.
 
-  *Note:* The executor for this component can be overriden to enable the model
-  to be pushed to other serving platforms than tf.serving.  The [Cloud AI
-  Platform custom
-  executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/pusher)
-  provides an example how to implement this.
+  !!! Note
+      The executor for this component can be overriden to enable the model
+      to be pushed to other serving platforms than tf.serving.  The [Cloud AI
+      Platform custom executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/pusher)
+      provides an example how to implement this.
 
-  ## Example
-  ```
-    # Checks whether the model passed the validation steps and pushes the model
-    # to a file destination if check passed.
-    pusher = Pusher(
-        model=trainer.outputs['model'],
-        model_blessing=evaluator.outputs['blessing'],
-        push_destination=proto.PushDestination(
-            filesystem=proto.PushDestination.Filesystem(
-                base_directory=serving_model_dir)))
-  ```
+  !!! Example
+      ``` python
+      # Checks whether the model passed the validation steps and pushes the model
+      # to a file destination if check passed.
+      pusher = Pusher(
+          model=trainer.outputs['model'],
+          model_blessing=evaluator.outputs['blessing'],
+          push_destination=proto.PushDestination(
+              filesystem=proto.PushDestination.Filesystem(
+                  base_directory=serving_model_dir,
+              )
+          ),
+      )
+      ```
 
   Component `outputs` contains:
-   - `pushed_model`: Channel of type `standard_artifacts.PushedModel` with
+
+   - `pushed_model`: Channel of type [`standard_artifacts.PushedModel`][tfx.v1.types.standard_artifacts.PushedModel] with
                      result of push.
 
-  See [the Pusher guide](https://www.tensorflow.org/tfx/guide/pusher) for more
+  See [the Pusher guide](../../../guide/pusher) for more
   details.
   """
 
@@ -81,14 +85,14 @@ class Pusher(base_component.BaseComponent):
     """Construct a Pusher component.
 
     Args:
-      model: An optional BaseChannel of type `standard_artifacts.Model`, usually
-        produced by a Trainer component.
-      model_blessing: An optional BaseChannel of type
-        `standard_artifacts.ModelBlessing`, usually produced from an Evaluator
-        component.
-      infra_blessing: An optional BaseChannel of type
-        `standard_artifacts.InfraBlessing`, usually produced from an
-        InfraValidator component.
+      model: An optional [BaseChannel][tfx.v1.types.BaseChannel] of type `standard_artifacts.Model`, usually
+        produced by a [Trainer][tfx.v1.components.Trainer] component.
+      model_blessing: An optional [BaseChannel][tfx.v1.types.BaseChannel] of type
+        [`standard_artifacts.ModelBlessing`][tfx.v1.types.standard_artifacts.ModelBlessing],
+        usually produced from an [Evaluator][tfx.v1.components.Evaluator] component.
+      infra_blessing: An optional [BaseChannel][tfx.v1.types.BaseChannel] of type
+        [`standard_artifacts.InfraBlessing`][tfx.v1.types.standard_artifacts.InfraBlessing],
+        usually produced from an [InfraValidator][tfx.v1.components.InfraValidator] component.
       push_destination: A pusher_pb2.PushDestination instance, providing info
         for tensorflow serving to load models. Optional if executor_class
         doesn't require push_destination.

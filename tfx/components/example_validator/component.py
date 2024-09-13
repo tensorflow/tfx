@@ -36,29 +36,32 @@ class ExampleValidator(base_component.BaseComponent):
   The ExampleValidator component identifies anomalies in training and serving
   data. The component can be configured to detect different classes of anomalies
   in the data. It can:
-    - perform validity checks by comparing data statistics against a schema that
-      codifies expectations of the user.
-    - run custom validations based on an optional SQL-based config.
 
-  Schema Based Example Validation
+  - perform validity checks by comparing data statistics against a schema that
+    codifies expectations of the user.
+  - run custom validations based on an optional SQL-based config.
+
+  ## Schema Based Example Validation
+
   The ExampleValidator component identifies any anomalies in the example data by
-  comparing data statistics computed by the StatisticsGen component against a
+  comparing data statistics computed by the [StatisticsGen][tfx.v1.components.StatisticsGen] component against a
   schema. The schema codifies properties which the input data is expected to
   satisfy, and is provided and maintained by the user.
 
-  ## Example
-  ```
-  # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
-      statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
-  ```
+  !!! Example
+      ``` python
+      # Performs anomaly detection based on statistics and data schema.
+      validate_stats = ExampleValidator(
+          statistics=statistics_gen.outputs['statistics'],
+          schema=infer_schema.outputs['schema'])
+      ```
 
   Component `outputs` contains:
+
    - `anomalies`: Channel of type `standard_artifacts.ExampleAnomalies`.
 
   See [the ExampleValidator
-  guide](https://www.tensorflow.org/tfx/guide/exampleval) for more details.
+  guide](../../../guide/exampleval) for more details.
   """
 
   SPEC_CLASS = standard_component_specs.ExampleValidatorSpec
@@ -73,8 +76,8 @@ class ExampleValidator(base_component.BaseComponent):
     """Construct an ExampleValidator component.
 
     Args:
-      statistics: A BaseChannel of type `standard_artifacts.ExampleStatistics`.
-      schema: A BaseChannel of type `standard_artifacts.Schema`. _required_
+      statistics: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.ExampleStatistics`][tfx.v1.types.standard_artifacts.ExampleStatistics].
+      schema: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Schema`]. _required_
       exclude_splits: Names of splits that the example validator should not
         validate. Default behavior (when exclude_splits is set to None) is
         excluding no splits.

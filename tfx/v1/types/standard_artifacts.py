@@ -27,6 +27,7 @@ from tfx.types.standard_artifacts import (
     Schema,
     TransformCache,
     TransformGraph,
+    TunerResults,
     HyperParameters,
 )
 
@@ -61,4 +62,5 @@ __all__ = [
     "String",
     "TransformCache",
     "TransformGraph",
+    "TunerResults",
 ]

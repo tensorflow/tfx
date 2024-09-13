@@ -42,14 +42,15 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
   ```
 
   Component `outputs` contains:
-   - `inference_result`: Channel of type `standard_artifacts.InferenceResult`
+
+   - `inference_result`: Channel of type [`standard_artifacts.InferenceResult`][tfx.v1.types.standard_artifacts.InferenceResult]
                          to store the inference results.
-   - `output_examples`: Channel of type `standard_artifacts.Examples`
+   - `output_examples`: Channel of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples]
                         to store the output examples. This is optional
                         controlled by `output_example_spec`.
 
   See [the BulkInferrer
-  guide](https://www.tensorflow.org/tfx/guide/bulkinferrer) for more details.
+  guide](../../../guide/bulkinferrer) for more details.
   """
 
   SPEC_CLASS = standard_component_specs.BulkInferrerSpec
@@ -69,11 +70,11 @@ class BulkInferrer(base_beam_component.BaseBeamComponent):
     """Construct an BulkInferrer component.
 
     Args:
-      examples: A BaseChannel of type `standard_artifacts.Examples`, usually
+      examples: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples], usually
         produced by an ExampleGen component. _required_
-      model: A BaseChannel of type `standard_artifacts.Model`, usually produced
-        by a Trainer component.
-      model_blessing: A BaseChannel of type `standard_artifacts.ModelBlessing`,
+      model: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Model`][tfx.v1.types.standard_artifacts.Model], usually produced
+        by a [Trainer][tfx.v1.components.Trainer] component.
+      model_blessing: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.ModelBlessing`][tfx.v1.types.standard_artifacts.ModelBlessing],
         usually produced by a ModelValidator component.
       data_spec: bulk_inferrer_pb2.DataSpec instance that describes data
         selection.

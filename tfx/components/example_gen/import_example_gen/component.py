@@ -32,9 +32,9 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
   shuffle the dataset for ML best practice.
 
   Component `outputs` contains:
-   - `examples`: Channel of type `standard_artifacts.Examples` for output
-   train
-                 and eval examples.
+
+   - `examples`: Channel of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples] for output
+     train and eval examples.
   """
 
   EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
