@@ -138,12 +138,12 @@ class Trainer(base_component.BaseComponent):
           - `eval_input_receiver_fn`: an instance of tfma `EvalInputReceiver`.
 
         Exactly one of `module_file` or `run_fn` must be supplied if Trainer
-        uses GenericExecutor (default). Use of a [RuntimeParameter][] for this
+        uses GenericExecutor (default). Use of a [RuntimeParameter][tfx.v1.dsl.experimental.RuntimeParameter] for this
         argument is experimental.
       run_fn:  A python path to UDF model definition function for generic
         trainer. See 'module_file' for details. Exactly one of 'module_file' or
         'run_fn' must be supplied if Trainer uses GenericExecutor (default). Use
-        of a [RuntimeParameter][] for this argument is experimental.
+        of a [RuntimeParameter][tfx.v1.dsl.experimental.RuntimeParameter] for this argument is experimental.
       trainer_fn:  A python path to UDF model definition function for estimator
         based trainer. See 'module_file' for the required signature of the UDF.
         Exactly one of 'module_file' or 'trainer_fn' must be supplied if Trainer
