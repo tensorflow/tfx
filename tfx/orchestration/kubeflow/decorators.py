@@ -31,36 +31,40 @@ def exit_handler(func: types.FunctionType) -> Callable[..., Any]:
   pipeline, parameter should be defined as Parameter[str], passing in
   FinalStatusStr type when initializing the component.
 
-  This is example usage of component definition using this decorator:
-  ```
-    from tfx import v1 as tfx
+  !!! example
+      This is example usage of component definition using this decorator:
+      ``` python
+      from tfx import v1 as tfx
 
-    @tfx.orchestration.experimental.exit_handler
-    def MyExitHandlerComponent(final_status: tfx.dsl.components.Parameter[str]):
-      # parse the final status
-      pipeline_task_status = pipeline_pb2.PipelineTaskFinalStatus()
-      proto_utils.json_to_proto(final_status, pipeline_task_status)
-      print(pipeline_task_status)
-  ```
 
-  Example usage in a Vertex AI graph definition:
-  ```
-    exit_handler = exit_handler_component(
-    final_status=tfx.dsl.experimental.FinalStatusStr())
+      @tfx.orchestration.experimental.exit_handler
+      def MyExitHandlerComponent(final_status: tfx.dsl.components.Parameter[str]):
+          # parse the final status
+          pipeline_task_status = pipeline_pb2.PipelineTaskFinalStatus()
+          proto_utils.json_to_proto(final_status, pipeline_task_status)
+          print(pipeline_task_status)
+      ```
 
-    dsl_pipeline = tfx.dsl.Pipeline(...)
+  !!! example
+      Example usage in a Vertex AI graph definition:
+      ```python
+      exit_handler = exit_handler_component(
+          final_status=tfx.dsl.experimental.FinalStatusStr()
+      )
 
-    runner = tfx.orchestration.experimental.KubeflowV2DagRunner(...)
-    runner.set_exit_handler([exit_handler])
-    runner.run(pipeline=dsl_pipeline)
-  ```
+      dsl_pipeline = tfx.dsl.Pipeline(...)
+
+      runner = tfx.orchestration.experimental.KubeflowV2DagRunner(...)
+      runner.set_exit_handler([exit_handler])
+      runner.run(pipeline=dsl_pipeline)
+      ```
   Experimental: no backwards compatibility guarantees.
 
   Args:
     func: Typehint-annotated component executor function.
 
   Returns:
-    `base_component.BaseComponent` subclass for the given component executor
+    [`base_component.BaseComponent`][tfx.v1.types.BaseComponent] subclass for the given component executor
     function.
   """
   return component(func)
@@ -70,13 +74,15 @@ class FinalStatusStr(str):
   """FinalStatusStr: is the type for parameter receiving PipelineTaskFinalStatus.
 
   Vertex AI backend passes in jsonlized string of
-  kfp.pipeline_spec.pipeline_spec_pb2.PipelineTaskFinalStatus.
+  `#!python kfp.pipeline_spec.pipeline_spec_pb2.PipelineTaskFinalStatus`.
 
-  This is example usage of FinalStatusStr definition:
-  ```
-  exit_handler = exit_handler_component(
-      final_status=tfx.dsl.experimental.FinalStatusStr())
-  ```
+  !!! example
+      This is example usage of FinalStatusStr definition:
+      ``` python
+      exit_handler = exit_handler_component(
+          final_status=tfx.dsl.experimental.FinalStatusStr()
+      )
+      ```
 
   """
   pass
