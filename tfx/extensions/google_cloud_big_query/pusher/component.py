@@ -25,6 +25,7 @@ class Pusher(pusher_component.Pusher):
   """Cloud Big Query Pusher component.
 
   Component `outputs` contains:
+
    - `pushed_model`: Channel of type `standard_artifacts.PushedModel` with
                      result of push.
   """
@@ -39,14 +40,14 @@ class Pusher(pusher_component.Pusher):
     """Construct a Pusher component.
 
     Args:
-      model: An optional Channel of type `standard_artifacts.Model`, usually
-        produced by a Trainer component.
+      model: An optional Channel of type [`standard_artifacts.Model`][tfx.v1.types.standard_artifacts.Model], usually
+        produced by a [Trainer][tfx.v1.components.Trainer] component.
       model_blessing: An optional Channel of type
-        `standard_artifacts.ModelBlessing`, usually produced from an Evaluator
+        [`standard_artifacts.ModelBlessing`][tfx.v1.types.standard_artifacts.ModelBlessing], usually produced from an Evaluator
         component.
       infra_blessing: An optional Channel of type
-        `standard_artifacts.InfraBlessing`, usually produced from an
-        InfraValidator component.
+        [`standard_artifacts.InfraBlessing`][tfx.v1.types.standard_artifacts.InfraBlessing], usually produced from an
+        [InfraValidator][tfx.v1.components.InfraValidator] component.
       custom_config: A dict which contains the deployment job parameters to be
         passed to Cloud platforms.
     """
