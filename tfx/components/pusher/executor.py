@@ -56,8 +56,8 @@ class Executor(base_executor.BaseExecutor):
   https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L104.
 
   For more details on tf.serving itself, please refer to
-  https://tensorflow.org/tfx/guide/pusher.  For a tutuorial on TF Serving,
-  please refer to https://www.tensorflow.org/tfx/guide/serving.
+  [the pusher guide](../../../guide/pusher). For a tutuorial on TF Serving,
+  please refer to [the serving guide](../../../guide/serving).
   """
 
   def CheckBlessing(self, input_dict: Dict[str, List[types.Artifact]]) -> bool:

@@ -97,12 +97,12 @@ class InfraValidator(base_component.BaseComponent):
 
     Args:
       model: A [`BaseChannel`][tfx.v1.types.BaseChannel] of `ModelExportPath` type, usually produced by
-        [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
+        [Trainer](../../../guide/trainer) component.
           _required_
       serving_spec: A `ServingSpec` configuration about serving binary and test
         platform config to launch model server for validation. _required_
       examples: A [`BaseChannel`][tfx.v1.types.BaseChannel] of `ExamplesPath` type, usually produced by
-        [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
+        [ExampleGen](../../../guide/examplegen) component.
           If not specified, InfraValidator does not issue requests for
           validation.
       request_spec: Optional `RequestSpec` configuration about making requests

@@ -84,7 +84,7 @@ class Examples(_TfxArtifact):
     The file and payload format must be specified as optional custom properties
     if not using default formats.
     Please see
-    [https://www.tensorflow.org/tfx/guide/examplegen#span_version_and_split](https://www.tensorflow.org/tfx/guide/examplegen#span_version_and_split) to
+    [the `ExampleGen` guide](../../../guide/examplegen#span-version-and-split) to
     understand about span, version and splits.
 
     * Properties:

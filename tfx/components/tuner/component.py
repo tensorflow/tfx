@@ -56,7 +56,7 @@ class Tuner(base_component.BaseComponent):
    results of all trials. Experimental: subject to change and no backwards
    compatibility guarantees.
 
-  See [the Tuner guide](https://www.tensorflow.org/tfx/guide/tuner)
+  See [the Tuner guide](../../../guide/tuner)
   for more details.
   """
 
