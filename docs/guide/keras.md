@@ -135,7 +135,7 @@ will be discussed in the following Trainer and Evaluator sections.
 To configure native Keras, the `GenericExecutor` needs to be set for Trainer
 component to replace the default Estimator based executor. For details, please
 check
-[here](trainer.md#configuring-the-trainer-component-to-use-the-genericexecutor).
+[here](trainer.md#configuring-the-trainer-component).
 
 ##### Keras Module file with Transform
 

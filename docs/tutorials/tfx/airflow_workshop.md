@@ -59,7 +59,8 @@ The other default orchestrators supported by TFX are Apache Beam and Kubeflow.
 [Apache Beam](../../../guide/beam_orchestrator) can run on
 multiple data processing backends (Beam Ruunners). Cloud Dataflow is one such
 beam runner which can be used for running TFX pipelines. Apache Beam can be used
-for both streaming and batch processing pipelines. \
+for both streaming and batch processing pipelines.
+
 [Kubeflow](../../../guide/kubeflow) is an open source ML
 platform dedicated to making deployments of machine learning (ML) workflows on
 Kubernetes simple, portable and scalable. Kubeflow can be used as an

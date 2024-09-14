@@ -34,7 +34,7 @@ components for these data sources and formats:
 * [Parquet](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/custom_executors/parquet_executor.py)
 
 See the usage examples in the source code and
-[this discussion](examplegen.md#custom_examplegen) for more information on
+[this discussion](examplegen.md#custom-examplegen) for more information on
 how to use and develop custom executors.
 
 !!! Note
@@ -51,10 +51,10 @@ In addition, these data sources and formats are available as
 
 Apache Beam supports ingesting data from a
 [broad range of data sources and formats](https://beam.apache.org/documentation/io/built-in/),
-([see below](#additional_data_formats)).  These capabilities
+([see below](#additional-data-formats)).  These capabilities
 can be used to create custom ExampleGen components for TFX, which is
 demonstrated by some existing ExampleGen components
-([see below](#additional_data_formats)).
+([see below](#additional-data-formats)).
 
 ## How to use an ExampleGen Component
 

@@ -24,7 +24,7 @@ TFX tools can both help find data bugs, and help with feature engineering.
 ## TensorFlow Data Validation
 
 *   [Overview](#overview)
-*   [Schema Based Example Validation](#schema_based-example-validation)
+*   [Schema Based Example Validation](#schema-based-example-validation)
 *   [Training-Serving Skew Detection](#skewdetect)
 *   [Drift Detection](#drift-detection)
 
