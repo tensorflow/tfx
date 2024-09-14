@@ -90,8 +90,8 @@ _InputTrigger = Union[NoTrigger, TriggerByProperty]
 class BaseChannel(abc.ABC, Generic[_AT]):
   """An abstraction for component (BaseNode) artifact inputs.
 
-  `BaseChannel` is often interchangeably used with the term 'channel' (not
-  capital `Channel` which points to the legacy class name).
+  [`BaseChannel`][tfx.v1.types.BaseChannel] is often interchangeably used with the term 'channel' (not
+  capital [`Channel`][tfx.v1.dsl.Channel] which points to the legacy class name).
 
   Component takes artifact inputs distinguished by each "input key". For
   example:
@@ -104,7 +104,7 @@ class BaseChannel(abc.ABC, Generic[_AT]):
                    channel
 
   Here "examples" is the input key of the `Examples` artifact type.
-  `example_gen.outputs['examples']` is a channel. Typically a single channel
+  `#!python example_gen.outputs['examples']` is a channel. Typically a single channel
   refers to a *list of `Artifact` of a homogeneous type*. Since channel is a
   declarative abstraction it is not strictly bound to the actual artifact, but
   is more of an *input selector*.
@@ -217,12 +217,12 @@ class BaseChannel(abc.ABC, Generic[_AT]):
 class Channel(json_utils.Jsonable, BaseChannel):
   """Legacy channel interface.
 
-  `Channel` used to represent the `BaseChannel` concept in the early TFX code,
+  [`Channel`][tfx.v1.dsl.Channel] used to represent the [`BaseChannel`][tfx.v1.types.BaseChannel] concept in the early TFX code,
   but due to having too much features in the same class, we refactored it to
   multiple classes:
 
   - BaseChannel for the general input abstraction
-  - OutputChannel for `component.outputs['key']`.
+  - OutputChannel for `#!python component.outputs['key']`.
   - MLMDQueryChannel for simple filter-based input resolution.
 
   Please do not use this class directly, but instead use the alternatives. This

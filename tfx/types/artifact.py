@@ -113,8 +113,8 @@ class Artifact(json_utils.Jsonable):
   """TFX artifact used for orchestration.
 
   This is used for type-checking and inter-component communication. Currently,
-  it wraps a tuple of (ml_metadata.proto.Artifact,
-  ml_metadata.proto.ArtifactType) with additional property accessors for
+  it wraps a tuple of (`#!python ml_metadata.proto.Artifact`,
+  `#!python ml_metadata.proto.ArtifactType`) with additional property accessors for
   internal state.
 
   A user may create a subclass of Artifact and override the TYPE_NAME property
@@ -124,8 +124,9 @@ class Artifact(json_utils.Jsonable):
   A user may specify artifact type-specific properties for an Artifact subclass
   by overriding the PROPERTIES dictionary, as detailed below.
 
-  Note: the behavior of this class is experimental, without backwards
-  compatibility guarantees, and may change in upcoming releases.
+  !!! Note
+      The behavior of this class is experimental, without backwards
+      compatibility guarantees, and may change in upcoming releases.
   """
 
   # String artifact type name used to identify the type in ML Metadata

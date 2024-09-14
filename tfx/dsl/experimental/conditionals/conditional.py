@@ -55,16 +55,18 @@ class Cond(dsl_context_manager.DslContextManager[None]):
 
   Usage:
 
-    evaluator = Evaluator(
-        examples=example_gen.outputs['examples'],
-        model=trainer.outputs['model'],
-        eval_config=EvalConfig(...))
+  ``` python
+  evaluator = Evaluator(
+        examples=example_gen.outputs["examples"],
+        model=trainer.outputs["model"],
+        eval_config=EvalConfig(...),
+  )
 
-    with Cond(evaluator.outputs['blessing'].future()
-              .custom_property('blessed') == 1):
+  with Cond(evaluator.outputs["blessing"].future().custom_property("blessed") == 1):
       pusher = Pusher(
-          model=trainer.outputs['model'],
-          push_destination=PushDestination(...))
+          model=trainer.outputs["model"], push_destination=PushDestination(...)
+      )
+  ```
   """
 
   def __init__(self, predicate: placeholder.Predicate):

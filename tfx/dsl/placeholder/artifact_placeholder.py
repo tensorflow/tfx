@@ -31,21 +31,22 @@ def input(key: str) -> ArtifactPlaceholder:  # pylint: disable=redefined-builtin
 
   Returns:
     A Placeholder that supports
+
       1. Rendering the whole MLMD artifact proto as text_format.
-         Example: input('model')
-      2. Accessing a specific index using [index], if multiple artifacts are
+         Example: `#!python input('model')`
+      2. Accessing a specific index using `#!python [index]`, if multiple artifacts are
          associated with the given key. If not specified, default to the first
          artifact.
-         Example: input('model')[0]
+         Example: `#!python input('model')[0]`
       3. Getting the URI of an artifact through .uri property.
-         Example: input('model').uri or input('model')[0].uri
+         Example: `#!python input('model').uri or input('model')[0].uri`
       4. Getting the URI of a specific split of an artifact using
-         .split_uri(split_name) method.
-         Example: input('examples')[0].split_uri('train')
+         `#!python .split_uri(split_name)` method.
+         Example: `#!python input('examples')[0].split_uri('train')`
       5. Getting the value of a primitive artifact through .value property.
-         Example: input('primitive').value
+         Example: `#!python input('primitive').value`
       6. Concatenating with other placeholders or strings.
-         Example: input('model').uri + '/model/' + exec_property('version')
+         Example: `#!python input('model').uri + '/model/' + exec_property('version')`
   """
   return ArtifactPlaceholder(key, is_input=True)
 
@@ -60,21 +61,22 @@ def output(key: str) -> ArtifactPlaceholder:
 
   Returns:
     A Placeholder that supports
+
       1. Rendering the whole artifact as text_format.
-         Example: output('model')
+         Example: `#!python output('model')`
       2. Accessing a specific index using [index], if multiple artifacts are
          associated with the given key. If not specified, default to the first
          artifact.
-         Example: output('model')[0]
+         Example: `#!python output('model')[0]`
       3. Getting the URI of an artifact through .uri property.
-         Example: output('model').uri or output('model')[0].uri
+         Example: `#!python output('model').uri or output('model')[0].uri`
       4. Getting the URI of a specific split of an artifact using
-         .split_uri(split_name) method.
-         Example: output('examples')[0].split_uri('train')
+         `#!python .split_uri(split_name)` method.
+         Example: `#!python output('examples')[0].split_uri('train')`
       5. Getting the value of a primitive artifact through .value property.
-         Example: output('primitive').value
+         Example: `#!python output('primitive').value`
       6. Concatenating with other placeholders or strings.
-         Example: output('model').uri + '/model/' + exec_property('version')
+         Example: `#!python output('model').uri + '/model/' + exec_property('version')`
   """
   return ArtifactPlaceholder(key, is_input=False)
 

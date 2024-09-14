@@ -32,15 +32,16 @@ def exec_property(key: str) -> ExecPropertyPlaceholder:
 
   Returns:
     A Placeholder that supports
+
       1. Rendering the value of an execution property at a given key.
-         Example: exec_property('version')
+         Example: `#!python exec_property('version')`
       2. Rendering the whole proto or a proto field of an execution property,
          if the value is a proto type.
          The (possibly nested) proto field in a placeholder can be accessed as
          if accessing a proto field in Python.
-         Example: exec_property('model_config').num_layers
+         Example: `#!python exec_property('model_config').num_layers`
       3. Concatenating with other placeholders or strings.
-         Example: output('model').uri + '/model/' + exec_property('version')
+         Example: `#!python output('model').uri + '/model/' + exec_property('version')`
   """
   return ExecPropertyPlaceholder(key)
 
@@ -56,10 +57,10 @@ def runtime_info(key: RuntimeInfoKeys) -> RuntimeInfoPlaceholder:
   """Returns a Placeholder that contains runtime information for component.
 
   Currently the runtime info includes following keys:
-  1. executor_spec: The executor spec proto.
-  2. platform_config: A proto that contains platform-specific information for
+  1. `executor_spec`: The executor spec proto.
+  2. `platform_config`: A proto that contains platform-specific information for
          the current pipeline node.
-  3. pipeline_platform_config: A proto that contains platform-specific
+  3. `pipeline_platform_config`: A proto that contains platform-specific
         information for the pipeline as a whole.
 
 
@@ -68,8 +69,8 @@ def runtime_info(key: RuntimeInfoKeys) -> RuntimeInfoPlaceholder:
 
   Returns:
     A Placeholder that will render to the information associated with the key.
-    If the placeholder is proto-valued. Accessing a proto field can be
-    represented as if accessing a proto field in Python.
+      If the placeholder is proto-valued. Accessing a proto field can be
+      represented as if accessing a proto field in Python.
 
   Raises:
     ValueError: If received unsupported key.
@@ -82,11 +83,11 @@ def execution_invocation() -> ExecInvocationPlaceholder:
 
   Returns:
     A Placeholder that will render to the ExecutionInvocation proto.
-    Accessing a proto field is the same as if accessing a proto field in Python.
+      Accessing a proto field is the same as if accessing a proto field in Python.
 
-    Prefer to use input(key)/output(key)/exec_property(key) functions instead of
-    input_dict/output_dict/execution_properties field from ExecutionInvocation
-    proto.
+      Prefer to use input(key)/output(key)/exec_property(key) functions instead of
+      input_dict/output_dict/execution_properties field from ExecutionInvocation
+      proto.
   """
   return ExecInvocationPlaceholder()
 
@@ -99,6 +100,7 @@ def environment_variable(key: str) -> EnvironmentVariablePlaceholder:
 
   Returns:
     A Placeholder that supports
+
       1. Rendering the value of an environment variable for a given key.
          Example: environment_variable('FOO')
       2. Concatenating with other placeholders or strings.

@@ -40,17 +40,16 @@ def _get_span_custom_property(artifact: types.Artifact) -> int:
 class SpanRangeStrategy(resolver.ResolverStrategy):
   """SpanRangeStrategy resolves artifacts based on "span" property.
 
-  Note that this ResolverStrategy is experimental and is subject to change in
-  terms of both interface and implementation.
+  Note that this [ResolverStrategy][tfx.v1.dsl.experimental.ResolverStrategy] is experimental and is subject to change in terms of both interface and implementation.
 
   Don't construct SpanRangeStrategy directly, example usage:
-  ```
-    examples_resolver = Resolver(
-        strategy_class=SpanRangeStrategy,
-        config={'range_config': range_config},
-        examples=Channel(type=Examples, producer_component_id=example_gen.id),
-    ).with_id('span_resolver')
-    examples_resolver.outputs['examples']
+  ``` python
+  examples_resolver = Resolver(
+      strategy_class=SpanRangeStrategy,
+      config={"range_config": range_config},
+      examples=Channel(type=Examples, producer_component_id=example_gen.id),
+  ).with_id("span_resolver")
+  examples_resolver.outputs["examples"]
   ```
   """
 

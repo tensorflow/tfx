@@ -274,14 +274,16 @@ class Importer(base_node.BaseNode):
 
   Here is an example to use the Importer:
 
-  ```
+  ``` python
   importer = Importer(
-      source_uri='uri/to/schema',
+      source_uri="uri/to/schema",
       artifact_type=standard_artifacts.Schema,
-      reimport=False).with_id('import_schema')
+      reimport=False,
+  ).with_id("import_schema")
   schema_gen = SchemaGen(
-      fixed_schema=importer.outputs['result'],
-      examples=...)
+      fixed_schema=importer.outputs["result"],
+      examples=...,
+  )
   ```
   """
 

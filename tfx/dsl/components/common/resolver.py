@@ -46,9 +46,9 @@ class ResolverStrategy(abc.ABC):
   to express the input resolution logic. Currently TFX supports the following
   builtin ResolverStrategy:
 
-  - [LatestArtifactStrategy](/tfx/api_docs/python/tfx/v1/dsl/experimental/LatestArtifactStrategy)
-  - [LatestBlessedModelStrategy](/tfx/api_docs/python/tfx/v1/dsl/experimental/LatestBlessedModelStrategy)
-  - [SpanRangeStrategy](/tfx/api_docs/python/tfx/v1/dsl/experimental/SpanRangeStrategy)
+  - [LatestArtifactStrategy][tfx.v1.dsl.experimental.LatestArtifactStrategy]
+  - [LatestBlessedModelStrategy][tfx.v1.dsl.experimental.LatestBlessedModelStrategy]
+  - [SpanRangeStrategy][tfx.v1.dsl.experimental.SpanRangeStrategy]
 
   A resolver strategy defines a type behavior used for input selection. A
   resolver strategy subclass must override the `resolve_artifacts()` function
@@ -81,7 +81,7 @@ class ResolverStrategy(abc.ABC):
 
     Returns:
       If all entries has enough data after the resolving, returns the resolved
-      input_dict. Otherise, return None.
+        input_dict. Otherise, return None.
     """
 
 
@@ -193,27 +193,31 @@ class Resolver(base_node.BaseNode):
   To use Resolver, pass the followings to the Resolver constructor:
 
   * Name of the Resolver instance
-  * A subclass of ResolverStrategy
-  * Configs that will be used to construct an instance of ResolverStrategy
+  * A subclass of [ResolverStrategy][tfx.v1.dsl.experimental.ResolverStrategy]
+  * Configs that will be used to construct an instance of [ResolverStrategy][tfx.v1.dsl.experimental.ResolverStrategy]
   * Channels to resolve with their tag, in the form of kwargs
 
   Here is an example:
 
-  ```
+  ``` {.python .no-copy}
   example_gen = ImportExampleGen(...)
   examples_resolver = Resolver(
-        strategy_class=tfx.dsl.experimental.SpanRangeStrategy,
-        config={'range_config': range_config},
-        examples=Channel(type=Examples, producer_component_id=example_gen.id)
-        ).with_id('Resolver.span_resolver')
+      strategy_class=tfx.dsl.experimental.SpanRangeStrategy,
+      config={"range_config": range_config},
+      examples=Channel(
+          type=Examples,
+          producer_component_id=example_gen.id,
+      ),
+  ).with_id("Resolver.span_resolver")
   trainer = Trainer(
-      examples=examples_resolver.outputs['examples'],
-      ...)
+      examples=examples_resolver.outputs["examples"],
+      ...,
+  )
   ```
 
-  You can find experimental `ResolverStrategy` classes under
-  `tfx.v1.dsl.experimental` module, including `LatestArtifactStrategy`,
-  `LatestBlessedModelStrategy`, `SpanRangeStrategy`, etc.
+  You can find experimental [`ResolverStrategy`][tfx.v1.dsl.experimental.ResolverStrategy] classes under
+  [`tfx.v1.dsl.experimental`][tfx.v1.dsl.experimental] module, including [`LatestArtifactStrategy`][tfx.v1.dsl.experimental.LatestArtifactStrategy],
+  `LatestBlessedModelStrategy`, [`SpanRangeStrategy`][tfx.v1.dsl.experimental.SpanRangeStrategy], etc.
   """
 
   def __init__(self,

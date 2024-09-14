@@ -48,29 +48,28 @@ def create_container_component(
   Returns:
     Component that can be instantiated and user inside pipeline.
 
-  Example:
-
-  ```
-    component = create_container_component(
-        name='TrainModel',
-        inputs={
-            'training_data': Dataset,
-        },
-        outputs={
-            'model': Model,
-        },
-        parameters={
-            'num_training_steps': int,
-        },
-        image='gcr.io/my-project/my-trainer',
-        command=[
-            'python3', 'my_trainer',
-            '--training_data_uri', InputUriPlaceholder('training_data'),
-            '--model_uri', OutputUriPlaceholder('model'),
-            '--num_training-steps', InputValuePlaceholder('num_training_steps'),
-        ]
-    )
-  ```
+  !!! Example
+      ``` python
+      component = create_container_component(
+          name="TrainModel",
+          inputs={
+              "training_data": Dataset,
+          },
+          outputs={
+              "model": Model,
+          },
+          parameters={
+              "num_training_steps": int,
+          },
+          image="gcr.io/my-project/my-trainer",
+          command=[
+              "python3", "my_trainer",
+              "--training_data_uri", InputUriPlaceholder("training_data"),
+              "--model_uri", OutputUriPlaceholder("model"),
+              "--num_training-steps", InputValuePlaceholder("num_training_steps"),
+          ],
+      )
+      ```
   """
   if not name:
     raise ValueError('Component name cannot be empty.')
