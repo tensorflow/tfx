@@ -210,7 +210,7 @@ Current InfraValidator is not complete yet, and has some limitations.
     for deployments to [TensorFlow Lite](https://www.tensorflow.org/lite) and [TensorFlow.js](https://www.tensorflow.org/js), or
     other inference frameworks.
 -   There's a limited support on `LOAD_AND_QUERY` mode for the
-    [Predict](/versions/r1.15/api_docs/python/tf/saved_model/predict_signature_def)
+    [Predict](https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/saved_model/predict_signature_def)
     method signature (which is the only exportable method in TensorFlow 2).
     InfraValidator requires the Predict signature to consume a serialized
     [`tf.Example`](https://www.tensorflow.org/tutorials/load_data/tfrecord#tfexample) as the only input.

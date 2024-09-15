@@ -47,7 +47,7 @@ This tutorial uses the following billable components of Google Cloud:
 
 To estimate the cost to run this tutorial, assuming you use every resource for
 an entire day, use the preconfigured
-[pricing calculator](/products/calculator/#id=fad408d8-dd68-45b8-954e-5a5619a5d148).
+[pricing calculator](https://www.tensorflow.org/products/calculator#id=fad408d8-dd68-45b8-954e-5a5619a5d148).
 
 
 ## Before you begin
@@ -466,7 +466,7 @@ following columns:
 -   `weight_pounds` (type: `FLOAT`)
 
 As explained in
-[Preprocessing operations](data-preprocessing-for-ml-with-tf-transform-pt1#preprocessing_operations)
+[Preprocessing operations](data-preprocessing-for-ml-with-tf-transform-pt1#preprocessing-operations)
 in the first part of this series, the feature transformation converts
 categorical features to a numeric representation. After the transformation, the
 categorical features are represented by integer values. In the

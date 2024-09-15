@@ -137,7 +137,7 @@ the train and eval output split is generated with a 2:1 ratio.
 Please refer to
 [proto/example_gen.proto](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
 for ExampleGen's input and output split configuration. And refer to
-[downstream components guide](#examplegen_downstream_components) for utilizing
+[downstream components guide](#examplegen-downstream-components) for utilizing
 the custom splits downstream.
 
 #### Splitting Method

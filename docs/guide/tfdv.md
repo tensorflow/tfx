@@ -42,7 +42,7 @@ be configured to detect different classes of anomalies in the data. It can
 
 We document each of these functionalities independently:
 
-*   [Schema Based Example Validation](#schema_based-example-validation)
+*   [Schema Based Example Validation](#schema-based-example-validation)
 *   [Training-Serving Skew Detection](#skewdetect)
 *   [Drift Detection](#drift-detection)
 

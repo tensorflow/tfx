@@ -126,7 +126,7 @@ disk.  As a TFX user, you only have to define a single function called the
 In `preprocessing_fn` you define a series of functions that manipulate the input
 dict of tensors to produce the output dict of tensors. You can find helper
 functions like scale_to_0_1 and compute_and_apply_vocabulary the
-[TensorFlow Transform API](/tfx/transform/api_docs/python/tft) or use
+[TensorFlow Transform API](https://www.tensorflow.org/tfx/transform/api_docs/python/tft) or use
 regular TensorFlow functions as shown below.
 
 ```python

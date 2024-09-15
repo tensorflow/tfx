@@ -244,7 +244,7 @@ monitoring, and maintaining an ML pipeline easier.
 
 TFX is designed to be portable to multiple environments and orchestration
 frameworks, including [Apache Airflow](airflow.md),
-[Apache Beam](beam_orchestrator.md) and [Kubeflow](kubeflow.md) . It is also
+[Apache Beam](beam.md) and [Kubeflow](kubeflow.md) . It is also
 portable to different computing platforms, including on-premise, and
 cloud platforms such as the
 [Google Cloud Platform (GCP)](https://cloud.google.com/). In particular,
@@ -600,4 +600,4 @@ TFX provides a unified CLI which helps the perform full range of pipeline
 actions such as create, update, run, list, and delete pipelines on various
 orchestrators including Apache Airflow, Apache Beam, and Kubeflow. For details,
 please follow
-[these instructions](https://github.com/tensorflow/tfx/blob/master/docs/guide/cli.md).
+[these instructions](cli.md).
