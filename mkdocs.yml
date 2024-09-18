@@ -35,6 +35,7 @@ theme:
   features:
     - content.code.copy
     - content.code.select
+    - content.action.edit
 plugins:
   - search
   - autorefs
