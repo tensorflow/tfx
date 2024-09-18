@@ -720,5 +720,5 @@ columns.
 -   Learn about best practices for ML engineering in
     [Rules of ML](https://developers.google.com/machine-learning/guides/rules-of-ml/){: .external }.
 +   For more reference architectures, diagrams, and best practices, explore the
-    <a href="https://www.tensorflow.org/tfx/guide/solutions" track-type="tutorial" track-name="textLink" track-metadata-position="nextSteps">TFX
+    <a href="./solutions" track-type="tutorial" track-name="textLink" track-metadata-position="nextSteps">TFX
     Cloud Solutions</a>.

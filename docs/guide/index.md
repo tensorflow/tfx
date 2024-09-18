@@ -28,7 +28,7 @@ pip install tfx
 
 !!! Note
     See the
-    [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving),
+    [TensorFlow Serving](./serving),
     [TensorFlow JS](https://js.tensorflow.org/), and/or
     [TensorFlow Lite](https://www.tensorflow.org/lite) documentation for installing
     those optional components.
@@ -351,7 +351,7 @@ is consumed by the other components.
 TFX provides a powerful platform for every phase of a machine learning project,
 from research, experimentation, and development on your local machine, through
 deployment. In order to avoid code duplication and eliminate the potential for
-[training/serving skew](https://www.tensorflow.org/tfx/guide/tfdv#training-serving_skew_detection)
+[training/serving skew](./tfdv#training-serving_skew_detection)
 it is strongly recommended to implement your TFX pipeline for both model
 training and deployment of trained models, and use [Transform](transform.md)
 components which leverage the [TensorFlow Transform](tft.md) library for both

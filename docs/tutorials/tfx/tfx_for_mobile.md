@@ -16,7 +16,7 @@ standard Keras-based [SavedModel](https://www.tensorflow.org/guide/saved_model)
 as well as the TFLite one, allowing users to compare the quality of the two.
 
 We assume you are familiar with TFX, our components, and our pipelines. If not,
-then please see this [tutorial](https://www.tensorflow.org/tfx/tutorials/tfx/components).
+then please see this [tutorial](/tutorials/tfx/components).
 
 ## Steps
 Only two steps are required to create and evaluate a TFLite model in TFX. The

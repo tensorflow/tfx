@@ -457,7 +457,7 @@ your pipeline.
 
 The example presented here is really only meant to get you started. For a more
 advanced example see the
-[TensorFlow Data Validation Colab](https://www.tensorflow.org/tfx/tutorials/data_validation/chicago_taxi).
+[TensorFlow Data Validation Colab](/tutorials/data_validation/chicago_taxi).
 
 For more information on using TFDV to explore and validate a dataset,
 [see the examples on tensorflow.org](https://www.tensorflow.org/tfx/data_validation).
@@ -515,7 +515,7 @@ your pipeline.
 
 The example presented here is really only meant to get you started. For a more
 advanced example see the
-[TensorFlow Transform Colab](https://www.tensorflow.org/tfx/tutorials/transform/census).
+[TensorFlow Transform Colab](/tutorials/transform/census).
 
 ## 10. Training
 
