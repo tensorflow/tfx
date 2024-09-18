@@ -149,7 +149,7 @@ nav:
       - Data preprocessing for ML with Google Cloud: tutorials/transform/data_preprocessing_with_cloud
     - Model Analysis:
       - Get started with TFMA: tutorials/model_analysis/tfma_basic
-      - Fairness Indicators tutorial: onsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab
+      - Fairness Indicators tutorial: https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab
     - Deploy a trained model:
       - 'Servers: TFX for TensorFlow Serving': tutorials/serving/rest_simple
       - 'Mobile & IoT: TFX for TensorFlow Lite': tutorials/tfx/tfx_for_mobile
