@@ -33,7 +33,7 @@ from tfx.utils import json_utils
 #             args depend on the tuner's implementation.
 TunerFnResult = NamedTuple('TunerFnResult', [('tuner', base_tuner.BaseTuner),
                                              ('fit_kwargs', Dict[str, Any])])
-TunerFnResult.__doc__ = """
+"""
 Return type of tuner_fn.
 
 tuner_fn returns a TunerFnResult that contains:
