@@ -69,9 +69,10 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
   TODO(b/155325467): Creates a end-to-end test for this component.
 
   Component `outputs` contains:
-   - `inference_result`: Channel of type `standard_artifacts.InferenceResult`
+
+   - `inference_result`: Channel of type [`standard_artifacts.InferenceResult`][tfx.v1.types.standard_artifacts.InferenceResult]
                          to store the inference results.
-   - `output_examples`: Channel of type `standard_artifacts.Examples`
+   - `output_examples`: Channel of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples]
                         to store the output examples.
   """
 
@@ -91,11 +92,11 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
     """Construct an BulkInferrer component.
 
     Args:
-      examples: A Channel of type `standard_artifacts.Examples`, usually
+      examples: A Channel of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples], usually
         produced by an ExampleGen component. _required_
-      model: A Channel of type `standard_artifacts.Model`, usually produced by
+      model: A Channel of type [`standard_artifacts.Model`][tfx.v1.types.standard_artifacts.Model], usually produced by
         a Trainer component.
-      model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
+      model_blessing: A Channel of type [`standard_artifacts.ModelBlessing`][tfx.v1.types.standard_artifacts.ModelBlessing],
         usually produced by a ModelValidator component.
       data_spec: bulk_inferrer_pb2.DataSpec instance that describes data
         selection.
@@ -105,7 +106,7 @@ class CloudAIBulkInferrerComponent(base_component.BaseComponent):
         passed to Google Cloud AI Platform.
         custom_config.ai_platform_serving_args need to contain the serving job
         parameters. For the full set of parameters, refer to
-        https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+        [https://cloud.google.com/ml-engine/reference/rest/v1/projects.models](https://cloud.google.com/ml-engine/reference/rest/v1/projects.models)
 
     Raises:
       ValueError: Must not specify inference_result or output_examples depends

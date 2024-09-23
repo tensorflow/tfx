@@ -114,13 +114,6 @@ Figure: The flow of data from raw data to prepared data to engineered features t
 
 ![Flow diagram showing raw data moving to prepared data moving to engineered features.](images/data-preprocessing-for-ml-with-tf-transform-data-preprocessing-flow.svg)
 
-<!--<figure id="data-flow-raw-prepared-engineered-features">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-data-preprocessing-flow.svg"
-    alt="Flow diagram showing raw data moving to prepared data moving to engineered features.">
-  <figcaption><b>Figure 1.</b> The flow of data from raw data to prepared data to engineered
-features to machine learning.</figcaption>
-</figure>-->
-
 In practice, data from the same source is often at different stages of
 readiness. For example, a field from a table in your data warehouse might be
 used directly as an engineered feature. At the same time, another field in the
@@ -162,7 +155,7 @@ For structured data, data preprocessing operations include the following:
     lower-dimension, more powerful data representations using techniques such
     as
     [PCA](https://en.wikipedia.org/wiki/Principal_component_analysis){: .external },
-    [embedding](https://developers.google.com/machine-learning/glossary/#embeddings){: .external }
+    [embedding](https://developers.google.com/machine-learning/crash-course/embeddings){: .external }
     extraction, and
     [hashing](https://medium.com/value-stream-design/introducing-one-of-the-best-hacks-in-machine-learning-the-hashing-trick-bf6a9c8af18f){: .external }.
 -   **Feature selection:** selecting a subset of the input features for
@@ -238,7 +231,7 @@ on operation granularity:
     values that are computed during training are used to adjust the feature
     value, which is the following simple *instance-level* operation:
 
-    \[ value_{scaled} = (value_{raw} - \mu) \div \sigma \]
+    \[ value_{\text{scaled}} = \frac{value_{\text{raw}} - \mu}{\sigma} \]
 
     Full-pass transformations include the following:
 
@@ -306,7 +299,7 @@ on operation granularity:
     before training and prediction.
 
 
-## ML pipeline on Google Cloud{: id="machine_learning_pipeline_on_gcp" }
+## ML pipeline on Google Cloud
 
 This section discusses the core components of a typical end-to-end pipeline to
 train and serve TensorFlow ML models on Google Cloud using
@@ -328,13 +321,6 @@ in the following section.
 Figure: High-level architecture for ML training and serving on Google Cloud. {#high-level-architecture-for-training-and-serving}
 
 ![Architecture diagram showing stages for processing data.](images/data-preprocessing-for-ml-with-tf-transform-ml-training-serving-architecture.svg)
-
-<!--<figure id="high-level-architecture-for-training-and-serving">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-ml-training-serving-architecture.svg"
-    alt="Architecture diagram showing stages for processing data.">
-  <figcaption><b>Figure 2.</b> High-level architecture for ML training and
-    serving on Google Cloud.</figcaption>
-</figure>-->
 
 The pipeline consists of the following steps:
 
@@ -460,13 +446,6 @@ processing stream data for near real-time predictions.
 Figure: High-level architecture using stream data for prediction in Dataflow. {#high-level-architecture-for-stream-data}
 
 ![Architecture for using stream data for prediction.](images/data-preprocessing-for-ml-with-tf-transform-streaming-data-with-dataflow-architecture.svg)
-
-<!--<figure id="high-level-architecture-for-stream-data">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-streaming-data-with-dataflow-architecture.svg"
-    alt="Architecture for using stream data for prediction.">
-  <figcaption><b>Figure 3.</b> High-level architecture using stream data
-    for prediction in Dataflow.</figcaption>
-</figure>-->
 
 As shown in figure 3, during processing, events called *data points* are
 ingested into [Pub/Sub](https://cloud.google.com/pubsub/docs){: .external }.
@@ -627,14 +606,6 @@ Figure: Behavior of `tf.Transform` for preprocessing and transforming data.
 
 ![Diagram showing flow from raw data through tf.Transform to predictions.](images/data-preprocessing-for-ml-with-tf-transform-tf-transform-behavior-flow.svg)
 
-<!--<figure id="tf-Transform-preprocessing--transforming-data-for-training-and-prediction">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-tf-transform-behavior-flow.svg"
-    alt="Diagram showing flow from raw data through tf.Transform to predictions.">
-  <figcaption><b>Figure 4.</b> Behavior of <code>tf.Transform</code> for
-    preprocessing and transforming data.</figcaption>
-</figure>-->
-
-
 ### Transform training and evaluation data
 
 You preprocess the raw training data using the transformation implemented in
@@ -705,196 +676,37 @@ new data points during prediction serving.
 The following table summarizes the data preprocessing options that this document
 discussed. In the table, "N/A" stands for "not applicable."
 
-<table class="alternating-odd-rows">
-<tbody>
-<tr>
-<th>
-  Data preprocessing option
-</th>
-<th>
-  Instance-level<br/>
-  (stateless transformations)
-</th>
-<th>
-  <p>
-    Full-pass during training and instance-level during serving
-    (stateful transformations)
-  </p>
-</th>
-<th>
-  <p>
-    Real-time (window) aggregations during training and serving (streaming
-    transformations)
-  </p>
-</th>
-</tr>
-<tr>
-  <td>
-    <p>
-      <b>BigQuery</b>
-        &nbsp;(SQL)
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: OK</b>—the same transformation implementation is
-      applied on data during training and batch scoring.
-    </p>
-    <p>
-      <b>Online prediction: Not recommended</b>—you can process training data,
-      but it results in training-serving skew because you process serving data
-      using different tools.
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: Not recommended</b>.
-    </p>
-    <p>
-      <b>Online prediction: Not recommended</b>.
-    </p>
-    <p>
-      Although you can use statistics computed using BigQuery
-      for instance-level batch/online transformations, it isn't easy because
-      you must maintain a stats store to be populated during training and
-      used during prediction.
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: N/A</b>—aggregates like these are computed based on
-      real-time events.
-    </p>
-    <p>
-      <b>Online prediction: Not recommended</b>—you can process training data,
-      but it results in training-serving skew because you process serving data
-      using different tools.
-    </p>
-  </td>
-</tr>
-<tr>
-  <td>
-    <p>
-      <b>Dataflow</b> (Apache Beam)
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: OK</b>—the same transformation implementation is
-      applied on data during training and batch scoring.
-    </p>
-    <p>
-      <b>Online prediction: OK</b>—if data at serving time comes from
-      Pub/Sub to be consumed by Dataflow.
-      Otherwise, results in training-serving skew.
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: Not recommended</b>.
-    </p>
-    <p>
-      <b>Online predictions: Not recommended</b>.
-    </p>
-    <p>
-      Although you can use statistics computed using Dataflow
-      for instance-level batch/online transformations, it isn't easy
-      because you must maintain a stats store to be populated during training
-      and used during prediction.
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: N/A</b>&mdash;aggregates like these are computed
-      based on real-time events.
-    </p>
-    <p>
-      <b>Online prediction: OK</b>—the same Apache Beam transformation is
-      applied on data during training (batch) and serving (stream).
-    </p>
-  </td>
-</tr>
-<tr>
-  <td>
-    <p>
-      <b>Dataflow</b> (Apache Beam + TFT)
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: OK</b>—the same transformation implementation is
-      applied to data during training and batch scoring.
-    </p>
-    <p>
-      <b>Online prediction: Recommended</b>—it avoids training-serving skew
-      and prepares training data up front.
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: Recommended</b>.
-    </p>
-    <p>
-      <b>Online prediction: Recommended</b>.
-    </p>
-    <p>
-      Both uses are recommended because transformation logic and computed
-      statistics during training are stored as a TensorFlow
-      graph that's attached to the exported model for serving.
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: N/A</b>&mdash;aggregates like these are computed
-      based on real-time events.
-    </p>
-    <p>
-      <b>Online prediction: OK</b>—the same Apache Beam transformation is
-      applied on data during training (batch) and serving (stream).
-    </p>
-  </td>
-</tr>
-<tr>
-  <td>
-    <p>
-      <b>TensorFlow</b> <sup>*</sup>
-      <br/>
-      (<code>input_fn</code> &amp; <code>serving_fn</code>)
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: Not recommended</b>.
-    </p>
-    <p>
-      <b>Online prediction: Not recommended</b>.
-    </p>
-    <p>
-      For training efficiency in both cases, it's better to prepare the
-      training data up front.
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: Not Possible</b>.
-    </p>
-    <p>
-      <b>Online prediction: Not Possible</b>.
-    </p>
-  </td>
-  <td>
-    <p>
-      <b>Batch scoring: N/A</b>&mdash;aggregates like these are computed
-      based on real-time events.
-    <p>
-      <b>Online prediction: Not Possible</b>.
-    </p>
-  </td>
-</tr>
-</tbody>
-</table>
++----------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Data preprocessing option        | Instance-level                                                                                                                                                          | Full-pass during training and instance-level during serving                                                                                                                                                                 | Real-time (window) aggregations during training and serving                                                                                                             |
+|                                  |                                                                                                                                                                         |                                                                                                                                                                                                                             |                                                                                                                                                                         |
+|                                  | (stateless transformations)                                                                                                                                             | (stateful transformations)                                                                                                                                                                                                  | (streaming transformations)                                                                                                                                             |
++==================================+=========================================================================================================================================================================+=============================================================================================================================================================================================================================+=========================================================================================================================================================================+
+| **BigQuery**                     | **Batch scoring: OK**&mdash;the same transformation implementation is applied on data during training and batch scoring.                                                | **Batch scoring: Not recommended**.                                                                                                                                                                                         | **Batch scoring: N/A**&mdash;aggregates like these are computed based on real-time events.                                                                              |
+|                                  |                                                                                                                                                                         |                                                                                                                                                                                                                             |                                                                                                                                                                         |
+| (SQL)                            | **Online prediction: Not recommended**&mdash;you can process training data, but it results in training-serving skew because you process serving data using different    | **Online prediction: Not recommended**.                                                                                                                                                                                     | **Online prediction: Not recommended**&mdash;you can process training data, but it results in training-serving skew because you process serving data using different    |
+|                                  | tools.                                                                                                                                                                  |                                                                                                                                                                                                                             | tools.                                                                                                                                                                  |
+|                                  |                                                                                                                                                                         | Although you can use statistics computed using BigQuery for instance-level batch/online transformations, it isn't easy because you must maintain a stats store to be populated during training and used during prediction.  |                                                                                                                                                                         |
++----------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Dataflow**                     | **Batch scoring: OK**&mdash;the same transformation implementation is applied on data during training and batch scoring.                                                | **Batch scoring: Not recommended**.                                                                                                                                                                                         | **Batch scoring: N/A**---aggregates like these are computed based on real-time events.                                                                                  |
+|                                  |                                                                                                                                                                         |                                                                                                                                                                                                                             |                                                                                                                                                                         |
+| (Apache Beam)                    | **Online prediction: OK**&mdash;if data at serving time comes from Pub/Sub to be consumed by Dataflow. Otherwise, results in training-serving skew.                     | **Online predictions: Not recommended**.                                                                                                                                                                                    | **Online prediction: OK**&mdash;the same Apache Beam transformation is applied on data during training (batch) and serving (stream).                                    |
+|                                  |                                                                                                                                                                         |                                                                                                                                                                                                                             |                                                                                                                                                                         |
+|                                  |                                                                                                                                                                         | Although you can use statistics computed using Dataflow for instance-level batch/online transformations, it isn't easy because you must maintain a stats store to be populated during training and used during prediction.  |                                                                                                                                                                         |
++----------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **Dataflow**                     | **Batch scoring: OK**&mdash;the same transformation implementation is applied to data during training and batch scoring.                                                | **Batch scoring: Recommended**.                                                                                                                                                                                             | **Batch scoring: N/A**---aggregates like these are computed based on real-time events.                                                                                  |
+|                                  |                                                                                                                                                                         |                                                                                                                                                                                                                             |                                                                                                                                                                         |
+| (Apache Beam + TFT)              | **Online prediction: Recommended**&mdash;it avoids training-serving skew and prepares training data up front.                                                           | **Online prediction: Recommended**.                                                                                                                                                                                         | **Online prediction: OK**&mdash;the same Apache Beam transformation is applied on data during training (batch) and serving (stream).                                    |
+|                                  |                                                                                                                                                                         |                                                                                                                                                                                                                             |                                                                                                                                                                         |
+|                                  |                                                                                                                                                                         | Both uses are recommended because transformation logic and computed statistics during training are stored as a TensorFlow graph that's attached to the exported model for serving.                                          |                                                                                                                                                                         |
++----------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **TensorFlow** ^\*^              | **Batch scoring: Not recommended**.                                                                                                                                     | **Batch scoring: Not Possible**.                                                                                                                                                                                            | **Batch scoring: N/A**&mdash;aggregates like these are computed based on real-time events.                                                                              |
+|                                  |                                                                                                                                                                         |                                                                                                                                                                                                                             |                                                                                                                                                                         |
+| (`input_fn` & `serving_fn`)      | **Online prediction: Not recommended**.                                                                                                                                 | **Online prediction: Not Possible**.                                                                                                                                                                                        | **Online prediction: Not Possible**.                                                                                                                                    |
+|                                  |                                                                                                                                                                         |                                                                                                                                                                                                                             |                                                                                                                                                                         |
+|                                  | For training efficiency in both cases, it's better to prepare the training data up front.                                                                               |                                                                                                                                                                                                                             |                                                                                                                                                                         |
++----------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-<sup>*</sup> With TensorFlow, transformations like crossing, embedding,
+^\*^ With TensorFlow, transformations like crossing, embedding,
 and one-hot encoding should be performed declaratively as `feature_columns`
 columns.
 
@@ -908,5 +720,5 @@ columns.
 -   Learn about best practices for ML engineering in
     [Rules of ML](https://developers.google.com/machine-learning/guides/rules-of-ml/){: .external }.
 +   For more reference architectures, diagrams, and best practices, explore the
-    <a href="https://www.tensorflow.org/tfx/guide/solutions" track-type="tutorial" track-name="textLink" track-metadata-position="nextSteps">TFX
+    <a href="../solutions" track-type="tutorial" track-name="textLink" track-metadata-position="nextSteps">TFX
     Cloud Solutions</a>.

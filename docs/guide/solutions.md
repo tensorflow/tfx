@@ -3,12 +3,13 @@
 Looking for insights into how TFX can be applied to build a solution that meets
 your needs? These in-depth articles and guides may help!
 
-Note: These articles discuss complete solutions in which TFX is a key part, but
-not the only part. This is nearly always the case for real-world deployments. So
-implementing these solutions yourself will require more than just TFX. The main
-goal is to give you some insight into how others have implemented solutions that
-may meet requirements that are similar to yours, and not to serve as a cookbook
-or list of approved applications of TFX.
+!!! Note
+    These articles discuss complete solutions in which TFX is a key part, but
+    not the only part. This is nearly always the case for real-world deployments. So
+    implementing these solutions yourself will require more than just TFX. The main
+    goal is to give you some insight into how others have implemented solutions that
+    may meet requirements that are similar to yours, and not to serve as a cookbook
+    or list of approved applications of TFX.
 
 ## Architecture of a machine learning system for near real-time item matching
 

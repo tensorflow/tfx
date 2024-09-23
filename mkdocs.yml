@@ -1,5 +1,5 @@
 site_name: TFX
-repo_name: "Tensorflow TFX"
+repo_name: "TFX"
 repo_url: https://github.com/tensorflow/tfx
 
 theme:
@@ -30,12 +30,12 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
-  logo: assets/tf_full_color_primary_icon.svg
   favicon: assets/tf_full_color_primary_icon.svg
 
   features:
     - content.code.copy
     - content.code.select
+    - content.action.edit
 plugins:
   - search
   - autorefs
@@ -82,6 +82,8 @@ plugins:
 markdown_extensions:
   - admonition
   - attr_list
+  - def_list
+  - tables
   - toc:
       permalink: true
   - pymdownx.highlight:
@@ -94,6 +96,12 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.arithmatex:
       generic: true
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+  - markdown_grid_tables
   - md_in_html
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
@@ -130,7 +138,7 @@ nav:
       - LLM finetuning and conversion: tutorials/tfx/gpt2_finetuning_and_conversion
       - Custom component tutorial: tutorials/tfx/python_function_component
       - Recommenders with TFX: tutorials/tfx/recommenders
-      - Ranking with TFX: mmenders/examples/ranking_tfx
+      - Ranking with TFX: https://www.tensorflow.org/recommenders/examples/ranking_tfx
       - Airflow tutorial: tutorials/tfx/airflow_workshop
       - Neural Structured Learning in TFX: tutorials/tfx/neural_structured_learning
     - Data Validation:
@@ -141,7 +149,7 @@ nav:
       - Data preprocessing for ML with Google Cloud: tutorials/transform/data_preprocessing_with_cloud
     - Model Analysis:
       - Get started with TFMA: tutorials/model_analysis/tfma_basic
-      - Fairness Indicators tutorial: onsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab
+      - Fairness Indicators tutorial: https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab
     - Deploy a trained model:
       - 'Servers: TFX for TensorFlow Serving': tutorials/serving/rest_simple
       - 'Mobile & IoT: TFX for TensorFlow Lite': tutorials/tfx/tfx_for_mobile
@@ -156,7 +164,7 @@ nav:
       - "TFX Cloud Solutions": guide/solutions.md
       - "Using Keras with TFX": guide/keras
       - "Using Non-TensorFlow Frameworks in TFX": guide/non_tf
-      - "Mobile & IoT: TFX for TensorFlow Lite": tutorials/tfx_for_mobile
+      - "Mobile & IoT: TFX for TensorFlow Lite": tutorials/tfx/tfx_for_mobile
 
     - "TFX Pipelines":
         - "Understanding TFX pipelines": guide/understanding_tfx_pipelines
@@ -242,7 +250,7 @@ nav:
         - "TensorBoard": "https://www.tensorflow.org/tensorboard"
   - API:
     - v1:
-      - "Overview": api/v1/root
+      - "Overview": api/v1/index.md
       - "components": api/v1/components
       - "dsl": api/v1/dsl
       - "extensions": api/v1/extensions

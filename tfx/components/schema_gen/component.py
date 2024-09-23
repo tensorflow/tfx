@@ -40,17 +40,18 @@ class SchemaGen(base_component.BaseComponent):
   In a typical TFX pipeline, the SchemaGen component generates a schema which
   is consumed by the other pipeline components.
 
-  ## Example
-  ```
-    # Generates schema based on statistics files.
-    infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
-  ```
+  !!! Example
+      ``` python
+      # Generates schema based on statistics files.
+      infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
+      ```
 
   Component `outputs` contains:
-   - `schema`: Channel of type `standard_artifacts.Schema` for schema
+
+   - `schema`: Channel of type [`standard_artifacts.Schema`][tfx.v1.types.standard_artifacts.Schema] for schema
    result.
 
-  See [the SchemaGen guide](https://www.tensorflow.org/tfx/guide/schemagen)
+  See [the SchemaGen guide](../../../guide/schemagen)
   for more details.
   """
   SPEC_CLASS = standard_component_specs.SchemaGenSpec
@@ -65,10 +66,11 @@ class SchemaGen(base_component.BaseComponent):
     """Constructs a SchemaGen component.
 
     Args:
-      statistics: A BaseChannel of `ExampleStatistics` type (required if spec is
-        not passed). This should contain at least a `train` split. Other splits
+      statistics: A [BaseChannel][tfx.v1.types.BaseChannel]
+        of `ExampleStatistics` type (required if spec is not passed).
+        This should contain at least a `train` split. Other splits
         are currently ignored. _required_
-      infer_feature_shape: Boolean (or RuntimeParameter) value indicating
+      infer_feature_shape: Boolean (or [RuntimeParameter][tfx.v1.dsl.experimental.RuntimeParameter]) value indicating
         whether or not to infer the shape of features. If the feature shape is
         not inferred, downstream Tensorflow Transform component using the schema
         will parse input as tf.SparseTensor. Default to True if not set.

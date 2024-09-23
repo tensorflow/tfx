@@ -25,16 +25,16 @@ import ml_metadata as mlmd
 class LatestArtifactStrategy(resolver.ResolverStrategy):
   """Strategy that resolves the latest n(=1) artifacts per each channel.
 
-  Note that this ResolverStrategy is experimental and is subject to change in
-  terms of both interface and implementation.
+  Note that this [ResolverStrategy][tfx.v1.dsl.experimental.ResolverStrategy] is experimental and is subject to change in terms of both interface and implementation.
 
   Don't construct LatestArtifactStrategy directly, example usage:
-  ```
-    model_resolver = Resolver(
-        strategy_class=LatestArtifactStrategy,
-        model=Channel(type=Model),
-    ).with_id('latest_model_resolver')
-    model_resolver.outputs['model']
+  ``` python
+  model_resolver.outputs['model']
+  model_resolver = Resolver(
+      strategy_class=LatestArtifactStrategy,
+      model=Channel(type=Model),
+  ).with_id("latest_model_resolver")
+  model_resolver.outputs["model"]
   ```
   """
 
@@ -63,7 +63,7 @@ class LatestArtifactStrategy(resolver.ResolverStrategy):
 
     Returns:
       If `min_count` for every input is met, returns a
-      Dict[str, List[Artifact]]. Otherwise, return None.
+        Dict[str, List[Artifact]]. Otherwise, return None.
     """
     resolved_dict = self._resolve(input_dict)
     all_min_count_met = all(

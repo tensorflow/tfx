@@ -34,15 +34,15 @@ class Pusher(pusher_component.Pusher):
     """Construct a Pusher component.
 
     Args:
-      model: An optional Channel of type `standard_artifacts.Model`, usually
-        produced by a Trainer component, representing the model used for
+      model: An optional Channel of type [`standard_artifacts.Model`][tfx.v1.types.standard_artifacts.Model], usually
+        produced by a [Trainer][tfx.v1.components.Trainer] component, representing the model used for
         training.
       model_blessing: An optional Channel of type
-        `standard_artifacts.ModelBlessing`, usually produced from an Evaluator
+        [`standard_artifacts.ModelBlessing`][tfx.v1.types.standard_artifacts.ModelBlessing], usually produced from an [Evaluator][tfx.v1.components.Evaluator]
         component, containing the blessing model.
       infra_blessing: An optional Channel of type
-        `standard_artifacts.InfraBlessing`, usually produced from an
-        InfraValidator component, containing the validation result.
+        [`standard_artifacts.InfraBlessing`][tfx.v1.types.standard_artifacts.InfraBlessing], usually produced from an
+        [InfraValidator][tfx.v1.components.InfraValidator] component, containing the validation result.
       custom_config: A dict which contains the deployment job parameters to be
         passed to Cloud platforms.
     """

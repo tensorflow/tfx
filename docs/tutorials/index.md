@@ -21,7 +21,7 @@ you'll learn the two main styles of developing a TFX pipeline:
     Probably the simplest pipeline you can build, to help you get started. Click
     the _Run in Google&nbsp;Colab_ button.
 
-    [:octicons-arrow-right-24: Starter Pipeline](tutorials/tfx/penguin_simple.md)
+    [:octicons-arrow-right-24: Starter Pipeline](tfx/penguin_simple)
 
 -   __2. Adding Data Validation__
 
@@ -29,7 +29,7 @@ you'll learn the two main styles of developing a TFX pipeline:
 
     Building on the simple pipeline to add data validation components.
 
-    [:octicons-arrow-right-24: Data Validation](tutorials/tfx/penguin_tfdv)
+    [:octicons-arrow-right-24: Data Validation](tfx/penguin_tfdv)
 
 -   __3. Adding Feature Engineering__
 
@@ -37,7 +37,7 @@ you'll learn the two main styles of developing a TFX pipeline:
 
     Building on the data validation pipeline to add a feature engineering component.
 
-    [:octicons-arrow-right-24: Feature Engineering](tutorials/tfx/penguin_tft)
+    [:octicons-arrow-right-24: Feature Engineering](tfx/penguin_tft)
 
 -   __4. Adding Model Analysis__
 
@@ -45,7 +45,7 @@ you'll learn the two main styles of developing a TFX pipeline:
 
     Building on the simple pipeline to add a model analysis component.
 
-    [:octicons-arrow-right-24: Model Analysis](tutorials/tfx/penguin_tfma)
+    [:octicons-arrow-right-24: Model Analysis](tfx/penguin_tfma)
 
 </div>
 
@@ -64,7 +64,7 @@ in your TFX pipeline.
 
     Running pipelines on a managed pipeline service, Vertex Pipelines.
 
-    [:octicons-arrow-right-24: Vertex Pipelines](tutorials/tfx/gcp/vertex_pipelines_simple)
+    [:octicons-arrow-right-24: Vertex Pipelines](tfx/gcp/vertex_pipelines_simple)
 
 -   __Read data from BigQuery__
 
@@ -72,7 +72,7 @@ in your TFX pipeline.
 
     Using BigQuery as a data source of ML pipelines.
 
-    [:octicons-arrow-right-24: BigQuery](tutorials/tfx/gcp/vertex_pipelines_bq)
+    [:octicons-arrow-right-24: BigQuery](tfx/gcp/vertex_pipelines_bq)
 
 -   __Vertex AI Training and Serving__
 
@@ -80,7 +80,7 @@ in your TFX pipeline.
 
     Using cloud resources for ML training and serving with Vertex AI.
 
-    [:octicons-arrow-right-24: Vertex Training and Serving](tutorials/tfx/gcp/vertex_pipelines_vertex_training)
+    [:octicons-arrow-right-24: Vertex Training and Serving](tfx/gcp/vertex_pipelines_vertex_training)
 
 -   __TFX on Cloud AI Platform Pipelines__
 
@@ -88,14 +88,14 @@ in your TFX pipeline.
 
     An introduction to using TFX and Cloud AI Platform Pipelines.
 
-    [:octicons-arrow-right-24: Cloud Pipelines](tutorials/tfx/cloud-ai-platform-pipelines)
+    [:octicons-arrow-right-24: Cloud Pipelines](tfx/cloud-ai-platform-pipelines)
 
 </div>
 
 ## Next Steps
 
 Once you have a basic understanding of TFX, check these additional tutorials and
-guides. And don't forget to read the [TFX User Guide](guide/index.md).
+guides. And don't forget to read the [TFX User Guide](../../guide).
 
 <div class="grid cards" markdown>
 
@@ -107,7 +107,7 @@ guides. And don't forget to read the [TFX User Guide](guide/index.md).
     context_, a very useful development tool. Click the _Run in
     Google&nbsp;Colab_ button.
 
-    [:octicons-arrow-right-24: Keras](tutorials/tfx/components_keras)
+    [:octicons-arrow-right-24: Keras](tfx/components_keras)
 
 -   __Custom Component Tutorial__
 
@@ -115,7 +115,7 @@ guides. And don't forget to read the [TFX User Guide](guide/index.md).
 
     A tutorial showing how to develop your own custom TFX components.
 
-    [:octicons-arrow-right-24: Custom Component](tutorials/tfx/python_function_component)
+    [:octicons-arrow-right-24: Custom Component](tfx/python_function_component)
 
 -   __Data Validation__
 
@@ -126,7 +126,7 @@ guides. And don't forget to read the [TFX User Guide](guide/index.md).
     generating descriptive statistics, inferring a schema, and finding
     anomalies.
 
-    [:octicons-arrow-right-24: Data Validation](tutorials/data_validation/tfdv_basic)
+    [:octicons-arrow-right-24: Data Validation](data_validation/tfdv_basic)
 
 -   __Model Analysis__
 
@@ -137,7 +137,7 @@ guides. And don't forget to read the [TFX User Guide](guide/index.md).
     dataset and evaluate the performance of a model along several axes of
     accuracy.
 
-    [:octicons-arrow-right-24: Model Analysis](tutorials/model_analysis/tfma_basic)
+    [:octicons-arrow-right-24: Model Analysis](model_analysis/tfma_basic)
 
 -   __Serve a Model__
 
@@ -146,7 +146,7 @@ guides. And don't forget to read the [TFX User Guide](guide/index.md).
     This tutorial demonstrates how TensorFlow Serving can be used to serve a
     model using a simple REST API.
 
-    [:octicons-arrow-right-24: Model Analysis](tutorials/serving/rest_simple)
+    [:octicons-arrow-right-24: Model Analysis](serving/rest_simple)
 
 </div>
 

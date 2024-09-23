@@ -1,11 +1,13 @@
 # Building TFX pipelines
 
-Note: For a conceptual view of TFX Pipelines, see
-[Understanding TFX Pipelines](understanding_tfx_pipelines.md).
+!!! Note
+    For a conceptual view of TFX Pipelines, see
+    [Understanding TFX Pipelines](understanding_tfx_pipelines.md).
 
-Note: Want to build your first pipeline before you dive into the details? Get
-started
-[building a pipeline using a template](build_local_pipeline.md#build-a-pipeline-using-a-template).
+!!!Note
+    Want to build your first pipeline before you dive into the details? Get
+    started
+    [building a pipeline using a template](build_local_pipeline.md#build-a-pipeline-using-a-template).
 
 ## Using the `Pipeline` class
 
@@ -61,9 +63,10 @@ statistics. In this example, the instance of `StatisticsGen` must follow
 
 ### Task-based dependencies
 
-Note: Using task-based dependencies is typically not recommended. Defining the
-execution graph with artifact dependencies lets you take advantage of the
-automatic artifact lineage tracking and caching features of TFX.
+!!! Note
+    Using task-based dependencies is typically not recommended. Defining the
+    execution graph with artifact dependencies lets you take advantage of the
+    automatic artifact lineage tracking and caching features of TFX.
 
 You can also define task-based dependencies using your component's
 [`add_upstream_node` and `add_downstream_node`](https://github.com/tensorflow/tfx/blob/master/tfx/components/base/base_node.py){: .external }
@@ -75,7 +78,7 @@ that the current component must be executed before the specified component.
 
 The easiest way to get a pipeline set up quickly, and to see how all the pieces
 fit together, is to use a template. Using templates is covered in [Building a
-TFX Pipeline Locally](build_local_pipeline).
+TFX Pipeline Locally](../build_local_pipeline).
 
 ## Caching
 

@@ -38,12 +38,14 @@ class ImportSchemaGen(base_component.BaseComponent):
   ```
 
   Component `outputs` contains:
-   - `schema`: Channel of type `standard_artifacts.Schema` for schema result.
 
-  See [the SchemaGen guide](https://www.tensorflow.org/tfx/guide/schemagen)
+  - `schema`: Channel of type `standard_artifacts.Schema` for schema result.
+
+  See [the SchemaGen guide](../../../guide/schemagen)
   for more details.
 
   ImportSchemaGen works almost similar to `Importer` except following:
+
   - `schema_file` should be the full file path instead of directory holding it.
   - `schema_file` is copied to the output artifact. This is different from
     `Importer` that loads an "Artifact" by setting its URI to the given path.

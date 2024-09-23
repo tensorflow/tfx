@@ -24,7 +24,7 @@ TFX tools can both help find data bugs, and help with feature engineering.
 ## TensorFlow Data Validation
 
 *   [Overview](#overview)
-*   [Schema Based Example Validation](#schema_based-example-validation)
+*   [Schema Based Example Validation](#schema-based-example-validation)
 *   [Training-Serving Skew Detection](#skewdetect)
 *   [Drift Detection](#drift-detection)
 
@@ -42,7 +42,7 @@ be configured to detect different classes of anomalies in the data. It can
 
 We document each of these functionalities independently:
 
-*   [Schema Based Example Validation](#schema_based-example-validation)
+*   [Schema Based Example Validation](#schema-based-example-validation)
 *   [Training-Serving Skew Detection](#skewdetect)
 *   [Drift Detection](#drift-detection)
 
@@ -146,9 +146,10 @@ This triggers an automatic schema generation based on the following rules:
 *   Otherwise, TensorFlow Data Validation examines the available data statistics
 and computes a suitable schema for the data.
 
-_Note: The auto-generated schema is best-effort and only tries to infer basic
-properties of the data. It is expected that users review and modify it as
-needed._
+!!! Note
+    The auto-generated schema is best-effort and only tries to infer basic
+    properties of the data. It is expected that users review and modify it as
+    needed.
 
 ### Training-Serving Skew Detection<a name="skewdetect"></a>
 
@@ -164,10 +165,11 @@ the serving data to train on.
 
 ##### Example Scenario
 
-Note: For instance, in order to compensate for an underrepresented slice of
-data, if a biased sampling is used without upweighting the downsampled examples
-appropriately, the distribution of feature values between training and
-serving data gets artificially skewed.
+!!! Note
+    For instance, in order to compensate for an underrepresented slice of
+    data, if a biased sampling is used without upweighting the downsampled examples
+    appropriately, the distribution of feature values between training and
+    serving data gets artificially skewed.
 
 See the [TensorFlow Data Validation Get Started Guide](https://www.tensorflow.org/tfx/data_validation/get_started#checking_data_skew_and_drift)
 for information about configuring training-serving skew detection.

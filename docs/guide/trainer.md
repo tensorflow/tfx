@@ -7,7 +7,8 @@ The Trainer TFX pipeline component trains a TensorFlow model.
 Trainer makes extensive use of the Python
 [TensorFlow](https://www.tensorflow.org) API for training models.
 
-Note: TFX supports TensorFlow 1.15 and 2.x.
+!!! Note
+    TFX supports TensorFlow 1.15 and 2.x.
 
 ## Component
 

@@ -33,7 +33,7 @@ from tfx.utils import json_utils
 #             args depend on the tuner's implementation.
 TunerFnResult = NamedTuple('TunerFnResult', [('tuner', base_tuner.BaseTuner),
                                              ('fit_kwargs', Dict[str, Any])])
-TunerFnResult.__doc__ = """
+"""
 Return type of tuner_fn.
 
 tuner_fn returns a TunerFnResult that contains:
@@ -48,14 +48,15 @@ class Tuner(base_component.BaseComponent):
   """A TFX component for model hyperparameter tuning.
 
   Component `outputs` contains:
+
    - `best_hyperparameters`: Channel of type
-                             `standard_artifacts.HyperParameters` for result of
+                             [`standard_artifacts.HyperParameters`][tfx.v1.types.standard_artifacts.HyperParameters] for result of
                              the best hparams.
-   - `tuner_results`: Channel of type `standard_artifacts.TunerResults` for
+   - `tuner_results`: Channel of type [`standard_artifacts.TunerResults`][tfx.v1.types.standard_artifacts.TunerResults] for
    results of all trials. Experimental: subject to change and no backwards
    compatibility guarantees.
 
-  See [the Tuner guide](https://www.tensorflow.org/tfx/guide/tuner)
+  See [the Tuner guide](../../../guide/tuner)
   for more details.
   """
 
@@ -76,22 +77,25 @@ class Tuner(base_component.BaseComponent):
     """Construct a Tuner component.
 
     Args:
-      examples: A BaseChannel of type `standard_artifacts.Examples`, serving as
+      examples: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples], serving as
         the source of examples that are used in tuning (required).
-      schema:  An optional BaseChannel of type `standard_artifacts.Schema`,
+      schema:  An optional [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Schema`][tfx.v1.types.standard_artifacts.Schema],
         serving as the schema of training and eval data. This is used when raw
         examples are provided.
-      transform_graph: An optional BaseChannel of type
-        `standard_artifacts.TransformGraph`, serving as the input transform
+      transform_graph: An optional [BaseChannel][tfx.v1.types.BaseChannel] of type
+        [`standard_artifacts.TransformGraph`][tfx.v1.types.standard_artifacts.TransformGraph], serving as the input transform
         graph if present. This is used when transformed examples are provided.
-      base_model: A BaseChannel of type `Model`, containing model that will be
+      base_model: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`Model`][tfx.v1.types.standard_artifacts.Model], containing model that will be
         used for training. This can be used for warmstart, transfer learning or
         model ensembling.
       module_file: A path to python module file containing UDF tuner definition.
         The module_file must implement a function named `tuner_fn` at its top
         level. The function must have the following signature.
-            def tuner_fn(fn_args: FnArgs) -> TunerFnResult: Exactly one of
-              'module_file' or 'tuner_fn' must be supplied.
+            ``` {.python .no-copy}
+            def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
+                ...
+            ```
+            Exactly one of 'module_file' or 'tuner_fn' must be supplied.
       tuner_fn:  A python path to UDF model definition function. See
         'module_file' for the required signature of the UDF. Exactly one of
         'module_file' or 'tuner_fn' must be supplied.

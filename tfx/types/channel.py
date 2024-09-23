@@ -90,27 +90,29 @@ _InputTrigger = Union[NoTrigger, TriggerByProperty]
 class BaseChannel(abc.ABC, Generic[_AT]):
   """An abstraction for component (BaseNode) artifact inputs.
 
-  `BaseChannel` is often interchangeably used with the term 'channel' (not
-  capital `Channel` which points to the legacy class name).
+  [`BaseChannel`][tfx.v1.types.BaseChannel] is often interchangeably used with the term 'channel' (not
+  capital [`Channel`][tfx.v1.dsl.Channel] which points to the legacy class name).
 
   Component takes artifact inputs distinguished by each "input key". For
   example:
 
-      trainer = Trainer(
-          examples=example_gen.outputs['examples'])
-          ^^^^^^^^
-          input key
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                   channel
+  ``` python
+  trainer = Trainer(
+      examples=example_gen.outputs['examples'],
+  ) # ^^^^^^^^
+    # input key
+             # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+             # channel
+  ```
 
   Here "examples" is the input key of the `Examples` artifact type.
-  `example_gen.outputs['examples']` is a channel. Typically a single channel
-  refers to a *list of `Artifact` of a homogeneous type*. Since channel is a
+  `#!python example_gen.outputs["examples"]` is a channel. Typically a single channel
+  refers to a *list of [`Artifact`][tfx.v1.dsl.Artifact] of a homogeneous type*. Since channel is a
   declarative abstraction it is not strictly bound to the actual artifact, but
   is more of an *input selector*.
 
   The most commonly used channel type is an `OutputChannel` (in the form of
-  `component.outputs["key"]`, which selects the artifact produced by the
+  `#!python component.outputs["key"]`, which selects the artifact produced by the
   component in the same pipeline run (in synchronous execution mode; more
   information on OutputChannel docstring), and is typically a single artifact.
 
@@ -217,12 +219,12 @@ class BaseChannel(abc.ABC, Generic[_AT]):
 class Channel(json_utils.Jsonable, BaseChannel):
   """Legacy channel interface.
 
-  `Channel` used to represent the `BaseChannel` concept in the early TFX code,
+  [`Channel`][tfx.v1.dsl.Channel] used to represent the [`BaseChannel`][tfx.v1.types.BaseChannel] concept in the early TFX code,
   but due to having too much features in the same class, we refactored it to
   multiple classes:
 
   - BaseChannel for the general input abstraction
-  - OutputChannel for `component.outputs['key']`.
+  - OutputChannel for `#!python component.outputs['key']`.
   - MLMDQueryChannel for simple filter-based input resolution.
 
   Please do not use this class directly, but instead use the alternatives. This
@@ -732,7 +734,7 @@ class ExternalPipelineChannel(BaseChannel):
     """Initialization of ExternalPipelineChannel.
 
     Args:
-      artifact_type: Subclass of Artifact for this channel.
+      artifact_type: Subclass of [Artifact][tfx.v1.dsl.Artifact] for this channel.
       owner: Owner of the pipeline.
       pipeline_name: Name of the pipeline the artifacts belong to.
       producer_component_id: Id of the component produces the artifacts.
@@ -780,11 +782,14 @@ class ChannelWrappedPlaceholder(artifact_placeholder.ArtifactPlaceholder):
   yet reference its name/key wrt. the downstream component in which it is used.
   So a ChannelWrappedPlaceholder simply remembers the original Channel instance
   that was used. The Placeholder expression tree built from this wrapper is then
-  passed to the component that uses it, and encode_placeholder_with_channels()
+  passed to the component that uses it, and `encode_placeholder_with_channels()`
   is used to inject the key only later, when encoding the Placeholder.
 
   For instance, this allows making Predicates using syntax like:
-    channel.future().value > 5
+
+  ``` python
+  channel.future().value > 5
+  ```
   """
 
   def __init__(
@@ -803,8 +808,8 @@ class ChannelWrappedPlaceholder(artifact_placeholder.ArtifactPlaceholder):
     setter technically violates this guarantee, but we control the effects of it
     by _only_ calling the setter right before an `encode()` operation on this
     placeholder or a larger placeholder that contains it, and then calling
-    set_key(None) right after. encode_placeholder_with_channels() demonstrates
-    how to do this correctly and should be the preferred way to call set_key().
+    `#!python set_key(None)` right after. `#!python encode_placeholder_with_channels()` demonstrates
+    how to do this correctly and should be the preferred way to call `#!python set_key()`.
 
     Args:
       key: The new key for the channel.

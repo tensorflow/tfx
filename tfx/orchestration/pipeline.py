@@ -233,7 +233,7 @@ class Pipeline(base_node.BaseNode):
   Pipeline object represents the DAG of TFX components, which can be run using
   one of the pipeline orchestration systems that TFX supports. For details,
   please refer to the
-  [guide](https://github.com/tensorflow/tfx/blob/master/docs/guide/build_tfx_pipeline.md).
+  [guide](../../../guide/build_tfx_pipeline).
 
   Attributes:
     components: A deterministic list of logical components of this pipeline,

@@ -14,8 +14,10 @@
 """TFX orchestration.experimental module."""
 
 try:
-    from tfx.orchestration.kubeflow import (
-        kubeflow_dag_runner,
+    from tfx.orchestration.kubeflow.kubeflow_dag_runner import (
+        KubeflowDagRunner,
+        KubeflowDagRunnerConfig,
+        get_default_kubeflow_metadata_config,
     )
     from tfx.orchestration.kubeflow.decorators import (
         exit_handler,
@@ -23,28 +25,16 @@ try:
     from tfx.orchestration.kubeflow.decorators import (
         FinalStatusStr,
     )
-    from tfx.utils import telemetry_utils
+    from tfx.utils.telemetry_utils import LABEL_KFP_SDK_ENV
 
-    KubeflowDagRunner = kubeflow_dag_runner.KubeflowDagRunner
-    KubeflowDagRunnerConfig = kubeflow_dag_runner.KubeflowDagRunnerConfig
-    get_default_kubeflow_metadata_config = (
-        kubeflow_dag_runner.get_default_kubeflow_metadata_config
-    )
-    LABEL_KFP_SDK_ENV = telemetry_utils.LABEL_KFP_SDK_ENV
-
-    del telemetry_utils
-    del kubeflow_dag_runner
 except ImportError:  # Import will fail without kfp package.
     pass
 
 try:
-    from tfx.orchestration.kubeflow.v2 import (
-        kubeflow_v2_dag_runner,
+    from tfx.orchestration.kubeflow.v2.kubeflow_v2_dag_runner import (
+        KubeflowV2DagRunner,
+        KubeflowV2DagRunnerConfig,
     )
-
-    KubeflowV2DagRunner = kubeflow_v2_dag_runner.KubeflowV2DagRunner
-    KubeflowV2DagRunnerConfig = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig
-    del kubeflow_v2_dag_runner
 except ImportError:  # Import will fail without kfp package.
     pass
 

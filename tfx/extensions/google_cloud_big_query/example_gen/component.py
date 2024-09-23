@@ -32,7 +32,8 @@ class BigQueryExampleGen(component.QueryBasedExampleGen):
   and eval examples for downstream components.
 
   Component `outputs` contains:
-   - `examples`: Channel of type `standard_artifacts.Examples` for output train
+
+   - `examples`: Channel of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples] for output train
                  and eval examples.
   """
 
