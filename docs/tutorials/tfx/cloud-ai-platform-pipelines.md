@@ -410,8 +410,8 @@ data.
 
 ### Components
 
-![Data Components](images/airflow_workshop/examplegen1.png)
-![Data Components](images/airflow_workshop/examplegen2.png)
+![Data Components](../../../tfx/examples/airflow_workshop/taxi/notebooks/img/examplegen1.png)
+![Data Components](../../../tfx/examples/airflow_workshop/taxi/notebooks/img/examplegen2.png)
 
 *   [ExampleGen](../../../guide/examplegen) ingests and
     splits the input dataset.
@@ -479,7 +479,7 @@ serving.
 
 ### Components
 
-![Transform](images/airflow_workshop/transform.png)
+![Transform](../../../tfx/examples/airflow_workshop/taxi/notebooks/img/transform.png)
 
 *   [Transform](../../../guide/transform) performs feature
     engineering on the dataset.
