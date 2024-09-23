@@ -155,7 +155,7 @@ For structured data, data preprocessing operations include the following:
     lower-dimension, more powerful data representations using techniques such
     as
     [PCA](https://en.wikipedia.org/wiki/Principal_component_analysis){: .external },
-    [embedding](https://developers.google.com/machine-learning/glossary/#embeddings){: .external }
+    [embedding](https://developers.google.com/machine-learning/crash-course/embeddings){: .external }
     extraction, and
     [hashing](https://medium.com/value-stream-design/introducing-one-of-the-best-hacks-in-machine-learning-the-hashing-trick-bf6a9c8af18f){: .external }.
 -   **Feature selection:** selecting a subset of the input features for
@@ -720,5 +720,5 @@ columns.
 -   Learn about best practices for ML engineering in
     [Rules of ML](https://developers.google.com/machine-learning/guides/rules-of-ml/){: .external }.
 +   For more reference architectures, diagrams, and best practices, explore the
-    <a href="./solutions" track-type="tutorial" track-name="textLink" track-metadata-position="nextSteps">TFX
+    <a href="../solutions" track-type="tutorial" track-name="textLink" track-metadata-position="nextSteps">TFX
     Cloud Solutions</a>.

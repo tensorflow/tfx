@@ -351,7 +351,7 @@ is consumed by the other components.
 TFX provides a powerful platform for every phase of a machine learning project,
 from research, experimentation, and development on your local machine, through
 deployment. In order to avoid code duplication and eliminate the potential for
-[training/serving skew](./tfdv#training-serving_skew_detection)
+[training/serving skew](./tfdv#training-serving-skew-detection)
 it is strongly recommended to implement your TFX pipeline for both model
 training and deployment of trained models, and use [Transform](transform.md)
 components which leverage the [TensorFlow Transform](tft.md) library for both

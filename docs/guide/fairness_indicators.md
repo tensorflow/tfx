@@ -308,7 +308,7 @@ contains several examples:
 
 *   [Fairness_Indicators_Example_Colab.ipynb](https://github.com/tensorflow/fairness-indicators/blob/master/g3doc/tutorials/Fairness_Indicators_Example_Colab.ipynb)
     gives an overview of Fairness Indicators in
-    [TensorFlow Model Analysis](./tfma) and
+    [TensorFlow Model Analysis](../tfma) and
     how to use it with a real dataset. This notebook also goes over
     [TensorFlow Data Validation](https://www.tensorflow.org/tfx/data_validation/get_started)
     and [What-If Tool](https://pair-code.github.io/what-if-tool/), two tools for

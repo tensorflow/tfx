@@ -21,7 +21,7 @@ you'll learn the two main styles of developing a TFX pipeline:
     Probably the simplest pipeline you can build, to help you get started. Click
     the _Run in Google&nbsp;Colab_ button.
 
-    [:octicons-arrow-right-24: Starter Pipeline](tfx/penguin_simple.md)
+    [:octicons-arrow-right-24: Starter Pipeline](tfx/penguin_simple)
 
 -   __2. Adding Data Validation__
 
@@ -95,7 +95,7 @@ in your TFX pipeline.
 ## Next Steps
 
 Once you have a basic understanding of TFX, check these additional tutorials and
-guides. And don't forget to read the [TFX User Guide](guide/index.md).
+guides. And don't forget to read the [TFX User Guide](../../guide).
 
 <div class="grid cards" markdown>
 

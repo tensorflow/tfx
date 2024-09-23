@@ -78,7 +78,7 @@ that the current component must be executed before the specified component.
 
 The easiest way to get a pipeline set up quickly, and to see how all the pieces
 fit together, is to use a template. Using templates is covered in [Building a
-TFX Pipeline Locally](build_local_pipeline).
+TFX Pipeline Locally](../build_local_pipeline).
 
 ## Caching
 

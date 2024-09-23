@@ -466,7 +466,7 @@ following columns:
 -   `weight_pounds` (type: `FLOAT`)
 
 As explained in
-[Preprocessing operations](data-preprocessing-for-ml-with-tf-transform-pt1#preprocessing-operations)
+[Preprocessing operations](../data-preprocessing-for-ml-with-tf-transform-pt1#preprocessing-operations)
 in the first part of this series, the feature transformation converts
 categorical features to a numeric representation. After the transformation, the
 categorical features are represented by integer values. In the
@@ -1018,7 +1018,7 @@ resources used in this tutorial, delete the project that contains the resources.
 -   To learn about the concepts, challenges, and options of data
     preprocessing for machine learning on Google Cloud, see the first
     article in this series,
-    [Data preprocessing for ML: options and recommendations](../guide/tft_bestpractices).
+    [Data preprocessing for ML: options and recommendations](../../../guide/tft_bestpractices).
 -   For more information about how to implement, package, and run a
     tf.Transform pipeline on Dataflow, see the
     [Predicting income with Census Dataset](https://github.com/GoogleCloudPlatform/cloudml-samples/tree/master/census/tftransformestimator)
