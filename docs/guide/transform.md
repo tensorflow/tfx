@@ -41,7 +41,7 @@ training process. Common feature transformations include:
     vocabulary) into dense features by finding a meaningful mapping from high-
     dimensional space to low dimensional space. See the [Embeddings unit in the
     Machine-learning Crash Course](
-    https://developers.google.com/machine-learning/crash-course/embedding)
+    https://developers.google.com/machine-learning/crash-course/embeddings)
     for an introduction to embeddings.
 *   **Vocabulary generation**: converting strings or other non-numeric features
     into integers by creating a vocabulary that maps each unique value to an ID

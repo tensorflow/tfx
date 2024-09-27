@@ -380,8 +380,9 @@ and when the state changes.
 
 ![dag-button-refresh.png](images/airflow_workshop/dag-button-refresh.png)
 
-You can also use the [Airflow CLI](https://airflow.apache.org/cli.html) in the
-terminal to enable and trigger your DAGs:
+You can also use the [Airflow
+CLI](https://airflow.apache.org/docs/apache-airflow/stable/howto/usage-cli.html)
+in the terminal to enable and trigger your DAGs:
 
 ```bash
 # enable/disable
