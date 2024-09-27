@@ -30,6 +30,7 @@ from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
 from tfx.orchestration import node_proto_view
 from tfx.orchestration.experimental.core import constants
+from tfx.orchestration.experimental.core import env
 from tfx.orchestration.experimental.core import mlmd_state
 from tfx.orchestration.experimental.core import task as task_lib
 from tfx.orchestration import mlmd_connection_manager as mlmd_cm
@@ -548,21 +549,41 @@ def register_executions_from_existing_executions(
   contexts = metadata_handle.store.get_contexts_by_execution(
       existing_executions[0].id
   )
-  return execution_lib.put_executions(
+  executions = execution_lib.put_executions(
       metadata_handle,
       new_executions,
       contexts,
       input_artifacts_maps=input_artifacts,
   )
 
+  pipeline_asset = metadata_handle.store.pipeline_asset
+  if pipeline_asset:
+    env.get_env().create_pipeline_run_node_executions(
+        pipeline_asset.owner,
+        pipeline_asset.name,
+        pipeline,
+        node.node_info.id,
+        executions,
+    )
+  else:
+    logging.warning(
+        'Pipeline asset %s not found in MLMD. Unable to create pipeline run'
+        ' node executions.',
+        pipeline_asset,
+    )
+  return executions
 
+
+# TODO(b/349654866): make pipeline and node_id non-optional.
 def register_executions(
     metadata_handle: metadata.Metadata,
     execution_type: metadata_store_pb2.ExecutionType,
     contexts: Sequence[metadata_store_pb2.Context],
     input_and_params: Sequence[InputAndParam],
+    pipeline: Optional[pipeline_pb2.Pipeline] = None,
+    node_id: Optional[str] = None,
 ) -> Sequence[metadata_store_pb2.Execution]:
-  """Registers multiple executions in MLMD.
+  """Registers multiple executions in storage backends.
 
   Along with the execution:
   -  the input artifacts will be linked to the executions.
@@ -575,6 +596,8 @@ def register_executions(
     input_and_params: A list of InputAndParams, which includes input_dicts
       (dictionaries of artifacts. One execution will be registered for each of
       the input_dict) and corresponding exec_properties.
+    pipeline: Optional. The pipeline proto.
+    node_id: Optional. The node id of the executions to be registered.
 
   Returns:
     A list of MLMD executions that are registered in MLMD, with id populated.
@@ -603,7 +626,7 @@ def register_executions(
     executions.append(execution)
 
   if len(executions) == 1:
-    return [
+    new_executions = [
         execution_lib.put_execution(
             metadata_handle,
             executions[0],
@@ -611,13 +634,33 @@ def register_executions(
             input_artifacts=input_and_params[0].input_artifacts,
         )
     ]
+  else:
+    new_executions = execution_lib.put_executions(
+        metadata_handle,
+        executions,
+        contexts,
+        [
+            input_and_param.input_artifacts
+            for input_and_param in input_and_params
+        ],
+    )
 
-  return execution_lib.put_executions(
-      metadata_handle,
-      executions,
-      contexts,
-      [input_and_param.input_artifacts for input_and_param in input_and_params],
-  )
+  pipeline_asset = metadata_handle.store.pipeline_asset
+  if pipeline_asset and pipeline and node_id:
+    env.get_env().create_pipeline_run_node_executions(
+        pipeline_asset.owner,
+        pipeline_asset.name,
+        pipeline,
+        node_id,
+        new_executions,
+    )
+  else:
+    logging.warning(
+        'Skipping creating pipeline run node executions for pipeline asset %s.',
+        pipeline_asset,
+    )
+
+  return new_executions
 
 
 def update_external_artifact_type(
