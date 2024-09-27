@@ -45,9 +45,8 @@ This tutorial uses the following billable components of Google Cloud:
 
 <!-- This doc uses plain text cost information because the pricing calculator is pre-configured -->
 
-To estimate the cost to run this tutorial, assuming you use every resource for
-an entire day, use the preconfigured
-[pricing calculator](https://www.tensorflow.org/products/calculator#id=fad408d8-dd68-45b8-954e-5a5619a5d148).
+To estimate the cost to run this tutorial, please refer to
+[pricing calculator](https://cloud.google.com/products/calculator).
 
 
 ## Before you begin

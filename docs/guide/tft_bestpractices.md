@@ -497,7 +497,7 @@ ways:
     data for predictions.
 -   Putting the transformation code directly in your TensorFlow
     model by using
-    [Keras preprocessing layers](https://keras.io/guides/preprocessing_layers/){: .external }
+    [Keras preprocessing layers](https://keras.io/api/layers/preprocessing_layers/){: .external }
     or
     [creating custom layers](https://keras.io/guides/making_new_layers_and_models_via_subclassing/){: .external }.
 
