@@ -72,6 +72,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     _update_state(result.status)
     return
 
+  logging.error('Guowei result: %s', result)
   if isinstance(result.output, ts.ExecutorNodeOutput):
     executor_output = result.output.executor_output
     if executor_output is not None:
@@ -97,12 +98,17 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
     garbage_collection.run_garbage_collection_for_node(mlmd_handle,
                                                        task.node_uid,
                                                        task.get_node())
+
+    logging.error('Guowei execution: %s', execution)
+
     if constants.COMPONENT_GENERATED_ALERTS_KEY in execution.custom_properties:
       alerts_proto = component_generated_alert_pb2.ComponentGeneratedAlertList()
       execution.custom_properties[
           constants.COMPONENT_GENERATED_ALERTS_KEY
       ].proto_value.Unpack(alerts_proto)
       pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline=task.pipeline)
+
+      logging.error('Guowei alerts_proto: %s', alerts_proto)
 
       for alert in alerts_proto.component_generated_alert_list:
         alert_event = event_observer.ComponentGeneratedAlert(
@@ -113,6 +119,7 @@ def publish_execution_results_for_task(mlmd_handle: metadata.Metadata,
             alert_body=alert.alert_body,
             alert_name=alert.alert_name,
         )
+        logging.error('Guowei alert_event: %s', alert_event)
         event_observer.notify(alert_event)
 
   elif isinstance(result.output, ts.ImporterNodeOutput):
