@@ -50,6 +50,12 @@ class Env(abc.ABC):
     """Labels and tags the pipeline run after it starts."""
 
   @abc.abstractmethod
+  def label_and_tag_pipeline_run(
+      self, mlmd_handle, pipeline_id, pipeline_run_id, labels, tags
+  ) -> None:
+    """Labels and tags the pipeline run after it starts."""
+
+  @abc.abstractmethod
   def max_mlmd_str_value_length(self) -> Optional[int]:
     """Returns max size of a string value in MLMD db, `None` if unlimited."""
 
@@ -175,6 +181,11 @@ class _DefaultEnv(Env):
   ) -> orchestration_options.OrchestrationOptions:
     del pipeline
     return orchestration_options.OrchestrationOptions()
+
+  def label_and_tag_pipeline_run(
+      self, mlmd_handle, pipeline_id, pipeline_run_id, labels, tags
+  ) -> None:
+    return None
 
   def label_and_tag_pipeline_run(
       self, mlmd_handle, pipeline_id, pipeline_run_id, labels, tags
