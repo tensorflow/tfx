@@ -26,6 +26,7 @@ jobs:
           cache-dependency-path: |
             setup.py
             tfx/dependencies.py
+            requirements-docs.txt
 
       - name: Save time for cache for mkdocs
         run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
