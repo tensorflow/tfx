@@ -217,16 +217,17 @@ def initiate_pipeline_start(
       # Add a new pipeline run for every subpipeline we are going to cache in
       # the partial run.
       for subpipeline in cached_subpipelines:
-        reused_subpipeline_view = _load_reused_pipeline_view(
-            mlmd_handle, subpipeline, partial_run_option.snapshot_settings
-        )
+        # TODO: b/320535460 - Once we support indexing into subpipelines we will
+        # need to cache their node's executions properly, passing in the
+        # PipelineView from _load_reused_pipeline_view to
+        # PipelineState.new(reused_pipeline_view)
+
         # TODO: b/323912217 - Support putting multiple subpipeline executions
         # into MLMD to handle the ForEach case.
         with pstate.PipelineState.new(
             mlmd_handle,
             subpipeline,
             pipeline_run_metadata,
-            reused_subpipeline_view,
         ) as subpipeline_state:
           # TODO: b/320535460 - The new pipeline run should not be stopped if
           # there are still nodes to run in it.
