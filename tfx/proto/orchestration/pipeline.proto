@@ -638,6 +638,7 @@ message NodeExecutionOptions {
       // If set then the node this NodeExecutionOptions belongs to marks the end
       // of some lifetime.
       string lifetime_start = 1;
+      bool pipeline_lifetime = 2;
     }
   }
 
