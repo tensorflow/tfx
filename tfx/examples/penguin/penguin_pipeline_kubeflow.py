@@ -505,6 +505,24 @@ def main():
       config=tfx.orchestration.experimental.KubeflowV2DagRunnerConfig(),
       output_filename=_pipeline_definition_file)
 
+  dag_runner.run(
+      create_pipeline(
+          pipeline_name=_pipeline_name,
+          pipeline_root=_pipeline_root,
+          data_root=_data_root,
+          module_file=_module_file,
+          enable_tuning=False,
+          enable_cache=True,
+          user_provided_schema_path=_user_provided_schema,
+          ai_platform_training_args=_ai_platform_training_args,
+          ai_platform_serving_args=_ai_platform_serving_args,
+          beam_pipeline_args=beam_pipeline_args,
+          use_cloud_component=use_cloud_component,
+          use_aip=use_aip,
+          use_vertex=use_vertex,
+          serving_model_dir=_serving_model_dir,
+      ))
+
 
 # To compile the pipeline:
 # python penguin_pipeline_kubeflow.py --use_aip=True or False --use_vertex=True
