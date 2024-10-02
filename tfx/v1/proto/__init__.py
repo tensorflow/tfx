@@ -140,7 +140,7 @@ You need to install docker in advance.
 """
 
 KubernetesConfig.__doc__ = """
-Kubernetes configuration. We currently only support the use case when infra validator is run by `orchestration.KubeflowDagRunner`.
+Kubernetes configuration.
 Model server will be launched in the same namespace KFP is running on, as well as same service account will be used (unless specified).
 Model server will have `ownerReferences` to the infra validator, which delegates the strict cleanup guarantee to the kubernetes cluster.
 """
