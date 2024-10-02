@@ -47,5 +47,5 @@ jobs:
         if: (github.event_name != 'pull_request')
 
       - name: Build docs to check for errors
-        run: mkdocs build --verbose
+        run: mkdocs build
         if: (github.event_name == 'pull_request')
