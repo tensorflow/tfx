@@ -16,11 +16,9 @@
 import datetime
 import json
 import os
-import re
 import subprocess
-import tarfile
 import time
-from typing import Any, Dict, List, Optional
+from typing import List
 
 from absl import logging
 import kfp
@@ -39,11 +37,7 @@ from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
-from tfx.dsl.io import fileio
 from tfx.dsl.placeholder import placeholder as ph
-from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration import test_utils
-from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
@@ -52,13 +46,8 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
-from tfx.utils import docker_utils
-from tfx.utils import io_utils
 from tfx.utils import kube_utils
 from tfx.utils import retry
-from tfx.utils import test_case_utils
-
-import pytest
 
 
 # TODO(jiyongjung): Merge with kube_utils.PodStatus
@@ -344,39 +333,5 @@ def create_e2e_components(
       infra_validator,
       pusher,
   ]
-
-
-@retry.retry(ignore_eventual_failure=True)
-def delete_ai_platform_model(model_name):
-  """Delete pushed model with the given name in AI Platform."""
-  # In order to delete model, all versions in the model must be deleted first.
-  versions_command = ('gcloud', 'ai-platform', 'versions', 'list',
-                      '--model={}'.format(model_name), '--region=global')
-  # The return code of the following subprocess call will be explicitly checked
-  # using the logic below, so we don't need to call check_output().
-  versions = subprocess.run(versions_command, stdout=subprocess.PIPE)  # pylint: disable=subprocess-run-check
-  if versions.returncode == 0:
-    logging.info('Model %s has versions %s', model_name, versions.stdout)
-    # The first stdout line is headers, ignore. The columns are
-    # [NAME] [DEPLOYMENT_URI] [STATE]
-    #
-    # By specification of test case, the last version in the output list is the
-    # default version, which will be deleted last in the for loop, so there's no
-    # special handling needed hear.
-    # The operation setting default version is at
-    # https://github.com/tensorflow/tfx/blob/65633c772f6446189e8be7c6332d32ea221ff836/tfx/extensions/google_cloud_ai_platform/runner.py#L309
-    for version in versions.stdout.decode('utf-8').strip('\n').split('\n')[1:]:
-      version = version.split()[0]
-      logging.info('Deleting version %s of model %s', version, model_name)
-      version_delete_command = ('gcloud', '--quiet', 'ai-platform', 'versions',
-                                'delete', version,
-                                '--model={}'.format(model_name),
-                                '--region=global')
-      subprocess.run(version_delete_command, check=True)
-
-  logging.info('Deleting model %s', model_name)
-  subprocess.run(('gcloud', '--quiet', 'ai-platform', 'models', 'delete',
-                  model_name, '--region=global'),
-                 check=True)
 
 
