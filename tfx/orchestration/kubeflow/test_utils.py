@@ -43,7 +43,6 @@ from tfx.dsl.io import fileio
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
-from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
