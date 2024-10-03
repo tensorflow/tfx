@@ -15,22 +15,16 @@
 
 import datetime
 import os
-import subprocess
-import tarfile
 
 from absl import logging
 from google.cloud import aiplatform
-import kfp
-from tfx.dsl.io import fileio
 from tfx.experimental.templates import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow.v2 import vertex_client_utils
 from tfx.utils import docker_utils
 from tfx.utils import io_utils
 from tfx.utils import retry
-from tfx.utils import telemetry_utils
 from tfx.utils import test_case_utils
-import yaml
 
 
 class BaseContainerBasedEndToEndTest(test_utils.BaseEndToEndTest):
