@@ -16,7 +16,6 @@
 import datetime
 import json
 import os
-import subprocess
 import time
 from typing import List
 
@@ -47,7 +46,6 @@ from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
 from tfx.utils import kube_utils
-from tfx.utils import retry
 
 
 # TODO(jiyongjung): Merge with kube_utils.PodStatus
