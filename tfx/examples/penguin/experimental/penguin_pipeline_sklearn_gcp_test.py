@@ -30,7 +30,7 @@ class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
     self._experimental_root = os.path.dirname(__file__)
     self._penguin_root = os.path.dirname(self._experimental_root)
 
-    self._pipeline_name = 'sklearn_test'
+    self._pipeline_name = 'sklearn-test'
     self._data_root = os.path.join(self._penguin_root, 'data')
     self._trainer_module_file = os.path.join(
         self._experimental_root, 'penguin_utils_sklearn.py')
@@ -66,6 +66,8 @@ class PenguinPipelineSklearnGcpTest(test_case_utils.TfxTest):
         beam_pipeline_args=[])
     self.assertEqual(8, len(logical_pipeline.components))
 
-    tfx.orchestration.experimental.KubeflowDagRunner().run(logical_pipeline)
-    file_path = os.path.join(self.tmp_dir, 'sklearn_test.tar.gz')
+    tfx.orchestration.experimental.KubeflowV2DagRunner(
+        config=tfx.orchestration.experimental.KubeflowV2DagRunnerConfig(),
+        output_filename='sklearn_test.yaml').run(logical_pipeline)
+    file_path = os.path.join(self.tmp_dir, 'sklearn_test.yaml')
     self.assertTrue(tfx.dsl.io.fileio.exists(file_path))
