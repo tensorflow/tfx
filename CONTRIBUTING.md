@@ -280,7 +280,7 @@ When a PR is made:
   reported in the checks for the PR.
 
 - Lint checks are run on the changed files. This workflow makes use of the
-  `.pre-commit-config.yaml`, and if any lint violations are found the workflow
+  [`.pre-commit-config.yaml`](https://github.com/tensorflow/tfx/blob/master/.pre-commit-config.yaml), and if any lint violations are found the workflow
   reports a failure on the list of checks for the PR.
 
 If the author of the PR makes a new commit to the PR branch, these checks are
