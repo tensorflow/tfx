@@ -276,7 +276,7 @@ When a PR is made:
   If the PR causes any of the wheels to fail to build, the failure will be
   reported in the checks for the PR.
 
-- Tests are run via `pytest`. If a test fails, the workflow failure will be
+- Tests are run via [`pytest`](https://github.com/tensorflow/tfx/blob/master/.github/workflows/ci-test.yml). If a test fails, the workflow failure will be
   reported in the checks for the PR.
 
 - Lint checks are run on the changed files. This workflow makes use of the
