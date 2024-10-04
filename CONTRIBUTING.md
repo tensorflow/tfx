@@ -301,3 +301,10 @@ newly published version.
 
 When a new commit is made to the `master`, the documentation is built and
 automatically uploaded to github pages.
+
+If you want to see the changes to the documentation when rendered, run `mkdocs
+serve` to build the documentation and serve it locally. Alternatively, if you
+merge your own changes to your own fork's `master` branch, this workflow will
+serve the documentation at `https://<your-github-username>.github.io/tfx`. This
+provides a convenient way for developers to check deployments before they merge
+a PR to the upstream `tfx` repository.
