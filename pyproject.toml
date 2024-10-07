@@ -37,10 +37,13 @@ Homepage = "https://www.tensorflow.org/tfx"
 Repository = "https://github.com/tensorflow/tfx"
 
 [tool.pytest.ini_options]
-addopts = "--verbose -m 'not end_to_end'"
+addopts = "--import-mode=importlib"
+testpaths = "tfx"
 python_files = "*_test.py"
 norecursedirs = ["custom_components", ".*", "*.egg"]
 markers = [
-    "end_to_end: end-to-end tests which are slow and require more dependencies (deselect with '-m \"not end_to_end\"')",
-    "serial: mark tests that should not run in parallel"
+    "e2e: end-to-end tests which are slow and require more dependencies (deselect with '-m \"not end_to_end\"')",
+    "serial: mark tests that should not run in parallel",
+    "integration: integration tests that are slow and require more dependencies (deselect with `-m 'not integration'`)",
+    "perf: performance 'perf' tests that are slow and require more dependencies (deselect with `-m 'not perf'`)",
 ]

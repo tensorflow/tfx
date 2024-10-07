@@ -26,6 +26,8 @@ from tfx.utils import io_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
 
+import pytest
+
 
 class BaseContainerBasedEndToEndTest(test_utils.BaseEndToEndTest):
   """Common utilities for kubeflow/vertex engine."""
@@ -35,26 +37,43 @@ class BaseContainerBasedEndToEndTest(test_utils.BaseEndToEndTest):
 
   _DATA_DIRECTORY_NAME = 'template_data'
 
-  # The following environment variables need to be set prior to calling the test
-  # in this file. All variables are required and do not have a default.
-
-  # The base container image name to use when building the image used in tests.
-  _BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
-
-  # The src path to use to build docker image
-  _REPO_BASE = os.environ['KFP_E2E_SRC']
-
-  # The project id to use to run tests.
-  _GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
-
-  # The GCP region in which the end-to-end test is run.
-  _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
-
-  # The GCP bucket to use to write output artifacts.
-  _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
-
   def setUp(self):
     super().setUp()
+
+    # The following environment variables need to be set prior to calling the test
+    # in this file. All variables are required and do not have a default.
+    # The base container image name to use when building the image used in tests.
+    self._BASE_CONTAINER_IMAGE = os.environ.get('KFP_E2E_BASE_CONTAINER_IMAGE')
+
+    # The src path to use to build docker image
+    self._REPO_BASE = os.environ.get('KFP_E2E_SRC')
+
+    # The project id to use to run tests.
+    self._GCP_PROJECT_ID = os.environ.get('KFP_E2E_GCP_PROJECT_ID')
+
+    # The GCP region in which the end-to-end test is run.
+    self._GCP_REGION = os.environ.get('KFP_E2E_GCP_REGION')
+
+    # The GCP bucket to use to write output artifacts.
+    self._BUCKET_NAME = os.environ.get('KFP_E2E_BUCKET_NAME')
+
+    missing_envs = []
+    for variable, value in {
+      'KFP_E2E_BASE_CONTAINER_IMAGE': self._BASE_CONTAINER_IMAGE,
+      'KFP_E2E_SRC': self._REPO_BASE,
+      'KFP_E2E_GCP_PROJECT_ID': self._GCP_PROJECT_ID,
+      'KFP_E2E_GCP_REGION': self._GCP_REGION,
+      'KFP_E2E_BUCKET_NAME': self._BUCKET_NAME,
+    }.items():
+      if value is None:
+        missing_envs.append(variable)
+
+    if missing_envs:
+      pytest.skip(
+        "Tests which require external containers must specify "
+        f"the following environment variables: {missing_envs}"
+      )
+
     random_id = orchestration_test_utils.random_id()
     self._pipeline_name = self._generate_pipeline_name(random_id)
     logging.info('Pipeline: %s', self._pipeline_name)
