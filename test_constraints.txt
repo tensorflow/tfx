@@ -12,5 +12,5 @@
 Flask-session<0.6.0
 
 #TODO(b/329181965): Remove once we migrate TFX to 2.16.
-tensorflow>=2.15.1,<2.16
-tensorflow-text<2.16
+tensorflow==2.15.1
+tensorflow-text==2.15.0
