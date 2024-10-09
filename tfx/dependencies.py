@@ -111,7 +111,8 @@ def make_required_install_packages():
         "tensorflow-data-validation"
         + select_constraint(
             default=">=1.15.1,<1.16.0",
-            nightly=">=1.16.0.dev20240508",
+            #TODO(b/329181965): Update to 1.17.0.dev once we migrate TFX to 2.16
+            nightly="==1.16.0.dev20240508",
             git_master=("@git+https://github.com/tensorflow/data-validation@master"),
         ),
         "tensorflow-model-analysis"
@@ -200,7 +201,8 @@ def make_extra_packages_tf_ranking():
         "struct2tensor"
         + select_constraint(
             default=">=0.46.0,<0.47.0",
-            nightly=">=0.46.0.dev",
+            #TODO(b/329181965): Update to 0.47.0.dev once we migrate TFX to 2.16
+            nightly=">=0.46.0.dev20240307,<0.47.0",
             git_master="@git+https://github.com/google/struct2tensor@master",
         ),
     ]
