@@ -60,7 +60,7 @@ def make_pipeline_sdk_required_install_packages():
             # LINT.IfChange
             default=">=1.15.0,<1.16.0",
             # LINT.ThenChange(tfx/workspace.bzl)
-            nightly=">=1.16.0.dev",
+            nightly=">=1.17.0.dev20241007",
             git_master="@git+https://github.com/google/ml-metadata@master",
         ),
         "packaging>=22",
@@ -111,26 +111,26 @@ def make_required_install_packages():
         "tensorflow-data-validation"
         + select_constraint(
             default=">=1.15.1,<1.16.0",
-            nightly=">=1.16.0.dev",
+            nightly=">=1.16.0.dev20240508",
             git_master=("@git+https://github.com/tensorflow/data-validation@master"),
         ),
         "tensorflow-model-analysis"
         + select_constraint(
             default=">=0.46.0,<0.47.0",
-            nightly=">=0.47.0.dev",
+            nightly=">=0.47.0.dev20240617",
             git_master="@git+https://github.com/tensorflow/model-analysis@master",
         ),
         "tensorflow-serving-api>=2.15,<2.16",
         "tensorflow-transform"
         + select_constraint(
             default=">=1.15.0,<1.16.0",
-            nightly=">=1.16.0.dev",
+            nightly=">=1.16.0.dev20240430",
             git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
             default=">=1.15.1,<1.16.0",
-            nightly=">=1.16.0.dev",
+            nightly=">=1.16.0.dev20240430",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
     ]
@@ -200,7 +200,7 @@ def make_extra_packages_tf_ranking():
         "struct2tensor"
         + select_constraint(
             default=">=0.46.0,<0.47.0",
-            nightly=">=0.47.0.dev",
+            nightly=">=0.47.0.dev20240430",
             git_master="@git+https://github.com/google/struct2tensor@master",
         ),
     ]
