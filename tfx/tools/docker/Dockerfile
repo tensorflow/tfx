@@ -28,6 +28,7 @@ ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
 RUN python -m pip install --upgrade pip
+RUN python -m pip install tomli
 
 # TODO(b/175089240): clean up conditional checks on whether ml-pipelines-sdk is
 # built after TFX versions <= 0.25 are no longer eligible for cherry-picks.
@@ -53,7 +54,7 @@ RUN cd ${TFX_DIR}/src; \
           ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
     else \
       CFLAGS=$(/usr/bin/python-config --cflags) \
-        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image]; \
     fi;
 
 # We need to name this step for the next COPY --from command.

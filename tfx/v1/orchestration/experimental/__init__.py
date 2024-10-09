@@ -14,23 +14,6 @@
 """TFX orchestration.experimental module."""
 
 try:
-    from tfx.orchestration.kubeflow.kubeflow_dag_runner import (
-        KubeflowDagRunner,
-        KubeflowDagRunnerConfig,
-        get_default_kubeflow_metadata_config,
-    )
-    from tfx.orchestration.kubeflow.decorators import (
-        exit_handler,
-    )
-    from tfx.orchestration.kubeflow.decorators import (
-        FinalStatusStr,
-    )
-    from tfx.utils.telemetry_utils import LABEL_KFP_SDK_ENV
-
-except ImportError:  # Import will fail without kfp package.
-    pass
-
-try:
     from tfx.orchestration.kubeflow.v2.kubeflow_v2_dag_runner import (
         KubeflowV2DagRunner,
         KubeflowV2DagRunnerConfig,
