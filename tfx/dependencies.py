@@ -200,7 +200,7 @@ def make_extra_packages_tf_ranking():
         "struct2tensor"
         + select_constraint(
             default=">=0.46.0,<0.47.0",
-            nightly=">=0.47.0.dev20240430",
+            nightly=">=0.46.0.dev",
             git_master="@git+https://github.com/google/struct2tensor@master",
         ),
     ]
