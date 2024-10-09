@@ -254,3 +254,57 @@ reviewer.
 For public PRs which do not have a preassigned reviewer, a TFX engineer will
 monitor them and perform initial triage within 5 business days. But such
 contributions should be trivial (i.e, documentation fixes).
+
+## Continuous Integration
+
+This project makes use of CI for
+
+- Building the `tfx` python package when releases are made
+- Running tests
+- Linting pull requests
+- Building documentation
+
+These four _workflows_ trigger automatically when certain _events_ happen.
+
+### Pull Requests
+
+When a PR is made:
+
+- Wheels and an sdist are built using the code in the PR branch. Multiple wheels
+  are built for a [variety of architectures and python
+  versions](https://github.com/tensorflow/tfx/blob/master/.github/workflows/wheels.yml).
+  If the PR causes any of the wheels to fail to build, the failure will be
+  reported in the checks for the PR.
+
+- Tests are run via [`pytest`](https://github.com/tensorflow/tfx/blob/master/.github/workflows/ci-test.yml). If a test fails, the workflow failure will be
+  reported in the checks for the PR.
+
+- Lint checks are run on the changed files. This workflow makes use of the
+  [`.pre-commit-config.yaml`](https://github.com/tensorflow/tfx/blob/master/.pre-commit-config.yaml), and if any lint violations are found the workflow
+  reports a failure on the list of checks for the PR.
+
+If the author of the PR makes a new commit to the PR branch, these checks are
+run again on the new commit.
+
+### Releases
+
+When a release is made on GitHub the workflow that builds wheels runs, just as
+it does for pull requests, but with one difference: it automatically uploads the
+wheels and sdist that are built in the workflow to the Python Package Index
+(PyPI) using [trusted
+publishing](https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/#configuring-trusted-publishing)
+without any additional action required on the part of the release captain. After
+the workflow finishes, users are able to use `pip install tfx` to install the
+newly published version.
+
+### Commits to `master`
+
+When a new commit is made to the `master`, the documentation is built and
+automatically uploaded to github pages.
+
+If you want to see the changes to the documentation when rendered, run `mkdocs
+serve` to build the documentation and serve it locally. Alternatively, if you
+merge your own changes to your own fork's `master` branch, this workflow will
+serve the documentation at `https://<your-github-username>.github.io/tfx`. This
+provides a convenient way for developers to check deployments before they merge
+a PR to the upstream `tfx` repository.
