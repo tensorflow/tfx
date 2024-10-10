@@ -105,20 +105,21 @@ def make_required_install_packages():
         # Pip might stuck in a TF 1.15 dependency although there is a working
         # dependency set with TF 2.x without the sync.
         # pylint: disable=line-too-long
-        "tensorflow" + select_constraint(">=2.15.0,<2.16"),
+        "tensorflow" + select_constraint(
+            default=">=2.15.1,<2.16",
+            nightly=">=2.16.0.dev,<2.17"),
         # pylint: enable=line-too-long
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
             default=">=1.15.1,<1.16.0",
-            #TODO(b/329181965): Update to 1.17.0.dev once we migrate TFX to 2.16
-            nightly="==1.16.0.dev20240508",
+            nightly=">=1.16.0.dev20241001,<1.17.0.dev",
             git_master=("@git+https://github.com/tensorflow/data-validation@master"),
         ),
         "tensorflow-model-analysis"
         + select_constraint(
             default=">=0.46.0,<0.47.0",
-            nightly=">=0.47.0.dev20240617",
+            nightly=">=0.47.0.dev",
             git_master="@git+https://github.com/tensorflow/model-analysis@master",
         ),
         "tensorflow-serving-api>=2.15,<2.16",
@@ -201,8 +202,7 @@ def make_extra_packages_tf_ranking():
         "struct2tensor"
         + select_constraint(
             default=">=0.46.0,<0.47.0",
-            #TODO(b/329181965): Update to 0.47.0.dev once we migrate TFX to 2.16
-            nightly=">=0.46.0.dev20240307,<0.47.0",
+            nightly=">=0.47.0.dev20241004",
             git_master="@git+https://github.com/google/struct2tensor@master",
         ),
     ]
