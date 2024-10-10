@@ -3,7 +3,8 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - 'master'
+  pull_request:
 permissions:
   contents: write
 jobs:
@@ -17,6 +18,7 @@ jobs:
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+        if: (github.event_name != 'pull_request')
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
@@ -26,6 +28,7 @@ jobs:
           cache-dependency-path: |
             setup.py
             tfx/dependencies.py
+            requirements-docs.txt
 
       - name: Save time for cache for mkdocs
         run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
@@ -39,7 +42,12 @@ jobs:
             mkdocs-material-
 
       - name: Install Dependencies
-        run: pip install mkdocs mkdocs-material mkdocstrings[python] griffe-inherited-docstrings mkdocs-autorefs mkdocs-jupyter mkdocs-caption markdown-grid-tables
+        run: pip install -r requirements-docs.txt
 
       - name: Deploy to GitHub Pages
         run: mkdocs gh-deploy --force
+        if: (github.event_name != 'pull_request')
+
+      - name: Build docs to check for errors
+        run: mkdocs build
+        if: (github.event_name == 'pull_request')
