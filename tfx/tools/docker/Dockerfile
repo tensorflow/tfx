@@ -57,7 +57,7 @@ RUN cd ${TFX_DIR}/src; \
           ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] -c tfx/tools/docker/requirements.txt; \
     else \
       CFLAGS=$(/usr/bin/python-config --cflags) \
-        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] -c docker_requirements.txt; \
+        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] -c tfx/tools/docker/requirements.txt; \
     fi;
 
 # We need to name this step for the next COPY --from command.
