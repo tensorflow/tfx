@@ -27,7 +27,7 @@ WORKDIR ${TFX_DIR}
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
-RUN python -m pip install --upgrade pip
+RUN python -m pip install --upgrade pip wheel
 RUN python -m pip install tomli
 
 # TODO(b/175089240): clean up conditional checks on whether ml-pipelines-sdk is
@@ -54,10 +54,10 @@ RUN cd ${TFX_DIR}/src; \
       CFLAGS=$(/usr/bin/python-config --cflags) \
         python -m pip install \
           --extra-index-url https://pypi-nightly.tensorflow.org/simple \
-          ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] ; \
+          ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] -c tfx/tools/docker/requirements.txt; \
     else \
       CFLAGS=$(/usr/bin/python-config --cflags) \
-        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image]; \
+        python -m pip install ${MLSDK_WHEEL} ${TFX_WHEEL}[docker-image] -c docker_requirements.txt; \
     fi;
 
 # We need to name this step for the next COPY --from command.
