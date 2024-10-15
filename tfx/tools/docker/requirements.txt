@@ -1,5 +1,5 @@
 # The following versions are manually captured to avoid unfinished dependency resolution.
-# They need to be updated when tfx/dependencies.py is updated. 
+# They need to be updated when tfx/dependencies.py is updated.
 absl-py==1.4.0
 aiohappyeyeballs==2.4.3
 aiohttp==3.10.9
