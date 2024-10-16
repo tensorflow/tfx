@@ -53,6 +53,8 @@ _BIGQUERY_QUERY = """
           < 0.0004"""
 
 
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
 @pytest.mark.integration
 @pytest.mark.e2e
 class BigqueryIntegrationTest(

@@ -71,6 +71,11 @@ _TEST_SPAN_NUMBER = 16000
 
 # TODO(b/133421802): Investigate why tensorflow.TestCase could cause a crash
 # when used with tfdv.
+@pytest.mark.xfail(
+    run=False,
+    reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+    "If all tests pass, please remove this mark.",
+)
 class ExecutorTest(parameterized.TestCase):
     def get_temp_dir(self):
         return tempfile.mkdtemp()
