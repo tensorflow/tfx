@@ -123,8 +123,6 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertEqual(['/tmp1/Split-eval', '/tmp2/Split-eval'],
                      artifact_utils.get_split_uris(artifacts, 'eval'))
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testArtifactTypeRoundTrip(self):
     mlmd_artifact_type = standard_artifacts.Examples._get_artifact_type()  # pylint: disable=protected-access
     self.assertIs(standard_artifacts.Examples,
@@ -149,8 +147,6 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertIsInstance(artifact_instance, value_artifact.ValueArtifact)
 
   @mock.patch.object(logging, 'warning', autospec=True)
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testArtifactTypeRoundTripUnknownArtifactClass(self, mock_warning):
     mlmd_artifact_type = copy.deepcopy(
         standard_artifacts.Examples._get_artifact_type())  # pylint: disable=protected-access

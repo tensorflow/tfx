@@ -31,8 +31,6 @@ import pytest
 _TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_taxi_pipeline/data/simple'
 
 
-@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
-"If all tests pass, please remove this mark.")
 @pytest.mark.integration
 @pytest.mark.e2e
 class CsvExampleGenIntegrationTest(
