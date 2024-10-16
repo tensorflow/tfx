@@ -14,7 +14,6 @@
 """Tests for tfx.distribution_validator.executor."""
 
 
-import pytest
 import os
 import tempfile
 
