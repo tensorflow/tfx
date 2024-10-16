@@ -14,7 +14,6 @@
 """Tests for tfx.components.distribution_validator.utils."""
 
 
-import pytest
 import os
 
 from absl import flags

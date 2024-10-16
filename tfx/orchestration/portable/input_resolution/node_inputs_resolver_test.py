@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.portable.input_resolution.node_inputs_resolver."""
 
 
-import pytest
 from typing import Set
 from unittest import mock
 

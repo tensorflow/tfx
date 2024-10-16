@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.strategies.conditional_strategy."""
 
-import pytest
 from tfx.dsl.input_resolution.strategies import conditional_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata

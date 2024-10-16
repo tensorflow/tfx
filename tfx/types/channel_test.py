@@ -14,7 +14,6 @@
 """Tests for tfx.utils.channel."""
 
 
-import pytest
 from unittest import mock
 
 import tensorflow as tf

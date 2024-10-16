@@ -14,7 +14,6 @@
 """Tests for tfx.components.example_gen.csv_example_gen.executor."""
 
 
-import pytest
 import os
 from absl.testing import absltest
 

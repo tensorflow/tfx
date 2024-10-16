@@ -20,8 +20,6 @@ import re
 import tempfile
 from unittest import mock
 
-import pytest
-
 from absl.testing import parameterized
 import apache_beam as beam
 import tensorflow as tf

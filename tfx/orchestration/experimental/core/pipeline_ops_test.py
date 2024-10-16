@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.experimental.core.pipeline_ops."""
 
 
-import pytest
 import copy
 import os
 import threading

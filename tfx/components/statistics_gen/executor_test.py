@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.statistics_gen.executor."""
 
-import pytest
 import os
 import tempfile
 

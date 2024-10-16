@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.compiler.placeholder_utils."""
 
 
-import pytest
 import base64
 import itertools
 import re

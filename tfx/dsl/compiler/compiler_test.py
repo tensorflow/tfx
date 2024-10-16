@@ -17,7 +17,6 @@ To update the golden IR proto, use --persist_test_protos flag.
 """
 
 
-import pytest
 import os
 import threading
 import types

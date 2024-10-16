@@ -14,7 +14,6 @@
 """Tests for tfx.types.artifact_utils."""
 
 
-import pytest
 import copy
 from unittest import mock
 
