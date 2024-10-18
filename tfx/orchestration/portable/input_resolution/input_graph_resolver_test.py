@@ -466,8 +466,6 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
     result = graph_fn(inputs)
     self.assertEqual(result, [Integer(expected)])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testResolverStrategy(self):
     input_graph = self.parse_input_graph("""
       nodes {
@@ -494,7 +492,7 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
         key: "op_1"
         value {
           op_node {
-            op_type: "__main__.RenameStrategy"
+            op_type: "tfx.orchestration.portable.input_resolution.input_graph_resolver_test.RenameStrategy"
             args {
               node_id: "dict_1"
             }
