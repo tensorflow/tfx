@@ -52,7 +52,10 @@ jobs:
         python -m pip install --upgrade pip wheel
         # TODO(b/232490018): Cython need to be installed separately to build pycocotools.
         python -m pip install Cython -c ./test_constraints.txt
-        pip install -c ./test_constraints.txt --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre .[all]
+        pip install \
+          -c ./${{ matrix.dependency-selector == 'NIGHTLY' && 'nightly_test_constraints.txt' || 'test_constraints.txt' }} \
+          --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre .[all]
+
       env:
         TFX_DEPENDENCY_SELECTOR: ${{ matrix.dependency-selector }}
 
