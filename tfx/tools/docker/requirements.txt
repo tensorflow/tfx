@@ -1,5 +1,11 @@
-# The following versions are manually captured to avoid unfinished dependency resolution.
-# They need to be updated when tfx/dependencies.py is updated.
+# This file is used to constrain dependencies during installation.
+
+# Our project has complex dependencies, and without these constraints,
+# pip fails to solve the environment. These are not direct project
+# dependencies, but rather help pip successfully install the project.
+
+# This file should be updated when tfx/dependencies.py is updated.
+
 absl-py==1.4.0
 aiohappyeyeballs==2.4.3
 aiohttp==3.10.9
