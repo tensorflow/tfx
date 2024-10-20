@@ -13,4 +13,4 @@ include tfx/proto/*.proto
 # fixture more portable.
 recursive-include tfx/orchestration/kubeflow/v2/testdata *
 
-recursive-include tfx/components/testdata/*
+recursive-include tfx/components/testdata *
