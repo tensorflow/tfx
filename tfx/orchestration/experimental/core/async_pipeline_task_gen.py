@@ -451,19 +451,11 @@ class _Generator:
     # manner. Idempotency is guaranteed by the artifact type name.
     # The external artifacts will be copies to local db when we register
     # executions. Idempotency is guaranteed by external_id.
-    updated_external_artifacts = []
+    # TODO(b/258477751) Add more tests to test the producer/consumer pipelines.
     for input_and_params in resolved_info.input_and_params:
       for artifacts in input_and_params.input_artifacts.values():
-        updated_external_artifacts.extend(
-            task_gen_utils.update_external_artifact_type(
-                self._mlmd_handle, artifacts
-            )
-        )
-    if updated_external_artifacts:
-      logging.info(
-          'Updated external artifacts: %s',
-          [a.id for a in updated_external_artifacts],
-      )
+        task_gen_utils.update_external_artifact_type(self._mlmd_handle,
+                                                     artifacts)
 
     if backfill_token:
       # For backfills, ignore all previous executions.
