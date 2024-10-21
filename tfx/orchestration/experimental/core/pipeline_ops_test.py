@@ -3287,6 +3287,80 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
             states_dict[task_lib.NodeUid(pipeline_uid, 'Pusher')].state,
         )
 
+  def test_skip_failed_nodes(self):
+    with self._mlmd_cm as mlmd_connection_manager:
+      m = mlmd_connection_manager.primary_mlmd_handle
+      pipeline = _test_pipeline(
+          'pipeline1', execution_mode=pipeline_pb2.Pipeline.SYNC
+      )
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      pipeline.nodes.add().pipeline_node.node_info.id = 'ExampleGen'
+      pipeline.nodes.add().pipeline_node.node_info.id = 'Transform'
+      pipeline_ops.initiate_pipeline_start(m, pipeline)
+
+      # Can't skip failed nodes if the pipeline isn't in a FAILED state
+      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
+        pipeline_ops.skip_failed_nodes(
+            m,
+            [task_lib.NodeUid(pipeline_uid, 'ExampleGen')],
+        )
+      self.assertEqual(
+          status_lib.Code.FAILED_PRECONDITION, exception_context.exception.code
+      )
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        # Change state of ExampleGen node to COMPLETE.
+        with pipeline_state.node_state_update_context(
+            task_lib.NodeUid(pipeline_uid, 'ExampleGen')
+        ) as node_state:
+          node_state.state = pstate.NodeState.COMPLETE
+        # Change state of Transform node to FAILED.
+        with pipeline_state.node_state_update_context(
+            task_lib.NodeUid(pipeline_uid, 'Transform')
+        ) as node_state:
+          node_state.state = pstate.NodeState.FAILED
+
+      # Can't skip failed nodes if the pipeline isn't in a FAILED state,
+      # even if the node is in a FAILED state.
+      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
+        pipeline_ops.skip_failed_nodes(
+            m,
+            [task_lib.NodeUid(pipeline_uid, 'Transform')],
+        )
+      self.assertEqual(
+          status_lib.Code.FAILED_PRECONDITION, exception_context.exception.code
+      )
+
+      with pstate.PipelineState.load(m, pipeline_uid) as pipeline_state:
+        # Now mark the pipeline as FAILED.
+        pipeline_state.set_pipeline_execution_state(
+            metadata_store_pb2.Execution.FAILED
+        )
+
+      # Can't skip non-failed nodes.
+      with self.assertRaises(status_lib.StatusNotOkError) as exception_context:
+        pipeline_ops.skip_failed_nodes(
+            m,
+            [task_lib.NodeUid(pipeline_uid, 'ExampleGen')],
+        )
+      self.assertEqual(
+          status_lib.Code.FAILED_PRECONDITION, exception_context.exception.code
+      )
+
+      # Skip Transform
+      pipeline_ops.skip_failed_nodes(
+          m,
+          [task_lib.NodeUid(pipeline_uid, 'Transform')],
+      )
+
+      pipeline_view = pstate.PipelineView.load(
+          m,
+          pipeline_id=pipeline_uid.pipeline_id,
+          pipeline_run_id=pipeline_uid.pipeline_run_id,
+      )
+      states_dict = pipeline_view.get_node_states_dict()
+      self.assertEqual(pstate.NodeState.SKIPPED, states_dict['Transform'].state)
+
   def test_exception_while_orchestrating_active_pipeline(self):
     with self._mlmd_cm as mlmd_connection_manager:
       m = mlmd_connection_manager.primary_mlmd_handle
