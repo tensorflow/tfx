@@ -14,7 +14,6 @@
 """Tests for tfx.utils.json_utils."""
 
 
-import pytest
 import tensorflow as tf
 from tfx.proto import trainer_pb2
 from tfx.utils import deprecation_utils

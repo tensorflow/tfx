@@ -14,7 +14,6 @@
 """Tests for standard TFX Artifact types."""
 
 
-import pytest
 import math
 from typing import Any, Dict
 from unittest import mock

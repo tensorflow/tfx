@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.components.base.executor_spec."""
 
 
-import pytest
 import tensorflow as tf
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec

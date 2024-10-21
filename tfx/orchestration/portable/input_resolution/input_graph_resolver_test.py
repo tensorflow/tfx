@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.input_resolution.input_graph_resolver."""
 
-import pytest
 from unittest import mock
 
 from absl.testing import parameterized
