@@ -1582,8 +1582,9 @@ def _run_end_nodes(
     service_job_manager: Manager for service jobs. Unused but needed to
       construct a SyncPipelineTaskGenerator.
   """
-  # Build some dicts and find all paired nodes
-  end_nodes = []
+  # Build some dicts and find all end nodes
+  paired_end_nodes = []
+  alert_end_nodes = []
   pipeline = pipeline_state.pipeline
   nodes = node_proto_view.get_view_for_all_in(pipeline)
   node_uid_by_id = {}
@@ -1603,38 +1604,68 @@ def _run_end_nodes(
           node.node_info.id,
           resource_lifetime.lifetime_start,
       )
-      end_nodes.append(node)
-  logging.info('end_nodes: %s', [n.node_info.id for n in end_nodes])
+      paired_end_nodes.append(node)
+    if resource_lifetime.HasField('pipeline_lifetime'):
+      logging.info(
+          'Node %s is an alert node',
+          node.node_info.id,
+      )
+      alert_end_nodes.append(node)
+  logging.info('end_nodes: %s', [n.node_info.id for n in paired_end_nodes])
+  logging.info('alert_nodes: %s', [n.node_info.id for n in alert_end_nodes])
+
   end_nodes_to_start = []
-  # Find end nodes to start, and those that are already running.
-  for end_node in end_nodes:
-    node_id = end_node.node_info.id
+
+  # Find paired end nodes to start, and those that are already running.
+  for paired_end_node in paired_end_nodes:
+    node_id = paired_end_node.node_info.id
 
     logging.info('checking if end node %s should be started', node_id)
-    end_node_state = node_state_by_node_uid[node_uid_by_id[node_id]]
+    paired_end_node_state = node_state_by_node_uid[node_uid_by_id[node_id]]
     upstream_node_uid = node_uid_by_id[
-        end_node.execution_options.resource_lifetime.lifetime_start
+        paired_end_node.execution_options.resource_lifetime.lifetime_start
     ]
     start_node_state = node_state_by_node_uid[upstream_node_uid]
-    if start_node_state.is_success() and not end_node_state.is_success():
+    if start_node_state.is_success() and not paired_end_node_state.is_success():
       logging.info(
           'Node %s in state %s should be started',
           node_id,
-          end_node_state.state,
+          paired_end_node_state.state,
       )
-      end_nodes_to_start.append(end_node)
+      end_nodes_to_start.append(paired_end_node)
     else:
       logging.info(
           'Node %s in state %s should not be started',
           node_id,
-          end_node_state.state,
+          paired_end_node_state.state,
       )
 
   logging.info(
       'Starting end nodes: %s', [n.node_info.id for n in end_nodes_to_start]
   )
+
+  # Find alert end nodes to start.
+  stop_ininiate_reason = pipeline_state.stop_initiated_reason()
+  should_alert_nodes_start = False if stop_ininiate_reason is None else True
+
+  if should_alert_nodes_start:
+    for alert_end_node in alert_end_nodes:
+      node_id = alert_end_node.node_info.id
+      logging.info('checking if alert node %s should be started', node_id)
+      alert_end_node_state = node_state_by_node_uid[node_uid_by_id[node_id]]
+      if alert_end_node_state.is_success():
+        logging.info(
+            'Node %s in state %s should not be started',
+            node_id,
+            alert_end_node_state.state,
+        )
+        end_nodes_to_start.append(alert_end_node)
+
+  # If there are no end nodes to start, then we can return
+  # early.
   if not end_nodes_to_start:
     return
+
   generated_tasks = []
   generator = sync_pipeline_task_gen.SyncPipelineTaskGenerator(
       mlmd_connection_manager,
@@ -1646,12 +1677,12 @@ def _run_end_nodes(
     # are unable to generate cleanup tasks then log, mark the node as FAILED,
     # and move on.
     try:
-      logging.info('generating tasks for node %s', node.node_info.id)
+      logging.info('generating tasks for end node %s', node.node_info.id)
       tasks = generator.get_tasks_for_node(node, pipeline_state)
       generated_tasks.extend(tasks)
     except Exception as e:  # pylint: disable=broad-exception-caught
       logging.exception(
-          'Failed to generate tasks for paired end node %s: %s',
+          'Failed to generate tasks for end node %s: %s',
           node,
           e,
       )
@@ -1760,7 +1791,9 @@ def _orchestrate_stop_initiated_pipeline(
         n.execution_options.HasField('resource_lifetime')
         for n in node_proto_view.get_view_for_all_in(pipeline_state.pipeline)
     ):
-      logging.info('Pipeline has paired nodes. May launch additional jobs')
+      logging.info(
+          'Pipeline has end nodes. May launch additional jobs'
+      )
       # Note that this is a pretty hacky "best effort" attempt at cleanup, we
       # Put the ExecNodeTasks into the task_queue but do no monitoring of them,
       # and we do not support node re-try if the cleanup task fails.
@@ -1775,7 +1808,7 @@ def _orchestrate_stop_initiated_pipeline(
       except Exception as e:  # pylint: disable=broad-exception-caught
         logging.exception('Failed to run end nodes: %s', e)
     else:
-      logging.info('No paired nodes found in pipeline.')
+      logging.info('No end nodes found in pipeline.')
   else:
     logging.info(
         'Not all nodes stopped! node_to_stop: %s, stopped_nodes: %s',
