@@ -91,8 +91,6 @@ class GroupByDisjointLineageTest(
         _shuffle(verts), _shuffle(edges)
     )
     self.assertEqual(actual, expected_disjoint_sets)
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByDisjointLineage(self):
     a1, a2, a3, b1, b2, b3, b4, c1, c2, c3, c4 = self._prepare_tfx_artifacts(11)
     self._put_lineage(a1, b1, c1)
