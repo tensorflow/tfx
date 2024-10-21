@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.strategies.conditional_strategy."""
 
-import pytest
 from tfx.dsl.input_resolution.strategies import conditional_strategy
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -86,11 +85,6 @@ _TEST_PREDICATE_2 = """
 """
 
 
-@pytest.mark.xfail(
-    run=False,
-    reason="PR 6889 This class contains tests that fail and needs to be fixed. "
-    "If all tests pass, please remove this mark.",
-)
 class ConditionalStrategyTest(test_case_utils.TfxTest):
     def setUp(self):
         super().setUp()

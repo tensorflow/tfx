@@ -14,7 +14,6 @@
 """Tests for tfx.distribution_validator.executor."""
 
 
-import pytest
 import os
 import tempfile
 
@@ -552,8 +551,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         },
     )
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testStructData(self):
     source_data_dir = FLAGS.test_tmpdir
     stats_artifact = standard_artifacts.ExampleStatistics()
@@ -1014,8 +1011,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
             }
           """
       })
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testEmptyData(self, stats_train, stats_eval, expected_anomalies):
     source_data_dir = FLAGS.test_tmpdir
     stats_artifact = standard_artifacts.ExampleStatistics()
