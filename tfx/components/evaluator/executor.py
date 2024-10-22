@@ -241,7 +241,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     # may be created by the Beam multi-process DirectRunner) can find the
     # needed dependencies.
     # TODO(b/187122662): Move this to the ExecutorOperator or Launcher.
-    with udf_utils.TempPipInstallContext(extra_pip_packages):
+    with udf_utils.TempPipInstallContext(local_pip_package_path):
       with self._make_beam_pipeline() as pipeline:
         examples_list = []
         tensor_adapter_config = None
