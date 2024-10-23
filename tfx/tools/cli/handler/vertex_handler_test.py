@@ -14,7 +14,6 @@
 """Tests for Vertex handler."""
 
 
-import pytest
 import os
 import sys
 from unittest import mock
@@ -32,8 +31,6 @@ _TEST_REGION = 'us-central1'
 _TEST_PROJECT_1 = 'gcp_project_1'
 
 
-@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
-"If all tests pass, please remove this mark.")
 class VertexHandlerTest(test_case_utils.TfxTest):
 
   def setUp(self):
@@ -195,9 +192,8 @@ class VertexHandlerTest(test_case_utils.TfxTest):
         str(err.exception), 'Pipeline "{}" does not exist.'.format(
             flags_dict[labels.PIPELINE_NAME]))
 
-  @mock.patch.object(aiplatform, 'init', autospec=True)
   @mock.patch.object(pipeline_jobs, 'PipelineJob', autospec=True)
-  def testCreateRun(self, mock_pipeline_job, mock_init):
+  def testCreateRun(self, mock_pipeline_job):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name,
@@ -206,17 +202,18 @@ class VertexHandlerTest(test_case_utils.TfxTest):
         labels.RUNTIME_PARAMETER: self.runtime_parameter,
     }
 
-    handler = vertex_handler.VertexHandler(flags_dict)
-    handler.create_run()
+    with mock.patch.object(aiplatform, 'init') as mock_init:
+        handler = vertex_handler.VertexHandler(flags_dict)
+        handler.create_run()
 
-    mock_init.assert_called_once_with(
-        project=_TEST_PROJECT_1, location=_TEST_REGION)
-    mock_pipeline_job.assert_called_once_with(
-        display_name=_TEST_PIPELINE_NAME,
-        template_path=handler._get_pipeline_definition_path(
-            _TEST_PIPELINE_NAME),
-        parameter_values={
-            'a': '1',
-            'b': '2'
-        })
-    mock_pipeline_job.return_value.submit.assert_called_once()
+        mock_init.assert_called_once_with(
+            project=_TEST_PROJECT_1, location=_TEST_REGION)
+        mock_pipeline_job.assert_called_once_with(
+            display_name=_TEST_PIPELINE_NAME,
+            template_path=handler._get_pipeline_definition_path(
+                _TEST_PIPELINE_NAME),
+            parameter_values={
+                'a': '1',
+                'b': '2'
+            })
+        mock_pipeline_job.return_value.submit.assert_called_once()
