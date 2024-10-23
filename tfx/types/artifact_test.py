@@ -158,7 +158,7 @@ _BAD_URI = '/tmp/to/a/bad/dir'
 class ArtifactTest(tf.test.TestCase):
 
   def tearDown(self):
-    # This cleans up __subclasses__() that has InvalidAnnotation artifact classes. 
+    # This cleans up __subclasses__() that has InvalidAnnotation artifact classes.
     gc.collect()
 
   def testArtifact(self):

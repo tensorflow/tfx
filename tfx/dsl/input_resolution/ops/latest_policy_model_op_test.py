@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.latest_policy_model_op."""
 
-import pytest
 from typing import Dict, List, Optional
 
 from absl.testing import parameterized

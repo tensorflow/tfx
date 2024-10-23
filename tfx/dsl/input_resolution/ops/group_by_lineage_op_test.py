@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.input_resolution.ops.group_by_lineage_op."""
 
 import random
-import pytest
 
 from absl.testing import parameterized
 import tensorflow as tf

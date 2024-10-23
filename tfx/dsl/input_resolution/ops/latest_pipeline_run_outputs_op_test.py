@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.latest_pipeline_run_op."""
 
-import pytest
 import contextlib
 
 import tensorflow as tf

@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.input_resolution.ops.graph_traversal_op."""
 
 
-import pytest
 from typing import Sequence
 
 from tfx import types

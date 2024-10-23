@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.input_resolution.ops.siblings_op."""
 
 from typing import Sequence
-import pytest
 
 from tfx import types
 from tfx.dsl.input_resolution.ops import ops
