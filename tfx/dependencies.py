@@ -37,7 +37,7 @@ dependency string once wheel is built.
 from __future__ import annotations
 
 import os
-
+from pathlib import Path
 
 def select_constraint(default, nightly=None, git_master=None):
     """Select dependency constraint based on TFX_DEPENDENCY_SELECTOR env var."""
@@ -258,17 +258,12 @@ def make_extra_packages_docs() -> list[str]:
     list[str]
         List of packages required for building docs
     """
-    return [
-        "mkdocs",
-        "mkdocstrings[python]",
-        "mkdocs-material",
-        "griffe-inherited-docstrings",
-        "mkdocs-autorefs",
-        "mkdocs-jupyter",
-        "mkdocs-caption",
-        "pymdown-extensions",
-        "markdown-grid-tables",
-    ]
+    with open(Path(__file__).resolve().parent.parent / "requirements-docs.txt", "r") as fp:
+        reqs = fp.readlines()
+
+    reqs = [req.replace("\n", "") for req in reqs]
+
+    return reqs
 
 
 def make_extra_packages_all():
