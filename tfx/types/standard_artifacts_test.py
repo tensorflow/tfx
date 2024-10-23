@@ -14,7 +14,6 @@
 """Tests for standard TFX Artifact types."""
 
 
-import pytest
 import math
 from typing import Any, Dict
 from unittest import mock
@@ -69,7 +68,7 @@ class TfxTestJsonableCls(json_utils.Jsonable):
 
 _TEST_JSONVALUE_OBJ_RAW = (
     '{\"__class__\": \"TfxTestJsonableCls\", \"__module__\":'
-    ' \"__main__\", \"__tfx_object_type__\": '
+    ' \"tfx.types.standard_artifacts_test\", \"__tfx_object_type__\": '
     '\"jsonable\", \"x\": 42}')
 _TEST_JSONVALUE_OBJ_DECODED = TfxTestJsonableCls(42)
 
@@ -120,8 +119,6 @@ class StandardArtifactsTest(tf.test.TestCase):
     self.assertEqual(_TEST_JSONVALUE_DICT_DECODED,
                      instance.decode(_TEST_JSONVALUE_DICT_RAW))
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testJsonValueObj(self):
     instance = standard_artifacts.JsonValue()
     self.assertEqual(_TEST_JSONVALUE_OBJ_RAW,
