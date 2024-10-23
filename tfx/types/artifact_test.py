@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.types.artifact."""
 
+import gc
 import json
 import textwrap
 from unittest import mock
@@ -131,14 +132,6 @@ _MyArtifact6 = artifact._ArtifactType(  # pylint: disable=invalid-name
     })
 
 
-class _ArtifactWithInvalidAnnotation(artifact.Artifact):
-  TYPE_NAME = 'InvalidAnnotationArtifact'
-  TYPE_ANNOTATION = artifact.Artifact
-  PROPERTIES = {
-      'int1': artifact.Property(type=artifact.PropertyType.INT),
-  }
-
-
 class _MyValueArtifact(value_artifact.ValueArtifact):
   TYPE_NAME = 'MyValueTypeName'
 
@@ -163,6 +156,10 @@ _BAD_URI = '/tmp/to/a/bad/dir'
 
 
 class ArtifactTest(tf.test.TestCase):
+
+  def tearDown(self):
+    # This cleans up __subclasses__() that has InvalidAnnotation artifact classes. 
+    gc.collect()
 
   def testArtifact(self):
     instance = _MyArtifact()
@@ -1373,6 +1370,13 @@ class ArtifactTest(tf.test.TestCase):
                      metadata_store_pb2.ArtifactType.DATASET)
 
   def testInvalidTypeAnnotation(self):
+    class _ArtifactWithInvalidAnnotation(artifact.Artifact):
+      TYPE_NAME = 'InvalidAnnotationArtifact'
+      TYPE_ANNOTATION = artifact.Artifact
+      PROPERTIES = {
+          'int1': artifact.Property(type=artifact.PropertyType.INT),
+      }
+
     with self.assertRaisesRegex(
         ValueError, 'is not a subclass of SystemArtifact'):
       _ArtifactWithInvalidAnnotation()

@@ -50,8 +50,6 @@ class LatestPipelineRunOutputsTest(
       with self.assertRaises(exceptions.SkipSignal):
         self._latest_pipeline_run(pipeline_name='pipeline-name')
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLatestPipelineRunOutputsOutputs_OneKey(self):
     with contextlib.nullcontext():
       node_context = self.put_context('node', 'example-gen')
@@ -125,8 +123,6 @@ class LatestPipelineRunOutputsTest(
         expected_ids = [a.id for a in expected_result[key]]
         self.assertAllEqual(result_ids, expected_ids)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLatestPipelineRunOutputs_TwoKeys(self):
     with contextlib.nullcontext():
       example_gen_node_context = self.put_context('node', 'example-gen')

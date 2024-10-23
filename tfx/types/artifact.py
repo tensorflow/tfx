@@ -247,8 +247,8 @@ class Artifact(json_utils.Jsonable):
       if type_annotation_cls:
         if not issubclass(type_annotation_cls, SystemArtifact):
           raise ValueError(
-              'TYPE_ANNOTATION %s is not a subclass of SystemArtifact.' %
-              type_annotation_cls)
+              '%s''s TYPE_ANNOTATION %s is not a subclass of SystemArtifact.' %
+              (cls, type_annotation_cls))
         if type_annotation_cls.MLMD_SYSTEM_BASE_TYPE:
           artifact_type.base_type = type_annotation_cls.MLMD_SYSTEM_BASE_TYPE
 
