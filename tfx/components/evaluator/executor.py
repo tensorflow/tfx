@@ -119,7 +119,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     # Make sure user packages get propagated to the remote Beam worker.
     unused_module_path, extra_pip_packages = udf_utils.decode_user_module_key(
         exec_properties.get(standard_component_specs.MODULE_PATH_KEY, None))
-    
     local_pip_packages = []
     for pip_package_path in extra_pip_packages:
       local_pip_package_path = io_utils.ensure_local(pip_package_path)
