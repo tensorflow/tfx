@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.components.base.executor_spec."""
 
 
-import pytest
 import tensorflow as tf
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
@@ -39,8 +38,6 @@ class ExecutorSpecTest(tf.test.TestCase):
         '_TestSpecWithoutEncode does not support encoding into IR.'):
       _TestSpecWithoutEncode().encode()
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testExecutorClassSpecCopy(self):
     spec = executor_spec.ExecutorClassSpec(_DummyExecutor)
     spec.add_extra_flags('a')
@@ -48,13 +45,11 @@ class ExecutorSpecTest(tf.test.TestCase):
     del spec
     self.assertProtoEquals(
         """
-        class_path: "__main__._DummyExecutor"
+        class_path: "tfx.dsl.components.base.executor_spec_test._DummyExecutor"
         extra_flags: "a"
         """,
         spec_copy.encode())
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testBeamExecutorSpecCopy(self):
     spec = executor_spec.BeamExecutorSpec(_DummyExecutor)
     spec.add_extra_flags('a')
@@ -64,7 +59,7 @@ class ExecutorSpecTest(tf.test.TestCase):
     self.assertProtoEquals(
         """
         python_executor_spec: {
-            class_path: "__main__._DummyExecutor"
+            class_path: "tfx.dsl.components.base.executor_spec_test._DummyExecutor"
             extra_flags: "a"
         }
         beam_pipeline_args: "b"

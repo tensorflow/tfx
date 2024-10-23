@@ -119,8 +119,10 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     # Make sure user packages get propagated to the remote Beam worker.
     unused_module_path, extra_pip_packages = udf_utils.decode_user_module_key(
         exec_properties.get(standard_component_specs.MODULE_PATH_KEY, None))
+    local_pip_packages = []
     for pip_package_path in extra_pip_packages:
       local_pip_package_path = io_utils.ensure_local(pip_package_path)
+      local_pip_packages.append(local_pip_package_path)
       self._beam_pipeline_args.append('--extra_package=%s' %
                                       local_pip_package_path)
 
@@ -241,7 +243,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
     # may be created by the Beam multi-process DirectRunner) can find the
     # needed dependencies.
     # TODO(b/187122662): Move this to the ExecutorOperator or Launcher.
-    with udf_utils.TempPipInstallContext(extra_pip_packages):
+    with udf_utils.TempPipInstallContext(local_pip_packages):
       with self._make_beam_pipeline() as pipeline:
         examples_list = []
         tensor_adapter_config = None
