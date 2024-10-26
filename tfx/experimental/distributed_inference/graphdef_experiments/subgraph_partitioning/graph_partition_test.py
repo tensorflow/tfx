@@ -23,6 +23,7 @@ from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partit
 from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
 from google.protobuf import text_format
 
+tf.compat.v1.enable_eager_execution()  # Re-enable eager mode
 
 class RemoteOpLayerTest(tf.test.TestCase):
   """A test for the class _RemoteOpLayer."""

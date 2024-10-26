@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.components.base.decorators."""
 
 
-import pytest
 import os
 from typing import Any, Dict, List, Optional
 
@@ -505,8 +504,6 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testBeamExecutionFailure(self):
     """Test execution with return values; failure case."""
     instance_1 = injector_1(foo=9, bar='secret')
@@ -533,7 +530,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         components=[instance_1, instance_2, instance_3])
 
     with self.assertRaisesRegex(
-        RuntimeError, r'AssertionError: \(220.0, 32.0, \'OK\', None\)'):
+        AssertionError, r'\(220.0, 32.0, \'OK\', None\)'):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
   def testOptionalInputsAndParameters(self):
