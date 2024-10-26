@@ -161,7 +161,7 @@ class ArtifactTest(tf.test.TestCase):
     gc.collect()
 
   def assertProtoEquals(self, proto1, proto2):
-    if type(proto1) != type(proto2):
+    if type(proto1) is not type(proto2):
       # GetProtoType() doesn't return the orignal type.
       new_proto2 = type(proto1)()
       new_proto2.CopyFrom(proto2)
