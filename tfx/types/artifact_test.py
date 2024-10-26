@@ -166,7 +166,7 @@ class ArtifactTest(tf.test.TestCase):
       new_proto2 = type(proto1)()
       new_proto2.CopyFrom(proto2)
       return super().assertProtoEquals(proto1, new_proto2)
-    return super().assertProtoEquals(proto1, proto2)   
+    return super().assertProtoEquals(proto1, proto2)
 
   def testArtifact(self):
     instance = _MyArtifact()
