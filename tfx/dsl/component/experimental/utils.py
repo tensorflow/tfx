@@ -209,21 +209,13 @@ def _create_component_spec_class(
           type=artifact_type, optional=(key in arg_defaults)
       )
       if json_compatible_inputs and key in json_compatible_inputs:
-        setattr(
-            spec_inputs[key],
-            '_JSON_COMPAT_TYPEHINT',
-            json_compatible_inputs[key],
-        )
+        spec_inputs[key]._JSON_COMPAT_TYPEHINT = json_compatible_inputs[key]
   if outputs:
     for key, artifact_type in outputs.items():
       assert key not in arg_defaults, 'Optional outputs are not supported.'
       spec_outputs[key] = component_spec.ChannelParameter(type=artifact_type)
       if json_compatible_outputs and key in json_compatible_outputs:
-        setattr(
-            spec_outputs[key],
-            '_JSON_COMPAT_TYPEHINT',
-            json_compatible_outputs[key],
-        )
+        spec_outputs[key]._JSON_COMPAT_TYPEHINT = json_compatible_outputs[key]
   if parameters:
     for key, param_type in parameters.items():
       if inspect.isclass(param_type) and issubclass(
