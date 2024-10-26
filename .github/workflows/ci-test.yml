@@ -62,7 +62,4 @@ jobs:
     - name: Run unit tests
       shell: bash
       run: |
-        pwd
-        echo ${GITHUB_WORKSPACE}
-        cd ${GITHUB_WORKSPACE}
-        pytest -m "${{ matrix.which-tests }}"
+        pytest -vv -m "${{ matrix.which-tests }}" tfx
