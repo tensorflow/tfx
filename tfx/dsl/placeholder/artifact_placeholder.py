@@ -23,7 +23,7 @@ from tfx.proto.orchestration import placeholder_pb2
 _types = placeholder_base.types
 
 
-def input(key: str) -> ArtifactPlaceholder:  # pylint: disable=redefined-builtin
+def input(key: str) -> ArtifactPlaceholder:  # noqa: A002
   """Returns a Placeholder that represents an input artifact.
 
   Args:

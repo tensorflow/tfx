@@ -126,12 +126,12 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
 
   @id.setter
   @doc_controls.do_not_doc_in_subclasses
-  def id(self, id: str) -> None:  # pylint: disable=redefined-builtin
+  def id(self, id: str) -> None:  # noqa: A002
     self._id = id
 
   # TODO(kmonte): Update this to Self once we're on 3.11 everywhere
   @doc_controls.do_not_doc_in_subclasses
-  def with_id(self, id: str) -> typing_extensions.Self:  # pylint: disable=redefined-builtin
+  def with_id(self, id: str) -> typing_extensions.Self:  # noqa: A002
     self._id = id
     return self
 

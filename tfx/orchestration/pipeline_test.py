@@ -85,7 +85,7 @@ def _make_fake_component_instance(
 
     def __init__(
         self,
-        type: Type[types.Artifact],  # pylint: disable=redefined-builtin
+        type: Type[types.Artifact],  # noqa: A002
         spec_kwargs: Dict[str, Any]):
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
       super().__init__(spec=spec)
@@ -98,7 +98,7 @@ def _make_fake_component_instance(
 
     def __init__(
         self,
-        type: Type[types.Artifact],  # pylint: disable=redefined-builtin
+        type: Type[types.Artifact],  # noqa: A002
         spec_kwargs: Dict[str, Any]):
       spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
       super().__init__(spec=spec)

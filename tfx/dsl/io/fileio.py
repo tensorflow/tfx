@@ -20,8 +20,8 @@ from tfx.dsl.io import filesystem_registry
 from tfx.dsl.io.filesystem import PathType
 
 # Import modules that may provide filesystem plugins.
-import tfx.dsl.io.plugins.tensorflow_gfile  # pylint: disable=unused-import, g-import-not-at-top
-import tfx.dsl.io.plugins.local  # pylint: disable=unused-import, g-import-not-at-top
+import tfx.dsl.io.plugins.tensorflow_gfile  # noqa: F401, E402
+import tfx.dsl.io.plugins.local  # noqa: F401, E402
 
 
 # Expose `NotFoundError` as `fileio.NotFoundError`.
@@ -33,7 +33,7 @@ def _get_filesystem(path) -> Type[filesystem.Filesystem]:
           .get_filesystem_for_path(path))
 
 
-def open(path: PathType, mode: str = 'r'):  # pylint: disable=redefined-builtin
+def open(path: PathType, mode: str = 'r'):  # noqa: A002
   """Open a file at the given path."""
   return _get_filesystem(path).open(path, mode=mode)
 

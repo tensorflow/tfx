@@ -47,7 +47,7 @@ class DummyArtifact(types.Artifact):
 
 class DummyNode(base_node.BaseNode):
 
-  def __init__(self, id: str, inputs=None, exec_properties=None):  # pylint: disable=redefined-builtin
+  def __init__(self, id: str, inputs=None, exec_properties=None):  # noqa: A002
     super().__init__()
     self.with_id(id)
     self._inputs = inputs or {}

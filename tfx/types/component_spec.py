@@ -340,7 +340,7 @@ class ExecutionParameter:
       non-primitive types like lists) should be stored in its original form.
   """
 
-  def __init__(self, type=None, optional=False, use_proto=False):  # pylint: disable=redefined-builtin
+  def __init__(self, type=None, optional=False, use_proto=False):  # noqa: A002
     self.type = type
     self.optional = optional
     self.use_proto = use_proto
@@ -419,7 +419,7 @@ class ChannelParameter:
 
   def __init__(
       self,
-      type: Optional[Type[artifact.Artifact]] = None,  # pylint: disable=redefined-builtin
+      type: Optional[Type[artifact.Artifact]] = None,  # noqa: A002
       optional: bool = False,
       allow_empty: Optional[bool] = None,
       is_async: bool = False,
