@@ -175,10 +175,10 @@ class ArtifactTest(tf.test.TestCase):
 
     # Default property does not have span or split_names.
     with self.assertRaisesRegex(AttributeError, "has no property 'span'"):
-      instance.span  # pylint: disable=pointless-statement
+      instance.span  # noqa: B018
     with self.assertRaisesRegex(AttributeError,
                                 "has no property 'split_names'"):
-      instance.split_names  # pylint: disable=pointless-statement
+      instance.split_names  # noqa: B018
 
     # Test property setters.
     instance.name = 'test_artifact'
@@ -1229,7 +1229,7 @@ class ArtifactTest(tf.test.TestCase):
 
     with self.assertRaisesRegex(AttributeError,
                                 "Artifact has no property 'invalid'"):
-      my_artifact.invalid  # pylint: disable=pointless-statement
+      my_artifact.invalid  # noqa: B018
 
   def testStringTypeNameNotAllowed(self):
     with self.assertRaisesRegex(
