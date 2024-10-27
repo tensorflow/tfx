@@ -346,7 +346,7 @@ def tag_output_artifacts_with_version(
   """Tag output artifacts with the current TFX version."""
   if not output_artifacts:
     return
-  for unused_key, artifact_list in output_artifacts.items():
+  for _unused_key, artifact_list in output_artifacts.items():
     for artifact in artifact_list:
       if not artifact.has_custom_property(
           artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY):
