@@ -229,7 +229,7 @@ def tuner_fn(fn_args: tfx.components.FnArgs) -> tfx.components.TunerFnResult:
             datetime.datetime.now().strftime('%Y%m%d%H'))
 
   if _CLOUD_FIT_IMAGE == 'gcr.io/my-project-id/cloud_fit':
-    raise ValueError('Build your own cloud_fit image, ' +
+    raise ValueError('Build your own cloud_fit image, '
                      'default dummy one is used!')
 
   tuner = cloud_tuner.DistributingCloudTuner(
