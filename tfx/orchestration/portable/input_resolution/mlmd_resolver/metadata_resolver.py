@@ -305,7 +305,7 @@ class MetadataResolver:
     if store is None:
       raise ValueError('MetadataStore provided to MetadataResolver is None.')
 
-    artifact_ids_str = ','.join(str(id) for id in artifact_ids)
+    artifact_ids_str = ','.join(str(id) for id in artifact_ids) # noqa: A001
     # If `max_num_hops` is set to 0, we don't need the graph traversal.
     if max_num_hops == 0:
       if not filter_query:
@@ -370,7 +370,7 @@ class MetadataResolver:
         candidate_artifact_ids.update(
             visited_ids[metadata_resolver_utils.NodeType.ARTIFACT]
         )
-      artifact_ids_str = ','.join(str(id) for id in candidate_artifact_ids)
+      artifact_ids_str = ','.join(str(id) for id in candidate_artifact_ids) # noqa: A001
       # Send a call to metadata_store to get filtered downstream artifacts.
       artifacts = store.get_artifacts(
           list_options=mlmd.ListOptions(
@@ -387,7 +387,7 @@ class MetadataResolver:
                 artifact_id_to_artifact[id],
                 artifact_type_by_id[artifact_id_to_artifact[id].type_id],
             )
-            for id in visited_ids[metadata_resolver_utils.NodeType.ARTIFACT]
+            for id in visited_ids[metadata_resolver_utils.NodeType.ARTIFACT] # noqa: A001
             if id in artifact_id_to_artifact
         ]
         if downstream_artifacts:
@@ -594,7 +594,7 @@ class MetadataResolver:
     if store is None:
       raise ValueError('MetadataStore provided to MetadataResolver is None.')
 
-    artifact_ids_str = ','.join(str(id) for id in artifact_ids)
+    artifact_ids_str = ','.join(str(id) for id in artifact_ids) # noqa: A001
     # If `max_num_hops` is set to 0, we don't need the graph traversal.
     if max_num_hops == 0:
       if not filter_query:
@@ -662,7 +662,7 @@ class MetadataResolver:
         candidate_artifact_ids.update(
             visited_ids[metadata_resolver_utils.NodeType.ARTIFACT]
         )
-      artifact_ids_str = ','.join(str(id) for id in candidate_artifact_ids)
+      artifact_ids_str = ','.join(str(id) for id in candidate_artifact_ids) # noqa: A001
       # Send a call to metadata_store to get filtered upstream artifacts.
       artifacts = store.get_artifacts(
           list_options=mlmd.ListOptions(
@@ -679,7 +679,7 @@ class MetadataResolver:
                 artifact_id_to_artifact[id],
                 artifact_type_by_id[artifact_id_to_artifact[id].type_id],
             )
-            for id in visited_ids[metadata_resolver_utils.NodeType.ARTIFACT]
+            for id in visited_ids[metadata_resolver_utils.NodeType.ARTIFACT] # noqa: A001
             if id in artifact_id_to_artifact
         ]
         if upstream_artifacts:

@@ -54,7 +54,7 @@ class DummyArtifact(types.Artifact):
   # noqa: A002
   def __init__(
       self,
-      id: Optional[str] = None,
+      id: Optional[str] = None, # noqa: A001, A002
       uri: Optional[str] = None,
       create_time_since_epoch: Optional[int] = None,
   ):

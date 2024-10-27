@@ -33,7 +33,7 @@ def _get_filesystem(path) -> Type[filesystem.Filesystem]:
           .get_filesystem_for_path(path))
 
 
-def open(path: PathType, mode: str = 'r'):  # noqa: A002
+def open(path: PathType, mode: str = 'r'):  # noqa: A002, A001
   """Open a file at the given path."""
   return _get_filesystem(path).open(path, mode=mode)
 
