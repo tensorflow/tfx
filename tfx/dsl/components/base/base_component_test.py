@@ -28,11 +28,11 @@ from tfx.utils import json_utils
 
 
 class _InputArtifact(types.Artifact):
-  TYPE_NAME = "InputArtifact"
+  TYPE_NAME = "bct.InputArtifact"
 
 
 class _OutputArtifact(types.Artifact):
-  TYPE_NAME = "OutputArtifact"
+  TYPE_NAME = "bct.OutputArtifact"
 
 
 class _BasicComponentSpec(types.ComponentSpec):
@@ -80,7 +80,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertIs(input_channel, component.inputs["input"])
     self.assertIsInstance(component.outputs["output"], types.Channel)
     self.assertEqual(component.outputs["output"].type, _OutputArtifact)
-    self.assertEqual(component.outputs["output"].type_name, "OutputArtifact")
+    self.assertEqual(component.outputs["output"].type_name, "bct.OutputArtifact")
 
   def testBaseNodeNewOverride(self):
     # Test behavior of `BaseNode.__new__` override.
@@ -253,7 +253,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(recovered_component.outputs["output"].type,
                      _OutputArtifact)
     self.assertEqual(recovered_component.outputs["output"].type_name,
-                     "OutputArtifact")
+                     "bct.OutputArtifact")
     self.assertEqual(recovered_component.driver_class, component.driver_class)
 
   def testTaskDependency(self):
