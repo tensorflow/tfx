@@ -185,4 +185,4 @@ class TfxDeprecationWarning(DeprecationWarning):  # pylint: disable=g-bad-except
 
 def warn_deprecated(msg):
   """Convenient method to warn TfxDeprecationWarning."""
-  warnings.warn(msg, TfxDeprecationWarning)
+  warnings.warn(msg, TfxDeprecationWarning, stacklevel=2)

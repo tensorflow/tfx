@@ -414,7 +414,8 @@ class Pipeline(base_node.BaseNode):
           'This is probably due to reusing component from another pipeline '
           'or interleaved pipeline definitions. Make sure each component '
           'belong to exactly one pipeline, and pipeline definitions are '
-          'separated.')
+          'separated.',
+          stacklevel=2)
 
   @property
   def inputs(self) -> Dict[str, Any]:
@@ -507,5 +508,6 @@ def enumerate_implicit_dependencies(
           warnings.warn(
               f'Node {component.id} depends on the output of node'
               f' {upstream_node_id}, but {upstream_node_id} is not included in'
-              ' the components of pipeline. Did you forget to add it?'
+              ' the components of pipeline. Did you forget to add it?',
+              stacklevel=2
           )

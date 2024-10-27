@@ -64,7 +64,9 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
     if config and not isinstance(config, AirflowPipelineConfig):
       warnings.warn(
           'Pass config as a dict type is going to deprecated in 0.1.16. '
-          'Use AirflowPipelineConfig type instead.', PendingDeprecationWarning)
+          'Use AirflowPipelineConfig type instead.',
+          PendingDeprecationWarning,
+          stacklevel=2)
       config = AirflowPipelineConfig(airflow_dag_config=config)
     super().__init__(config)
 
@@ -123,7 +125,7 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
     for k, prop in comp.exec_properties.copy().items():
       if isinstance(prop, RuntimeParameter):
         # Airflow only supports string parameters.
-        if prop.ptype != str:
+        if prop.ptype is not str:
           raise RuntimeError(
               f'RuntimeParameter in Airflow does not support {prop.ptype}. The'
               'only ptype supported is string.')
