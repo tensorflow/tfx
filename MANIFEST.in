@@ -14,3 +14,5 @@ include tfx/proto/*.proto
 recursive-include tfx/orchestration/kubeflow/v2/testdata *
 
 recursive-include tfx/components/testdata *
+
+include tfx/examples/imdb/data/
