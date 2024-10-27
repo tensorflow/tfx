@@ -3803,7 +3803,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
 
     with self._mlmd_cm as mlmd_connection_manager:
       task_queue = tq.TaskQueue()
-      with self.assertRaises(Exception):
+      with self.assertRaises(Exception): # noqa: B017
         pipeline_ops.orchestrate(
             mlmd_connection_manager,
             task_queue,

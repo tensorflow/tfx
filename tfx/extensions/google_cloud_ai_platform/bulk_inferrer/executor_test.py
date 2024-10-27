@@ -235,7 +235,7 @@ class ExecutorTest(tf.test.TestCase):
     mock_runner.create_model_for_aip_prediction_if_not_exist.return_value = True
 
     bulk_inferrer = executor.Executor(self._context)
-    with self.assertRaises(Exception):
+    with self.assertRaises(Exception): # noqa: B017
       bulk_inferrer.Do(input_dict, output_dict, exec_properties)
 
     mock_runner.delete_model_from_aip_if_exists.assert_called_once_with(
