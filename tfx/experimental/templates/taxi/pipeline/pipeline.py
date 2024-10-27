@@ -74,7 +74,7 @@ def create_pipeline(
     # components.append(schema_gen)
 
     # Performs anomaly detection based on statistics and data schema.
-    example_validator = tfx.components.ExampleValidator(  # pylint: disable=unused-variable
+    example_validator = tfx.components.ExampleValidator(  # noqa: F841
         statistics=statistics_gen.outputs['statistics'],
         schema=schema_gen.outputs['schema'])
     # TODO(step 5): (Optional) Uncomment here to add ExampleValidator to the
@@ -164,12 +164,12 @@ def create_pipeline(
         .PUSHER_SERVING_ARGS_KEY:
             ai_platform_serving_args
     }
-    pusher = tfx.extensions.google_cloud_ai_platform.Pusher(**pusher_args)  # pylint: disable=unused-variable
+    pusher = tfx.extensions.google_cloud_ai_platform.Pusher(**pusher_args)  # noqa: F841
   else:
     pusher_args['push_destination'] = tfx.proto.PushDestination(
         filesystem=tfx.proto.PushDestination.Filesystem(
             base_directory=serving_model_dir))
-    pusher = tfx.components.Pusher(**pusher_args)  # pylint: disable=unused-variable
+    pusher = tfx.components.Pusher(**pusher_args)  # noqa: F841
   # TODO(step 6): Uncomment here to add Pusher to the pipeline.
   # components.append(pusher)
 

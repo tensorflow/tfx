@@ -432,7 +432,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
     ):
 
       @component
-      def my_component():  # pylint: disable=unused-variable
+      def my_component():  # noqa: F841
         return None
 
   def testNonKwargFails(self):

@@ -65,13 +65,13 @@ def create_pipeline(
     components.append(schema_gen)
 
     # Performs anomaly detection based on statistics and data schema.
-    example_validator = tfx.components.ExampleValidator(  # pylint: disable=unused-variable
+    example_validator = tfx.components.ExampleValidator(  # noqa: F841
         statistics=statistics_gen.outputs['statistics'],
         schema=schema_gen.outputs['schema'])
     components.append(example_validator)
 
   # Performs transformations and feature engineering in training and serving.
-  transform = tfx.components.Transform(  # pylint: disable=unused-variable
+  transform = tfx.components.Transform(  # noqa: F841
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       preprocessing_fn=preprocessing_fn)
@@ -125,7 +125,7 @@ def create_pipeline(
                           absolute={'value': -1e-10})))
           ])
       ])
-  evaluator = tfx.components.Evaluator(  # pylint: disable=unused-variable
+  evaluator = tfx.components.Evaluator(  # noqa: F841
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
@@ -135,7 +135,7 @@ def create_pipeline(
   # components.append(evaluator)
 
   # Pushes the model to a file destination if check passed.
-  pusher = tfx.components.Pusher(  # pylint: disable=unused-variable
+  pusher = tfx.components.Pusher(  # noqa: F841
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
       push_destination=tfx.proto.PushDestination(

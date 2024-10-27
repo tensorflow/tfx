@@ -104,7 +104,7 @@ class ResolverOpTest(tf.test.TestCase):
 
   def testDefineOp_PropertyDefaultViolatesType(self):
     with self.assertRaises(TypeError):
-      class BadProperty(resolver_op.ResolverOp):  # pylint: disable=unused-variable
+      class BadProperty(resolver_op.ResolverOp):  # noqa: F841
         str_prop = resolver_op.Property(type=str, default=42)
 
   def testOpCall_ReturnsOpNode(self):
