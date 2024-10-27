@@ -112,7 +112,7 @@ def poll_kfp_with_retry(host: str, run_id: str, retry_limit: int,
         continue
 
       raise RuntimeError('Still hit remote error after %s retries: %s' %
-                         (retry_limit, api_err))
+                         (retry_limit, api_err)) from api_err
     else:
       # If get_run succeeded, reset retry_count.
       retry_count = 0

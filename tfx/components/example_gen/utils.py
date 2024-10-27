@@ -271,8 +271,8 @@ def _make_zero_padding_spec_value(spec_full_regex: str, pattern: str,
     width_int = 0
     try:
       width_int = int(width_str)
-    except ValueError:
-      raise ValueError('Width modifier is not a integer: %s' % pattern)
+    except ValueError as e:
+      raise ValueError('Width modifier is not a integer: %s' % pattern) from e
     if width_int <= 0:
       raise ValueError('Width modifier is not positive: %s' % pattern)
     if width_int < len(str(spec_value)):
@@ -377,30 +377,34 @@ def _find_matched_span_version_from_path(
     matched_span_tokens = [result.group(SPAN_PROPERTY_NAME)]
     try:
       matched_span_int = int(matched_span_tokens[0])
-    except ValueError:
+    except ValueError as e:
       raise ValueError('Cannot find %s number from %s based on %s' %
-                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern)
+                       ) from e
   elif is_match_date:
     matched_span_tokens = [
         result.group(name) for name in ['year', 'month', 'day']
     ]
     try:
       matched_span_ints = [int(elem) for elem in matched_span_tokens]
-    except ValueError:
+    except ValueError as e:
       raise ValueError('Cannot find %s number using date from %s based on %s' %
-                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern)
+                       ) from e
     try:
       matched_span_int = date_to_span_number(*matched_span_ints)
-    except ValueError:
-      raise ValueError('Retrieved date is invalid for file: %s' % file_path)
+    except ValueError as e:
+      raise ValueError('Retrieved date is invalid for file: %s' % file_path
+                       ) from e
 
   if is_match_version:
     matched_version = result.group(VERSION_PROPERTY_NAME)
     try:
       matched_version_int = int(matched_version)
-    except ValueError:
+    except ValueError as e:
       raise ValueError('Cannot find %s number from %s based on %s' %
-                       (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
+                       (VERSION_PROPERTY_NAME, file_path, split_regex_pattern)
+                       ) from e
 
   return (matched_span_tokens, matched_span_int, matched_version,
           matched_version_int)
@@ -417,10 +421,10 @@ def _get_spec_width(spec_full_regex: str, spec_name: str,
       width_int = int(width_str)
       if width_int <= 0:
         raise ValueError('Not a positive integer.')
-    except ValueError:
+    except ValueError as e:
       raise ValueError(
           'Width modifier in %s spec is not a positive integer: %s' %
-          (spec_name, split.pattern))
+          (spec_name, split.pattern)) from e
   return width_str
 
 

@@ -391,9 +391,9 @@ class _ExpressionResolver:
       if op.is_custom_property:
         return value.get_custom_property(op.key)
       return value.__getattr__(op.key)
-    except:
+    except Exception as e:
       raise ValueError("ArtifactPropertyOperator failed to find property with "
-                       f"key {op.key}.")
+                       f"key {op.key}.") from e
 
   @_register(placeholder_pb2.Base64EncodeOperator)
   def _resolve_base64_encode_operator(
@@ -514,18 +514,18 @@ class _ExpressionResolver:
         if field.startswith("."):
           try:
             value = getattr(value, field[1:])
-          except AttributeError:
+          except AttributeError as e:
             raise ValueError("While evaluting placeholder proto operator, "
                              f"got unknown proto field {field} on proto of "
-                             f"type {type(value)}.")
+                             f"type {type(value)}.") from e
           continue
         map_key = re.findall(r"\[['\"](.+)['\"]\]", field)
         if len(map_key) == 1:
           try:
             value = value[map_key[0]]
-          except KeyError:
+          except KeyError as e:
             raise ValueError("While evaluting placeholder proto operator, "
-                             f"got unknown map field {field}.")
+                             f"got unknown map field {field}.") from e
           continue
         # Going forward, index access for proto fields should be handled by
         # index op. This code here is kept to avoid breaking existing executor
@@ -534,9 +534,9 @@ class _ExpressionResolver:
         if index and str.isdecimal(index[0]):
           try:
             value = value[int(index[0])]
-          except IndexError:
+          except IndexError as e:
             raise ValueError("While evaluting placeholder proto operator, "
-                             f"got unknown index field {field}.")
+                             f"got unknown index field {field}.") from e
           continue
         raise ValueError(f"Got unsupported proto field path: {field}")
 

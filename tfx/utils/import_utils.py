@@ -152,10 +152,10 @@ def import_func_from_source(source_path: str, fn_name: str) -> Callable:  # pyli
         sys.modules[loader.name] = module
         loader.exec_module(module)
         _tfx_module_finder.register_module(module_name, source_path)
-      except IOError:
+      except IOError as e:
         raise ImportError('{} in {} not found in '
                           'import_func_from_source()'.format(
-                              fn_name, source_path))
+                              fn_name, source_path)) from e
     else:
       logging.info('%s is already loaded, reloading', source_path)
       module_name = _tfx_module_finder.get_module_name_by_path(source_path)

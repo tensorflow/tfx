@@ -100,18 +100,18 @@ class BaseRewriter(abc.ABC):
       raise ValueError('{} failed to perform pre-rewrite validation. Original '
                        'model: {}. Error: {}'.format(self.name,
                                                      str(original_model),
-                                                     str(v)))
+                                                     str(v))) from v
 
     try:
       self._rewrite(original_model, rewritten_model)
     except ValueError as v:
       raise ValueError(
           '{} failed to rewrite model. Original model: {}. Error {}'.format(
-              self.name, str(original_model), str(v)))
+              self.name, str(original_model), str(v))) from v
 
     try:
       self._post_rewrite_validate(rewritten_model)
     except ValueError as v:
       raise ValueError(
           '{} failed to validate rewritten model. Rewritten model: {}. Error {}'
-          .format(self.name, str(rewritten_model), str(v)))
+          .format(self.name, str(rewritten_model), str(v))) from v

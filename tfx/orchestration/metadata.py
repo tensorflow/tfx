@@ -433,14 +433,14 @@ class Metadata:
         absl.logging.debug('Registering an execution type with id %s.' %
                            execution_type_id)
         return execution_type_id
-      except mlmd.errors.AlreadyExistsError:
+      except mlmd.errors.AlreadyExistsError as e:
         # The conflict should not happen as all property value type is STRING.
         warning_str = (
             'Conflicting properties in exec_properties comparing with '
             'existing execution type with the same type name. Existing type: '
             '%s, New type: %s') % (existing_execution_type, execution_type)
         absl.logging.warning(warning_str)
-        raise ValueError(warning_str)
+        raise ValueError(warning_str) from e
 
   def _update_execution_proto(
       self,
