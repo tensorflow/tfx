@@ -14,7 +14,6 @@
 """Tests for Beam Pipeline."""
 
 import os
-import pytest
 import tempfile
 
 import apache_beam as beam
@@ -27,6 +26,7 @@ from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partit
 from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
 
 
+t
 class BeamPipelineTest(tf.test.TestCase):
   """A test for the beam pipeline library."""
 

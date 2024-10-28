@@ -14,7 +14,6 @@
 """Tests for Graph Partitioning."""
 
 import os
-import pytest
 import tempfile
 
 import tensorflow as tf
