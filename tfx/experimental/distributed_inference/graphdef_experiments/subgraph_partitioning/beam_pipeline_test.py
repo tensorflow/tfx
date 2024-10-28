@@ -25,7 +25,11 @@ from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partit
 from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import create_complex_graph
 from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
 
-tf.compat.v1.enable_eager_execution()  # Re-enable eager mode
+@pytest.fixture
+def enable_eager_execution_at_test_end():
+  yield
+  # Re-enable eager mode that create_complex_graph diabled.
+  tf.compat.v1.enable_eager_execution()
 
 class BeamPipelineTest(tf.test.TestCase):
   """A test for the beam pipeline library."""
