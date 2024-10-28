@@ -14,6 +14,7 @@
 """Tests for Beam Pipeline."""
 
 import os
+import pytest
 import tempfile
 
 import apache_beam as beam
