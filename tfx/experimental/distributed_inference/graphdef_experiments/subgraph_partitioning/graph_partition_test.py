@@ -24,12 +24,6 @@ from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partit
 from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
 from google.protobuf import text_format
 
-@pytest.fixture
-def enable_eager_execution_at_test_end():
-  yield
-  # Re-enable eager mode that create_complex_graph diabled.
-  tf.compat.v1.enable_eager_execution()
-
 
 class RemoteOpLayerTest(tf.test.TestCase):
   """A test for the class _RemoteOpLayer."""
