@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.portable.beam_dag_runner."""
 
 
-import pytest
 import os
 from typing import Optional
 
@@ -172,8 +171,6 @@ class _FakeComponentAsDoFn(beam_dag_runner.PipelineNodeAsDoFn):
     _executed_components.append(self._node_id)
 
 
-@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
-"If all tests pass, please remove this mark.")
 class BeamDagRunnerTest(test_case_utils.TfxTest):
 
   def setUp(self):

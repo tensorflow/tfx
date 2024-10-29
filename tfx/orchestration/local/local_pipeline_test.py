@@ -28,7 +28,6 @@ import tempfile
 from typing import Any, List
 
 import absl.testing.absltest
-import pytest
 
 from tfx import types
 from tfx.dsl.compiler import compiler
@@ -182,8 +181,6 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     c = compiler.Compiler()
     return c.compile(test_pipeline)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testSimplePipelineRun(self):
     self.assertEqual(self.RAN_COMPONENTS, [])
 
@@ -191,8 +188,6 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
 
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train', 'Validate'])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testSimplePipelinePartialRun(self):
     self.assertEqual(self.RAN_COMPONENTS, [])
 
@@ -202,8 +197,6 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
 
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train'])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testSimplePipelineRunWithIR(self):
     self.assertEqual(self.RAN_COMPONENTS, [])
 
@@ -211,8 +204,6 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
 
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train', 'Validate'])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testSimplePipelinePartialRunWithIR(self):
     self.assertEqual(self.RAN_COMPONENTS, [])
 

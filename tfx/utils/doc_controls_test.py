@@ -22,8 +22,6 @@ from tfx.utils import doc_controls as tfx_doc_controls
 from tensorflow.tools.docs import doc_controls  # pylint: disable=g-direct-tensorflow-import,g-import-not-at-top
 
 
-@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
-"If all tests pass, please remove this mark.")
 class DocControlsTest(tf.test.TestCase):
 
   def testDocControls(self):
@@ -33,6 +31,8 @@ class DocControlsTest(tf.test.TestCase):
                      doc_controls.do_not_doc_in_subclasses)
 
   def testDocumentSuccess(self):
+    # Clean up EXTRA_DOCS since pytest can import other modules in other tests.
+    tfx_doc_controls.EXTRA_DOCS = dict()
     documented_test_key = tfx_doc_controls.documented('test key', 'test value')
     self.assertEqual(1, len(tfx_doc_controls.EXTRA_DOCS))
     self.assertEqual('test value',
