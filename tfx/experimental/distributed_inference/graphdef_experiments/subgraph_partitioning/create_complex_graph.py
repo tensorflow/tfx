@@ -22,7 +22,8 @@ remote_op_b calls remote_op_a two times, and remote_op_a calls no one.
 
 import tensorflow as tf
 
-tf.compat.v1.disable_eager_execution()  # Disable eager mode
+# The following is commented out, as TF1 support is discontinued.
+# tf.compat.v1.disable_eager_execution()  # Disable eager mode
 
 N = 1000  # number of embeddings
 NDIMS = 16  # dimensionality of embeddings

@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.components.base.base_beam_executor."""
 
 
-import pytest
 import sys
 from typing import Any, Dict, List
 from unittest import mock
@@ -28,6 +27,7 @@ from tfx import types
 from tfx import version
 from tfx.components.statistics_gen.executor import Executor as StatisticsGenExecutor
 from tfx.dsl.components.base import base_beam_executor
+from tfx.utils import name_utils
 
 
 class _TestExecutor(base_beam_executor.BaseBeamExecutor):
@@ -41,9 +41,9 @@ class _TestExecutor(base_beam_executor.BaseBeamExecutor):
 
 class BaseBeamExecutorTest(tf.test.TestCase):
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
-  def testBeamSettings(self):
+  @mock.patch.object(name_utils, 'get_full_name', autospec=True)
+  def testBeamSettings(self, mock_get_full_name):
+    mock_get_full_name.return_value = "_third_party_module._TestExecutor"
     executor_context = base_beam_executor.BaseBeamExecutor.Context(
         beam_pipeline_args=['--runner=DirectRunner'])
     executor = _TestExecutor(executor_context)
@@ -58,6 +58,7 @@ class BaseBeamExecutorTest(tf.test.TestCase):
     ],
                          options.view_as(GoogleCloudOptions).labels)
 
+    mock_get_full_name.return_value = "tfx.components.statistics_gen.executor.Executor"
     executor_context = base_beam_executor.BaseBeamExecutor.Context(
         beam_pipeline_args=['--direct_num_workers=2'])
     executor = StatisticsGenExecutor(executor_context)

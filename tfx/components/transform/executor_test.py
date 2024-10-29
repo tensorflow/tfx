@@ -20,7 +20,6 @@ import re
 import tempfile
 from unittest import mock
 
-import pytest
 
 from absl.testing import parameterized
 import apache_beam as beam
@@ -47,7 +46,6 @@ class _TempPath(types.Artifact):
 
 
 # TODO(b/122478841): Add more detailed tests.
-@pytest.mark.xfail(run=False, reason="Test is flaky.")
 class ExecutorTest(tft_unit.TransformTestCase):
 
   _TEMP_ARTIFACTS_DIR = tempfile.mkdtemp()

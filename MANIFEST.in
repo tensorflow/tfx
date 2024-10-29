@@ -12,3 +12,7 @@ include tfx/proto/*.proto
 # TODO(b/172611374): Consider adding all testdata in the wheel to make test
 # fixture more portable.
 recursive-include tfx/orchestration/kubeflow/v2/testdata *
+
+recursive-include tfx/components/testdata *
+
+include tfx/examples/imdb/data/
