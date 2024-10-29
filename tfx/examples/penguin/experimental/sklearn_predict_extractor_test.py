@@ -16,7 +16,6 @@
 import os
 import pickle
 import pytest
-import tensorflow as tf
 
 import apache_beam as beam
 from apache_beam.testing import util
@@ -183,6 +182,3 @@ class SklearnPredictExtractorTest(tfma.test.TestCase):
     model_path = os.path.join(eval_export_dir, 'model.pkl')
     with open(model_path, 'wb+') as f:
       pickle.dump(model, f)
-
-if __name__ == '__main__':
-  tf.test.main()
