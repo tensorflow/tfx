@@ -98,8 +98,8 @@ class SklearnPredictExtractorTest(tfma.test.TestCase):
 
       util.assert_that(predict_extracts, check_result)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
+  @pytest.mark.xfail(run=False, reason="This is based on experimental implementation,"
+"and the test fails.", strict=True)
   def testMakeSklearnPredictExtractorWithMultiModels(self):
     """Tests that predictions are made from extracts for multiple models."""
     eval_config = tfma.EvalConfig(model_specs=[
