@@ -15,7 +15,9 @@
 
 import base64
 import functools
+import importlib
 import os
+import pytest
 from typing import Any, Optional, TypeVar, Union
 
 import tensorflow as tf
@@ -45,6 +47,12 @@ _UpdateOptions = functools.partial(
 )
 
 _P = TypeVar('_P', bound=message.Message)
+
+
+@pytest.fixture(autouse=True)
+def cleanup_pipeline_info():
+  yield
+  importlib.reload(pipeline_pb2)
 
 
 def resolve(
