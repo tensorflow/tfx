@@ -36,6 +36,13 @@ from google.protobuf import message
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
+
+
+@pytest.fixture(autouse=True,scope="module")
+def clean_up_proto_classes():
+    yield
+    importlib.reload(pipeline_pb2)
+
 _ExecutionInvocation = functools.partial(
     ph.make_proto, execution_invocation_pb2.ExecutionInvocation()
 )
@@ -47,12 +54,6 @@ _UpdateOptions = functools.partial(
 )
 
 _P = TypeVar('_P', bound=message.Message)
-
-
-@pytest.fixture(autouse=True)
-def cleanup_pipeline_info():
-  yield
-  importlib.reload(pipeline_pb2)
 
 
 def resolve(

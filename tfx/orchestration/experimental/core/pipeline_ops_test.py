@@ -126,7 +126,7 @@ class PipelineOpsTest(test_utils.TfxTest, parameterized.TestCase):
       # Initiate a pipeline start.
       with pipeline_ops.initiate_pipeline_start(m, pipeline) as pipeline_state1:
         self.assertProtoPartiallyEquals(
-            pipeline, pipeline_state1.pipeline, ignored_fields=['runtime_spec']
+            str(pipeline), pipeline_state1.pipeline, ignored_fields=['runtime_spec']
         )
         self.assertEqual(
             metadata_store_pb2.Execution.NEW,
