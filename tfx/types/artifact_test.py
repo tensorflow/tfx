@@ -33,7 +33,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 @pytest.fixture(scope="module", autouse=True)
-def cleanup_pipeline_pb():
+def cleanup():
   yield
   importlib.reload(struct_pb2)
 
