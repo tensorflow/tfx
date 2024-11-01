@@ -22,7 +22,6 @@ from absl.testing import parameterized
 from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.distribution_validator import executor
 from tfx.dsl.io import fileio
-from tfx.orchestration.experimental.core import component_generated_alert_pb2
 from tfx.orchestration.experimental.core import constants
 from tfx.proto import distribution_validator_pb2
 from tfx.types import artifact_utils
@@ -215,23 +214,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         }
           """,
           'anomalies_blessed_value': 0,
-          'expected_alerts': (
-              component_generated_alert_pb2.ComponentGeneratedAlertList(
-                  component_generated_alert_list=[
-                      component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                          alert_name=(
-                              '[train_eval][span 2] Feature-level anomalies '
-                              'present'
-                          ),
-                          alert_body=(
-                              '[train_eval][span 2] Feature(s) company, '
-                              'dropoff_census_tract contain(s) anomalies. See '
-                              'Anomalies artifact for more details.'
-                          ),
-                      ),
-                  ]
-              )
-          )
       },
       {
           'testcase_name': 'dataset_constraint',
@@ -255,24 +237,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                   }
                 }""",
           'anomalies_blessed_value': 0,
-          'expected_alerts': (
-              component_generated_alert_pb2.ComponentGeneratedAlertList(
-                  component_generated_alert_list=[
-                      component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                          alert_name=(
-                              '[train_eval][span 2] High num examples in '
-                              'current dataset versus the previous span.'
-                          ),
-                          alert_body=(
-                              '[train_eval][span 2] The ratio of num examples '
-                              'in the current dataset versus the previous span '
-                              'is 2.02094 (up to six significant digits), '
-                              'which is above the threshold 1.'
-                          ),
-                      ),
-                  ]
-              )
-          )
       },
       {
           'testcase_name': 'no_anomalies',
@@ -305,9 +269,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         }
           """,
           'anomalies_blessed_value': 1,
-          'expected_alerts': (
-              component_generated_alert_pb2.ComponentGeneratedAlertList()
-          ),
       },
       {
           'testcase_name': 'custom_anomalies',
@@ -367,23 +328,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         }
           """,
           'anomalies_blessed_value': 0,
-          'expected_alerts': (
-              component_generated_alert_pb2.ComponentGeneratedAlertList(
-                  component_generated_alert_list=[
-                      component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                          alert_name=(
-                              '[train_eval][span 2] Feature-level anomalies '
-                              'present'
-                          ),
-                          alert_body=(
-                              '[train_eval][span 2] Feature(s) company '
-                              'contain(s) anomalies. See Anomalies artifact '
-                              'for more details.'
-                          ),
-                      )
-                  ]
-              )
-          )
       },
   )
   def testAnomaliesGenerated(
@@ -392,7 +336,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
       custom_validation_config,
       expected_anomalies,
       anomalies_blessed_value,
-      expected_alerts,
   ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
@@ -465,27 +408,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         ),
         {'train_eval': anomalies_blessed_value},
     )
-    actual_alerts = (
-        component_generated_alert_pb2.ComponentGeneratedAlertList()
-    )
-    executor_output.execution_properties[
-        constants.COMPONENT_GENERATED_ALERTS_KEY
-    ].proto_value.Unpack(actual_alerts)
-    for alert in expected_alerts.component_generated_alert_list:
-      self.assertEqual(
-          alert.alert_name,
-          actual_alerts.component_generated_alert_list[0].alert_name
-      )
-      if 'Feature-level anomalies present' in alert.alert_name:
-        self.assertIn(
-            'See Anomalies artifact for more details.',
-            actual_alerts.component_generated_alert_list[0].alert_body,
-        )
-      else:
-        self.assertEqual(
-            alert.alert_body,
-            actual_alerts.component_generated_alert_list[0].alert_body
-        )
 
   def testMissBaselineStats(self):
 
@@ -682,19 +604,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         }
       }""", anomalies_pb2.Anomalies())
 
-    expected_alerts = component_generated_alert_pb2.ComponentGeneratedAlertList(
-        component_generated_alert_list=[
-            component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                alert_name=(
-                    '[train_eval][span 3] Feature-level anomalies present'),
-                alert_body=(
-                    '[train_eval][span 3] Feature(s) '
-                    'parent_feature.value_feature contain(s) anomalies. See '
-                    'Anomalies artifact for more details.'),
-            )
-        ],
-    )
-
     # Create stats artifacts with a struct feature.
     for split_dir in ['Split-eval', 'Split-train']:
       full_split_dir = os.path.join(stats_artifact.uri, split_dir)
@@ -751,14 +660,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     distribution_anomalies = anomalies_pb2.Anomalies()
     distribution_anomalies.ParseFromString(distribution_anomalies_bytes)
     self.assertEqualExceptBaseline(expected_anomalies, distribution_anomalies)
-
-    actual_alerts = (
-        component_generated_alert_pb2.ComponentGeneratedAlertList()
-    )
-    executor_output.execution_properties[
-        constants.COMPONENT_GENERATED_ALERTS_KEY
-    ].proto_value.Unpack(actual_alerts)
-    self.assertEqual(actual_alerts, expected_alerts)
 
   @parameterized.named_parameters(
       {
@@ -1099,26 +1000,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     distribution_anomalies.ParseFromString(distribution_anomalies_bytes)
     self.assertEqualExceptBaseline(expected_anomalies, distribution_anomalies)
 
-    expected_alerts = component_generated_alert_pb2.ComponentGeneratedAlertList(
-        component_generated_alert_list=[
-            component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                alert_name=(
-                    '[train_eval][span 4] Feature-level anomalies present'
-                ),
-                alert_body=(
-                    '[train_eval][span 4] Feature(s) first_feature contain(s) '
-                    'anomalies. See Anomalies artifact for more details.'
-                ),
-            ),
-        ]
-    )
-    actual_alerts = (
-        component_generated_alert_pb2.ComponentGeneratedAlertList()
-    )
-    executor_output.execution_properties[
-        constants.COMPONENT_GENERATED_ALERTS_KEY
-    ].proto_value.Unpack(actual_alerts)
-    self.assertEqual(actual_alerts, expected_alerts)
 
   def testAddOutput(self):
     source_data_dir = os.path.join(
@@ -1193,27 +1074,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     )
     self.assertTrue(fileio.exists(distribution_anomalies_path))
 
-    expected_alerts = component_generated_alert_pb2.ComponentGeneratedAlertList(
-        component_generated_alert_list=[
-            component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                alert_name=(
-                    '[train_eval][span 5] Feature-level anomalies present'
-                ),
-                alert_body=(
-                    '[train_eval][span 5] Feature(s) '
-                    'parent_feature.value_feature contain(s) anomalies. See '
-                    'Anomalies artifact for more details.'
-                ),
-            ),
-        ]
-    )
-    actual_alerts = (
-        component_generated_alert_pb2.ComponentGeneratedAlertList()
-    )
-    executor_output.execution_properties[
-        constants.COMPONENT_GENERATED_ALERTS_KEY
-    ].proto_value.Unpack(actual_alerts)
-    self.assertEqual(actual_alerts, expected_alerts)
 
   def testUseArtifactDVConfig(self):
     source_data_dir = os.path.join(

@@ -21,12 +21,12 @@ from typing import Callable, Mapping, Optional, Sequence, Union
 
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
-from tfx.orchestration.experimental.core import constants as orchestration_constants
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import filter_query_builder as q
 
 import ml_metadata as mlmd
 
+_TIME_SKEW_DATE = 1704153600000  # Jan 02, 2024 12:00:00 AM
 
 _Metadata = Union[mlmd.proto.Artifact, mlmd.proto.Execution, mlmd.proto.Context]
 _ArtifactState = mlmd.proto.Artifact.State
@@ -209,7 +209,7 @@ def get_live_output_artifacts_of_node_by_output_key(
   # Apply time skew for the artifacts created before cl/574333630 is rolled out.
   # TODO(b/275231956): Remove the following 2 lines if we are sure that there
   # are no more artifacts older than the timestamp.
-  if min_live_artifact_create_time < orchestration_constants.TIME_SKEW_DATE:
+  if min_live_artifact_create_time < _TIME_SKEW_DATE:
     min_live_artifact_create_time -= 24 * 3600 * 1000
 
   executions_ordered_by_desc_creation_time = get_node_executions(
