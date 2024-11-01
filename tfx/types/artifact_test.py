@@ -15,6 +15,8 @@
 
 import gc
 import json
+import importlib
+import pytest
 import textwrap
 from unittest import mock
 
@@ -28,6 +30,12 @@ from tfx.utils import json_utils
 from google.protobuf import struct_pb2
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup():
+  yield
+  importlib.reload(struct_pb2)
 
 
 Dataset = system_artifacts.Dataset

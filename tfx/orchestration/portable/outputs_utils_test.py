@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.output_utils."""
 
-import pytest
 import os
 from unittest import mock
 
@@ -251,8 +250,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
   @parameterized.parameters(
       (pipeline_pb2.Pipeline.SYNC, 'test_pipeline:test_run_0:test_node:1'),
       (pipeline_pb2.Pipeline.ASYNC, 'test_pipeline:test_node:1'))
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGenerateOutputArtifacts(self, exec_mode, artifact_name_prefix):
     output_artifacts = self._output_resolver(
         exec_mode).generate_output_artifacts(1)
@@ -391,8 +388,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertRegex(tmp_dir,
                      '.*/test_node/.system/executor_execution/1/.temp/')
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testMakeClearAndRemoveOutputDirs(self):
     output_artifacts = self._output_resolver().generate_output_artifacts(1)
     outputs_utils.make_output_dirs(output_artifacts)
@@ -415,8 +410,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           continue
         self.assertFalse(fileio.exists(artifact.uri))
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testMakeOutputDirsArtifactAlreadyExists(self):
     output_artifacts = self._output_resolver().generate_output_artifacts(1)
     outputs_utils.make_output_dirs(output_artifacts)
@@ -442,8 +435,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
           with fileio.open(os.path.join(artifact.uri, 'output'), 'r') as f:
             self.assertEqual(f.read(), 'test')
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testOmitLifeCycleManagementForExternalArtifact(self):
     """Test that it omits lifecycle management for external artifacts."""
     external_artifacts = self._output_resolver().generate_output_artifacts(1)
@@ -548,8 +539,6 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(actual_bcl_dir, expected_bcl_dir)
     self.assertTrue(fileio.exists(actual_bcl_dir))
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testIntermediateArtifactState(self):
     pipeline_node = text_format.Parse(
         """

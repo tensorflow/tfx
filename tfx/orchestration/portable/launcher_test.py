@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.launcher."""
 
-import pytest
 import contextlib
 import copy
 import os
@@ -490,8 +489,6 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLauncher_PublishingNewArtifactsAndUseCache(self):
     # In this test case, there are two executions:
     # In the first one,trainer reads the fake upstream outputs and publish
@@ -578,8 +575,6 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLauncher_CacheIsSupportedForNodeWithNoOutput(self):
     # Even though a node has no output at all, the launcher should treat the
     # second execution as CACHED as long as the cache context is the same.
@@ -639,8 +634,6 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLauncher_CacheDisabled(self):
     # In this test case, there are two executions:
     # In the first one,trainer reads the fake upstream outputs and publish
@@ -757,8 +750,6 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLauncher_ReEntry(self):
     # Some executors or runtime environment may reschedule the launcher job
     # before the launcher job can publish any results of the execution to MLMD.
@@ -830,8 +821,6 @@ class LauncherTest(test_case_utils.TfxTest):
     execution_preparation_result = third_test_launcher._prepare_execution()
     self.assertFalse(execution_preparation_result.is_execution_needed)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLauncher_ToleratesDoubleCleanup(self):
     # Some executors or runtime environment may delete stateful_working_dir,
     # tmp_dir and unexpectedly. The launcher should handle such cases gracefully
@@ -895,8 +884,6 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLauncher_ExecutionFailed(self):
     # In the case that the executor failed and raises an execption.
     # An Execution will be published.
@@ -916,8 +903,6 @@ class LauncherTest(test_case_utils.TfxTest):
     with self.assertRaises(FakeError):
       _ = test_launcher.launch()
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLauncher_ExecutionFailedViaReturnCode(self):
     # In the case that the executor failed and raises an execption.
     # An Execution will be published.
@@ -965,8 +950,6 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLauncher_with_CustomDriver_NewSpan(self):
     self.reloadPipelineWithNewRunId()
     test_launcher = launcher.Launcher(
@@ -1019,8 +1002,6 @@ class LauncherTest(test_case_utils.TfxTest):
           ],
       )
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testLauncher_with_CustomDriver_ExistingSpan(self):
     LauncherTest.fakeExampleGenOutput(self._mlmd_connection, self._example_gen,
                                       2, 1)

@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.portable.partial_run_utils."""
 
 
-import pytest
 from collections.abc import Sequence
 from typing import Dict, List, Mapping, Optional, Set, Tuple, Union
 from unittest import mock
@@ -760,8 +759,6 @@ class PartialRunTest(absltest.TestCase):
         result_artifact.read()
         self.assertEqual(result_artifact.value, exp_result)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testArtifactRecyler_MultiplePipelines(self):
     """Tests that ArtifactRecyler works with multiple pipelines."""
     load = Load(start_num=1)
@@ -806,8 +803,6 @@ class PartialRunTest(absltest.TestCase):
           artifact_recyler._get_base_pipeline_run_context().name,
       )
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testSnapshot_removeFirstNode(self):
     """Tests that partial run with the first node removed works."""
     ############################################################################
@@ -912,8 +907,6 @@ class PartialRunTest(absltest.TestCase):
     ############################################################################
     self.assertResultEqual(pipeline_pb_run_2, 6)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testReusePipelineArtifacts_twoIndependentSubgraphs(self):
     """Tests a sequence of partial runs with independent sub-graphs."""
     ############################################################################
@@ -1169,8 +1162,6 @@ class PartialRunTest(absltest.TestCase):
               pipeline_run_contexts['run_3'], pipeline_run_contexts['run_4']
           ])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testReusePipelineArtifacts_preventInconsistency(self):
     """Tests that a tricky sequence of partial runs raises an error."""
     ############################################################################
@@ -1366,8 +1357,6 @@ class PartialRunTest(absltest.TestCase):
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_5)
     self.assertResultEqual(pipeline_pb_run_5, 5)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testNonExistentBaseRunId_lookupError(self):
     """Raise error if user provides non-existent base_run_id."""
     load = Load(start_num=1)
@@ -1391,8 +1380,6 @@ class PartialRunTest(absltest.TestCase):
                                 'pipeline_run_id .* not found in MLMD.'):
       beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testNonExistentNodeId_lookupError(self):
     """Raise error if user provides non-existent pipeline_run_id or node_id."""
     load = Load(start_num=1)
@@ -1417,8 +1404,6 @@ class PartialRunTest(absltest.TestCase):
                                 'pipeline_run_id .* not found in MLMD.'):
       beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testNoPreviousSuccessfulExecution_lookupError(self):
     """Raise error if user tries to reuse node w/o any successful Executions."""
     load_fail = LoadFail(start_num=1)
@@ -1443,8 +1428,6 @@ class PartialRunTest(absltest.TestCase):
                                 'No previous successful executions found'):
       beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testIdempotence_retryReusesRegisteredCacheExecution(self):
     """Ensures that there is only one registered cache execution.
 
@@ -1512,8 +1495,6 @@ class PartialRunTest(absltest.TestCase):
               ]))
       self.assertLen(new_cache_executions, 1)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testIdempotence_retryReusesPreviousSuccessfulCacheExecution(self):
     """Ensures idempotence.
 
@@ -1564,8 +1545,6 @@ class PartialRunTest(absltest.TestCase):
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
     self.assertResultEqual(pipeline_pb_run_2, 6)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testReusePipelineArtifacts_missingNewRunId_error(self):
     """If pipeline IR has no run id, and user does not provide it, fail."""
     ############################################################################
@@ -1636,8 +1615,6 @@ class PartialRunTest(absltest.TestCase):
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
     self.assertResultEqual(pipeline_pb_run_2, 6)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testReusePipelineArtifacts_inconsistentNewRunId_error(self):
     """If pipeline IR's run_id differs from user-provided run_id, fail."""
     ############################################################################
@@ -1698,8 +1675,6 @@ class PartialRunTest(absltest.TestCase):
             m, pipeline_pb_run_2, base_run_id='run_1',
             new_run_id='run_3')  # <-- user error here
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testReusePipelineArtifacts_SeparateBranches(self):
     """Tests partial run with separate branches."""
     ############################################################################
