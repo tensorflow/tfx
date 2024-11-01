@@ -14,6 +14,8 @@
 """Tests for tfx.orchestration.data_types_utils."""
 
 
+import importlib
+import pytest
 from absl.testing import parameterized
 from tfx import types
 from tfx.orchestration import data_types_utils
@@ -30,6 +32,12 @@ from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
 
 _DEFAULT_ARTIFACT_TYPE_NAME = 'Examples'
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup():
+  yield
+  importlib.reload(struct_pb2)
 
 
 def _create_artifact(uri: str) -> types.Artifact:

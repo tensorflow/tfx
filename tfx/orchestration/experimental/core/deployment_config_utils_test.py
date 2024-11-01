@@ -13,15 +13,24 @@
 # limitations under the License.
 """Tests for tfx.orchestration.experimental.core.deployment_config_utils."""
 
+import importlib
+import pytest
 import tensorflow as tf
 from tfx.orchestration.experimental.core import deployment_config_utils
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.proto.orchestration import platform_config_pb2
 
+from google.protobuf import struct_pb2
 from google.protobuf import message
 
 _NODE_ID = 'test-node'
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup():
+  yield
+  importlib.reload(struct_pb2)
 
 
 def make_deployment_config(
