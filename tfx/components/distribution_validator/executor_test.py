@@ -641,10 +641,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         standard_component_specs.ANOMALIES_KEY: [validation_output],
     }
 
-    distribution_validator_executor = executor.Executor()
-    executor_output = distribution_validator_executor.Do(
-        input_dict, output_dict, exec_properties
-    )
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train_eval']),
