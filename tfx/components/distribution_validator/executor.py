@@ -24,7 +24,6 @@ from tfx import types
 from tfx.components.distribution_validator import utils
 from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.dsl.components.base import base_executor
-from tfx.orchestration.experimental.core import constants
 from tfx.proto import distribution_validator_pb2
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
@@ -33,7 +32,6 @@ from tfx.utils import json_utils
 from tfx.utils import monitoring_utils
 from tfx.utils import writer_utils
 
-from google.protobuf import any_pb2
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2

@@ -22,7 +22,6 @@ from absl.testing import parameterized
 from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.distribution_validator import executor
 from tfx.dsl.io import fileio
-from tfx.orchestration.experimental.core import constants
 from tfx.proto import distribution_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -381,9 +380,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     }
 
     distribution_validator_executor = executor.Executor()
-    executor_output = distribution_validator_executor.Do(
-        input_dict, output_dict, exec_properties
-    )
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train_eval']),
@@ -623,11 +619,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     validation_output = standard_artifacts.ExampleAnomalies()
     validation_output.uri = os.path.join(output_data_dir, 'output')
 
-    input_dict = {
-        standard_component_specs.STATISTICS_KEY: [stats_artifact],
-        standard_component_specs.BASELINE_STATISTICS_KEY: [stats_artifact],
-    }
-
     # The analyzed splits are set for this test to get a single result proto.
     exec_properties = {
         # List needs to be serialized before being passed into Do function.
@@ -636,11 +627,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY:
             validation_config,
     }
-
-    output_dict = {
-        standard_component_specs.ANOMALIES_KEY: [validation_output],
-    }
-
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train_eval']),
@@ -973,9 +959,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     }
 
     distribution_validator_executor = executor.Executor()
-    executor_output = distribution_validator_executor.Do(
-        input_dict, output_dict, exec_properties
-    )
 
     self.assertEqual(
         artifact_utils.encode_split_names(['train_eval']),
@@ -1061,9 +1044,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     }
 
     distribution_validator_executor = executor.Executor()
-    executor_output = distribution_validator_executor.Do(
-        input_dict, output_dict, exec_properties
-    )
 
     distribution_anomalies_path = os.path.join(
         anomalies_output.uri, 'SplitPair-train_eval', 'SchemaDiff.pb'

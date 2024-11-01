@@ -23,7 +23,6 @@ from tfx.components.example_validator import labels
 from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.components.util import value_utils
 from tfx.dsl.components.base import base_executor
-from tfx.orchestration.experimental.core import constants
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
@@ -31,7 +30,6 @@ from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import writer_utils
 
-from google.protobuf import any_pb2
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 
 # Default file name for anomalies output.

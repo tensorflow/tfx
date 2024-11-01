@@ -20,7 +20,6 @@ from absl.testing import parameterized
 from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.example_validator import executor
 from tfx.dsl.io import fileio
-from tfx.orchestration.experimental.core import constants
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -28,7 +27,6 @@ from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 
-from google.protobuf import any_pb2
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 
