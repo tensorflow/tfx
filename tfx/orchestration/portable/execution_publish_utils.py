@@ -13,15 +13,12 @@
 # limitations under the License.
 """Portable library for registering and publishing executions."""
 
-import logging
 from typing import Mapping, Optional, Sequence
 import uuid
 
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import task as task_lib
-from tfx.orchestration import datahub_utils
 from tfx.orchestration.portable import merge_utils
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
@@ -79,7 +76,6 @@ def publish_succeeded_execution(
     contexts: Sequence[metadata_store_pb2.Context],
     output_artifacts: Optional[typing_utils.ArtifactMultiMap] = None,
     executor_output: Optional[execution_result_pb2.ExecutorOutput] = None,
-    task: Optional[task_lib.ExecNodeTask] = None,
 ) -> tuple[
     Optional[typing_utils.ArtifactMultiMap],
     metadata_store_pb2.Execution,
@@ -90,9 +86,6 @@ def publish_succeeded_execution(
   will also merge the executor produced info into system generated output
   artifacts. The `last_know_state` of the execution will be changed to
   `COMPLETE` and the output artifacts will be marked as `LIVE`.
-  This method will also publish the execution and its input/output artifacts to
-  Datahub in best-effort mode if `enable_datahub_logging` in
-  TflexProjectPlatformConfig is set to True.
 
   Args:
     metadata_handle: A handler to access MLMD.
@@ -108,7 +101,6 @@ def publish_succeeded_execution(
       the system-generated output artifacts dict. 2. An update to a certain key
       should contains all the artifacts under that key. 3. An update to an
       artifact should not change the type of the artifact.
-    task: the task that just completed for the given node execution.
 
   Returns:
     The tuple containing the maybe updated output_artifacts (note that only
@@ -117,14 +109,7 @@ def publish_succeeded_execution(
     execution.
   Raises:
     RuntimeError: if the executor output to a output channel is partial.
-    ValueError: if `execution_id` is inconsistent with `task`.execution_id.
   """
-  if task and task.execution_id != execution_id:
-    raise ValueError(
-        f'Task execution_id {task.execution_id} does not match MLMD execution'
-        f' id {execution_id}'
-    )
-
   unpacked_output_artifacts = (
       None  # pylint: disable=g-long-ternary
       if executor_output is None
@@ -170,13 +155,6 @@ def publish_succeeded_execution(
       contexts,
       output_artifacts=output_artifacts_to_publish,
   )
-
-  try:
-    datahub_utils.log_node_execution(
-        execution, task, output_artifacts_to_publish
-    )
-  except Exception:  # pylint: disable=broad-except
-    logging.exception('Failed to log node execution.')
 
   return output_artifacts_to_publish, execution
 
