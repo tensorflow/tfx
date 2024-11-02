@@ -63,7 +63,7 @@ class SubPipelineTaskScheduler(
           self._pipeline_uid.pipeline_id,
           pipeline_run_id=self._pipeline_run_id)
     except status_lib.StatusNotOkError as e:
-      logging.info(
+      logging.exception(
           'Unable to load run %s for %s, probably new run. %s',
           self._pipeline_run_id,
           self._pipeline_uid.pipeline_id,
@@ -131,13 +131,12 @@ class SubPipelineTaskScheduler(
     )
 
   def schedule(self) -> task_scheduler.TaskSchedulerResult:
-    view = None
-    if  self._cancel.is_set() or(view := self._get_pipeline_view()) is not None:
+    if self._cancel.is_set() or self._get_pipeline_view() is not None:
       logging.info(
           'Cancel was set OR pipeline view was not none, skipping start,'
           ' cancel.is_set(): %s, view exists: %s',
           self._cancel.is_set(),
-          view is not None,
+          self._get_pipeline_view() is not None,
       )
     else:
       try:
