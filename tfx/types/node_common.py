@@ -47,8 +47,8 @@ class _PropertyDictWrapper(json_utils.Jsonable):
       key = self._compat_aliases[key]
     try:
       return self._data[key]
-    except KeyError:
-      raise AttributeError
+    except KeyError as e:
+      raise AttributeError from e
 
   def __repr__(self):
     return repr(self._data)

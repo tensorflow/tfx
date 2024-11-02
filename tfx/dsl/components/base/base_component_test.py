@@ -60,7 +60,7 @@ class _BasicComponent(base_component.BaseComponent):
   def __init__(self,
                spec: types.ComponentSpec = None,
                folds: int = None,
-               input: types.Channel = None):  # pylint: disable=redefined-builtin
+               input: types.Channel = None):  # noqa: A002
     if not spec:
       output = types.Channel(type=_OutputArtifact)
       spec = _BasicComponentSpec(folds=folds, input=input, output=output)

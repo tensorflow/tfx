@@ -231,7 +231,7 @@ class CAIPTfxPredictionClient(AbstractPredictionClient):
         logging.warn('Model version %s already exists', model_version_name)
       else:
         raise RuntimeError('Creating model version to AI Platform failed: {}'
-                           .format(e))
+                           .format(e)) from e
 
     if set_default:
       # Set the new version as default.
@@ -279,7 +279,8 @@ class CAIPTfxPredictionClient(AbstractPredictionClient):
         logging.warn('Model %s already exists', model_name)
         result = False
       else:
-        raise RuntimeError('Creating model to AI Platform failed: {}'.format(e))
+        raise RuntimeError('Creating model to AI Platform failed: {}'.format(e)
+                           ) from e
     return result
 
   def _wait_for_operation(self, operation: Dict[str, Any],

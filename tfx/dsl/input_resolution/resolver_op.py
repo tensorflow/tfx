@@ -228,7 +228,7 @@ class Property(Generic[_T]):
 
   def __init__(
       self, *,
-      type: Type[_T],  # pylint: disable=redefined-builtin
+      type: Type[_T],  # noqa: A002
       default: Union[_T, _Empty] = _EMPTY):
     self._type = type
     self._required = default is _EMPTY

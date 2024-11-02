@@ -51,10 +51,10 @@ class DummyArtifact(types.Artifact):
       'version': tfx_artifact.Property(type=tfx_artifact.PropertyType.INT),
   }
 
-  # pylint: disable=redefined-builtin
+  # noqa: A002
   def __init__(
       self,
-      id: Optional[str] = None,
+      id: Optional[str] = None, # noqa: A001, A002
       uri: Optional[str] = None,
       create_time_since_epoch: Optional[int] = None,
   ):
@@ -149,7 +149,7 @@ class FakeComponent(base_component.BaseComponent):
 
   DRIVER_CLASS = base_driver.BaseDriver
 
-  def __init__(self, id: str, inputs=None, exec_properties=None):  # pylint: disable=redefined-builtin
+  def __init__(self, id: str, inputs=None, exec_properties=None):  # noqa: A002
     super().__init__(spec=FakeSpec())
     self.with_id(id)
 

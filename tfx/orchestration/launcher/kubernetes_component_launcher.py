@@ -118,7 +118,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
       except client.rest.ApiException as e:
         raise RuntimeError(
             'Failed to created container executor pod!\nReason: %s\nBody: %s' %
-            (e.reason, e.body))
+            (e.reason, e.body)) from e
 
     # Wait up to 300 seconds for the pod to move from pending to another status.
     logging.info('Waiting for pod "%s:%s" to start.', namespace, pod_name)
@@ -141,7 +141,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     except client.rest.ApiException as e:
       raise RuntimeError(
           'Failed to stream the logs from the pod!\nReason: %s\nBody: %s' %
-          (e.reason, e.body))
+          (e.reason, e.body)) from e
 
     for log in logs:
       logging.info(log.decode().rstrip('\n'))

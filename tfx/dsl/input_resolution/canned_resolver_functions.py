@@ -744,7 +744,7 @@ def pick(channel: channel_types.BaseChannel, i: int, /):
   return _slice(channel, start=i, stop=(i + 1) or None, min_count=1)
 
 
-def slice(  # pylint: disable=redefined-builtin
+def slice(  # noqa: A002, A001
     channel: channel_types.BaseChannel,
     /,
     start: Optional[int] = None,

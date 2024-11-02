@@ -82,7 +82,5 @@ class ImportUtilsTest(tf.test.TestCase):
           """)
     fn_2 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
     self.assertEqual(11, fn_2([1, 2, 3, 4]))
-    fn_3 = getattr(
-        importlib.reload(sys.modules['user_module_%d' % count_registered]),
-        'test_fn')
+    fn_3 = importlib.reload(sys.modules['user_module_%d' % count_registered]).test_fn
     self.assertEqual(11, fn_3([1, 2, 3, 4]))

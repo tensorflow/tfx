@@ -94,7 +94,7 @@ class SklearnPredictExtractorTest(tfma.test.TestCase):
             self.assertEqual(item['labels'].shape, item['predictions'].shape)
 
         except AssertionError as err:
-          raise util.BeamAssertException(err)
+          raise util.BeamAssertException(err) from err
 
       util.assert_that(predict_extracts, check_result)
 
@@ -145,7 +145,7 @@ class SklearnPredictExtractorTest(tfma.test.TestCase):
             self.assertIn('model2', item['predictions'][0])
 
         except AssertionError as err:
-          raise util.BeamAssertException(err)
+          raise util.BeamAssertException(err) from err
 
       util.assert_that(predict_extracts, check_result)
 

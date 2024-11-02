@@ -45,7 +45,8 @@ from google.protobuf import message
 # where ComponentSpecIntf is an interface that gives access to the few things
 # that Placeholder::encode() needs from the spec. TODO(pke) Implement.
 # TODO(b/191610358): Reduce the number of circular type-dependencies.
-types = Any  # To resolve circular dependency caused by type annotations.
+# To resolve circular dependency caused by type annotations.
+types = Any  # noqa: F811
 
 # TODO(b/190409099): Support RuntimeParameter.
 ValueType = Union[int, float, str, bool]

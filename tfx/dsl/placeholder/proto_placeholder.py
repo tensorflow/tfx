@@ -509,11 +509,11 @@ class _DescriptorCollector:
         _purge_types(name_prefix, message_descriptor)  # Step 2
       _remove_unless(
           file_descriptor.message_type,
-          lambda m: f'{name_prefix}.{m.name}' in self._keep_types,  # pylint: disable=cell-var-from-loop
+          lambda m, name_prefix=name_prefix: f'{name_prefix}.{m.name}' in self._keep_types,  # pylint: disable=cell-var-from-loop
       )
       _remove_unless(
           file_descriptor.enum_type,
-          lambda e: f'{name_prefix}.{e.name}' in self._keep_types,  # pylint: disable=cell-var-from-loop
+          lambda e, name_prefix=name_prefix: f'{name_prefix}.{e.name}' in self._keep_types,  # pylint: disable=cell-var-from-loop
       )
 
     # Step 4: Remove file descriptors that became empty. Remove declared

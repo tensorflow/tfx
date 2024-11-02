@@ -109,7 +109,7 @@ class ValueArtifactTest(tf.test.TestCase):
 
     with self.assertRaisesRegex(
         ValueError, 'The artifact value has not yet been read from storage.'):
-      instance.value  # pylint: disable=pointless-statement
+      instance.value  # noqa: B018
 
     instance.read()
     instance.value = _STRING_VALUE

@@ -45,7 +45,7 @@ class MlmdConnectionManagerTest(tf.test.TestCase):
   def test_unusable_without_enter(self):
     cm = mlmd_cm.MLMDConnectionManager.fake()
     with self.assertRaisesRegex(RuntimeError, 'not entered yet'):
-      cm.primary_mlmd_handle  # pylint: disable=pointless-statement
+      cm.primary_mlmd_handle  # noqa: B018
 
   def test_enter_synced_with_handle(self):
     cm = mlmd_cm.MLMDConnectionManager.fake()
@@ -54,7 +54,7 @@ class MlmdConnectionManagerTest(tf.test.TestCase):
       self.assertIsNotNone(handle.store)
     with self.assertRaisesRegex(
         RuntimeError, 'Metadata object is not in enter state'):
-      handle.store  # pylint: disable=pointless-statement
+      handle.store  # noqa: B018
 
   def test_multiple_enterable(self):
     cm = mlmd_cm.MLMDConnectionManager.fake()
@@ -64,4 +64,4 @@ class MlmdConnectionManagerTest(tf.test.TestCase):
       m2 = cm.primary_mlmd_handle
       self.assertIs(m1, m2)
     with self.assertRaises(RuntimeError):
-      cm.primary_mlmd_handle  # pylint: disable=pointless-statement
+      cm.primary_mlmd_handle  # noqa: B018

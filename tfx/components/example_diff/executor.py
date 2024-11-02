@@ -175,7 +175,11 @@ class Executor(base_beam_executor.BaseBeamExecutor):
         logging.info('Processing split pair %s', split_pair)
         # pylint: disable=cell-var-from-loop
         @beam.ptransform_fn
-        def _iteration(p):
+        def _iteration(p,
+                       test_tfxio=test_tfxio,
+                       base_tfxio=base_tfxio,
+                       split_pair=split_pair
+        ):
           base_examples = (
               p | 'TFXIORead[base]' >> test_tfxio.RawRecordBeamSource()
               | 'Parse[base]' >> beam.Map(_parse_example))

@@ -14,7 +14,7 @@
 """Docker component launcher which launches a container in docker environment ."""
 
 import collections
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, Optional, cast
 
 from absl import logging
 from kubernetes import client
@@ -117,7 +117,7 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
       except client.rest.ApiException as e:
         raise RuntimeError(
             'Failed to created container executor pod!\nReason: %s\nBody: %s' %
-            (e.reason, e.body))
+            (e.reason, e.body)) from e
 
     # Wait up to 300 seconds for the pod to move from pending to another status.
     logging.info('Waiting for pod "%s:%s" to start.', namespace, pod_name)
@@ -140,7 +140,7 @@ class KubernetesExecutorOperator(base_executor_operator.BaseExecutorOperator):
     except client.rest.ApiException as e:
       raise RuntimeError(
           'Failed to stream the logs from the pod!\nReason: %s\nBody: %s' %
-          (e.reason, e.body))
+          (e.reason, e.body)) from e
 
     for log in logs:
       logging.info(log.decode().rstrip('\n'))

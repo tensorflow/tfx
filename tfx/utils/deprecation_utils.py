@@ -36,7 +36,7 @@ def _should_warn(func_or_class, warn_once=True):
 
 
 def _validate_callable(func):
-  if not hasattr(func, '__call__'):
+  if not callable(func):
     raise ValueError('%s passed to is not a function for deprecation.' %
                      (func,))
 
@@ -185,4 +185,4 @@ class TfxDeprecationWarning(DeprecationWarning):  # pylint: disable=g-bad-except
 
 def warn_deprecated(msg):
   """Convenient method to warn TfxDeprecationWarning."""
-  warnings.warn(msg, TfxDeprecationWarning)
+  warnings.warn(msg, TfxDeprecationWarning, stacklevel=2)

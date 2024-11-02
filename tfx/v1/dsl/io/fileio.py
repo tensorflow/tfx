@@ -22,7 +22,7 @@ from tfx.dsl.io.fileio import listdir
 from tfx.dsl.io.fileio import makedirs
 from tfx.dsl.io.fileio import mkdir
 from tfx.dsl.io.fileio import NotFoundError
-from tfx.dsl.io.fileio import open  # pylint: disable=redefined-builtin
+from tfx.dsl.io.fileio import open  # noqa: A002
 from tfx.dsl.io.fileio import PathType
 from tfx.dsl.io.fileio import remove
 from tfx.dsl.io.fileio import rename

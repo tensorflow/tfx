@@ -67,7 +67,7 @@ class _BasicComponentSpec(ComponentSpec):
 
 
 class ComponentSpecTest(tf.test.TestCase):
-  # pylint: disable=unused-variable
+  # noqa: F841
 
   def testComponentSpec_Empty(self):
 

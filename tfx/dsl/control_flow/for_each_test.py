@@ -88,8 +88,8 @@ class ForEachTest(test_case_utils.TfxTest):
     with self.subTest('Not using at all'):
       with self.assertRaises(ValueError):
         a = A()
-        with for_each.ForEach(a.outputs['aa']) as aa:  # pylint: disable=unused-variable
-          b = B()  # aa is not used. # pylint: disable=unused-variable
+        with for_each.ForEach(a.outputs['aa']) as aa:  # noqa: F841
+          b = B()  # aa is not used. # noqa: F841
 
     with self.subTest('Source channel is not a loop variable.'):
       with self.assertRaises(ValueError):
@@ -116,9 +116,9 @@ class ForEachTest(test_case_utils.TfxTest):
     a = A()
     b = B()
     with for_each.ForEach(a.outputs['aa']) as aa1:
-      c1 = C(aa=aa1, bb=b.outputs['bb'])  # pylint: disable=unused-variable
+      c1 = C(aa=aa1, bb=b.outputs['bb'])  # noqa: F841
     with for_each.ForEach(a.outputs['aa']) as aa2:
-      c2 = C(aa=aa2, bb=b.outputs['bb'])  # pylint: disable=unused-variable
+      c2 = C(aa=aa2, bb=b.outputs['bb'])  # noqa: F841
 
     context1 = dsl_context_registry.get().get_contexts(c1)[-1]
     context2 = dsl_context_registry.get().get_contexts(c2)[-1]

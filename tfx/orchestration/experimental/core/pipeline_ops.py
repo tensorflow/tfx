@@ -187,7 +187,7 @@ def initiate_pipeline_start(
     except ValueError as e:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT, message=str(e)
-      )
+      ) from e
     else:
       # Find all subpipelines in the parent pipeline, which we are caching.
       to_process = collections.deque([])
@@ -246,11 +246,11 @@ def initiate_pipeline_start(
     except ValueError as e:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT, message=str(e)
-      )
+      ) from e
     except LookupError as e:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
-      )
+      ) from e
   env.get_env().prepare_orchestrator_for_pipeline_run(pipeline)
   return pstate.PipelineState.new(
       mlmd_handle, pipeline, pipeline_run_metadata, reused_pipeline_view
@@ -714,7 +714,7 @@ def delete_pipeline_run(
   except LookupError as e:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.NOT_FOUND, message=str(e)
-    )
+    ) from e
 
 
 @_pipeline_op(lock=False)
@@ -985,7 +985,7 @@ def resume_pipeline(
   except ValueError as e:
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.INVALID_ARGUMENT, message=str(e)
-    )
+    ) from e
   if pipeline.runtime_spec.HasField('snapshot_settings'):
     try:
       partial_run_utils.snapshot(
@@ -994,11 +994,11 @@ def resume_pipeline(
     except ValueError as e:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.INVALID_ARGUMENT, message=str(e)
-      )
+      ) from e
     except LookupError as e:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.FAILED_PRECONDITION, message=str(e)
-      )
+      ) from e
   env.get_env().prepare_orchestrator_for_pipeline_run(pipeline)
   return pstate.PipelineState.new(
       mlmd_handle, pipeline, reused_pipeline_view=latest_pipeline_view
@@ -1337,7 +1337,7 @@ def orchestrate(
     status_lib.StatusNotOkError: If error generating tasks.
   """
   if filter_fn is None:
-    filter_fn = lambda _: True
+    filter_fn = lambda _: True # noqa: E731
 
   # Try to load active pipelines. If there is a recoverable error, return True
   # and then retry in the next orchestration iteration.
@@ -2208,7 +2208,7 @@ def _get_mlmd_protos_for_execution(
         ],
     )
   except mlmd_errors.StatusError as e:
-    raise status_lib.StatusNotOkError(code=e.error_code, message=str(e))
+    raise status_lib.StatusNotOkError(code=e.error_code, message=str(e)) from e
 
   output_artifact_ids = set()
   for event in lineage_graph.events:
@@ -2332,7 +2332,7 @@ def publish_intermediate_artifact(
     except filesystem.NotFoundError as e:
       raise status_lib.StatusNotOkError(
           code=status_lib.Code.ABORTED, message=str(e)
-      )
+      ) from e
     logging.info(
         'Moved temporary URI %s contents to final URI %s',
         temp_uri,
@@ -2391,7 +2391,7 @@ def publish_intermediate_artifact(
       )
 
   except mlmd_errors.StatusError as e:
-    raise status_lib.StatusNotOkError(code=e.error_code, message=str(e))
+    raise status_lib.StatusNotOkError(code=e.error_code, message=str(e)) from e
 
   logging.info('Published intermediate artifact: %s', intermediate_artifact)
   return intermediate_artifact

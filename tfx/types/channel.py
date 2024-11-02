@@ -123,7 +123,7 @@ class BaseChannel(abc.ABC, Generic[_AT]):
       set.
   """
 
-  def __init__(self, type: Type[_AT], is_optional: Optional[bool] = None):  # pylint: disable=redefined-builtin
+  def __init__(self, type: Type[_AT], is_optional: Optional[bool] = None):  # noqa: A002
     if not _is_artifact_type(type):
       raise ValueError(
           'Argument "type" of BaseChannel constructor must be a subclass of '
@@ -155,11 +155,11 @@ class BaseChannel(abc.ABC, Generic[_AT]):
     return new_channel
 
   @property
-  def type(self) -> Type[_AT]:  # pylint: disable=redefined-builtin
+  def type(self) -> Type[_AT]:  # noqa: A002
     return self._artifact_type
 
   @type.setter
-  def type(self, value: Type[_AT]):  # pylint: disable=redefined-builtin
+  def type(self, value: Type[_AT]):  # noqa: A002
     self._set_type(value)
 
   @doc_controls.do_not_generate_docs
@@ -235,7 +235,7 @@ class Channel(json_utils.Jsonable, BaseChannel):
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
   def __init__(
       self,
-      type: Type[Artifact],  # pylint: disable=redefined-builtin
+      type: Type[Artifact],  # noqa: A002
       additional_properties: Optional[Dict[str, Property]] = None,
       additional_custom_properties: Optional[Dict[str, Property]] = None,
       # TODO(b/161490287): deprecate static artifact.

@@ -49,7 +49,7 @@ class Property:
       PropertyType.BOOLEAN: metadata_store_pb2.BOOLEAN,
   }
 
-  def __init__(self, type):  # pylint: disable=redefined-builtin
+  def __init__(self, type):  # noqa: A002
     if type not in Property._ALLOWED_MLMD_TYPES:
       raise ValueError('Property type must be one of %s.' %
                        list(Property._ALLOWED_MLMD_TYPES.keys()))

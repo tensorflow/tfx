@@ -102,7 +102,7 @@ class BaseContainerBasedEndToEndTest(test_utils.BaseEndToEndTest):
     io_utils.copy_file(
         'data/data.csv',
         f'gs://{self._BUCKET_NAME}/{self._DATA_DIRECTORY_NAME}/'
-        + f'{self._pipeline_name}/data.csv')
+        f'{self._pipeline_name}/data.csv')
 
   @retry.retry(ignore_eventual_failure=True)
   def _delete_pipeline_data(self):

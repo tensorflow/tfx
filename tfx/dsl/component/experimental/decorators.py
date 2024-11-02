@@ -202,7 +202,7 @@ class _SimpleComponent(BaseFunctionalComponent):
       json_compat_typehint = getattr(channel_parameter, '_JSON_COMPAT_TYPEHINT',
                                      None)
       if json_compat_typehint:
-        setattr(spec_kwargs[key], '_JSON_COMPAT_TYPEHINT', json_compat_typehint)
+        spec_kwargs[key]._JSON_COMPAT_TYPEHINT = json_compat_typehint
     spec = self.SPEC_CLASS(**spec_kwargs)
     super().__init__(spec)
     # Set class name, which is the decorated function name, as the default id.
