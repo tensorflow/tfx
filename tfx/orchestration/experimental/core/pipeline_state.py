@@ -1186,6 +1186,9 @@ class PipelineView:
       self.pipeline_run_id = execution.custom_properties[
           _PIPELINE_RUN_ID
       ].string_value
+    self.pipeline_uid = task_lib.PipelineUid.from_pipeline_id_and_run_id(
+        self.pipeline_id, self.pipeline_run_id
+    )
     self._pipeline = None  # lazily set
 
   @classmethod
@@ -1405,6 +1408,19 @@ class PipelineView:
         continue
       result[node.node_info.id] = node_states_dict[node.node_info.id]
     return result
+
+  def get_node_state(self, node_uid: task_lib.NodeUid) -> NodeState:
+    """Gets node state of a specified node."""
+    if not _is_node_uid_in_pipeline(node_uid, self.pipeline):
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.INVALID_ARGUMENT,
+          message=(
+              f'Node {node_uid} does not belong to the pipeline '
+              f'{self.pipeline_uid}'
+          ),
+      )
+    node_states_dict = self.get_node_states_dict()
+    return node_states_dict.get(node_uid.node_id, NodeState())
 
 
 def get_orchestrator_contexts(mlmd_handle: metadata.Metadata,

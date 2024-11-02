@@ -1053,17 +1053,27 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
   def test_async_pipeline_views(self):
     with self._mlmd_connection as m:
       pipeline = _test_pipeline('pipeline1', pipeline_nodes=['Trainer'])
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      node_uid = task_lib.NodeUid(node_id='Trainer', pipeline_uid=pipeline_uid)
       with pstate.PipelineState.new(
           m, pipeline, {'foo': 1, 'bar': 'baz'}
       ) as pipeline_state:
         pipeline_state.set_pipeline_execution_state(
             metadata_store_pb2.Execution.COMPLETE
         )
+        with pipeline_state.node_state_update_context(
+            node_uid
+        ) as node_state:
+          node_state.update(pstate.NodeState.COMPLETE)
 
       views = pstate.PipelineView.load_all(m, pipeline.pipeline_info.id)
       self.assertLen(views, 1)
       self.assertProtoEquals(pipeline, views[0].pipeline)
       self.assertEqual({'foo': 1, 'bar': 'baz'}, views[0].pipeline_run_metadata)
+
+      # Verify node is complete.
+      node_state = views[0].get_node_state(node_uid=node_uid)
+      self.assertEqual(pstate.NodeState.COMPLETE, node_state.state)
 
       pstate.PipelineState.new(m, pipeline)
       views = pstate.PipelineView.load_all(m, pipeline.pipeline_info.id)
@@ -1079,6 +1089,8 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
           pipeline_run_id='001',
           pipeline_nodes=['Trainer'],
       )
+      pipeline_uid = task_lib.PipelineUid.from_pipeline(pipeline)
+      node_uid = task_lib.NodeUid(node_id='Trainer', pipeline_uid=pipeline_uid)
       with self.assertRaises(status_lib.StatusNotOkError):
         pstate.PipelineView.load(m, pipeline.pipeline_info.id)
       with pstate.PipelineState.new(
@@ -1090,6 +1102,8 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
         pipeline_state.initiate_stop(
             status_lib.Status(code=status_lib.Code.CANCELLED, message='msg')
         )
+        with pipeline_state.node_state_update_context(node_uid) as node_state:
+          node_state.update(pstate.NodeState.COMPLETE)
 
       views = pstate.PipelineView.load_all(m, pipeline.pipeline_info.id)
       self.assertLen(views, 1)
@@ -1103,6 +1117,10 @@ class PipelineStateTest(test_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(views[0].pipeline_status_message, 'msg')
       self.assertEqual({'foo': 1, 'bar': 'baz'}, views[0].pipeline_run_metadata)
       self.assertProtoEquals(pipeline, views[0].pipeline)
+
+      # Verify node is complete.
+      node_state = views[0].get_node_state(node_uid=node_uid)
+      self.assertEqual(pstate.NodeState.COMPLETE, node_state.state)
 
       pipeline2 = _test_pipeline(
           'pipeline',
