@@ -1537,7 +1537,7 @@ def _base64_decode_update_options(
 
 
 def _save_skipped_node_states(pipeline: pipeline_pb2.Pipeline,
-                              reused_pipeline_view: PipelineView,
+                              reused_pipeline_view: Optional[PipelineView],
                               execution: metadata_store_pb2.Execution) -> None:
   """Records (previous) node states for nodes that are skipped in partial run.
   """
