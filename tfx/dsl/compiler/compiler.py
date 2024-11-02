@@ -37,6 +37,9 @@ from tfx.types import channel_utils
 from tfx.utils import deprecation_utils
 from tfx.utils import name_utils
 
+# Maximum size of serialized parameter Value proto.
+_PARAMETER_VALUE_LIMIT = 2**20
+
 
 class Compiler:
   """Compiles a TFX pipeline or a component into a uDSL IR proto."""
@@ -485,6 +488,14 @@ def _set_node_parameters(node: pipeline_pb2.PipelineNode,
         raise ValueError(
             "Component {} got unsupported parameter {} with type {}.".format(
                 tfx_node.id, key, type(value))) from e
+      size = len(parameter_value.SerializeToString())
+      if size > _PARAMETER_VALUE_LIMIT:
+        raise ValueError(
+            "Component {} got parameter {} which is too big: it serializes to "
+            "{} bytes, which exceeds the limit of {}".format(
+                tfx_node.id, key, size, _PARAMETER_VALUE_LIMIT
+            )
+        )
 
 
 def _set_node_execution_options(
