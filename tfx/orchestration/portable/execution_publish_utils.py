@@ -37,7 +37,7 @@ def publish_cached_executions(
     output_artifacts_maps: Optional[
         Sequence[typing_utils.ArtifactMultiMap]
     ] = None,
-) -> None:
+) -> Sequence[metadata_store_pb2.Execution]:
   """Marks an existing execution as using cached outputs from a previous execution.
 
   Args:
@@ -46,11 +46,14 @@ def publish_cached_executions(
     executions: Executions that will be published as CACHED executions.
     output_artifacts_maps: A list of output artifacts of the executions. Each
       artifact will be linked with the execution through an event of type OUTPUT
+
+  Returns:
+    A list of MLMD executions that are published to MLMD, with id pupulated.
   """
   for execution in executions:
     execution.last_known_state = metadata_store_pb2.Execution.CACHED
 
-  execution_lib.put_executions(
+  return execution_lib.put_executions(
       metadata_handle,
       executions,
       contexts,

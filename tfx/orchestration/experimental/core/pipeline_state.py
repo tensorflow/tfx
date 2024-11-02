@@ -1673,3 +1673,11 @@ def get_pipeline_and_node(
           'pipeline nodes are supported for external executions.'
       )
     return (pipeline_state.pipeline, node)
+
+
+def get_pipeline(
+    mlmd_handle: metadata.Metadata, pipeline_id: str
+) -> pipeline_pb2.Pipeline:
+  """Loads the pipeline proto for a pipeline from latest execution."""
+  pipeline_view = PipelineView.load(mlmd_handle, pipeline_id)
+  return pipeline_view.pipeline
