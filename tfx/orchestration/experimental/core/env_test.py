@@ -33,6 +33,11 @@ class _TestEnv(env.Env):
   ):
     raise NotImplementedError()
 
+  def label_and_tag_pipeline_run(
+      self, mlmd_handle, pipeline_id, pipeline_run_id, labels, tags
+  ):
+    raise NotImplementedError()
+
   def max_mlmd_str_value_length(self):
     raise NotImplementedError()
 
