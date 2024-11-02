@@ -620,20 +620,14 @@ def register_executions(
   )
 
 
-def update_external_artifact_type(
-    local_mlmd_handle: metadata.Metadata,
-    artifacts: Sequence[types.artifact.Artifact],
-) -> Sequence[types.artifact.Artifact]:
+def update_external_artifact_type(local_mlmd_handle: metadata.Metadata,
+                                  artifacts: Sequence[types.artifact.Artifact]):
   """Copies artifact types of external artifacts to local db.
 
   Args:
     local_mlmd_handle: A handle to access local MLMD db.
     artifacts: A list of artifacts.
-
-  Returns:
-    A list of updated artifacts
   """
-  updated_artifacts = []
   local_type_id_by_name = {}
   for artifact in artifacts:
     if not artifact.artifact_type.HasField('id'):
@@ -652,9 +646,6 @@ def update_external_artifact_type(
       local_artifact_type_id = local_type_id_by_name[type_name]
       artifact.type_id = local_artifact_type_id
       artifact.artifact_type.id = local_artifact_type_id
-      updated_artifacts.append(artifact)
-
-  return updated_artifacts
 
 
 def get_unprocessed_inputs(
