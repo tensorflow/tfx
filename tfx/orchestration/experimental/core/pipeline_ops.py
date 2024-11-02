@@ -467,7 +467,7 @@ def _check_nodes_exist(
     raise status_lib.StatusNotOkError(
         code=status_lib.Code.INVALID_ARGUMENT,
         message=(
-            f'`f{op_name}` operation failed, cannot find node(s) '
+            f'`{op_name}` operation failed, cannot find node(s) '
             f'{", ".join(node_id_set)} in the pipeline IR.'
         ),
     )
@@ -552,6 +552,67 @@ def skip_nodes(
                   ' skippable.'
               ),
           )
+
+
+@_pipeline_op()
+def skip_failed_nodes(
+    mlmd_handle: metadata.Metadata, node_uids: Sequence[task_lib.NodeUid]
+) -> None:
+  """Marks the given failed nodes as skipped instead."""
+  # All node_uids must have the same pipeline_uid.
+  pipeline_uids_set = set(n.pipeline_uid for n in node_uids)
+  if len(pipeline_uids_set) != 1:
+    raise status_lib.StatusNotOkError(
+        code=status_lib.Code.INVALID_ARGUMENT,
+        message=(
+            'All nodes must belong to the same pipeline, but the given '
+            f'nodes do not. Node UIDs were: {node_uids}'
+        ),
+    )
+  pipeline_uid = pipeline_uids_set.pop()
+  with pstate.PipelineState.load_run(
+      mlmd_handle,
+      pipeline_id=pipeline_uid.pipeline_id,
+      run_id=pipeline_uid.pipeline_run_id,
+  ) as pipeline_state:
+    pipeline = pipeline_state.pipeline
+    if pipeline.execution_mode != pipeline_pb2.Pipeline.SYNC:
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.FAILED_PRECONDITION,
+          message=(
+              'Can only skip failed nodes for SYNC pipelines, but pipeline had'
+              f'execution mode: {pipeline.execution_mode}'
+          ),
+      )
+    if not execution_lib.is_execution_failed(pipeline_state.execution):
+      state_str = metadata_store_pb2.Execution.State.Name(
+          pipeline_state.execution.last_known_state
+      )
+      raise status_lib.StatusNotOkError(
+          code=status_lib.Code.FAILED_PRECONDITION,
+          message=(
+              'Can only skip failed nodes for a pipeline in FAILED state, but '
+              f'pipeline in state: {state_str}'
+          ),
+      )
+    _check_nodes_exist(node_uids, pipeline_state.pipeline, 'skip_nodes')
+    for node_uid in node_uids:
+      with pipeline_state.node_state_update_context(node_uid) as node_state:
+        if node_state.state != pstate.NodeState.FAILED:
+          raise status_lib.StatusNotOkError(
+              code=status_lib.Code.FAILED_PRECONDITION,
+              message=(
+                  'Can only skip nodes that are in a FAILED state, but node '
+                  f'{node_uid} was in state {node_state.state}'
+              ),
+          )
+        node_state.update(
+            pstate.NodeState.SKIPPED,
+            status_lib.Status(
+                code=status_lib.Code.OK,
+                message='Failed node marked as skipped using SkipFailedNodes',
+            ),
+        )
 
 
 @_pipeline_op()
