@@ -224,7 +224,7 @@
 
 ## Bug Fixes and Other Changes
 
-*  Support to task type "workerpool1" of CLUSTER_SPEC in Vertex AI training's 
+*  Support to task type "workerpool1" of CLUSTER_SPEC in Vertex AI training's
    service according to the changes of task type in Tuner component.
 *  Propagates unexpected import failures in the public v1 module.
 

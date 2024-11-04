@@ -43,16 +43,6 @@ an evaluation set that does, or considering proxy features within your feature
 set that may highlight outcome disparities. For additional guidance, see
 [here](https://tensorflow.org/responsible_ai/fairness_indicators/guide/guidance).
 
-### Model
-
-You can use the Tensorflow Estimator class to build your model. Support for
-Keras models is coming soon to TFMA. If you would like to run TFMA on a Keras
-model, please see the “Model-Agnostic TFMA” section below.
-
-After your Estimator is trained, you will need to export a saved model for
-evaluation purposes. To learn more, see the
-[TFMA guide](https://www.tensorflow.org/tfx/model_analysis/get_started).
-
 ### Configuring Slices
 
 Next, define the slices you would like to evaluate on:
