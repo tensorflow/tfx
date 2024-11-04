@@ -13,13 +13,10 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.execution_publish_utils."""
 import copy
-from unittest import mock
 
 from absl.testing import parameterized
 from tfx import version
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import task as task_lib
-from tfx.orchestration import datahub_utils
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import context_lib
@@ -34,54 +31,6 @@ from tfx.utils import test_case_utils
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
-
-_DEFAULT_EXECUTOR_OUTPUT_URI = '/fake/path/to/executor_output.pb'
-_DEFAULT_NODE_ID = 'example_node'
-_DEFAULT_OWNER = 'owner'
-_DEFAULT_PROJECT_NAME = 'project_name'
-_DEFAULT_PIPELINE_NAME = 'pipeline_name'
-_DEFAULT_PIPELINE_RUN_ID = 'run-123'
-_DEFAULT_TEMP_DIR = '/fake/path/to/tmp_dir/'
-_DEFAULT_STATEFUL_WORKING_DIR = '/fake/path/to/stateful_working_dir/'
-
-
-def _create_pipeline() -> pipeline_pb2.Pipeline:
-  deployment_config = pipeline_pb2.IntermediateDeploymentConfig()
-  pipeline = pipeline_pb2.Pipeline(
-      pipeline_info=pipeline_pb2.PipelineInfo(id=_DEFAULT_PIPELINE_NAME),
-      nodes=[
-          pipeline_pb2.Pipeline.PipelineOrNode(
-              pipeline_node=pipeline_pb2.PipelineNode(
-                  node_info=pipeline_pb2.NodeInfo(id=_DEFAULT_NODE_ID)
-              ),
-          ),
-      ],
-  )
-  pipeline.deployment_config.Pack(deployment_config)
-  return pipeline
-
-
-def _create_exec_node_task(
-    pipeline: pipeline_pb2.Pipeline,
-    execution_id: int,
-) -> task_lib.ExecNodeTask:
-  return task_lib.ExecNodeTask(
-      pipeline=pipeline,
-      node_uid=task_lib.NodeUid(
-          pipeline_uid=task_lib.PipelineUid.from_pipeline(pipeline),
-          node_id=_DEFAULT_NODE_ID,
-      ),
-      execution_id=execution_id,
-      contexts=[],
-      exec_properties={},
-      input_artifacts={},
-      output_artifacts={},
-      executor_output_uri=_DEFAULT_EXECUTOR_OUTPUT_URI,
-      stateful_working_dir=_DEFAULT_STATEFUL_WORKING_DIR,
-      tmp_dir=_DEFAULT_TEMP_DIR,
-  )
-
-
 class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
 
   def setUp(self):
@@ -89,9 +38,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
     self._execution_type = metadata_store_pb2.ExecutionType(name='my_ex_type')
-    self._mock_log_node_execution = self.enter_context(
-        mock.patch.object(datahub_utils, 'log_node_execution')
-    )
 
   def _generate_contexts(self, metadata_handle):
     context_spec = pipeline_pb2.NodeContexts()
@@ -243,7 +189,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             value {int_value: 1}
           }
           """, executor_output.output_artifacts[output_key].artifacts.add())
-      task = _create_exec_node_task(_create_pipeline(), execution_id)
       output_dict, execution = (
           execution_publish_utils.publish_succeeded_execution(
               m,
@@ -251,7 +196,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
               contexts,
               {output_key: [output_example]},
               executor_output,
-              task,
           )
       )
       self.assertProtoPartiallyEquals(
@@ -337,11 +281,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
           self.assertCountEqual([c.id for c in contexts], [
               c.id for c in m.store.get_contexts_by_artifact(output_example.id)
           ])
-      self._mock_log_node_execution.assert_called_once_with(
-          execution,
-          task,
-          output_dict,
-      )
 
   def testPublishSuccessfulExecutionWithRuntimeResolvedUri(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -366,17 +305,9 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
               value {{int_value: 1}}
             }}
             """, executor_output.output_artifacts[output_key].artifacts.add())
-      task = _create_exec_node_task(_create_pipeline(), execution_id)
-      output_dict, execution = (
-          execution_publish_utils.publish_succeeded_execution(
-              m,
-              execution_id,
-              contexts,
-              {output_key: [output_example]},
-              executor_output,
-              task,
-          )
-      )
+      output_dict, _ = execution_publish_utils.publish_succeeded_execution(
+          m, execution_id, contexts, {output_key: [output_example]},
+          executor_output)
       self.assertLen(output_dict[output_key], 2)
       self.assertEqual(output_dict[output_key][0].uri, '/examples_uri/1')
       self.assertEqual(output_dict[output_key][1].uri, '/examples_uri/2')
@@ -403,11 +334,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             """,
             event,
             ignored_fields=['milliseconds_since_epoch'])
-      self._mock_log_node_execution.assert_called_once_with(
-          execution,
-          task,
-          output_dict,
-      )
 
   def testPublishSuccessfulExecutionOmitsArtifactIfNotResolvedDuringRuntime(
       self):
@@ -437,26 +363,12 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             value {{int_value: 1}}
           }}
           """, executor_output.output_artifacts['key1'].artifacts.add())
-      task = _create_exec_node_task(_create_pipeline(), execution_id)
-      output_dict, execution = (
-          execution_publish_utils.publish_succeeded_execution(
-              m,
-              execution_id,
-              contexts,
-              original_artifacts,
-              executor_output,
-              task,
-          )
-      )
+      output_dict, _ = execution_publish_utils.publish_succeeded_execution(
+          m, execution_id, contexts, original_artifacts, executor_output)
       self.assertEmpty(output_dict['key1'])
       self.assertNotEmpty(output_dict['key2'])
       self.assertLen(output_dict['key2'], 1)
       self.assertEqual(output_dict['key2'][0].uri, '/foo/bar')
-      self._mock_log_node_execution.assert_called_once_with(
-          execution,
-          task,
-          output_dict,
-      )
 
   def testPublishSuccessExecutionFailNewKey(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -503,7 +415,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             value {int_value: 2}
           }
           """, executor_output.output_artifacts[output_key].artifacts.add())
-      task = _create_exec_node_task(_create_pipeline(), execution_id)
       output_dict, execution = (
           execution_publish_utils.publish_succeeded_execution(
               m,
@@ -511,7 +422,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
               contexts,
               {output_key: [output_example]},
               executor_output,
-              task,
           )
       )
       self.assertProtoPartiallyEquals(
@@ -627,11 +537,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
               output_example.get_string_custom_property(
                   artifact_utils.ARTIFACT_TFX_VERSION_CUSTOM_PROPERTY_KEY),
               version.__version__)
-      self._mock_log_node_execution.assert_called_once_with(
-          execution,
-          task,
-          output_dict,
-      )
 
   def testPublishSuccessExecutionFailChangedType(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

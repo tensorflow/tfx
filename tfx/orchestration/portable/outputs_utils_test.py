@@ -19,7 +19,6 @@ from unittest import mock
 from absl.testing import parameterized
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
-from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.portable import data_types
 from tfx.orchestration.portable import outputs_utils
 from tfx.proto.orchestration import execution_result_pb2
@@ -232,7 +231,7 @@ class OutputUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     )
     data_types_utils.set_metadata_value(
         self._dummy_execution.custom_properties[
-            constants.STATEFUL_WORKING_DIR_INDEX
+            outputs_utils._STATEFUL_WORKING_DIR_INDEX
         ],
         self._mocked_stateful_working_index,
     )
