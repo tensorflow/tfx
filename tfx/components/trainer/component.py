@@ -140,8 +140,7 @@ class Trainer(base_component.BaseComponent):
 
     Raises:
       ValueError:
-        - When both or neither of `module_file` and user function
-          (e.g., trainer_fn and run_fn) is supplied.
+        - When both or neither of `module_file` and `run_fn` is supplied.
         - When both or neither of `examples` and `transformed_examples`
             is supplied.
         - When `transformed_examples` is supplied but `transform_graph`
