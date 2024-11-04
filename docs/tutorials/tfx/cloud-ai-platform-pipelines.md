@@ -333,9 +333,6 @@ Here is brief description of the Python files.
     -   `features.py` `features_test.py` — defines features for the model
     -   `preprocessing.py` / `preprocessing_test.py` — defines preprocessing
         jobs using `tf::Transform`
-    -   `estimator` - This directory contains an Estimator based model.
-        -   `constants.py` — defines constants of the model
-        -   `model.py` / `model_test.py` — defines DNN model using TF estimator
     -   `keras` - This directory contains a Keras based model.
         -   `constants.py` — defines constants of the model
         -   `model.py` / `model_test.py` — defines DNN model using Keras
