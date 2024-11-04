@@ -30,7 +30,7 @@ class SystemArtifact(abc.ABC):
   The subclasses, e.g, Dataset, Model, Statistics, e.t.c, match the MLMD types
   from third_party/ml_metadata/metadata_store/mlmd_types.py.
   """
-
+  # noqa: B024
   # MLMD system base type enum. Override it when creating subclasses.
   MLMD_SYSTEM_BASE_TYPE = None
 
