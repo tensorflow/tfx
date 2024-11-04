@@ -44,9 +44,8 @@ class Transform(base_beam_component.BaseBeamComponent):
   can define the optional `stats_options_updater_fn` within the module file.
 
   ## Providing a preprocessing function
-  The TFX executor will use the estimator provided in the `module_file` file
-  to train the model.  The Transform executor will look specifically for the
-  `preprocessing_fn()` function within that file.
+  The Transform executor will look specifically for the `preprocessing_fn()`
+  function within that file.
 
   An example of `preprocessing_fn()` can be found in the [user-supplied
   code](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py)
