@@ -9,6 +9,7 @@
    most likely you discovered a bug and should not use an f-string in the first
    place. If it is truly your intention to print the placeholder (not its
    resolved value) for debugging purposes, use `repr()` or `!r` instead.
+* Drop supports for the Estimator API.
 
 ### For Pipeline Authors
 
