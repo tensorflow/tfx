@@ -24,7 +24,7 @@ from tfx.orchestration.portable import tfx_runner as portable_tfx_runner
 from tfx.proto.orchestration import pipeline_pb2
 
 
-class DagRunnerPatcher(abc.ABC):
+class ParentDagRunnerPatcher(abc.ABC):
   """Abstract base class for Patchers for various "DagRunner"s.
 
   These patcher classes "decorate" the `run` function of the DagRunners.
@@ -56,11 +56,13 @@ class DagRunnerPatcher(abc.ABC):
     self._run_called = False
     self._call_real_run = call_real_run
 
+  @abc.abstractmethod
   def _before_run(self, runner: tfx_runner.TfxRunner,
                   pipeline: Union[pipeline_pb2.Pipeline, tfx_pipeline.Pipeline],
                   context: MutableMapping[str, Any]) -> None:
     pass
 
+  @abc.abstractmethod
   def _after_run(self, runner: tfx_runner.TfxRunner,
                  pipeline: Union[pipeline_pb2.Pipeline, tfx_pipeline.Pipeline],
                  context: MutableMapping[str, Any]) -> None:
@@ -135,3 +137,21 @@ class DagRunnerPatcher(abc.ABC):
       return result
 
     return wrapper
+
+class DagRunnerPatcher(ParentDagRunnerPatcher):
+  """The child class for all abstract methods."""
+
+  def _before_run(self, runner: tfx_runner.TfxRunner,
+                  pipeline: Union[pipeline_pb2.Pipeline, tfx_pipeline.Pipeline],
+                  context: MutableMapping[str, Any]) -> None:
+    pass
+
+  def _after_run(self, runner: tfx_runner.TfxRunner,
+                 pipeline: Union[pipeline_pb2.Pipeline, tfx_pipeline.Pipeline],
+                 context: MutableMapping[str, Any]) -> None:
+    pass
+
+  def get_runner_class(
+      self
+  ) -> Union[Type[tfx_runner.TfxRunner], Type[portable_tfx_runner.TfxRunner]]:
+    raise NotImplementedError()
