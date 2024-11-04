@@ -13,8 +13,7 @@
 # limitations under the License.
 """Base Python source file for MNIST utils.
 
-This file is used by both mnist_utils_native_keras and
-mnist_util_native_keras_lite to build Keras and TFLite models, respectively.
+This file is used by both mnist_utils_native_keras to build Keras models.
 """
 
 from typing import List

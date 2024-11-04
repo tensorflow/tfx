@@ -101,7 +101,7 @@ Here are several examples with native Keras:
     'Hello world' end-to-end example.
 *   [MNIST](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_pipeline_native_keras.py)
     ([module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_utils_native_keras.py)):
-    Image and TFLite end-to-end example.
+    Image end-to-end example.
 *   [Taxi](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_native_keras.py)
     ([module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils_native_keras.py)):
     end-to-end example with advanced Transform usage.

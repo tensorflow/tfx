@@ -65,32 +65,6 @@ _VOCAB_FEATURE_KEYS = [
 _LABEL_KEY = 'tips'
 _FARE_KEY = 'fare'
 
-# TOOD: b/300000000 - I don't know why but the TFX Transform is not able to
-# parse the schema.pbtxt file correctly; it generates tf.io.FixedLenFeature
-# instead of tf.io.VarLenFeature. So I'm hardcoding the schema here. This should
-# be replaced with the tf_transform_output.raw_feature_spec() once the bug is
-# fixed.
-_RAW_FEATURES_SPEC = {
-    'company': tf.io.VarLenFeature(dtype=tf.string),
-    'payment_type': tf.io.VarLenFeature(dtype=tf.string),
-    'dropoff_census_tract': tf.io.VarLenFeature(dtype=tf.int64),
-    'dropoff_community_area': tf.io.VarLenFeature(dtype=tf.int64),
-    'dropoff_latitude': tf.io.VarLenFeature(dtype=tf.float32),
-    'dropoff_longitude': tf.io.VarLenFeature(dtype=tf.float32),
-    'fare': tf.io.VarLenFeature(dtype=tf.float32),
-    'tips': tf.io.VarLenFeature(dtype=tf.float32),
-    'pickup_census_tract': tf.io.VarLenFeature(dtype=tf.int64),
-    'pickup_community_area': tf.io.VarLenFeature(dtype=tf.int64),
-    'pickup_latitude': tf.io.VarLenFeature(dtype=tf.float32),
-    'pickup_longitude': tf.io.VarLenFeature(dtype=tf.float32),
-    'trip_miles': tf.io.VarLenFeature(dtype=tf.float32),
-    'trip_seconds': tf.io.VarLenFeature(dtype=tf.int64),
-    'trip_start_day': tf.io.VarLenFeature(dtype=tf.int64),
-    'trip_start_hour': tf.io.VarLenFeature(dtype=tf.int64),
-    'trip_start_month': tf.io.VarLenFeature(dtype=tf.int64),
-    'trip_start_timestamp': tf.io.VarLenFeature(dtype=tf.int64),
-}
-
 
 def _transformed_name(key):
   return key + '_xf'
@@ -133,7 +107,6 @@ def _get_tf_examples_serving_signature(model, tf_transform_output):
       ]
   )
   def serve_tf_examples_fn(serialized_tf_example):
-    #raw_feature_spec = copy.deepcopy(_RAW_FEATURES_SPEC)
     raw_feature_spec = tf_transform_output.raw_feature_spec()
     raw_feature_spec.pop(_LABEL_KEY)
     raw_features = tf.io.parse_example(serialized_tf_example, raw_feature_spec)
@@ -156,7 +129,6 @@ def _get_transform_features_signature(model, tf_transform_output):
       ]
   )
   def transform_features_fn(serialized_tf_example):
-    #raw_feature_spec = copy.deepcopy(_RAW_FEATURES_SPEC)
     raw_feature_spec = tf_transform_output.raw_feature_spec()
     raw_features = tf.io.parse_example(serialized_tf_example, raw_feature_spec)
     transformed_features = model.tft_layer_eval(raw_features)
