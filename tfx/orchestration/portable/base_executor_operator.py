@@ -22,8 +22,7 @@ from tfx.utils import abc_utils
 
 from google.protobuf import message
 
-
-class BaseExecutorOperator(abc.ABC):
+class ParentBaseExecutorOperator(abc.ABC):
   """The base class of all executor operators."""
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = abc_utils.abstract_property()
@@ -83,6 +82,28 @@ class BaseExecutorOperator(abc.ABC):
     """
     self._execution_watcher_address = execution_watcher_address
     return self
+
+  @abc.abstractmethod
+  def handle_stop(self) -> None:
+    """Executor Operator specific logic to clean up after it is stopped."""
+    pass
+
+class BaseExecutorOperator(ParentBaseExecutorOperator):
+  """The child class for all abstract methods."""
+
+  def run_executor(
+      self,
+      execution_info: data_types.ExecutionInfo,
+  ) -> Optional[execution_result_pb2.ExecutorOutput]:
+    """Invokes the executor with inputs provided by the Launcher.
+
+    Args:
+      execution_info: A wrapper of the info needed by this execution.
+
+    Returns:
+      The output from executor.
+    """
+    pass
 
   def handle_stop(self) -> None:
     """Executor Operator specific logic to clean up after it is stopped."""
