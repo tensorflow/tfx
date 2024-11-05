@@ -239,7 +239,6 @@ def create_primitive_type_components(pipeline_name: str) -> List[BaseComponent]:
 def create_e2e_components(
     pipeline_root: str,
     csv_input_location: str,
-    transform_module: str,
     trainer_module: str,
 ) -> List[BaseComponent]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
@@ -247,7 +246,6 @@ def create_e2e_components(
   Args:
     pipeline_root: The root of the pipeline output.
     csv_input_location: The location of the input data directory.
-    transform_module: The location of the transform module file.
     trainer_module: The location of the trainer module file.
 
   Returns:
@@ -262,7 +260,7 @@ def create_e2e_components(
   transform = Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
-      module_file=transform_module)
+      module_file=trainer_module)
   latest_model_resolver = resolver.Resolver(
       strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
       latest_model=Channel(type=Model)).with_id('latest_model_resolver')

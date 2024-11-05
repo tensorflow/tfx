@@ -30,10 +30,6 @@ The TFX Trainer expects a user-defined `run_fn` to be specified in
 a module file. This `run_fn` defines the model to be trained,
 trains it for the specified number of iterations, and exports the trained model.
 
-In the rest of this section, we provide code snippets which show the changes
-required to invoke the TFLite rewriter and export a TFLite model. All of this
-code is located in the `run_fn` of the [MNIST TFLite module](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_utils_native_keras_lite.py).
-
 As shown in the code below,
 we must first create a signature that takes a `Tensor` for every feature as
 input. Note that this is a departure from most existing models in TFX, which take

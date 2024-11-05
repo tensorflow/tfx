@@ -38,54 +38,10 @@ they become available in TF 2.x, you can follow the
 
 ## Estimator
 
-The Estimator API has been retained in TensorFlow 2.x, but is not the focus of
-new features and development. Code written in TensorFlow 1.x or 2.x using
-Estimators will continue to work as expected in TFX.
+The Estimator API has been fully dropped since TensorFlow 2.16, we decided to
+discontinue the support for it.
 
-Here is an end-to-end TFX example using pure Estimator:
-[Taxi example (Estimator)](https://github.com/tensorflow/tfx/blob/r0.21/tfx/examples/chicago_taxi_pipeline/taxi_utils.py)
-
-## Keras with `model_to_estimator`
-
-Keras models can be wrapped with the `tf.keras.estimator.model_to_estimator`
-function, which allows them to work as if they were Estimators. To use this:
-
-1.  Build a Keras model.
-2.  Pass the compiled model into `model_to_estimator`.
-3.  Use the result of `model_to_estimator` in Trainer, the way you would
-    typically use an Estimator.
-
-```py
-# Build a Keras model.
-def _keras_model_builder():
-  """Creates a Keras model."""
-  ...
-
-  model = tf.keras.Model(inputs=inputs, outputs=output)
-  model.compile()
-
-  return model
-
-
-# Write a typical trainer function
-def trainer_fn(trainer_fn_args, schema):
-  """Build the estimator, using model_to_estimator."""
-  ...
-
-  # Model to estimator
-  estimator = tf.keras.estimator.model_to_estimator(
-      keras_model=_keras_model_builder(), config=run_config)
-
-  return {
-      'estimator': estimator,
-      ...
-  }
-```
-
-Other than the user module file of Trainer, the rest of the pipeline remains
-unchanged.
-
-## Native Keras (i.e. Keras without `model_to_estimator`)
+## Native Keras (i.e. Keras without Estimator)
 
 !!! Note
     Full support for all features in Keras is in progress, in most cases,
@@ -101,7 +57,7 @@ Here are several examples with native Keras:
     'Hello world' end-to-end example.
 *   [MNIST](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_pipeline_native_keras.py)
     ([module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_utils_native_keras.py)):
-    Image and TFLite end-to-end example.
+    Image end-to-end example.
 *   [Taxi](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_native_keras.py)
     ([module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils_native_keras.py)):
     end-to-end example with advanced Transform usage.
@@ -131,11 +87,6 @@ will be discussed in the following Trainer and Evaluator sections.
     label feature for training or eval.
 
 #### Trainer
-
-To configure native Keras, the `GenericExecutor` needs to be set for Trainer
-component to replace the default Estimator based executor. For details, please
-check
-[here](trainer.md#configuring-the-trainer-component).
 
 ##### Keras Module file with Transform
 
@@ -295,10 +246,5 @@ The new Evaluator component can perform both single model evaluation and also
 validate the current model compared with previous models. With this change, the
 Pusher component now consumes a blessing result from Evaluator instead of
 ModelValidator.
-
-The new Evaluator supports Keras models as well as Estimator models. The
-`_eval_input_receiver_fn` and eval saved model which were required previously
-will no longer be needed with Keras, since Evaluator is now based on the same
-`SavedModel` that is used for serving.
 
 [See Evaluator for more information](evaluator.md).

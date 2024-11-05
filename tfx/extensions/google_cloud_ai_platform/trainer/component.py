@@ -37,8 +37,6 @@ class Trainer(trainer_component.Trainer):
                module_file: Optional[Union[str,
                                            data_types.RuntimeParameter]] = None,
                run_fn: Optional[Union[str, data_types.RuntimeParameter]] = None,
-               trainer_fn: Optional[Union[str,
-                                          data_types.RuntimeParameter]] = None,
                train_args: Optional[Union[trainer_pb2.TrainArgs,
                                           data_types.RuntimeParameter]] = None,
                eval_args: Optional[Union[trainer_pb2.EvalArgs,
@@ -70,30 +68,9 @@ class Trainer(trainer_component.Trainer):
         ```python
         def run_fn(trainer.fn_args_utils.FnArgs): ...
         ```
-        and the trained model must be
-        saved to FnArgs.serving_model_dir when this function is executed.  For
-        Estimator based Executor, The module_file must implement a function
-        named `trainer_fn` at its top level. The function must have the
-        following signature.
-        ```python
-        def trainer_fn(
-            trainer.fn_args_utils.FnArgs,
-            tensorflow_metadata.proto.v0.schema_pb2
-        ) -> Dict: ...
-        ```
-        where the returned Dict has the following key-values.
-
-        - `estimator`: an instance of tf.estimator.Estimator
-        - `train_spec`: an instance of tf.estimator.TrainSpec
-        - `eval_spec`: an instance of tf.estimator.EvalSpec
-        - `eval_input_receiver_fn`: an instance of tfma EvalInputReceiver.
       run_fn:  A python path to UDF model definition function for generic
         trainer. See 'module_file' for details. Exactly one of 'module_file' or
         'run_fn' must be supplied if Trainer uses GenericExecutor (default).
-      trainer_fn:  A python path to UDF model definition function for estimator
-        based trainer. See 'module_file' for the required signature of the UDF.
-        Exactly one of 'module_file' or 'trainer_fn' must be supplied if Trainer
-        uses Estimator based Executor
       train_args: A proto.TrainArgs instance, containing args used for training
         Currently only splits and num_steps are available. Default behavior
         (when splits is empty) is train on `train` split.
@@ -114,5 +91,4 @@ class Trainer(trainer_component.Trainer):
         eval_args=eval_args,
         module_file=module_file,
         run_fn=run_fn,
-        trainer_fn=trainer_fn,
         custom_config=custom_config)

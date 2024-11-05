@@ -41,14 +41,10 @@ _data_root = os.path.join(_mnist_root, 'data')
 # Python module files to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
 _module_file = os.path.join(_mnist_root, 'mnist_utils_native_keras.py')
-_module_file_lite = os.path.join(
-    _mnist_root, 'mnist_utils_native_keras_lite.py')
 
 # Path which can be listened to by the model server. Pusher will output the
 # trained model here.
 _serving_model_dir = os.path.join(_mnist_root, 'serving_model', _pipeline_name)
-_serving_model_dir_lite = os.path.join(
-    _mnist_root, 'serving_model_lite', _pipeline_name)
 
 # Directory and data locations.  This example assumes all of the images,
 # example code, and metadata library is relative to $HOME, but you can store
@@ -69,8 +65,8 @@ _beam_pipeline_args = [
 
 
 def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
-                     module_file: str, module_file_lite: str,
-                     serving_model_dir: str, serving_model_dir_lite: str,
+                     module_file: str,
+                     serving_model_dir: str,
                      metadata_path: str,
                      beam_pipeline_args: List[str],
                      accuracy_threshold: float = 0.8) -> pipeline.Pipeline:
@@ -108,9 +104,6 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
   # Uses user-provided Python function that trains a Keras model.
   trainer = _create_trainer(module_file, 'Trainer.mnist')
 
-  # Trains the same model as the one above, but converts it into a TFLite one.
-  trainer_lite = _create_trainer(module_file_lite, 'Trainer.mnist_lite')
-
   # TODO(b/150949276): Add resolver back once it supports two trainers.
 
   # Uses TFMA to compute evaluation statistics over features of a model and
@@ -128,23 +121,11 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
           ])
       ])
 
-  eval_config_lite = tfma.EvalConfig()
-  eval_config_lite.CopyFrom(eval_config)
-  # Informs the evaluator that the model is a TFLite model.
-  eval_config_lite.model_specs[0].model_type = 'tf_lite'
-
   # Uses TFMA to compute the evaluation statistics over features of a model.
   evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       eval_config=eval_config).with_id('Evaluator.mnist')
-
-  # Uses TFMA to compute the evaluation statistics over features of a TFLite
-  # model.
-  evaluator_lite = Evaluator(
-      examples=example_gen.outputs['examples'],
-      model=trainer_lite.outputs['model'],
-      eval_config=eval_config_lite).with_id('Evaluator.mnist_lite')
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
@@ -154,16 +135,6 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir))).with_id('Pusher.mnist')
-
-  # Checks whether the TFLite model passed the validation steps and pushes the
-  # model to a file destination if check passed.
-  pusher_lite = Pusher(
-      model=trainer_lite.outputs['model'],
-      model_blessing=evaluator_lite.outputs['blessing'],
-      push_destination=pusher_pb2.PushDestination(
-          filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir_lite))).with_id(
-                  'Pusher.mnist_lite')
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
@@ -175,11 +146,8 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
           example_validator,
           transform,
           trainer,
-          trainer_lite,
           evaluator,
-          evaluator_lite,
           pusher,
-          pusher_lite,
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
@@ -197,8 +165,6 @@ if __name__ == '__main__':
           pipeline_root=_pipeline_root,
           data_root=_data_root,
           module_file=_module_file,
-          module_file_lite=_module_file_lite,
           serving_model_dir=_serving_model_dir,
-          serving_model_dir_lite=_serving_model_dir_lite,
           metadata_path=_metadata_path,
           beam_pipeline_args=_beam_pipeline_args))
