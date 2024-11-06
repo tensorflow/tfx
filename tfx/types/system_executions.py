@@ -21,7 +21,7 @@ import abc
 from ml_metadata.metadata_store import mlmd_types
 
 
-class SystemExecution(abc.ABC):# noqa: B024
+class SystemExecution(abc.ABC):  # noqa: B024
   """TFX system execution base class.
 
   A user may create a subclass of SystemExecution and override the

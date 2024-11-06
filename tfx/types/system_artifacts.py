@@ -21,7 +21,7 @@ import abc
 from ml_metadata.metadata_store import mlmd_types
 
 
-class SystemArtifact(abc.ABC):# noqa: B024
+class SystemArtifact(abc.ABC):  # noqa: B024
   """TFX system artifact base class.
 
   A user may create a subclass of SystemArtifact and override the
