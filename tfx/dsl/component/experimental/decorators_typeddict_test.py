@@ -140,8 +140,10 @@ def verify_beam_pipeline_arg(a: int) -> TypedDict('Output6', dict(b=float)):  # 
 
 def verify_beam_pipeline_arg_non_none_default_value(
     a: int,
-    beam_pipeline: BeamComponentParameter[beam.Pipeline] = beam.Pipeline(),
+    beam_pipeline: BeamComponentParameter[beam.Pipeline] = 0,
 ) -> TypedDict('Output7', dict(b=float)):  # pytype: disable=wrong-arg-types
+  if beam_pipeline == 0:
+    beam_pipeline = beam.Pipeline()
   del beam_pipeline
   return {'b': float(a)}
 

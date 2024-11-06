@@ -140,8 +140,10 @@ def verify_beam_pipeline_arg(a: int) -> OutputDict(b=float):  # pytype: disable=
 
 def verify_beam_pipeline_arg_non_none_default_value(
     a: int,
-    beam_pipeline: BeamComponentParameter[beam.Pipeline] = beam.Pipeline(),
+    beam_pipeline: BeamComponentParameter[beam.Pipeline] = 0,
 ) -> OutputDict(b=float):  # pytype: disable=invalid-annotation,wrong-arg-types
+  if beam_pipeline == 0:
+    beam_pipeline = beam.Pipeline()
   del beam_pipeline
   return {'b': float(a)}
 
