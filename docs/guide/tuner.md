@@ -237,7 +237,7 @@ vertex_job_spec = {
                 },
             'replica_count': 1,
             'container_spec': {
-                'image_uri': 'us-east1-docker.pkg.dev/itp-ml-sndbx/intuitive-ml-docker-repo/beam260tf215tft151deep:v2.60',
+                'image_uri': default_kfp_image,
                 },
             }],
         "enable_web_access": True,
