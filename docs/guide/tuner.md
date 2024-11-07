@@ -173,8 +173,6 @@ parallel, by using the
 [Google Cloud AI Platform extension Tuner component](https://github.com/tensorflow/tfx/blob/master/tfx/extensions/google_cloud_ai_platform/tuner/component.py),
 it provides the ability to run parallel tuning, using an AI Platform Training
 Job as a distributed worker flock manager. 
-
-
 [TuneArgs](https://github.com/tensorflow/tfx/blob/master/tfx/proto/tuner.proto)
 is the configuration given to this component. This is a drop-in replacement of
 the stock Tuner component.
