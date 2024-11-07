@@ -172,7 +172,9 @@ component does not have ability to execute more than one search worker in
 parallel, by using the
 [Google Cloud AI Platform extension Tuner component](https://github.com/tensorflow/tfx/blob/master/tfx/extensions/google_cloud_ai_platform/tuner/component.py),
 it provides the ability to run parallel tuning, using an AI Platform Training
-Job as a distributed worker flock manager.
+Job as a distributed worker flock manager. 
+
+
 [TuneArgs](https://github.com/tensorflow/tfx/blob/master/tfx/proto/tuner.proto)
 is the configuration given to this component. This is a drop-in replacement of
 the stock Tuner component.
@@ -207,6 +209,66 @@ algorithm uses information from results of prior trials, such as Google Vizier
 algorithm implemented in the AI Platform Vizier does, an excessively parallel
 search would negatively affect the efficacy of the search.
 
+It is also possible to use the new Vertex AI api as in the example shown below.
+```
+from tfx.v1.extensions.google_cloud_ai_platform import Tuner
+ai_platform_tuning_args = {
+    'project': GOOGLE_CLOUD_PROJECT,
+    'job_spec': {
+        # 'service_account': ACCOUNT,
+        'worker_pool_specs': [{'container_spec': {'image_uri': default_kfp_image},
+                               'machine_spec': {'machine_type': MACHINE_TYPE,
+                               'accelerator_type': accelerator_type,
+                               'accelerator_count': 1
+                                },
+                               'replica_count': 1}],
+
+        # "enable_web_access": True, #In case you need to debug from within the container
+        }
+    }
+vertex_job_spec = {
+    'project': GOOGLE_CLOUD_PROJECT,
+    'job_spec': {
+        'worker_pool_specs': [{
+            'machine_spec': {
+                'machine_type': MACHINE_TYPE,
+                'accelerator_type': accelerator_type,
+                'accelerator_count': 1
+                },
+            'replica_count': 1,
+            'container_spec': {
+                'image_uri': 'us-east1-docker.pkg.dev/itp-ml-sndbx/intuitive-ml-docker-repo/beam260tf215tft151deep:v2.60',
+                },
+            }],
+        "enable_web_access": True,
+        }
+    }
+tuner = Tuner(
+    module_file=_tuner_module_file,
+    examples=transform.outputs['transformed_examples'],
+    transform_graph=transform.outputs['transform_graph'],
+    train_args=proto.TrainArgs(
+        splits=['train'], num_steps=int(
+            TRAINING_STEPS // 4)),
+    eval_args=proto.EvalArgs(
+        splits=['eval'], num_steps=int(
+            VAL_STEPS // 4)),
+    tune_args=proto.TuneArgs(num_parallel_trials=num_parallel_trials),
+    custom_config={
+        tfx.extensions.google_cloud_ai_platform.ENABLE_VERTEX_KEY:
+        True,
+        tfx.extensions.google_cloud_ai_platform.VERTEX_REGION_KEY:
+        GOOGLE_CLOUD_REGION,
+        tfx.extensions.google_cloud_ai_platform.experimental.TUNING_ARGS_KEY:
+        vertex_job_spec,
+        'use_gpu':
+        USE_GPU,
+        'ai_platform_tuning_args': ai_platform_tuning_args,
+        tfx.extensions.google_cloud_ai_platform.experimental.REMOTE_TRIALS_WORKING_DIR_KEY: os.path.join(PIPELINE_ROOT, 'trials'),
+
+        }
+    )
+```
 !!! Note
     Each trial in each parallel search is conducted on a single machine in the
     worker flock, i.e., each trial does not take advantage of multi-worker
