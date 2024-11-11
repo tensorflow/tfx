@@ -13,11 +13,11 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # TF 1.15
 # LINT.IfChange(tf_commit)
-_TENSORFLOW_GIT_COMMIT = "590d6eef7e91a6a7392c8ffffb7b58f2e0c8bc6b"
+_TENSORFLOW_GIT_COMMIT = "810f233968cec850915324948bbbc338c97cf57f"
 # LINT.ThenChange(:io_bazel_rules_clousure)
 http_archive(
     name = "org_tensorflow",
-    sha256 = "750186951a699cb73d6b440c7cd06f4b2b80fd3ebb00cbe00f655c7da4ae243e",
+    sha256 = "3b875c5121e752adc86578dc24747a220acfa2a7afa4026ff4172500b100854f",
     urls = [
       # Bazel mirror disabled due to b/162781348.
       # "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/%s.tar.gz" % _TENSORFLOW_GIT_COMMIT,
