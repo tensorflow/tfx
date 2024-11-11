@@ -321,7 +321,7 @@ tabulate==0.9.0
 tenacity==9.0.0
 tensorboard==2.16.2
 tensorboard-data-server==0.7.2
-tensorflow==2.15.1
+tensorflow==2.16.2
 tensorflow-cloud==0.1.16
 tensorflow-data-validation>=1.16.1
 tensorflow-datasets==4.9.3
@@ -332,7 +332,7 @@ tensorflow-io==0.24.0
 tensorflow-io-gcs-filesystem==0.24.0
 tensorflow-metadata>=1.16.1
 tensorflow-ranking==0.5.5
-tensorflow-serving-api==2.15.1
+tensorflow-serving-api==2.16.1
 tensorflow-text==2.16.1
 tensorflow-transform>=1.16.0
 tensorflow_model_analysis>=0.47.0
