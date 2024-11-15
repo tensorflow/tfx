@@ -40,6 +40,7 @@ from tfx.types.channel_utils import union
 from tfx.types.system_executions import SystemExecution
 
 _TestBeamPipelineArgs = ['--my_testing_beam_pipeline_args=foo']
+_TestEmptyBeamPipeline = beam.Pipeline()
 
 
 class _InputArtifact(types.Artifact):
@@ -140,7 +141,7 @@ def verify_beam_pipeline_arg(a: int) -> TypedDict('Output6', dict(b=float)):  # 
 
 def verify_beam_pipeline_arg_non_none_default_value(
     a: int,
-    beam_pipeline: BeamComponentParameter[beam.Pipeline] = beam.Pipeline(),
+    beam_pipeline: BeamComponentParameter[beam.Pipeline] = _TestEmptyBeamPipeline,
 ) -> TypedDict('Output7', dict(b=float)):  # pytype: disable=wrong-arg-types
   del beam_pipeline
   return {'b': float(a)}

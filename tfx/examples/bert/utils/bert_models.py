@@ -59,16 +59,15 @@ def build_bert_classifier(bert_layer: tf.keras.layers.Layer,
 
 def compile_bert_classifier(
     model: tf.keras.Model,
-    loss: tf.keras.losses.Loss = tf.keras.losses.SparseCategoricalCrossentropy(
-        from_logits=True),
+    loss: tf.keras.losses.Loss | None = None,
     learning_rate: float = 2e-5,
     metrics: Optional[List[Union[str, tf.keras.metrics.Metric]]] = None):
   """Compile the BERT classifier using suggested parameters.
 
   Args:
     model: A keras model. Most likely the output of build_bert_classifier.
-    loss: tf.keras.losses. The suggested loss function expects integer labels
-      (e.g. 0, 1, 2). If the labels are one-hot encoded, consider using
+    loss: Default None will use tf.keras.losses. The suggested loss function expects
+      integer labels (e.g. 0, 1, 2). If the labels are one-hot encoded, consider using
       tf.keras.lossesCategoricalCrossEntropy with from_logits set to true.
     learning_rate: Suggested learning rate to be used in
       tf.keras.optimizer.Adam. The three suggested learning_rates for
@@ -79,6 +78,8 @@ def compile_bert_classifier(
   Returns:
     None.
   """
+  if loss is None:
+    loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
   if metrics is None:
     metrics = ["sparse_categorical_accuracy"]
 
