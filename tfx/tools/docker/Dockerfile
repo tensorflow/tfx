@@ -27,7 +27,7 @@ WORKDIR ${TFX_DIR}
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
-RUN python -m pip install --upgrade pip wheel
+RUN python -m pip install --upgrade pip wheel setuptools
 RUN python -m pip install tomli
 
 # TODO(b/175089240): clean up conditional checks on whether ml-pipelines-sdk is
