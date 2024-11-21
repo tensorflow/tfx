@@ -29,8 +29,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
+    #    - name: Free Disk Space (Ubuntu)
+    #  uses: jlumbroso/free-disk-space@main
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -53,6 +53,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        sudo apt-get install python3-dev default-libmysqlclient-dev build-essential
         python -m pip install --upgrade pip wheel
         # TODO(b/232490018): Cython need to be installed separately to build pycocotools.
         python -m pip install Cython -c ./test_constraints.txt
