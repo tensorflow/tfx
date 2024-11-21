@@ -14,6 +14,7 @@
 """Tests for tfx.components.model_validator.executor."""
 
 import os
+import pytest
 import tensorflow as tf
 
 from tfx.components.model_validator import constants
@@ -23,6 +24,8 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
+@pytest.mark.xfail(run=False,
+                   reason="Model validator is deprecated and this doesn't work with TFMA 0.47.0")
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):

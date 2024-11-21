@@ -21,7 +21,6 @@ import apache_beam as beam
 import tensorflow_model_analysis as tfma
 # Need to import the following module so that the fairness indicator post-export
 # metric is registered.
-import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=unused-import
 from tfx import types
 from tfx.components.evaluator import constants
 from tfx.components.util import udf_utils
@@ -102,16 +101,6 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    # Add fairness indicator metric callback if necessary.
-    fairness_indicator_thresholds = json_utils.loads(
-        exec_properties.get(
-            standard_component_specs.FAIRNESS_INDICATOR_THRESHOLDS_KEY, 'null'))
-    add_metrics_callbacks = None
-    if fairness_indicator_thresholds:
-      add_metrics_callbacks = [
-          tfma.post_export_metrics.fairness_indicators(  # pytype: disable=module-attr
-              thresholds=fairness_indicator_thresholds),
-      ]
 
     output_uri = artifact_utils.get_single_uri(
         output_dict[constants.EVALUATION_KEY])
@@ -196,7 +185,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
                 eval_saved_model_path=model_path,
                 model_name=model_spec.name,
                 eval_config=eval_config,
-                add_metrics_callbacks=add_metrics_callbacks))
+                add_metrics_callbacks=None))
     else:
       eval_config = None
       assert (standard_component_specs.FEATURE_SLICING_SPEC_KEY
@@ -219,7 +208,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
               eval_saved_model_path=model_path,
               model_name='',
               eval_config=None,
-              add_metrics_callbacks=add_metrics_callbacks))
+              add_metrics_callbacks=None))
 
     eval_shared_model = models[0] if len(models) == 1 else models
     schema = None
