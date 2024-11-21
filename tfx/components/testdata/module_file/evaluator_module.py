@@ -32,7 +32,8 @@ try:
 except AttributeError:
   # If tfma doesn't have MaybeMultipleEvalSharedModels, use the one from api.types
   from tensorflow_model_analysis.api.types import MaybeMultipleEvalSharedModels as _MaybeMultipleEvalSharedModels
-    
+
+
 def custom_eval_shared_model(eval_saved_model_path: str, model_name: str,
                              eval_config: tfma.EvalConfig,
                              **kwargs: Dict[str, Any]) -> _EvalSharedModel:
