@@ -25,9 +25,16 @@ from tfx_bsl.tfxio import tensor_adapter
 
 _PREDICT_EXTRACTOR_STAGE_NAME = 'SklearnPredict'
 
+try:
+  # Try to access EvalSharedModel from tfma directly
+  _EvalSharedModel = tfma.EvalSharedModel
+except AttributeError:
+  # If tfma doesn't have EvalSharedModel, use the one from api.types
+  from tensorflow_model_analysis.api.types import EvalSharedModel as _EvalSharedModel
+
 
 def _make_sklearn_predict_extractor(
-    eval_shared_model: tfma.EvalSharedModel,) -> tfma.extractors.Extractor:
+    eval_shared_model: _EvalSharedModel,) -> tfma.extractors.Extractor:
   """Creates an extractor for performing predictions using a scikit-learn model.
 
   The extractor's PTransform loads and runs the serving pickle against
@@ -54,7 +61,7 @@ def _make_sklearn_predict_extractor(
 class _TFMAPredictionDoFn(tfma.utils.DoFnWithModels):
   """A DoFn that loads the models and predicts."""
 
-  def __init__(self, eval_shared_models: Dict[str, tfma.EvalSharedModel]):
+  def __init__(self, eval_shared_models: Dict[str, _EvalSharedModel]):
     super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
 
   def setup(self):
@@ -116,7 +123,7 @@ class _TFMAPredictionDoFn(tfma.utils.DoFnWithModels):
 @beam.typehints.with_output_types(tfma.Extracts)
 def _ExtractPredictions(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    eval_shared_models: Dict[str, tfma.EvalSharedModel],
+    eval_shared_models: Dict[str, _EvalSharedModel],
 ) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
 
@@ -139,7 +146,7 @@ def _custom_model_loader_fn(model_path: str):
 # TFX Evaluator will call the following functions.
 def custom_eval_shared_model(
     eval_saved_model_path, model_name, eval_config,
-    **kwargs) -> tfma.EvalSharedModel:
+    **kwargs) -> _EvalSharedModel:
   """Returns a single custom EvalSharedModel."""
   model_path = os.path.join(eval_saved_model_path, 'model.pkl')
   return tfma.default_eval_shared_model(
