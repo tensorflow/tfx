@@ -331,7 +331,7 @@ tensorflow-hub==0.15.0
 tensorflow-io==0.24.0
 tensorflow-io-gcs-filesystem==0.24.0
 tensorflow-metadata>=1.17.0.dev20241016
-tensorflow-ranking==0.5.5
+# tensorflow-ranking==0.5.5
 tensorflow-serving-api==2.15.1
 tensorflow-text==2.15.0
 tensorflow-transform>=1.16.0.dev20240430
