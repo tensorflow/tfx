@@ -15,7 +15,9 @@
 
 import base64
 import functools
+import importlib
 import os
+import pytest
 from typing import Any, Optional, TypeVar, Union
 
 import tensorflow as tf
@@ -33,6 +35,13 @@ from google.protobuf import descriptor_pool
 from google.protobuf import message
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
+
+
+
+@pytest.fixture(autouse=True,scope="module")
+def cleanup():
+    yield
+    importlib.reload(pipeline_pb2)
 
 _ExecutionInvocation = functools.partial(
     ph.make_proto, execution_invocation_pb2.ExecutionInvocation()

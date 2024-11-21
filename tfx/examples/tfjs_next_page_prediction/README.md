@@ -5,10 +5,6 @@ This example demonstrates:
   * How Apache Beam can be used to convert Google
     Analytics events into data used for training (see
     `bigquery_beam_data_generation.py`).
-  * How to construct a TFX pipeline that trains a TFJS
-    model for predicting the next page the user will
-    visit (see `tfjs_next_page_prediction_pipeline.py`
-    which shows how to setup such a pipeline).
 
 <!--TODO(b/187088244): Update field names to be more descriptive. -->
 

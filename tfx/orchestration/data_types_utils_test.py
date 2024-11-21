@@ -14,6 +14,7 @@
 """Tests for tfx.orchestration.data_types_utils."""
 
 
+import importlib
 import pytest
 from absl.testing import parameterized
 from tfx import types
@@ -31,6 +32,12 @@ from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
 
 _DEFAULT_ARTIFACT_TYPE_NAME = 'Examples'
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup():
+  yield
+  importlib.reload(struct_pb2)
 
 
 def _create_artifact(uri: str) -> types.Artifact:
@@ -97,8 +104,6 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     }
     self.value_dict = {'p0': 0, 'p1': 1, 'p2': 'hello', 'p3': ''}
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testBuildArtifactDict(self):
     actual_artifact_dict = data_types_utils.build_artifact_dict(
         self.artifact_struct_dict)
@@ -107,8 +112,6 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
       self.assertEqual(self.artifact_dict[k][0].id, v[0].id)
       self.assertEqual(self.artifact_dict[k][0].type_name, v[0].type_name)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testUnpackExecutorOutput(self):
     artifact0 = _create_artifact('uri0').mlmd_artifact
     artifact1 = _create_artifact('uri1').mlmd_artifact
@@ -135,29 +138,21 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         executor_output_artifacts)
     self.assertEqual(expected_output, actual_output)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testBuildArtifactStructDict(self):
     actual_artifact_struct_dict = data_types_utils.build_artifact_struct_dict(
         self.artifact_dict)
     self.assertEqual(self.artifact_struct_dict, actual_artifact_struct_dict)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testBuildValueDict(self):
     actual_value_dict = data_types_utils.build_value_dict(
         self.metadata_value_dict)
     self.assertEqual(self.value_dict, actual_value_dict)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testBuildMetadataValueDict(self):
     actual_metadata_value_dict = (
         data_types_utils.build_metadata_value_dict(self.value_dict))
     self.assertEqual(self.metadata_value_dict, actual_metadata_value_dict)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testBuildParsedValueDict(self):
     int_value = text_format.Parse(
         """
@@ -238,8 +233,6 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     self.assertEqual(expected_parsed_dict,
                      data_types_utils.build_parsed_value_dict(value_dict))
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGetMetadataValueType(self):
     tfx_value = pipeline_pb2.Value()
     text_format.Parse(
@@ -264,8 +257,6 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         data_types_utils.get_metadata_value_type(tfx_value),
         metadata_store_pb2.PROTO)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGetMetadataValue(self):
     # Wrap an arbitrary proto message in an MLMD Value.
     original_proto_value = struct_pb2.Value(string_value='message in a proto')
@@ -278,14 +269,10 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     unpacked_value = proto_utils.unpack_proto_any(raw_property_value)
     self.assertEqual(unpacked_value.string_value, 'message in a proto')
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGetMetadataValueTypePrimitiveValue(self):
     self.assertEqual(
         data_types_utils.get_metadata_value_type(1), metadata_store_pb2.INT)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGetMetadataValueTypeFailed(self):
     tfx_value = pipeline_pb2.Value()
     text_format.Parse(
@@ -296,8 +283,6 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     with self.assertRaisesRegex(RuntimeError, 'Expecting field_value but got'):
       data_types_utils.get_metadata_value_type(tfx_value)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGetValue(self):
     tfx_value = pipeline_pb2.Value()
     text_format.Parse(
@@ -307,8 +292,6 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         }""", tfx_value)
     self.assertEqual(data_types_utils.get_value(tfx_value), 1)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGetValueFailed(self):
     tfx_value = pipeline_pb2.Value()
     text_format.Parse(
@@ -319,8 +302,6 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     with self.assertRaisesRegex(RuntimeError, 'Expecting field_value but got'):
       data_types_utils.get_value(tfx_value)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testSetMetadataValueWithTfxValue(self):
     tfx_value = pipeline_pb2.Value()
     metadata_property = metadata_store_pb2.Value()
@@ -333,8 +314,6 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
         metadata_value=metadata_property, value=tfx_value)
     self.assertProtoEquals('int_value: 1', metadata_property)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testSetMetadataValueWithTfxValueFailed(self):
     tfx_value = pipeline_pb2.Value()
     metadata_property = metadata_store_pb2.Value()
@@ -353,15 +332,11 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
       ('StrValue', '42', metadata_store_pb2.Value(string_value='42')),
       ('BooleanValue', True, metadata_store_pb2.Value(string_value='true')),
       ('ListValue', [1, 2], metadata_store_pb2.Value(string_value='[1, 2]')))
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testSetMetadataValueWithPrimitiveValue(self, value, expected_pb):
     pb = metadata_store_pb2.Value()
     data_types_utils.set_metadata_value(pb, value)
     self.assertEqual(pb, expected_pb)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testSetParameterValue(self):
     actual_int = pipeline_pb2.Value()
     expected_int = text_format.Parse(
@@ -569,8 +544,6 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
                         }
                       }"""),
   )
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testSetParameterValueJson(self, value, expected):
     actual_list = pipeline_pb2.Value()
     expected_list = pipeline_pb2.Value()

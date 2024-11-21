@@ -132,9 +132,7 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
   # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(  # Step 6
       model_specs=[  # Step 6
-          # This assumes a serving model with signature 'serving_default'. If
-          # using estimator based EvalSavedModel, add signature_name: 'eval' and
-          # remove the label_key.
+          # This assumes a serving model with signature 'serving_default'.
           tfma.ModelSpec(  # Step 6
               signature_name='serving_default',  # Step 6
               label_key='tips',  # Step 6

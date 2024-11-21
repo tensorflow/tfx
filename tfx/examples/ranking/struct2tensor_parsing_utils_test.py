@@ -15,7 +15,6 @@
 
 
 
-import pytest
 import itertools
 import unittest
 
@@ -172,15 +171,11 @@ examples {
 ]
 
 
-@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
-"If all tests pass, please remove this mark.")
 @unittest.skipIf(struct2tensor_parsing_utils is None,
                  'Cannot import required modules. This can happen when'
                  ' struct2tensor is not available.')
 class ELWCDecoderTest(tf.test.TestCase):
 
-  #@pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-#"If this test passes, please remove this mark.", strict=True)
   def testAllDTypes(self):
     context_features = [
         struct2tensor_parsing_utils.Feature('ctx.int', tf.int64),

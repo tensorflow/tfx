@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.mlmd.artifact_lib."""
 
-import pytest
 from typing import Optional, Sequence
 
 from tfx import types
@@ -62,8 +61,6 @@ class ArtifactLibTest(test_case_utils.TfxTest):
     mlmd_connection = metadata.Metadata(connection_config=connection_config)
     self._mlmd_handle = self.enter_context(mlmd_connection)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGetArtifactsByIdsSuccessfullyReadsAndDeserializes(self):
     original_artifact = _create_tfx_artifact(
         uri='a/b/c', state=types.artifact.ArtifactState.PENDING)
@@ -91,8 +88,6 @@ class ArtifactLibTest(test_case_utils.TfxTest):
       artifact_lib.get_artifacts_by_ids(
           self._mlmd_handle, [artifact_id1, unknown_artifact_id, artifact_id2])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testUpdateArtifactsWithoutNewState(self):
     artifact1 = _create_tfx_artifact('a/b/1')
     artifact2 = _create_tfx_artifact('a/b/2')
@@ -113,8 +108,6 @@ class ArtifactLibTest(test_case_utils.TfxTest):
     for tfx_artifact in updated_tfx_artifacts:
       self.assertEqual(tfx_artifact.get_string_custom_property('foo'), 'bar')
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testUpdateArtifactsWithNewState(self):
     artifact1 = _create_tfx_artifact('a/b/1',
                                      types.artifact.ArtifactState.PENDING)

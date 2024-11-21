@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.input_resolution.ops.group_by_lineage_op."""
 
 import random
-import pytest
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -91,8 +90,6 @@ class GroupByDisjointLineageTest(
         _shuffle(verts), _shuffle(edges)
     )
     self.assertEqual(actual, expected_disjoint_sets)
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByDisjointLineage(self):
     a1, a2, a3, b1, b2, b3, b4, c1, c2, c3, c4 = self._prepare_tfx_artifacts(11)
     self._put_lineage(a1, b1, c1)
@@ -112,8 +109,6 @@ class GroupByDisjointLineageTest(
         {'a': [a3], 'b': [b4], 'c': [c4]},
     ])  # pyformat: disable
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByDisjointLineage_RequireAll(self):
     a1, a2, a3, b1, b2, b4, c1, c3, c4 = self._prepare_tfx_artifacts(9)
     self._put_lineage(a1, [b1, c1])
@@ -140,8 +135,6 @@ class GroupByDisjointLineageTest(
           {'a': [a1], 'b': [b1], 'c': [c1]},
       ])  # pyformat: disable
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByDisjointLineage_SiblingsAreConnected(self):
     a1, a2, b1, b2 = self._prepare_tfx_artifacts(4)
     self._put_lineage([], [a1, b1])
@@ -152,8 +145,6 @@ class GroupByDisjointLineageTest(
         {'a': [a2], 'b': [b2]},
     ])  # pyformat: disable
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByDisjointLineage_InputAndOutputAreConnected(self):
     a1, a2, b1, b2 = self._prepare_tfx_artifacts(4)
     self._put_lineage(a1, b1)
@@ -164,8 +155,6 @@ class GroupByDisjointLineageTest(
         {'a': [a2], 'b': [b2]},
     ])  # pyformat: disable
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByDisjointLineage_ChainingIsConnected(self):
     a1, a2, b1, b2, c1, c2 = self._prepare_tfx_artifacts(6)
     self._put_lineage(a1, b1, c1)
@@ -178,8 +167,6 @@ class GroupByDisjointLineageTest(
         {'a': [a2], 'b': [b2], 'c': [c2]},
     ])  # pyformat: disable
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByDisjointLineage_MoreThanTwoHopsAreDisjoint(self):
     a1, a2, b1, b2, c1, c2 = self._prepare_tfx_artifacts(6)
     self._put_lineage(a1, b1, c1)
@@ -194,8 +181,6 @@ class GroupByDisjointLineageTest(
         {'a': [], 'c': [c2]},
     ])  # pyformat: disable
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByDisjointLineage_ResultOrder(self):
     a_list = self._prepare_tfx_artifacts(10)
     b_list = self._prepare_tfx_artifacts(10)
@@ -215,15 +200,11 @@ class GroupByDisjointLineageTest(
     self.assertEmpty(self._group_by_disjoint_lineage({}))
     self.assertEmpty(self._group_by_disjoint_lineage({'a': []}))
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByDisjointLineage_SameArtifactInMultipleKeys(self):
     [a] = self._prepare_tfx_artifacts(1)
     result = self._group_by_disjoint_lineage({'a1': [a], 'a2': [a]})
     self.assertEqual(result, [{'a1': [a], 'a2': [a]}])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByDisjointLineage_DuplicatedArtifacts_Deduplicated(self):
     [a] = self._prepare_tfx_artifacts(1)
     result = self._group_by_disjoint_lineage({'a': [a, a]})
@@ -244,8 +225,6 @@ class GroupByPivotTest(tf.test.TestCase, _LineageUtils):
         store=self.store,
     )
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByPivot(self):
     a1, a2, a3, b1, b2, b3, b4, c1, c2, c3, c4 = self._prepare_tfx_artifacts(11)
     self._put_lineage(a1, b1, c1)
@@ -287,8 +266,6 @@ class GroupByPivotTest(tf.test.TestCase, _LineageUtils):
           {'a': [], 'b': [b4], 'c': [c4]},
       ])  # pyformat: disable
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByPivot_InvalidPivot(self):
     a, b = self._prepare_tfx_artifacts(2)
     self._put_lineage(a, b)
@@ -297,8 +274,6 @@ class GroupByPivotTest(tf.test.TestCase, _LineageUtils):
     with self.assertRaises(exceptions.FailedPreconditionError):
       self._group_by_pivot(inputs, pivot_key='invalid_pivot')
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByPivot_EmptyPivot(self):
     a, b = self._prepare_tfx_artifacts(2)
     self._put_lineage(a, b)
@@ -312,8 +287,6 @@ class GroupByPivotTest(tf.test.TestCase, _LineageUtils):
       result = self._group_by_pivot(inputs, pivot_key='a')
       self.assertEqual(result, [{'a': [a], 'b': [b], 'c': []}])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByPivot_RequireAll(self):
     a1, a2, a3, b1, b2, b4, c1, c3, c4 = self._prepare_tfx_artifacts(9)
     self._put_lineage(a1, [b1, c1])
@@ -340,24 +313,18 @@ class GroupByPivotTest(tf.test.TestCase, _LineageUtils):
           {'a': [a1], 'b': [b1], 'c': [c1]}
       ])  # pyformat: disable
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByPivot_SiblingsAreConnected(self):
     a, b = self._prepare_tfx_artifacts(2)
     self._put_lineage([], [a, b])
     result = self._group_by_pivot({'a': [a], 'b': [b]}, pivot_key='a')
     self.assertEqual(result, [{'a': [a], 'b': [b]}])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByPivot_InputAndOutputAreConnected(self):
     a, b = self._prepare_tfx_artifacts(2)
     self._put_lineage(a, b)
     result = self._group_by_pivot({'a': [a], 'b': [b]}, pivot_key='a')
     self.assertEqual(result, [{'a': [a], 'b': [b]}])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByPivot_ChainingIsNotConnected(self):
     a, b, c = self._prepare_tfx_artifacts(3)
     self._put_lineage(a, b, c)
@@ -367,15 +334,11 @@ class GroupByPivotTest(tf.test.TestCase, _LineageUtils):
       )
       self.assertEqual(result, [{'a': [a], 'b': [b], 'c': []}])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByPivot_SelfIsNotNeighbor(self):
     [a] = self._prepare_tfx_artifacts(1)
     result = self._group_by_pivot({'a1': [a], 'a2': [a]}, pivot_key='a1')
     self.assertEqual(result, [{'a1': [a], 'a2': []}])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testGroupByPivot_DuplicatedPivotPreserved(self):
     [a] = self._prepare_tfx_artifacts(1)
     result = self._group_by_pivot({'a': [a, a]}, pivot_key='a')

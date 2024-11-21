@@ -35,8 +35,6 @@ import pytest
 _SPAN_PROPERTY_NAME = 'span'
 
 
-@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
-"If all tests pass, please remove this mark.")
 @pytest.mark.e2e
 class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
                                        parameterized.TestCase):

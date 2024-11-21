@@ -66,7 +66,7 @@
           "container": {
             "args": [
               "--executor_class_path",
-              "tfx.components.trainer.executor.Executor",
+              "tfx.components.trainer.executor.GenericExecutor",
               "--json_serialized_invocation_args",
               "{{$}}"
             ],

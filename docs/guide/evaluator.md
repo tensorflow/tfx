@@ -66,9 +66,7 @@ import tensorflow_model_analysis as tfma
 eval_config = tfma.EvalConfig(
     model_specs=[
         # This assumes a serving model with signature 'serving_default'. If
-        # using estimator based EvalSavedModel, add signature_name='eval' and
-        # remove the label_key. Note, if using a TFLite model, then you must set
-        # model_type='tf_lite'.
+        # using a TFLite model, then you must set model_type='tf_lite'.
         tfma.ModelSpec(label_key='<label_key>')
     ],
     metrics_specs=[

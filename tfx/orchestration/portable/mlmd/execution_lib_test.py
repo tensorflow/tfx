@@ -22,7 +22,6 @@ from absl.testing import parameterized
 from tfx import types
 from tfx import version
 from tfx.orchestration import metadata
-from tfx.orchestration.experimental.core import task_gen_utils
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
@@ -479,12 +478,11 @@ class ExecutionLibTest(test_case_utils.TfxTest, parameterized.TestCase):
     contexts = self._generate_contexts(self._mlmd_handle)
 
     # Runs the function for test, with None input
-    input_and_params = task_gen_utils.InputAndParam(input_artifacts=None)
     [execution] = execution_lib.put_executions(
         self._mlmd_handle,
         [execution],
         contexts,
-        input_artifacts_maps=[input_and_params.input_artifacts],
+        input_artifacts_maps=[None],
     )
 
     # Verifies that events should be empty.

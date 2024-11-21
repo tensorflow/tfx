@@ -40,7 +40,7 @@ Repository = "https://github.com/tensorflow/tfx"
 addopts = "--import-mode=importlib"
 testpaths = "tfx"
 python_files = "*_test.py"
-norecursedirs = ["custom_components", ".*", "*.egg"]
+norecursedirs = ["custom_components", ".*", "*.egg", "tfx/orchestration/experimental/core"]
 markers = [
     "e2e: end-to-end tests which are slow and require more dependencies (deselect with '-m \"not end_to_end\"')",
     "serial: mark tests that should not run in parallel",

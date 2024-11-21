@@ -223,7 +223,6 @@ ML_PIPELINES_SDK_PACKAGES = [
     # These are the subpackages of `tfx.orchestration` necessary.
     'tfx.orchestration',
     'tfx.orchestration.config',
-    'tfx.orchestration.experimental.core',
     'tfx.orchestration.launcher',
     'tfx.orchestration.local',
     'tfx.orchestration.local.legacy',

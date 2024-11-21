@@ -13,10 +13,12 @@
 # limitations under the License.
 """Tests for tfx.types.artifact."""
 
+import gc
 import json
+import importlib
+import pytest
 import textwrap
 from unittest import mock
-import pytest
 
 from absl import logging
 import tensorflow as tf
@@ -28,6 +30,12 @@ from tfx.utils import json_utils
 from google.protobuf import struct_pb2
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup():
+  yield
+  importlib.reload(struct_pb2)
 
 
 Dataset = system_artifacts.Dataset
@@ -131,14 +139,6 @@ _MyArtifact6 = artifact._ArtifactType(  # pylint: disable=invalid-name
     })
 
 
-class _ArtifactWithInvalidAnnotation(artifact.Artifact):
-  TYPE_NAME = 'InvalidAnnotationArtifact'
-  TYPE_ANNOTATION = artifact.Artifact
-  PROPERTIES = {
-      'int1': artifact.Property(type=artifact.PropertyType.INT),
-  }
-
-
 class _MyValueArtifact(value_artifact.ValueArtifact):
   TYPE_NAME = 'MyValueTypeName'
 
@@ -163,6 +163,18 @@ _BAD_URI = '/tmp/to/a/bad/dir'
 
 
 class ArtifactTest(tf.test.TestCase):
+
+  def tearDown(self):
+    # This cleans up __subclasses__() that has InvalidAnnotation artifact classes.
+    gc.collect()
+
+  def assertProtoEquals(self, proto1, proto2):
+    if type(proto1) is not type(proto2):
+      # GetProtoType() doesn't return the orignal type.
+      new_proto2 = type(proto1)()
+      new_proto2.CopyFrom(proto2)
+      return super().assertProtoEquals(proto1, new_proto2)
+    return super().assertProtoEquals(proto1, proto2)
 
   def testArtifact(self):
     instance = _MyArtifact()
@@ -958,8 +970,6 @@ class ArtifactTest(tf.test.TestCase):
         }
         )"""), str(copied_artifact))
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testArtifactProtoValue(self):
     # Construct artifact.
     my_artifact = _MyArtifact2()
@@ -1242,8 +1252,6 @@ class ArtifactTest(tf.test.TestCase):
       artifact.Artifact('StringTypeName')
 
   @mock.patch('absl.logging.warning')
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testDeserialize(self, *unused_mocks):
     original = _MyArtifact()
     original.uri = '/my/path'
@@ -1269,8 +1277,6 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(rehydrated.string2, '222')
 
   @mock.patch('absl.logging.warning')
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testDeserializeUnknownArtifactClass(self, *unused_mocks):
     original = _MyArtifact()
     original.uri = '/my/path'
@@ -1373,6 +1379,13 @@ class ArtifactTest(tf.test.TestCase):
                      metadata_store_pb2.ArtifactType.DATASET)
 
   def testInvalidTypeAnnotation(self):
+    class _ArtifactWithInvalidAnnotation(artifact.Artifact):
+      TYPE_NAME = 'InvalidAnnotationArtifact'
+      TYPE_ANNOTATION = artifact.Artifact
+      PROPERTIES = {
+          'int1': artifact.Property(type=artifact.PropertyType.INT),
+      }
+
     with self.assertRaisesRegex(
         ValueError, 'is not a subclass of SystemArtifact'):
       _ArtifactWithInvalidAnnotation()

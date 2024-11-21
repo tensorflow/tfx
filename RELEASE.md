@@ -9,6 +9,7 @@
    most likely you discovered a bug and should not use an f-string in the first
    place. If it is truly your intention to print the placeholder (not its
    resolved value) for debugging purposes, use `repr()` or `!r` instead.
+* Drop supports for the Estimator API.
 
 ### For Pipeline Authors
 
@@ -224,7 +225,7 @@
 
 ## Bug Fixes and Other Changes
 
-*  Support to task type "workerpool1" of CLUSTER_SPEC in Vertex AI training's 
+*  Support to task type "workerpool1" of CLUSTER_SPEC in Vertex AI training's
    service according to the changes of task type in Tuner component.
 *  Propagates unexpected import failures in the public v1 module.
 

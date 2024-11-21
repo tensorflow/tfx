@@ -21,7 +21,6 @@ from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
 from tfx.components.example_gen import utils
-from tfx.components.trainer.executor import Executor
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.base import base_component
@@ -220,7 +219,6 @@ def create_pipeline_components(
       model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model)).with_id(
           'Resolver.latest_model_resolver')
   trainer = tfx.components.Trainer(
-      custom_executor_spec=executor_spec.ExecutorClassSpec(Executor),
       examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
       base_model=latest_model_resolver.outputs['model'],

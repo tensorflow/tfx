@@ -72,7 +72,7 @@
           "container": {
             "args": [
               "--executor_class_path",
-              "tfx.components.trainer.executor.Executor",
+              "tfx.components.trainer.executor.GenericExecutor",
               "--json_serialized_invocation_args",
               "{{$}}",
               "--json_serialized_inputs_spec_args",
@@ -625,7 +625,7 @@
                 "force_tf_compat_v1": {
                   "runtimeValue": {
                     "constant": 0.0
-                    
+
                   }
                 }
               }

@@ -27,7 +27,6 @@ from tfx import version
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types_utils
 from tfx.orchestration import node_proto_view
-from tfx.orchestration.experimental.core import constants
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -51,6 +50,7 @@ _VALUE_ARTIFACT_FILE_NAME = 'value'
 RESOLVED_AT_RUNTIME = '{resolved_at_runtime}'
 # LINT.ThenChange(<Internal source code>)
 _ORCHESTRATOR_GENERATED_BCL_DIR = 'orchestrator_generated_bcl'
+_STATEFUL_WORKING_DIR_INDEX = '__stateful_working_dir_index__'
 
 
 def make_output_dirs(
@@ -288,10 +288,10 @@ def get_stateful_working_dir_index(
   index = None
   if (
       execution is not None
-      and constants.STATEFUL_WORKING_DIR_INDEX in execution.custom_properties
+      and _STATEFUL_WORKING_DIR_INDEX in execution.custom_properties
   ):
     index = data_types_utils.get_metadata_value(
-        execution.custom_properties[constants.STATEFUL_WORKING_DIR_INDEX])
+        execution.custom_properties[_STATEFUL_WORKING_DIR_INDEX])
   return str(index) if index is not None else str(uuid.uuid4())
 
 

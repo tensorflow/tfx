@@ -18,7 +18,6 @@ import tempfile
 from typing import Any, Dict, List
 
 import absl.testing.absltest
-import pytest
 from tfx import types
 from tfx.dsl.compiler import compiler
 from tfx.dsl.components.base import base_component
@@ -165,8 +164,6 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
     c = compiler.Compiler()
     return c.compile(test_pipeline)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testRun(self):
     local_dag_runner.LocalDagRunner().run(self._getTestPipeline())
     self.assertEqual(_executed_components, [
@@ -174,8 +171,6 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         '_FakeComponent.d', '_FakeComponent.e'
     ])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testPartialRun(self):
     local_dag_runner.LocalDagRunner().run(
         self._getTestPipeline(),
@@ -184,8 +179,6 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         _executed_components,
         ['_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c'])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testRunWithIR(self):
     local_dag_runner.LocalDagRunner().run_with_ir(self._getTestPipelineIR())
     self.assertEqual(_executed_components, [
@@ -193,8 +186,6 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         '_FakeComponent.d', '_FakeComponent.e'
     ])
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testPartialRunWithIR(self):
     pr_opts = pipeline_pb2.PartialRun()
     pr_opts.to_nodes.append('c')

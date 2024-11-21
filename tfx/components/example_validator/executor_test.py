@@ -20,8 +20,6 @@ from absl.testing import parameterized
 from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.example_validator import executor
 from tfx.dsl.io import fileio
-from tfx.orchestration.experimental.core import component_generated_alert_pb2
-from tfx.orchestration.experimental.core import constants
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -29,7 +27,6 @@ from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 
-from google.protobuf import any_pb2
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 
@@ -84,47 +81,6 @@ class ExecutorTest(parameterized.TestCase):
         len(expected_anomalies.anomaly_info)
     )
 
-  def test_create_anomalies_alerts(self):
-    expected_alerts = [
-        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-            alert_name='Feature-level anomalies present',
-            alert_body=(
-                'Feature(s) company contain(s) anomalies for split '
-                'train, span 0. See Anomalies artifact for more '
-                'details.'
-            )
-        ),
-        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-            alert_name='Feature-level anomalies present',
-            alert_body=(
-                'Feature(s) company contain(s) anomalies for split '
-                'eval, span 0. See Anomalies artifact for more '
-                'details.'
-            ),
-        ),
-        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-            alert_name='Dataset anomalies present',
-            alert_body=(
-                'Low num examples in dataset. in split train, span 0.'
-            ),
-        ),
-        component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-            alert_name='Dataset anomalies present',
-            alert_body=(
-                'Low num examples in dataset. in split eval, span 0.'
-            ),
-        ),
-    ]
-    actual_alerts = []
-    for split_name in ['train', 'eval']:
-      actual_alerts.extend(
-          executor._create_anomalies_alerts(
-              _ANOMALIES_PROTO, split_name, span=0
-          )
-      )
-    for alert in actual_alerts:
-      self.assertIn(alert, expected_alerts)
-
   @parameterized.named_parameters(
       {
           'testcase_name': 'No_anomalies',
@@ -134,7 +90,6 @@ class ExecutorTest(parameterized.TestCase):
               'train': executor.BLESSED_VALUE,
               'eval': executor.BLESSED_VALUE,
           },
-          'expected_alerts': None,
       },
       {
           'testcase_name': 'Custom_validation',
@@ -153,26 +108,6 @@ class ExecutorTest(parameterized.TestCase):
               'train': executor.NOT_BLESSED_VALUE,
               'eval': executor.NOT_BLESSED_VALUE,
           },
-          'expected_alerts': component_generated_alert_pb2.ComponentGeneratedAlertList(
-              component_generated_alert_list=[
-                  component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                      alert_name='Feature-level anomalies present',
-                      alert_body=(
-                          'Feature(s) company contain(s) anomalies for split '
-                          'train, span 11. See Anomalies artifact for more '
-                          'details.'
-                      ),
-                  ),
-                  component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                      alert_name='Feature-level anomalies present',
-                      alert_body=(
-                          'Feature(s) company contain(s) anomalies for split '
-                          'eval, span 11. See Anomalies artifact for more '
-                          'details.'
-                      ),
-                  ),
-              ]
-          ),
       },
   )
   def testDo(
@@ -180,7 +115,6 @@ class ExecutorTest(parameterized.TestCase):
       custom_validation_config,
       expected_anomalies,
       expected_blessing,
-      expected_alerts,
   ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
@@ -270,11 +204,5 @@ class ExecutorTest(parameterized.TestCase):
                     artifacts=[validation_output.mlmd_artifact]))
         },
     )
-    if expected_alerts:
-      alerts_any_proto = any_pb2.Any()
-      alerts_any_proto.Pack(expected_alerts)
-      expected_executor_output.execution_properties[
-          constants.COMPONENT_GENERATED_ALERTS_KEY
-      ].proto_value.CopyFrom(alerts_any_proto)
 
     self.assertEqual(executor_output, expected_executor_output)

@@ -24,9 +24,6 @@ from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 import pytest
 
-
-@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
-"If all tests pass, please remove this mark.")
 @pytest.mark.e2e
 class TaxiPipelineNativeKerasEndToEndTest(
     tf.test.TestCase, parameterized.TestCase):

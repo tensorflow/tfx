@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.components.base.decorators."""
 
 
-import pytest
 import os
 from typing import Any, Dict, List, Optional
 
@@ -43,6 +42,7 @@ from tfx.types.channel_utils import union
 from tfx.types.system_executions import SystemExecution
 
 _TestBeamPipelineArgs = ['--my_testing_beam_pipeline_args=foo']
+_TestEmptyBeamPipeline = beam.Pipeline()
 
 
 class _InputArtifact(types.Artifact):
@@ -141,7 +141,7 @@ def verify_beam_pipeline_arg(a: int) -> OutputDict(b=float):  # pytype: disable=
 
 def verify_beam_pipeline_arg_non_none_default_value(
     a: int,
-    beam_pipeline: BeamComponentParameter[beam.Pipeline] = beam.Pipeline(),
+    beam_pipeline: BeamComponentParameter[beam.Pipeline] = _TestEmptyBeamPipeline,
 ) -> OutputDict(b=float):  # pytype: disable=invalid-annotation,wrong-arg-types
   del beam_pipeline
   return {'b': float(a)}
@@ -505,8 +505,6 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testBeamExecutionFailure(self):
     """Test execution with return values; failure case."""
     instance_1 = injector_1(foo=9, bar='secret')
@@ -533,7 +531,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         components=[instance_1, instance_2, instance_3])
 
     with self.assertRaisesRegex(
-        RuntimeError, r'AssertionError: \(220.0, 32.0, \'OK\', None\)'):
+        AssertionError, r'\(220.0, 32.0, \'OK\', None\)'):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
   def testOptionalInputsAndParameters(self):
@@ -624,8 +622,6 @@ class ComponentDecoratorTest(tf.test.TestCase):
         ValueError, 'Non-nullable output \'e\' received None return value'):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
-  @pytest.mark.xfail(run=False, reason="PR 6889 This test fails and needs to be fixed. "
-"If this test passes, please remove this mark.", strict=True)
   def testComponentAnnotation(self):
     """Test component annotation parsed from decorator param."""
     instance_1 = injector_1_with_annotation(foo=9, bar='secret')
@@ -654,18 +650,18 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
     # Verify base_type annotation parsed from component decorator is correct.
     self.assertEqual(
-        test_pipeline.components[0].type, '__main__.injector_1_with_annotation'
+        test_pipeline.components[0].type, 'tfx.dsl.component.experimental.decorators_test.injector_1_with_annotation'
     )
     self.assertEqual(
         test_pipeline.components[0].type_annotation.MLMD_SYSTEM_BASE_TYPE, 1)
     self.assertEqual(
         test_pipeline.components[1].type,
-        '__main__.simple_component_with_annotation',
+        'tfx.dsl.component.experimental.decorators_test.simple_component_with_annotation',
     )
     self.assertEqual(
         test_pipeline.components[1].type_annotation.MLMD_SYSTEM_BASE_TYPE, 2)
     self.assertEqual(
-        test_pipeline.components[2].type, '__main__.verify_with_annotation'
+        test_pipeline.components[2].type, 'tfx.dsl.component.experimental.decorators_test.verify_with_annotation'
     )
     self.assertEqual(
         test_pipeline.components[2].type_annotation.MLMD_SYSTEM_BASE_TYPE, 3)

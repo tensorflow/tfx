@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Base class to patch DagRunner classes in TFX CLI."""
-
+#ruff: noqa: B027
 import abc
 import contextlib
 import functools
@@ -56,12 +56,12 @@ class DagRunnerPatcher(abc.ABC):
     self._run_called = False
     self._call_real_run = call_real_run
 
-  def _before_run(self, runner: tfx_runner.TfxRunner,
+  def _before_run(self, runner: tfx_runner.TfxRunner,  # noqa: B027
                   pipeline: Union[pipeline_pb2.Pipeline, tfx_pipeline.Pipeline],
                   context: MutableMapping[str, Any]) -> None:
     pass
 
-  def _after_run(self, runner: tfx_runner.TfxRunner,
+  def _after_run(self, runner: tfx_runner.TfxRunner,  # noqa: B027
                  pipeline: Union[pipeline_pb2.Pipeline, tfx_pipeline.Pipeline],
                  context: MutableMapping[str, Any]) -> None:
     pass

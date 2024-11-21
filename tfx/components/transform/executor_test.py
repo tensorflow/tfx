@@ -20,8 +20,6 @@ import re
 import tempfile
 from unittest import mock
 
-import pytest
-
 from absl.testing import parameterized
 import apache_beam as beam
 import tensorflow as tf
@@ -29,7 +27,7 @@ import tensorflow_data_validation as tfdv
 import tensorflow_transform as tft
 from tensorflow_transform.beam import tft_unit
 from tfx import types
-from tfx.components.testdata.module_file import transform_module
+from tfx.components.testdata.module_file import trainer_module
 from tfx.components.transform import executor
 from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
@@ -47,7 +45,6 @@ class _TempPath(types.Artifact):
 
 
 # TODO(b/122478841): Add more detailed tests.
-@pytest.mark.xfail(run=False, reason="Test is flaky.")
 class ExecutorTest(tft_unit.TransformTestCase):
 
   _TEMP_ARTIFACTS_DIR = tempfile.mkdtemp()
@@ -61,11 +58,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
   _FILE_FORMAT = None
   _PAYLOAD_FORMAT = example_gen_pb2.FORMAT_TF_EXAMPLE
 
-  _PREPROCESSING_FN = transform_module.preprocessing_fn
-  _STATS_OPTIONS_UPDATER_FN = transform_module.stats_options_updater_fn
+  _PREPROCESSING_FN = trainer_module.preprocessing_fn
+  _STATS_OPTIONS_UPDATER_FN = trainer_module.stats_options_updater_fn
 
   _SCHEMA_ARTIFACT_DIR = 'schema_gen'
-  _MODULE_FILE = 'module_file/transform_module.py'
+  _MODULE_FILE = 'module_file/trainer_module.py'
 
   _TEST_COUNTERS = {
       'num_instances': 24909,
