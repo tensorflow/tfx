@@ -29,6 +29,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -50,12 +53,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        df -a -h
-        du -d 1 -h .
-        df . -h
-        docker system prune
-        mkdir -p ./tmp
-        export TMPDIR=./tmp
         python -m pip install --upgrade pip wheel
         # TODO(b/232490018): Cython need to be installed separately to build pycocotools.
         python -m pip install Cython -c ./test_constraints.txt
