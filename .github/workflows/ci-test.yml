@@ -29,8 +29,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    #    - name: Free Disk Space (Ubuntu)
-    #  uses: jlumbroso/free-disk-space@main
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
