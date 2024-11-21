@@ -240,7 +240,7 @@ def _build_keras_model(
   output = tf.keras.layers.Dense(1, activation='sigmoid')(
       tf.keras.layers.concatenate([deep, wide])
   )
-  output = tf.squeeze(output, -1)
+  output = tf.keras.layers.Reshape((1,))(output)
 
   model = tf.keras.Model(input_layers, output)
   model.compile(
@@ -365,4 +365,4 @@ def run_fn(fn_args: fn_args_utils.FnArgs):
           model, tf_transform_output
       ),
   }
-  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
+  tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)

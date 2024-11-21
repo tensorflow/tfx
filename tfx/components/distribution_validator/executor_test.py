@@ -294,7 +294,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                 step: 'company'
               }
               validations {
-                sql_expression: 'feature_test.string_stats.unique > feature_base.string_stats.unique'
+                sql_expression: 'feature_test.string_stats.unique > feature_base.string_stats.unique * 2'
                 severity: ERROR
                 description: 'Test feature has too few unique values.'
                 }
@@ -308,7 +308,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
             reason {
               type: CUSTOM_VALIDATION
               short_description: "Test feature has too few unique values."
-              description: "Custom validation triggered anomaly. Query: feature_test.string_stats.unique > feature_base.string_stats.unique Test dataset: default slice Base dataset:  Base path: company"            }
+              description: "Custom validation triggered anomaly. Query: feature_test.string_stats.unique > feature_base.string_stats.unique * 2 Test dataset: default slice Base dataset:  Base path: company"            }
             path {
               step: "company"
             }
