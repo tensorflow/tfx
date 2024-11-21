@@ -50,6 +50,8 @@ jobs:
 
     - name: Install dependencies
       run: |
+        df -a -h
+        du -d 1 -h .
         python -m pip install --upgrade pip wheel
         # TODO(b/232490018): Cython need to be installed separately to build pycocotools.
         python -m pip install Cython -c ./test_constraints.txt
