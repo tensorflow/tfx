@@ -19,9 +19,24 @@ import tensorflow_model_analysis as tfma
 from tfx_bsl.tfxio import tensor_adapter
 
 
+try:
+  # Try to access EvalSharedModel from tfma directly
+  _EvalSharedModel = tfma.EvalSharedModel
+except AttributeError:
+  # If tfma doesn't have EvalSharedModel, use the one from api.types
+  from tensorflow_model_analysis.api.types import EvalSharedModel as _EvalSharedModel
+
+try:
+  # Try to access MaybeMultipleEvalSharedModels from tfma directly
+  _MaybeMultipleEvalSharedModels = tfma.MaybeMultipleEvalSharedModels
+except AttributeError:
+  # If tfma doesn't have MaybeMultipleEvalSharedModels, use the one from api.types
+  from tensorflow_model_analysis.api.types import MaybeMultipleEvalSharedModels as _MaybeMultipleEvalSharedModels
+
+
 def custom_eval_shared_model(eval_saved_model_path: str, model_name: str,
                              eval_config: tfma.EvalConfig,
-                             **kwargs: Dict[str, Any]) -> tfma.EvalSharedModel:
+                             **kwargs: Dict[str, Any]) -> _EvalSharedModel:
   return tfma.default_eval_shared_model(
       eval_saved_model_path=eval_saved_model_path,
       model_name=model_name,
@@ -30,7 +45,7 @@ def custom_eval_shared_model(eval_saved_model_path: str, model_name: str,
 
 
 def custom_extractors(
-    eval_shared_model: tfma.MaybeMultipleEvalSharedModels,
+    eval_shared_model: _MaybeMultipleEvalSharedModels,
     eval_config: tfma.EvalConfig,
     tensor_adapter_config: tensor_adapter.TensorAdapterConfig,
 ) -> List[tfma.extractors.Extractor]:
