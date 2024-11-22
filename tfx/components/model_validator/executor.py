@@ -28,6 +28,12 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
+try:
+  # Try to access EvalResult from tfma directly
+  _EvalResult = tfma.EvalResult
+except AttributeError:
+  # If tfma doesn't have EvalResult, use the one from view_types
+  from tensorflow_model_analysis.view.view_types import EvalResult as _EvalResult
 
 class Executor(base_beam_executor.BaseBeamExecutor):
   """DEPRECATED: Please use `Evaluator` instead.
@@ -51,13 +57,13 @@ class Executor(base_beam_executor.BaseBeamExecutor):
   """
 
   # TODO(jyzhao): customized threshold support.
-  def _pass_threshold(self, eval_result: tfma.EvalResult) -> bool:
+  def _pass_threshold(self, eval_result: _EvalResult) -> bool:
     """Check threshold."""
     return True
 
   # TODO(jyzhao): customized validation support.
-  def _compare_eval_result(self, current_model_eval_result: tfma.EvalResult,
-                           blessed_model_eval_result: tfma.EvalResult) -> bool:
+  def _compare_eval_result(self, current_model_eval_result: _EvalResult,
+                           blessed_model_eval_result: _EvalResult) -> bool:
     """Compare accuracy of all metrics and return true if current is better or equal."""
     for current_metric, blessed_metric in zip(
         current_model_eval_result.slicing_metrics,
