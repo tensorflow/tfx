@@ -57,7 +57,6 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('CsvExampleGen')
-    self.assertExecutedOnce('Evaluator')
     self.assertExecutedOnce('ExampleValidator')
     self.assertExecutedOnce('Pusher')
     self.assertExecutedOnce('SchemaGen')
@@ -78,7 +77,7 @@ class PenguinPipelineSklearnLocalEndToEndTest(tf.test.TestCase):
 
     self.assertTrue(tfx.dsl.io.fileio.exists(self._serving_model_dir))
     self.assertTrue(tfx.dsl.io.fileio.exists(self._metadata_path))
-    expected_execution_count = 8  # 7 components + 1 resolver
+    expected_execution_count = 7  # 6 components + 1 resolver
     metadata_config = (
         tfx.orchestration.metadata.sqlite_metadata_connection_config(
             self._metadata_path))
