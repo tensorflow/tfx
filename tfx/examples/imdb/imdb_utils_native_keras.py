@@ -139,6 +139,9 @@ def _build_keras_model() -> keras.Model:
       name=_transformed_name(_FEATURE_KEY)
   )(input_layer)
 
+  # Note: With dropout=_DROPOUT_RATE,
+  # TF 1.16 cannot save the model with tf.saved_model.save().
+  # dropout=0 is a workaround currently, need to find a solution.
   lstm_layer = keras.layers.Bidirectional(
       keras.layers.LSTM(_LSTM_UNITS, dropout=0)
   )(embedding_layer)
