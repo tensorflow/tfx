@@ -89,4 +89,4 @@ def run_fn(fn_args: FnArgs):
               model, tf_transform_output).get_concrete_function(
                   tf.TensorSpec(shape=[None], dtype=tf.string, name='examples'))
   }
-  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
+  tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)

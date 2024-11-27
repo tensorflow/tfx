@@ -18,7 +18,6 @@ import pytest
 from tfx.experimental.templates.taxi.models.keras_model import model
 
 
-@pytest.mark.xfail(run=False, reason="_build_keras_model is not compatible with Keras3.")
 class ModelTest(tf.test.TestCase):
 
   def testBuildKerasModel(self):
