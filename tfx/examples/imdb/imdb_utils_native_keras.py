@@ -131,7 +131,10 @@ def _build_keras_model() -> keras.Model:
     A Keras Model.
   """
   # Input layer explicitly defined to handle dictionary input
-  input_layer = keras.layers.Input(shape=(_MAX_LEN,), dtype=tf.int64, name=_transformed_name(_FEATURE_KEY, True))  
+  input_layer = keras.layers.Input(
+      shape=(_MAX_LEN,),
+      dtype=tf.int64,
+      name=_transformed_name(_FEATURE_KEY, True))
 
   embedding_layer = keras.layers.Embedding(
       _VOCAB_SIZE + 2,
@@ -150,7 +153,9 @@ def _build_keras_model() -> keras.Model:
   output_layer = keras.layers.Dense(1)(hidden_layer)
 
   # Create the model with the specified input and output
-  model = keras.Model(inputs={_transformed_name(_FEATURE_KEY, True): input_layer}, outputs=output_layer) 
+  model = keras.Model(
+      inputs={_transformed_name(_FEATURE_KEY, True): input_layer},
+      outputs=output_layer)
 
   model.compile(
       loss=keras.losses.BinaryCrossentropy(from_logits=True),

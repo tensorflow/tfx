@@ -336,4 +336,3 @@ def run_fn(fn_args: FnArgs):
           _get_transform_features_signature(model, tf_transform_output),
   }
   tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)
-
