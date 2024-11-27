@@ -160,16 +160,16 @@ def run_fn(fn_args: tfx.components.FnArgs):
   with mirrored_strategy.scope():
     model = _make_keras_model(hparams)
 
-    # Write logs to path
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(
-        log_dir=fn_args.model_run_dir, update_freq='epoch')
+  # Write logs to path
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+      log_dir=fn_args.model_run_dir, update_freq='epoch')
 
-    model.fit(
-        train_dataset,
-        steps_per_epoch=fn_args.train_steps,
-        validation_data=eval_dataset,
-        validation_steps=fn_args.eval_steps,
-        callbacks=[tensorboard_callback])
+  model.fit(
+      train_dataset,
+      steps_per_epoch=fn_args.train_steps,
+      validation_data=eval_dataset,
+      validation_steps=fn_args.eval_steps,
+      callbacks=[tensorboard_callback])
 
-    signatures = base.make_serving_signatures(model, tf_transform_output)
-    tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)
+  signatures = base.make_serving_signatures(model, tf_transform_output)
+  tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)

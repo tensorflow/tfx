@@ -130,16 +130,24 @@ def _build_keras_model() -> keras.Model:
   Returns:
     A Keras Model.
   """
-  input_layer = keras.layers.Input(shape=(_MAX_LEN,), dtype=tf.int64, name=_transformed_name(_FEATURE_KEY, True))
+  # Input layer explicitly defined to handle dictionary input
+  input_layer = keras.layers.Input(shape=(_MAX_LEN,), dtype=tf.int64, name=_transformed_name(_FEATURE_KEY, True))  
+
   embedding_layer = keras.layers.Embedding(
-          _VOCAB_SIZE + 2,
-          _EMBEDDING_UNITS)(input_layer)
-  bidirectional_layer = keras.layers.Bidirectional(
-          keras.layers.LSTM(_LSTM_UNITS, dropout=_DROPOUT_RATE))(embedding_layer)
-  hidden_layer = keras.layers.Dense(_HIDDEN_UNITS, activation='relu')(bidirectional_layer)
+      _VOCAB_SIZE + 2,
+      _EMBEDDING_UNITS,
+      name=_transformed_name(_FEATURE_KEY)
+  )(input_layer)
+
+  lstm_layer = keras.layers.Bidirectional(
+      keras.layers.LSTM(_LSTM_UNITS, dropout=0)
+  )(embedding_layer)
+
+  hidden_layer = keras.layers.Dense(_HIDDEN_UNITS, activation='relu')(lstm_layer)
   output_layer = keras.layers.Dense(1)(hidden_layer)
 
-  model = keras.Model(inputs=input_layer, outputs=output_layer)
+  # Create the model with the specified input and output
+  model = keras.Model(inputs={_transformed_name(_FEATURE_KEY, True): input_layer}, outputs=output_layer) 
 
   model.compile(
       loss=keras.losses.BinaryCrossentropy(from_logits=True),
@@ -154,7 +162,7 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
   """Returns a function that parses a serialized tf.Example."""
   model.tft_layer = tf_transform_output.transform_features_layer()
 
-  @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.string, name='examples')])
+  @tf.function
   def serve_tf_examples_fn(serialized_tf_examples):
     """Returns the output to be used in the serving signature."""
     feature_spec = tf_transform_output.raw_feature_spec()
@@ -202,18 +210,13 @@ def run_fn(fn_args: FnArgs):
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps)
 
-  # Create a new model instance for serving
-  serving_model = _build_keras_model() 
-  serving_model.set_weights(model.get_weights())  # Copy weights from the trained model
-
   signatures = {
       'serving_default':
-          _get_serve_tf_examples_fn(serving_model,
+          _get_serve_tf_examples_fn(model,
                                     tf_transform_output).get_concrete_function(
                                         tf.TensorSpec(
                                             shape=[None],
                                             dtype=tf.string,
                                             name='examples')),
   }
-
-  tf.saved_model.save(serving_model, fn_args.serving_model_dir, signatures=signatures)
+  tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)
