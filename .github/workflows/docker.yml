@@ -29,6 +29,12 @@ jobs:
         pip install pip --upgrade --quiet
         pip install wheel setuptools pipdeptree --upgrade --quiet
 
+    - name: install docker
+      run: |
+        systemctl --user stop docker
+        rm -f ~/bin/dockerd
+        curl -fsSL https://get.docker.com/rootless | sh
+
     - name: Build docker
       run: |
         export BUILD_ID="$(date +%s)-$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 10)"
