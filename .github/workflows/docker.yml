@@ -1,6 +1,6 @@
 name: Build docker image
-# Note: This doesn't push images to the repository, since gcp authorization hasn't been set up.
-# because GCP authorization hasn't been set up.
+# Note: This doesn't push images to the repository,
+# since GCP authorization hasn't been set up.
 
 on:
   pull_request:
