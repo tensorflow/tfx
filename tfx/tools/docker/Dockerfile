@@ -67,7 +67,7 @@ FROM apache/beam_python3.10_sdk:${BEAM_VERSION} as beam-worker
 RUN if [ -n "$BASE_IMAGE" ]; then \
         echo "Using base image: $BASE_IMAGE"; \
         FROM ${BASE_IMAGE} as install; \
-    fi; \
+    fi
 
 # Additional Python packages which will be installed.
 ARG ADDITIONAL_PACKAGES
