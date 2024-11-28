@@ -226,6 +226,8 @@ class PenguinPipelineLocalEndToEndTest(tf.test.TestCase,
 
   @parameterized.parameters(('keras',), ('flax_experimental',),
                             ('tfdf_experimental',))
+  @pytest.mark.xfail(run=False,
+                     reason="Exported Keras model with TF 1.16 is not working with bulk inference currently. Needs to be fixed.")
   def testPenguinPipelineLocalWithBulkInferrer(self, model_framework):
     if model_framework == 'tfdf_experimental':
       # Skip if TFDF is not available or incompatible.

@@ -205,8 +205,6 @@ def _build_keras_model(
       **wide_categorical_input,
   }
 
-  # TODO(b/161952382): Replace with Keras premade models and
-  # Keras preprocessing layers.
   deep = tf.keras.layers.concatenate(
       [tf.keras.layers.Normalization()(layer) for layer in deep_input.values()]
   )

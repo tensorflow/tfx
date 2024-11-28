@@ -28,7 +28,7 @@ from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx_bsl.tfxio import dataset_options
 
 # Categorical features are assumed to each have a maximum value in the dataset.
-_MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
+_MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 13]
 
 _CATEGORICAL_FEATURE_KEYS = [
     'trip_start_hour', 'trip_start_day', 'trip_start_month',
@@ -172,94 +172,76 @@ def _build_keras_model(hidden_units: List[int] = None) -> tf.keras.Model:
     hidden_units: [int], the layer sizes of the DNN (input layer first).
 
   Returns:
-    A keras Model.
-  """
-  real_valued_columns = [
-      tf.feature_column.numeric_column(key, shape=())
-      for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
-  ]
-  categorical_columns = [
-      tf.feature_column.categorical_column_with_identity(
-          key, num_buckets=_VOCAB_SIZE + _OOV_SIZE, default_value=0)
-      for key in _transformed_names(_VOCAB_FEATURE_KEYS)
-  ]
-  categorical_columns += [
-      tf.feature_column.categorical_column_with_identity(
-          key, num_buckets=_FEATURE_BUCKET_COUNT, default_value=0)
-      for key in _transformed_names(_BUCKET_FEATURE_KEYS)
-  ]
-  categorical_columns += [
-      tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
-          key,
-          num_buckets=num_buckets,
-          default_value=0) for key, num_buckets in zip(
-              _transformed_names(_CATEGORICAL_FEATURE_KEYS),
-              _MAX_CATEGORICAL_FEATURE_VALUES)
-  ]
-  indicator_column = [
-      tf.feature_column.indicator_column(categorical_column)
-      for categorical_column in categorical_columns
-  ]
-
-  model = _wide_and_deep_classifier(
-      # TODO(b/139668410) replace with premade wide_and_deep keras model
-      wide_columns=indicator_column,
-      deep_columns=real_valued_columns,
-      dnn_hidden_units=hidden_units or [100, 70, 50, 25])
-  return model
-
-
-def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units):
-  """Build a simple keras wide and deep model.
-
-  Args:
-    wide_columns: Feature columns wrapped in indicator_column for wide (linear)
-      part of the model.
-    deep_columns: Feature columns for deep part of the model.
-    dnn_hidden_units: [int], the layer sizes of the hidden DNN.
-
-  Returns:
-    A Wide and Deep Keras model
+    A Wide and Deep keras Model.
   """
   # Following values are hard coded for simplicity in this example,
   # However prefarably they should be passsed in as hparams.
 
   # Keras needs the feature definitions at compile time.
-  # TODO(b/139081439): Automate generation of input layers from FeatureColumn.
-  input_layers = {
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype=tf.float32)
+  deep_input = {
+      colname: tf.keras.layers.Input(name=colname, shape=(1,), dtype=tf.float32)
       for colname in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
   }
-  input_layers.update({
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+  wide_vocab_input = {
+      colname: tf.keras.layers.Input(name=colname, shape=(1,), dtype='int32')
       for colname in _transformed_names(_VOCAB_FEATURE_KEYS)
-  })
-  input_layers.update({
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+  }
+  wide_bucket_input = {
+      colname: tf.keras.layers.Input(name=colname, shape=(1,), dtype='int32')
       for colname in _transformed_names(_BUCKET_FEATURE_KEYS)
-  })
-  input_layers.update({
-      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+  }
+  wide_categorical_input = {
+      colname: tf.keras.layers.Input(name=colname, shape=(1,), dtype='int32')
       for colname in _transformed_names(_CATEGORICAL_FEATURE_KEYS)
-  })
+  }
+  input_layers = {
+      **deep_input,
+      **wide_vocab_input,
+      **wide_bucket_input,
+      **wide_categorical_input,
+  }
 
-  # TODO(b/161952382): Replace with Keras premade models and
-  # Keras preprocessing layers.
-  deep = tf.keras.layers.DenseFeatures(deep_columns)(input_layers)
-  for numnodes in dnn_hidden_units:
+  deep = tf.keras.layers.concatenate(
+      [tf.keras.layers.Normalization()(layer) for layer in deep_input.values()]
+  )
+  for numnodes in (hidden_units or [100, 70, 50, 25]):
     deep = tf.keras.layers.Dense(numnodes)(deep)
-  wide = tf.keras.layers.DenseFeatures(wide_columns)(input_layers)
 
-  output = tf.keras.layers.Dense(
-      1, activation='sigmoid')(
-          tf.keras.layers.concatenate([deep, wide]))
-  output = tf.squeeze(output, -1)
+  wide_layers = []
+  for key in _transformed_names(_VOCAB_FEATURE_KEYS):
+    wide_layers.append(
+        tf.keras.layers.CategoryEncoding(num_tokens=_VOCAB_SIZE + _OOV_SIZE)(
+            input_layers[key]
+        )
+    )
+  for key in _transformed_names(_BUCKET_FEATURE_KEYS):
+    wide_layers.append(
+        tf.keras.layers.CategoryEncoding(num_tokens=_FEATURE_BUCKET_COUNT)(
+            input_layers[key]
+        )
+    )
+  for key, num_tokens in zip(
+      _transformed_names(_CATEGORICAL_FEATURE_KEYS),
+      _MAX_CATEGORICAL_FEATURE_VALUES,
+  ):
+    wide_layers.append(
+        tf.keras.layers.CategoryEncoding(num_tokens=num_tokens)(
+            input_layers[key]
+        )
+    )
+  wide = tf.keras.layers.concatenate(wide_layers)
+
+  output = tf.keras.layers.Dense(1, activation='sigmoid')(
+      tf.keras.layers.concatenate([deep, wide])
+  )
+  output = tf.keras.layers.Reshape((1,))(output)
 
   model = tf.keras.Model(input_layers, output)
   model.compile(
       loss='binary_crossentropy',
-      optimizer=tf.keras.optimizers.Adam(lr=0.001),
-      metrics=[tf.keras.metrics.BinaryAccuracy()])
+      optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+      metrics=[tf.keras.metrics.BinaryAccuracy()],
+  )
   model.summary(print_fn=logging.info)
   return model
 
@@ -353,4 +335,4 @@ def run_fn(fn_args: FnArgs):
       'transform_features':
           _get_transform_features_signature(model, tf_transform_output),
   }
-  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
+  tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)

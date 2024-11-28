@@ -77,7 +77,7 @@ def build_keras_model() -> tf.keras.Model:
   model.add(tf.keras.layers.Dense(10))
   model.compile(
       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-      optimizer=tf.keras.optimizers.RMSprop(lr=0.0015),
+      optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.0015),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
   return model
