@@ -36,5 +36,4 @@ jobs:
         export docker_image_repo=$(echo "${DOCKER_IMAGE}" | cut -d ':' -f 1)
         export docker_image_tag=$(echo "${DOCKER_IMAGE}" | cut -d ':' -f 2)
         DOCKER_IMAGE_REPO="${docker_image_repo}" DOCKER_IMAGE_TAG="${docker_image_tag}" tfx/tools/docker/build_docker_image.sh
-        tfx/tools/docker/build_docker_image.sh
         docker inspect ${DOCKER_IMAGE}
