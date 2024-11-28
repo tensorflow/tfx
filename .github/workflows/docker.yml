@@ -1,4 +1,6 @@
 name: Build docker image
+# Note: This doesn't push images to the repository, since gcp authorization hasn't been set up.
+# because GCP authorization hasn't been set up.
 
 on:
   pull_request:
@@ -31,7 +33,8 @@ jobs:
       run: |
         export BUILD_ID="$(date +%s)-$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 10)"
         export DOCKER_IMAGE="gcr.io/tfx-oss-public/tfx_smoke_test:${BUILD_ID}"
-        DOCKER_IMAGE_REPO="gcr.io/tfx-testing/ai-platform-pipelines-e2e-test" \
-        DOCKER_IMAGE_TAG="$(date +%s)-$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 10)" \
+        export docker_image_repo=$(echo "${DOCKER_IMAGE}" | cut -d ':' -f 1)
+        export docker_image_tag=$(echo "${DOCKER_IMAGE}" | cut -d ':' -f 2)
+        DOCKER_IMAGE_REPO="${docker_image_repo}" DOCKER_IMAGE_TAG="${docker_image_tag}" tfx/tools/docker/build_docker_image.sh
         tfx/tools/docker/build_docker_image.sh
         docker inspect ${DOCKER_IMAGE}
