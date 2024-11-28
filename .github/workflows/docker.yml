@@ -31,9 +31,7 @@ jobs:
 
     - name: install docker
       run: |
-        systemctl --user stop docker
-        rm -f ~/bin/dockerd
-        curl -fsSL https://get.docker.com/rootless | sh
+        docker --version
 
     - name: Build docker
       run: |
