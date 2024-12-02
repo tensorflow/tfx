@@ -108,19 +108,19 @@ def _build_keras_model(hidden_units, learning_rate):
   """
   deep_input = {
       colname: tf.keras.layers.Input(name=colname, shape=(1,), dtype=tf.float32)
-      for colname in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
+      for colname in features.transformed_names(features.DENSE_FLOAT_FEATURE_KEYS)
   }
   wide_vocab_input = {
       colname: tf.keras.layers.Input(name=colname, shape=(1,), dtype='int32')
-      for colname in _transformed_names(_VOCAB_FEATURE_KEYS)
+      for colname in features.transformed_names(features.VOCAB_FEATURE_KEYS)
   }
   wide_bucket_input = {
       colname: tf.keras.layers.Input(name=colname, shape=(1,), dtype='int32')
-      for colname in _transformed_names(_BUCKET_FEATURE_KEYS)
+      for colname in features.transformed_names(features.BUCKET_FEATURE_KEYS)
   }
   wide_categorical_input = {
       colname: tf.keras.layers.Input(name=colname, shape=(1,), dtype='int32')
-      for colname in _transformed_names(_CATEGORICAL_FEATURE_KEYS)
+      for colname in features.transformed_names(features.CATEGORICAL_FEATURE_KEYS)
   }
   input_layers = {
       **deep_input,
@@ -136,21 +136,24 @@ def _build_keras_model(hidden_units, learning_rate):
     deep = tf.keras.layers.Dense(numnodes)(deep)
 
   wide_layers = []
-  for key in _transformed_names(_VOCAB_FEATURE_KEYS):
+  for key in features.transformed_names(features.VOCAB_FEATURE_KEYS):
     wide_layers.append(
-        tf.keras.layers.CategoryEncoding(num_tokens=_VOCAB_SIZE + _OOV_SIZE)(
-            input_layers[key]
-        )
-    )
-  for key in _transformed_names(_BUCKET_FEATURE_KEYS):
-    wide_layers.append(
-        tf.keras.layers.CategoryEncoding(num_tokens=_FEATURE_BUCKET_COUNT)(
+        tf.keras.layers.CategoryEncoding(num_tokens=features.VOCAB_SIZE + features.OOV_SIZE)(
             input_layers[key]
         )
     )
   for key, num_tokens in zip(
-      _transformed_names(_CATEGORICAL_FEATURE_KEYS),
-      _MAX_CATEGORICAL_FEATURE_VALUES,
+      features.transformed_names(features.BUCKET_FEATURE_KEYS),
+      features.BUCKET_FEATURE_BUCKET_COUNT,
+  ):
+    wide_layers.append(
+        tf.keras.layers.CategoryEncoding(num_tokens=num_tokens)(
+                input_layers[key]
+        )
+    )
+  for key, num_tokens in zip(
+      features.transformed_names(features.CATEGORICAL_FEATURE_KEYS),
+      features.CATEGORICAL_FEATURE_MAX_VALUES,
   ):
     wide_layers.append(
         tf.keras.layers.CategoryEncoding(num_tokens=num_tokens)(
@@ -167,7 +170,7 @@ def _build_keras_model(hidden_units, learning_rate):
   model = tf.keras.Model(input_layers, output)
   model.compile(
       loss='binary_crossentropy',
-      optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+      optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
       metrics=[tf.keras.metrics.BinaryAccuracy()],
   )
   model.summary(print_fn=logging.info)
