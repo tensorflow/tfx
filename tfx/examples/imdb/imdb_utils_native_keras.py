@@ -227,4 +227,5 @@ def run_fn(fn_args: FnArgs):
                                             dtype=tf.string,
                                             name='examples')),
   }
+
   tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)

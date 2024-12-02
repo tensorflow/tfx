@@ -69,7 +69,7 @@ def build_keras_model() -> tf.keras.Model:
   model = tf.keras.Sequential()
   model.add(
       tf.keras.layers.InputLayer(
-          shape=(784,), name=transformed_name(IMAGE_KEY)))
+          input_shape=(784,), name=transformed_name(IMAGE_KEY)))
   model.add(tf.keras.layers.Dense(64, activation='relu'))
   model.add(tf.keras.layers.Dropout(0.2))
   model.add(tf.keras.layers.Dense(64, activation='relu'))

@@ -164,6 +164,7 @@ def _input_fn(file_pattern: List[str],
           batch_size=batch_size, label_key=_transformed_name(_LABEL_KEY)),
       tf_transform_output.transformed_metadata.schema).repeat()
 
+
 def _build_keras_model(hidden_units: List[int] = None) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying taxi data.
 
@@ -335,3 +336,4 @@ def run_fn(fn_args: FnArgs):
           _get_transform_features_signature(model, tf_transform_output),
   }
   tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)
+
