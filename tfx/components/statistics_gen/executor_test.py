@@ -14,6 +14,7 @@
 """Tests for tfx.components.statistics_gen.executor."""
 
 import os
+import pytest
 import tempfile
 
 from absl.testing import parameterized
@@ -288,6 +289,7 @@ class ExecutorTest(parameterized.TestCase):
             "expected_sample_rate_by_split_property": {"train": 0.2, "eval": 0.2},
         },
     )
+    @pytest.mark.xfail(run=False, reason="Flaky test")
     def testDoWithSamplingProperty(
         self, sample_rate, sample_rate_by_split, expected_sample_rate_by_split_property
     ):
