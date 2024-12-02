@@ -17,7 +17,6 @@ import os
 from typing import List
 
 import absl
-import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
 
 _pipeline_name = 'penguin_sklearn_local'
@@ -117,6 +116,8 @@ def _create_pipeline(
           filesystem=tfx.proto.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
 
+  # Note: Because TFMA 0.47.0 doesn't support custom model evaluation,
+  # the evaluator step is ruled out here.
   return tfx.dsl.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,

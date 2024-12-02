@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import tensorflow as tf
-import pytest
 
 from tfx.experimental.templates.taxi.models.keras_model import model
 
