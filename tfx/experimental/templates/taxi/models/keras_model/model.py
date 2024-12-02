@@ -136,15 +136,9 @@ def _build_keras_model(hidden_units, learning_rate):
     deep = tf.keras.layers.Dense(numnodes)(deep)
 
   wide_layers = []
-  for key in _transformed_names(_VOCAB_FEATURE_KEYS):
+  for key in features.transformed_names(features.VOCAB_FEATURE_KEYS):
     wide_layers.append(
-        tf.keras.layers.CategoryEncoding(num_tokens=_VOCAB_SIZE + _OOV_SIZE)(
-            input_layers[key]
-        )
-    )
-  for key in _transformed_names(_BUCKET_FEATURE_KEYS):
-    wide_layers.append(
-        tf.keras.layers.CategoryEncoding(num_tokens=_FEATURE_BUCKET_COUNT)(
+        tf.keras.layers.CategoryEncoding(num_tokens=features.VOCAB_SIZE + features.OOV_SIZE)(
             input_layers[key]
         )
     )
