@@ -4,6 +4,20 @@
 
 ## Breaking Changes
 
+### For Pipeline Authors
+
+### For Component Authors
+
+## Deprecations
+
+# Version 1.16.0
+
+## Major Features and Improvements
+
+*   N/A
+
+## Breaking Changes
+
 *  `Placeholder.__format__()` is now disallowed, so you cannot use placeholders
    in f-strings and `str.format()` calls anymore. If you get an error from this,
    most likely you discovered a bug and should not use an f-string in the first
@@ -13,9 +27,15 @@
 
 ### For Pipeline Authors
 
+*   N/A
+
 ### For Component Authors
 
+*   N/A
+
 ## Deprecations
+
+*   N/A
 
 ## Bug Fixes and Other Changes
 
