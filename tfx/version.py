@@ -14,4 +14,4 @@
 """Contains the version string of TFX."""
 
 # Note that setup.py uses this version.
-__version__ = '1.16.0.dev'
+__version__ = '1.17.0.dev'
