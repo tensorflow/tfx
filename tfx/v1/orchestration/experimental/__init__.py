@@ -14,6 +14,9 @@
 """TFX orchestration.experimental module."""
 
 try:
+    from tfx.orchestration.kubeflow.decorators import exit_handler  # pylint: disable=g-import-not-at-top
+    from tfx.orchestration.kubeflow.decorators import FinalStatusStr  # pylint: disable=g-import-not-at-top
+
     from tfx.orchestration.kubeflow.v2.kubeflow_v2_dag_runner import (
         KubeflowV2DagRunner,
         KubeflowV2DagRunnerConfig,
@@ -24,11 +27,8 @@ except ImportError:  # Import will fail without kfp package.
 
 __all__ = [
     "FinalStatusStr",
-    "KubeflowDagRunner",
-    "KubeflowDagRunnerConfig",
     "KubeflowV2DagRunner",
     "KubeflowV2DagRunnerConfig",
-    "LABEL_KFP_SDK_ENV",
     "exit_handler",
     "get_default_kubeflow_metadata_config",
 ]

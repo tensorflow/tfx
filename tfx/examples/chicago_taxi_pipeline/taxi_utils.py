@@ -246,7 +246,6 @@ def _build_keras_model(
   output = tf.keras.layers.Dense(1, activation='sigmoid')(
       tf.keras.layers.concatenate([deep, wide])
   )
-  output = tf.squeeze(output, -1)
 
   model = tf.keras.Model(input_layers, output)
   model.compile(
