@@ -45,8 +45,9 @@ from tfx import version
 
 import tomli
 
-pyproject_toml = tomli.load(open('pyproject.toml', 'rb'))
+pyproject_toml = tomli.load(open(os.path.join(os.path.dirname(__file__), 'pyproject.toml'), 'rb'))
 package_name = pyproject_toml['project']['name']
+print(package_name)
 
 
 class _BdistWheelCommand(bdist_wheel.bdist_wheel):

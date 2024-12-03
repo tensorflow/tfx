@@ -34,13 +34,10 @@ RUN python -m pip install --upgrade pip wheel setuptools tomli
 RUN cd ${TFX_DIR}/src; \
     if [ -e "package_build" ]; then \
       bash -x package_build/initialize.sh; \
-      cd package_build/ml-pipelines-sdk; \
       CFLAGS=$(/usr/bin/python-config --cflags) \
-        python setup.py bdist_wheel; \
-      cd ../../package_build/tfx; \
+        python package_build/ml-pipelines-sdk/setup.py bdist_wheel; \
       CFLAGS=$(/usr/bin/python-config --cflags) \
-        python setup.py bdist_wheel; \
-      cd ../..; \
+        python package_build/tfx/setup.py bdist_wheel; \
       MLSDK_WHEEL=$(find dist -name "ml_pipelines_sdk-*.whl"); \
       TFX_WHEEL=$(find dist -name "tfx-*.whl"); \
     else \
