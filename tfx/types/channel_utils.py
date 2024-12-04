@@ -157,7 +157,7 @@ def external_pipeline_artifact_query(
 
   Args:
     artifact_type: Subclass of Artifact for this channel.
-    owner: Owner of the pipeline.
+    owner: Onwer of the pipeline.
     pipeline_name: Name of the pipeline the artifacts belong to.
     producer_component_id: Id of the component produces the artifacts.
     output_key: The output key when producer component produces the artifacts in
