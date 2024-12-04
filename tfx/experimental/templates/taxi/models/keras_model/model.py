@@ -215,4 +215,4 @@ def run_fn(fn_args):
       'transform_features':
           _get_transform_features_signature(model, tf_transform_output),
   }
-  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
+  tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)
