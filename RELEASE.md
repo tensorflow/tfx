@@ -10,6 +10,12 @@
 
 ## Deprecations
 
+## Bug Fixes and Other Changes
+
+## Dependency Updates
+
+## Documentation Updates
+
 # Version 1.16.0
 
 ## Major Features and Improvements
@@ -40,12 +46,16 @@
 
 ## Bug Fixes and Other Changes
 
+*   N/A
+
 ## Dependency Updates
 | Package Name | Version Constraints | Previously (in `v1.15.1`) | Comments |
 | -- | -- | -- | -- |
 | `docker` | `>=7,<8` | `>=4.1,<5` | |
 
 ## Documentation Updates
+
+*   N/A
 
 # Version 1.15.1
 
