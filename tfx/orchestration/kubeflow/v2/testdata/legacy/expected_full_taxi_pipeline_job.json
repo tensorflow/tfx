@@ -698,7 +698,7 @@
                 "eval_config": {
                   "runtimeValue": {
                     "constantValue": {
-                      "stringValue": "{\n  \"metrics_specs\": [\n    {\n      \"metrics\": [\n        {\n          \"class_name\": \"ExampleCount\"\n        }\n      ],\n      \"thresholds\": {\n        \"binary_accuracy\": {\n          \"change_threshold\": {\n            \"absolute\": -1e-10,\n            \"direction\": \"HIGHER_IS_BETTER\"\n          },\n          \"value_threshold\": {\n            \"lower_bound\": 0.5\n          }\n        }\n      }\n    }\n  ],\n  \"model_specs\": [\n    {\n      \"signature_name\": \"eval\"\n    }\n  ],\n  \"slicing_specs\": [\n    {},\n    {\n      \"feature_keys\": [\n        \"trip_start_hour\"\n      ]\n    }\n  ]\n}"
+                      "stringValue": "{\n  \"metrics_specs\": [\n    {\n      \"metrics\": [\n        {\n          \"class_name\": \"BinaryAccuracy\",\n          \"threshold\": {\n            \"change_threshold\": {\n              \"absolute\": -1e-10,\n              \"direction\": \"HIGHER_IS_BETTER\"\n            },\n            \"value_threshold\": {\n              \"lower_bound\": 0.6\n            }\n          }\n        }\n      ]\n    }\n  ],\n  \"model_specs\": [\n    {\n      \"label_key\": \"tips_xf\",\n      \"preprocessing_function_names\": [\n        \"transform_features\"\n      ],\n      \"signature_name\": \"serving_default\"\n    }\n  ],\n  \"slicing_specs\": [\n    {}\n  ]\n}"
                     }
                   }
                 },
