@@ -41,7 +41,7 @@
 
 ## Deprecations
 
-*   KFP v1 SDK
+*   KubeflowDagRunner (KFP v1 SDK) is deprecated. Use KubeflowV2DagRunner (KFP v2 pipeline spec) instead.
 *   TensorFlow Estimator is Deprecated
 
 ## Bug Fixes and Other Changes
