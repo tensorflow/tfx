@@ -102,9 +102,10 @@ def _create_proto_instance_from_name(
 
 def get_pool_with_descriptors(
     file_descriptors: Optional[descriptor_pb2.FileDescriptorSet] = None,
+    pool: Optional[descriptor_pool.DescriptorPool] = None,
 ) -> descriptor_pool.DescriptorPool:
-  """Adds the given files to the default descriptor pool and returns it."""
-  pool = descriptor_pool.Default()
+  """Adds the given files to the given (or default) pool and returns it."""
+  pool = pool or descriptor_pool.Default()
   if file_descriptors:
     for file_descriptor in file_descriptors.file:
       try:
@@ -113,9 +114,15 @@ def get_pool_with_descriptors(
         # If the same file_descriptor is already added to the current descriptor
         # pool (and sadly there's no way to check this before calling Add()), we
         # can ignore this.
-        if 'A file with this name is already in the pool' in str(e):
+        error_message = str(e)
+        if (
+            'A file with this name is already in the pool' in error_message
+            or 'duplicate file name' in error_message
+        ):
           continue
-        raise
+        raise TypeError(
+            f'Failed to add file descriptor: {file_descriptor}'
+        ) from e
   return pool
 
 

@@ -84,7 +84,3 @@ class DagRunnerPatcherTest(tf.test.TestCase, parameterized.TestCase):
     with patcher.patch() as _:
       _DummyDagRunner().run(tfx_pipeline.Pipeline(_PIPELINE_NAME, ''))
       mock_run.assert_not_called()
-
-
-if __name__ == '__main__':
-  tf.test.main()

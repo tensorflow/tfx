@@ -45,7 +45,3 @@ class HelloComponentTest(tf.test.TestCase):
       split_list = json.loads(artifacts.split_names)
       self.assertEqual(artifact.DEFAULT_EXAMPLE_SPLITS.sort(),
                        split_list.sort())
-
-
-if __name__ == '__main__':
-  tf.test.main()

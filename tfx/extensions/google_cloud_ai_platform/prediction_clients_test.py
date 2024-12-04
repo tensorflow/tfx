@@ -30,6 +30,3 @@ class PredictionClientTest(tf.test.TestCase):
     self.assertEqual('1.15',
                      prediction_clients._get_tf_runtime_version('2.0.1'))
     self.assertEqual('2.1', prediction_clients._get_tf_runtime_version('2.1.0'))
-
-if __name__ == '__main__':
-  tf.test.main()

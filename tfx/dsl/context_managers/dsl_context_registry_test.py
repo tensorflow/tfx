@@ -204,7 +204,3 @@ class DslContextRegistryTest(tf.test.TestCase):
       reg.finalize()
       with self.assertRaises(RuntimeError):
         Node('B')
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -32,31 +32,37 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
 
   The csv examplegen encodes column values to tf.Example int/float/byte feature.
   For the case when there's missing cells, the csv examplegen uses:
-  -- tf.train.Feature(`type`_list=tf.train.`type`List(value=[])), when the
+
+  - tf.train.Feature(`type`_list=tf.train.`type`List(value=[])), when the
      `type` can be inferred.
-  -- tf.train.Feature() when it cannot infer the `type` from the column.
+  - tf.train.Feature() when it cannot infer the `type` from the column.
 
   Note that the type inferring will be per input split. If input isn't a single
   split, users need to ensure the column types align in each pre-splits.
 
   For example, given the following csv rows of a split:
 
-    header:A,B,C,D
-    row1:  1,,x,0.1
-    row2:  2,,y,0.2
-    row3:  3,,,0.3
-    row4:
+  ```
+  header:A,B,C,D
+  row1:  1,,x,0.1
+  row2:  2,,y,0.2
+  row3:  3,,,0.3
+  row4:
+  ```
 
   The output example will be
-    example1: 1(int), empty feature(no type), x(string), 0.1(float)
-    example2: 2(int), empty feature(no type), x(string), 0.2(float)
-    example3: 3(int), empty feature(no type), empty list(string), 0.3(float)
+  ```
+  example1: 1(int), empty feature(no type), x(string), 0.1(float)
+  example2: 2(int), empty feature(no type), x(string), 0.2(float)
+  example3: 3(int), empty feature(no type), empty list(string), 0.3(float)
+  ```
 
-    Note that the empty feature is `tf.train.Feature()` while empty list string
-    feature is `tf.train.Feature(bytes_list=tf.train.BytesList(value=[]))`.
+  Note that the empty feature is `tf.train.Feature()` while empty list string
+  feature is `tf.train.Feature(bytes_list=tf.train.BytesList(value=[]))`.
 
   Component `outputs` contains:
-   - `examples`: Channel of type `standard_artifacts.Examples` for output train
+
+   - `examples`: Channel of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples] for output train
                  and eval examples.
   """
 

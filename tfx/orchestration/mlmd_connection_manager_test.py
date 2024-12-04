@@ -65,7 +65,3 @@ class MlmdConnectionManagerTest(tf.test.TestCase):
       self.assertIs(m1, m2)
     with self.assertRaises(RuntimeError):
       cm.primary_mlmd_handle  # pylint: disable=pointless-statement
-
-
-if __name__ == '__main__':
-  tf.test.main()

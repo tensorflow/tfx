@@ -73,7 +73,3 @@ class ExecutorTest(test_case_utils.TfxTest):
     imported_proto = reader.read(
         os.path.join(self.tmp_dir, schema_gen_executor.DEFAULT_FILE_NAME))
     self.assertEqual(expected_proto, imported_proto)
-
-
-if __name__ == '__main__':
-  tf.test.main()

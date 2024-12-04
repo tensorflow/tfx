@@ -13,8 +13,10 @@
 # limitations under the License.
 """Tests for tfx.orchestration.data_types_utils."""
 
+
+import importlib
+import pytest
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import types
 from tfx.orchestration import data_types_utils
 from tfx.proto.orchestration import execution_result_pb2
@@ -30,6 +32,12 @@ from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
 
 _DEFAULT_ARTIFACT_TYPE_NAME = 'Examples'
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup():
+  yield
+  importlib.reload(struct_pb2)
 
 
 def _create_artifact(uri: str) -> types.Artifact:
@@ -542,7 +550,3 @@ class DataTypesUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
     text_format.Parse(expected, expected_list)
     self.assertEqual(expected_list,
                      data_types_utils.set_parameter_value(actual_list, value))
-
-
-if __name__ == '__main__':
-  tf.test.main()

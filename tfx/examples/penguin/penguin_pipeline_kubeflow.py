@@ -501,33 +501,27 @@ def main():
   else:
     beam_pipeline_args = _beam_pipeline_args_by_runner['DirectRunner']
 
-  if use_vertex:
-    dag_runner = tfx.orchestration.experimental.KubeflowV2DagRunner(
-        config=tfx.orchestration.experimental.KubeflowV2DagRunnerConfig(),
-        output_filename=_pipeline_definition_file)
-  else:
-    dag_runner = tfx.orchestration.experimental.KubeflowDagRunner(
-        config=tfx.orchestration.experimental.KubeflowDagRunnerConfig(
-            kubeflow_metadata_config=tfx.orchestration.experimental
-            .get_default_kubeflow_metadata_config()))
+  dag_runner = tfx.orchestration.experimental.KubeflowV2DagRunner(
+      config=tfx.orchestration.experimental.KubeflowV2DagRunnerConfig(),
+      output_filename=_pipeline_definition_file)
 
-    dag_runner.run(
-        create_pipeline(
-            pipeline_name=_pipeline_name,
-            pipeline_root=_pipeline_root,
-            data_root=_data_root,
-            module_file=_module_file,
-            enable_tuning=False,
-            enable_cache=True,
-            user_provided_schema_path=_user_provided_schema,
-            ai_platform_training_args=_ai_platform_training_args,
-            ai_platform_serving_args=_ai_platform_serving_args,
-            beam_pipeline_args=beam_pipeline_args,
-            use_cloud_component=use_cloud_component,
-            use_aip=use_aip,
-            use_vertex=use_vertex,
-            serving_model_dir=_serving_model_dir,
-        ))
+  dag_runner.run(
+      create_pipeline(
+          pipeline_name=_pipeline_name,
+          pipeline_root=_pipeline_root,
+          data_root=_data_root,
+          module_file=_module_file,
+          enable_tuning=False,
+          enable_cache=True,
+          user_provided_schema_path=_user_provided_schema,
+          ai_platform_training_args=_ai_platform_training_args,
+          ai_platform_serving_args=_ai_platform_serving_args,
+          beam_pipeline_args=beam_pipeline_args,
+          use_cloud_component=use_cloud_component,
+          use_aip=use_aip,
+          use_vertex=use_vertex,
+          serving_model_dir=_serving_model_dir,
+      ))
 
 
 # To compile the pipeline:

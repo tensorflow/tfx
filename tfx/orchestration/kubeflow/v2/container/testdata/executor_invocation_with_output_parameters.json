@@ -18,10 +18,8 @@
         ]
       }
     },
-    "parameters": {
-      "key_1": {
-        "stringValue": "value_1"
-      }
+    "parameter_values": {
+      "key_1": "value_1"
     }
   },
   "outputs": {

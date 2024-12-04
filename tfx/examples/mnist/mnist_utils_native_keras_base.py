@@ -13,8 +13,7 @@
 # limitations under the License.
 """Base Python source file for MNIST utils.
 
-This file is used by both mnist_utils_native_keras and
-mnist_util_native_keras_lite to build Keras and TFLite models, respectively.
+This file is used by both mnist_utils_native_keras to build Keras models.
 """
 
 from typing import List
@@ -78,7 +77,7 @@ def build_keras_model() -> tf.keras.Model:
   model.add(tf.keras.layers.Dense(10))
   model.compile(
       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-      optimizer=tf.keras.optimizers.RMSprop(lr=0.0015),
+      optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.0015),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
   return model

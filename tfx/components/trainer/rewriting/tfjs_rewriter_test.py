@@ -23,7 +23,7 @@ from tfx.components.trainer.rewriting import rewriter
 
 try:
   from tfx.components.trainer.rewriting import tfjs_rewriter  # pylint: disable=g-import-not-at-top
-except ImportError as err:
+except ImportError:
   tfjs_rewriter = None
 
 
@@ -47,7 +47,3 @@ class TFJSRewriterTest(tf.test.TestCase):
     tfrw.perform_rewrite(src_model, dst_model)
 
     converter.assert_called_once_with(src_model_path, dst_model_path)
-
-
-if __name__ == '__main__':
-  tf.test.main()

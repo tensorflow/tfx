@@ -16,11 +16,14 @@
 import os
 from unittest import mock
 
-import tensorflow as tf
+from absl.testing import parameterized
 from tfx.dsl.components.base import base_component
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
+
+
+import pytest
 
 
 # The location of test data.
@@ -28,10 +31,20 @@ from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 _TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_taxi_pipeline/data/simple'
 
 
-class CsvExampleGenIntegrationTest(base_test_case.BaseKubeflowV2Test):
+@pytest.mark.integration
+@pytest.mark.e2e
+class CsvExampleGenIntegrationTest(
+    base_test_case.BaseKubeflowV2Test, parameterized.TestCase
+):
 
+  @parameterized.named_parameters(
+      dict(testcase_name='use_pipeline_spec_2_1', use_pipeline_spec_2_1=True),
+      dict(testcase_name='use_pipeline_spec_2_0', use_pipeline_spec_2_1=False),
+  )
   @mock.patch.object(base_component.BaseComponent, '_resolve_pip_dependencies')
-  def testSimpleEnd2EndPipeline(self, moke_resolve_dependencies):
+  def testSimpleEnd2EndPipeline(
+      self, moke_resolve_dependencies, use_pipeline_spec_2_1
+  ):
     """End-to-End test for a simple pipeline."""
     moke_resolve_dependencies.return_value = None
     pipeline_name = 'kubeflow-v2-fbeg-test-{}'.format(test_utils.random_id())
@@ -48,12 +61,14 @@ class CsvExampleGenIntegrationTest(base_test_case.BaseKubeflowV2Test):
         '--project={}'.format(self._GCP_PROJECT_ID)
     ]
 
-    pipeline = self._create_pipeline(pipeline_name, components,
-                                     beam_pipeline_args)
+    pipeline = self._create_pipeline(
+        pipeline_name,
+        components,
+        beam_pipeline_args,
+    )
 
-    self._run_pipeline(pipeline)
+    self._run_pipeline(
+        pipeline,
+        use_pipeline_spec_2_1=use_pipeline_spec_2_1,
+    )
     moke_resolve_dependencies.assert_called()
-
-
-if __name__ == '__main__':
-  tf.test.main()

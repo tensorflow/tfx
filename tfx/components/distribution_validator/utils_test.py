@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.components.distribution_validator.utils."""
 
+
 import os
 
 from absl import flags
@@ -57,7 +58,3 @@ class UtilsTest(tf.test.TestCase):
 
     read_binary_config = utils.load_config_from_artifact(config_artifact)
     self.assertProtoEquals(read_binary_config, expected_config)
-
-
-if __name__ == '__main__':
-  tf.test.main()

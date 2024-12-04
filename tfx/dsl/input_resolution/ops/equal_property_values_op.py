@@ -55,7 +55,7 @@ class EqualPropertyValues(
               artifact,
               self.property_key,
           )
-          return []
+          continue
         actual_property_value = artifact.get_custom_property(self.property_key)
       else:
         if not artifact.has_property(self.property_key):
@@ -64,7 +64,7 @@ class EqualPropertyValues(
               artifact,
               self.property_key,
           )
-          return []
+          continue
         actual_property_value = getattr(artifact, self.property_key)
 
       if actual_property_value == self.property_value:

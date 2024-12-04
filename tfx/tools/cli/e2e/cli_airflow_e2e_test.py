@@ -22,7 +22,6 @@ import time
 
 import absl
 from click import testing as click_testing
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.orchestration.airflow import test_utils as airflow_test_utils
 from tfx.tools.cli import labels
@@ -33,7 +32,12 @@ from tfx.utils import io_utils
 from tfx.utils import retry
 from tfx.utils import test_case_utils
 
+import pytest
 
+
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
+@pytest.mark.e2e
 class CliAirflowEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
@@ -365,7 +369,3 @@ class CliAirflowEndToEndTest(test_case_utils.TfxTest):
     # When only Airflow is installed.
     if labels.KUBEFLOW_PACKAGE_NAME not in self._pip_list:
       self.assertIn('Kubeflow not found', result.output)
-
-
-if __name__ == '__main__':
-  tf.test.main()

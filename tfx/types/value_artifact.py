@@ -106,20 +106,19 @@ class ValueArtifact(Artifact):
   def annotate_as(cls, type_annotation: Optional[Type[SystemArtifact]] = None):
     """Annotate the value artifact type with a system artifact class.
 
-    Example usage:
+    !!! example "Example usage"
 
-    ```python
-    from tfx import v1 as tfx
-    OutputArtifact = tfx.dsl.components.OutputArtifact
-    String = tfx.types.standard_artifacts.String
-    Model = tfx.dsl.standard_annotations.Model
+        ```python
+        from tfx import v1 as tfx
 
-    @tfx.dsl.components.component
-    def MyTrainer(
-        model: OutputArtifact[String.annotate_as(Model)]
-    ):
-      ...
-    ```
+        OutputArtifact = tfx.dsl.components.OutputArtifact
+        String = tfx.types.standard_artifacts.String
+        Model = tfx.dsl.standard_annotations.Model
+
+
+        @tfx.dsl.components.component
+        def MyTrainer(model: OutputArtifact[String.annotate_as(Model)]): ...
+        ```
 
     Args:
       type_annotation: the standard annotations used to annotate the value
@@ -127,9 +126,9 @@ class ValueArtifact(Artifact):
         `tfx.v1.dsl.standard_annotations`.
 
     Returns:
-      A subclass of the method caller class (e.g., standard_artifacts.String,
-      standard_artifacts.Float) with TYPE_ANNOTATION attribute set to be
-      `type_annotation`; returns the original class if`type_annotation` is None.
+      A subclass of the method caller class (e.g., [`standard_artifacts.String`][tfx.v1.types.standard_artifacts.String],
+        [`standard_artifacts.Float`][tfx.v1.types.standard_artifacts.Float]) with TYPE_ANNOTATION attribute set to be
+        `type_annotation`; returns the original class if`type_annotation` is None.
     """
     if not type_annotation:
       return cls

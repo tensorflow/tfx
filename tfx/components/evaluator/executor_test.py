@@ -13,8 +13,10 @@
 # limitations under the License.
 """Tests for tfx.components.evaluator.executor."""
 
+
 import glob
 import os
+import pytest
 
 from absl import logging
 from absl.testing import parameterized
@@ -29,6 +31,7 @@ from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import json_utils
 from tfx.utils import proto_utils
+
 
 
 class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
@@ -145,6 +148,7 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
                       column_for_slicing=['trip_start_day', 'trip_miles']),
               ])),
   }))
+  @pytest.mark.xfail(run=False, reason="EvalSavedModel is deprecated.")
   def testDoLegacySingleEvalSavedModelWFairness(self, exec_properties):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
@@ -178,7 +182,8 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       # post-export metric is registered.  This may raise an ImportError if the
       # currently-installed version of TFMA does not support fairness
       # indicators.
-      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-import
+      # Note: tensorflow_model_analysis.addons is deprecated from 0.47.0.
+      # import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # noqa: F401
       exec_properties[
           standard_component_specs
           .FAIRNESS_INDICATOR_THRESHOLDS_KEY] = '[0.1, 0.3, 0.5, 0.7, 0.9]'
@@ -353,8 +358,3 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
     else:
       self.assertTrue(
           fileio.exists(os.path.join(blessing_output.uri, 'NOT_BLESSED')))
-
-
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

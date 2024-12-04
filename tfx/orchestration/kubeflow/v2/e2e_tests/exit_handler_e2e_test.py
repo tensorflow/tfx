@@ -1,4 +1,3 @@
-
 # Copyright 2021 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +15,8 @@
 
 import os
 
+from absl.testing import parameterized
 from kfp.pipeline_spec import pipeline_spec_pb2
-import tensorflow as tf
 from tfx import v1 as tfx
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils
@@ -27,6 +26,8 @@ from tfx.utils import io_utils
 
 from google.protobuf import json_format
 
+import pytest
+
 
 # The location of test data.
 # This location depends on install path of TFX in the docker image.
@@ -35,12 +36,19 @@ _TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_
 _success_file_name = 'success_final_status.txt'
 
 
-class ExitHandlerE2ETest(base_test_case.BaseKubeflowV2Test):
+@pytest.mark.e2e
+class ExitHandlerE2ETest(
+    base_test_case.BaseKubeflowV2Test, parameterized.TestCase
+):
 
   # The GCP bucket to use to write output artifacts.
   _BUCKET_NAME = os.environ.get('KFP_E2E_BUCKET_NAME')
 
-  def testExitHandlerPipelineSuccess(self):
+  @parameterized.named_parameters(
+      dict(testcase_name='use_pipeline_spec_2_1', use_pipeline_spec_2_1=True),
+      dict(testcase_name='use_pipeline_spec_2_0', use_pipeline_spec_2_1=False),
+  )
+  def testExitHandlerPipelineSuccess(self, use_pipeline_spec_2_1):
     """End-to-End test for a successful pipeline with exit handler."""
     pipeline_name = 'kubeflow-v2-exit-handler-test-{}'.format(
         orchestration_test_utils.random_id())
@@ -63,7 +71,11 @@ class ExitHandlerE2ETest(base_test_case.BaseKubeflowV2Test):
         final_status=tfx.orchestration.experimental.FinalStatusStr(),
         file_dir=output_file_dir)
 
-    self._run_pipeline(pipeline=pipeline, exit_handler=exit_handler)
+    self._run_pipeline(
+        pipeline=pipeline,
+        exit_handler=exit_handler,
+        use_pipeline_spec_2_1=use_pipeline_spec_2_1,
+    )
 
     # verify execution results
     actual_final_status_str = io_utils.read_string_file(output_file_dir)
@@ -87,7 +99,3 @@ class ExitHandlerE2ETest(base_test_case.BaseKubeflowV2Test):
                                     actual_final_status,
                                     ignored_fields=[
                                         'pipeline_job_resource_name'])
-
-
-if __name__ == '__main__':
-  tf.test.main()

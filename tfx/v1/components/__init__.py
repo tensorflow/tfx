@@ -34,4 +34,24 @@ from tfx.components.tuner.component import Tuner
 from tfx.components.trainer.fn_args_utils import DataAccessor
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.tuner.component import TunerFnResult
+
 # pylint: enable=g-bad-import-order
+__all__ = [
+    "BulkInferrer",
+    "CsvExampleGen",
+    "DataAccessor",
+    "Evaluator",
+    "ExampleDiff",
+    "ExampleValidator",
+    "FnArgs",
+    "ImportExampleGen",
+    "ImportSchemaGen",
+    "InfraValidator",
+    "Pusher",
+    "SchemaGen",
+    "StatisticsGen",
+    "Trainer",
+    "Transform",
+    "Tuner",
+    "TunerFnResult",
+]

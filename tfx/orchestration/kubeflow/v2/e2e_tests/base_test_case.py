@@ -19,6 +19,7 @@ import subprocess
 from typing import Any, Dict, List, Optional
 
 from absl import logging
+import pytest
 
 from google.cloud import aiplatform
 from google.cloud.aiplatform import pipeline_jobs
@@ -64,6 +65,23 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
   @classmethod
   def setUpClass(cls):
     super(BaseKubeflowV2Test, cls).setUpClass()
+
+    missing_envs = []
+    for variable, value in {
+      'KFP_E2E_SRC': cls._REPO_BASE,
+      'KFP_E2E_BASE_CONTAINER_IMAGE': cls._BASE_CONTAINER_IMAGE,
+      'KFP_E2E_GCP_PROJECT_ID': cls._GCP_PROJECT_ID,
+      'KFP_E2E_GCP_REGION': cls._GCP_REGION,
+      'KFP_E2E_BUCKET_NAME': cls._BUCKET_NAME,
+    }.items():
+      if value is None:
+        missing_envs.append(variable)
+
+    if missing_envs:
+      pytest.skip(
+        "Tests which require external containers must specify "
+        f"the following environment variables: {missing_envs}"
+      )
 
     if ':' not in cls._BASE_CONTAINER_IMAGE:
       # Generate base container image for the test if tag is not specified.
@@ -121,10 +139,13 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
         components=pipeline_components,
         beam_pipeline_args=beam_pipeline_args)
 
-  def _run_pipeline(self,
-                    pipeline: tfx_pipeline.Pipeline,
-                    parameter_values: Optional[Dict[str, Any]] = None,
-                    exit_handler: Optional[base_node.BaseNode] = None) -> None:
+  def _run_pipeline(
+      self,
+      pipeline: tfx_pipeline.Pipeline,
+      parameter_values: Optional[Dict[str, Any]] = None,
+      exit_handler: Optional[base_node.BaseNode] = None,
+      use_pipeline_spec_2_1: bool = False,
+  ) -> None:
     """Trigger the pipeline execution with a specific job ID."""
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
     self.addCleanup(self._delete_pipeline_output,
@@ -132,7 +153,9 @@ class BaseKubeflowV2Test(test_case_utils.TfxTest):
 
     # Create DAG runner and add exit handler if present.
     v2_dag_runner_config = kubeflow_v2_dag_runner.KubeflowV2DagRunnerConfig(
-        default_image=self.container_image)
+        default_image=self.container_image,
+        use_pipeline_spec_2_1=use_pipeline_spec_2_1,
+    )
     v2_dag_runner = kubeflow_v2_dag_runner.KubeflowV2DagRunner(
         config=v2_dag_runner_config, output_filename=self._output_filename)
     if exit_handler:

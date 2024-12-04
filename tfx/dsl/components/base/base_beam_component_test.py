@@ -54,6 +54,3 @@ class ComponentTest(tf.test.TestCase):
         TypeError, "expects EXECUTOR_SPEC property to be an instance of "
         "BeamExecutorSpec"):
       InvalidExecutorComponent._validate_component_class()
-
-if __name__ == "__main__":
-  tf.test.main()

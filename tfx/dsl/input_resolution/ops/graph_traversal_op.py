@@ -21,12 +21,12 @@ from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
+from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.types import artifact_utils
 
 from ml_metadata.proto import metadata_store_pb2
-from ml_metadata.tools.mlmd_resolver import metadata_resolver
 
 
 # Valid artifact states for GraphTraversal.
@@ -133,11 +133,16 @@ class GraphTraversal(
         if self.traverse_upstream
         else mlmd_resolver.get_downstream_artifacts_by_artifact_ids
     )
-    related_artifacts = mlmd_resolver_fn(
+    related_artifact_and_type = mlmd_resolver_fn(
         [root_artifact.id],
         max_num_hops=ops_utils.GRAPH_TRAVERSAL_OP_MAX_NUM_HOPS,
         filter_query=filter_query,
     )
+    artifact_type_by_id = {}
+    related_artifacts = {}
+    for artifact_id, artifacts_and_types in related_artifact_and_type.items():
+      related_artifacts[artifact_id], artifact_types = zip(*artifacts_and_types)
+      artifact_type_by_id.update({t.id: t for t in artifact_types})
 
     # Build the result dict to return. We include the root_artifact to help with
     # input synchronization in ASYNC mode. Note, Python dicts preserve key
@@ -161,14 +166,11 @@ class GraphTraversal(
     related_artifacts = related_artifacts[root_artifact.id]
 
     # Get the ArtifactType for the related artifacts.
-    type_ids = set(a.type_id for a in related_artifacts)
-    artifact_types = self.context.store.get_artifact_types_by_id(type_ids)
     artifact_type_by_artifact_id = {}
     for artifact in related_artifacts:
-      for artifact_type in artifact_types:
-        if artifact.type_id == artifact_type.id:
-          artifact_type_by_artifact_id[artifact.id] = artifact_type
-          break
+      artifact_type_by_artifact_id[artifact.id] = artifact_type_by_id[
+          artifact.type_id
+      ]
 
     # Build the result dictionary, with a separate key for each ArtifactType.
     artifact_ids = set(a.id for a in related_artifacts)

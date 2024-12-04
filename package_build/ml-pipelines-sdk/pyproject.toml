@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=72", "wheel", "tomli"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ml-pipelines-sdk"
+dynamic = ["version", "dependencies", "optional-dependencies", "scripts"]
+description = "A dependency-light distribution of the core pipeline authoring functionality of TensorFlow Extended (TFX)."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Google LLC", email = "tensorflow-extended-dev@googlegroups.com" }
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+keywords = ["tensorflow", "tfx"]
+requires-python = ">=3.9,<3.11"
+[project.urls]
+Homepage = "https://www.tensorflow.org/tfx"
+Repository = "https://github.com/tensorflow/tfx"

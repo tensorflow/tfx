@@ -58,7 +58,7 @@ The modified schema can be brought back into the pipeline using ImportSchemaGen
 component. The SchemaGen component for the initial schema generation can be
 removed and all downstream components can use the output of ImportSchemaGen. It
 is also recommended to add
-[ExampleValidator](https://www.tensorflow.org/tfx/guide/exampleval) using the
+[ExampleValidator](exampleval.md) using the
 imported schema to examine the training data continuously.
 
 ## SchemaGen and TensorFlow Data Validation
@@ -78,7 +78,7 @@ schema_gen = tfx.components.SchemaGen(
 ```
 
 More details are available in the
-[SchemaGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/SchemaGen).
+[SchemaGen API reference][tfx.v1.components.SchemaGen].
 
 ### For the reviewed schema import
 
@@ -93,4 +93,4 @@ schema_gen = tfx.components.ImportSchemaGen(
 The `schema_file` should be a full path to the text protobuf file.
 
 More details are available in the
-[ImportSchemaGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/ImportSchemaGen).
+[ImportSchemaGen API reference][tfx.v1.components.ImportSchemaGen].

@@ -424,6 +424,7 @@ def sequential_rolling_range(
     skip_num_recent_spans: int = 0,
     keep_all_versions: bool = False,
     exclude_span_numbers: Sequence[int] = (),
+    stride: int = 1,
 ):
   """Returns artifacts with spans in a sequential rolling range.
 
@@ -435,9 +436,9 @@ def sequential_rolling_range(
   exclude_span_numbers, for details see the ConsecutiveSpans ResolverOp
   implementation.
 
-  The window size is num_spans and has a stride of 1. If the spans are not
-  consecutive, then the sequential rolling range waits for the missing span to
-  arrive.
+  The window size is num_spans and the sliding window has a default stride of 1.
+  If the spans are not consecutive, then the sequential rolling range waits for
+  the missing span to arrive.
 
   This resolver function is based on the span-version semantics, which only
   considers the latest version of each span. If you want to keep all versions,
@@ -460,7 +461,7 @@ def sequential_rolling_range(
     The consecutive spans to consider are [1, 2, 3, 4]
 
     The artifacts will be returned with a sliding window of size num_spans=3 and
-    stride 1 applied:
+    stride=1 applied:
 
     [[A, B, C], [B, C, D]]
 
@@ -491,6 +492,7 @@ def sequential_rolling_range(
       If false then if multiple artifacts have the same span, only the span with
       the latest version is kept. Defaults to False.
     exclude_span_numbers: The list of missing/bad span numbers to exclude.
+    stride: The step size of the sliding window. Must be > 0, defaults to 1.
 
   Returns:
     Artifacts with spans in the sequential rolling range.
@@ -503,7 +505,9 @@ def sequential_rolling_range(
       denylist=exclude_span_numbers,
   )
 
-  return ops.SlidingWindow(resolved_artifacts, window_size=num_spans)
+  return ops.SlidingWindow(
+      resolved_artifacts, window_size=num_spans, stride=stride
+  )
 
 
 @sequential_rolling_range.output_type_inferrer
@@ -623,8 +627,8 @@ def filter_property_equal(
 
   filter_property_equal(
       [A, B, C],
-      property_key='blessed',
-      property_value=False,
+      key='blessed',
+      value=False,
   )
 
   will return [C].
@@ -645,6 +649,13 @@ def filter_property_equal(
   )
 
 
+@filter_property_equal.output_type_inferrer
+def _infer_filter_property_equal_type(
+    channel: channel_types.BaseChannel, **kwargs  # pylint: disable=unused-argument
+):
+  return channel.type
+
+
 @resolver_function.resolver_function
 def filter_custom_property_equal(
     artifacts,
@@ -661,8 +672,8 @@ def filter_custom_property_equal(
 
   filter_custom_property_equal(
       [A, B, C],
-      property_key='purity',
-      property_value=2,
+      key='purity',
+      value=2,
   )
 
   will return [C].
@@ -681,6 +692,13 @@ def filter_custom_property_equal(
       property_value=value,
       is_custom_property=True,
   )
+
+
+@filter_custom_property_equal.output_type_inferrer
+def _infer_filter_custom_property_equal_type(
+    channel: channel_types.BaseChannel, **kwargs  # pylint: disable=unused-argument
+):
+  return channel.type
 
 
 @resolver_function.resolver_function

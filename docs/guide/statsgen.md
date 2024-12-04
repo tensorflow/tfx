@@ -64,8 +64,8 @@ Where `<artifact_id>` represents a unique ID for this version of the schema in
 MLMD. This schema proto can then be modified to communicate information about
 the dataset which cannot be reliably inferred, which will make the output of
 `StatisticsGen` more useful and the validation performed in the
-[`ExampleValidator`](https://www.tensorflow.org/tfx/guide/exampleval) component
+[`ExampleValidator`](exampleval.md) component
 more stringent.
 
 More details are available in the
-[StatisticsGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/StatisticsGen).
+[StatisticsGen API reference][tfx.v1.components.StatisticsGen].

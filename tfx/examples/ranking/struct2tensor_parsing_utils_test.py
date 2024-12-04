@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.examples.ranking.struct2tensor_parsing_utils."""
 
+
+
 import itertools
 import unittest
 
@@ -248,7 +250,3 @@ class ELWCDecoderTest(tf.test.TestCase):
     result = decoder.decode_record(tf.convert_to_tensor(_ELWCS))
     self.assertLen(result, 1)
     self.assertEqual(result['example_list_size'].to_list(), [[2], [1]])
-
-
-if __name__ == '__main__':
-  tf.test.main()

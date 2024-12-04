@@ -239,7 +239,3 @@ class ProvidersTest(tf.test.TestCase):
     self.assertEqual(m.get('my_list', list[int]), [1, 2, 3])
     with self.assertRaises(errors.InvalidTypeHintError):
       m.get('my_list', list[str])
-
-
-if __name__ == '__main__':
-  tf.test.main()

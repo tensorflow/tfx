@@ -5,31 +5,31 @@ input_definitions {
   parameters {
     key: "input_base"
     value {
-      type: STRING
+      parameter_type: STRING
     }
   }
   parameters {
     key: "input_config"
     value {
-      type: STRING
+      parameter_type: STRING
     }
   }
   parameters {
     key: "output_config"
     value {
-      type: STRING
+      parameter_type: STRING
     }
   }
   parameters {
     key: "output_data_format"
     value {
-      type: INT
+      parameter_type: NUMBER_INTEGER
     }
   }
   parameters {
     key: "output_file_format"
     value {
-      type: INT
+      parameter_type: NUMBER_INTEGER
     }
   }
 }

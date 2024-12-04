@@ -15,7 +15,6 @@
 import copy
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import version
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
@@ -31,7 +30,6 @@ from tfx.utils import test_case_utils
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
-
 
 class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
 
@@ -307,7 +305,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
               value {{int_value: 1}}
             }}
             """, executor_output.output_artifacts[output_key].artifacts.add())
-
       output_dict, _ = execution_publish_utils.publish_succeeded_execution(
           m, execution_id, contexts, {output_key: [output_example]},
           executor_output)
@@ -418,7 +415,6 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
             value {int_value: 2}
           }
           """, executor_output.output_artifacts[output_key].artifacts.add())
-
       output_dict, execution = (
           execution_publish_utils.publish_succeeded_execution(
               m,
@@ -886,7 +882,3 @@ class ExecutionPublisherTest(test_case_utils.TfxTest, parameterized.TestCase):
               'last_update_time_since_epoch',
           ],
       )
-
-
-if __name__ == '__main__':
-  tf.test.main()

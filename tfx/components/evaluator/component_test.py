@@ -143,7 +143,3 @@ class ComponentTest(tf.test.TestCase):
           example_splits=['eval'],
           module_file='module_file_path',
           module_path='python.path.module')
-
-
-if __name__ == '__main__':
-  tf.test.main()

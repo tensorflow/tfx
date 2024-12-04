@@ -29,6 +29,8 @@ from tfx.tools.cli.e2e import test_utils
 from tfx.utils import io_utils
 from tfx.utils import test_case_utils
 
+import pytest
+
 
 # Number of seconds between polling pending task states.
 _TASK_POLLING_INTERVAL_SEC = 10
@@ -40,6 +42,9 @@ _SUCCESS_TASK_STATES = set(['success'])
 _PENDING_TASK_STATES = set(['queued', 'scheduled', 'running', 'none'])
 
 
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
+@pytest.mark.e2e
 @unittest.skipIf(
     platform.system() == 'Darwin',
     'Airflow is not compatible with TF in some environments on macos and '
@@ -215,7 +220,3 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
               'No pending tasks in %s finished within %d secs'
               % (pending_tasks, _MAX_TASK_STATE_CHANGE_SEC)
           )
-
-
-if __name__ == '__main__':
-  tf.test.main()

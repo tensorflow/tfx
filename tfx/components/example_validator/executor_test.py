@@ -16,13 +16,10 @@
 import os
 import tempfile
 
-from absl.testing import absltest
 from absl.testing import parameterized
 from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.example_validator import executor
 from tfx.dsl.io import fileio
-from tfx.orchestration.experimental.core import component_generated_alert_pb2
-from tfx.orchestration.experimental.core import constants
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -30,10 +27,39 @@ from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 
-from google.protobuf import any_pb2
 from google.protobuf import text_format
-from ml_metadata.proto import metadata_store_pb2
 from tensorflow_metadata.proto.v0 import anomalies_pb2
+
+
+_ANOMALIES_PROTO = text_format.Parse(
+    """
+    anomaly_info {
+      key: 'company'
+      value {
+        path {
+          step: 'company'
+        }
+        severity: ERROR
+        short_description: 'Feature does not have enough values.'
+        description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
+        reason {
+          description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
+          type: CUSTOM_VALIDATION
+          short_description: 'Feature does not have enough values.'
+        }
+      }
+    }
+    dataset_anomaly_info {
+      description: "Low num examples in dataset."
+      severity: ERROR
+      short_description: "Low num examples in dataset."
+      reason {
+          type: DATASET_LOW_NUM_EXAMPLES
+      }
+    }
+    """,
+    anomalies_pb2.Anomalies()
+)
 
 
 class ExecutorTest(parameterized.TestCase):
@@ -43,21 +69,23 @@ class ExecutorTest(parameterized.TestCase):
 
   def _assert_equal_anomalies(self, actual_anomalies, expected_anomalies):
     # Check if the actual anomalies matches with the expected anomalies.
-    for feature_name in expected_anomalies:
+    for feature_name in expected_anomalies.anomaly_info:
       self.assertIn(feature_name, actual_anomalies.anomaly_info)
       # Do not compare diff_regions.
       actual_anomalies.anomaly_info[feature_name].ClearField('diff_regions')
 
       self.assertEqual(actual_anomalies.anomaly_info[feature_name],
-                       expected_anomalies[feature_name])
+                       expected_anomalies.anomaly_info[feature_name])
     self.assertEqual(
-        len(actual_anomalies.anomaly_info), len(expected_anomalies))
+        len(actual_anomalies.anomaly_info),
+        len(expected_anomalies.anomaly_info)
+    )
 
   @parameterized.named_parameters(
       {
           'testcase_name': 'No_anomalies',
           'custom_validation_config': None,
-          'expected_anomalies': {},
+          'expected_anomalies': anomalies_pb2.Anomalies(),
           'expected_blessing': {
               'train': executor.BLESSED_VALUE,
               'eval': executor.BLESSED_VALUE,
@@ -75,24 +103,7 @@ class ExecutorTest(parameterized.TestCase):
                 }
               }
               """,
-          'expected_anomalies': {
-              'company': text_format.Parse(
-                  """
-                  path {
-                    step: 'company'
-                  }
-                  severity: ERROR
-                  short_description: 'Feature does not have enough values.'
-                  description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
-                  reason {
-                    description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
-                    type: CUSTOM_VALIDATION
-                    short_description: 'Feature does not have enough values.'
-                  }
-                  """,
-                  anomalies_pb2.AnomalyInfo(),
-              )
-          },
+          'expected_anomalies': _ANOMALIES_PROTO,
           'expected_blessing': {
               'train': executor.NOT_BLESSED_VALUE,
               'eval': executor.NOT_BLESSED_VALUE,
@@ -100,7 +111,10 @@ class ExecutorTest(parameterized.TestCase):
       },
   )
   def testDo(
-      self, custom_validation_config, expected_anomalies, expected_blessing
+      self,
+      custom_validation_config,
+      expected_anomalies,
+      expected_blessing,
   ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
@@ -109,6 +123,7 @@ class ExecutorTest(parameterized.TestCase):
     eval_stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
     eval_stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval', 'test'])
+    eval_stats_artifact.span = 11
 
     schema_artifact = standard_artifacts.Schema()
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
@@ -150,6 +165,7 @@ class ExecutorTest(parameterized.TestCase):
     self.assertEqual(
         artifact_utils.encode_split_names(['train', 'eval']),
         validation_output.split_names)
+    self.assertEqual(eval_stats_artifact.span, validation_output.span)
 
     # Check example_validator outputs.
     train_anomalies_path = os.path.join(validation_output.uri, 'Split-train',
@@ -181,57 +197,12 @@ class ExecutorTest(parameterized.TestCase):
         expected_blessing,
     )
 
-    if expected_anomalies:
-      alerts = component_generated_alert_pb2.ComponentGeneratedAlertList()
-      alerts.component_generated_alert_list.append(
-          component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-              alert_name='Feature does not have enough values.',
-              alert_body=(
-                  'Custom validation triggered anomaly. Query:'
-                  ' feature.string_stats.common_stats.min_num_values > 5 Test'
-                  ' dataset: default slice for feature company in split train.'
-              ),
-          )
-      )
-      alerts.component_generated_alert_list.append(
-          component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-              alert_name='Feature does not have enough values.',
-              alert_body=(
-                  'Custom validation triggered anomaly. Query:'
-                  ' feature.string_stats.common_stats.min_num_values > 5 Test'
-                  ' dataset: default slice for feature company in split eval.'
-              ),
-          )
-      )
-      alerts_any_proto = any_pb2.Any()
-      alerts_any_proto.Pack(alerts)
-      self.assertEqual(
-          executor_output,
-          execution_result_pb2.ExecutorOutput(
-              execution_properties={
-                  constants.COMPONENT_GENERATED_ALERTS_KEY: (
-                      metadata_store_pb2.Value(proto_value=alerts_any_proto)
-                  )
-              },
-              output_artifacts={
-                  standard_component_specs.ANOMALIES_KEY: (
-                      execution_result_pb2.ExecutorOutput.ArtifactList(
-                          artifacts=[validation_output.mlmd_artifact]))
-              },
-          ),
-      )
-    else:
-      self.assertEqual(
-          executor_output,
-          execution_result_pb2.ExecutorOutput(
-              output_artifacts={
-                  standard_component_specs.ANOMALIES_KEY: (
-                      execution_result_pb2.ExecutorOutput.ArtifactList(
-                          artifacts=[validation_output.mlmd_artifact]))
-              },
-          ),
-      )
+    expected_executor_output = execution_result_pb2.ExecutorOutput(
+        output_artifacts={
+            standard_component_specs.ANOMALIES_KEY: (
+                execution_result_pb2.ExecutorOutput.ArtifactList(
+                    artifacts=[validation_output.mlmd_artifact]))
+        },
+    )
 
-
-if __name__ == '__main__':
-  absltest.main()
+    self.assertEqual(executor_output, expected_executor_output)

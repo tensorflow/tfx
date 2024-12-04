@@ -15,7 +15,7 @@ the [Pusher](pusher.md) that it is ok to push the model to production.
 
 *   Consumes:
     *   An eval split from
-        [Examples](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/types/standard_artifacts/Examples)
+        [Examples][tfx.v1.types.standard_artifacts.Examples]
     *   A trained model from [Trainer](trainer.md)
     *   A previously blessed model (if validation to be performed)
 *   Emits:
@@ -66,9 +66,7 @@ import tensorflow_model_analysis as tfma
 eval_config = tfma.EvalConfig(
     model_specs=[
         # This assumes a serving model with signature 'serving_default'. If
-        # using estimator based EvalSavedModel, add signature_name='eval' and
-        # remove the label_key. Note, if using a TFLite model, then you must set
-        # model_type='tf_lite'.
+        # using a TFLite model, then you must set model_type='tf_lite'.
         tfma.ModelSpec(label_key='<label_key>')
     ],
     metrics_specs=[
@@ -142,4 +140,4 @@ if not validation_result.validation_ok:
 ```
 
 More details are available in the
-[Evaluator API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/Evaluator).
+[Evaluator API reference][tfx.v1.components.Evaluator].

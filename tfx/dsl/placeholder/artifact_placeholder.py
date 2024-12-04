@@ -31,21 +31,22 @@ def input(key: str) -> ArtifactPlaceholder:  # pylint: disable=redefined-builtin
 
   Returns:
     A Placeholder that supports
+
       1. Rendering the whole MLMD artifact proto as text_format.
-         Example: input('model')
-      2. Accessing a specific index using [index], if multiple artifacts are
+         Example: `#!python input('model')`
+      2. Accessing a specific index using `#!python [index]`, if multiple artifacts are
          associated with the given key. If not specified, default to the first
          artifact.
-         Example: input('model')[0]
+         Example: `#!python input('model')[0]`
       3. Getting the URI of an artifact through .uri property.
-         Example: input('model').uri or input('model')[0].uri
+         Example: `#!python input('model').uri or input('model')[0].uri`
       4. Getting the URI of a specific split of an artifact using
-         .split_uri(split_name) method.
-         Example: input('examples')[0].split_uri('train')
+         `#!python .split_uri(split_name)` method.
+         Example: `#!python input('examples')[0].split_uri('train')`
       5. Getting the value of a primitive artifact through .value property.
-         Example: input('primitive').value
+         Example: `#!python input('primitive').value`
       6. Concatenating with other placeholders or strings.
-         Example: input('model').uri + '/model/' + exec_property('version')
+         Example: `#!python input('model').uri + '/model/' + exec_property('version')`
   """
   return ArtifactPlaceholder(key, is_input=True)
 
@@ -60,21 +61,22 @@ def output(key: str) -> ArtifactPlaceholder:
 
   Returns:
     A Placeholder that supports
+
       1. Rendering the whole artifact as text_format.
-         Example: output('model')
+         Example: `#!python output('model')`
       2. Accessing a specific index using [index], if multiple artifacts are
          associated with the given key. If not specified, default to the first
          artifact.
-         Example: output('model')[0]
+         Example: `#!python output('model')[0]`
       3. Getting the URI of an artifact through .uri property.
-         Example: output('model').uri or output('model')[0].uri
+         Example: `#!python output('model').uri or output('model')[0].uri`
       4. Getting the URI of a specific split of an artifact using
-         .split_uri(split_name) method.
-         Example: output('examples')[0].split_uri('train')
+         `#!python .split_uri(split_name)` method.
+         Example: `#!python output('examples')[0].split_uri('train')`
       5. Getting the value of a primitive artifact through .value property.
-         Example: output('primitive').value
+         Example: `#!python output('primitive').value`
       6. Concatenating with other placeholders or strings.
-         Example: output('model').uri + '/model/' + exec_property('version')
+         Example: `#!python output('model').uri + '/model/' + exec_property('version')`
   """
   return ArtifactPlaceholder(key, is_input=False)
 
@@ -135,6 +137,14 @@ class ArtifactPlaceholder(placeholder_base.Placeholder):
   def custom_property(self, key: str) -> _PropertyOperator:
     return _PropertyOperator(self, key, is_custom_property=True)
 
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, ArtifactPlaceholder)
+        and self._key == other._key  # pylint: disable=protected-access
+        and self._is_input == other._is_input  # pylint: disable=protected-access
+        and self._index == other._index  # pylint: disable=protected-access
+    )
+
   def encode(
       self, component_spec: Any = None
   ) -> placeholder_pb2.PlaceholderExpression:
@@ -162,6 +172,13 @@ class _ArtifactUriOperator(placeholder_base.UnaryPlaceholderOperator):
     super().__init__(value, expected_type=str)
     self._split = split
 
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, _ArtifactUriOperator)
+        and self._split == other._split  # pylint: disable=protected-access
+        and super().internal_equals(other)
+    )
+
   def encode(
       self, component_spec: Optional[type['_types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
@@ -183,6 +200,13 @@ class _ArtifactValueOperator(placeholder_base.UnaryPlaceholderOperator):
   def __init__(self, value: placeholder_base.Placeholder, split: str = ''):
     super().__init__(value, expected_type=placeholder_base.ValueType)
     self._split = split
+
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, _ArtifactValueOperator)
+        and self._split == other._split  # pylint: disable=protected-access
+        and super().internal_equals(other)
+    )
 
   def encode(
       self, component_spec: Optional[type['_types.ComponentSpec']] = None
@@ -209,6 +233,14 @@ class _PropertyOperator(placeholder_base.UnaryPlaceholderOperator):
     super().__init__(value, expected_type=placeholder_base.ValueType)
     self._key = key
     self._is_custom_property = is_custom_property
+
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, _PropertyOperator)
+        and self._key == other._key  # pylint: disable=protected-access
+        and self._is_custom_property == other._is_custom_property  # pylint: disable=protected-access
+        and super().internal_equals(other)
+    )
 
   def encode(
       self, component_spec: Optional[type['_types.ComponentSpec']] = None

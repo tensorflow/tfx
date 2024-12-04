@@ -145,6 +145,14 @@ class Placeholder(abc.ABC):
         'Did you miss the ending `,` in your tuple?'
     )
 
+  def __format__(self, format_spec) -> str:
+    raise RuntimeError(
+        'Formatting a placeholder is not supported. Did you accidentally use a '
+        'placeholder inside an f-string or .format() call? That cannot work '
+        'because placeholder values are only known later at runtime. You can '
+        'use the + operator for string concatenation.'
+    )
+
   def b64encode(self, url_safe: bool = True) -> _Base64EncodeOperator:
     """Encodes the value with URL-safe Base64 encoding."""
     return _Base64EncodeOperator(self, url_safe)
@@ -183,6 +191,11 @@ class Placeholder(abc.ABC):
       A placeholder representing the serialized list.
     """
     return _ListSerializationOperator(self, serialization_format)
+
+  @abc.abstractmethod
+  def internal_equals(self, other: Placeholder) -> bool:
+    """Do not call this as a Tflex user."""
+    raise NotImplementedError()
 
   @abc.abstractmethod
   def encode(
@@ -354,8 +367,7 @@ class ListPlaceholder(Placeholder):
     """Serializes list-value placeholder to JSON or comma-separated string.
 
     Only supports primitive type list element (a.k.a bool, int, float or str) at
-    the
-    moment; throws runtime error otherwise.
+    the moment; throws runtime error otherwise.
 
     Args:
        serialization_format: The format of how the proto is serialized.
@@ -364,6 +376,16 @@ class ListPlaceholder(Placeholder):
       A placeholder.
     """
     return _ListSerializationOperator(self, serialization_format)
+
+  def internal_equals(self, other: Placeholder) -> bool:
+    return (
+        isinstance(other, ListPlaceholder)
+        and len(self._input_placeholders) == len(other._input_placeholders)  # pylint: disable=protected-access
+        and all(
+            internal_equals_value_like(a, b)
+            for a, b in zip(self._input_placeholders, other._input_placeholders)  # pylint: disable=protected-access
+        )
+    )
 
   def traverse(self) -> Iterator[Placeholder]:
     """Yields all placeholders under and including this one."""
@@ -428,6 +450,17 @@ class DictPlaceholder(Placeholder):
   def __radd__(self, left: DictPlaceholder) -> DictPlaceholder:
     raise NotImplementedError('Add operator not supported for DictPlaceholders')
 
+  def internal_equals(self, other: Placeholder) -> bool:
+    return (
+        isinstance(other, DictPlaceholder)
+        and len(self._entries) == len(other._entries)  # pylint: disable=protected-access
+        and all(
+            internal_equals_value_like(ak, bk)
+            and internal_equals_value_like(av, bv)
+            for (ak, av), (bk, bv) in zip(self._entries, other._entries)  # pylint: disable=protected-access
+        )
+    )
+
   def traverse(self) -> Iterator[Placeholder]:
     """Yields all placeholders under and including this one."""
     yield from super().traverse()
@@ -460,6 +493,11 @@ class UnaryPlaceholderOperator(Placeholder):
     """Initializes the class. Consider this private."""
     super().__init__(expected_type)
     self._value = value
+
+  def internal_equals(self, other: Placeholder) -> bool:
+    return isinstance(other, type(self)) and self._value.internal_equals(
+        other._value  # pylint: disable=protected-access
+    )
 
   def traverse(self) -> Iterator[Placeholder]:
     yield self
@@ -525,6 +563,13 @@ class _IndexOperator(UnaryPlaceholderOperator):
     )
     self._index = index
 
+  def internal_equals(self, other: Placeholder) -> bool:
+    return (
+        isinstance(other, _IndexOperator)
+        and self._index == other._index  # pylint: disable=protected-access
+        and self._value.internal_equals(other._value)  # pylint: disable=protected-access
+    )
+
   def encode(
       self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
@@ -556,6 +601,16 @@ class _ConcatOperator(Placeholder):
   def __radd__(self, left: str) -> _ConcatOperator:
     return _ConcatOperator([left] + self._items)
 
+  def internal_equals(self, other: Placeholder) -> bool:
+    return (
+        isinstance(other, _ConcatOperator)
+        and len(self._items) == len(other._items)  # pylint: disable=protected-access
+        and all(
+            internal_equals_value_like(item, other_item)
+            for item, other_item in zip(self._items, other._items)  # pylint: disable=protected-access
+        )
+    )
+
   def encode(
       self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
@@ -584,6 +639,16 @@ class _JoinPathOperator(Placeholder):
   ):
     super().__init__(expected_type=str)
     self._args = args
+
+  def internal_equals(self, other: Placeholder) -> bool:
+    return (
+        isinstance(other, _JoinPathOperator)
+        and len(self._args) == len(other._args)  # pylint: disable=protected-access
+        and all(
+            internal_equals_value_like(arg, other_arg)
+            for arg, other_arg in zip(self._args, other._args)  # pylint: disable=protected-access
+        )
+    )
 
   def traverse(self) -> Iterator[Placeholder]:
     yield self
@@ -645,6 +710,14 @@ class _ProtoOperator(UnaryPlaceholderOperator):
         proto_field_path=self._proto_field_path + [f'.{field_name}'],
     )
 
+  def internal_equals(self, other: Placeholder) -> bool:
+    return (
+        isinstance(other, _ProtoOperator)
+        and self._proto_field_path == other._proto_field_path  # pylint: disable=protected-access
+        and self._serialization_format == other._serialization_format  # pylint: disable=protected-access
+        and self._value.internal_equals(other._value)  # pylint: disable=protected-access
+    )
+
   def encode(
       self, component_spec: Optional[type['types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
@@ -682,6 +755,25 @@ class _ProtoOperator(UnaryPlaceholderOperator):
       )
 
     return result
+
+
+def dirname(
+    placeholder: Placeholder,
+) -> _DirNameOperator:
+  """Runs os.path.dirname() on the path resolved from the input placeholder.
+
+  Args:
+    placeholder: Another placeholder to be wrapped in a _DirNameOperator.
+
+  Example:
+  ```
+  ph.dirname(ph.execution_invocation().output_metadata_uri)
+  ```
+
+  Returns:
+    A _DirNameOperator operator.
+  """
+  return _DirNameOperator(placeholder)
 
 
 class _ListSerializationOperator(UnaryPlaceholderOperator):
@@ -737,6 +829,39 @@ class _CompareOp(enum.Enum):
   GREATER_THAN = placeholder_pb2.ComparisonOperator.Operation.GREATER_THAN
 
 
+class _DirNameOperator(UnaryPlaceholderOperator):
+  """_DirNameOperator returns directory path given a path."""
+
+  def __init__(
+      self,
+      value: Placeholder,
+  ):
+    super().__init__(
+        value,
+        expected_type=str,
+    )
+
+  def encode(
+      self, component_spec: Optional[type['types.ComponentSpec']] = None
+  ) -> placeholder_pb2.PlaceholderExpression:
+    result = placeholder_pb2.PlaceholderExpression()
+    op = result.operator.dir_name_op
+    op.expression.CopyFrom(self._value.encode(component_spec))
+
+    return result
+
+
+def internal_equals_value_like(
+    a: Optional[ValueLikeType], b: Optional[ValueLikeType]
+) -> bool:
+  """Equality operator for Placeholders or primitives."""
+  if isinstance(a, Placeholder):
+    return a.internal_equals(b)
+  if isinstance(b, Placeholder):
+    return False
+  return a == b
+
+
 def encode_value_like(
     x: ValueLikeType, component_spec: Any = None
 ) -> placeholder_pb2.PlaceholderExpression:
@@ -779,6 +904,14 @@ class _ComparisonPredicate(Predicate):
     )
     return result
 
+  def internal_equals(self, other: Placeholder) -> bool:
+    return (
+        isinstance(other, _ComparisonPredicate)
+        and self.compare_op == other.compare_op
+        and internal_equals_value_like(self.left, other.left)
+        and internal_equals_value_like(self.right, other.right)
+    )
+
   def traverse(self) -> Iterator[Placeholder]:
     yield self
     if isinstance(self.left, Placeholder):
@@ -807,6 +940,11 @@ class _NotPredicate(Predicate):
     )
     return result
 
+  def internal_equals(self, other: Placeholder) -> bool:
+    return isinstance(other, _NotPredicate) and self.value.internal_equals(
+        other.value
+    )
+
   def traverse(self) -> Iterator[Placeholder]:
     yield self
     yield from self.value.traverse()
@@ -832,6 +970,14 @@ class _BinaryLogicalPredicate(Predicate):
         self.right.encode(component_spec)
     )
     return result
+
+  def internal_equals(self, other: Placeholder) -> bool:
+    return (
+        isinstance(other, _BinaryLogicalPredicate)
+        and self.logical_op == other.logical_op
+        and self.left.internal_equals(other.left)
+        and self.right.internal_equals(other.right)
+    )
 
   def traverse(self) -> Iterator[Placeholder]:
     yield self

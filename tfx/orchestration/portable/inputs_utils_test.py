@@ -15,7 +15,6 @@
 import collections
 import os
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration import metadata
@@ -385,6 +384,65 @@ class InputsUtilsTest(_TestMixin):
           dynamic_parameters, placeholder_utils.ResolutionContext()
       )
 
-
-if __name__ == '__main__':
-  tf.test.main()
+  def test_resolve_ph_execution_parameters(self):
+    execution_parameters = pipeline_pb2.NodeParameters()
+    text_format.Parse(
+        r"""
+          parameters: {
+            key: "train_args"
+            value: {
+              placeholder: {
+                operator: {
+                  proto_op: {
+                    expression: {
+                      operator: {
+                        make_proto_op: {
+                          base: {
+                            type_url: "type.googleapis.com/tensorflow.service.TrainArgs"
+                            value: "\n\005train"
+                          }
+                          file_descriptors: {
+                            file: {
+                              name: "third_party/tfx/trainer.proto"
+                              package: "tensorflow.service"
+                              message_type {
+                                name: "TrainArgs"
+                                field {
+                                  name: "splits"
+                                  number: 1
+                                  label: LABEL_REPEATED
+                                  type: TYPE_STRING
+                                }
+                              }
+                              syntax: "proto3"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        """,
+        execution_parameters,
+    )
+    test_artifact = types.standard_artifacts.String()
+    test_artifact.uri = self.create_tempfile().full_path
+    test_artifact.value = 'testvalue'
+    input_dict = {'_test_placeholder': [test_artifact]}
+    exec_params_resolved = inputs_utils.resolve_dynamic_parameters(
+        execution_parameters,
+        placeholder_utils.ResolutionContext(
+            exec_info=data_types.ExecutionInfo(
+                input_dict=input_dict, pipeline_run_id='testrunid'
+            )
+        ),
+    )
+    self.assertProtoEquals(
+        """
+        splits: "train"
+        """,
+        exec_params_resolved['train_args'],
+    )

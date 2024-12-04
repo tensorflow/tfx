@@ -185,11 +185,14 @@ message PropertyPredicate {
     // The right-hand side element to the logical operator.
     PropertyPredicate rhs = 3;
   }
+
   oneof operator {
     ValueComparator value_comparator = 1;
     UnaryLogicalOperator unary_logical_operator = 2;
     BinaryLogicalOperator binary_logical_operator = 3;
   }
+
+  reserved 4;
 }
 
 // InputGraph expresses a declarative input resolution logic with a graph of
@@ -719,6 +722,21 @@ message PipelineRuntimeSpec {
 message PipelineInfo {
   // Required field. A pipeline must have an id.
   string id = 1;
+
+  // The ids of all the parent pipelines of a sub-pipeline.
+  // The order of ids represents the path from root pipeline (inclusive) to the
+  // given sub-pipeline (exclusive).
+  //
+  // For the composable pipeline example below, `parent_ids` of child-pipeline
+  // would be ["root-pipeline", "parent-pipeline"].
+  //  root-pipeline {
+  //    parent-pipeline {
+  //      child-pipeline {}
+  //    }
+  //  }
+  //
+  // Optional. Only used by sub-pipelines.
+  repeated string parent_ids = 2;
 }
 
 // Definition for a uDSL pipeline. This is also the definition of a

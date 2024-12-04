@@ -1,0 +1,130 @@
+name: Build Wheels & Publish to PyPI
+
+on:
+  pull_request:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+env:
+  USE_BAZEL_VERSION: "7.2.1"
+
+jobs:
+  build_sdist:
+    name: Build sdist
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out the repo
+      uses: actions/checkout@v4
+
+    - name: Set up python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: install python dependencies
+      run: pip install build twine
+
+    - name: build sdist
+      run: |
+        python -m build --sdist -o wheelhouse
+
+    - name: List and check sdist
+      run: |
+        ls -lh wheelhouse/
+        twine check wheelhouse/*
+
+    - name: Upload sdist
+      uses: actions/upload-artifact@v4
+      with:
+        name: sdist
+        path: ./wheelhouse/*.tar.gz
+
+  build_wheels:
+    name: >
+      build ${{ matrix.python-version }} on ${{ matrix.platform || matrix.os }}
+      ${{ (matrix.arch) || '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu]
+        python-version: ['cp39', 'cp310']
+
+    runs-on: ${{ format('{0}-latest', matrix.os) }}
+    steps:
+    - name: Check out the repo
+      uses: actions/checkout@v4
+
+    - name: Set up python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install python build dependencies
+      run: |
+          pip install wheel
+
+    - uses: bazel-contrib/setup-bazel@0.8.5
+      name: Set up Bazel
+      with:
+        # Avoid downloading Bazel every time.
+        bazelisk-cache: true
+        # Store build cache per workflow.
+        disk-cache: ${{ github.workflow }}-${{ hashFiles('.github/workflows/wheels.yml') }}
+        # Share repository cache between workflows.
+        repository-cache: true
+
+    - name: Verify bazel installation
+      run: |
+        which bazel
+        bazel info
+        bazel version
+
+    - name: Install build
+      run: python -m pip install --upgrade pip build
+
+    - name: Build wheels
+      run: |
+        package_build/initialize.sh
+        python -m build --wheel package_build/tfx/
+        python -m build --wheel package_build/ml-pipelines-sdk/
+        mkdir wheelhouse
+        mv dist/*.whl wheelhouse/
+
+    - name: List and check wheels
+      run: |
+        pip install twine pkginfo>=1.10.0
+        ${{ matrix.ls || 'ls -lh' }} wheelhouse/
+        twine check wheelhouse/*
+
+    - name: Upload wheels
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheels-${{ matrix.python-version }}-${{ matrix.os }}
+        path: ./wheelhouse/*.whl
+
+  upload_to_pypi:
+    name: Upload to PyPI
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'release' && startsWith(github.ref, 'refs/tags')) || (github.event_name == 'workflow_dispatch')
+    needs: [build_wheels, build_sdist]
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tfx
+    permissions:
+      id-token: write
+    steps:
+      - name: Retrieve wheels and sdist
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: wheels/
+
+      - name: List the build artifacts
+        run: |
+          ls -lAs wheels/
+
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1.9
+        with:
+          packages_dir: wheels/

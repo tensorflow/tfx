@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Constants for [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator)."""
+"""Constants for [Evaluator](../../../guide/evaluator)."""
 
 # Keys for artifact (custom) properties.
 ARTIFACT_PROPERTY_BLESSED_KEY = 'blessed'
@@ -48,6 +48,11 @@ RUBBER_STAMPED_AND_NOT_BLESSED_VALUE = (
     'The model was rubber stamped (no baseline models found) and not blessed. '
     'Any change thresholds were ignored, but value thresholds were '
     'checked and failed.'
+)
+NOT_RUBBER_STAMPED_AND_NOT_BLESSED_VALUE = (
+    'The model was not rubber stamped (a baseline model was found) and not '
+    'blessed. Change thresholds and value thresholds were checked and there '
+    'were failures.'
 )
 
 

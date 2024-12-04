@@ -1,0 +1,29 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "CsvExampleGen_executor"
+  value {
+    container {
+      image: "gcr.io/tensorflow/tfx:latest"
+      command: "python"
+      command: "-m"
+      command: "my_entrypoint.app_module"
+      args: "--executor_class_path"
+      args: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+      args: "--json_serialized_invocation_args"
+      args: "{{$}}"
+      args: "--runner=DataflowRunner"
+      lifecycle {
+        pre_cache_check {
+          command: "python"
+          command: "-m"
+          command: "tfx.orchestration.kubeflow.v2.file_based_example_gen.driver"
+          args: "--json_serialized_invocation_args"
+          args: "{{$}}"
+          args: "--runner=DataflowRunner"
+        }
+      }
+    }
+  }
+}

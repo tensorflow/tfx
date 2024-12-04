@@ -1,0 +1,33 @@
+name: pre-commit
+
+on:
+  pull_request:
+  push:
+     branches: [master]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4.1.7
+      with:
+        # Ensure the full history is fetched
+        # This is required to run pre-commit on a specific set of commits
+        # TODO: Remove this when all the pre-commit issues are fixed
+        fetch-depth: 0
+    - uses: actions/setup-python@v5.1.1
+      with:
+        python-version: 3.9
+    - name: Determine commit range
+      id: commit_range
+      run: |
+       echo "TO_REF=${{ github.sha }}" >> $GITHUB_ENV
+        if [ "${{ github.event_name }}" == "pull_request" ]; then
+          echo "FROM_REF=${{ github.event.pull_request.base.sha }}" >> $GITHUB_ENV
+        else
+          echo "FROM_REF=${{ github.event.before }}" >> $GITHUB_ENV
+        fi
+    - uses: pre-commit/action@v3.0.1
+      with:
+        # TODO: Remove this when all the pre-commit issues are fixed
+        extra_args: --from-ref ${{ env.FROM_REF }} --to-ref ${{ env.TO_REF }}

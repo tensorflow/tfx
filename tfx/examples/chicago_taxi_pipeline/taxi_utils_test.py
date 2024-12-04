@@ -14,24 +14,15 @@
 """Tests for tfx.examples.chicago_taxi_pipeline.taxi_utils."""
 
 import os
-import types
 
 import apache_beam as beam
 import tensorflow as tf
-from tensorflow import estimator as tf_estimator
-import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform import beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import schema_utils
-from tfx.components.trainer import executor as trainer_executor
-from tfx.components.trainer.fn_args_utils import DataAccessor
-from tfx.components.util import tfxio_utils
-from tfx.dsl.io import fileio
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
-from tfx.types import standard_artifacts
 from tfx.utils import io_utils
-from tfx.utils import path_utils
 from tfx_bsl.tfxio import tf_example_record
 
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -110,70 +101,3 @@ class TaxiUtilsTest(tf.test.TestCase):
     for feature in transformed_schema.feature:
       feature.ClearField('annotation')
     self.assertEqual(transformed_schema, expected_transformed_schema)
-
-  def testTrainerFn(self):
-    temp_dir = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName)
-
-    schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
-    data_accessor = DataAccessor(
-        tf_dataset_factory=tfxio_utils.get_tf_dataset_factory_from_artifact(
-            [standard_artifacts.Examples()], []),
-        record_batch_factory=None,
-        data_view_decode_fn=None)
-    trainer_fn_args = trainer_executor.TrainerFnArgs(
-        train_files=os.path.join(
-            self._testdata_path,
-            'transform/transformed_examples/Split-train/*.gz'),
-        transform_output=os.path.join(self._testdata_path,
-                                      'transform/transform_graph'),
-        serving_model_dir=os.path.join(temp_dir, 'serving_model_dir'),
-        eval_files=os.path.join(
-            self._testdata_path,
-            'transform/transformed_examples/Split-eval/*.gz'),
-        schema_file=schema_file,
-        train_steps=1,
-        eval_steps=1,
-        base_model=None,
-        data_accessor=data_accessor)
-    schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
-    training_spec = taxi_utils.trainer_fn(trainer_fn_args, schema)
-
-    estimator = training_spec['estimator']
-    train_spec = training_spec['train_spec']
-    eval_spec = training_spec['eval_spec']
-    eval_input_receiver_fn = training_spec['eval_input_receiver_fn']
-
-    self.assertIsInstance(estimator,
-                          tf_estimator.DNNLinearCombinedClassifier)
-    self.assertIsInstance(train_spec, tf_estimator.TrainSpec)
-    self.assertIsInstance(eval_spec, tf_estimator.EvalSpec)
-    self.assertIsInstance(eval_input_receiver_fn, types.FunctionType)
-
-    # Test keep_max_checkpoint in RunConfig
-    self.assertGreater(estimator._config.keep_checkpoint_max, 1)
-
-    # Train for one step, then eval for one step.
-    eval_result, exports = tf_estimator.train_and_evaluate(
-        estimator, train_spec, eval_spec)
-    self.assertGreater(eval_result['loss'], 0.0)
-    self.assertEqual(len(exports), 1)
-    self.assertGreaterEqual(len(fileio.listdir(exports[0])), 1)
-
-    # Export the eval saved model.
-    eval_savedmodel_path = tfma.export.export_eval_savedmodel(
-        estimator=estimator,
-        export_dir_base=path_utils.eval_model_dir(temp_dir),
-        eval_input_receiver_fn=eval_input_receiver_fn)
-    self.assertGreaterEqual(len(fileio.listdir(eval_savedmodel_path)), 1)
-
-    # Test exported serving graph.
-    with tf.compat.v1.Session() as sess:
-      metagraph_def = tf.compat.v1.saved_model.loader.load(
-          sess, [tf.saved_model.SERVING], exports[0])
-      self.assertIsInstance(metagraph_def, tf.compat.v1.MetaGraphDef)
-
-
-if __name__ == '__main__':
-  tf.test.main()

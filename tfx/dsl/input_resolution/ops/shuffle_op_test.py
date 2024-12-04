@@ -51,7 +51,3 @@ class ShuffleOpTest(tf.test.TestCase):
   def testShuffle_NoArtifacts(self):
     actual = self._shuffle([])
     self.assertEqual(actual, [])
-
-
-if __name__ == '__main__':
-  tf.test.main()

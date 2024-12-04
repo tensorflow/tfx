@@ -37,6 +37,12 @@ deployment_spec {
                             string_value: "{{$}}"
                           }
                           values {
+                            string_value: "--json_serialized_inputs_spec_args"
+                          }
+                          values {
+                            string_value: "{\n  \"parameters\": {\n    \"input_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_data_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"output_file_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"range_config\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
+                          }
+                          values {
                             string_value: "--project=my-gcp-project"
                           }
                           values {
@@ -82,6 +88,12 @@ deployment_spec {
                             string_value: "{{$}}"
                           }
                           values {
+                            string_value: "--json_serialized_inputs_spec_args"
+                          }
+                          values {
+                            string_value: "{\n  \"parameters\": {\n    \"input_date\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
+                          }
+                          values {
                             string_value: "--project=my-gcp-project"
                           }
                         }
@@ -110,31 +122,31 @@ components {
       parameters {
         key: "input_config"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
       parameters {
         key: "output_config"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
       parameters {
         key: "output_data_format"
         value {
-          type: INT
+          parameter_type: NUMBER_INTEGER
         }
       }
       parameters {
         key: "output_file_format"
         value {
-          type: INT
+          parameter_type: NUMBER_INTEGER
         }
       }
       parameters {
         key: "range_config"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
     }
@@ -158,7 +170,7 @@ components {
       parameters {
         key: "input_date"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
     }
@@ -194,7 +206,7 @@ root {
             key: "input_config"
             value {
               runtime_value {
-                constant_value {
+                constant {
                   string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
                 }
               }
@@ -204,7 +216,7 @@ root {
             key: "output_config"
             value {
               runtime_value {
-                constant_value {
+                constant {
                   string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
                 }
               }
@@ -214,8 +226,8 @@ root {
             key: "output_data_format"
             value {
               runtime_value {
-                constant_value {
-                  int_value: 6
+                constant {
+                  number_value: 6.0
                 }
               }
             }
@@ -224,8 +236,8 @@ root {
             key: "output_file_format"
             value {
               runtime_value {
-                constant_value {
-                  int_value: 5
+                constant {
+                  number_value: 5.0
                 }
               }
             }
@@ -257,7 +269,7 @@ root {
             key: "input_date"
             value {
               runtime_value {
-                constant_value {
+                constant {
                   string_value: "22-09-26"
                 }
               }

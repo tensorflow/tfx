@@ -35,7 +35,7 @@ which components such as the `StatisticsGen` standard component use as inputs.
 
 Artifacts must be strongly typed with an **artifact type** registered in the
 [ML Metadata](mlmd.md) store. Learn more about the
-[concepts used in ML Metadata](mlmd.md#concepts).
+[concepts used in ML Metadata](mlmd.md).
 
 Artifact types have a name and define a schema of its properties. Artifact type
 names must be unique in your ML Metadata store. TFX provides several

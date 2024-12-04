@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.partial_run_utils."""
 
+
 from collections.abc import Sequence
 from typing import Dict, List, Mapping, Optional, Set, Tuple, Union
 from unittest import mock
@@ -79,7 +80,7 @@ def _to_input_channel(
 
 
 @component
-def _TestComponent():
+def TfxTestComponent():
   pass
 
 
@@ -193,7 +194,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     # not support running subpipelines.
     subpipeline_by_name = {}
     for s_p in subpipelines:
-      n = _TestComponent().with_id('node')
+      n = TfxTestComponent().with_id('node')
       p = pipeline_lib.Pipeline(
           pipeline_name=s_p,
           components=[n],
@@ -203,7 +204,7 @@ class MarkPipelineFnTest(parameterized.TestCase, test_case_utils.TfxTest):
     components = {}
     for node in node_to_downstream_nodes:
       if node not in subpipeline_by_name:
-        c = _TestComponent().with_id(node)
+        c = TfxTestComponent().with_id(node)
       else:
         c = subpipeline_by_name[node]
       components[node] = c
@@ -1721,7 +1722,3 @@ class PartialRunTest(absltest.TestCase):
         pipeline_pb_run_2, from_nodes=[add_num_1_v2.id])
     beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
     self.assertResultEqual(pipeline_pb_run_2, [(result_1_v2.id, 6)])
-
-
-if __name__ == '__main__':
-  absltest.main()

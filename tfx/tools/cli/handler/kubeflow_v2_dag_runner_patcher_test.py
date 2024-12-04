@@ -16,7 +16,6 @@
 import os
 from unittest import mock
 
-import tensorflow as tf
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow.v2 import kubeflow_v2_dag_runner
 from tfx.tools.cli.handler import kubeflow_v2_dag_runner_patcher
@@ -64,7 +63,3 @@ class KubeflowV2DagRunnerPatcherTest(test_case_utils.TfxTest):
         context[patcher.OUTPUT_FILE_PATH],
         os.path.join(pipeline_dir,
                      kubeflow_v2_dag_runner_patcher.OUTPUT_FILENAME))
-
-
-if __name__ == '__main__':
-  tf.test.main()

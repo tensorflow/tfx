@@ -44,6 +44,7 @@ from tfx.types.channel import Channel
 from tfx.utils import deprecation_utils
 from tfx.utils import name_utils
 
+from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 
 _EXECUTOR_LABEL_PATTERN = '{}_executor'
@@ -132,21 +133,22 @@ class StepBuilder:
   augments the deployment config associated with the node.
   """
 
-  def __init__(self,
-               node: base_node.BaseNode,
-               deployment_config: pipeline_pb2.PipelineDeploymentConfig,
-               component_defs: Dict[str, pipeline_pb2.ComponentSpec],
-               dsl_context_reg: dsl_context_registry.DslContextRegistry,
-               dynamic_exec_properties: Optional[Dict[Tuple[str, str],
-                                                      str]] = None,
-               image: Optional[str] = None,
-               image_cmds: Optional[List[str]] = None,
-               beam_pipeline_args: Optional[List[str]] = None,
-               enable_cache: bool = False,
-               pipeline_info: Optional[data_types.PipelineInfo] = None,
-               channel_redirect_map: Optional[Dict[Tuple[str, str],
-                                                   str]] = None,
-               is_exit_handler: bool = False):
+  def __init__(
+      self,
+      node: base_node.BaseNode,
+      deployment_config: pipeline_pb2.PipelineDeploymentConfig,
+      component_defs: Dict[str, pipeline_pb2.ComponentSpec],
+      dsl_context_reg: dsl_context_registry.DslContextRegistry,
+      dynamic_exec_properties: Optional[Dict[Tuple[str, str], str]] = None,
+      image: Optional[str] = None,
+      image_cmds: Optional[List[str]] = None,
+      beam_pipeline_args: Optional[List[str]] = None,
+      enable_cache: bool = False,
+      pipeline_info: Optional[data_types.PipelineInfo] = None,
+      channel_redirect_map: Optional[Dict[Tuple[str, str], str]] = None,
+      is_exit_handler: bool = False,
+      use_pipeline_spec_2_1: bool = False,
+  ):
     """Creates a StepBuilder object.
 
     A StepBuilder takes in a TFX node object (usually it's a component/resolver/
@@ -186,6 +188,8 @@ class StepBuilder:
         DSL node is splitted into multiple tasks in pipeline API proto. For
         example, latest blessed model resolver.
       is_exit_handler: Marking whether the task is for exit handler.
+      use_pipeline_spec_2_1: Use the KFP pipeline spec schema 2.1 to support
+        Vertex ML pipeline teamplate gallary.
 
     Raises:
       ValueError: On the following two cases:
@@ -204,6 +208,17 @@ class StepBuilder:
     self._outputs = node.outputs
     self._enable_cache = enable_cache
     self._is_exit_handler = is_exit_handler
+    self._use_pipeline_spec_2_1 = use_pipeline_spec_2_1
+    if use_pipeline_spec_2_1:
+      self._build_parameter_type_spec_func = (
+          compiler_utils.build_parameter_type_spec
+      )
+      self._value_converter_func = compiler_utils.value_converter
+    else:
+      self._build_parameter_type_spec_func = (
+          compiler_utils.build_parameter_type_spec_legacy
+      )
+      self._value_converter_func = compiler_utils.value_converter_legacy
     if channel_redirect_map is None:
       self._channel_redirect_map = {}
     else:
@@ -323,28 +338,36 @@ class StepBuilder:
       if value is None:
         continue
 
-      parameter_type_spec = compiler_utils.build_parameter_type_spec(value)
+      parameter_type_spec = self._build_parameter_type_spec_func(value)
       component_def.input_definitions.parameters[name].CopyFrom(
-          parameter_type_spec)
+          parameter_type_spec
+      )
     if self._name not in self._component_defs:
       self._component_defs[self._name] = component_def
     else:
-      raise ValueError(f'Found duplicate component ids {self._name} while '
-                       'building component definitions.')
+      raise ValueError(
+          f'Found duplicate component ids {self._name} while '
+          'building component definitions.'
+      )
 
     # 3. Build task spec.
     task_spec.task_info.name = self._name
-    dependency_ids = sorted({node.id for node in self._node.upstream_nodes}
-                            | implicit_upstream_node_ids)
+    dependency_ids = sorted(
+        {node.id for node in self._node.upstream_nodes}
+        | implicit_upstream_node_ids
+    )
 
-    for name, input_channel in itertools.chain(self._inputs.items(),
-                                               implicit_input_channels.items()):
+    for name, input_channel in itertools.chain(
+        self._inputs.items(), implicit_input_channels.items()
+    ):
       # TODO(b/169573945): Add support for vertex if requested.
       if not isinstance(input_channel, Channel):
         raise TypeError('Only single Channel is supported.')
       if self._is_exit_handler:
-        logging.error('exit handler component doesn\'t take input artifact, '
-                      'the input will be ignored.')
+        logging.error(
+            "exit handler component doesn't take input artifact, "
+            'the input will be ignored.'
+        )
         continue
       # If the redirecting map is provided (usually for latest blessed model
       # resolver, we'll need to redirect accordingly. Also, the upstream node
@@ -396,7 +419,9 @@ class StepBuilder:
       else:
         task_spec.inputs.parameters[name].CopyFrom(
             pipeline_pb2.TaskInputsSpec.InputParameterSpec(
-                runtime_value=compiler_utils.value_converter(value)))
+                runtime_value=self._value_converter_func(value)
+            )
+        )
     task_spec.component_ref.name = self._name
     dependency_ids = sorted(dependency_ids)
     for dependency in dependency_ids:
@@ -491,7 +516,16 @@ class StepBuilder:
     result.args.append('--executor_class_path')
     result.args.append(executor_path)
     result.args.append('--json_serialized_invocation_args')
+    # from kfp dsl: PIPELINE_TASK_EXECUTOR_INPUT_PLACEHOLDER
     result.args.append('{{$}}')
+
+    if self._use_pipeline_spec_2_1:
+      result.args.append('--json_serialized_inputs_spec_args')
+      result.args.append(
+          json_format.MessageToJson(
+              self._component_defs[self._name].input_definitions, sort_keys=True
+          )
+      )
     result.args.extend(self._beam_pipeline_args)
 
     if self._node.platform_config:
@@ -523,7 +557,17 @@ class StepBuilder:
             args=[
                 '--json_serialized_invocation_args',
                 '{{$}}',
-            ]))
+            ],
+        )
+    )
+    if self._use_pipeline_spec_2_1:
+      driver_hook.pre_cache_check.args.extend([
+          '--json_serialized_inputs_spec_args',
+          json_format.MessageToJson(
+              self._component_defs[self._name].input_definitions,
+              sort_keys=True,
+          ),
+      ])
     driver_hook.pre_cache_check.args.extend(self._beam_pipeline_args)
     result.lifecycle.CopyFrom(driver_hook)
 
@@ -540,6 +584,13 @@ class StepBuilder:
     result.args.append(executor_path)
     result.args.append('--json_serialized_invocation_args')
     result.args.append('{{$}}')
+    if self._use_pipeline_spec_2_1:
+      result.args.append('--json_serialized_inputs_spec_args')
+      result.args.append(
+          json_format.MessageToJson(
+              self._component_defs[self._name].input_definitions, sort_keys=True
+          )
+      )
     result.args.extend(self._beam_pipeline_args)
     return result
 
@@ -570,8 +621,10 @@ class StepBuilder:
       result.artifact_uri.runtime_parameter = importer.SOURCE_URI_KEY
     else:
       result.artifact_uri.CopyFrom(
-          compiler_utils.value_converter(
-              self._exec_properties[importer.SOURCE_URI_KEY]))
+          self._value_converter_func(
+              self._exec_properties[importer.SOURCE_URI_KEY]
+          )
+      )
 
     result.type_schema.CopyFrom(
         pipeline_pb2.ArtifactTypeSchema(
@@ -614,7 +667,7 @@ class StepBuilder:
     for name, value in self._exec_properties.items():
       if value is None:
         continue
-      parameter_type_spec = compiler_utils.build_parameter_type_spec(value)
+      parameter_type_spec = self._build_parameter_type_spec_func(value)
       component_def.input_definitions.parameters[name].CopyFrom(
           parameter_type_spec)
       if isinstance(value, data_types.RuntimeParameter):
@@ -623,7 +676,9 @@ class StepBuilder:
       else:
         task_spec.inputs.parameters[name].CopyFrom(
             pipeline_pb2.TaskInputsSpec.InputParameterSpec(
-                runtime_value=compiler_utils.value_converter(value)))
+                runtime_value=self._value_converter_func(value)
+            )
+        )
     self._component_defs[self._name] = component_def
     task_spec.component_ref.name = self._name
 

@@ -33,7 +33,3 @@ class LocalDagRunnerPatcherTest(tf.test.TestCase):
           tfx_pipeline.Pipeline(_PIPELINE_NAME, ''))
       mock_run.assert_not_called()
       self.assertEqual(context[patcher.PIPELINE_NAME], _PIPELINE_NAME)
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -16,10 +16,8 @@
 import copy
 import json
 import os
-from unittest import mock
 
 import tensorflow as tf
-from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import executor
 from tfx.dsl.io import fileio
 from tfx.proto import trainer_pb2
@@ -27,7 +25,6 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
-from tfx.utils import name_utils
 from tfx.utils import path_utils
 from tfx.utils import proto_utils
 
@@ -94,21 +91,13 @@ class ExecutorTest(tf.test.TestCase):
     self._module_file = os.path.join(self._source_data_dir,
                                      standard_component_specs.MODULE_FILE_KEY,
                                      'trainer_module.py')
-    self._trainer_fn = name_utils.get_full_name(trainer_module.trainer_fn)
 
-    # Executors for test.
-    self._trainer_executor = executor.Executor()
-    self._generic_trainer_executor = executor.GenericExecutor()
+    # Executor for test.
+    self._executor = executor.GenericExecutor()
 
   def _verify_model_exports(self):
     self.assertTrue(
-        fileio.exists(path_utils.eval_model_dir(self._model_exports.uri)))
-    self.assertTrue(
         fileio.exists(path_utils.serving_model_dir(self._model_exports.uri)))
-
-  def _verify_no_eval_model_exports(self):
-    self.assertFalse(
-        fileio.exists(path_utils.eval_model_dir(self._model_exports.uri)))
 
   def _verify_model_run_exports(self):
     self.assertTrue(fileio.exists(os.path.dirname(self._model_run_exports.uri)))
@@ -119,48 +108,12 @@ class ExecutorTest(tf.test.TestCase):
         output_dict=self._output_dict,
         exec_properties=self._exec_properties)
 
-  def testGenericExecutor(self):
+  def testDo(self):
     self._exec_properties[
         standard_component_specs.MODULE_FILE_KEY] = self._module_file
-    self._do(self._generic_trainer_executor)
+    self._do(self._executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
-
-  @mock.patch('tfx.components.trainer.executor._is_chief')
-  def testDoChief(self, mock_is_chief):
-    mock_is_chief.return_value = True
-    self._exec_properties[
-        standard_component_specs.MODULE_FILE_KEY] = self._module_file
-    self._do(self._trainer_executor)
-    self._verify_model_exports()
-    self._verify_model_run_exports()
-
-  @mock.patch('tfx.components.trainer.executor._is_chief')
-  def testDoNonChief(self, mock_is_chief):
-    mock_is_chief.return_value = False
-    self._exec_properties[
-        standard_component_specs.MODULE_FILE_KEY] = self._module_file
-    self._do(self._trainer_executor)
-    self._verify_no_eval_model_exports()
-    self._verify_model_run_exports()
-
-  def testDoWithModuleFile(self):
-    self._exec_properties[
-        standard_component_specs.MODULE_FILE_KEY] = self._module_file
-    self._do(self._trainer_executor)
-    self._verify_model_exports()
-    self._verify_model_run_exports()
-
-  def testDoWithTrainerFn(self):
-    self._exec_properties[
-        standard_component_specs.TRAINER_FN_KEY] = self._trainer_fn
-    self._do(self._trainer_executor)
-    self._verify_model_exports()
-    self._verify_model_run_exports()
-
-  def testDoWithNoTrainerFn(self):
-    with self.assertRaises(ValueError):
-      self._do(self._trainer_executor)
 
   def testDoWithHyperParameters(self):
     hp_artifact = standard_artifacts.HyperParameters()
@@ -181,7 +134,7 @@ class ExecutorTest(tf.test.TestCase):
 
     self._exec_properties[
         standard_component_specs.MODULE_FILE_KEY] = self._module_file
-    self._do(self._trainer_executor)
+    self._do(self._executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
 
@@ -190,40 +143,6 @@ class ExecutorTest(tf.test.TestCase):
         standard_component_specs.EXAMPLES_KEY] = self._multiple_artifacts
     self._exec_properties[
         standard_component_specs.MODULE_FILE_KEY] = self._module_file
-    self._do(self._generic_trainer_executor)
+    self._do(self._executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
-
-  def testDoWithCustomSplits(self):
-    # Update input dict.
-    io_utils.copy_dir(
-        os.path.join(self._source_data_dir,
-                     'transform/transformed_examples/Split-train'),
-        os.path.join(self._output_data_dir, 'data/Split-training'))
-    io_utils.copy_dir(
-        os.path.join(self._source_data_dir,
-                     'transform/transformed_examples/Split-eval'),
-        os.path.join(self._output_data_dir, 'data/Split-evaluating'))
-    examples = standard_artifacts.Examples()
-    examples.uri = os.path.join(self._output_data_dir, 'data')
-    examples.split_names = artifact_utils.encode_split_names(
-        ['training', 'evaluating'])
-    self._input_dict[standard_component_specs.EXAMPLES_KEY] = [examples]
-
-    # Update exec properties skeleton with custom splits.
-    self._exec_properties[
-        standard_component_specs.TRAIN_ARGS_KEY] = proto_utils.proto_to_json(
-            trainer_pb2.TrainArgs(splits=['training'], num_steps=1000))
-    self._exec_properties[
-        standard_component_specs.EVAL_ARGS_KEY] = proto_utils.proto_to_json(
-            trainer_pb2.EvalArgs(splits=['evaluating'], num_steps=500))
-
-    self._exec_properties[
-        standard_component_specs.MODULE_FILE_KEY] = self._module_file
-    self._do(self._trainer_executor)
-    self._verify_model_exports()
-    self._verify_model_run_exports()
-
-
-if __name__ == '__main__':
-  tf.test.main()

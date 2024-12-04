@@ -42,7 +42,3 @@ class ProviderComponentTest(tf.test.TestCase):
         provider.spec.exec_properties['create_decoder_func'])
     self.assertEqual(standard_artifacts.DataView.TYPE_NAME,
                      provider.outputs['data_view'].type_name)
-
-
-if __name__ == '__main__':
-  tf.test.main()

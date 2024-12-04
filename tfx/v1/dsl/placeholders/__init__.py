@@ -18,3 +18,10 @@ from tfx.dsl.placeholder.placeholder import exec_property
 from tfx.dsl.placeholder.placeholder import execution_invocation
 from tfx.dsl.placeholder.placeholder import input  # pylint: disable=redefined-builtin
 from tfx.dsl.placeholder.placeholder import output
+
+__all__ = [
+    "exec_property",
+    "execution_invocation",
+    "input",
+    "output",
+]

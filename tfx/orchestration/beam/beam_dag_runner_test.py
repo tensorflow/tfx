@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.beam_dag_runner."""
+
+
 import os
 from typing import Optional
 
 from unittest import mock
-import tensorflow as tf
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
 from tfx.orchestration.beam import beam_dag_runner
@@ -356,7 +357,3 @@ class BeamDagRunnerTest(test_case_utils.TfxTest):
     self.assertIs(runner.__class__, legacy_beam_dag_runner.BeamDagRunner)
     self.assertIs(runner._config, config)
     self.assertIs(runner._beam_orchestrator_args, beam_orchestrator_args)
-
-
-if __name__ == '__main__':
-  tf.test.main()

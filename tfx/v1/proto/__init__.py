@@ -13,29 +13,51 @@
 # limitations under the License.
 """TFX proto module."""
 
-from tfx.proto import bulk_inferrer_pb2
-from tfx.proto import distribution_validator_pb2
-from tfx.proto import evaluator_pb2
-from tfx.proto import example_diff_pb2
-from tfx.proto import example_gen_pb2
-from tfx.proto import infra_validator_pb2
-from tfx.proto import pusher_pb2
-from tfx.proto import range_config_pb2
-from tfx.proto import trainer_pb2
-from tfx.proto import transform_pb2
-from tfx.proto import tuner_pb2
-
+from tfx.proto.bulk_inferrer_pb2 import (
+    ClassifyOutput,
+    DataSpec,
+    ModelSpec,
+    OutputColumnsSpec,
+    OutputExampleSpec,
+    PredictOutput,
+    PredictOutputCol,
+    RegressOutput,
+)
+from tfx.proto.distribution_validator_pb2 import (
+    DistributionValidatorConfig,
+    FeatureComparator,
+)
+from tfx.proto.evaluator_pb2 import FeatureSlicingSpec, SingleSlicingSpec
+from tfx.proto.example_diff_pb2 import (
+    ExampleDiffConfig,
+    PairedExampleSkew,
+)
+from tfx.proto.example_gen_pb2 import (
+    CustomConfig,
+    Input,
+    Output,
+    PayloadFormat,
+    SplitConfig,
+)
+from tfx.proto.infra_validator_pb2 import (
+    EnvVar,
+    EnvVarSource,
+    KubernetesConfig,
+    LocalDockerConfig,
+    PodOverrides,
+    RequestSpec,
+    SecretKeySelector,
+    ServingSpec,
+    TensorFlowServing,
+    TensorFlowServingRequestSpec,
+    ValidationSpec,
+)
+from tfx.proto.pusher_pb2 import PushDestination, Versioning
+from tfx.proto.range_config_pb2 import RangeConfig, RollingRange, StaticRange
+from tfx.proto.trainer_pb2 import EvalArgs, TrainArgs
+from tfx.proto.transform_pb2 import SplitsConfig
+from tfx.proto.tuner_pb2 import TuneArgs
 from tfx.v1.proto import orchestration
-
-ModelSpec = bulk_inferrer_pb2.ModelSpec
-DataSpec = bulk_inferrer_pb2.DataSpec
-OutputExampleSpec = bulk_inferrer_pb2.OutputExampleSpec
-OutputColumnsSpec = bulk_inferrer_pb2.OutputColumnsSpec
-ClassifyOutput = bulk_inferrer_pb2.ClassifyOutput
-RegressOutput = bulk_inferrer_pb2.RegressOutput
-PredictOutput = bulk_inferrer_pb2.PredictOutput
-PredictOutputCol = bulk_inferrer_pb2.PredictOutputCol
-del bulk_inferrer_pb2
 
 ModelSpec.__doc__ = """
 Specifies the signature name to run the inference in `components.BulkInferrer`.
@@ -71,10 +93,6 @@ PredictOutputCol.__doc__ = """
 Proto type of output_columns under `proto.PredictOutput`.
 """
 
-FeatureSlicingSpec = evaluator_pb2.FeatureSlicingSpec
-SingleSlicingSpec = evaluator_pb2.SingleSlicingSpec
-del evaluator_pb2
-
 FeatureSlicingSpec.__doc__ = """
 Slices corresponding to data set in `components.Evaluator`.
 """
@@ -83,13 +101,6 @@ SingleSlicingSpec.__doc__ = """
 Specifies a single directive for choosing features for slicing.
 An empty proto means we do not slice on features (i.e. use the entire data set).
 """
-
-CustomConfig = example_gen_pb2.CustomConfig
-Input = example_gen_pb2.Input
-Output = example_gen_pb2.Output
-SplitConfig = example_gen_pb2.SplitConfig
-PayloadFormat = example_gen_pb2.PayloadFormat
-del example_gen_pb2
 
 CustomConfig.__doc__ = """
 Optional specified configuration for ExampleGen components.
@@ -111,19 +122,6 @@ PayloadFormat.__doc__ = """
 Enum to indicate payload format ExampleGen produces.
 """
 
-ServingSpec = infra_validator_pb2.ServingSpec
-ValidationSpec = infra_validator_pb2.ValidationSpec
-TensorFlowServing = infra_validator_pb2.TensorFlowServing
-LocalDockerConfig = infra_validator_pb2.LocalDockerConfig
-KubernetesConfig = infra_validator_pb2.KubernetesConfig
-PodOverrides = infra_validator_pb2.PodOverrides
-EnvVar = infra_validator_pb2.EnvVar
-EnvVarSource = infra_validator_pb2.EnvVarSource
-SecretKeySelector = infra_validator_pb2.SecretKeySelector
-RequestSpec = infra_validator_pb2.RequestSpec
-TensorFlowServingRequestSpec = infra_validator_pb2.TensorFlowServingRequestSpec
-del infra_validator_pb2
-
 ServingSpec.__doc__ = """
 Defines an environment of the validating infrastructure in `components.InfraValidator`.
 """
@@ -142,7 +140,7 @@ You need to install docker in advance.
 """
 
 KubernetesConfig.__doc__ = """
-Kubernetes configuration. We currently only support the use case when infra validator is run by `orchestration.KubeflowDagRunner`.
+Kubernetes configuration.
 Model server will be launched in the same namespace KFP is running on, as well as same service account will be used (unless specified).
 Model server will have `ownerReferences` to the infra validator, which delegates the strict cleanup guarantee to the kubernetes cluster.
 """
@@ -171,11 +169,6 @@ TensorFlowServingRequestSpec.__doc__ = """
 Request spec for building TF Serving requests.
 """
 
-PushDestination = pusher_pb2.PushDestination
-Versioning = pusher_pb2.Versioning
-Filesystem = pusher_pb2.PushDestination.Filesystem
-del pusher_pb2
-
 PushDestination.__doc__ = """
 Defines the destination of pusher in `components.Pusher`.
 """
@@ -185,14 +178,9 @@ Versioning method for the model to be pushed. Note that This is the semantic TFX
 For example TF Serving only accepts an integer version that is monotonically increasing.
 """
 
-Filesystem.__doc__ = """
+PushDestination.Filesystem.__doc__ = """
 File system based destination definition.
 """
-
-RangeConfig = range_config_pb2.RangeConfig
-RollingRange = range_config_pb2.RollingRange
-StaticRange = range_config_pb2.StaticRange
-del range_config_pb2
 
 RangeConfig.__doc__ = """
 RangeConfig is an abstract proto which can be used to describe ranges for different entities in TFX Pipeline.
@@ -214,10 +202,6 @@ Describes a static window within the specified span numbers `[start_span_number,
 Note that both numbers should be specified for `proto.StaticRange`.
 """
 
-TrainArgs = trainer_pb2.TrainArgs
-EvalArgs = trainer_pb2.EvalArgs
-del trainer_pb2
-
 TrainArgs.__doc__ = """
 Args specific to training in `components.Trainer`.
 """
@@ -226,40 +210,68 @@ EvalArgs.__doc__ = """
 Args specific to eval in `components.Trainer`.
 """
 
-SplitsConfig = transform_pb2.SplitsConfig
-del transform_pb2
-
 SplitsConfig.__doc__ = """
 Defines the splits config in `components.Transform`.
 """
-
-TuneArgs = tuner_pb2.TuneArgs
-del tuner_pb2
 
 TuneArgs.__doc__ = """
 Args specific to tuning in `components.Tuner`.
 """
 
-ExampleDiffConfig = example_diff_pb2.ExampleDiffConfig
-
 ExampleDiffConfig.__doc__ = """
 Configurations related to Example Diff.
 """
-
-FeatureComparator = distribution_validator_pb2.FeatureComparator
 
 FeatureComparator.__doc__ = """
 Per feature configuration in Distribution Validator.
 """
 
-DistributionValidatorConfig = distribution_validator_pb2.DistributionValidatorConfig
-
 DistributionValidatorConfig.__doc__ = """
 Configurations related to Distribution Validator.
 """
 
-PairedExampleSkew = example_diff_pb2.PairedExampleSkew
-
 PairedExampleSkew.__doc__ = """
 Configurations related to Example Diff on feature pairing level.
 """
+
+__all__ = [
+    "orchestration",
+    "ClassifyOutput",
+    "CustomConfig",
+    "DataSpec",
+    "DistributionValidatorConfig",
+    "EnvVar",
+    "EnvVarSource",
+    "EvalArgs",
+    "ExampleDiffConfig",
+    "FeatureComparator",
+    "FeatureSlicingSpec",
+    "Filesystem",
+    "Input",
+    "KubernetesConfig",
+    "LocalDockerConfig",
+    "ModelSpec",
+    "Output",
+    "OutputColumnsSpec",
+    "OutputExampleSpec",
+    "PairedExampleSkew",
+    "PodOverrides",
+    "PredictOutput",
+    "PredictOutputCol",
+    "PushDestination",
+    "RangeConfig",
+    "RegressOutput",
+    "RequestSpec",
+    "RollingRange",
+    "SecretKeySelector",
+    "ServingSpec",
+    "SingleSlicingSpec",
+    "SplitConfig",
+    "SplitsConfig",
+    "StaticRange",
+    "TensorFlowServing",
+    "TensorFlowServingRequestSpec",
+    "TrainArgs",
+    "TuneArgs",
+    "ValidationSpec",
+]

@@ -13,8 +13,14 @@
 # limitations under the License.
 """Public API for metadata."""
 
-from tfx.orchestration import metadata
+from tfx.orchestration.metadata import (
+    ConnectionConfigType,
+    mysql_metadata_connection_config,
+    sqlite_metadata_connection_config,
+)
 
-ConnectionConfigType = metadata.ConnectionConfigType
-mysql_metadata_connection_config = metadata.mysql_metadata_connection_config
-sqlite_metadata_connection_config = metadata.sqlite_metadata_connection_config
+__all__ = [
+    "mysql_metadata_connection_config",
+    "sqlite_metadata_connection_config",
+    "ConnectionConfigType",
+]

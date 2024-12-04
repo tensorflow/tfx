@@ -78,19 +78,6 @@ class ComponentTest(tf.test.TestCase):
         str(trainer.spec.exec_properties[
             standard_component_specs.MODULE_FILE_KEY]))
 
-  def testConstructFromTrainerFn(self):
-    trainer_fn = 'path.to.my_trainer_fn'
-    trainer = component.Trainer(
-        trainer_fn=trainer_fn,
-        examples=self.examples,
-        transform_graph=self.transform_graph,
-        train_args=self.train_args,
-        eval_args=self.eval_args)
-    self._verify_outputs(trainer)
-    self.assertEqual(
-        trainer_fn,
-        trainer.spec.exec_properties[standard_component_specs.TRAINER_FN_KEY])
-
   def testConstructFromRunFn(self):
     run_fn = 'path.to.my_run_fn'
     trainer = component.Trainer(
@@ -150,16 +137,6 @@ class ComponentTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       _ = component.Trainer(
           module_file='/path/to/module/file',
-          trainer_fn='path.to.my_trainer_fn',
-          examples=self.examples,
-          transform_graph=self.transform_graph,
-          schema=self.schema,
-          train_args=self.train_args,
-          eval_args=self.eval_args)
-
-    with self.assertRaises(ValueError):
-      _ = component.Trainer(
-          module_file='/path/to/module/file',
           run_fn='path.to.my_run_fn',
           examples=self.examples,
           transform_graph=self.transform_graph,
@@ -169,7 +146,7 @@ class ComponentTest(tf.test.TestCase):
 
   def testConstructWithHParams(self):
     trainer = component.Trainer(
-        trainer_fn='path.to.my_trainer_fn',
+        module_file='/path/to/module/file',
         examples=self.examples,
         transform_graph=self.transform_graph,
         schema=self.schema,
@@ -193,7 +170,7 @@ class ComponentTest(tf.test.TestCase):
         ptype=str,
     )
     trainer = component.Trainer(
-        trainer_fn='path.to.my_trainer_fn',
+        module_file='/path/to/module/file',
         examples=self.examples,
         train_args=self.train_args,
         eval_args=eval_args,
@@ -206,7 +183,3 @@ class ComponentTest(tf.test.TestCase):
         trainer.spec.exec_properties[
             standard_component_specs.CUSTOM_CONFIG_KEY],
         data_types.RuntimeParameter)
-
-
-if __name__ == '__main__':
-  tf.test.main()

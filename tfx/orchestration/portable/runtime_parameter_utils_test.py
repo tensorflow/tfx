@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.portable.runtime_parameter_utils."""
 import os
 
-import tensorflow as tf
 
 from tfx.orchestration.portable import runtime_parameter_utils
 from tfx.proto.orchestration import pipeline_pb2
@@ -87,7 +86,3 @@ class RuntimeParameterUtilsTest(test_case_utils.TfxTest):
               'prop_one_rp': 2,
               'prop_two_rp': 'X'
           })
-
-
-if __name__ == '__main__':
-  tf.test.main()

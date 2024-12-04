@@ -1,0 +1,24 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: ComponentSpec
+
+input_definitions {
+  artifacts {
+    key: "input"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.ModelBlessing\ntype: object\n"
+      }
+    }
+  }
+}
+output_definitions {
+  artifacts {
+    key: "model"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Model\ntype: object\n"
+      }
+    }
+  }
+}
+executor_label: "my_resolver2-model-resolver_executor"

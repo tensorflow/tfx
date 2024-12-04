@@ -1,18 +1,10 @@
 {
   "inputs": {
-    "parameters": {
-      "input_base": {
-        "stringValue": "input_base"
-      },
-      "input_config": {
-        "stringValue": "{ \"splits\": [ { \"name\": \"s1\", \"pattern\": \"split1/*\" }, { \"name\": \"s2\", \"pattern\": \"split2/*\" } ] }"
-      },
-      "output_config": {
-        "stringValue": "{ \"split_config\": { \"splits\": [ { \"hash_buckets\": 2, \"name\": \"train\" }, { \"hash_buckets\": 1, \"name\": \"eval\" } ] } }"
-      },
-      "output_data_format": {
-        "intValue": 6
-      }
+    "parameterValues": {
+      "input_base": "input_base",
+      "input_config": "{ \"splits\": [ { \"name\": \"s1\", \"pattern\": \"split1/*\" }, { \"name\": \"s2\", \"pattern\": \"split2/*\" } ] }",
+      "output_config": "{ \"split_config\": { \"splits\": [ { \"hash_buckets\": 2, \"name\": \"train\" }, { \"hash_buckets\": 1, \"name\": \"eval\" } ] } }",
+      "output_data_format": 6.0
     }
   },
   "outputs": {

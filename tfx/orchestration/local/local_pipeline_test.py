@@ -215,7 +215,3 @@ class LocalDagRunnerTest(absl.testing.absltest.TestCase):
         run_options=pipeline_pb2.RunOptions(partial_run=pr_opts))
 
     self.assertEqual(self.RAN_COMPONENTS, ['Load', 'Train'])
-
-
-if __name__ == '__main__':
-  absl.testing.absltest.main()

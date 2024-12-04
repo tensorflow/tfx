@@ -14,7 +14,6 @@
 """Tests for tfx.dsl.input_resolution.ops.sliding_window_op."""
 
 import tensorflow as tf
-
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
 
@@ -33,12 +32,19 @@ class SlidingWindowOpTest(tf.test.TestCase):
   def testSlidingWindow_NonPositiveN(self):
     a1 = test_utils.DummyArtifact()
 
-    expected_error = "sliding_window must be > 0"
+    expected_error = "window_size must be > 0"
     with self.assertRaisesRegex(ValueError, expected_error):
       self._sliding_window([a1], window_size=0)
 
     with self.assertRaisesRegex(ValueError, expected_error):
       self._sliding_window([a1], window_size=-1)
+
+    expected_error = "stride must be > 0"
+    with self.assertRaisesRegex(ValueError, expected_error):
+      self._sliding_window([a1], stride=0)
+
+    with self.assertRaisesRegex(ValueError, expected_error):
+      self._sliding_window([a1], stride=-1)
 
   def testSlidingWindow_SingleEntry(self):
     a1 = test_utils.DummyArtifact()
@@ -109,6 +115,10 @@ class SlidingWindowOpTest(tf.test.TestCase):
     actual = self._sliding_window(artifacts, window_size=5)
     self.assertEqual(actual, [])
 
+    actual = self._sliding_window(artifacts, window_size=2, stride=2)
+    self.assertEqual(actual, [{"window": [a1, a2]}, {"window": [a3, a4]}])
 
-if __name__ == "__main__":
-  tf.test.main()
+    # The list at the end of artifacts should be [a4], but it is discarded
+    # since it does not fit into a full window_size of 2.
+    actual = self._sliding_window(artifacts, window_size=2, stride=3)
+    self.assertEqual(actual, [{"window": [a1, a2]}])

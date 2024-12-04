@@ -24,7 +24,7 @@ You’ll learn how to create an ML pipeline using TFX
     important
 *   Google uses TFX pipelines for production ML
 
-Please see the [TFX User Guide](https://www.tensorflow.org/tfx/guide) to learn
+Please see the [TFX User Guide](../../../guide) to learn
 more.
 
 You'll follow a typical ML development process:
@@ -42,7 +42,7 @@ TFX orchestrators are responsible for scheduling components of the TFX pipeline
 based on the dependencies defined by the pipeline. TFX is designed to be
 portable to multiple environments and orchestration frameworks. One of the
 default orchestrators supported by TFX is
-[Apache Airflow](https://www.tensorflow.org/tfx/guide/airflow). This lab
+[Apache Airflow](../../../guide/airflow). This lab
 illustrates the use of Apache Airflow for TFX pipeline orchestration. Apache
 Airflow is a platform to programmatically author, schedule and monitor
 workflows. TFX uses Airflow to author workflows as directed acyclic graphs
@@ -56,16 +56,17 @@ In this example, we are going to run a TFX pipeline on an instance by manually
 setting up Airflow.
 
 The other default orchestrators supported by TFX are Apache Beam and Kubeflow.
-[Apache Beam](https://www.tensorflow.org/tfx/guide/beam_orchestrator) can run on
+[Apache Beam](../../../guide/beam_orchestrator) can run on
 multiple data processing backends (Beam Ruunners). Cloud Dataflow is one such
 beam runner which can be used for running TFX pipelines. Apache Beam can be used
-for both streaming and batch processing pipelines. \
-[Kubeflow](https://www.tensorflow.org/tfx/guide/kubeflow) is an open source ML
+for both streaming and batch processing pipelines.
+
+[Kubeflow](../../../guide/kubeflow) is an open source ML
 platform dedicated to making deployments of machine learning (ML) workflows on
 Kubernetes simple, portable and scalable. Kubeflow can be used as an
 orchestrator for TFFX pipelines when they need to be deployed on Kubernetes
 clusters. In addition, you can also use your own
-[custom orchestrator](https://www.tensorflow.org/tfx/guide/custom_orchestrator)
+[custom orchestrator](../../../guide/custom_orchestrator)
 to run a TFX pipeline.
 
 Read more about Airflow [here](https://airflow.apache.org/).
@@ -80,13 +81,14 @@ You'll be using the
 [Taxi Trips dataset](https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew)
 released by the City of Chicago.
 
-Note: This tutorial builds an application using data that has been modified for
-use from its original source, www.cityofchicago.org, the official website of the
-City of Chicago. The City of Chicago makes no claims as to the content,
-accuracy, timeliness, or completeness of any of the data provided at in this
-tutorial. The data provided at this site is subject to change at any time. It is
-understood that the data provided in this tutorial is being used at one’s own
-risk.
+!!! Note
+    This tutorial builds an application using data that has been modified for
+    use from its original source, www.cityofchicago.org, the official website of the
+    City of Chicago. The City of Chicago makes no claims as to the content,
+    accuracy, timeliness, or completeness of any of the data provided at in this
+    tutorial. The data provided at this site is subject to change at any time. It is
+    understood that the data provided in this tutorial is being used at one’s own
+    risk.
 
 ### Model Goal - Binary classification
 Will the customer tip more or less than 20%?
@@ -107,11 +109,13 @@ the duration of the lab.
 *   Access to a standard internet browser (Chrome browser recommended).
 *   Time to complete the lab.
 
-**Note:** If you already have your own personal Google Cloud account or project,
-do not use it for this lab.
+!!! Note
+    If you already have your own personal Google Cloud account or project,
+    do not use it for this lab.
 
-**Note:** If you are using a Chrome OS device, open an Incognito window to run
-this lab.
+!!! Note
+    If you are using a Chrome OS device, open an Incognito window to run
+    this lab.
 
 **How to start your lab and sign in to the Google Cloud Console** 1. Click the
 **Start Lab** button. If you need to pay for the lab, a pop-up opens for you to
@@ -146,8 +150,9 @@ account, do not use it for this lab (avoids incurring charges).
 
 After a few moments, the Cloud Console opens in this tab.
 
-**Note:** You can view the menu with a list of Google Cloud Products and
-Services by clicking the **Navigation menu** at the top-left.
+!!! Note
+    You can view the menu with a list of Google Cloud Products and
+    Services by clicking the **Navigation menu** at the top-left.
 
 ![qwiksetup4.png](images/airflow_workshop/qwiksetup4.png)
 
@@ -242,8 +247,9 @@ followed by **Open Jupyterlab**.
 Next you'll clone the `tfx` repository in your JupyterLab instance. 1. In
 JupyterLab, click the **Terminal** icon to open a new terminal.
 
-<ql-infobox><strong>Note:</strong> If prompted, click <code>Cancel</code> for
-Build Recommended.</ql-infobox>
+!!! Note
+    If prompted, click `Cancel` for
+    Build Recommended.
 
 1.  To clone the `tfx` Github repository, type in the following command, and
     press **Enter**.
@@ -374,8 +380,9 @@ and when the state changes.
 
 ![dag-button-refresh.png](images/airflow_workshop/dag-button-refresh.png)
 
-You can also use the [Airflow CLI](https://airflow.apache.org/cli.html) in the
-terminal to enable and trigger your DAGs:
+You can also use the [Airflow
+CLI](https://airflow.apache.org/docs/apache-airflow/stable/howto/usage-cli.html)
+in the terminal to enable and trigger your DAGs:
 
 ```bash
 # enable/disable

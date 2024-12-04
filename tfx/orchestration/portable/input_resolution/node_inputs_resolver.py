@@ -341,7 +341,7 @@ def _join_artifacts(
 
 
 def _resolve_input_graph_ref(
-    mlmd_handle: metadata.Metadata,
+    handle_like: mlmd_cm.HandleLike,
     node_inputs: pipeline_pb2.NodeInputs,
     input_key: str,
     resolved: Dict[str, List[_Entry]],
@@ -352,12 +352,12 @@ def _resolve_input_graph_ref(
   (i.e. `InputGraphRef` with the same `graph_id`).
 
   Args:
-    mlmd_handle: A `Metadata` instance.
+    handle_like: A `mlmd_cm.HandleLike` instance.
     node_inputs: A `NodeInputs` proto.
     input_key: A target input key whose corresponding `InputSpec` has an
-        `InputGraphRef`.
+      `InputGraphRef`.
     resolved: A dict that contains the already resolved inputs, and to which the
-        resolved result would be written from this function.
+      resolved result would be written from this function.
   """
   graph_id = node_inputs.inputs[input_key].input_graph_ref.graph_id
   input_graph = node_inputs.input_graphs[graph_id]
@@ -372,7 +372,8 @@ def _resolve_input_graph_ref(
   }
 
   graph_fn, graph_input_keys = input_graph_resolver.build_graph_fn(
-      mlmd_handle, node_inputs.input_graphs[graph_id])
+      handle_like, node_inputs.input_graphs[graph_id]
+  )
   for partition, input_dict in _join_artifacts(resolved, graph_input_keys):
     result = graph_fn(input_dict)
     if graph_output_type == _DataType.ARTIFACT_LIST:
@@ -514,9 +515,7 @@ def resolve(
           (partition_utils.NO_PARTITION, _filter_live(artifacts))
       ]
     elif input_spec.input_graph_ref.graph_id:
-      _resolve_input_graph_ref(
-          mlmd_cm.get_handle(handle_like), node_inputs, input_key,
-          resolved)
+      _resolve_input_graph_ref(handle_like, node_inputs, input_key, resolved)
     elif input_spec.mixed_inputs.input_keys:
       _resolve_mixed_inputs(node_inputs, input_key, resolved)
     elif input_spec.HasField('static_inputs'):

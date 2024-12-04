@@ -97,7 +97,3 @@ class TelemetryUtilsTest(tf.test.TestCase):
     )
     self.assertContainsInOrder(['tfx/', 'client_context:tfxpipeline;'],
                                req.headers['user-agent'])
-
-
-if __name__ == '__main__':
-  tf.test.main()

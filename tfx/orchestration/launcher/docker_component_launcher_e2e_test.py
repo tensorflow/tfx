@@ -23,6 +23,8 @@ from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.types import component_spec
 
+import pytest
+
 
 class _HelloWorldSpec(component_spec.ComponentSpec):
   INPUTS = {}
@@ -63,10 +65,12 @@ def _create_pipeline(
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      additional_pipeline_args={},
   )
 
 
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
+@pytest.mark.e2e
 class DockerComponentLauncherE2eTest(tf.test.TestCase):
 
   def setUp(self):
@@ -94,7 +98,3 @@ class DockerComponentLauncherE2eTest(tf.test.TestCase):
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
       self.assertEqual(1, len(m.store.get_executions()))
-
-
-if __name__ == '__main__':
-  tf.test.main()

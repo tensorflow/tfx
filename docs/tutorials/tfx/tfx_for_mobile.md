@@ -16,12 +16,12 @@ standard Keras-based [SavedModel](https://www.tensorflow.org/guide/saved_model)
 as well as the TFLite one, allowing users to compare the quality of the two.
 
 We assume you are familiar with TFX, our components, and our pipelines. If not,
-then please see this [tutorial](https://www.tensorflow.org/tfx/tutorials/tfx/components).
+then please see this [tutorial](/tutorials/tfx/components).
 
 ## Steps
 Only two steps are required to create and evaluate a TFLite model in TFX. The
 first step is invoking the TFLite rewriter within the context of the
-[TFX Trainer](https://www.tensorflow.org/tfx/guide/trainer) to convert the
+[TFX Trainer](../../../guide/trainer) to convert the
 trained TensorFlow model into a TFLite one. The second step is
 configuring the Evaluator to evaluate TFLite models. We now discuss each in turn.
 
@@ -29,10 +29,6 @@ configuring the Evaluator to evaluate TFLite models. We now discuss each in turn
 The TFX Trainer expects a user-defined `run_fn` to be specified in
 a module file. This `run_fn` defines the model to be trained,
 trains it for the specified number of iterations, and exports the trained model.
-
-In the rest of this section, we provide code snippets which show the changes
-required to invoke the TFLite rewriter and export a TFLite model. All of this
-code is located in the `run_fn` of the [MNIST TFLite module](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_utils_native_keras_lite.py).
 
 As shown in the code below,
 we must first create a signature that takes a `Tensor` for every feature as
@@ -79,7 +75,7 @@ components will be expecting to find the model.
 
 
 ### Evaluating the TFLite model.
-The [TFX Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) provides the
+The [TFX Evaluator](../../../guide/evaluator) provides the
 ability to analyze trained models to understand their quality across a wide range
 of metrics. In addition to analyzing SavedModels, the TFX Evaluator is now able
 to analyze TFLite models as well.
@@ -109,4 +105,3 @@ is analyzed, the output of the `Evaluator` will have exactly the same structure.
 
 However, please note that the Evaluator assumes that the TFLite model is saved
 in a file named `tflite` within trainer_lite.outputs['model'].
-

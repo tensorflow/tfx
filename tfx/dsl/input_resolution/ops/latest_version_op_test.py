@@ -110,7 +110,3 @@ class LatestVersionOpTest(tf.test.TestCase):
 
     with self.assertRaisesRegex(ValueError, 'n must be > 0'):
       self._latest_version([a1], n=-1)
-
-
-if __name__ == '__main__':
-  tf.test.main()

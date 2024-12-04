@@ -33,13 +33,13 @@ class Evaluator(base_beam_component.BaseBeamComponent):
   """A TFX component to evaluate models trained by a TFX Trainer component.
 
   Component `outputs` contains:
-   - `evaluation`: Channel of type `standard_artifacts.ModelEvaluation` to
-   store
-                   the evaluation results.
-   - `blessing`: Channel of type `standard_artifacts.ModelBlessing' that
+
+   - `evaluation`: Channel of type [`standard_artifacts.ModelEvaluation`][tfx.v1.types.standard_artifacts.ModelEvaluation] to
+                   store the evaluation results.
+   - `blessing`: Channel of type [`standard_artifacts.ModelBlessing`][tfx.v1.types.standard_artifacts.ModelBlessing] that
                  contains the blessing result.
 
-  See [the Evaluator guide](https://www.tensorflow.org/tfx/guide/evaluator) for
+  See [the Evaluator guide](../../../guide/evaluator) for
   more details.
   """
 
@@ -64,18 +64,18 @@ class Evaluator(base_beam_component.BaseBeamComponent):
     """Construct an Evaluator component.
 
     Args:
-      examples: A BaseChannel of type `standard_artifacts.Examples`, usually
+      examples: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples], usually
         produced by an ExampleGen component. _required_
-      model: A BaseChannel of type `standard_artifacts.Model`, usually produced
-        by a Trainer component.
-      baseline_model: An optional channel of type 'standard_artifacts.Model' as
+      model: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Model`][tfx.v1.types.standard_artifacts.Model], usually produced
+        by a [Trainer][tfx.v1.components.Trainer] component.
+      baseline_model: An optional channel of type ['standard_artifacts.Model'][tfx.v1.types.standard_artifacts.Model] as
         the baseline model for model diff and model validation purpose.
       feature_slicing_spec: Deprecated, please use eval_config instead. Only
         support estimator.
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
         instance that describes how Evaluator should slice the data.
       fairness_indicator_thresholds: Optional list of float (or
-        RuntimeParameter) threshold values for use with TFMA fairness
+        [RuntimeParameter][tfx.v1.dsl.experimental.RuntimeParameter]) threshold values for use with TFMA fairness
           indicators. Experimental functionality: this interface and
           functionality may change at any time. TODO(b/142653905): add a link
           to additional documentation for TFMA fairness indicators here.
@@ -90,12 +90,16 @@ class Evaluator(base_beam_component.BaseBeamComponent):
         customization. This functionality is experimental and may change at any
         time. The module_file can implement following functions at its top
         level.
+          ``` {.py .no-copy}
           def custom_eval_shared_model(
              eval_saved_model_path, model_name, eval_config, **kwargs,
           ) -> tfma.EvalSharedModel:
+          ```
+          ``` {.py .no-copy}
           def custom_extractors(
             eval_shared_model, eval_config, tensor_adapter_config,
           ) -> List[tfma.extractors.Extractor]:
+          ```
       module_path: A python path to the custom module that contains the UDFs.
         See 'module_file' for the required signature of UDFs. This functionality
         is experimental and this API may change at any time. Note this can not

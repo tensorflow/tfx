@@ -115,7 +115,3 @@ class WriteSplitTest(tf.test.TestCase):
         fileio.exists(
             os.path.join(self._output_data_dir,
                          'data_parquet-00000-of-00001.parquet')))
-
-
-if __name__ == '__main__':
-  tf.test.main()

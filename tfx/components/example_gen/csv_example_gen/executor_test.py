@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.components.example_gen.csv_example_gen.executor."""
 
+
 import os
 from absl.testing import absltest
 
@@ -150,7 +151,3 @@ class ExecutorTest(absltest.TestCase):
     self.assertGreater(
         fileio.open(train_output_file).size(),
         fileio.open(eval_output_file).size())
-
-
-if __name__ == '__main__':
-  absltest.main()

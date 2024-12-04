@@ -70,16 +70,9 @@ deployment_spec {
                       value {
                         struct_value {
                           fields {
-                            key: "constantValue"
+                            key: "constant"
                             value {
-                              struct_value {
-                                fields {
-                                  key: "stringValue"
-                                  value {
-                                    string_value: "some-uri"
-                                  }
-                                }
-                              }
+                              string_value: "some-uri"
                             }
                           }
                         }
@@ -123,7 +116,7 @@ components {
       parameters {
         key: "param1"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
     }
@@ -147,19 +140,19 @@ components {
       parameters {
         key: "artifact_uri"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
       parameters {
         key: "output_key"
         value {
-          type: STRING
+          parameter_type: STRING
         }
       }
       parameters {
         key: "reimport"
         value {
-          type: INT
+          parameter_type: NUMBER_INTEGER
         }
       }
     }
@@ -189,7 +182,7 @@ root {
             key: "param1"
             value {
               runtime_value {
-                constant_value {
+                constant {
                   string_value: "value1"
                 }
               }
@@ -222,7 +215,7 @@ root {
             key: "artifact_uri"
             value {
               runtime_value {
-                constant_value {
+                constant {
                   string_value: "some-uri"
                 }
               }
@@ -232,7 +225,7 @@ root {
             key: "output_key"
             value {
               runtime_value {
-                constant_value {
+                constant {
                   string_value: "result"
                 }
               }
@@ -242,8 +235,8 @@ root {
             key: "reimport"
             value {
               runtime_value {
-                constant_value {
-                  int_value: 0
+                constant {
+                  number_value: 0.0
                 }
               }
             }

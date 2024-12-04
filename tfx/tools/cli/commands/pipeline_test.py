@@ -19,7 +19,6 @@ import os
 from unittest import mock
 
 from click import testing as click_testing
-import tensorflow as tf
 
 from tfx.tools.cli.commands.pipeline import pipeline_group
 from tfx.tools.cli.handler import handler_factory
@@ -152,7 +151,3 @@ class PipelineTest(test_case_utils.TfxTest):
     ])
     self.assertIn('pipeline-package-path', result.output)
     self.assertNotEqual(0, result.exit_code)
-
-
-if __name__ == '__main__':
-  tf.test.main()

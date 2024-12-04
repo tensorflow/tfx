@@ -13,7 +13,6 @@
 # limitations under the License.
 """Test for SpanRangeStrategy."""
 
-import tensorflow as tf
 from tfx.components.example_gen import utils
 from tfx.dsl.input_resolution.strategies import span_range_strategy
 from tfx.orchestration import metadata
@@ -81,7 +80,3 @@ class SpanRangeStrategyTest(test_case_utils.TfxTest):
     self.assertIsNotNone(result)
     self.assertEqual([a.uri for a in result['input']],
                      [artifact5.uri, artifact4.uri])
-
-
-if __name__ == '__main__':
-  tf.test.main()

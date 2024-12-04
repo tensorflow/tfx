@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.tools.cli.cmd.helper."""
 
+
+
 import os
 import sys
 import tempfile
@@ -29,7 +31,7 @@ from tfx.tools.cli.handler import local_handler
 class _MockClientClass:
 
   def __init__(self, host, client_id, namespace):
-    config = {'host': host, 'client_id': client_id, 'namespace': namespace}  # pylint: disable=invalid-name, unused-variable
+    config = {'host': host, 'client_id': client_id, 'namespace': namespace}  # noqa: F841
     self._output_dir = os.path.join(tempfile.gettempdir(), 'output_dir')
 
 
@@ -57,23 +59,6 @@ class HandlerFactoryTest(tf.test.TestCase):
         autospec=True) as mock_airflow_handler:
       handler_factory.create_handler(self.flags_dict)
       mock_airflow_handler.assert_called_once_with(self.flags_dict)
-
-  def _MockSubprocessKubeflow(self):
-    return b'absl-py==0.7.1\nadal==1.2.1\nalembic==0.9.10\napache-beam==2.12.0\nkfp==0.1\n'
-
-  @mock.patch('subprocess.check_output', _MockSubprocessKubeflow)
-  @mock.patch('kfp.Client', _MockClientClass)
-  def testCreateHandlerKubeflow(self):
-    flags_dict = {
-        labels.ENGINE_FLAG: 'kubeflow',
-        labels.ENDPOINT: 'dummyEndpoint',
-        labels.IAP_CLIENT_ID: 'dummyID',
-        labels.NAMESPACE: 'kubeflow',
-    }
-    from tfx.tools.cli.handler import kubeflow_handler  # pylint: disable=g-import-not-at-top
-    self.assertIsInstance(
-        handler_factory.create_handler(flags_dict),
-        kubeflow_handler.KubeflowHandler)
 
   def _MockSubprocessNoEngine(self):
     return b'absl-py==0.7.1\nalembic==0.9.10\napache-beam==2.12.0\n'
@@ -112,7 +97,3 @@ class HandlerFactoryTest(tf.test.TestCase):
     self.assertEqual(
         str(cm.exception),
         'Multiple orchestrators found. Choose one using --engine flag.')
-
-
-if __name__ == '__main__':
-  tf.test.main()

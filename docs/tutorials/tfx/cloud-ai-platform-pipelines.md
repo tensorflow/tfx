@@ -14,14 +14,16 @@ At the end of this tutorial, you will have created and run an ML Pipeline,
 hosted on Google Cloud. You'll be able to visualize the results of each run, and
 view the lineage of the created artifacts.
 
-Key Term: A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often
-refer to pipelines as DAGs.
+!!! abstract "Key Term"
+    A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often
+    refer to pipelines as DAGs.
 
 You'll follow a typical ML development process, starting by examining the
 dataset, and ending up with a complete working pipeline. Along the way you'll
 explore ways to debug and update your pipeline, and measure performance.
 
-Note: Completing this tutorial may take 45-60 minutes.
+!!! Note
+    Completing this tutorial may take 45-60 minutes.
 
 ### Chicago Taxi Dataset
 
@@ -35,12 +37,13 @@ You're using the
 [Taxi Trips dataset](https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew)
 released by the City of Chicago.
 
-Note: This site provides applications using data that has been modified for use
-from its original source, www.cityofchicago.org, the official website of the
-City of Chicago. The City of Chicago makes no claims as to the content,
-accuracy, timeliness, or completeness of any of the data provided at this site.
-The data provided at this site is subject to change at any time. It is
-understood that the data provided at this site is being used at one’s own risk.
+!!! Note
+    This site provides applications using data that has been modified for use
+    from its original source, www.cityofchicago.org, the official website of the
+    City of Chicago. The City of Chicago makes no claims as to the content,
+    accuracy, timeliness, or completeness of any of the data provided at this site.
+    The data provided at this site is subject to change at any time. It is
+    understood that the data provided at this site is being used at one’s own risk.
 
 You can [read more](https://cloud.google.com/bigquery/public-data/chicago-taxi)
 about the dataset in [Google BigQuery](https://cloud.google.com/bigquery/).
@@ -58,17 +61,18 @@ Will the customer tip more or less than 20%?
 To get started, you need a Google Cloud Account. If you already have one, skip
 ahead to [Create New Project](#create_project).
 
-Warning: This demo is designed to not exceed
-[Google Cloud's Free Tier](https://cloud.google.com/free) limits. If you already
-have a Google Account, you may have reached your Free Tier limits, or exhausted
-any free Google Cloud credits given to new users. **If that is the case,
-following this demo will result in charges to your Google Cloud account**.
+!!! Warning
+    This demo is designed to not exceed
+    [Google Cloud's Free Tier](https://cloud.google.com/free) limits. If you already
+    have a Google Account, you may have reached your Free Tier limits, or exhausted
+    any free Google Cloud credits given to new users. **If that is the case,
+    following this demo will result in charges to your Google Cloud account**.
 
 1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
 
 1.  Agree to Google Cloud terms and conditions
 
-    <img style="width: 50%;" src="images/cloud-ai-platform-pipelines/welcome-popup.png">
+    ![](images/cloud-ai-platform-pipelines/welcome-popup.png){ width="65%" }
 
 1.  If you would like to start with a free trial account, click on
     [**Try For Free**](https://console.cloud.google.com/freetrial) (or
@@ -85,19 +89,22 @@ following this demo will result in charges to your Google Cloud account**.
         [Google Cloud Free Tier](https://cloud.google.com/free) limits, which
         includes a max of 8 cores running at the same time.
 
-Note: You can choose at this point to become a paid user instead of relying on
-the free trial. Since this tutorial stays within the Free Tier limits, you still
-won't be charged if this is your only project and you stay within those limits.
-For more details, see
-[Google Cloud Cost Calculator](https://cloud.google.com/products/calculator/)
-and [Google Cloud Platform Free Tier](https://cloud.google.com/free).
+!!! Note
+    You can choose at this point to become a paid user instead of relying on
+    the free trial. Since this tutorial stays within the Free Tier limits, you still
+    won't be charged if this is your only project and you stay within those limits.
+    For more details, see
+    [Google Cloud Cost Calculator](https://cloud.google.com/products/calculator/)
+    and [Google Cloud Platform Free Tier](https://cloud.google.com/free).
 
 ### 1.b Create a new project.<a name='create_project' />
 
-Note: This tutorial assumes you want to work on this demo in a new project. You
-can, if you want, work in an existing project.
+!!! Note
+    This tutorial assumes you want to work on this demo in a new project. You
+    can, if you want, work in an existing project.
 
-Note: You must have a verified credit card on file before creating the project.
+!!! Note
+    You must have a verified credit card on file before creating the project.
 
 1.  From the
     [main Google Cloud dashboard](https://console.cloud.google.com/home/dashboard),
@@ -109,8 +116,9 @@ drop-down.**
 
 ## 2. Set up and deploy an AI Platform Pipeline on a new Kubernetes cluster
 
-Note: This will take up to 10 minutes, as it requires waiting at several points
-for resources to be provisioned.
+!!! Note
+    This will take up to 10 minutes, as it requires waiting at several points
+    for resources to be provisioned.
 
 1.  Go to the
     [AI Platform Pipelines Clusters](https://console.cloud.google.com/ai-platform/pipelines)
@@ -120,17 +128,18 @@ for resources to be provisioned.
 
 1.  Click **+ New Instance** to create a new cluster.
 
-    <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/new-instance.png">
+    ![](images/cloud-ai-platform-pipelines/new-instance.png){ width="65%" }
 
 1.  On the **Kubeflow Pipelines** overview page, click **Configure**.
 
-    <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/configure.png">
+    ![](images/cloud-ai-platform-pipelines/configure.png){ width="65%" }
 
 1.  Click "Enable" to enable the Kubernetes Engine API
 
-    <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/enable_api.png">
+    ![](images/cloud-ai-platform-pipelines/enable_api.png){ width="65%" }
 
-    Note: You may have to wait several minutes before moving on, while the Kubernetes Engine APIs are being enabled for you.
+    !!! Note
+        You may have to wait several minutes before moving on, while the Kubernetes Engine APIs are being enabled for you.
 
 1.  On the **Deploy Kubeflow Pipelines** page:
 
@@ -142,7 +151,7 @@ for resources to be provisioned.
         APIs*. (This is required for this cluster to access the other pieces of
         your project. If you miss this step, fixing it later is a bit tricky.)
 
-        <img style="width: 50%;" src="images/cloud-ai-platform-pipelines/check-the-box.png">
+        ![](images/cloud-ai-platform-pipelines/check-the-box.png){ width="50%" }
 
     1.  Click **Create New Cluster**, and wait several minutes until the cluster
         has been created.  This will take a few minutes.  When it completes you
@@ -172,7 +181,7 @@ for resources to be provisioned.
 1.  Create a **New Notebook** with TensorFlow Enterprise 2.7 (or above)
     installed.
 
-    <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/new-notebook.png">
+    ![](images/cloud-ai-platform-pipelines/new-notebook.png){ width="65%" }
 
     New Notebook -> TensorFlow Enterprise 2.7 -> Without GPU
 
@@ -186,19 +195,21 @@ for resources to be provisioned.
     1.  Under **Machine configuration** you may want to select a configuration
         with 1 or 2 vCPUs if you need to stay in the free tier.
 
-        <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/two-cpus.png">
+        ![](images/cloud-ai-platform-pipelines/two-cpus.png){ width="65%" }
+
     1. Wait for the new notebook to be created, and then click **Enable
        Notebooks API**
 
-Note: You may experience slow performance in your notebook if you use 1 or 2
-vCPUs instead of the default or higher. This should not seriously hinder your
-completion of this tutorial. If would like to use the default settings,
-[upgrade your account](https://cloud.google.com/free/docs/gcp-free-tier#to_upgrade_your_account)
-to at least 12 vCPUs. This will accrue charges. See
-[Google Kubernetes Engine Pricing](https://cloud.google.com/kubernetes-engine/pricing/)
-for more details on pricing, including a
-[pricing calculator](https://cloud.google.com/products/calculator) and
-information about the [Google Cloud Free Tier](https://cloud.google.com/free).
+!!! Note
+    You may experience slow performance in your notebook if you use 1 or 2
+    vCPUs instead of the default or higher. This should not seriously hinder your
+    completion of this tutorial. If would like to use the default settings,
+    [upgrade your account](https://cloud.google.com/free/docs/gcp-free-tier#to_upgrade_your_account)
+    to at least 12 vCPUs. This will accrue charges. See
+    [Google Kubernetes Engine Pricing](https://cloud.google.com/kubernetes-engine/pricing/)
+    for more details on pricing, including a
+    [pricing calculator](https://cloud.google.com/products/calculator) and
+    information about the [Google Cloud Free Tier](https://cloud.google.com/free).
 
 ## 4. Launch the Getting Started Notebook
 
@@ -210,12 +221,12 @@ information about the [Google Cloud Free Tier](https://cloud.google.com/free).
 1.  On the line for the cluster you are using in this tutorial, click **Open
     Pipelines Dashboard**.
 
-    <img src="images/cloud-ai-platform-pipelines/open-dashboard.png">
+    ![](images/cloud-ai-platform-pipelines/open-dashboard.png)
 
 1.  On the **Getting Started** page, click **Open a Cloud AI Platform
     Notebook on Google Cloud**.
 
-    <img src="images/cloud-ai-platform-pipelines/open-template.png">
+    ![](images/cloud-ai-platform-pipelines/open-template.png)
 
 1.  Select the Notebook instance you are using for this tutorial and
     **Continue**, and then **Confirm**.
@@ -322,9 +333,6 @@ Here is brief description of the Python files.
     -   `features.py` `features_test.py` — defines features for the model
     -   `preprocessing.py` / `preprocessing_test.py` — defines preprocessing
         jobs using `tf::Transform`
-    -   `estimator` - This directory contains an Estimator based model.
-        -   `constants.py` — defines constants of the model
-        -   `model.py` / `model_test.py` — defines DNN model using TF estimator
     -   `keras` - This directory contains a Keras based model.
         -   `constants.py` — defines constants of the model
         -   `model.py` / `model_test.py` — defines DNN model using Keras
@@ -379,13 +387,14 @@ Kubeflow Pipelines Dashboard.
 
 You can view your pipeline from the Kubeflow Pipelines Dashboard.
 
-Note: If your pipeline run fails, you can see detailed logs in the KFP
-Dashboard. One of the major sources of failure is permission related problems.
-Make sure your KFP cluster has permissions to access Google Cloud APIs. This can
-be configured
-[when you create a KFP cluster in GCP](https://cloud.google.com/ai-platform/pipelines/docs/setting-up),
-or see
-[Troubleshooting document in GCP](https://cloud.google.com/ai-platform/pipelines/docs/troubleshooting).
+!!! Note
+    If your pipeline run fails, you can see detailed logs in the KFP
+    Dashboard. One of the major sources of failure is permission related problems.
+    Make sure your KFP cluster has permissions to access Google Cloud APIs. This can
+    be configured
+    [when you create a KFP cluster in GCP](https://cloud.google.com/ai-platform/pipelines/docs/setting-up),
+    or see
+    [Troubleshooting document in GCP](https://cloud.google.com/ai-platform/pipelines/docs/troubleshooting).
 
 ## 8. Validate your data
 
@@ -398,16 +407,16 @@ data.
 
 ### Components
 
-![Data Components](images/airflow_workshop/examplegen1.png)
-![Data Components](images/airflow_workshop/examplegen2.png)
+![Data Components](images/cloud-ai-platform-pipelines/examplegen1.png)
+![Data Components](images/cloud-ai-platform-pipelines/examplegen2.png)
 
-*   [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) ingests and
+*   [ExampleGen](../../../guide/examplegen) ingests and
     splits the input dataset.
-*   [StatisticsGen](https://www.tensorflow.org/tfx/guide/statsgen) calculates
+*   [StatisticsGen](../../../guide/statsgen) calculates
     statistics for the dataset.
-*   [SchemaGen](https://www.tensorflow.org/tfx/guide/schemagen) SchemaGen
+*   [SchemaGen](../../../guide/schemagen) SchemaGen
     examines the statistics and creates a data schema.
-*   [ExampleValidator](https://www.tensorflow.org/tfx/guide/exampleval) looks
+*   [ExampleValidator](../../../guide/exampleval) looks
     for anomalies and missing values in the dataset.
 
 ### In Jupyter lab file editor:
@@ -445,7 +454,7 @@ your pipeline.
 
 The example presented here is really only meant to get you started. For a more
 advanced example see the
-[TensorFlow Data Validation Colab](https://www.tensorflow.org/tfx/tutorials/data_validation/chicago_taxi).
+[TensorFlow Data Validation Colab](/tutorials/data_validation/chicago_taxi).
 
 For more information on using TFDV to explore and validate a dataset,
 [see the examples on tensorflow.org](https://www.tensorflow.org/tfx/data_validation).
@@ -467,15 +476,15 @@ serving.
 
 ### Components
 
-![Transform](images/airflow_workshop/transform.png)
+![Transform](images/cloud-ai-platform-pipelines/transform.png)
 
-*   [Transform](https://www.tensorflow.org/tfx/guide/transform) performs feature
+*   [Transform](../../../guide/transform) performs feature
     engineering on the dataset.
 
 ### In Jupyter lab file editor:
 
 In `pipeline`/`pipeline.py`, find and uncomment the line which appends
-[Transform](https://www.tensorflow.org/tfx/guide/transform) to the pipeline.
+[Transform](../../../guide/transform) to the pipeline.
 
 ```python
 # components.append(transform)
@@ -503,7 +512,7 @@ your pipeline.
 
 The example presented here is really only meant to get you started. For a more
 advanced example see the
-[TensorFlow Transform Colab](https://www.tensorflow.org/tfx/tutorials/transform/census).
+[TensorFlow Transform Colab](/tutorials/transform/census).
 
 ## 10. Training
 
@@ -517,7 +526,7 @@ Train a TensorFlow model with your nice, clean, transformed data.
 
 ### Components
 
-*   [Trainer](https://www.tensorflow.org/tfx/guide/trainer) trains a TensorFlow
+*   [Trainer](../../../guide/trainer) trains a TensorFlow
     model.
 
 ### In Jupyter lab file editor:
@@ -568,7 +577,7 @@ Understanding more than just the top level metrics.
 
 ### Components
 
-*   [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) performs deep
+*   [Evaluator](../../../guide/evaluator) performs deep
     analysis of the training results.
 
 ### In Jupyter lab file editor:
@@ -613,7 +622,7 @@ Deployment targets receive new models from well-known locations
 
 ### Components
 
-*   [Pusher](https://www.tensorflow.org/tfx/guide/pusher) deploys the model to a
+*   [Pusher](../../../guide/pusher) deploys the model to a
     serving infrastructure.
 
 ### In Jupyter lab file editor:
@@ -638,7 +647,7 @@ You have now trained and validated your model, and your model is now ready for
 production. You can now deploy your model to any of the TensorFlow deployment
 targets, including:
 
-*   [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving), for
+*   [TensorFlow Serving](../../../guide/serving), for
     serving your model on a server or server farm and processing REST and/or
     gRPC inference requests.
 *   [TensorFlow Lite](https://www.tensorflow.org/lite), for including your model
@@ -713,8 +722,9 @@ setting `--project` in `beam_pipeline_args` when creating a pipeline.
 should replace the project id and the region value in this file with the correct
 values for your GCP project.
 
->**Note: You MUST set your GCP project ID and region in the `configs.py` file
-before proceeding.**
+!!! Note
+    You MUST set your GCP project ID and region in the `configs.py` file
+    before proceeding.
 
 **Change directory one level up.** Click the name of the directory above the
 file list. The name of the directory is the name of the pipeline which is
@@ -739,16 +749,17 @@ pipeline as before and create a new execution run as we did in step 5 and 6.
 
 ### Try Dataflow
 Several
-[TFX Components use Apache Beam](https://www.tensorflow.org/tfx/guide/beam) to
+[TFX Components use Apache Beam](../../../guide/beam) to
 implement data-parallel pipelines, and it means that you can distribute data
 processing workloads using
 [Google Cloud Dataflow](https://cloud.google.com/dataflow/). In this step, we
 will set the Kubeflow orchestrator to use Dataflow as the data processing
 back-end for Apache Beam.
 
->**Note:** If the Dataflow API is not already enabled, you can enable it using
-the console, or from the CLI using this command (for example, in the Cloud
-Shell):
+!!! Note
+    If the Dataflow API is not already enabled, you can enable it using
+    the console, or from the CLI using this command (for example, in the Cloud
+    Shell):
 
 ```bash
 # Select your project:
@@ -765,15 +776,16 @@ gcloud services list --available | grep Dataflow
 gcloud services enable dataflow.googleapis.com
 ```
 
-> **Note:** Execution speed may be limited by default
-> [Google Compute Engine (GCE)](https://cloud.google.com/compute) quota. We
-> recommend setting a sufficient quota for approximately 250 Dataflow VMs: **250
-> CPUs, 250 IP Addresses, and 62500 GB of Persistent Disk**. For more details,
-> please see the [GCE Quota](https://cloud.google.com/compute/quotas) and
-> [Dataflow Quota](https://cloud.google.com/dataflow/quotas) documentation. If
-> you are blocked by IP Address quota, using a bigger
-> [`worker_type`](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options)
-> will reduce the number of needed IPs.
+!!! Note
+    Execution speed may be limited by default
+    [Google Compute Engine (GCE)](https://cloud.google.com/compute) quota. We
+    recommend setting a sufficient quota for approximately 250 Dataflow VMs: **250
+    CPUs, 250 IP Addresses, and 62500 GB of Persistent Disk**. For more details,
+    please see the [GCE Quota](https://cloud.google.com/compute/quotas) and
+    [Dataflow Quota](https://cloud.google.com/dataflow/quotas) documentation. If
+    you are blocked by IP Address quota, using a bigger
+    [`worker_type`](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options)
+    will reduce the number of needed IPs.
 
 **Double-click `pipeline` to change directory, and double-click to open
 `configs.py`**. Uncomment the definition of `GOOGLE_CLOUD_REGION`, and
@@ -825,11 +837,12 @@ the same value as `CUSTOM_TFX_IMAGE` above.
 `kubeflow_runner.py`**. Uncomment `ai_platform_training_args` and
 `ai_platform_serving_args`.
 
-> Note: If you receive a permissions error in the Training step, you may need to
-> provide Storage Object Viewer permissions to the Cloud Machine Learning Engine
-> (AI Platform Prediction & Training) service account. More information is
-> available in the
-> [Container Registry documentation](https://cloud.google.com/container-registry/docs/access-control#grant).
+!!! Note
+    If you receive a permissions error in the Training step, you may need to
+    provide Storage Object Viewer permissions to the Cloud Machine Learning Engine
+    (AI Platform Prediction & Training) service account. More information is
+    available in the
+    [Container Registry documentation](https://cloud.google.com/container-registry/docs/access-control#grant).
 
 #### Update the pipeline and re-run it
 
@@ -865,13 +878,13 @@ You need to modify the pipeline definition to accommodate your data.
 1.  Modify `BIG_QUERY_QUERY` in configs.py to your query statement.
 1.  Add features in `models`/`features.py`.
 1.  Modify `models`/`preprocessing.py` to
-    [transform input data for training](https://www.tensorflow.org/tfx/guide/transform).
+    [transform input data for training](../../../guide/transform).
 1.  Modify `models`/`keras`/`model.py` and `models`/`keras`/`constants.py` to
-    [describe your ML model](https://www.tensorflow.org/tfx/guide/trainer).
+    [describe your ML model](../../../guide/trainer).
 
 ### Learn more about Trainer
 
-See [Trainer component guide](https://www.tensorflow.org/tfx/guide/trainer) for
+See [Trainer component guide](../../../guide/trainer) for
 more details on Training pipelines.
 
 ## Cleaning up

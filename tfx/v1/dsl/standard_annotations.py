@@ -13,21 +13,20 @@
 # limitations under the License.
 """Public API for base type annotations."""
 
-from tfx.types import system_artifacts as _system_artifacts
-from tfx.types import system_executions as _system_executions
-
 # List of MLMD base artifact type annotations.
-Dataset = _system_artifacts.Dataset
-Model = _system_artifacts.Model
-Statistics = _system_artifacts.Statistics
-Metrics = _system_artifacts.Metrics
+from tfx.types.system_artifacts import Dataset, Model, Statistics, Metrics
 
 # List of MLMD base execution type annotations.
-Train = _system_executions.Train
-Transform = _system_executions.Transform
-Process = _system_executions.Process
-Evaluate = _system_executions.Evaluate
-Deploy = _system_executions.Deploy
+from tfx.types.system_executions import Train, Transform, Process, Evaluate, Deploy
 
-del _system_artifacts
-del _system_executions
+__all__ = [
+    "Dataset",
+    "Deploy",
+    "Evaluate",
+    "Metrics",
+    "Model",
+    "Process",
+    "Statistics",
+    "Train",
+    "Transform",
+]

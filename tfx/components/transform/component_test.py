@@ -236,7 +236,3 @@ class ComponentTest(tf.test.TestCase):
         True,
         bool(transform.spec.exec_properties[
             standard_component_specs.DISABLE_STATISTICS_KEY]))
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -13,7 +13,6 @@
 # limitations under the License.
 """Test for LatestArtifactStrategy."""
 
-import tensorflow as tf
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
@@ -48,7 +47,3 @@ class LatestArtifactStrategyTest(test_case_utils.TfxTest):
     self.assertIsNotNone(result)
     self.assertEqual([a.uri for a in result['input']],
                      [expected_artifact.uri])
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -8,8 +8,9 @@ The Tuner component makes extensive use of the Python
 [KerasTuner](https://www.tensorflow.org/tutorials/keras/keras_tuner) API for
 tuning hyperparameters.
 
-Note: The KerasTuner library can be used for hyperparameter tuning regardless of
-the modeling API, not just for Keras models only.
+!!! Note
+    The KerasTuner library can be used for hyperparameter tuning regardless of
+    the modeling API, not just for Keras models only.
 
 ## Component
 
@@ -206,22 +207,84 @@ algorithm uses information from results of prior trials, such as Google Vizier
 algorithm implemented in the AI Platform Vizier does, an excessively parallel
 search would negatively affect the efficacy of the search.
 
-Note: Each trial in each parallel search is conducted on a single machine in the
-worker flock, i.e., each trial does not take advantage of multi-worker
-distributed training. If multi-worker distribution is desired for each trial,
-refer to
-[`DistributingCloudTuner`](https://github.com/tensorflow/cloud/blob/b9c8752f5c53f8722dfc0b5c7e05be52e62597a8/src/python/tensorflow_cloud/tuner/tuner.py#L384-L676),
-instead of `CloudTuner`.
+It is also possible to use the new Vertex AI api as in the example shown below.
+```
+from tfx.v1.extensions.google_cloud_ai_platform import Tuner
+ai_platform_tuning_args = {
+    'project': GOOGLE_CLOUD_PROJECT,
+    'job_spec': {
+        # 'service_account': ACCOUNT,
+        'worker_pool_specs': [{'container_spec': {'image_uri': default_kfp_image},
+                               'machine_spec': {'machine_type': MACHINE_TYPE,
+                               'accelerator_type': accelerator_type,
+                               'accelerator_count': 1
+                                },
+                               'replica_count': 1}],
 
-Note: Both `CloudTuner` and the Google Cloud AI Platform extensions Tuner
-component can be used together, in which case it allows distributed parallel
-tuning backed by the AI Platform Vizier's hyperparameter search algorithm.
-However, in order to do so, the Cloud AI Platform Job must be given access to
-the AI Platform Vizier service. See this
-[guide](https://cloud.google.com/ai-platform/training/docs/custom-service-account#custom)
-to set up a custom service account. After that, you should specify the custom
-service account for your training job in the pipeline code. More details see
-[E2E CloudTuner on GCP example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_kubeflow.py).
+        # "enable_web_access": True, #In case you need to debug from within the container
+        }
+    }
+vertex_job_spec = {
+    'project': GOOGLE_CLOUD_PROJECT,
+    'job_spec': {
+        'worker_pool_specs': [{
+            'machine_spec': {
+                'machine_type': MACHINE_TYPE,
+                'accelerator_type': accelerator_type,
+                'accelerator_count': 1
+                },
+            'replica_count': 1,
+            'container_spec': {
+                'image_uri': default_kfp_image,
+                },
+            }],
+        "enable_web_access": True,
+        }
+    }
+tuner = Tuner(
+    module_file=_tuner_module_file,
+    examples=transform.outputs['transformed_examples'],
+    transform_graph=transform.outputs['transform_graph'],
+    train_args=proto.TrainArgs(
+        splits=['train'], num_steps=int(
+            TRAINING_STEPS // 4)),
+    eval_args=proto.EvalArgs(
+        splits=['eval'], num_steps=int(
+            VAL_STEPS // 4)),
+    tune_args=proto.TuneArgs(num_parallel_trials=num_parallel_trials),
+    custom_config={
+        tfx.extensions.google_cloud_ai_platform.ENABLE_VERTEX_KEY:
+        True,
+        tfx.extensions.google_cloud_ai_platform.VERTEX_REGION_KEY:
+        GOOGLE_CLOUD_REGION,
+        tfx.extensions.google_cloud_ai_platform.experimental.TUNING_ARGS_KEY:
+        vertex_job_spec,
+        'use_gpu':
+        USE_GPU,
+        'ai_platform_tuning_args': ai_platform_tuning_args,
+        tfx.extensions.google_cloud_ai_platform.experimental.REMOTE_TRIALS_WORKING_DIR_KEY: os.path.join(PIPELINE_ROOT, 'trials'),
+
+        }
+    )
+```
+!!! Note
+    Each trial in each parallel search is conducted on a single machine in the
+    worker flock, i.e., each trial does not take advantage of multi-worker
+    distributed training. If multi-worker distribution is desired for each trial,
+    refer to
+    [`DistributingCloudTuner`](https://github.com/tensorflow/cloud/blob/b9c8752f5c53f8722dfc0b5c7e05be52e62597a8/src/python/tensorflow_cloud/tuner/tuner.py#L384-L676),
+    instead of `CloudTuner`.
+
+!!! Note
+    Both `CloudTuner` and the Google Cloud AI Platform extensions Tuner
+    component can be used together, in which case it allows distributed parallel
+    tuning backed by the AI Platform Vizier's hyperparameter search algorithm.
+    However, in order to do so, the Cloud AI Platform Job must be given access to
+    the AI Platform Vizier service. See this
+    [guide](https://cloud.google.com/ai-platform/training/docs/custom-service-account#custom)
+    to set up a custom service account. After that, you should specify the custom
+    service account for your training job in the pipeline code. More details see
+    [E2E CloudTuner on GCP example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_pipeline_kubeflow.py).
 
 ## Links
 

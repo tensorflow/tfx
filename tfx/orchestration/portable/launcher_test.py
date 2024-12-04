@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.launcher."""
+
 import contextlib
 import copy
 import os
 from typing import Any
 from unittest import mock
 
-import tensorflow as tf
 from tfx import types
 from tfx import version as tfx_version
 from tfx.dsl.compiler import constants
@@ -1192,7 +1192,3 @@ class LauncherTest(test_case_utils.TfxTest):
     )
     with self.assertRaisesRegex(ValueError, 'resolving prop error'):
       test_launcher.launch()
-
-
-if __name__ == '__main__':
-  tf.test.main()

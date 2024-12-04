@@ -44,9 +44,8 @@ class Transform(base_beam_component.BaseBeamComponent):
   can define the optional `stats_options_updater_fn` within the module file.
 
   ## Providing a preprocessing function
-  The TFX executor will use the estimator provided in the `module_file` file
-  to train the model.  The Transform executor will look specifically for the
-  `preprocessing_fn()` function within that file.
+  The Transform executor will look specifically for the `preprocessing_fn()`
+  function within that file.
 
   An example of `preprocessing_fn()` can be found in the [user-supplied
   code](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py)
@@ -60,26 +59,28 @@ class Transform(base_beam_component.BaseBeamComponent):
   code](https://github.com/tensorflow/tfx/blob/master/tfx/examples/bert/mrpc/bert_mrpc_utils.py)
   of the TFX BERT MRPC pipeline example.
 
-  ## Example
-  ```
-  # Performs transformations and feature engineering in training and serving.
-  transform = Transform(
-      examples=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
-      module_file=module_file)
-  ```
+  !!! Example
+      ``` python
+      # Performs transformations and feature engineering in training and serving.
+      transform = Transform(
+          examples=example_gen.outputs['examples'],
+          schema=infer_schema.outputs['schema'],
+          module_file=module_file,
+      )
+      ```
 
   Component `outputs` contains:
-   - `transform_graph`: Channel of type `standard_artifacts.TransformGraph`,
+
+   - `transform_graph`: Channel of type [`standard_artifacts.TransformGraph`][tfx.v1.types.standard_artifacts.TransformGraph],
                         which includes an exported Tensorflow graph suitable
                         for both training and serving.
-   - `transformed_examples`: Channel of type `standard_artifacts.Examples` for
+   - `transformed_examples`: Channel of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples] for
                              materialized transformed examples, which includes
                              transform splits as specified in splits_config.
                              This is optional controlled by `materialize`.
 
   Please see [the Transform
-  guide](https://www.tensorflow.org/tfx/guide/transform) for more details.
+  guide](../../../guide/transform) for more details.
   """
 
   SPEC_CLASS = standard_component_specs.TransformSpec
@@ -103,20 +104,20 @@ class Transform(base_beam_component.BaseBeamComponent):
     """Construct a Transform component.
 
     Args:
-      examples: A BaseChannel of type `standard_artifacts.Examples` (required).
+      examples: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples] _required_.
         This should contain custom splits specified in splits_config. If custom
         split is not provided, this should contain two splits 'train' and
         'eval'.
-      schema: A BaseChannel of type `standard_artifacts.Schema`. This should
+      schema: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Schema`][tfx.v1.types.standard_artifacts.Schema]. This should
         contain a single schema artifact.
       module_file: The file path to a python module file, from which the
         'preprocessing_fn' function will be loaded.
         Exactly one of 'module_file' or 'preprocessing_fn' must be supplied.
 
         The function needs to have the following signature:
-        ```
+        ``` {.python .no-copy}
         def preprocessing_fn(inputs: Dict[Text, Any]) -> Dict[Text, Any]:
-          ...
+            ...
         ```
         where the values of input and returned Dict are either tf.Tensor or
         tf.SparseTensor.
@@ -124,26 +125,29 @@ class Transform(base_beam_component.BaseBeamComponent):
         If additional inputs are needed for preprocessing_fn, they can be passed
         in custom_config:
 
-        ```
-        def preprocessing_fn(inputs: Dict[Text, Any], custom_config:
-                             Dict[Text, Any]) -> Dict[Text, Any]:
-          ...
+        ``` {.python .no-copy}
+        def preprocessing_fn(
+            inputs: Dict[Text, Any],
+            custom_config: Dict[Text, Any],
+        ) -> Dict[Text, Any]:
+            ...
         ```
         To update the stats options used to compute the pre-transform or
         post-transform statistics, optionally define the
         'stats-options_updater_fn' within the same module. If implemented,
         this function needs to have the following signature:
+        ``` {.python .no-copy}
+        def stats_options_updater_fn(
+            stats_type: tfx.components.transform.stats_options_util.StatsType,
+            stats_options: tfdv.StatsOptions,
+        ) -> tfdv.StatsOptions:
+            ...
         ```
-        def stats_options_updater_fn(stats_type: tfx.components.transform
-          .stats_options_util.StatsType, stats_options: tfdv.StatsOptions)
-          -> tfdv.StatsOptions:
-          ...
-        ```
-        Use of a RuntimeParameter for this argument is experimental.
+        Use of a [RuntimeParameter][tfx.v1.dsl.experimental.RuntimeParameter] for this argument is experimental.
       preprocessing_fn: The path to python function that implements a
         'preprocessing_fn'. See 'module_file' for expected signature of the
         function. Exactly one of 'module_file' or 'preprocessing_fn' must be
-        supplied. Use of a RuntimeParameter for this argument is experimental.
+        supplied. Use of a [RuntimeParameter][tfx.v1.dsl.experimental.RuntimeParameter] for this argument is experimental.
       splits_config: A transform_pb2.SplitsConfig instance, providing splits
         that should be analyzed and splits that should be transformed. Note
         analyze and transform splits can have overlap. Default behavior (when

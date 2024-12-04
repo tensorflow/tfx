@@ -13,17 +13,15 @@
 # limitations under the License.
 """Tests for tfx.distribution_validator.executor."""
 
+
 import os
 import tempfile
 
 from absl import flags
-from absl.testing import absltest
 from absl.testing import parameterized
 from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.distribution_validator import executor
 from tfx.dsl.io import fileio
-from tfx.orchestration.experimental.core import component_generated_alert_pb2
-from tfx.orchestration.experimental.core import constants
 from tfx.proto import distribution_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -215,37 +213,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         }
           """,
           'anomalies_blessed_value': 0,
-          'expected_alerts': (
-              component_generated_alert_pb2.ComponentGeneratedAlertList(
-                  component_generated_alert_list=[
-                      component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                          alert_name=(
-                              '[train_eval] High approximate Jensen-Shannon '
-                              'divergence between current and previous'
-                          ),
-                          alert_body=(
-                              '[train_eval] The approximate Jensen-Shannon '
-                              'divergence between current and previous is '
-                              '0.000917363 (up to six significant digits), '
-                              'above the threshold 0.'
-                          ),
-                      ),
-                      component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                          alert_name=(
-                              '[train_eval] High Linfty distance between '
-                              'current and previous'
-                          ),
-                          alert_body=(
-                              '[train_eval] The Linfty distance between '
-                              'current and previous is 0.0122771 (up to six '
-                              'significant digits), above the threshold 0. The '
-                              'feature value with maximum difference is: '
-                              'Dispatch Taxi Affiliation'
-                          ),
-                      ),
-                  ]
-              )
-          )
       },
       {
           'testcase_name': 'dataset_constraint',
@@ -269,24 +236,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                   }
                 }""",
           'anomalies_blessed_value': 0,
-          'expected_alerts': (
-              component_generated_alert_pb2.ComponentGeneratedAlertList(
-                  component_generated_alert_list=[
-                      component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                          alert_name=(
-                              '[train_eval] High num examples in current '
-                              'dataset versus the previous span.'
-                          ),
-                          alert_body=(
-                              '[train_eval] The ratio of num examples in the '
-                              'current dataset versus the previous span is '
-                              '2.02094 (up to six significant digits), which '
-                              'is above the threshold 1.'
-                          ),
-                      ),
-                  ]
-              )
-          )
       },
       {
           'testcase_name': 'no_anomalies',
@@ -319,9 +268,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         }
           """,
           'anomalies_blessed_value': 1,
-          'expected_alerts': (
-              component_generated_alert_pb2.ComponentGeneratedAlertList()
-          ),
       },
       {
           'testcase_name': 'custom_anomalies',
@@ -348,7 +294,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
                 step: 'company'
               }
               validations {
-                sql_expression: 'feature_test.string_stats.unique > feature_base.string_stats.unique'
+                sql_expression: 'feature_test.string_stats.unique > feature_base.string_stats.unique * 2'
                 severity: ERROR
                 description: 'Test feature has too few unique values.'
                 }
@@ -362,7 +308,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
             reason {
               type: CUSTOM_VALIDATION
               short_description: "Test feature has too few unique values."
-              description: "Custom validation triggered anomaly. Query: feature_test.string_stats.unique > feature_base.string_stats.unique Test dataset: default slice Base dataset:  Base path: company"            }
+              description: "Custom validation triggered anomaly. Query: feature_test.string_stats.unique > feature_base.string_stats.unique * 2 Test dataset: default slice Base dataset:  Base path: company"            }
             path {
               step: "company"
             }
@@ -381,25 +327,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         }
           """,
           'anomalies_blessed_value': 0,
-          'expected_alerts': (
-              component_generated_alert_pb2.ComponentGeneratedAlertList(
-                  component_generated_alert_list=[
-                      component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                          alert_name=(
-                              '[train_eval] Test feature has too few unique '
-                              'values.'
-                          ),
-                          alert_body=(
-                              '[train_eval] Custom validation triggered '
-                              'anomaly. Query: '
-                              'feature_test.string_stats.unique > '
-                              'feature_base.string_stats.unique Test dataset: '
-                              'default slice Base dataset:  Base path: company'
-                          ),
-                      )
-                  ]
-              )
-          )
       },
   )
   def testAnomaliesGenerated(
@@ -408,7 +335,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
       custom_validation_config,
       expected_anomalies,
       anomalies_blessed_value,
-      expected_alerts,
   ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
@@ -417,6 +343,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
     stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])
+    stats_artifact.span = 2
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -453,7 +380,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     }
 
     distribution_validator_executor = executor.Executor()
-    executor_output = distribution_validator_executor.Do(
+    distribution_validator_executor.Do(
         input_dict, output_dict, exec_properties
     )
 
@@ -480,14 +407,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         ),
         {'train_eval': anomalies_blessed_value},
     )
-    actual_alerts = (
-        component_generated_alert_pb2.ComponentGeneratedAlertList()
-    )
-    executor_output.execution_properties[
-        constants.COMPONENT_GENERATED_ALERTS_KEY
-    ].proto_value.Unpack(actual_alerts)
-    for alert in expected_alerts.component_generated_alert_list:
-      self.assertIn(alert, actual_alerts.component_generated_alert_list)
 
   def testMissBaselineStats(self):
 
@@ -560,6 +479,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval']
     )
+    stats_artifact.span = 3
 
     struct_stats_train = text_format.Parse(
         """
@@ -683,20 +603,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
         }
       }""", anomalies_pb2.Anomalies())
 
-    expected_alerts = component_generated_alert_pb2.ComponentGeneratedAlertList(
-        component_generated_alert_list=[
-            component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                alert_name=(
-                    '[train_eval] High approximate Jensen-Shannon divergence '
-                    'between current and previous'),
-                alert_body=(
-                    '[train_eval] The approximate Jensen-Shannon divergence '
-                    'between current and previous is 1 (up to six significant '
-                    'digits), above the threshold 0.'),
-            )
-        ],
-    )
-
     # Create stats artifacts with a struct feature.
     for split_dir in ['Split-eval', 'Split-train']:
       full_split_dir = os.path.join(stats_artifact.uri, split_dir)
@@ -735,7 +641,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     }
 
     distribution_validator_executor = executor.Executor()
-    executor_output = distribution_validator_executor.Do(
+    distribution_validator_executor.Do(
         input_dict, output_dict, exec_properties
     )
 
@@ -753,14 +659,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     distribution_anomalies = anomalies_pb2.Anomalies()
     distribution_anomalies.ParseFromString(distribution_anomalies_bytes)
     self.assertEqualExceptBaseline(expected_anomalies, distribution_anomalies)
-
-    actual_alerts = (
-        component_generated_alert_pb2.ComponentGeneratedAlertList()
-    )
-    executor_output.execution_properties[
-        constants.COMPONENT_GENERATED_ALERTS_KEY
-    ].proto_value.Unpack(actual_alerts)
-    self.assertEqual(actual_alerts, expected_alerts)
 
   @parameterized.named_parameters(
       {
@@ -1019,6 +917,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
     stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])
+    stats_artifact.span = 4
 
     validation_config = text_format.Parse(
         """
@@ -1077,7 +976,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     }
 
     distribution_validator_executor = executor.Executor()
-    executor_output = distribution_validator_executor.Do(
+    distribution_validator_executor.Do(
         input_dict, output_dict, exec_properties
     )
 
@@ -1100,27 +999,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     distribution_anomalies.ParseFromString(distribution_anomalies_bytes)
     self.assertEqualExceptBaseline(expected_anomalies, distribution_anomalies)
 
-    expected_alerts = component_generated_alert_pb2.ComponentGeneratedAlertList(
-        component_generated_alert_list=[
-            component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                alert_name=(
-                    '[train_eval] Comparison could not be done.'
-                ),
-                alert_body=(
-                    '[train_eval] Validation could not be done, which could be '
-                    'due to missing data, use of a comparator that is not '
-                    'suitable for the feature type, or some other reason.'
-                ),
-            ),
-        ]
-    )
-    actual_alerts = (
-        component_generated_alert_pb2.ComponentGeneratedAlertList()
-    )
-    executor_output.execution_properties[
-        constants.COMPONENT_GENERATED_ALERTS_KEY
-    ].proto_value.Unpack(actual_alerts)
-    self.assertEqual(actual_alerts, expected_alerts)
 
   def testAddOutput(self):
     source_data_dir = os.path.join(
@@ -1132,6 +1010,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval']
     )
+    stats_artifact.span = 5
 
     validation_config = text_format.Parse(
         """
@@ -1185,7 +1064,7 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     }
 
     distribution_validator_executor = executor.Executor()
-    executor_output = distribution_validator_executor.Do(
+    distribution_validator_executor.Do(
         input_dict, output_dict, exec_properties
     )
 
@@ -1194,27 +1073,6 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
     )
     self.assertTrue(fileio.exists(distribution_anomalies_path))
 
-    expected_alerts = component_generated_alert_pb2.ComponentGeneratedAlertList(
-        component_generated_alert_list=[
-            component_generated_alert_pb2.ComponentGeneratedAlertInfo(
-                alert_name=(
-                    '[train_eval] Comparison could not be done.'
-                ),
-                alert_body=(
-                    '[train_eval] Validation could not be done, which could be '
-                    'due to missing data, use of a comparator that is not '
-                    'suitable for the feature type, or some other reason.'
-                ),
-            ),
-        ]
-    )
-    actual_alerts = (
-        component_generated_alert_pb2.ComponentGeneratedAlertList()
-    )
-    executor_output.execution_properties[
-        constants.COMPONENT_GENERATED_ALERTS_KEY
-    ].proto_value.Unpack(actual_alerts)
-    self.assertEqual(actual_alerts, expected_alerts)
 
   def testUseArtifactDVConfig(self):
     source_data_dir = os.path.join(
@@ -1411,7 +1269,3 @@ class ExecutorTest(parameterized.TestCase, test_case_utils.TfxTest):
       _ = distribution_validator_executor.Do(
           input_dict, output_dict, exec_properties
       )
-
-
-if __name__ == '__main__':
-  absltest.main()

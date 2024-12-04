@@ -21,7 +21,7 @@ import abc
 from ml_metadata.metadata_store import mlmd_types
 
 
-class SystemArtifact(abc.ABC):
+class SystemArtifact(abc.ABC):  # noqa: B024
   """TFX system artifact base class.
 
   A user may create a subclass of SystemArtifact and override the
@@ -30,7 +30,6 @@ class SystemArtifact(abc.ABC):
   The subclasses, e.g, Dataset, Model, Statistics, e.t.c, match the MLMD types
   from third_party/ml_metadata/metadata_store/mlmd_types.py.
   """
-
   # MLMD system base type enum. Override it when creating subclasses.
   MLMD_SYSTEM_BASE_TYPE = None
 

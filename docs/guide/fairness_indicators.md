@@ -25,14 +25,6 @@ In particular, Fairness Indicators includes the ability to:
 *   Dive deep into individual slices to explore root causes and opportunities
     for improvement
 
-This
-[case study](https://developers.google.com/machine-learning/practica/fairness-indicators),
-complete with [videos](https://www.youtube.com/watch?v=pHT-ImFXPQo) and
-programming exercises, demonstrates how Fairness Indicators can be used on one
-of your own products to evaluate fairness concerns over time.
-
-[![](http://img.youtube.com/vi/pHT-ImFXPQo/0.jpg)](http://www.youtube.com/watch?v=pHT-ImFXPQo)
-
 The pip package download includes:
 
 *   **[Tensorflow Data Validation (TFDV)](https://www.tensorflow.org/tfx/data_validation/get_started)**
@@ -50,16 +42,6 @@ exact slice features for your fairness concerns, you may explore trying to find
 an evaluation set that does, or considering proxy features within your feature
 set that may highlight outcome disparities. For additional guidance, see
 [here](https://tensorflow.org/responsible_ai/fairness_indicators/guide/guidance).
-
-### Model
-
-You can use the Tensorflow Estimator class to build your model. Support for
-Keras models is coming soon to TFMA. If you would like to run TFMA on a Keras
-model, please see the “Model-Agnostic TFMA” section below.
-
-After your Estimator is trained, you will need to export a saved model for
-evaluation purposes. To learn more, see the
-[TFMA guide](/tfx/model_analysis/get_started).
 
 ### Configuring Slices
 
@@ -316,7 +298,7 @@ contains several examples:
 
 *   [Fairness_Indicators_Example_Colab.ipynb](https://github.com/tensorflow/fairness-indicators/blob/master/g3doc/tutorials/Fairness_Indicators_Example_Colab.ipynb)
     gives an overview of Fairness Indicators in
-    [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/guide/tfma) and
+    [TensorFlow Model Analysis](../tfma) and
     how to use it with a real dataset. This notebook also goes over
     [TensorFlow Data Validation](https://www.tensorflow.org/tfx/data_validation/get_started)
     and [What-If Tool](https://pair-code.github.io/what-if-tool/), two tools for

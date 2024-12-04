@@ -150,6 +150,3 @@ class ExecutorTest(tf.test.TestCase):
             'project': self._project_id,
             'jobDir': self._job_dir,
         }, self._job_id, None, enable_vertex, vertex_region)
-
-if __name__ == '__main__':
-  tf.test.main()

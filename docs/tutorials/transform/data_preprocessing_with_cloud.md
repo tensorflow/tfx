@@ -11,16 +11,16 @@ and they create as byproducts a TensorFlow graph to apply the
 same transformations during prediction as when the model is served.
 
 This tutorial provides an end-to-end example using
-[Dataflow](https://cloud.google.com/dataflow/docs){: .external }
+[Dataflow](https://cloud.google.com/dataflow/docs)
 as a runner for Apache Beam. It assumes that you're familiar with
-[BigQuery](https://cloud.google.com/bigquery/docs){: .external },
+[BigQuery](https://cloud.google.com/bigquery/docs),
 Dataflow,
-[Vertex AI](https://cloud.google.com/vertex-ai/docs/start/introduction-unified-platform){: .external },
+[Vertex AI](https://cloud.google.com/vertex-ai/docs/start/introduction-unified-platform),
 and the TensorFlow
 [Keras](https://www.tensorflow.org/guide/keras/overview)
 API. It also assumes that you have some experience using Jupyter Notebooks, such
 as with
-[Vertex AI Workbench](https://cloud.google.com/vertex-ai/docs/workbench/introduction){: .external }.
+[Vertex AI Workbench](https://cloud.google.com/vertex-ai/docs/workbench/introduction).
 
 This tutorial also assumes that you're familiar with the concepts of
 preprocessing types, challenges, and options on Google Cloud, as described in
@@ -45,38 +45,39 @@ This tutorial uses the following billable components of Google Cloud:
 
 <!-- This doc uses plain text cost information because the pricing calculator is pre-configured -->
 
-To estimate the cost to run this tutorial, assuming you use every resource for
-an entire day, use the preconfigured
-[pricing calculator](/products/calculator/#id=fad408d8-dd68-45b8-954e-5a5619a5d148){: .external }.
+To estimate the cost to run this tutorial, please refer to
+[pricing calculator](https://cloud.google.com/products/calculator).
 
 
 ## Before you begin
 
 1. In the Google Cloud console, on the project selector page, select or
-  [create a Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects). 
+  [create a Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects).
 
-  Note: If you don't plan to keep the resources that you create in this
-      procedure, create a project instead of selecting an existing project.
-      After you finish these steps, you can delete the project, removing all
-      resources associated with the project. 
+    !!! Note
+        If you don't plan to keep the resources that you create in this
+        procedure, create a project instead of selecting an existing project.
+        After you finish these steps, you can delete the project, removing all
+        resources associated with the project.
 
-  [Go to project selector](https://console.cloud.google.com/projectselector2/home/dashboard){: class="button button-primary" target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
+  [Go to project selector](https://console.cloud.google.com/projectselector2/home/dashboard){ .md-button .md-button--primary }
 
 2. Make sure that billing is enabled for your Cloud project. Learn how to
   [check if billing is enabled on a project](https://cloud.google.com/billing/docs/how-to/verify-billing-enabled).
 
 3. Enable the Dataflow, Vertex AI, and Notebooks APIs.
-  [Enable the APIs](https://console.cloud.google.com/flows/enableapi?apiid=dataflow,aiplatform.googleapis.com,notebooks.googleapis.com){: class="button button-primary" target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
+
+  [Enable the APIs](https://console.cloud.google.com/flows/enableapi?apiid=dataflow,aiplatform.googleapis.com,notebooks.googleapis.com){ .md-button .md-button--primary }
 
 ## Jupyter notebooks for this solution
 
 The following Jupyter notebooks show the implementation example:
 
-*   [Notebook 1](https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/blogs/babyweight_tft/babyweight_tft_keras_01.ipynb){: .external }
+*   [Notebook 1](https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/blogs/babyweight_tft/babyweight_tft_keras_01.ipynb)
     covers data preprocessing. Details are provided in the
     [Implementing the Apache Beam pipeline](#implement-the-apache-beam-pipeline)
     section later.
-*   [Notebook 2](https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/blogs/babyweight_tft/babyweight_tft_keras_02.ipynb){: .external }
+*   [Notebook 2](https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/blogs/babyweight_tft/babyweight_tft_keras_02.ipynb)
     covers model training. Details are provided in the
     [Implementing the TensorFlow model](#implement-the-tensorflow-model)
     section later.
@@ -88,7 +89,7 @@ notebooks to learn how the implementation example works.
 
 1.  In the Google Cloud console, go to the **Vertex AI Workbench** page.
 
-    [Go to Workbench](https://console.cloud.google.com/ai-platform/notebooks/list/instances){: class="button button-primary" target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
+    [Go to Workbench](https://console.cloud.google.com/ai-platform/notebooks/list/instances){ .md-button .md-button--primary }
 
 1.  On the **User-managed notebooks** tab, click **+New notebook**.
 1.  Select **TensorFlow Enterprise 2.8 (with LTS) without GPUs** for the
@@ -116,12 +117,12 @@ notebook name.
 ## Implement the Apache Beam pipeline
 
 This section and the next section
-[Run the pipeline in Dataflow](#run-the-pipeline-in-dataflow){: track-type="solution" track-name="internalLink" track-metadata-position="body" }
+[Run the pipeline in Dataflow](#run-the-pipeline-in-dataflow)
 provide an overview and context for Notebook 1. The notebook provides a
 practical example to describe how to use the `tf.Transform` library to
 preprocess data. This example uses the Natality dataset, which is used to
 predict baby weights based on various inputs. The data is stored in the public
-[natality](https://console.cloud.google.com/bigquery?p=bigquery-public-data&amp;d=samples&amp;t=natality&amp;page=table&amp;_ga=2.267763789.2122871960.1676620306-376763843.1676620306){: target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
+[natality](https://console.cloud.google.com/bigquery?p=bigquery-public-data&amp;d=samples&amp;t=natality&amp;page=table&amp;_ga=2.267763789.2122871960.1676620306-376763843.1676620306)
 table in BigQuery.
 
 ### Run Notebook 1
@@ -139,7 +140,7 @@ table in BigQuery.
 
     The last part of the output is the following:
 
-    ```none{:.devsite-disable-click-to-copy}
+    ``` {.no-copy }
     Successfully installed ...
     ```
 
@@ -149,7 +150,7 @@ table in BigQuery.
 1.  Execute the second cell to run the `pip install tensorflow-transform
     `command. The last part of the output is the following:
 
-    ```none{:.devsite-disable-click-to-copy}
+    ``` { .no-copy }
     Successfully installed ...
     Note: you may need to restart the kernel to use updated packages.
     ```
@@ -176,7 +177,7 @@ the pipeline. The overall pipeline steps are as follows:
 1.  Read training data from BigQuery.
 1.  Analyze and transform training data using the `tf.Transform` library.
 1.  Write transformed training data to Cloud Storage in the
-    [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord){: target="external" class="external" track-type="solution" track-name="externalLink" track-metadata-position="body" }
+    [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord)
     format.
 1.  Read evaluation data from BigQuery.
 1.  Transform evaluation data using the `transform_fn` graph produced by step 2.
@@ -188,7 +189,7 @@ the pipeline. The overall pipeline steps are as follows:
 The following example shows the Python code for the overall pipeline. The
 sections that follow provide explanations and code listings for each step.
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def run_transformation_pipeline(args):
 
     pipeline_options = beam.pipeline.PipelineOptions(flags=[], **args)
@@ -232,7 +233,7 @@ def run_transformation_pipeline(args):
                 write_text(transformed_train_dataset, transformed_data_location, step)
 ```
 
-### Read raw training data from BigQuery{: id="read_raw_training_data"}
+### Read raw training data from BigQuery
 
 The first step is to read the raw training data from BigQuery
 using the `read_from_bq` function. This function returns a `raw_dataset` object
@@ -241,7 +242,7 @@ pass a `step` value of `train` or `eval`. The BigQuery source
 query is constructed using the `get_source_query` function, as shown in the
 following example:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def read_from_bq(pipeline, step, data_size):
 
     source_query = get_source_query(step, data_size)
@@ -270,7 +271,7 @@ In addition, to use the `tf.Transform` library to analyze and transform the
 The `raw_metadata` object is created using the `create_raw_metadata` function,
 as follows:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 CATEGORICAL_FEATURE_NAMES = ['is_male', 'mother_race']
 NUMERIC_FEATURE_NAMES = ['mother_age', 'plurality', 'gestation_weeks']
 TARGET_FEATURE_NAME = 'weight_pounds'
@@ -306,84 +307,17 @@ input raw features of the training data in order to prepare it for ML. These
 transformations include both full-pass and instance-level operations, as shown
 in the following table:
 
-<table>
-<thead>
-  <tr>
-    <th>Input feature</th>
-    <th>Transformation</th>
-    <th>Stats needed</th>
-    <th>Type</th>
-    <th>Output feature</th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td><code>weight_pound</code></td>
-    <td>None</td>
-    <td>None</td>
-    <td>NA</td>
-    <td><code>weight_pound</code></td>
-  </tr>
-  <tr>
-    <td><code>mother_age</code></td>
-    <td>Normalize</td>
-    <td>mean, var</td>
-    <td>Full-pass</td>
-    <td><code>mother_age_normalized</code></td>
-  </tr>
-  <tr>
-    <td><code>mother_age</code></td>
-    <td>Equal size bucketization</td>
-    <td>quantiles</td>
-    <td>Full-pass</td>
-    <td><code>mother_age_bucketized</code></td>
-  </tr>
-  <tr>
-    <td><code>mother_age</code></td>
-    <td>Compute the log</td>
-    <td>None</td>
-    <td>Instance-level</td>
-    <td>
-        <code>mother_age_log</code>
-    </td>
-  </tr>
-  <tr>
-    <td><code>plurality</code></td>
-    <td>Indicate if it is single or multiple babies</td>
-    <td>None</td>
-    <td>Instance-level</td>
-    <td><code>is_multiple</code></td>
-  </tr>
-  <tr>
-    <td><code>is_multiple</code></td>
-    <td>Convert nominal values to numerical index</td>
-    <td>vocab</td>
-    <td>Full-pass</td>
-    <td><code>is_multiple_index</code></td>
-  </tr>
-  <tr>
-    <td><code>gestation_weeks</code></td>
-    <td>Scale between 0 and 1</td>
-    <td>min, max</td>
-    <td>Full-pass</td>
-    <td><code>gestation_weeks_scaled</code></td>
-  </tr>
-  <tr>
-    <td><code>mother_race</code></td>
-    <td>Convert nominal values to numerical index</td>
-    <td>vocab</td>
-    <td>Full-pass</td>
-    <td><code>mother_race_index</code></td>
-  </tr>
-  <tr>
-    <td><code>is_male</code></td>
-    <td>Convert nominal values to numerical index</td>
-    <td>vocab</td>
-    <td>Full-pass</td>
-    <td><code>is_male_index</code></td>
-  </tr>
-</tbody>
-</table>
+ | Input feature       | Transformation                                | Stats needed   | Type             | Output feature
+ | ------------------- | --------------------------------------------- | -------------- | ---------------- | -------------------------- |
+ | `weight_pound`      | None                                          | None           | NA               | `weight_pound`             |
+ | `mother_age`        | Normalize                                     | mean, var      | Full-pass        | `mother_age_normalized`    |
+ | `mother_age`        | Equal size bucketization                      | quantiles      | Full-pass        | `mother_age_bucketized`    |
+ | `mother_age`        | Compute the log                               | None           | Instance-level   | `mother_age_log`           |
+ | `plurality`         | Indicate if it is single or multiple babies   | None           | Instance-level   | `is_multiple`              |
+ | `is_multiple`       | Convert nominal values to numerical index     | vocab          | Full-pass        | `is_multiple_index`        |
+ | `gestation_weeks`   | Scale between 0 and 1                         | min, max       | Full-pass        | `gestation_weeks_scaled`   |
+ | `mother_race`       | Convert nominal values to numerical index     | vocab          | Full-pass        | `mother_race_index`        |
+ | `is_male`           | Convert nominal values to numerical index     | vocab          | Full-pass        | `is_male_index`            |
 
 These transformations are implemented in a `preprocess_fn` function, which
 expects a dictionary of tensors (`input_features`) and returns a dictionary of
@@ -393,7 +327,7 @@ The following code shows the implementation of the `preprocess_fn` function,
 using the `tf.Transform` full-pass transformation APIs (prefixed with `tft.`),
 and TensorFlow (prefixed with `tf.`) instance-level operations:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def preprocess_fn(input_features):
 
     output_features = {}
@@ -425,81 +359,22 @@ def preprocess_fn(input_features):
 ```
 
 The `tf.Transform`
-[framework](https://github.com/tensorflow/transform){: .external }
+[framework](https://github.com/tensorflow/transform)
 has several other transformations in addition to those in the preceding example,
 including those listed in the following table:
 
-<table>
-<thead>
-  <tr>
-  <th>Transformation</th>
-  <th>Applies to</th>
-  <th>Description</th>
-  </tr>
-</thead>
-<tbody>
-    <tr>
-    <td><code>scale_by_min_max</code></td>
-    <td>Numeric features</td>
-    <td>
-      Scales a numerical column into the range [<code>output_min</code>,
-      <code>output_max</code>]
-    </td>
-  </tr>
-  <tr>
-    <td><code>scale_to_0_1</code></td>
-    <td>Numeric features</td>
-    <td>
-      Returns a column which is the input column scaled to have range
-      [<code>0</code>,<code>1</code>]
-    </td>
-  </tr>
-  <tr>
-    <td><code>scale_to_z_score</code></td>
-    <td>Numeric features</td>
-    <td>Returns a standardized column with mean 0 and variance 1</td>
-  </tr>
-  <tr>
-    <td><code>tfidf</code></td>
-    <td>Text features</td>
-    <td>
-      Maps the terms in <i>x</i> to their term frequency * inverse document
-      frequency
-    </td>
-  </tr>
-  <tr>
-    <td><code>compute_and_apply_vocabulary</code></td>
-    <td>Categorical features</td>
-    <td>
-      Generates a vocabulary for a categorical feature and maps it to
-      an integer with this vocab
-    </td>
-  </tr>
-  <tr>
-    <td><code>ngrams</code></td>
-    <td>Text features</td>
-    <td>Creates a <code>SparseTensor</code> of n-grams</td>
-  </tr>
-  <tr>
-    <td><code>hash_strings</code></td>
-    <td>Categorical features</td>
-    <td>Hashes strings into buckets</td>
-  </tr>
-  <tr>
-    <td><code>pca</code></td>
-    <td>Numeric features</td>
-    <td>Computes PCA on the dataset using biased covariance</td>
-  </tr>
-  <tr>
-    <td><code>bucketize</code></td>
-    <td>Numeric features</td>
-    <td>
-      Returns an equal-sized (quantiles-based) bucketized column, with
-      a bucket index assigned to each input
-    </td>
-  </tr>
-</tbody>
-</table>
+ | Transformation                   | Applies to             | Description                                                                                              |
+ | -------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------- |
+ | `scale_by_min_max`               | Numeric features       | Scales a numerical column into the range \[`output_min`, `output_max`\]                                  |
+ | `scale_to_0_1`                   | Numeric features       | Returns a column which is the input column scaled to have range \[`0`,`1`\]                              |
+ | `scale_to_z_score`               | Numeric features       | Returns a standardized column with mean 0 and variance 1                                                 |
+ | `tfidf`                          | Text features          | Maps the terms in *x* to their term frequency \* inverse document frequency                              |
+ | `compute_and_apply_vocabulary`   | Categorical features   | Generates a vocabulary for a categorical feature and maps it to an integer with this vocab               |
+ | `ngrams`                         | Text features          | Creates a `SparseTensor` of n-grams                                                                      |
+ | `hash_strings`                   | Categorical features   | Hashes strings into buckets                                                                              |
+ | `pca`                            | Numeric features       | Computes PCA on the dataset using biased covariance                                                      |
+ | `bucketize`                      | Numeric features       | Returns an equal-sized (quantiles-based) bucketized column, with a bucket index assigned to each input   |
+
 
 In order to apply the transformations implemented in the `preprocess_fn`
 function to the `raw_train_dataset` object produced in the previous step of the
@@ -508,7 +383,7 @@ the `raw_dataset` object as input, applies the `preprocess_fn` function, and it
 produces the `transformed_dataset` object and the `transform_fn` graph. The
 following code illustrates this processing:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def analyze_and_transform(raw_dataset, step):
 
     transformed_dataset, transform_fn = (
@@ -536,7 +411,7 @@ produces two outputs:
 -   `transform_fn`: a TensorFlow graph that contains the
     computed stats from the analyze phase and the transformation logic (which
     uses the stats) as instance-level operations. As discussed later in
-    [Save the graph](#save_the_graph){: track-type="solution" track-name="internalLink" track-metadata-position="body" },
+    [Save the graph](#save-the-graph),
     the `transform_fn` graph is saved to be attached to the model `serving_fn`
     function. This makes it possible to apply the same transformation to the
     online prediction data points.
@@ -545,14 +420,12 @@ produces two outputs:
 
 The analyze phase is illustrated in the following diagram, figure 1:
 
-<figure id="tf-transform-analyze-phase">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-tf-transform-analyze-phase.svg"
-    alt="The tf.Transform analyze phase.">
-  <figcaption><b>Figure 1.</b> The <code>tf.Transform</code> analyze phase.</figcaption>
-</figure>
+Figure: The `tf.Transform` analyze phase. { #tf-transform-analyze-phase }
+
+![The tf.Transform analyze phase.](images/data-preprocessing-for-ml-with-tf-transform-tf-transform-analyze-phase.svg)
 
 The `tf.Transform`
-[analyzers](https://github.com/tensorflow/transform/blob/master/tensorflow_transform/beam/analyzer_impls.py){: target="github" class="external" track-type="solution" track-name="gitHubLink" track-metadata-position="body" }
+[analyzers](https://github.com/tensorflow/transform/blob/master/tensorflow_transform/beam/analyzer_impls.py)
 include `min`, `max`, `sum`, `size`, `mean`, `var`, `covariance`, `quantiles`,
 `vocabulary`, and `pca`.
 
@@ -566,11 +439,9 @@ the `transformed_train_dataset` dataset.
 
 The transform phase is illustrated in the following diagram, figure 2:
 
-<figure id="tf-transform-transform-phase">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-tf-transform-transform-phase.svg"
-    alt="The tf.Transform transform phase.">
-  <figcaption><b>Figure 2.</b> The <code>tf.Transform</code> transform phase.</figcaption>
-</figure>
+Figure: The `tf.Transform` transform phase. { #tf-transform-transform-phase }
+
+![The tf.Transform transform phase.](images/data-preprocessing-for-ml-with-tf-transform-tf-transform-transform-phase.svg)
 
 To preprocess the features, you call the required `tensorflow_transform`
 transformations (imported as `tft` in the code) in your implementation of the
@@ -594,7 +465,7 @@ following columns:
 -   `weight_pounds` (type: `FLOAT`)
 
 As explained in
-[Preprocessing operations](data-preprocessing-for-ml-with-tf-transform-pt1#preprocessing_operations)
+[Preprocessing operations](../data-preprocessing-for-ml-with-tf-transform-pt1#preprocessing-operations)
 in the first part of this series, the feature transformation converts
 categorical features to a numeric representation. After the transformation, the
 categorical features are represented by integer values. In the
@@ -602,7 +473,7 @@ categorical features are represented by integer values. In the
 columns indicates whether the column represents a categorical feature or a true
 numeric feature.
 
-### Write transformed training data{: id="step_3_write_transformed_training_data"}
+### Write transformed training data
 
 After the training data is preprocessed with the `preprocess_fn` function
 through the analyze and transform phases, you can write the data to a sink to be
@@ -619,7 +490,7 @@ converted into tensors when they are fed to the model for training. The
 following code writes the transformed dataset to TFRecord files in the specified
 location:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def write_tfrecords(transformed_dataset, location, step):
     from tfx_bsl.coders import example_coder
 
@@ -640,12 +511,12 @@ After you transform the training data and produce the `transform_fn` graph, you
 can use it to transform the evaluation data. First, you read and clean the
 evaluation data from BigQuery using the `read_from_bq` function
 described earlier in
-[Read raw training data from BigQuery](#read-raw-training-data-from-bigquery){: track-type="solution" track-name="internalLink" track-metadata-position="body" },
+[Read raw training data from BigQuery](#read-raw-training-data-from-bigquery),
 and passing a value of `eval` for the `step` parameter. Then, you use the
 following code to transform the raw evaluation dataset (`raw_dataset`) to the
 expected transformed format (`transformed_dataset`):
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def transform(raw_dataset, transform_fn, step):
 
     transformed_dataset = (
@@ -673,16 +544,14 @@ You then write the data to a sink (Cloud Storage or local disk,
 depending on the runner) in the TFRecord format for evaluating the
 TensorFlow model during the training process. To do this, you use
 the `write_tfrecords` function that's discussed in
-[Write transformed training data](#step_3_write_transformed_training_data){: track-type="solution" track-name="internalLink" track-metadata-position="body" }.
+[Write transformed training data](#write-transformed-training-data).
 The following diagram, figure 3, shows how the `transform_fn` graph that's
 produced in the analyze phase of the training data is used to transform the
 evaluation data.
 
-<figure id="transform-eval-data-using-transform-fn">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-transforming-eval-data-using-transform_fn.svg"
-    alt="Transforming evaluation data using the transform_fn graph.">
-  <figcaption><b>Figure 3.</b> Transforming evaluation data using the <code>transform_fn</code> graph.</figcaption>
-</figure>
+Figure: Transforming evaluation data using the `transform_fn` graph. { #transform-eval-data-using-transform-fn }
+
+![Transforming evaluation data using the transform_fn graph.](images/data-preprocessing-for-ml-with-tf-transform-transforming-eval-data-using-transform_fn.svg)
 
 ### Save the graph
 
@@ -691,7 +560,7 @@ artifacts, which includes the `transform_fn` graph that's produced by the
 analyze phase on the training data. The code for storing the artifacts is shown
 in the following `write_transform_artefacts` function:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def write_transform_artefacts(transform_fn, location):
 
     (
@@ -716,19 +585,16 @@ The following artifacts are also produced, as shown in the next section:
 -   `transformed_metadata`: a directory that contains the `schema.json` file
     that describes the schema of the transformed data.
 
-## Run the pipeline in Dataflow{:#run_the_pipeline_in_dataflow}
+## Run the pipeline in Dataflow
 
 After you define the `tf.Transform` pipeline, you run the pipeline using
 Dataflow. The following diagram, figure 4, shows the
 Dataflow execution graph of the `tf.Transform` pipeline described
 in the example.
 
-<figure id="dataflow-execution-graph">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-dataflow-execution-graph.png"
-    alt="Dataflow execution graph of the tf.Transform pipeline." class="screenshot">
-  <figcaption><b>Figure 4.</b> Dataflow execution graph
-     of the <code>tf.Transform</code> pipeline.</figcaption>
-</figure>
+Figure: Dataflow execution graph of the `tf.Transform` pipeline. { #dataflow-execution-graph }
+
+![Dataflow execution graph of the tf.Transform pipeline.](images/data-preprocessing-for-ml-with-tf-transform-dataflow-execution-graph.png)
 
 After you execute the Dataflow pipeline to preprocess the
 training and evaluation data, you can explore the produced objects in
@@ -740,20 +606,20 @@ bucket.
 The transformed training and evaluation data in TFRecord format are stored at
 the following location:
 
-```none{:.devsite-disable-click-to-copy}
+``` { .yaml .no-copy }
 gs://YOUR_BUCKET_NAME/babyweight_tft/transformed
 ```
 
 The transform artifacts are produced at the following location:
 
-```none{:.devsite-disable-click-to-copy}
+``` { .yaml .no-copy }
 gs://YOUR_BUCKET_NAME/babyweight_tft/transform
 ```
 
 The following list is the output of the pipeline, showing the produced data
 objects and artifacts:
 
-```none{:.devsite-disable-click-to-copy}
+``` { .yaml .no-copy }
 transformed data:
 gs://YOUR_BUCKET_NAME/babyweight_tft/transformed/eval-00000-of-00001.tfrecords
 gs://YOUR_BUCKET_NAME/babyweight_tft/transformed/train-00000-of-00002.tfrecords
@@ -777,10 +643,10 @@ gs://YOUR_BUCKET_NAME/babyweight_tft/transform/transform_fn/assets/is_multiple
 gs://YOUR_BUCKET_NAME/babyweight_tft/transform/transform_fn/assets/mother_race
 ```
 
-## Implement the TensorFlow model{: id="implementing_the_tensorflow_model"}
+## Implement the TensorFlow model
 
 This section and the next section,
-[Train and use the model for predictions](#train_and_use_the_model_for_predictions){: track-type="solution" track-name="internalLink" track-metadata-position="body" },
+[Train and use the model for predictions](#train-and-use-the-model-for-predictions),
 provide an overview and context for Notebook 2. The notebook provides
 an example ML model to predict baby weights. In this example, a
 TensorFlow model is implemented using the Keras API. The model
@@ -802,7 +668,7 @@ preprocessing pipeline explained earlier.
 
     The last part of the output is the following:
 
-    ```none{:.devsite-disable-click-to-copy}
+    ``` { .yaml .no-copy }
     Successfully installed ...
     Note: you may need to restart the kernel to use updated packages.
     ```
@@ -866,7 +732,7 @@ the previous step:
 
 1.  Create a `TFTransformOutput` object from the artifacts that are generated
     and saved in the previous preprocessing step, as described in the
-    [Save the graph](#save_the_graph){: track-type="solution" track-name="internalLink" track-metadata-position="body" }
+    [Save the graph](#save-the-graph)
     section:
 
     ```py
@@ -965,7 +831,7 @@ features, and a `tf.feature_column.categorical_column_with_identity` column for
 categorical features.
 
 You can also create extended feature columns, as described in
-[Option C: TensorFlow](/architecture/data-preprocessing-for-ml-with-tf-transform-pt1#option_c_tensorflow){: track-type="solution" track-name="internalLink" track-metadata-position="body" }
+[Option C: TensorFlow](../../../guide/tft_bestpractices#option-c-tensorflow)
 in the first part of this series. In the example used for this series, a new
 feature is created, `mother_race_X_mother_age_bucketized`, by crossing the
 `mother_race` and `mother_age_bucketized` features using the
@@ -977,12 +843,9 @@ The following diagram, figure 5, shows the transformed data and how the
 transformed metadata is used to define and train the TensorFlow
 model:
 
-<figure id="training-tf-with-transformed-data">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-training-tf-model-with-transformed-data.svg"
-    alt="Training the TensorFlow model with transformed data.">
-  <figcaption><b>Figure 5.</b> Training the TensorFlow model with
-    the transformed data.</figcaption>
-</figure>
+Figure: Training the TensorFlow model with the transformed data. { #training-tf-with-transformed-data }
+
+![Training the TensorFlow model with transformed data.](images/data-preprocessing-for-ml-with-tf-transform-training-tf-model-with-transformed-data.svg)
 
 ### Export the model for serving prediction
 
@@ -993,7 +856,7 @@ interface—that is, the input features schema that is expected during serving.
 This input features schema is defined in the `serving_fn` function, as shown in
 the following code:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 def export_serving_model(model, output_dir):
 
     tf_transform_output = tft.TFTransformOutput(TRANSFORM_ARTEFACTS_DIR)
@@ -1062,26 +925,23 @@ following steps:
 The following diagram, figure 6, illustrates the final step of exporting a model
 for serving:
 
-<figure id="exporting-model-for-serving-with-transform_fn">
-  <img src="images/data-preprocessing-for-ml-with-tf-transform-exporting-model-for-serving-with-transform_fn.svg"
-    alt="Exporting the model for serving with the transform_fn graph attached.">
-  <figcaption><b>Figure 6.</b> Exporting the model for serving with the
-    <code>transform_fn</code> graph attached.</figcaption>
-</figure>
+Figure: Exporting the model for serving with the `transform_fn` graph attached. { #exporting-model-for-serving-with-transform_fn }
+
+![Exporting the model for serving with the transform_fn graph attached.](images/data-preprocessing-for-ml-with-tf-transform-exporting-model-for-serving-with-transform_fn.svg)
 
 ## Train and use the model for predictions
 
 You can train the model locally by executing the cells of the notebook. For
 examples of how to package the code and train your model at scale using
 Vertex AI Training, see the samples and guides in the Google Cloud
-[cloudml-samples](https://github.com/GoogleCloudPlatform/cloudml-samples){: .external }
+[cloudml-samples](https://github.com/GoogleCloudPlatform/cloudml-samples)
 GitHub repository.
 
 When you inspect the exported SavedModel object using the `saved_model_cli`
 tool, you see that the `inputs` elements of the signature definition
 `signature_def` include the raw features, as shown in the following example:
 
-```py{:.devsite-disable-click-to-copy}
+``` { .py .yaml .no-copy }
 signature_def['serving_default']:
   The given SavedModel SignatureDef contains the following input(s):
     inputs['gestation_weeks'] tensor_info:
@@ -1132,31 +992,21 @@ resources used in this tutorial, delete the project that contains the resources.
 
 ### Delete the project
 
-  <aside class="caution">
-    <strong>Caution</strong>: Deleting a project has the following effects:
-    <ul>
-      <li>
-        <strong>Everything in the project is deleted.</strong> If you used an existing project for
-        this tutorial, when you delete it, you also delete any other work you've done in the project.
-      </li>
-      <li>
-        <strong>Custom project IDs are lost.</strong>
-        When you created this project, you might have created a custom project ID that you want to use in
-        the future. To preserve the URLs that use the project ID, such as an <code translate="no" dir="ltr">appspot.com</code>
-        URL, delete selected resources inside the project instead of deleting the whole project.
-      </li>
-    </ul>
-    <p>
-      If you plan to explore multiple tutorials and quickstarts, reusing projects can help you avoid
-      exceeding project quota limits.
-    </p>
-  </aside>
+!!! danger "Caution"
+
+    Deleting a project has the following effects:
+
+    - __Everything in the project is deleted.__ If you used an existing project for
+      this tutorial, when you delete it, you also delete any other work you've done in the project.
+    - __Custom project IDs are lost.__ When you created this project, you might have created a custom project ID that you want to use in the future. To preserve the URLs that use the project ID, such as an `appspot.com`{translate="no" dir="ltr"} URL, delete selected resources inside the project instead of deleting the whole project.
+
+    If you plan to explore multiple tutorials and quickstarts, reusing projects can help you avoid exceeding project quota limits.
 
 1. In the Google Cloud console,
    go to the **Manage resources** page.
 
-   [Go to Manage resources](https://console.cloud.google.com/iam-admin/projects){: class="button button-primary" target="console" track-type="solution" track-name="consoleLink" track-metadata-position="body" }
-   
+   [Go to Manage resources](https://console.cloud.google.com/iam-admin/projects){ .md-button .md-button--primary }
+
 1. In the project list, select the project that you want to delete, and then
    click **Delete**.
 1. In the dialog, type the project ID, and then click **Shut down** to delete
@@ -1167,14 +1017,14 @@ resources used in this tutorial, delete the project that contains the resources.
 -   To learn about the concepts, challenges, and options of data
     preprocessing for machine learning on Google Cloud, see the first
     article in this series,
-    [Data preprocessing for ML: options and recommendations](../guide/tft_bestpractices).
+    [Data preprocessing for ML: options and recommendations](../../../guide/tft_bestpractices).
 -   For more information about how to implement, package, and run a
     tf.Transform pipeline on Dataflow, see the
-    [Predicting income with Census Dataset](https://github.com/GoogleCloudPlatform/cloudml-samples/tree/master/census/tftransformestimator){: .external }
+    [Predicting income with Census Dataset](https://github.com/GoogleCloudPlatform/cloudml-samples/tree/master/census/tftransformestimator)
     sample.
 -   Take the Coursera specialization on ML with
-    [TensorFlow on Google Cloud](https://www.coursera.org/specializations/machine-learning-tensorflow-gcp){: .external }.
+    [TensorFlow on Google Cloud](https://www.coursera.org/specializations/machine-learning-tensorflow-gcp).
 -   Learn about best practices for ML engineering in
-    [Rules of ML](https://developers.google.com/machine-learning/guides/rules-of-ml/){: .external }.
+    [Rules of ML](https://developers.google.com/machine-learning/guides/rules-of-ml/).
 -   For more reference architectures, diagrams, and best practices, explore the
     [Cloud Architecture Center](https://cloud.google.com/architecture).

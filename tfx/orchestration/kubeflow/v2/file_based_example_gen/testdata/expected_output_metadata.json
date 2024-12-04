@@ -13,15 +13,9 @@
       ]
     }
   },
-  "parameters": {
-    "input_config": {
-      "stringValue": "{\n  \"splits\": [\n    {\n      \"name\": \"s1\",\n      \"pattern\": \"split1/*\"\n    },\n    {\n      \"name\": \"s2\",\n      \"pattern\": \"split2/*\"\n    }\n  ]\n}"
-    },
-    "input_fingerprint": {
-      "stringValue": "split:s1,num_files:1,total_bytes:7,xor_checksum:1,sum_checksum:1\nsplit:s2,num_files:1,total_bytes:8,xor_checksum:3,sum_checksum:3"
-    },
-    "span": {
-      "intValue": "0"
-    }
+  "parameterValues": {
+    "input_config": "{\n  \"splits\": [\n    {\n      \"name\": \"s1\",\n      \"pattern\": \"split1/*\"\n    },\n    {\n      \"name\": \"s2\",\n      \"pattern\": \"split2/*\"\n    }\n  ]\n}",
+    "input_fingerprint": "split:s1,num_files:1,total_bytes:7,xor_checksum:1,sum_checksum:1\nsplit:s2,num_files:1,total_bytes:8,xor_checksum:3,sum_checksum:3",
+    "span": 0.0
   }
 }

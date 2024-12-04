@@ -24,7 +24,3 @@ class ComponentTest(tf.test.TestCase):
     import_example_gen = component.ImportExampleGen(input_base='path')
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      import_example_gen.outputs['examples'].type_name)
-
-
-if __name__ == '__main__':
-  tf.test.main()

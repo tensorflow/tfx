@@ -15,7 +15,10 @@
 
 import base64
 import functools
-from typing import Any, Optional, TypeVar
+import importlib
+import os
+import pytest
+from typing import Any, Optional, TypeVar, Union
 
 import tensorflow as tf
 from tfx.dsl.compiler import placeholder_utils
@@ -24,10 +27,21 @@ from tfx.dsl.placeholder import proto_placeholder
 from tfx.orchestration.portable import data_types
 from tfx.proto.orchestration import execution_invocation_pb2
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils import proto_utils
 
+from google.protobuf import descriptor_pb2
+from google.protobuf import empty_pb2
+from google.protobuf import descriptor_pool
 from google.protobuf import message
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
+
+
+
+@pytest.fixture(autouse=True,scope="module")
+def cleanup():
+    yield
+    importlib.reload(pipeline_pb2)
 
 _ExecutionInvocation = functools.partial(
     ph.make_proto, execution_invocation_pb2.ExecutionInvocation()
@@ -60,6 +74,24 @@ def resolve(
   )
 
 
+def validate_and_get_descriptors(
+    p: ph.Placeholder,
+) -> descriptor_pb2.FileDescriptorSet:
+  assert isinstance(p, proto_placeholder.MakeProtoPlaceholder)
+  op = p.encode().operator.make_proto_op
+  assert op.HasField('file_descriptors')
+
+  # Make sure the generated descriptors can be loaded into a fresh pool.
+  try:
+    proto_utils.get_pool_with_descriptors(
+        op.file_descriptors, descriptor_pool.DescriptorPool()
+    )
+  except Exception as e:
+    raise ValueError(f'Got invalid descriptors: {op.file_descriptors}') from e
+
+  return op.file_descriptors
+
+
 def parse_text_proto(
     textproto: str,
     proto_class: type[_P] = execution_invocation_pb2.ExecutionInvocation,
@@ -73,9 +105,9 @@ def parse_text_proto(
 # at pipeline runtime. There are additional DSL-only test cases in
 # ./placeholder_test.py and additional resolution-only test cases in
 # dsl/compiler/placeholder_utils_test.py
-class ProtoPlaceholderTest(tf.test.TestCase):
+class MakeProtoPlaceholderTest(tf.test.TestCase):
 
-  def testMakeProtoPlaceholder_Empty(self):
+  def test_Empty(self):
     self.assertEqual(
         '',
         resolve(
@@ -83,7 +115,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         ),
     )
 
-  def testMakeProtoPlaceholder_BaseOnly(self):
+  def test_BaseOnly(self):
     actual = resolve(
         ph.make_proto(
             execution_invocation_pb2.ExecutionInvocation(tmp_dir='/foo')
@@ -96,7 +128,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_FieldOnly(self):
+  def test_FieldOnly(self):
     actual = resolve(_ExecutionInvocation(tmp_dir='/foo'))
     self.assertProtoEquals(
         """
@@ -105,7 +137,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_ScalarFieldTypes(self):
+  def test_ScalarFieldTypes(self):
     def _resolve_and_parse(p: ph.Placeholder) -> metadata_store_pb2.Value:
       return parse_text_proto(resolve(p), metadata_store_pb2.Value)
 
@@ -127,7 +159,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         _resolve_and_parse(_MetadataStoreValue(bool_value=True)),
     )
 
-  def testMakeProtoPlaceholder_EnumField(self):
+  def test_EnumField(self):
     actual = resolve(
         _UpdateOptions(reload_policy=pipeline_pb2.UpdateOptions.PARTIAL)
     )
@@ -138,7 +170,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.UpdateOptions),
     )
 
-  def testMakeProtoPlaceholder_FieldPlaceholder(self):
+  def test_FieldPlaceholder(self):
     actual = resolve(
         _ExecutionInvocation(tmp_dir=ph.execution_invocation().pipeline_run_id)
     )
@@ -149,7 +181,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_EnumStringPlaceholder(self):
+  def test_EnumStringPlaceholder(self):
     actual = resolve(
         _UpdateOptions(reload_policy=ph.exec_property('reload_policy')),
         exec_properties={'reload_policy': 'ALL'},
@@ -161,7 +193,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.UpdateOptions),
     )
 
-  def testMakeProtoPlaceholder_EnumIntPlaceholder(self):
+  def test_EnumIntPlaceholder(self):
     actual = resolve(
         _UpdateOptions(reload_policy=ph.exec_property('reload_policy')),
         exec_properties={'reload_policy': 1},
@@ -173,7 +205,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.UpdateOptions),
     )
 
-  def testMakeProtoPlaceholder_EmptyFieldPlaceholder(self):
+  def test_EmptyFieldPlaceholder(self):
     actual = resolve(
         _ExecutionInvocation(tmp_dir=ph.execution_invocation().frontend_url)
     )
@@ -184,20 +216,21 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_NoneIntoOptionalField(self):
+  def test_NoneIntoOptionalField(self):
     actual = resolve(_ExecutionInvocation(tmp_dir=None))
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def testMakeProtoPlaceholder_NonePlaceholderIntoOptionalField(self):
+  def test_NonePlaceholderIntoOptionalField(self):
     actual = resolve(
         _ExecutionInvocation(tmp_dir=ph.execution_invocation().frontend_url)
     )
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def testMakeProtoPlaceholder_NoneExecPropIntoOptionalField(self):
+  def test_NoneExecPropIntoOptionalField(self):
     # When an exec prop has type Union[T, None] and the user passes None, it is
     # actually completely absent from the exec_properties dict in
-    # ExecutionInvocation.
+    # ExecutionInvocation. See also b/172001324 and the corresponding todo in
+    # placeholder_utils.py.
     actual = resolve(
         _UpdateOptions(reload_policy=ph.exec_property('reload_policy')),
         exec_properties={},  # Intentionally empty.
@@ -207,7 +240,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.UpdateOptions),
     )
 
-  def testMakeProtoPlaceholder_BareSubmessage(self):
+  def test_BareSubmessage(self):
     actual = resolve(
         _ExecutionInvocation(
             pipeline_info=pipeline_pb2.PipelineInfo(id='foo-id')
@@ -222,7 +255,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_SubmessageDict(self):
+  def test_SubmessageDict(self):
     actual = resolve(_ExecutionInvocation(pipeline_info=dict(id='foo-id')))
     self.assertProtoEquals(
         """
@@ -233,7 +266,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_SubmessageMakeProtoPlaceholder(self):
+  def test_SubmessageMakeProtoPlaceholder(self):
     actual = resolve(
         _ExecutionInvocation(
             pipeline_info=ph.make_proto(
@@ -251,22 +284,18 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_SubmessageProtoGetterPlaceholder(self):
-    actual = resolve(
-        _ExecutionInvocation(
-            pipeline_info=ph.execution_invocation().pipeline_info
-        )
-    )
-    self.assertProtoEquals(
-        """
-        pipeline_info {
-          id: "test-pipeline-id"
-        }
-        """,
-        parse_text_proto(actual),
-    )
+  def test_SubmessageProtoGetterPlaceholder(self):
+    with self.assertRaises(ValueError):
+      resolve(
+          _ExecutionInvocation(
+              # Assigning an entire sub-proto (PipelineInfo in this case) from a
+              # non-make_proto placeholder is currently not supported. Though
+              # it could be, see b/327639307#comment26.
+              pipeline_info=ph.execution_invocation().pipeline_info
+          )
+      )
 
-  def testMakeProtoPlaceholder_SubmessageOverwrite(self):
+  def test_SubmessageOverwrite(self):
     actual = resolve(
         ph.make_proto(
             execution_invocation_pb2.ExecutionInvocation(
@@ -289,24 +318,11 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_NoneIntoSubmessage(self):
+  def test_NoneIntoSubmessage(self):
     actual = resolve(_ExecutionInvocation(pipeline_info=None))
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def testMakeProtoPlaceholder_EmptyPlaceholderIntoSubmessage(self):
-    actual = resolve(
-        _ExecutionInvocation(
-            pipeline_node=ph.execution_invocation().pipeline_node
-        )
-    )
-    self.assertProtoEquals(
-        """
-        pipeline_node {}
-        """,
-        parse_text_proto(actual),
-    )
-
-  def testMakeProtoPlaceholder_RepeatedField(self):
+  def test_RepeatedField(self):
     actual = resolve(
         ph.make_proto(
             execution_invocation_pb2.ExecutionInvocation(
@@ -335,7 +351,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_RepeatedFieldSingleItem(self):
+  def test_RepeatedFieldSingleItem(self):
     actual = resolve(
         _ExecutionInvocation(
             pipeline_node=ph.make_proto(
@@ -355,7 +371,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_RepeatedFieldFalsyItem(self):
+  def test_RepeatedFieldFalsyItem(self):
     actual = resolve(
         ph.make_proto(
             execution_invocation_pb2.ExecutionInvocation(
@@ -379,13 +395,40 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_NoneIntoRepeatedField(self):
+  def test_RepeatedFieldNoneItem(self):
+    actual = resolve(
+        ph.make_proto(
+            execution_invocation_pb2.ExecutionInvocation(
+                pipeline_node=pipeline_pb2.PipelineNode()
+            ),
+            pipeline_node=ph.make_proto(
+                pipeline_pb2.PipelineNode(),
+                upstream_nodes=[
+                    'foo',
+                    ph.exec_property('reload_policy'),  # Will be None.
+                    'bar',
+                ],
+            ),
+        ),
+        exec_properties={},  # Intentionally empty.
+    )
+    self.assertProtoEquals(
+        """
+        pipeline_node {
+          upstream_nodes: "foo"
+          upstream_nodes: "bar"
+        }
+        """,
+        parse_text_proto(actual),
+    )
+
+  def test_NoneIntoRepeatedField(self):
     actual = resolve(
         ph.make_proto(pipeline_pb2.PipelineNode(), upstream_nodes=None)
     )
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def testMakeProtoPlaceholder_EmptyPlaceholderListIntoRepeatedField(self):
+  def test_EmptyPlaceholderListIntoRepeatedField(self):
     actual = resolve(
         ph.make_proto(
             pipeline_pb2.PipelineNode(),
@@ -394,7 +437,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
     )
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def testMakeProtoPlaceholder_EmptyListPlaceholderIntoRepeatedField(self):
+  def test_EmptyListPlaceholderIntoRepeatedField(self):
     actual = resolve(
         ph.make_proto(
             pipeline_pb2.PipelineNode(), upstream_nodes=ph.make_list([])
@@ -402,7 +445,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
     )
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def testMakeProtoPlaceholder_RepeatedSubmessage(self):
+  def test_RepeatedSubmessage(self):
     actual = resolve(
         ph.make_proto(
             pipeline_pb2.StructuralRuntimeParameter(),
@@ -429,7 +472,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, pipeline_pb2.StructuralRuntimeParameter),
     )
 
-  def testMakeProtoPlaceholder_AnySubmessageBareMessage(self):
+  def test_AnySubmessageBareMessage(self):
     actual = resolve(
         _MetadataStoreValue(
             proto_value=pipeline_pb2.PipelineNode(
@@ -449,7 +492,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, metadata_store_pb2.Value),
     )
 
-  def testMakeProtoPlaceholder_AnySubmessagePlaceholder(self):
+  def test_AnySubmessagePlaceholder(self):
     actual = resolve(
         _MetadataStoreValue(
             # We can directly assign a message of any type and it will pack it.
@@ -472,20 +515,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual, metadata_store_pb2.Value),
     )
 
-  def testMakeProtoPlaceholder_NonePlaceholderIntoAnySubmessage(self):
-    actual = resolve(
-        _MetadataStoreValue(proto_value=ph.execution_invocation().pipeline_node)
-    )
-    self.assertProtoEquals(
-        """
-        proto_value {
-          [type.googleapis.com/tfx.orchestration.PipelineNode] {}
-        }
-        """,
-        parse_text_proto(actual, metadata_store_pb2.Value),
-    )
-
-  def testMakeProtoPlaceholder_MapFieldScalarValue(self):
+  def test_MapFieldScalarValue(self):
     actual = resolve(
         _ExecutionInvocation(
             extra_flags={
@@ -508,7 +538,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_MapFieldScalarPlaceholderValue(self):
+  def test_MapFieldScalarPlaceholderValue(self):
     actual = resolve(
         _ExecutionInvocation(
             extra_flags={
@@ -531,7 +561,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_MapFieldScalarNoneValue(self):
+  def test_MapFieldScalarNoneValue(self):
     actual = resolve(
         _ExecutionInvocation(
             extra_flags={
@@ -552,7 +582,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_MapFieldSubmessageValue(self):
+  def test_MapFieldSubmessageValue(self):
     actual = resolve(
         _ExecutionInvocation(
             execution_properties={
@@ -581,29 +611,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_MapFieldSubmessageNoneValue(self):
-    actual = resolve(
-        _ExecutionInvocation(
-            execution_properties={
-                'fookey': ph.exec_property('reload_policy'),  # Will be None.
-                'barkey': metadata_store_pb2.Value(int_value=42),
-            }
-        ),
-        exec_properties={},  # Intentionally empty.
-    )
-    self.assertProtoEquals(
-        """
-        execution_properties {
-          key: "barkey"
-          value {
-            int_value: 42
-          }
-        }
-        """,
-        parse_text_proto(actual),
-    )
-
-  def testMakeProtoPlaceholder_MapFieldPlaceholderKey(self):
+  def test_MapFieldPlaceholderKey(self):
     actual = resolve(
         _ExecutionInvocation(
             extra_flags=[
@@ -621,7 +629,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
         parse_text_proto(actual),
     )
 
-  def testMakeProtoPlaceholder_RejectsMapFieldScalarNoneKey(self):
+  def test_RejectsMapFieldScalarNoneKey(self):
     with self.assertRaises(ValueError):
       resolve(
           _ExecutionInvocation(
@@ -635,13 +643,13 @@ class ProtoPlaceholderTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       resolve(_ExecutionInvocation(extra_flags={None: 'foo'}))
 
-  def testMakeProtoPlaceholder_MapFieldScalarValueEmpty(self):
+  def test_MapFieldScalarValueEmpty(self):
     actual = resolve(_ExecutionInvocation(extra_flags={}))
     self.assertProtoEquals('', parse_text_proto(actual))
     actual = resolve(_ExecutionInvocation(extra_flags=[]))
     self.assertProtoEquals('', parse_text_proto(actual))
 
-  def testMakeProtoPlaceholder_PlusItemGetter(self):
+  def test_PlusItemGetter(self):
     actual = resolve(
         _ExecutionInvocation(
             pipeline_node=ph.make_proto(
@@ -657,7 +665,7 @@ class ProtoPlaceholderTest(tf.test.TestCase):
     )
     self.assertProtoEquals('test-run-id-foo', actual)
 
-  def test_MakeProtoPlaceholder_BinarySerializationBase64(self):
+  def test_BinarySerializationBase64(self):
     actual = resolve(
         ph.make_proto(
             execution_invocation_pb2.ExecutionInvocation(
@@ -688,6 +696,721 @@ class ProtoPlaceholderTest(tf.test.TestCase):
 
     self.assertEqual(expected, actual)
 
+  def _normalize_descriptors(
+      self, descriptor_set: descriptor_pb2.FileDescriptorSet
+  ):
+    """Evens out some differences between test environments."""
+    for file in descriptor_set.file:
+      # Depending on the environment where the test is run, the proto files may
+      # be stored in different places. So we just strip away the entire
+      # directory to make them compare successfully.
+      file.name = os.path.basename(file.name)
+      file.dependency[:] = [os.path.basename(dep) for dep in file.dependency]
 
-if __name__ == '__main__':
-  tf.test.main()
+      # The options may differ between environments and we don't need to assert
+      # them.
+      file.ClearField('options')
+      for message_type in file.message_type:
+        message_type.ClearField('options')
+        for field in message_type.field:
+          field.ClearField('options')
+
+  def assertDescriptorsEqual(
+      self,
+      expected: Union[descriptor_pb2.FileDescriptorSet, str],
+      actual: descriptor_pb2.FileDescriptorSet,
+  ):
+    """Compares descriptors with some tolerance for filenames and options."""
+    if isinstance(expected, str):
+      expected = text_format.Parse(expected, descriptor_pb2.FileDescriptorSet())
+    self._normalize_descriptors(expected)
+    self._normalize_descriptors(actual)
+    self.assertProtoEquals(expected, actual)
+
+  def test_ShrinksDescriptors_SimpleBaseMessage(self):
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "third_party/py/tfx/proto/orchestration/execution_invocation.proto"
+          package: "tfx.orchestration"
+          message_type {
+            name: "ExecutionInvocation"
+            field {
+              name: "tmp_dir"
+              number: 10
+              label: LABEL_OPTIONAL
+              type: TYPE_STRING
+            }
+            reserved_range {
+              start: 1
+              end: 2
+            }
+            reserved_range {
+              start: 2
+              end: 3
+            }
+          }
+          syntax: "proto3"
+        }
+        """,
+        validate_and_get_descriptors(
+            ph.make_proto(
+                execution_invocation_pb2.ExecutionInvocation(tmp_dir='/foo')
+            )
+        ),
+    )
+
+  def test_ShrinksDescriptors_NestedBaseMessage(self):
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "third_party/py/tfx/proto/orchestration/pipeline.proto"
+          package: "tfx.orchestration"
+          message_type {
+            name: "PipelineNode"
+            field {
+              name: "upstream_nodes"
+              number: 7
+              label: LABEL_REPEATED
+              type: TYPE_STRING
+            }
+          }
+          syntax: "proto3"
+        }
+        file {
+          name: "third_party/py/tfx/proto/orchestration/execution_invocation.proto"
+          package: "tfx.orchestration"
+          dependency: "third_party/py/tfx/proto/orchestration/pipeline.proto"
+          message_type {
+            name: "ExecutionInvocation"
+            field {
+              name: "pipeline_node"
+              number: 9
+              label: LABEL_OPTIONAL
+              type: TYPE_MESSAGE
+              type_name: ".tfx.orchestration.PipelineNode"
+            }
+            reserved_range {
+              start: 1
+              end: 2
+            }
+            reserved_range {
+              start: 2
+              end: 3
+            }
+          }
+          syntax: "proto3"
+        }
+        """,
+        validate_and_get_descriptors(
+            ph.make_proto(
+                execution_invocation_pb2.ExecutionInvocation(
+                    pipeline_node=pipeline_pb2.PipelineNode(
+                        upstream_nodes=['a', 'b'],
+                    )
+                )
+            )
+        ),
+    )
+
+  def test_ShrinksDescriptors_RepeatedFieldInBaseMessage(self):
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "third_party/py/tfx/proto/orchestration/pipeline.proto"
+          package: "tfx.orchestration"
+          message_type {
+            name: "StructuralRuntimeParameter"
+            field {
+              name: "parts"
+              number: 1
+              label: LABEL_REPEATED
+              type: TYPE_MESSAGE
+              type_name: ".tfx.orchestration.StructuralRuntimeParameter.StringOrRuntimeParameter"
+            }
+            nested_type {
+              name: "StringOrRuntimeParameter"
+              field {
+                name: "constant_value"
+                number: 1
+                label: LABEL_OPTIONAL
+                type: TYPE_STRING
+                oneof_index: 0
+              }
+              oneof_decl {
+                name: "value"
+              }
+            }
+          }
+          syntax: "proto3"
+        }
+        """,
+        validate_and_get_descriptors(
+            ph.make_proto(
+                pipeline_pb2.StructuralRuntimeParameter(
+                    parts=[
+                        pipeline_pb2.StructuralRuntimeParameter.StringOrRuntimeParameter(
+                            constant_value='foo',
+                        )
+                    ]
+                )
+            )
+        ),
+    )
+
+  def test_ShrinksDescriptors_MapFieldInBaseMessage(self):
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "third_party/ml_metadata/proto/metadata_store.proto"
+          package: "ml_metadata"
+          message_type {
+            name: "Value"
+            field {
+              name: "string_value"
+              number: 3
+              label: LABEL_OPTIONAL
+              type: TYPE_STRING
+              oneof_index: 0
+            }
+            oneof_decl {
+              name: "value"
+            }
+          }
+        }
+        file {
+          name: "third_party/py/tfx/proto/orchestration/execution_invocation.proto"
+          package: "tfx.orchestration"
+          dependency: "third_party/ml_metadata/proto/metadata_store.proto"
+          message_type {
+            name: "ExecutionInvocation"
+            field {
+              name: "execution_properties"
+              number: 3
+              label: LABEL_REPEATED
+              type: TYPE_MESSAGE
+              type_name: ".tfx.orchestration.ExecutionInvocation.ExecutionPropertiesEntry"
+            }
+            nested_type {
+              name: "ExecutionPropertiesEntry"
+              field {
+                name: "key"
+                number: 1
+                label: LABEL_OPTIONAL
+                type: TYPE_STRING
+              }
+              field {
+                name: "value"
+                number: 2
+                label: LABEL_OPTIONAL
+                type: TYPE_MESSAGE
+                type_name: ".ml_metadata.Value"
+              }
+              options {
+                map_entry: true
+              }
+            }
+            reserved_range {
+              start: 1
+              end: 2
+            }
+            reserved_range {
+              start: 2
+              end: 3
+            }
+          }
+          syntax: "proto3"
+        }
+        """,
+        validate_and_get_descriptors(
+            ph.make_proto(
+                execution_invocation_pb2.ExecutionInvocation(
+                    execution_properties={
+                        'foo': metadata_store_pb2.Value(string_value='bar'),
+                    }
+                )
+            )
+        ),
+    )
+
+  def test_ShrinksDescriptors_AnyFieldUnderBaseMessage(self):
+    pb = metadata_store_pb2.Value()
+    pb.proto_value.Pack(pipeline_pb2.PipelineNode(upstream_nodes=['a', 'b']))
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "google/protobuf/any.proto"
+          package: "google.protobuf"
+          message_type {
+            name: "Any"
+            field {
+              name: "type_url"
+              number: 1
+              label: LABEL_OPTIONAL
+              type: TYPE_STRING
+            }
+            field {
+              name: "value"
+              number: 2
+              label: LABEL_OPTIONAL
+              type: TYPE_BYTES
+            }
+          }
+          syntax: "proto3"
+        }
+        file {
+          name: "third_party/ml_metadata/proto/metadata_store.proto"
+          package: "ml_metadata"
+          dependency: "google/protobuf/any.proto"
+          message_type {
+            name: "Value"
+            field {
+              name: "proto_value"
+              number: 5
+              label: LABEL_OPTIONAL
+              type: TYPE_MESSAGE
+              type_name: ".google.protobuf.Any"
+              oneof_index: 0
+            }
+            oneof_decl {
+              name: "value"
+            }
+          }
+        }
+        """,
+        validate_and_get_descriptors(ph.make_proto(pb)),
+    )
+
+  def test_ShrinksDescriptors_SimplePlaceholder(self):
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "third_party/py/tfx/proto/orchestration/execution_invocation.proto"
+          package: "tfx.orchestration"
+          message_type {
+            name: "ExecutionInvocation"
+            field {
+              name: "tmp_dir"
+              number: 10
+              label: LABEL_OPTIONAL
+              type: TYPE_STRING
+            }
+            reserved_range {
+              start: 1
+              end: 2
+            }
+            reserved_range {
+              start: 2
+              end: 3
+            }
+          }
+          syntax: "proto3"
+        }
+        """,
+        validate_and_get_descriptors(_ExecutionInvocation(tmp_dir='/foo')),
+    )
+
+  def test_ShrinksDescriptors_EnumField(self):
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "third_party/py/tfx/proto/orchestration/pipeline.proto"
+          package: "tfx.orchestration"
+          message_type {
+            name: "UpdateOptions"
+            field {
+              name: "reload_policy"
+              number: 1
+              label: LABEL_OPTIONAL
+              type: TYPE_ENUM
+              type_name: ".tfx.orchestration.UpdateOptions.ReloadPolicy"
+            }
+            enum_type {
+              name: "ReloadPolicy"
+              value {
+                name: "ALL"
+                number: 0
+              }
+              value {
+                name: "PARTIAL"
+                number: 1
+              }
+            }
+          }
+          syntax: "proto3"
+        }
+        """,
+        validate_and_get_descriptors(
+            _UpdateOptions(reload_policy=pipeline_pb2.UpdateOptions.PARTIAL)
+        ),
+    )
+
+  def assertDescriptorContents(
+      self,
+      fds: descriptor_pb2.FileDescriptorSet,
+      expected_types: set[str],
+      expected_fields: set[str],
+  ) -> None:
+    # Instead of asserting the entire descriptor proto, which would be quite
+    # verbose, we only check that the right messages and fields were included.
+    included_types: set[str] = set()
+    included_fields: set[str] = set()
+
+    def _collect_messages(
+        name_prefix: str, message_descriptor: descriptor_pb2.DescriptorProto
+    ) -> None:
+      msg_name = f'{name_prefix}.{message_descriptor.name}'
+      included_types.add(msg_name)
+      for nested_type in message_descriptor.nested_type:
+        _collect_messages(msg_name, nested_type)
+      included_types.update(
+          {f'{msg_name}.{e.name}' for e in message_descriptor.enum_type}
+      )
+      for field in message_descriptor.field:
+        included_fields.add(f'{msg_name}.{field.name}')
+
+    for fd in fds.file:
+      for message_type in fd.message_type:
+        _collect_messages(fd.package, message_type)
+      included_types.update({f'{fd.package}.{e.name}' for e in fd.enum_type})
+
+    self.assertSameElements(expected_types, included_types)
+    self.assertSameElements(expected_fields, included_fields)
+
+  def test_ShrinksDescriptors_ComplexPlaceholder(self):
+    fds = validate_and_get_descriptors(
+        ph.make_proto(
+            execution_invocation_pb2.ExecutionInvocation(
+                pipeline_info=pipeline_pb2.PipelineInfo(
+                    id='this will be overwritten'
+                )
+            ),
+            pipeline_info=ph.make_proto(
+                pipeline_pb2.PipelineInfo(),
+                id=ph.execution_invocation().pipeline_run_id,
+            ),
+            pipeline_node=ph.make_proto(
+                pipeline_pb2.PipelineNode(),
+                upstream_nodes=[
+                    ph.execution_invocation().frontend_url,
+                ],
+            ),
+            execution_properties={
+                'fookey': _MetadataStoreValue(
+                    proto_value=_UpdateOptions(
+                        reload_policy=pipeline_pb2.UpdateOptions.PARTIAL
+                    ),
+                ),
+                'barkey': metadata_store_pb2.Value(int_value=42),
+            },
+        )
+    )
+
+    self.assertDescriptorContents(
+        fds,
+        {
+            # For the Value.proto_value field, which is of type Any:
+            'google.protobuf.Any',
+            'ml_metadata.Value',
+            'tfx.orchestration.ExecutionInvocation',
+            # For the ExecutionInvocation.execution_properties map<> field:
+            'tfx.orchestration.ExecutionInvocation.ExecutionPropertiesEntry',
+            'tfx.orchestration.PipelineInfo',
+            'tfx.orchestration.PipelineNode',
+            'tfx.orchestration.UpdateOptions',
+            'tfx.orchestration.UpdateOptions.ReloadPolicy',
+        },
+        {
+            'google.protobuf.Any.type_url',
+            'google.protobuf.Any.value',
+            'ml_metadata.Value.int_value',
+            'ml_metadata.Value.proto_value',
+            'tfx.orchestration.ExecutionInvocation.ExecutionPropertiesEntry.key',
+            'tfx.orchestration.ExecutionInvocation.ExecutionPropertiesEntry.value',
+            'tfx.orchestration.ExecutionInvocation.execution_properties',
+            'tfx.orchestration.ExecutionInvocation.pipeline_info',
+            'tfx.orchestration.ExecutionInvocation.pipeline_node',
+            'tfx.orchestration.PipelineInfo.id',
+            'tfx.orchestration.PipelineNode.upstream_nodes',
+            'tfx.orchestration.UpdateOptions.reload_policy',
+        },
+    )
+
+  def test_ShrinksDescriptors_ListPlaceholderIntoRepeatedField(self):
+    fds = validate_and_get_descriptors(
+        ph.make_proto(
+            pipeline_pb2.StructuralRuntimeParameter(),
+            parts=ph.make_list([
+                ph.make_proto(
+                    pipeline_pb2.StructuralRuntimeParameter.StringOrRuntimeParameter(),
+                    constant_value=ph.execution_invocation().pipeline_run_id,
+                ),
+            ]),
+        )
+    )
+
+    self.assertDescriptorContents(
+        fds,
+        {
+            'tfx.orchestration.StructuralRuntimeParameter',
+            'tfx.orchestration.StructuralRuntimeParameter.StringOrRuntimeParameter',
+        },
+        {
+            'tfx.orchestration.StructuralRuntimeParameter.parts',
+            'tfx.orchestration.StructuralRuntimeParameter.StringOrRuntimeParameter.constant_value',
+        },
+    )
+
+  def test_ShrinksDescriptors_EmptySubmessage(self):
+    # It's important that the PipelineNode message is present, even with no
+    # fields inside.
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "third_party/py/tfx/proto/orchestration/pipeline.proto"
+          package: "tfx.orchestration"
+          message_type {
+            name: "PipelineNode"
+          }
+          syntax: "proto3"
+        }
+        file {
+          name: "third_party/py/tfx/proto/orchestration/execution_invocation.proto"
+          package: "tfx.orchestration"
+          dependency: "third_party/py/tfx/proto/orchestration/pipeline.proto"
+          message_type {
+            name: "ExecutionInvocation"
+            field {
+              name: "pipeline_node"
+              number: 9
+              label: LABEL_OPTIONAL
+              type: TYPE_MESSAGE
+              type_name: ".tfx.orchestration.PipelineNode"
+            }
+            reserved_range {
+              start: 1
+              end: 2
+            }
+            reserved_range {
+              start: 2
+              end: 3
+            }
+          }
+          syntax: "proto3"
+        }
+        """,
+        validate_and_get_descriptors(
+            _ExecutionInvocation(
+                pipeline_node=ph.make_proto(pipeline_pb2.PipelineNode())
+            )
+        ),
+    )
+
+  def test_ShrinksDescriptors_EmptyAnyMessage(self):
+    actual = validate_and_get_descriptors(
+        _MetadataStoreValue(proto_value=empty_pb2.Empty())
+    )
+
+    # For the empty.proto descriptor, we clear the package and proto syntax
+    # version, because it's different in different environments and we don't
+    # want to assert it below.
+    self.assertNotEmpty(actual.file)
+    self.assertEndsWith(actual.file[0].name, 'empty.proto')
+    actual.file[0].ClearField('package')
+    actual.file[0].ClearField('syntax')
+
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "google/protobuf/empty.proto"
+          message_type {
+            name: "Empty"
+          }
+        }
+        file {
+          name: "google/protobuf/any.proto"
+          package: "google.protobuf"
+          message_type {
+            name: "Any"
+            field {
+              name: "type_url"
+              number: 1
+              label: LABEL_OPTIONAL
+              type: TYPE_STRING
+            }
+            field {
+              name: "value"
+              number: 2
+              label: LABEL_OPTIONAL
+              type: TYPE_BYTES
+            }
+          }
+          syntax: "proto3"
+        }
+        file {
+          name: "third_party/ml_metadata/proto/metadata_store.proto"
+          package: "ml_metadata"
+          dependency: "google/protobuf/any.proto"
+          message_type {
+            name: "Value"
+            field {
+              name: "proto_value"
+              number: 5
+              label: LABEL_OPTIONAL
+              type: TYPE_MESSAGE
+              type_name: ".google.protobuf.Any"
+              oneof_index: 0
+            }
+            oneof_decl {
+              name: "value"
+            }
+          }
+        }
+        """,
+        actual,
+    )
+
+  def test_ShrinksDescriptors_NestedMessage(self):
+    # The declaration of PipelineOrNode is nested inside the Pipeline proto.
+    # In that case, we must not drop the outer Pipeline proto, as that would
+    # also drop the nested proto.
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "third_party/py/tfx/proto/orchestration/pipeline.proto"
+          package: "tfx.orchestration"
+          message_type {
+            name: "PipelineNode"
+          }
+          message_type {
+            name: "Pipeline"
+            nested_type {
+              name: "PipelineOrNode"
+              field {
+                name: "pipeline_node"
+                number: 1
+                label: LABEL_OPTIONAL
+                type: TYPE_MESSAGE
+                type_name: ".tfx.orchestration.PipelineNode"
+                oneof_index: 0
+              }
+              oneof_decl {
+                name: "node"
+              }
+            }
+          }
+          syntax: "proto3"
+        }
+        """,
+        validate_and_get_descriptors(
+            ph.make_proto(
+                pipeline_pb2.Pipeline.PipelineOrNode(),
+                pipeline_node=ph.make_proto(pipeline_pb2.PipelineNode()),
+            )
+        ),
+    )
+
+  def test_ShrinksDescriptors_SameFileTwice(self):
+    # This contains two separate MakeProtoOperators for UpdateOptions, with a
+    # different field. The resulting descriptor should contain both fields.
+    # Crucially, there is no file-level dependency from the top-level
+    # metadata_store.proto to the inner pipeline.proto, which declares the
+    # UpdateOptions. So the _only_ place where the metadata_store.proto and thus
+    # UpdateOptions descriptors are coming from are the inner MakeProtoOperator.
+    fds = validate_and_get_descriptors(
+        ph.make_proto(
+            metadata_store_pb2.Artifact(),
+            properties={
+                'fookey': _MetadataStoreValue(
+                    proto_value=_UpdateOptions(
+                        reload_policy=pipeline_pb2.UpdateOptions.PARTIAL
+                    ),
+                ),
+                'barkey': _MetadataStoreValue(
+                    proto_value=_UpdateOptions(
+                        reload_nodes=['a', 'b'],
+                    ),
+                ),
+            },
+        )
+    )
+
+    self.assertDescriptorContents(
+        fds,
+        {
+            # For the Value.proto_value field, which is of type Any:
+            'google.protobuf.Any',
+            'ml_metadata.Artifact',
+            # For the Artifact.properties map<> field:
+            'ml_metadata.Artifact.PropertiesEntry',
+            'ml_metadata.Value',
+            'tfx.orchestration.UpdateOptions',
+            'tfx.orchestration.UpdateOptions.ReloadPolicy',
+        },
+        {
+            'google.protobuf.Any.type_url',
+            'google.protobuf.Any.value',
+            'ml_metadata.Artifact.properties',
+            'ml_metadata.Artifact.PropertiesEntry.key',
+            'ml_metadata.Artifact.PropertiesEntry.value',
+            'ml_metadata.Value.proto_value',
+            'tfx.orchestration.UpdateOptions.reload_policy',
+            'tfx.orchestration.UpdateOptions.reload_nodes',
+        },
+    )
+
+  def test_ShrinksDescriptors_Proto3OptionalFieldPopulated(self):
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "third_party/py/tfx/proto/orchestration/pipeline.proto"
+          package: "tfx.orchestration"
+          message_type {
+            name: "NodeExecutionOptions"
+            field {
+              name: "max_execution_retries"
+              number: 6
+              label: LABEL_OPTIONAL
+              type: TYPE_UINT32
+              oneof_index: 0
+              proto3_optional: true
+            }
+            oneof_decl {
+              name: "_max_execution_retries"
+            }
+          }
+          syntax: "proto3"
+        }
+        """,
+        validate_and_get_descriptors(
+            ph.make_proto(
+                pipeline_pb2.NodeExecutionOptions(),
+                max_execution_retries=42,
+            )
+        ),
+    )
+
+  def test_ShrinksDescriptors_Proto3OptionalFieldUnpopulated(self):
+    self.assertDescriptorsEqual(
+        """
+        file {
+          name: "third_party/py/tfx/proto/orchestration/pipeline.proto"
+          package: "tfx.orchestration"
+          message_type {
+            name: "NodeExecutionOptions"
+            field {
+              name: "node_success_optional"
+              number: 5
+              label: LABEL_OPTIONAL
+              type: TYPE_BOOL
+            }
+          }
+          syntax: "proto3"
+        }
+        """,
+        validate_and_get_descriptors(
+            ph.make_proto(
+                pipeline_pb2.NodeExecutionOptions(node_success_optional=True),
+            )
+        ),
+    )

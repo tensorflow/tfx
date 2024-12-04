@@ -189,7 +189,3 @@ class ResolverDriverTest(tf.test.TestCase):
                   latest_artifact_strategy.LatestArtifactStrategy,
               resolver.RESOLVER_CONFIG: {}
           })
-
-
-if __name__ == '__main__':
-  tf.test.main()

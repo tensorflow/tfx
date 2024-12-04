@@ -32,7 +32,7 @@ using the standard TFX components with other frameworks include:
     instead of raw features, and users can run transform as a preprocessing
     step before calling the model prediction when serving.
 *   **Trainer** supports
-    [GenericTraining](https://www.tensorflow.org/tfx/guide/trainer#generic_trainer)
+    [GenericTraining](trainer.md#generic-trainer)
     so users can train their models using any ML framework.
 *   **Evaluator** by default only supports `saved_model`, but users can provide
     a UDF that generates predictions for model evaluation.
@@ -49,7 +49,7 @@ high-performance machine learning research.
 is a neural network library and ecosystem for JAX, designed for flexibility.
 
 With [jax2tf](https://github.com/google/jax/tree/main/jax/experimental/jax2tf),
-we are able to convert trained JAX/Flax models into `saved_model` format, 
+we are able to convert trained JAX/Flax models into `saved_model` format,
 which can be used seamlessly in TFX with generic training and model evaluation.
 For details, check this [example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils_flax_experimental.py).
 

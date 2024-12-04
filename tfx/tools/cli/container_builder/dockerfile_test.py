@@ -17,7 +17,6 @@ import contextlib
 import filecmp
 import os
 
-import tensorflow as tf
 
 from tfx import version
 from tfx.tools.cli.container_builder import dockerfile
@@ -79,7 +78,3 @@ class DockerfileTest(test_case_utils.TfxTest):
       with self.assertRaisesRegex(ValueError,
                                   'Cannot find a base image automatically'):
         dockerfile.Dockerfile(filename=labels.DOCKERFILE_NAME)
-
-
-if __name__ == '__main__':
-  tf.test.main()

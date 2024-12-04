@@ -106,12 +106,42 @@ class UpstreamComponent(base_component.BaseComponent):
 
 
 def create_test_pipeline():
+  """Creaters a pipeline with optional and allow_empty channels."""
   upstream_component = UpstreamComponent()
   my_component = MyComponent(
       mandatory=upstream_component.outputs['first_model'],
       optional_but_needed=upstream_component.outputs['second_model'],
       optional_and_not_needed=upstream_component.outputs['third_model'])
+  as_optional_component = MyComponent(
+      mandatory=upstream_component.outputs['second_model'].as_optional(),
+      optional_but_needed=upstream_component.outputs[
+          'second_model'
+      ].as_optional(),
+      optional_and_not_needed=upstream_component.outputs[
+          'third_model'
+      ].as_optional(),
+  ).with_id('as_optional_component')
+  p_in = pipeline.PipelineInputs({
+      'mandatory': upstream_component.outputs['first_model'],
+      'optional': upstream_component.outputs['second_model'].as_optional(),
+  })
+  subpipeline_component = MyComponent(
+      mandatory=p_in['mandatory'],
+      optional_but_needed=p_in['optional'],
+  )
+  subpipeline = pipeline.Pipeline(
+      pipeline_name='subpipeline',
+      pipeline_root=_pipeline_root,
+      components=[subpipeline_component],
+      inputs=p_in,
+  )
   return pipeline.Pipeline(
       pipeline_name=_pipeline_name,
       pipeline_root=_pipeline_root,
-      components=[upstream_component, my_component])
+      components=[
+          upstream_component,
+          my_component,
+          as_optional_component,
+          subpipeline,
+      ],
+  )

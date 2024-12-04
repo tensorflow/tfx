@@ -16,11 +16,8 @@
 import datetime
 import json
 import os
-import re
-import subprocess
-import tarfile
 import time
-from typing import Any, Dict, List, Optional
+from typing import List
 
 from absl import logging
 import kfp
@@ -39,12 +36,7 @@ from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution.strategies import latest_artifact_strategy
-from tfx.dsl.io import fileio
 from tfx.dsl.placeholder import placeholder as ph
-from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration import test_utils
-from tfx.orchestration.kubeflow import kubeflow_dag_runner
-from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
@@ -53,11 +45,7 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
-from tfx.utils import docker_utils
-from tfx.utils import io_utils
 from tfx.utils import kube_utils
-from tfx.utils import retry
-from tfx.utils import test_case_utils
 
 
 # TODO(jiyongjung): Merge with kube_utils.PodStatus
@@ -251,7 +239,6 @@ def create_primitive_type_components(pipeline_name: str) -> List[BaseComponent]:
 def create_e2e_components(
     pipeline_root: str,
     csv_input_location: str,
-    transform_module: str,
     trainer_module: str,
 ) -> List[BaseComponent]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
@@ -259,7 +246,6 @@ def create_e2e_components(
   Args:
     pipeline_root: The root of the pipeline output.
     csv_input_location: The location of the input data directory.
-    transform_module: The location of the transform module file.
     trainer_module: The location of the trainer module file.
 
   Returns:
@@ -274,7 +260,7 @@ def create_e2e_components(
   transform = Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
-      module_file=transform_module)
+      module_file=trainer_module)
   latest_model_resolver = resolver.Resolver(
       strategy_class=latest_artifact_strategy.LatestArtifactStrategy,
       latest_model=Channel(type=Model)).with_id('latest_model_resolver')
@@ -343,281 +329,3 @@ def create_e2e_components(
       infra_validator,
       pusher,
   ]
-
-
-@retry.retry(ignore_eventual_failure=True)
-def delete_ai_platform_model(model_name):
-  """Delete pushed model with the given name in AI Platform."""
-  # In order to delete model, all versions in the model must be deleted first.
-  versions_command = ('gcloud', 'ai-platform', 'versions', 'list',
-                      '--model={}'.format(model_name), '--region=global')
-  # The return code of the following subprocess call will be explicitly checked
-  # using the logic below, so we don't need to call check_output().
-  versions = subprocess.run(versions_command, stdout=subprocess.PIPE)  # pylint: disable=subprocess-run-check
-  if versions.returncode == 0:
-    logging.info('Model %s has versions %s', model_name, versions.stdout)
-    # The first stdout line is headers, ignore. The columns are
-    # [NAME] [DEPLOYMENT_URI] [STATE]
-    #
-    # By specification of test case, the last version in the output list is the
-    # default version, which will be deleted last in the for loop, so there's no
-    # special handling needed hear.
-    # The operation setting default version is at
-    # https://github.com/tensorflow/tfx/blob/65633c772f6446189e8be7c6332d32ea221ff836/tfx/extensions/google_cloud_ai_platform/runner.py#L309
-    for version in versions.stdout.decode('utf-8').strip('\n').split('\n')[1:]:
-      version = version.split()[0]
-      logging.info('Deleting version %s of model %s', version, model_name)
-      version_delete_command = ('gcloud', '--quiet', 'ai-platform', 'versions',
-                                'delete', version,
-                                '--model={}'.format(model_name),
-                                '--region=global')
-      subprocess.run(version_delete_command, check=True)
-
-  logging.info('Deleting model %s', model_name)
-  subprocess.run(('gcloud', '--quiet', 'ai-platform', 'models', 'delete',
-                  model_name, '--region=global'),
-                 check=True)
-
-
-class BaseKubeflowTest(test_case_utils.TfxTest):
-  """Base class that defines testing harness for pipeline on KubeflowRunner."""
-
-  _POLLING_INTERVAL_IN_SECONDS = 10
-
-  # The following environment variables need to be set prior to calling the test
-  # in this file. All variables are required and do not have a default.
-
-  # The base container image name to use when building the image used in tests.
-  _BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
-
-  # The src path to use to build docker image
-  _REPO_BASE = os.environ['KFP_E2E_SRC']
-
-  # The project id to use to run tests.
-  _GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
-
-  # The GCP region in which the end-to-end test is run.
-  _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
-
-  # The GCP bucket to use to write output artifacts.
-  _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
-
-  # The location of test data. The input files are copied to a test-local
-  # location for each invocation, and cleaned up at the end of test.
-  _TEST_DATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
-
-  # The location of test user module. Will be packaged and copied to under the
-  # pipeline root before pipeline execution.
-  _MODULE_ROOT = os.path.join(
-      os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-      'components/testdata/module_file')
-
-  @classmethod
-  def setUpClass(cls):
-    super(BaseKubeflowTest, cls).setUpClass()
-
-    if ':' not in cls._BASE_CONTAINER_IMAGE:
-      # Generate base container image for the test if tag is not specified.
-      cls.container_image = '{}:{}'.format(cls._BASE_CONTAINER_IMAGE,
-                                           test_utils.random_id())
-
-      # Create a container image for use by test pipelines.
-      test_utils.build_and_push_docker_image(cls.container_image,
-                                             cls._REPO_BASE)
-    else:  # Use the given image as a base image.
-      cls.container_image = cls._BASE_CONTAINER_IMAGE
-
-  @classmethod
-  def tearDownClass(cls):
-    super(BaseKubeflowTest, cls).tearDownClass()
-
-    if cls.container_image != cls._BASE_CONTAINER_IMAGE:
-      # Delete container image used in tests.
-      logging.info('Deleting image %s', cls.container_image)
-      docker_utils.delete_image(cls.container_image)
-
-  def setUp(self):
-    super().setUp()
-    self._test_id = test_utils.random_id()
-    self.enter_context(test_case_utils.change_working_dir(self.tmp_dir))
-    self._test_output_dir = 'gs://{}/test_output'.format(self._BUCKET_NAME)
-    self._test_data_dir = 'gs://{}/test_data/{}'.format(self._BUCKET_NAME,
-                                                        self._test_id)
-    io_utils.copy_dir(self._TEST_DATA_ROOT, self._test_data_dir)
-
-    self._data_root = os.path.join(self._test_data_dir, 'external', 'csv')
-
-    self._transform_module = os.path.join(self._MODULE_ROOT,
-                                          'transform_module.py')
-    self._trainer_module = os.path.join(self._MODULE_ROOT, 'trainer_module.py')
-    self._serving_model_dir = os.path.join(self._test_output_dir, 'output')
-
-    self.addCleanup(self._delete_test_dir, self._test_id)
-
-  @retry.retry(ignore_eventual_failure=True)
-  def _delete_test_dir(self, test_id: str):
-    """Deletes files for this test including the module file and data files."""
-    logging.info('Deleting test data: %s', self._test_data_dir)
-    io_utils.delete_dir(self._test_data_dir)
-
-  @retry.retry(ignore_eventual_failure=True)
-  def _delete_workflow(self, workflow_name: str):
-    """Deletes the specified Argo workflow."""
-    logging.info('Deleting workflow %s', workflow_name)
-    subprocess.run(['argo', '--namespace', 'kubeflow', 'delete', workflow_name],
-                   check=True)
-
-  def _run_workflow(self,
-                    workflow_file: str,
-                    workflow_name: str,
-                    parameter: Dict[str, str] = None):
-    """Runs the specified workflow with Argo.
-
-    Blocks until the workflow has run (successfully or not) to completion.
-
-    Args:
-      workflow_file: YAML file with Argo workflow spec for the pipeline.
-      workflow_name: Name to use for the workflow.
-      parameter: mapping from pipeline parameter name to its runtime value.
-    """
-
-    # TODO(ajaygopinathan): Consider using KFP cli instead.
-    def _format_parameter(parameter: Dict[str, Any]) -> List[str]:
-      """Format the pipeline parameter section of argo workflow."""
-      if parameter:
-        result = []
-        for k, v in parameter.items():
-          result.append('-p')
-          result.append('{}={}'.format(k, v))
-        return result
-      else:
-        return []
-
-    run_command = [
-        'argo',
-        'submit',
-        '--name',
-        workflow_name,
-        '--namespace',
-        'kubeflow',
-        '--serviceaccount',
-        'pipeline-runner',
-        workflow_file,
-    ]
-    run_command += _format_parameter(parameter)
-    logging.info('Launching workflow %s with parameter %s', workflow_name,
-                 _format_parameter(parameter))
-    with test_utils.Timer('RunningPipelineToCompletion'):
-      subprocess.run(run_command, check=True)
-      # Wait in the loop while pipeline is pending or running state.
-      status = 'Pending'
-      while status in ('Pending', 'Running'):
-        time.sleep(self._POLLING_INTERVAL_IN_SECONDS)
-        status = self._get_argo_pipeline_status(workflow_name)
-
-  @retry.retry(ignore_eventual_failure=True)
-  def _delete_pipeline_output(self, pipeline_name: str):
-    """Deletes output produced by the named pipeline."""
-    io_utils.delete_dir(self._pipeline_root(pipeline_name))
-
-  def _pipeline_root(self, pipeline_name: str):
-    return os.path.join(self._test_output_dir, pipeline_name)
-
-  def _create_pipeline(self, pipeline_name: str,
-                       components: List[BaseComponent],
-                       beam_pipeline_args: Optional[List[str]] = None):
-    """Creates a pipeline given name and list of components."""
-    return tfx_pipeline.Pipeline(
-        pipeline_name=pipeline_name,
-        pipeline_root=self._pipeline_root(pipeline_name),
-        components=components,
-        enable_cache=True,
-        beam_pipeline_args=beam_pipeline_args,
-    )
-
-  def _create_dataflow_pipeline(self,
-                                pipeline_name: str,
-                                components: List[BaseComponent],
-                                wait_until_finish_ms: int = 1000 * 60 * 20):
-    """Creates a pipeline with Beam DataflowRunner."""
-    beam_pipeline_args = [
-        '--runner=TestDataflowRunner',
-        '--wait_until_finish_duration=%d' % wait_until_finish_ms,
-        '--project=' + self._GCP_PROJECT_ID,
-        '--temp_location=' +
-        os.path.join(self._pipeline_root(pipeline_name), 'tmp'),
-        '--region=' + self._GCP_REGION,
-
-        # TODO(b/171733562): Remove `use_runner_v2` once it is the default for
-        # Dataflow.
-        '--experiments=use_runner_v2',
-    ]
-    return self._create_pipeline(
-        pipeline_name, components, beam_pipeline_args=beam_pipeline_args)
-
-  def _get_kubeflow_metadata_config(
-      self) -> kubeflow_pb2.KubeflowMetadataConfig:
-    config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
-    return config
-
-  def _get_argo_pipeline_status(self, workflow_name: str) -> str:
-    """Get Pipeline status.
-
-    Args:
-      workflow_name: The name of the workflow.
-
-    Returns:
-      Simple status string which is returned from `argo get` command.
-    """
-    get_workflow_command = [
-        'argo', '--namespace', 'kubeflow', 'get', workflow_name
-    ]
-    output = subprocess.check_output(get_workflow_command).decode('utf-8')
-    logging.info('Argo output ----\n%s', output)
-    match = re.search(r'^Status:\s+(.+)$', output, flags=re.MULTILINE)
-    self.assertIsNotNone(match)
-    return match.group(1)
-
-  def _compile_and_run_pipeline(self,
-                                pipeline: tfx_pipeline.Pipeline,
-                                workflow_name: str = None,
-                                parameters: Dict[str, Any] = None):
-    """Compiles and runs a KFP pipeline.
-
-    Args:
-      pipeline: The logical pipeline to run.
-      workflow_name: The argo workflow name, default to pipeline name.
-      parameters: Value of runtime paramters of the pipeline.
-    """
-    pipeline_name = pipeline.pipeline_info.pipeline_name
-    config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
-        kubeflow_metadata_config=self._get_kubeflow_metadata_config(),
-        tfx_image=self.container_image)
-    kubeflow_dag_runner.KubeflowDagRunner(config=config).run(pipeline)
-
-    file_path = os.path.join(self.tmp_dir, '{}.tar.gz'.format(pipeline_name))
-    self.assertTrue(fileio.exists(file_path))
-    tarfile.TarFile.open(file_path).extract('pipeline.yaml')
-    pipeline_file = os.path.join(self.tmp_dir, 'pipeline.yaml')
-    self.assertIsNotNone(pipeline_file)
-
-    workflow_name = workflow_name or pipeline_name
-    # Ensure cleanup regardless of whether pipeline succeeds or fails.
-    self.addCleanup(self._delete_workflow, workflow_name)
-    self.addCleanup(self._delete_pipeline_output, pipeline_name)
-
-    # Run the pipeline to completion.
-    self._run_workflow(pipeline_file, workflow_name, parameters)
-
-    # Obtain workflow logs.
-    get_logs_command = [
-        'argo', '--namespace', 'kubeflow', 'logs', '-w', workflow_name
-    ]
-    logs_output = subprocess.check_output(get_logs_command).decode('utf-8')
-
-    # Check if pipeline completed successfully.
-    status = self._get_argo_pipeline_status(workflow_name)
-    self.assertEqual(
-        'Succeeded', status, 'Pipeline {} failed to complete successfully: {}'
-        '\nFailed workflow logs:\n{}'.format(pipeline_name, status,
-                                             logs_output))

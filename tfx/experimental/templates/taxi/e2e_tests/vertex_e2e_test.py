@@ -16,10 +16,12 @@
 import os
 
 from absl import logging
-import tensorflow as tf
 from tfx.experimental.templates import container_based_test_case
 
+import pytest
 
+
+@pytest.mark.e2e
 class TaxiTemplateKubeflowV2E2ETest(
     container_based_test_case.BaseVertexEndToEndTest):
 
@@ -59,7 +61,3 @@ class TaxiTemplateKubeflowV2E2ETest(
                  updated_pipeline_file)
     self._update_pipeline()
     self._run_pipeline()
-
-
-if __name__ == '__main__':
-  tf.test.main()

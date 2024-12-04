@@ -2,7 +2,59 @@
 
 ## Major Features and Improvements
 
+## Breaking Changes
+
+*  `Placeholder.__format__()` is now disallowed, so you cannot use placeholders
+   in f-strings and `str.format()` calls anymore. If you get an error from this,
+   most likely you discovered a bug and should not use an f-string in the first
+   place. If it is truly your intention to print the placeholder (not its
+   resolved value) for debugging purposes, use `repr()` or `!r` instead.
+* Drop supports for the Estimator API.
+
+### For Pipeline Authors
+
+### For Component Authors
+
+## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Dependency Updates
+| Package Name | Version Constraints | Previously (in `v1.15.1`) | Comments |
+| -- | -- | -- | -- |
+| `docker` | `>=7,<8` | `>=4.1,<5` | |
+
+## Documentation Updates
+
+# Version 1.15.1
+
+## Major Features and Improvements
+
+## Breaking Changes
+
+*  Support KFP pipeline spec 2.1.0 version schema and YAML files with KFP v2 DAG runner
+
+### For Pipeline Authors
+
+### For Component Authors
+
+## Deprecations
+
+## Bug Fixes and Other Changes
+
+## Dependency Updates
+| Package Name | Version Constraints | Previously (in `v1.15.0`) | Comments |
+| -- | -- | -- | -- |
+| `kfp-pipeline-spec` | `>0.1.13,<0.2` | `>=0.1.10,<0.2` | |
+
+## Documentation Updates
+
+# Version 1.15.0
+
+## Major Features and Improvements
+
 *  Dropped python 3.8 support.
+*  Dropped experimental TFX Centralized Kubernetes Orchestrator
 *  Extend GetPipelineRunExecutions, GetPipelineRunArtifacts APIs to support
    filtering by execution create_time, type.
 *  ExampleValidator and DistributionValidator now support anomalies alert
@@ -63,6 +115,8 @@
 
 ## Deprecations
 
+*   Deprecated python 3.8
+
 ## Bug Fixes and Other Changes
 
 * Fixed a synchronization bug in google_cloud_ai_platform tuner.
@@ -73,14 +127,15 @@
 ## Dependency Updates
 | Package Name | Version Constraints | Previously (in `v1.14.0`) | Comments |
 | -- | -- | -- | -- |
-| `keras-tuner` | `>=1.0.4,<2,!=1.4.0,!=1.4.1` | `>=1.0.4,<2` | |
-| `packaging` | `>=20,<21` | `>=22` | |
-| `attrs` | `19.3.0,<22` | `19.3.0,<24` | |
-| `google-cloud-bigquery` | `>=2.26.0,<3` | `>=3,<4` | |
-| `tensorflow` | `>=2.15,<2.16` | `>=2.13,<2.14` | |
-| `tensorflow-decision-forests` | `>=1.0.1,<1.9` | `>=1.0.1,<2` | |
-| `tensorflow-hub` | `>=0.9.0,<0.14` | `>=0.15.0,<0.16` | |
-| `tensorflow-serving` | `>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3` | `>=2.15,<2.16` | |
+| `keras-tuner` | `>=1.0.4,<2` | `>=1.0.4,<2,!=1.4.0,!=1.4.1` | |
+| `packaging` | `>=22` | `>=20,<21` | |
+| `attrs` | `19.3.0,<24` | `19.3.0,<22` | |
+| `google-cloud-bigquery` | `>=3,<4` | `>=2.26.0,<3` | |
+| `tensorflow` | `>=2.13,<2.14` | `>=2.15,<2.16` | |
+| `tensorflow-decision-forests` | `>=1.0.1,<2` | `>=1.0.1,<1.9` | |
+| `tensorflow-hub` | `>=0.15.0,<0.16` | `>=0.9.0,<0.14` | |
+| `tensorflow-serving` | `>=2.15,<2.16` | `>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,<3` | |
+| `kfp-pipeline-spec` | `>0.1.13,<0.2` | `>=0.1.10,<0.2` | |
 
 ## Documentation Updates
 
@@ -170,7 +225,7 @@
 
 ## Bug Fixes and Other Changes
 
-*  Support to task type "workerpool1" of CLUSTER_SPEC in Vertex AI training's 
+*  Support to task type "workerpool1" of CLUSTER_SPEC in Vertex AI training's
    service according to the changes of task type in Tuner component.
 *  Propagates unexpected import failures in the public v1 module.
 

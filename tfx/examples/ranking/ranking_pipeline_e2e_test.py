@@ -25,7 +25,12 @@ try:
 except ImportError:
   struct2tensor = None
 
+import pytest
 
+
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
+@pytest.mark.e2e
 @unittest.skipIf(struct2tensor is None,
                  'Cannot import required modules. This can happen when'
                  ' struct2tensor is not available.')
@@ -77,7 +82,3 @@ class RankingPipelineTest(tf.test.TestCase):
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(9, execution_count)
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -13,7 +13,8 @@
 # limitations under the License.
 """Tests for tfx.utils.channel."""
 
-import tensorflow as tf
+from absl.testing import absltest
+from tfx.dsl.components.base.testing import test_node
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.types import artifact
 from tfx.types import channel
@@ -25,7 +26,7 @@ class _MyArtifact(artifact.Artifact):
   TYPE_NAME = 'MyTypeName'
 
 
-class ChannelUtilsTest(tf.test.TestCase):
+class ChannelUtilsTest(absltest.TestCase):
 
   def testArtifactCollectionAsChannel(self):
     instance_a = _MyArtifact()
@@ -54,8 +55,16 @@ class ChannelUtilsTest(tf.test.TestCase):
     self.assertDictEqual(result, {'id': [instance_a, instance_b]})
 
   def testGetInidividualChannels(self):
-    one_channel = channel.Channel(_MyArtifact)
-    another_channel = channel.Channel(_MyArtifact)
+    one_channel = channel.OutputChannel(
+        artifact_type=_MyArtifact,
+        producer_component=test_node.TestNode('a'),
+        output_key='foo',
+    )
+    another_channel = channel.OutputChannel(
+        artifact_type=_MyArtifact,
+        producer_component=test_node.TestNode('b'),
+        output_key='bar',
+    )
 
     result = channel_utils.get_individual_channels(one_channel)
     self.assertEqual(result, [one_channel])
@@ -65,8 +74,16 @@ class ChannelUtilsTest(tf.test.TestCase):
     self.assertEqual(result, [one_channel, another_channel])
 
   def testPredicateDependentChannels(self):
-    int1 = channel.Channel(type=standard_artifacts.Integer)
-    int2 = channel.Channel(type=standard_artifacts.Integer)
+    int1 = channel.OutputChannel(
+        artifact_type=standard_artifacts.Integer,
+        producer_component=test_node.TestNode('a'),
+        output_key='foo',
+    )
+    int2 = channel.OutputChannel(
+        artifact_type=standard_artifacts.Integer,
+        producer_component=test_node.TestNode('b'),
+        output_key='bar',
+    )
     pred1 = int1.future().value == 1
     pred2 = int1.future().value == int2.future().value
     pred3 = ph.logical_not(pred1)
@@ -82,7 +99,11 @@ class ChannelUtilsTest(tf.test.TestCase):
     )
 
   def testUnwrapSimpleChannelPlaceholder(self):
-    int1 = channel.Channel(type=standard_artifacts.Integer)
+    int1 = channel.OutputChannel(
+        artifact_type=standard_artifacts.Integer,
+        producer_component=test_node.TestNode('a'),
+        output_key='foo',
+    )
     self.assertEqual(
         channel_utils.unwrap_simple_channel_placeholder(int1.future()[0].value),
         int1,
@@ -93,8 +114,16 @@ class ChannelUtilsTest(tf.test.TestCase):
     )
 
   def testUnwrapSimpleChannelPlaceholderRejectsMultiChannel(self):
-    str1 = channel.Channel(type=standard_artifacts.String)
-    str2 = channel.Channel(type=standard_artifacts.String)
+    str1 = channel.OutputChannel(
+        artifact_type=standard_artifacts.String,
+        producer_component=test_node.TestNode('a'),
+        output_key='foo',
+    )
+    str2 = channel.OutputChannel(
+        artifact_type=standard_artifacts.String,
+        producer_component=test_node.TestNode('b'),
+        output_key='bar',
+    )
     with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
       channel_utils.unwrap_simple_channel_placeholder(
           str1.future()[0].value + str2.future()[0].value
@@ -113,7 +142,11 @@ class ChannelUtilsTest(tf.test.TestCase):
       channel_utils.unwrap_simple_channel_placeholder(ph.output('disallowed'))
 
   def testUnwrapSimpleChannelPlaceholderRejectsComplexPlaceholders(self):
-    str1 = channel.Channel(type=standard_artifacts.String)
+    str1 = channel.OutputChannel(
+        artifact_type=standard_artifacts.String,
+        producer_component=test_node.TestNode('a'),
+        output_key='foo',
+    )
     with self.assertRaisesRegex(ValueError, '.*placeholder of shape.*'):
       channel_utils.unwrap_simple_channel_placeholder(
           str1.future()[0].value + 'foo'
@@ -122,7 +155,3 @@ class ChannelUtilsTest(tf.test.TestCase):
       channel_utils.unwrap_simple_channel_placeholder(
           str1.future()[0].value + ph.execution_invocation().pipeline_run_id
       )
-
-
-if __name__ == '__main__':
-  tf.test.main()

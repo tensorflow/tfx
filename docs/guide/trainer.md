@@ -7,7 +7,8 @@ The Trainer TFX pipeline component trains a TensorFlow model.
 Trainer makes extensive use of the Python
 [TensorFlow](https://www.tensorflow.org) API for training models.
 
-Note: TFX supports TensorFlow 1.15 and 2.x.
+!!! Note
+    TFX supports TensorFlow 1.15 and 2.x.
 
 ## Component
 
@@ -28,14 +29,14 @@ Trainer emits: At least one model for inference/serving (typically in SavedModel
 
 We provide support for alternate model formats such as
 [TFLite](https://www.tensorflow.org/lite) through the [Model Rewriting Library](https://github.com/tensorflow/tfx/blob/master/tfx/components/trainer/rewriting/README.md).
-See the link to the Model Rewriting Library for examples of how to convert both Estimator and Keras
+See the link to the Model Rewriting Library for examples of how to convert Keras
 models.
 
 ## Generic Trainer
 
 Generic trainer enables developers to use any TensorFlow model API with the
-Trainer component. In addition to TensorFlow Estimators, developers can use
-Keras models or custom training loops. For details, please see the
+Trainer component. Developers can use Keras models or custom training loops.
+For details, please see the
 [RFC for generic trainer](https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-generic-trainer.md).
 
 ### Configuring the Trainer Component
@@ -56,10 +57,8 @@ trainer = Trainer(
 ```
 
 Trainer invokes a training module, which is specified in the `module_file`
-parameter. Instead of `trainer_fn`, a `run_fn` is required in the module file if
-the `GenericExecutor` is specified in the `custom_executor_spec`. The
-`trainer_fn` was responsible for creating the model. In addition to that,
-`run_fn` also needs to handle the training part and output the trained model to
+parameter. A `run_fn` is required in the module file,
+and it needs to handle the training part and output the trained model to
 a the desired location given by
 [FnArgs](https://github.com/tensorflow/tfx/blob/master/tfx/components/trainer/fn_args_utils.py):
 
@@ -91,4 +90,4 @@ trainer = Trainer(
 ```
 
 More details are available in the
-[Trainer API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/Trainer).
+[Trainer API reference][tfx.v1.components.Trainer].

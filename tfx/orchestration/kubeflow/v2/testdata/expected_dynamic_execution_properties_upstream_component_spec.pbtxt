@@ -5,7 +5,7 @@ input_definitions {
   parameters {
     key: "input_date"
     value {
-      type: STRING
+      parameter_type: STRING
     }
   }
 }

@@ -35,17 +35,17 @@ except ImportError:
 class LatestBlessedModelStrategy(resolver.ResolverStrategy):
   """LatestBlessedModelStrategy resolves the latest blessed Model artifact.
 
-  Note that this ResolverStrategy is experimental and is subject to change in
-  terms of both interface and implementation.
+  Note that this [ResolverStrategy][tfx.v1.dsl.experimental.ResolverStrategy] is experimental and is subject to change in terms of both interface and implementation.
 
   Don't construct LatestBlessedModelStrategy directly, example usage:
-  ```
-    model_resolver = Resolver(
-        strategy_class=LatestBlessedModelStrategy,
-        model=Channel(type=Model),
-        model_blessing=Channel(type=ModelBlessing),
-    ).with_id('latest_blessed_model_resolver')
-    model_resolver.outputs['model']
+  ``` python
+  model_resolver.outputs['model']
+  model_resolver = Resolver(
+      strategy_class=LatestBlessedModelStrategy,
+      model=Channel(type=Model),
+      model_blessing=Channel(type=ModelBlessing),
+  ).with_id("latest_blessed_model_resolver")
+  model_resolver.outputs["model"]
   ```
   """
 
@@ -85,8 +85,8 @@ class LatestBlessedModelStrategy(resolver.ResolverStrategy):
       input_dict: The input_dict to resolve from.
 
     Returns:
-      The latest blessed Model and its corresponding ModelBlessing, respectively
-      in the same input channel they were contained to.
+      The latest blessed Model and its corresponding [ModelBlessing][tfx.v1.types.standard_artifacts.ModelBlessing], respectively
+        in the same input channel they were contained to.
 
     Raises:
       RuntimeError: if input_dict contains unsupported artifact types.

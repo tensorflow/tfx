@@ -162,7 +162,3 @@ def almost_equal_to(expected):
               sorted_expected, sorted_actual))
 
   return _almost_equal
-
-
-if __name__ == '__main__':
-  tf.test.main()

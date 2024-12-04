@@ -35,9 +35,10 @@ Under the hood, this defines a custom component that is a subclass of
 [`BaseComponent`](https://github.com/tensorflow/tfx/blob/master/tfx/dsl/components/base/base_component.py){: .external }
 and its Spec and Executor classes.
 
-Note: the feature (BaseBeamComponent based component by annotating a function
-with `@component(use_beam=True)`) described below is experimental and there is
-no public backwards compatibility guarantees.
+!!! Note
+    The feature (BaseBeamComponent based component by annotating a function
+    with `@component(use_beam=True)`) described below is experimental and there is
+    no public backwards compatibility guarantees.
 
 If you want to define a subclass of
 [`BaseBeamComponent`](https://github.com/tensorflow/tfx/blob/master/tfx/dsl/components/base/base_beam_component.py){: .external }
@@ -64,7 +65,7 @@ def MyDataProcessor(
 ```
 
 If you are new to TFX pipelines,
-[learn more about the core concepts of TFX pipelines](understanding_tfx_pipelines).
+[learn more about the core concepts of TFX pipelines](understanding_tfx_pipelines.md).
 
 ## Inputs, outputs, and parameters
 
@@ -79,10 +80,11 @@ arguments and hyperparameters like training iteration count, dropout rate, and
 other configuration to your component. Parameters are stored as properties of
 component executions when tracked in ML Metadata.
 
-Note: Currently, output simple data type values cannot be used as parameters
-since they are not known at execution time. Similarly, input simple data type
-values currently cannot take concrete values known at pipeline construction
-time. We may remove this restriction in a future release of TFX.
+!!! Note
+    Currently, output simple data type values cannot be used as parameters
+    since they are not known at execution time. Similarly, input simple data type
+    values currently cannot take concrete values known at pipeline construction
+    time. We may remove this restriction in a future release of TFX.
 
 ## Definition
 

@@ -223,7 +223,3 @@ class ModuleTest(tf.test.TestCase):
     mod = module.DependencyModule()
     mod.provide_named_class('foo', Foo, singleton=True)
     self.assertIs(mod.get('foo', Foo), mod.get('foo', Foo))
-
-
-if __name__ == '__main__':
-  tf.test.main()
