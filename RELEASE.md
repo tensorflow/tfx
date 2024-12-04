@@ -42,7 +42,7 @@
 ## Deprecations
 
 *   KubeflowDagRunner (KFP v1 SDK) is deprecated. Use KubeflowV2DagRunner (KFP v2 pipeline spec) instead.
-*   TensorFlow Estimator is Deprecated
+*   Since Estimators will no longer be available in TensorFlow 2.16 and later versions, we have deprecated examples and templates that use them. We encourage you to explore Keras as a more modern and flexible high-level API for building and training models in TensorFlow.
 
 ## Bug Fixes and Other Changes
 
