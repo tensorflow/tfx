@@ -22,7 +22,7 @@ class ModelTest(tf.test.TestCase):
   def testBuildKerasModel(self):
     built_model = model._build_keras_model(
         hidden_units=[1, 1], learning_rate=0.1)  # pylint: disable=protected-access
-    self.assertEqual(len(built_model.layers), 10)
+    self.assertEqual(len(built_model.layers), 13)
 
     built_model = model._build_keras_model(hidden_units=[1], learning_rate=0.1)  # pylint: disable=protected-access
-    self.assertEqual(len(built_model.layers), 9)
+    self.assertEqual(len(built_model.layers), 12)

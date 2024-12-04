@@ -27,6 +27,7 @@ do
   ln -sf $BASEDIR/setup.py $BASEDIR/package_build/$CONFIG_NAME/
   ln -sf $BASEDIR/dist $BASEDIR/package_build/$CONFIG_NAME/
   ln -sf $BASEDIR/tfx $BASEDIR/package_build/$CONFIG_NAME/
+  ln -sf $BASEDIR/MANIFEST.in $BASEDIR/package_build/$CONFIG_NAME/
   ln -sf $BASEDIR/README*.md $BASEDIR/package_build/$CONFIG_NAME/
   ln -sf $BASEDIR/LICENSE $BASEDIR/package_build/$CONFIG_NAME/
 
