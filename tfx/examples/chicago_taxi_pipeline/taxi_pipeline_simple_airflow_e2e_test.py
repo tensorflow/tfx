@@ -115,6 +115,7 @@ class AirflowEndToEndTest(test_case_utils.TfxTest):
                       self._airflow_home)
 
     self._mysql_container_name = 'airflow_' + test_utils.generate_random_id()
+    #
     ip_address, db_port = airflow_test_utils.create_mysql_container(
         self._mysql_container_name
     )
