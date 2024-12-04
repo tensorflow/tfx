@@ -41,6 +41,7 @@
 
 ## Deprecations
 
+
 *   KFP v1 SDK 
 *   TensorFlow Estimator is Deprecated
 
