@@ -58,9 +58,9 @@ def make_pipeline_sdk_required_install_packages():
         "ml-metadata"
         + select_constraint(
             # LINT.IfChange
-            default=">=1.15.0,<1.16.0",
+            default=">=1.16.0,<1.17.0",
             # LINT.ThenChange(tfx/workspace.bzl)
-            nightly=">=1.16.0.dev",
+            nightly=">=1.17.0.dev",
             git_master="@git+https://github.com/google/ml-metadata@master",
         ),
         "packaging>=22",
@@ -105,31 +105,31 @@ def make_required_install_packages():
         # Pip might stuck in a TF 1.15 dependency although there is a working
         # dependency set with TF 2.x without the sync.
         # pylint: disable=line-too-long
-        "tensorflow" + select_constraint(">=2.15.0,<2.16"),
+        "tensorflow" + select_constraint(">=2.16.0,<2.17"),
         # pylint: enable=line-too-long
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
-            default=">=1.15.1,<1.16.0",
-            nightly=">=1.16.0.dev",
+            default=">=1.16.1,<1.17.0",
+            nightly=">=1.16.1.dev",
             git_master=("@git+https://github.com/tensorflow/data-validation@master"),
         ),
         "tensorflow-model-analysis"
         + select_constraint(
-            default=">=0.46.0,<0.47.0",
+            default=">=0.47.0,<0.48.0",
             nightly=">=0.47.0.dev",
             git_master="@git+https://github.com/tensorflow/model-analysis@master",
         ),
-        "tensorflow-serving-api>=2.15,<2.16",
+        "tensorflow-serving-api>=2.16,<2.17",
         "tensorflow-transform"
         + select_constraint(
-            default=">=1.15.0,<1.16.0",
+            default=">=1.16.0,<1.17.0",
             nightly=">=1.16.0.dev",
             git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
-            default=">=1.15.1,<1.16.0",
+            default=">=1.16.1,<1.17.0",
             nightly=">=1.16.0.dev",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
@@ -199,7 +199,7 @@ def make_extra_packages_tf_ranking():
         "tensorflow-ranking>=0.5,<0.6",
         "struct2tensor"
         + select_constraint(
-            default=">=0.46.0,<0.47.0",
+            default=">=0.47.0,<0.48.0",
             nightly=">=0.47.0.dev",
             git_master="@git+https://github.com/google/struct2tensor@master",
         ),
@@ -211,7 +211,7 @@ def make_extra_packages_tfdf():
     # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
     return [
         # NOTE: TFDF 1.0.1 is only compatible with TF 2.10.x.
-        "tensorflow-decision-forests>=1.0.1,<1.9",
+        "tensorflow-decision-forests>=1.8.1,<2",
     ]
 
 

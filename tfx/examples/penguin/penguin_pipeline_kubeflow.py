@@ -503,8 +503,8 @@ def main():
 
   dag_runner = tfx.orchestration.experimental.KubeflowV2DagRunner(
       config=tfx.orchestration.experimental.KubeflowV2DagRunnerConfig(),
-      output_filename=_pipeline_definition_file)
-
+      output_filename=_pipeline_definition_file,
+  )
   dag_runner.run(
       create_pipeline(
           pipeline_name=_pipeline_name,
@@ -521,7 +521,8 @@ def main():
           use_aip=use_aip,
           use_vertex=use_vertex,
           serving_model_dir=_serving_model_dir,
-      ))
+      )
+  )
 
 
 # To compile the pipeline:
