@@ -17,36 +17,37 @@
 These names will be shared between the transform and the model.
 """
 
-import tensorflow as tf
-from tfx.examples.ranking import struct2tensor_parsing_utils
+# import tensorflow as tf
+# This is due to TF Ranking not supporting TensorFlow 2.16, We should re-enable it when support is added.
+# from tfx.examples.ranking import struct2tensor_parsing_utils
 
 # Labels are expected to be dense. In case of a batch of ELWCs have different
 # number of documents, the shape of the label is [N, D], where N is the batch
 # size, D is the maximum number of documents in the batch. If an ELWC in the
 # batch has D_0 < D documents, then the value of label at D0 <= d < D must be
 # negative to indicate that the document is invalid.
-LABEL_PADDING_VALUE = -1
+#LABEL_PADDING_VALUE = -1
 
 # Names of features in the ELWC.
-QUERY_TOKENS = 'query_tokens'
-DOCUMENT_TOKENS = 'document_tokens'
-LABEL = 'relevance'
+#QUERY_TOKENS = 'query_tokens'
+#DOCUMENT_TOKENS = 'document_tokens'
+#LABEL = 'relevance'
 
 # This "feature" does not exist in the data but will be created on the fly.
-LIST_SIZE_FEATURE_NAME = 'example_list_size'
+# LIST_SIZE_FEATURE_NAME = 'example_list_size'
 
 
-def get_features():
-  """Defines the context features and example features spec for parsing."""
+#def get_features():
+#  """Defines the context features and example features spec for parsing."""
 
-  context_features = [
-      struct2tensor_parsing_utils.Feature(QUERY_TOKENS, tf.string)
-  ]
+ # context_features = [
+ #     struct2tensor_parsing_utils.Feature(QUERY_TOKENS, tf.string)
+ # ]
 
-  example_features = [
-      struct2tensor_parsing_utils.Feature(DOCUMENT_TOKENS, tf.string)
-  ]
+#  example_features = [
+#      struct2tensor_parsing_utils.Feature(DOCUMENT_TOKENS, tf.string)
+#  ]
 
-  label = struct2tensor_parsing_utils.Feature(LABEL, tf.int64)
+#  label = struct2tensor_parsing_utils.Feature(LABEL, tf.int64)
 
-  return context_features, example_features, label
+#  return context_features, example_features, label
