@@ -248,7 +248,7 @@ frameworks, including [Apache Airflow](airflow.md),
 portable to different computing platforms, including on-premise, and
 cloud platforms such as the
 [Google Cloud Platform (GCP)](https://cloud.google.com/). In particular,
-TFX interoperates with serveral managed GCP services, such as
+TFX interoperates with several managed GCP services, such as
 [Cloud AI Platform](https://cloud.google.com/ai-platform/) for
 [Training and Prediction](https://cloud.google.com/ml-engine/), and
 [Cloud Dataflow](https://cloud.google.com/dataflow/) for distributed data
