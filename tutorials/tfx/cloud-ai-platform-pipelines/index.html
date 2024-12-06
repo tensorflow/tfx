@@ -1,0 +1,5028 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../../../assets/tf_full_color_primary_icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.47">
+    
+    
+      
+        <title>TFX on Cloud AI Platform Pipelines - TFX</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tfx-on-cloud-ai-platform-pipelines" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="TFX" class="md-header__button md-logo" aria-label="TFX" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TFX
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              TFX on Cloud AI Platform Pipelines
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/tensorflow/tfx" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TFX
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="TFX" class="md-nav__button md-logo" aria-label="TFX" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    TFX
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/tensorflow/tfx" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TFX
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX: Getting started tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            TFX: Getting started tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../penguin_simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    1. Starter pipeline
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../penguin_tfdv" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2. Adding data validation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../penguin_tft" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    3. Adding feature engineering
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../penguin_tfma" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    4. Adding model analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX: Interactive tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            TFX: Interactive tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components_keras" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactive tutorial (TF2 Keras)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactive tutorial (Estimator)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX on Google Cloud
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            TFX on Google Cloud
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp/vertex_pipelines_simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Running on Vertex Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp/vertex_pipelines_bq" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read data from BigQuery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp/vertex_pipelines_vertex_training" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Vertex AI Training and Serving
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud AI Platform Pipelines tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX: Advanced tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            TFX: Advanced tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gpt2_finetuning_and_conversion" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    LLM finetuning and conversion
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python_function_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Custom component tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recommenders" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Recommenders with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/recommenders/examples/ranking_tfx" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ranking with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../airflow_workshop" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Airflow tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../neural_structured_learning" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Neural Structured Learning in TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Data Validation
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            Data Validation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data_validation/tfdv_basic" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with TFDV
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Transform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            Transform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../transform/simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Preprocess data (beginner)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../transform/census" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Preprocess data (advanced)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../transform/data_preprocessing_with_cloud" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data preprocessing for ML with Google Cloud
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Model Analysis
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            Model Analysis
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model_analysis/tfma_basic" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with TFMA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fairness Indicators tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Deploy a trained model
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            Deploy a trained model
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serving/rest_simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Servers: TFX for TensorFlow Serving
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tfx_for_mobile" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mobile & IoT: TFX for TensorFlow Lite
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    ML Metadata
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            ML Metadata
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mlmd/mlmd_tutorial" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with MLMD
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Guide
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    What's New
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            What's New
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/addons" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TFX-Addons
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/solutions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TFX Cloud Solutions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/keras" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Keras with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/non_tf" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Non-TensorFlow Frameworks in TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tfx_for_mobile" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mobile & IoT: TFX for TensorFlow Lite
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX Pipelines
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            TFX Pipelines
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/understanding_tfx_pipelines" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Understanding TFX pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/build_tfx_pipeline" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Building a TFX pipeline
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/build_local_pipeline" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX Standard Components
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            TFX Standard Components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/examplegen" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ExampleGen
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/statsgen" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    StatisticsGen
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/schemagen" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SchemaGen
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/exampleval" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ExampleValidator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/transform" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Transform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/trainer" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trainer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/tuner" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tuner
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/evaluator" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Evaluator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/infra_validator" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    InfraValidator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/pusher" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pusher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/bulkinferrer" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    BulkInferrer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX Custom Components
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            TFX Custom Components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/understanding_custom_components" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Understanding custom components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/custom_function_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Python function-based components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/container_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Container-based components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/custom_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fully custom components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Orchestrators
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            Orchestrators
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/local_orchestrator" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local orchestrator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/vertex" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Vertex AI Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/airflow" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Apache Airflow
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/kubeflow" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubeflow Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX CLI
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            TFX CLI
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/cli" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using the TFX CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Libraries
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            Libraries
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_1" id="__nav_3_8_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Data Validation
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_1">
+            <span class="md-nav__icon md-icon"></span>
+            Data Validation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/tfdv" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Check and analyze data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/data_validation/install" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Install
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/data_validation/get_started" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_2" id="__nav_3_8_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Transform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_2">
+            <span class="md-nav__icon md-icon"></span>
+            Transform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/tft" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Preprocess and transform data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/install" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Install
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/get_started" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/tf2_support" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using `tf.Transform` with TensorFlow 2.x
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/common_transformations" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Common transformations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/tft_bestpractices" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data preprocessing best practices
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_3" id="__nav_3_8_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Modeling
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_3">
+            <span class="md-nav__icon md-icon"></span>
+            Modeling
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/train" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Design modeling code
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_4" id="__nav_3_8_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Model Analysis
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_4">
+            <span class="md-nav__icon md-icon"></span>
+            Model Analysis
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/tfma" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Improving Model Quality
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/install" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Install
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/get_started" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/setup" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/metrics" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Metrics and Plots
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/visualizations" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Visualizations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/model_validations" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Model Validations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/fairness_indicators" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Fairness Indicators
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Pandas_Case_Study" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Fairness Indicators with Pandas DataFrames
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/architecture" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/faq" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FAQ
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_5" id="__nav_3_8_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Serving
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_5">
+            <span class="md-nav__icon md-icon"></span>
+            Serving
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/serving" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Serving models
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/docker" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TensorFlow Serving with Docker
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/setup" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_basic" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Serve a TensorFlow model
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/architecture" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_config" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Advanced model server configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_advanced" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build a TensorFlow ModelServer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_kubernetes" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Use TensorFlow Serving with Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/custom_servable" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Create a new kind of servable
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/custom_source" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Create a module that discovers new servable paths
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/custom_op" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Serving TensorFlow models with custom ops
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/signature_defs" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SignatureDefs in SavedModel for TensorFlow Serving
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Related projects
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            Related projects
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://beam.apache.org/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Apache Beam
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://cloud.google.com/dataflow/docs/machine-learning/ml-preprocess-data" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    MLTransform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../guide/mlmd" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ML Metadata
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tensorboard" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TensorBoard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    API
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    v1
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            v1
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/v1/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/v1/components" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/v1/dsl" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    dsl
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/v1/extensions" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    extensions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/v1/orchestration" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    orchestration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/v1/proto" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    proto
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/v1/testing" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/v1/types" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/v1/utils" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    utils
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Introduction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chicago-taxi-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chicago Taxi Dataset
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chicago Taxi Dataset">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model-goal-binary-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Goal - Binary classification
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-set-up-a-google-cloud-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Set up a Google Cloud project
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Set up a Google Cloud project">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1a-set-up-your-environment-on-google-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.a Set up your environment on Google Cloud
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1b-create-a-new-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.b Create a new project.
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-set-up-and-deploy-an-ai-platform-pipeline-on-a-new-kubernetes-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Set up and deploy an AI Platform Pipeline on a new Kubernetes cluster
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-set-up-cloud-ai-platform-notebook-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Set up Cloud AI Platform Notebook instance.
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-launch-the-getting-started-notebook" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Launch the Getting Started Notebook
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-continue-working-in-the-notebook" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Continue working in the Notebook
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Continue working in the Notebook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connect-with-your-google-cloud-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      Connect with your Google Cloud services
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-copy-a-template-into-your-project-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Copy a template into your project directory
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Copy a template into your project directory">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#browse-the-pipeline-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Browse the pipeline files
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-run-your-first-tfx-pipeline-on-kubeflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Run your first TFX pipeline on Kubeflow
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Run your first TFX pipeline on Kubeflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#connect-to-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Connect to storage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create the pipeline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run the pipeline
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-validate-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Validate your data
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Validate your data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#components" class="md-nav__link">
+    <span class="md-ellipsis">
+      Components
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#in-jupyter-lab-file-editor" class="md-nav__link">
+    <span class="md-ellipsis">
+      In Jupyter lab file editor:
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-the-pipeline-and-re-run-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update the pipeline and re-run it
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check the pipeline
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#more-advanced-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      More advanced example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-feature-engineering" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Feature engineering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Feature engineering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#components_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Components
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#in-jupyter-lab-file-editor_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      In Jupyter lab file editor:
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-the-pipeline-and-re-run-it_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update the pipeline and re-run it
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-pipeline-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check pipeline outputs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#more-advanced-example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      More advanced example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-training" class="md-nav__link">
+    <span class="md-ellipsis">
+      10. Training
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Training">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#components_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Components
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#in-jupyter-lab-file-editor_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      In Jupyter lab file editor:
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-the-pipeline-and-re-run-it_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update the pipeline and re-run it
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-pipeline-outputs_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check pipeline outputs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#more-advanced-example_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      More advanced example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-analyzing-model-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      11. Analyzing model performance
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Analyzing model performance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#components_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Components
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#in-jupyter-lab-file-editor_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      In Jupyter lab file editor:
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-the-pipeline-and-re-run-it_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update the pipeline and re-run it
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-pipeline-outputs_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check pipeline outputs
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-serving-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      12. Serving the model
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Serving the model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#components_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Components
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#in-jupyter-lab-file-editor_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      In Jupyter lab file editor:
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-pipeline-outputs_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check pipeline outputs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-deployment-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available deployment targets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#more-advanced-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      More advanced examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="More advanced examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kubeflow-pipelines-resource-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Kubeflow Pipelines resource considerations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#try-bigqueryexamplegen" class="md-nav__link">
+    <span class="md-ellipsis">
+      Try BigQueryExampleGen
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Try BigQueryExampleGen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#in-jupyter-lab-file-editor_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      In Jupyter lab file editor:
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update-the-pipeline-and-re-run-it_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update the pipeline and re-run it
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#try-dataflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Try Dataflow
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Try Dataflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#update-the-pipeline-and-re-run-it_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update the pipeline and re-run it
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#try-cloud-ai-platform-training-and-prediction-with-kfp" class="md-nav__link">
+    <span class="md-ellipsis">
+      Try Cloud AI Platform Training and Prediction with KFP
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Try Cloud AI Platform Training and Prediction with KFP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#update-the-pipeline-and-re-run-it_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update the pipeline and re-run it
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-use-your-own-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      14. Use your own data
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Use your own data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#if-your-data-is-stored-in-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      If your data is stored in files
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#if-your-data-is-stored-in-bigquery" class="md-nav__link">
+    <span class="md-ellipsis">
+      If your data is stored in BigQuery
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#learn-more-about-trainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Learn more about Trainer
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cleaning-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cleaning up
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/tensorflow/tfx/edit/master/docs/tutorials/tfx/cloud-ai-platform-pipelines.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="tfx-on-cloud-ai-platform-pipelines">TFX on Cloud AI Platform Pipelines<a class="headerlink" href="#tfx-on-cloud-ai-platform-pipelines" title="Permanent link">¶</a></h1>
+<h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">¶</a></h2>
+<p>This tutorial is designed to introduce
+<a href="https://www.tensorflow.org/tfx">TensorFlow Extended (TFX)</a> and
+[AIPlatform Pipelines]
+(https://cloud.google.com/ai-platform/pipelines/docs/introduction), and help you
+learn to create your own machine learning
+pipelines on Google Cloud. It shows integration with TFX, AI Platform Pipelines,
+and Kubeflow, as well as interaction with TFX in Jupyter notebooks.</p>
+<p>At the end of this tutorial, you will have created and run an ML Pipeline,
+hosted on Google Cloud. You'll be able to visualize the results of each run, and
+view the lineage of the created artifacts.</p>
+<div class="admonition abstract">
+<p class="admonition-title">Key Term</p>
+<p>A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often
+refer to pipelines as DAGs.</p>
+</div>
+<p>You'll follow a typical ML development process, starting by examining the
+dataset, and ending up with a complete working pipeline. Along the way you'll
+explore ways to debug and update your pipeline, and measure performance.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Completing this tutorial may take 45-60 minutes.</p>
+</div>
+<h3 id="chicago-taxi-dataset">Chicago Taxi Dataset<a class="headerlink" href="#chicago-taxi-dataset" title="Permanent link">¶</a></h3>
+<!-- Image free for commercial use, does not require attribution:
+https://pixabay.com/photos/new-york-cab-cabs-taxi-urban-city-2087998/ -->
+
+<p><img alt="Taxi" src="../images/airflow_workshop/taxi.jpg">
+<img alt="Chicago taxi" src="../images/airflow_workshop/chicago.png"></p>
+<p>You're using the
+<a href="https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew">Taxi Trips dataset</a>
+released by the City of Chicago.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This site provides applications using data that has been modified for use
+from its original source, www.cityofchicago.org, the official website of the
+City of Chicago. The City of Chicago makes no claims as to the content,
+accuracy, timeliness, or completeness of any of the data provided at this site.
+The data provided at this site is subject to change at any time. It is
+understood that the data provided at this site is being used at one’s own risk.</p>
+</div>
+<p>You can <a href="https://cloud.google.com/bigquery/public-data/chicago-taxi">read more</a>
+about the dataset in <a href="https://cloud.google.com/bigquery/">Google BigQuery</a>.
+Explore the full dataset in the
+<a href="https://bigquery.cloud.google.com/dataset/bigquery-public-data:chicago_taxi_trips">BigQuery UI</a>.</p>
+<h4 id="model-goal-binary-classification">Model Goal - Binary classification<a class="headerlink" href="#model-goal-binary-classification" title="Permanent link">¶</a></h4>
+<p>Will the customer tip more or less than 20%?</p>
+<h2 id="1-set-up-a-google-cloud-project">1. Set up a Google Cloud project<a class="headerlink" href="#1-set-up-a-google-cloud-project" title="Permanent link">¶</a></h2>
+<h3 id="1a-set-up-your-environment-on-google-cloud">1.a Set up your environment on Google Cloud<a class="headerlink" href="#1a-set-up-your-environment-on-google-cloud" title="Permanent link">¶</a></h3>
+<p>To get started, you need a Google Cloud Account. If you already have one, skip
+ahead to <a href="#create_project">Create New Project</a>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This demo is designed to not exceed
+<a href="https://cloud.google.com/free">Google Cloud's Free Tier</a> limits. If you already
+have a Google Account, you may have reached your Free Tier limits, or exhausted
+any free Google Cloud credits given to new users. <strong>If that is the case,
+following this demo will result in charges to your Google Cloud account</strong>.</p>
+</div>
+<ol>
+<li>
+<p>Go to the <a href="https://console.cloud.google.com/">Google Cloud Console</a>.</p>
+</li>
+<li>
+<p>Agree to Google Cloud terms and conditions</p>
+<p><img alt="" src="../images/cloud-ai-platform-pipelines/welcome-popup.png" width="65%"></p>
+</li>
+<li>
+<p>If you would like to start with a free trial account, click on
+    <a href="https://console.cloud.google.com/freetrial"><strong>Try For Free</strong></a> (or
+    <a href="https://console.cloud.google.com/freetrial"><strong>Get started for free</strong></a>).</p>
+<ol>
+<li>
+<p>Select your country.</p>
+</li>
+<li>
+<p>Agree to the terms of service.</p>
+</li>
+<li>
+<p>Enter billing details.</p>
+<p>You will not be charged at this point. If you have no other Google Cloud
+projects, you can complete this tutorial without exceeding the
+<a href="https://cloud.google.com/free">Google Cloud Free Tier</a> limits, which
+includes a max of 8 cores running at the same time.</p>
+</li>
+</ol>
+</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You can choose at this point to become a paid user instead of relying on
+the free trial. Since this tutorial stays within the Free Tier limits, you still
+won't be charged if this is your only project and you stay within those limits.
+For more details, see
+<a href="https://cloud.google.com/products/calculator/">Google Cloud Cost Calculator</a>
+and <a href="https://cloud.google.com/free">Google Cloud Platform Free Tier</a>.</p>
+</div>
+<h3 id="1b-create-a-new-project">1.b Create a new project.<a name="create_project"></a><a class="headerlink" href="#1b-create-a-new-project" title="Permanent link">¶</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This tutorial assumes you want to work on this demo in a new project. You
+can, if you want, work in an existing project.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You must have a verified credit card on file before creating the project.</p>
+</div>
+<ol>
+<li>From the
+    <a href="https://console.cloud.google.com/home/dashboard">main Google Cloud dashboard</a>,
+    click the project dropdown next to the <strong>Google Cloud Platform</strong> header, and
+    select <strong>New Project</strong>.</li>
+<li>Give your project a name and enter other project details</li>
+<li><strong>Once you have created a project, make sure to select it from the project
+drop-down.</strong></li>
+</ol>
+<h2 id="2-set-up-and-deploy-an-ai-platform-pipeline-on-a-new-kubernetes-cluster">2. Set up and deploy an AI Platform Pipeline on a new Kubernetes cluster<a class="headerlink" href="#2-set-up-and-deploy-an-ai-platform-pipeline-on-a-new-kubernetes-cluster" title="Permanent link">¶</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This will take up to 10 minutes, as it requires waiting at several points
+for resources to be provisioned.</p>
+</div>
+<ol>
+<li>
+<p>Go to the
+    <a href="https://console.cloud.google.com/ai-platform/pipelines">AI Platform Pipelines Clusters</a>
+    page.</p>
+<p>Under the Main Navigation Menu: ≡ &gt; AI Platform &gt; Pipelines</p>
+</li>
+<li>
+<p>Click <strong>+ New Instance</strong> to create a new cluster.</p>
+<p><img alt="" src="../images/cloud-ai-platform-pipelines/new-instance.png" width="65%"></p>
+</li>
+<li>
+<p>On the <strong>Kubeflow Pipelines</strong> overview page, click <strong>Configure</strong>.</p>
+<p><img alt="" src="../images/cloud-ai-platform-pipelines/configure.png" width="65%"></p>
+</li>
+<li>
+<p>Click "Enable" to enable the Kubernetes Engine API</p>
+<p><img alt="" src="../images/cloud-ai-platform-pipelines/enable_api.png" width="65%"></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You may have to wait several minutes before moving on, while the Kubernetes Engine APIs are being enabled for you.</p>
+</div>
+</li>
+<li>
+<p>On the <strong>Deploy Kubeflow Pipelines</strong> page:</p>
+<ol>
+<li>
+<p>Select a <a href="https://cloud.google.com/compute/docs/regions-zones">zone</a> (or
+    "region") for your cluster. The network and subnetwork can be set, but
+    for the purposes of this tutorial we will leave them as defaults.</p>
+</li>
+<li>
+<p><strong>IMPORTANT</strong> Check the box labeled <em>Allow access to the following cloud
+    APIs</em>. (This is required for this cluster to access the other pieces of
+    your project. If you miss this step, fixing it later is a bit tricky.)</p>
+<p><img alt="" src="../images/cloud-ai-platform-pipelines/check-the-box.png" width="50%"></p>
+</li>
+<li>
+<p>Click <strong>Create New Cluster</strong>, and wait several minutes until the cluster
+    has been created.  This will take a few minutes.  When it completes you
+    will see a message like:</p>
+<blockquote>
+<p>Cluster "cluster-1" successfully created in zone "us-central1-a".</p>
+</blockquote>
+</li>
+<li>
+<p>Select a namespace and instance name (using the defaults is fine). For
+    the purposes of this tutorial do not check <em>executor.emissary</em> or
+    <em>managedstorage.enabled</em>.</p>
+</li>
+<li>
+<p>Click <strong>Deploy</strong>, and wait several moments until the pipeline has been
+    deployed. By deploying Kubeflow Pipelines, you accept the Terms of
+    Service.</p>
+</li>
+</ol>
+</li>
+</ol>
+<h2 id="3-set-up-cloud-ai-platform-notebook-instance">3. Set up Cloud AI Platform Notebook instance.<a class="headerlink" href="#3-set-up-cloud-ai-platform-notebook-instance" title="Permanent link">¶</a></h2>
+<ol>
+<li>
+<p>Go to the
+    <a href="https://console.cloud.google.com/vertex-ai/workbench">Vertex AI Workbench</a>
+    page.  The first time you run Workbench you will need to enable the
+    Notebooks API.</p>
+<p>Under the Main Navigation Menu: ≡ -&gt; Vertex AI -&gt; Workbench</p>
+</li>
+<li>
+<p>If prompted, enable the Compute Engine API.</p>
+</li>
+<li>
+<p>Create a <strong>New Notebook</strong> with TensorFlow Enterprise 2.7 (or above)
+    installed.</p>
+<p><img alt="" src="../images/cloud-ai-platform-pipelines/new-notebook.png" width="65%"></p>
+<p>New Notebook -&gt; TensorFlow Enterprise 2.7 -&gt; Without GPU</p>
+<p>Select a region and zone, and give the notebook instance a name.</p>
+<p>To stay within the Free Tier limits, you may need to change the default
+settings here to reduce the number of vCPUs available to this instance
+from 4 to 2:</p>
+<ol>
+<li>Select <strong>Advanced Options</strong> at the bottom of the <strong>New notebook</strong> form.</li>
+<li>
+<p>Under <strong>Machine configuration</strong> you may want to select a configuration
+    with 1 or 2 vCPUs if you need to stay in the free tier.</p>
+<p><img alt="" src="../images/cloud-ai-platform-pipelines/two-cpus.png" width="65%"></p>
+</li>
+<li>
+<p>Wait for the new notebook to be created, and then click <strong>Enable
+   Notebooks API</strong></p>
+</li>
+</ol>
+</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You may experience slow performance in your notebook if you use 1 or 2
+vCPUs instead of the default or higher. This should not seriously hinder your
+completion of this tutorial. If would like to use the default settings,
+<a href="https://cloud.google.com/free/docs/gcp-free-tier#to_upgrade_your_account">upgrade your account</a>
+to at least 12 vCPUs. This will accrue charges. See
+<a href="https://cloud.google.com/kubernetes-engine/pricing/">Google Kubernetes Engine Pricing</a>
+for more details on pricing, including a
+<a href="https://cloud.google.com/products/calculator">pricing calculator</a> and
+information about the <a href="https://cloud.google.com/free">Google Cloud Free Tier</a>.</p>
+</div>
+<h2 id="4-launch-the-getting-started-notebook">4. Launch the Getting Started Notebook<a class="headerlink" href="#4-launch-the-getting-started-notebook" title="Permanent link">¶</a></h2>
+<ol>
+<li>
+<p>Go to the [<strong>AI Platform Pipelines Clusters</strong>]
+    (https://console.cloud.google.com/ai-platform/pipelines) page.</p>
+<p>Under the Main Navigation Menu: ≡ -&gt; AI Platform -&gt; Pipelines</p>
+</li>
+<li>
+<p>On the line for the cluster you are using in this tutorial, click <strong>Open
+    Pipelines Dashboard</strong>.</p>
+<p><img alt="" src="../images/cloud-ai-platform-pipelines/open-dashboard.png"></p>
+</li>
+<li>
+<p>On the <strong>Getting Started</strong> page, click <strong>Open a Cloud AI Platform
+    Notebook on Google Cloud</strong>.</p>
+<p><img alt="" src="../images/cloud-ai-platform-pipelines/open-template.png"></p>
+</li>
+<li>
+<p>Select the Notebook instance you are using for this tutorial and
+    <strong>Continue</strong>, and then <strong>Confirm</strong>.</p>
+<p><img alt="select-notebook" src="../images/cloud-ai-platform-pipelines/select-notebook.png"></p>
+</li>
+</ol>
+<h2 id="5-continue-working-in-the-notebook">5. Continue working in the Notebook<a class="headerlink" href="#5-continue-working-in-the-notebook" title="Permanent link">¶</a></h2>
+<p>Important: The rest of this tutorial should be completed in Jupyter Lab Notebook
+you opened in the previous step. The instructions and explanations are available
+here as a reference.</p>
+<h3 id="install">Install<a class="headerlink" href="#install" title="Permanent link">¶</a></h3>
+<p>The Getting Started Notebook starts by installing
+<a href="https://www.tensorflow.org/tfx">TFX</a> and
+<a href="https://www.kubeflow.org/docs/pipelines/">Kubeflow Pipelines (KFP)</a> into the VM
+which Jupyter Lab is running in.</p>
+<p>It then checks which version of TFX is installed, does an import, and sets and
+prints the Project ID:</p>
+<p><img alt="check python version and import" src="../images/cloud-ai-platform-pipelines/check-version-nb-cell.png"></p>
+<h3 id="connect-with-your-google-cloud-services">Connect with your Google Cloud services<a class="headerlink" href="#connect-with-your-google-cloud-services" title="Permanent link">¶</a></h3>
+<p>The pipeline configuration needs your project ID, which you can get through the
+notebook and set as an environmental variable.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Read GCP project id from env.</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">shell_output</span><span class="o">=</span><span class="err">!</span><span class="n">gcloud</span> <span class="n">config</span> <span class="nb">list</span> <span class="o">--</span><span class="nb">format</span> <span class="s1">'value(core.project)'</span> <span class="mi">2</span><span class="o">&gt;/</span><span class="n">dev</span><span class="o">/</span><span class="n">null</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">GCP_PROJECT_ID</span><span class="o">=</span><span class="n">shell_output</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"GCP project ID:"</span> <span class="o">+</span> <span class="n">GCP_PROJECT_ID</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Now set your KFP cluster endpoint.</p>
+<p>This can be found from the URL of the Pipelines dashboard. Go to the Kubeflow
+Pipeline dashboard and look at the URL. The endpoint is everything in the URL
+<em>starting with</em> the <code>https://</code>, <em>up to, and including</em>, <code>googleusercontent.com</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">ENDPOINT</span><span class="o">=</span><span class="s1">''</span> <span class="c1"># Enter YOUR ENDPOINT here.</span>
+</span></code></pre></div>
+<p>The notebook then sets a unique name for the custom Docker image:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Docker image name for the pipeline image</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">CUSTOM_TFX_IMAGE</span><span class="o">=</span><span class="s1">'gcr.io/'</span> <span class="o">+</span> <span class="n">GCP_PROJECT_ID</span> <span class="o">+</span> <span class="s1">'/tfx-pipeline'</span>
+</span></code></pre></div>
+<h2 id="6-copy-a-template-into-your-project-directory">6. Copy a template into your project directory<a class="headerlink" href="#6-copy-a-template-into-your-project-directory" title="Permanent link">¶</a></h2>
+<p>Edit the next notebook cell to set a name for your pipeline. In this tutorial we
+will use <code>my_pipeline</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">PIPELINE_NAME</span><span class="o">=</span><span class="s2">"my_pipeline"</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">PROJECT_DIR</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">"~"</span><span class="p">),</span><span class="s2">"imported"</span><span class="p">,</span><span class="n">PIPELINE_NAME</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The notebook then uses the <code>tfx</code> CLI to copy the pipeline template. This
+tutorial uses the Chicago Taxi dataset to perform binary classification, so the
+template sets the model to <code>taxi</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="err">!</span><span class="n">tfx</span> <span class="n">template</span> <span class="n">copy</span> \
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">name</span><span class="o">=</span><span class="p">{</span><span class="n">PIPELINE_NAME</span><span class="p">}</span> \
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  <span class="o">--</span><span class="n">destination</span><span class="o">-</span><span class="n">path</span><span class="o">=</span><span class="p">{</span><span class="n">PROJECT_DIR</span><span class="p">}</span> \
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  <span class="o">--</span><span class="n">model</span><span class="o">=</span><span class="n">taxi</span>
+</span></code></pre></div>
+<p>The notebook then changes its CWD context to the project directory:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>%cd {PROJECT_DIR}
+</span></code></pre></div>
+<h3 id="browse-the-pipeline-files">Browse the pipeline files<a class="headerlink" href="#browse-the-pipeline-files" title="Permanent link">¶</a></h3>
+<p>On the left-hand side of the Cloud AI Platform Notebook, you should see a file
+browser. There should be a directory with your pipeline name (<code>my_pipeline</code>).
+Open it and view the files. (You'll be able to open them and edit from the
+notebook environment as well.)</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a># You can also list the files from the shell
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>! ls
+</span></code></pre></div>
+<p>The <code>tfx template copy</code> command above created a basic scaffold of files that
+build a pipeline. These include Python source codes, sample data, and Jupyter
+notebooks. These are meant for this particular example. For your own pipelines
+these would be the supporting files that your pipeline requires.</p>
+<p>Here is brief description of the Python files.</p>
+<ul>
+<li><code>pipeline</code> - This directory contains the definition of the pipeline<ul>
+<li><code>configs.py</code> — defines common constants for pipeline runners</li>
+<li><code>pipeline.py</code> — defines TFX components and a pipeline</li>
+</ul>
+</li>
+<li><code>models</code> - This directory contains ML model definitions.<ul>
+<li><code>features.py</code> <code>features_test.py</code> — defines features for the model</li>
+<li><code>preprocessing.py</code> / <code>preprocessing_test.py</code> — defines preprocessing
+    jobs using <code>tf::Transform</code></li>
+<li><code>keras</code> - This directory contains a Keras based model.<ul>
+<li><code>constants.py</code> — defines constants of the model</li>
+<li><code>model.py</code> / <code>model_test.py</code> — defines DNN model using Keras</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>beam_runner.py</code> / <code>kubeflow_runner.py</code> — define runners for each
+    orchestration engine</li>
+</ul>
+<h2 id="7-run-your-first-tfx-pipeline-on-kubeflow">7. Run your first TFX pipeline on Kubeflow<a class="headerlink" href="#7-run-your-first-tfx-pipeline-on-kubeflow" title="Permanent link">¶</a></h2>
+<p>The notebook will run the pipeline using the <code>tfx run</code> CLI command.</p>
+<h3 id="connect-to-storage">Connect to storage<a class="headerlink" href="#connect-to-storage" title="Permanent link">¶</a></h3>
+<p>Running pipelines create artifacts which have to be stored in
+<a href="https://github.com/google/ml-metadata">ML-Metadata</a>. Artifacts refer to
+payloads, which are files that must be stored in a file system or block storage.
+For this tutorial, we'll use GCS to store our metadata payloads, using the
+bucket that was created automatically during setup.
+Its name will be <code>&lt;your-project-id&gt;-kubeflowpipelines-default</code>.</p>
+<h3 id="create-the-pipeline">Create the pipeline<a class="headerlink" href="#create-the-pipeline" title="Permanent link">¶</a></h3>
+<p>The notebook will upload our sample data to GCS bucket so that we can use it in
+our pipeline later.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="err">!</span><span class="n">gsutil</span> <span class="n">cp</span> <span class="n">data</span><span class="o">/</span><span class="n">data</span><span class="o">.</span><span class="n">csv</span> <span class="n">gs</span><span class="p">:</span><span class="o">//</span><span class="p">{</span><span class="n">GOOGLE_CLOUD_PROJECT</span><span class="p">}</span><span class="o">-</span><span class="n">kubeflowpipelines</span><span class="o">-</span><span class="n">default</span><span class="o">/</span><span class="n">tfx</span><span class="o">-</span><span class="n">template</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">taxi</span><span class="o">/</span><span class="n">data</span><span class="o">.</span><span class="n">csv</span>
+</span></code></pre></div>
+<p>The notebook then uses the <code>tfx pipeline create</code> command to create the pipeline.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="err">!</span><span class="n">tfx</span> <span class="n">pipeline</span> <span class="n">create</span>  \
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">path</span><span class="o">=</span><span class="n">kubeflow_runner</span><span class="o">.</span><span class="n">py</span> \
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span> \
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="o">--</span><span class="n">build</span><span class="o">-</span><span class="n">image</span>
+</span></code></pre></div>
+<p>While creating a pipeline, <code>Dockerfile</code> will be generated to build a Docker
+image. Don't forget to add these files to your source control system (for
+example, git) along with other source files.</p>
+<h3 id="run-the-pipeline">Run the pipeline<a class="headerlink" href="#run-the-pipeline" title="Permanent link">¶</a></h3>
+<p>The notebook then uses the <code>tfx run create</code> command to start an execution run of
+your pipeline. You will also see this run listed under Experiments in the
+Kubeflow Pipelines Dashboard.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="err">!</span><span class="n">tfx</span> <span class="n">run</span> <span class="n">create</span> <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">name</span><span class="o">=</span><span class="p">{</span><span class="n">PIPELINE_NAME</span><span class="p">}</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span></code></pre></div>
+<p>You can view your pipeline from the Kubeflow Pipelines Dashboard.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If your pipeline run fails, you can see detailed logs in the KFP
+Dashboard. One of the major sources of failure is permission related problems.
+Make sure your KFP cluster has permissions to access Google Cloud APIs. This can
+be configured
+<a href="https://cloud.google.com/ai-platform/pipelines/docs/setting-up">when you create a KFP cluster in GCP</a>,
+or see
+<a href="https://cloud.google.com/ai-platform/pipelines/docs/troubleshooting">Troubleshooting document in GCP</a>.</p>
+</div>
+<h2 id="8-validate-your-data">8. Validate your data<a class="headerlink" href="#8-validate-your-data" title="Permanent link">¶</a></h2>
+<p>The first task in any data science or ML project is to understand and clean the
+data.</p>
+<ul>
+<li>Understand the data types for each feature</li>
+<li>Look for anomalies and missing values</li>
+<li>Understand the distributions for each feature</li>
+</ul>
+<h3 id="components">Components<a class="headerlink" href="#components" title="Permanent link">¶</a></h3>
+<p><img alt="Data Components" src="../images/cloud-ai-platform-pipelines/examplegen1.png">
+<img alt="Data Components" src="../images/cloud-ai-platform-pipelines/examplegen2.png"></p>
+<ul>
+<li><a href="../../../guide/examplegen">ExampleGen</a> ingests and
+    splits the input dataset.</li>
+<li><a href="../../../guide/statsgen">StatisticsGen</a> calculates
+    statistics for the dataset.</li>
+<li><a href="../../../guide/schemagen">SchemaGen</a> SchemaGen
+    examines the statistics and creates a data schema.</li>
+<li><a href="../../../guide/exampleval">ExampleValidator</a> looks
+    for anomalies and missing values in the dataset.</li>
+</ul>
+<h3 id="in-jupyter-lab-file-editor">In Jupyter lab file editor:<a class="headerlink" href="#in-jupyter-lab-file-editor" title="Permanent link">¶</a></h3>
+<p>In <code>pipeline</code>/<code>pipeline.py</code>, uncomment the lines which append these components
+to your pipeline:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># components.append(statistics_gen)</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># components.append(schema_gen)</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># components.append(example_validator)</span>
+</span></code></pre></div>
+<p>(<code>ExampleGen</code> was already enabled when the template files were copied.)</p>
+<h3 id="update-the-pipeline-and-re-run-it">Update the pipeline and re-run it<a class="headerlink" href="#update-the-pipeline-and-re-run-it" title="Permanent link">¶</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Update the pipeline</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="err">!</span> <span class="n">tfx</span> <span class="n">pipeline</span> <span class="n">update</span> \
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>  <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">path</span><span class="o">=</span><span class="n">kubeflow_runner</span><span class="o">.</span><span class="n">py</span> \
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>  <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="err">!</span> <span class="n">tfx</span> <span class="n">run</span> <span class="n">create</span> <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">name</span> <span class="s2">"</span><span class="si">{PIPELINE_NAME}</span><span class="s2">"</span>
+</span></code></pre></div>
+<h3 id="check-the-pipeline">Check the pipeline<a class="headerlink" href="#check-the-pipeline" title="Permanent link">¶</a></h3>
+<p>For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
+page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
+in the Experiments page. You should be able to find the run with the name of
+your pipeline.</p>
+<h3 id="more-advanced-example">More advanced example<a class="headerlink" href="#more-advanced-example" title="Permanent link">¶</a></h3>
+<p>The example presented here is really only meant to get you started. For a more
+advanced example see the
+<a href="/tutorials/data_validation/chicago_taxi">TensorFlow Data Validation Colab</a>.</p>
+<p>For more information on using TFDV to explore and validate a dataset,
+<a href="https://www.tensorflow.org/tfx/data_validation">see the examples on tensorflow.org</a>.</p>
+<h2 id="9-feature-engineering">9. Feature engineering<a class="headerlink" href="#9-feature-engineering" title="Permanent link">¶</a></h2>
+<p>You can increase the predictive quality of your data and/or reduce
+dimensionality with feature engineering.</p>
+<ul>
+<li>Feature crosses</li>
+<li>Vocabularies</li>
+<li>Embeddings</li>
+<li>PCA</li>
+<li>Categorical encoding</li>
+</ul>
+<p>One of the benefits of using TFX is that you will write your transformation code
+once, and the resulting transforms will be consistent between training and
+serving.</p>
+<h3 id="components_1">Components<a class="headerlink" href="#components_1" title="Permanent link">¶</a></h3>
+<p><img alt="Transform" src="../images/cloud-ai-platform-pipelines/transform.png"></p>
+<ul>
+<li><a href="../../../guide/transform">Transform</a> performs feature
+    engineering on the dataset.</li>
+</ul>
+<h3 id="in-jupyter-lab-file-editor_1">In Jupyter lab file editor:<a class="headerlink" href="#in-jupyter-lab-file-editor_1" title="Permanent link">¶</a></h3>
+<p>In <code>pipeline</code>/<code>pipeline.py</code>, find and uncomment the line which appends
+<a href="../../../guide/transform">Transform</a> to the pipeline.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># components.append(transform)</span>
+</span></code></pre></div>
+<h3 id="update-the-pipeline-and-re-run-it_1">Update the pipeline and re-run it<a class="headerlink" href="#update-the-pipeline-and-re-run-it_1" title="Permanent link">¶</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Update the pipeline</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="err">!</span> <span class="n">tfx</span> <span class="n">pipeline</span> <span class="n">update</span> \
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>  <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">path</span><span class="o">=</span><span class="n">kubeflow_runner</span><span class="o">.</span><span class="n">py</span> \
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>  <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="err">!</span> <span class="n">tfx</span> <span class="n">run</span> <span class="n">create</span> <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">name</span> <span class="s2">"</span><span class="si">{PIPELINE_NAME}</span><span class="s2">"</span>
+</span></code></pre></div>
+<h3 id="check-pipeline-outputs">Check pipeline outputs<a class="headerlink" href="#check-pipeline-outputs" title="Permanent link">¶</a></h3>
+<p>For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
+page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
+in the Experiments page. You should be able to find the run with the name of
+your pipeline.</p>
+<h3 id="more-advanced-example_1">More advanced example<a class="headerlink" href="#more-advanced-example_1" title="Permanent link">¶</a></h3>
+<p>The example presented here is really only meant to get you started. For a more
+advanced example see the
+<a href="/tutorials/transform/census">TensorFlow Transform Colab</a>.</p>
+<h2 id="10-training">10. Training<a class="headerlink" href="#10-training" title="Permanent link">¶</a></h2>
+<p>Train a TensorFlow model with your nice, clean, transformed data.</p>
+<ul>
+<li>Include the transformations from the previous step so that they are applied
+    consistently</li>
+<li>Save the results as a SavedModel for production</li>
+<li>Visualize and explore the training process using TensorBoard</li>
+<li>Also save an EvalSavedModel for analysis of model performance</li>
+</ul>
+<h3 id="components_2">Components<a class="headerlink" href="#components_2" title="Permanent link">¶</a></h3>
+<ul>
+<li><a href="../../../guide/trainer">Trainer</a> trains a TensorFlow
+    model.</li>
+</ul>
+<h3 id="in-jupyter-lab-file-editor_2">In Jupyter lab file editor:<a class="headerlink" href="#in-jupyter-lab-file-editor_2" title="Permanent link">¶</a></h3>
+<p>In <code>pipeline</code>/<code>pipeline.py</code>, find and uncomment the which appends Trainer to the
+pipeline:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># components.append(trainer)</span>
+</span></code></pre></div>
+<h3 id="update-the-pipeline-and-re-run-it_2">Update the pipeline and re-run it<a class="headerlink" href="#update-the-pipeline-and-re-run-it_2" title="Permanent link">¶</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Update the pipeline</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="err">!</span> <span class="n">tfx</span> <span class="n">pipeline</span> <span class="n">update</span> \
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>  <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">path</span><span class="o">=</span><span class="n">kubeflow_runner</span><span class="o">.</span><span class="n">py</span> \
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>  <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="err">!</span> <span class="n">tfx</span> <span class="n">run</span> <span class="n">create</span> <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">name</span> <span class="s2">"</span><span class="si">{PIPELINE_NAME}</span><span class="s2">"</span>
+</span></code></pre></div>
+<h3 id="check-pipeline-outputs_1">Check pipeline outputs<a class="headerlink" href="#check-pipeline-outputs_1" title="Permanent link">¶</a></h3>
+<p>For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
+page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
+in the Experiments page. You should be able to find the run with the name of
+your pipeline.</p>
+<h3 id="more-advanced-example_2">More advanced example<a class="headerlink" href="#more-advanced-example_2" title="Permanent link">¶</a></h3>
+<p>The example presented here is really only meant to get you started. For a more
+advanced example see the
+<a href="https://www.tensorflow.org/tensorboard/get_started">TensorBoard Tutorial</a>.</p>
+<h2 id="11-analyzing-model-performance">11. Analyzing model performance<a class="headerlink" href="#11-analyzing-model-performance" title="Permanent link">¶</a></h2>
+<p>Understanding more than just the top level metrics.</p>
+<ul>
+<li>Users experience model performance for their queries only</li>
+<li>Poor performance on slices of data can be hidden by top level metrics</li>
+<li>Model fairness is important</li>
+<li>Often key subsets of users or data are very important, and may be small<ul>
+<li>Performance in critical but unusual conditions</li>
+<li>Performance for key audiences such as influencers</li>
+</ul>
+</li>
+<li>If you’re replacing a model that is currently in production, first make sure
+    that the new one is better</li>
+</ul>
+<h3 id="components_3">Components<a class="headerlink" href="#components_3" title="Permanent link">¶</a></h3>
+<ul>
+<li><a href="../../../guide/evaluator">Evaluator</a> performs deep
+    analysis of the training results.</li>
+</ul>
+<h3 id="in-jupyter-lab-file-editor_3">In Jupyter lab file editor:<a class="headerlink" href="#in-jupyter-lab-file-editor_3" title="Permanent link">¶</a></h3>
+<p>In <code>pipeline</code>/<code>pipeline.py</code>, find and uncomment the line which appends Evaluator
+to the pipeline:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">evaluator</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="update-the-pipeline-and-re-run-it_3">Update the pipeline and re-run it<a class="headerlink" href="#update-the-pipeline-and-re-run-it_3" title="Permanent link">¶</a></h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Update the pipeline</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="err">!</span> <span class="n">tfx</span> <span class="n">pipeline</span> <span class="n">update</span> \
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>  <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">path</span><span class="o">=</span><span class="n">kubeflow_runner</span><span class="o">.</span><span class="n">py</span> \
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>  <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="err">!</span> <span class="n">tfx</span> <span class="n">run</span> <span class="n">create</span> <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">name</span> <span class="s2">"</span><span class="si">{PIPELINE_NAME}</span><span class="s2">"</span>
+</span></code></pre></div>
+<h3 id="check-pipeline-outputs_2">Check pipeline outputs<a class="headerlink" href="#check-pipeline-outputs_2" title="Permanent link">¶</a></h3>
+<p>For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
+page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
+in the Experiments page. You should be able to find the run with the name of
+your pipeline.</p>
+<h2 id="12-serving-the-model">12. Serving the model<a class="headerlink" href="#12-serving-the-model" title="Permanent link">¶</a></h2>
+<p>If the new model is ready, make it so.</p>
+<ul>
+<li>Pusher deploys SavedModels to well-known locations</li>
+</ul>
+<p>Deployment targets receive new models from well-known locations</p>
+<ul>
+<li>TensorFlow Serving</li>
+<li>TensorFlow Lite</li>
+<li>TensorFlow JS</li>
+<li>TensorFlow Hub</li>
+</ul>
+<h3 id="components_4">Components<a class="headerlink" href="#components_4" title="Permanent link">¶</a></h3>
+<ul>
+<li><a href="../../../guide/pusher">Pusher</a> deploys the model to a
+    serving infrastructure.</li>
+</ul>
+<h3 id="in-jupyter-lab-file-editor_4">In Jupyter lab file editor:<a class="headerlink" href="#in-jupyter-lab-file-editor_4" title="Permanent link">¶</a></h3>
+<p>In <code>pipeline</code>/<code>pipeline.py</code>, find and uncomment the line that appends Pusher to
+the pipeline:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># components.append(pusher)</span>
+</span></code></pre></div>
+<h3 id="check-pipeline-outputs_3">Check pipeline outputs<a class="headerlink" href="#check-pipeline-outputs_3" title="Permanent link">¶</a></h3>
+<p>For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
+page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
+in the Experiments page. You should be able to find the run with the name of
+your pipeline.</p>
+<h3 id="available-deployment-targets">Available deployment targets<a class="headerlink" href="#available-deployment-targets" title="Permanent link">¶</a></h3>
+<p>You have now trained and validated your model, and your model is now ready for
+production. You can now deploy your model to any of the TensorFlow deployment
+targets, including:</p>
+<ul>
+<li><a href="../../../guide/serving">TensorFlow Serving</a>, for
+    serving your model on a server or server farm and processing REST and/or
+    gRPC inference requests.</li>
+<li><a href="https://www.tensorflow.org/lite">TensorFlow Lite</a>, for including your model
+    in an Android or iOS native mobile application, or in a Raspberry Pi, IoT,
+    or microcontroller application.</li>
+<li><a href="https://www.tensorflow.org/js">TensorFlow.js</a>, for running your model in a
+    web browser or Node.JS application.</li>
+</ul>
+<h2 id="more-advanced-examples">More advanced examples<a class="headerlink" href="#more-advanced-examples" title="Permanent link">¶</a></h2>
+<p>The example presented above is really only meant to get you started. Below are
+some examples of integration with other Cloud services.</p>
+<h3 id="kubeflow-pipelines-resource-considerations">Kubeflow Pipelines resource considerations<a class="headerlink" href="#kubeflow-pipelines-resource-considerations" title="Permanent link">¶</a></h3>
+<p>Depending on the requirements of your workload, the default configuration for
+your Kubeflow Pipelines deployment may or may not meet your needs.  You can
+customize your resource configurations using <code>pipeline_operator_funcs</code> in your
+call to <code>KubeflowDagRunnerConfig</code>.</p>
+<p><code>pipeline_operator_funcs</code> is a list of <code>OpFunc</code> items, which transforms all the
+generated <code>ContainerOp</code> instances in the KFP pipeline spec which is compiled
+from <code>KubeflowDagRunner</code>.</p>
+<p>For example, to configure memory we can use
+<a href="https://github.com/kubeflow/pipelines/blob/646f2fa18f857d782117a078d626006ca7bde06d/sdk/python/kfp/dsl/_container_op.py#L249"><code>set_memory_request</code></a>
+to declare the amount of memory needed. A typical way to do that is to create a
+wrapper for <code>set_memory_request</code> and use it to add to to the list of pipeline
+<code>OpFunc</code>s:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="k">def</span> <span class="nf">request_more_memory</span><span class="p">():</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>  <span class="k">def</span> <span class="nf">_set_memory_spec</span><span class="p">(</span><span class="n">container_op</span><span class="p">):</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    <span class="n">container_op</span><span class="o">.</span><span class="n">set_memory_request</span><span class="p">(</span><span class="s1">'32G'</span><span class="p">)</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>  <span class="k">return</span> <span class="n">_set_memory_spec</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="c1"># Then use this opfunc in KubeflowDagRunner</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="n">pipeline_op_funcs</span> <span class="o">=</span> <span class="n">kubeflow_dag_runner</span><span class="o">.</span><span class="n">get_default_pipeline_operator_funcs</span><span class="p">()</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="n">pipeline_op_funcs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">request_more_memory</span><span class="p">())</span>
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="n">config</span> <span class="o">=</span> <span class="n">KubeflowDagRunnerConfig</span><span class="p">(</span>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>    <span class="n">pipeline_operator_funcs</span><span class="o">=</span><span class="n">pipeline_op_funcs</span><span class="p">,</span>
+</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>    <span class="o">...</span>
+</span><span id="__span-19-12"><a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a><span class="p">)</span>
+</span><span id="__span-19-13"><a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="n">kubeflow_dag_runner</span><span class="o">.</span><span class="n">KubeflowDagRunner</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">pipeline</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Similar resource configuration functions include:</p>
+<ul>
+<li><code>set_memory_limit</code></li>
+<li><code>set_cpu_request</code></li>
+<li><code>set_cpu_limit</code></li>
+<li><code>set_gpu_limit</code></li>
+</ul>
+<h3 id="try-bigqueryexamplegen">Try <code>BigQueryExampleGen</code><a class="headerlink" href="#try-bigqueryexamplegen" title="Permanent link">¶</a></h3>
+<p><a href="https://cloud.google.com/bigquery">BigQuery</a> is a serverless, highly scalable,
+and cost-effective cloud data warehouse. BigQuery can be used as a source for
+training examples in TFX. In this step, we will add <code>BigQueryExampleGen</code> to the
+pipeline.</p>
+<h4 id="in-jupyter-lab-file-editor_5">In Jupyter lab file editor:<a class="headerlink" href="#in-jupyter-lab-file-editor_5" title="Permanent link">¶</a></h4>
+<p><strong>Double-click to open <code>pipeline.py</code></strong>. Comment out <code>CsvExampleGen</code> and
+uncomment the line which creates an instance of <code>BigQueryExampleGen</code>. You also
+need to uncomment the <code>query</code> argument of the <code>create_pipeline</code> function.</p>
+<p>We need to specify which GCP project to use for BigQuery, and this is done by
+setting <code>--project</code> in <code>beam_pipeline_args</code> when creating a pipeline.</p>
+<p><strong>Double-click to open <code>configs.py</code></strong>. Uncomment the definition of
+<code>BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS</code> and <code>BIG_QUERY_QUERY</code>. You
+should replace the project id and the region value in this file with the correct
+values for your GCP project.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You MUST set your GCP project ID and region in the <code>configs.py</code> file
+before proceeding.</p>
+</div>
+<p><strong>Change directory one level up.</strong> Click the name of the directory above the
+file list. The name of the directory is the name of the pipeline which is
+<code>my_pipeline</code> if you didn't change the pipeline name.</p>
+<p><strong>Double-click to open <code>kubeflow_runner.py</code></strong>. Uncomment two arguments, <code>query</code>
+and <code>beam_pipeline_args</code>, for the <code>create_pipeline</code> function.</p>
+<p>Now the pipeline is ready to use BigQuery as an example source. Update the
+pipeline as before and create a new execution run as we did in step 5 and 6.</p>
+<h4 id="update-the-pipeline-and-re-run-it_4">Update the pipeline and re-run it<a class="headerlink" href="#update-the-pipeline-and-re-run-it_4" title="Permanent link">¶</a></h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1"># Update the pipeline</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="err">!</span><span class="n">tfx</span> <span class="n">pipeline</span> <span class="n">update</span> \
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>  <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">path</span><span class="o">=</span><span class="n">kubeflow_runner</span><span class="o">.</span><span class="n">py</span> \
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>  <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="err">!</span><span class="n">tfx</span> <span class="n">run</span> <span class="n">create</span> <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">name</span> <span class="p">{</span><span class="n">PIPELINE_NAME</span><span class="p">}</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span></code></pre></div>
+<h3 id="try-dataflow">Try Dataflow<a class="headerlink" href="#try-dataflow" title="Permanent link">¶</a></h3>
+<p>Several
+<a href="../../../guide/beam">TFX Components use Apache Beam</a> to
+implement data-parallel pipelines, and it means that you can distribute data
+processing workloads using
+<a href="https://cloud.google.com/dataflow/">Google Cloud Dataflow</a>. In this step, we
+will set the Kubeflow orchestrator to use Dataflow as the data processing
+back-end for Apache Beam.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If the Dataflow API is not already enabled, you can enable it using
+the console, or from the CLI using this command (for example, in the Cloud
+Shell):</p>
+</div>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1"># Select your project:</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>gcloud<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>project<span class="w"> </span>YOUR_PROJECT_ID
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="c1"># Get a list of services that you can enable in your project:</span>
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>gcloud<span class="w"> </span>services<span class="w"> </span>list<span class="w"> </span>--available<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>Dataflow
+</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>
+</span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="c1"># If you don't see dataflow.googleapis.com listed, that means you haven't been</span>
+</span><span id="__span-21-8"><a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="c1"># granted access to enable the Dataflow API.  See your account adminstrator.</span>
+</span><span id="__span-21-9"><a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>
+</span><span id="__span-21-10"><a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a><span class="c1"># Enable the Dataflow service:</span>
+</span><span id="__span-21-11"><a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>
+</span><span id="__span-21-12"><a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>gcloud<span class="w"> </span>services<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>dataflow.googleapis.com
+</span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Execution speed may be limited by default
+<a href="https://cloud.google.com/compute">Google Compute Engine (GCE)</a> quota. We
+recommend setting a sufficient quota for approximately 250 Dataflow VMs: <strong>250
+CPUs, 250 IP Addresses, and 62500 GB of Persistent Disk</strong>. For more details,
+please see the <a href="https://cloud.google.com/compute/quotas">GCE Quota</a> and
+<a href="https://cloud.google.com/dataflow/quotas">Dataflow Quota</a> documentation. If
+you are blocked by IP Address quota, using a bigger
+<a href="https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options"><code>worker_type</code></a>
+will reduce the number of needed IPs.</p>
+</div>
+<p><strong>Double-click <code>pipeline</code> to change directory, and double-click to open
+<code>configs.py</code></strong>. Uncomment the definition of <code>GOOGLE_CLOUD_REGION</code>, and
+<code>DATAFLOW_BEAM_PIPELINE_ARGS</code>.</p>
+<p><strong>Change directory one level up.</strong> Click the name of the directory above the
+file list. The name of the directory is the name of the pipeline which is
+<code>my_pipeline</code> if you didn't change.</p>
+<p><strong>Double-click to open <code>kubeflow_runner.py</code></strong>. Uncomment <code>beam_pipeline_args</code>.
+(Also make sure to comment out current <code>beam_pipeline_args</code> that you added in
+Step 7.)</p>
+<h4 id="update-the-pipeline-and-re-run-it_5">Update the pipeline and re-run it<a class="headerlink" href="#update-the-pipeline-and-re-run-it_5" title="Permanent link">¶</a></h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="c1"># Update the pipeline</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="err">!</span><span class="n">tfx</span> <span class="n">pipeline</span> <span class="n">update</span> \
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>  <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">path</span><span class="o">=</span><span class="n">kubeflow_runner</span><span class="o">.</span><span class="n">py</span> \
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>  <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>
+</span><span id="__span-22-6"><a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="err">!</span><span class="n">tfx</span> <span class="n">run</span> <span class="n">create</span> <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">name</span> <span class="p">{</span><span class="n">PIPELINE_NAME</span><span class="p">}</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span></code></pre></div>
+<p>You can find your Dataflow jobs in
+<a href="http://console.cloud.google.com/dataflow">Dataflow in Cloud Console</a>.</p>
+<h3 id="try-cloud-ai-platform-training-and-prediction-with-kfp">Try Cloud AI Platform Training and Prediction with KFP<a class="headerlink" href="#try-cloud-ai-platform-training-and-prediction-with-kfp" title="Permanent link">¶</a></h3>
+<p>TFX interoperates with several managed GCP services, such as
+<a href="https://cloud.google.com/ai-platform/">Cloud AI Platform for Training and Prediction</a>.
+You can set your <code>Trainer</code> component to use Cloud AI Platform Training, a
+managed service for training ML models. Moreover, when your model is built and
+ready to be served, you can <em>push</em> your model to Cloud AI Platform Prediction
+for serving. In this step, we will set our <code>Trainer</code> and <code>Pusher</code> component to
+use Cloud AI Platform services.</p>
+<p>Before editing files, you might first have to enable <em>AI Platform Training &amp;
+Prediction API</em>.</p>
+<p><strong>Double-click <code>pipeline</code> to change directory, and double-click to open
+<code>configs.py</code></strong>. Uncomment the definition of <code>GOOGLE_CLOUD_REGION</code>,
+<code>GCP_AI_PLATFORM_TRAINING_ARGS</code> and <code>GCP_AI_PLATFORM_SERVING_ARGS</code>. We will use
+our custom built container image to train a model in Cloud AI Platform Training,
+so we should set <code>masterConfig.imageUri</code> in <code>GCP_AI_PLATFORM_TRAINING_ARGS</code> to
+the same value as <code>CUSTOM_TFX_IMAGE</code> above.</p>
+<p><strong>Change directory one level up, and double-click to open
+<code>kubeflow_runner.py</code></strong>. Uncomment <code>ai_platform_training_args</code> and
+<code>ai_platform_serving_args</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you receive a permissions error in the Training step, you may need to
+provide Storage Object Viewer permissions to the Cloud Machine Learning Engine
+(AI Platform Prediction &amp; Training) service account. More information is
+available in the
+<a href="https://cloud.google.com/container-registry/docs/access-control#grant">Container Registry documentation</a>.</p>
+</div>
+<h4 id="update-the-pipeline-and-re-run-it_6">Update the pipeline and re-run it<a class="headerlink" href="#update-the-pipeline-and-re-run-it_6" title="Permanent link">¶</a></h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c1"># Update the pipeline</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="err">!</span><span class="n">tfx</span> <span class="n">pipeline</span> <span class="n">update</span> \
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>  <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">path</span><span class="o">=</span><span class="n">kubeflow_runner</span><span class="o">.</span><span class="n">py</span> \
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>  <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>
+</span><span id="__span-23-6"><a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="err">!</span><span class="n">tfx</span> <span class="n">run</span> <span class="n">create</span> <span class="o">--</span><span class="n">pipeline</span><span class="o">-</span><span class="n">name</span> <span class="p">{</span><span class="n">PIPELINE_NAME</span><span class="p">}</span> <span class="o">--</span><span class="n">endpoint</span><span class="o">=</span><span class="p">{</span><span class="n">ENDPOINT</span><span class="p">}</span>
+</span></code></pre></div>
+<p>You can find your training jobs in
+<a href="https://console.cloud.google.com/ai-platform/jobs">Cloud AI Platform Jobs</a>. If
+your pipeline completed successfully, you can find your model in
+<a href="https://console.cloud.google.com/ai-platform/models">Cloud AI Platform Models</a>.</p>
+<h2 id="14-use-your-own-data">14. Use your own data<a class="headerlink" href="#14-use-your-own-data" title="Permanent link">¶</a></h2>
+<p>In this tutorial, you made a pipeline for a model using the Chicago Taxi
+dataset. Now try putting your own data into the pipeline. Your data can be
+stored anywhere the pipeline can access it, including Google Cloud Storage,
+BigQuery, or CSV files.</p>
+<p>You need to modify the pipeline definition to accommodate your data.</p>
+<h3 id="if-your-data-is-stored-in-files">If your data is stored in files<a class="headerlink" href="#if-your-data-is-stored-in-files" title="Permanent link">¶</a></h3>
+<ol>
+<li>Modify <code>DATA_PATH</code> in <code>kubeflow_runner.py</code>, indicating the location.</li>
+</ol>
+<h3 id="if-your-data-is-stored-in-bigquery">If your data is stored in BigQuery<a class="headerlink" href="#if-your-data-is-stored-in-bigquery" title="Permanent link">¶</a></h3>
+<ol>
+<li>Modify <code>BIG_QUERY_QUERY</code> in configs.py to your query statement.</li>
+<li>Add features in <code>models</code>/<code>features.py</code>.</li>
+<li>Modify <code>models</code>/<code>preprocessing.py</code> to
+    <a href="../../../guide/transform">transform input data for training</a>.</li>
+<li>Modify <code>models</code>/<code>keras</code>/<code>model.py</code> and <code>models</code>/<code>keras</code>/<code>constants.py</code> to
+    <a href="../../../guide/trainer">describe your ML model</a>.</li>
+</ol>
+<h3 id="learn-more-about-trainer">Learn more about Trainer<a class="headerlink" href="#learn-more-about-trainer" title="Permanent link">¶</a></h3>
+<p>See <a href="../../../guide/trainer">Trainer component guide</a> for
+more details on Training pipelines.</p>
+<h2 id="cleaning-up">Cleaning up<a class="headerlink" href="#cleaning-up" title="Permanent link">¶</a></h2>
+<p>To clean up all Google Cloud resources used in this project, you can
+<a href="https://cloud.google.com/resource-manager/docs/creating-managing-projects#shutting_down_projects">delete the Google Cloud project</a>
+you used for the tutorial.</p>
+<p>Alternatively, you can clean up individual resources by visiting each
+consoles: - <a href="https://console.cloud.google.com/storage">Google Cloud Storage</a> -
+<a href="https://console.cloud.google.com/gcr">Google Container Registry</a> -
+<a href="https://console.cloud.google.com/kubernetes">Google Kubernetes Engine</a></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.copy", "content.code.select", "content.action.edit"], "search": "../../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.83f73b43.min.js"></script>
+      
+        <script src="../../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

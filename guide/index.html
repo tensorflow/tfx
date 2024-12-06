@@ -1,0 +1,4851 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../tutorials/">
+      
+      
+        <link rel="next" href="solutions/">
+      
+      
+      <link rel="icon" href="../assets/tf_full_color_primary_icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.47">
+    
+    
+      
+        <title>Guide - TFX</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-tfx-user-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="TFX" class="md-header__button md-logo" aria-label="TFX" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TFX
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/tensorflow/tfx" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TFX
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="TFX" class="md-nav__button md-logo" aria-label="TFX" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    TFX
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/tensorflow/tfx" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TFX
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX: Getting started tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            TFX: Getting started tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/penguin_simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    1. Starter pipeline
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/penguin_tfdv" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2. Adding data validation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/penguin_tft" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    3. Adding feature engineering
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/penguin_tfma" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    4. Adding model analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX: Interactive tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            TFX: Interactive tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/components_keras" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactive tutorial (TF2 Keras)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/components" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactive tutorial (Estimator)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX on Google Cloud
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            TFX on Google Cloud
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/gcp/vertex_pipelines_simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Running on Vertex Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/gcp/vertex_pipelines_bq" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read data from BigQuery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/gcp/vertex_pipelines_vertex_training" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Vertex AI Training and Serving
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/cloud-ai-platform-pipelines" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud AI Platform Pipelines tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX: Advanced tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            TFX: Advanced tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/gpt2_finetuning_and_conversion" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    LLM finetuning and conversion
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/python_function_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Custom component tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/recommenders" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Recommenders with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/recommenders/examples/ranking_tfx" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ranking with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/airflow_workshop" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Airflow tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/neural_structured_learning" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Neural Structured Learning in TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Data Validation
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            Data Validation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/data_validation/tfdv_basic" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with TFDV
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Transform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            Transform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/transform/simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Preprocess data (beginner)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/transform/census" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Preprocess data (advanced)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/transform/data_preprocessing_with_cloud" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data preprocessing for ML with Google Cloud
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Model Analysis
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            Model Analysis
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/model_analysis/tfma_basic" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with TFMA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fairness Indicators tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Deploy a trained model
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            Deploy a trained model
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/serving/rest_simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Servers: TFX for TensorFlow Serving
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/tfx_for_mobile" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mobile & IoT: TFX for TensorFlow Lite
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    ML Metadata
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            ML Metadata
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/mlmd/mlmd_tutorial" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with MLMD
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Guide
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Guide
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Guide
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tfx-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      TFX 1.0
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nightly-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Nightly Packages
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#about-tfx" class="md-nav__link">
+    <span class="md-ellipsis">
+      About TFX
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tfx-standard-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      TFX Standard Components
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tfx-libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      TFX Libraries
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="TFX Libraries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supporting-technologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supporting Technologies
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supporting Technologies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#required" class="md-nav__link">
+    <span class="md-ellipsis">
+      Required
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#portability-and-interoperability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Portability and Interoperability
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-vs-savedmodel" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model vs. SavedModel
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model vs. SavedModel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#savedmodel" class="md-nav__link">
+    <span class="md-ellipsis">
+      SavedModel
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      Schema
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#developing-with-tfx" class="md-nav__link">
+    <span class="md-ellipsis">
+      Developing with TFX
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Developing with TFX">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-exploration-visualization-and-cleaning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Exploration, Visualization, and Cleaning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Visualization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#developing-and-training-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      Developing and Training Models
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#analyzing-and-understanding-model-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Analyzing and Understanding Model Performance
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-analysis-and-visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Analysis and Visualization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validating-model-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validating Model Performance
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validating-that-a-model-can-be-served" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validating That A Model Can Be Served
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Targets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deployment Targets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inference-tensorflow-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inference: TensorFlow Serving
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inference-in-native-mobile-and-iot-applications-tensorflow-lite" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inference in Native Mobile and IoT Applications: TensorFlow Lite
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inference-in-javascript-tensorflow-js" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inference in JavaScript: TensorFlow JS
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-tfx-pipeline-with-airflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a TFX Pipeline With Airflow
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-tfx-pipeline-with-kubeflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a TFX Pipeline With Kubeflow
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Creating a TFX Pipeline With Kubeflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setup
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-and-run-tfx-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure and run TFX pipeline
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#command-line-interface-for-pipeline-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Command line interface for pipeline actions
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    What's New
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            What's New
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="addons" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TFX-Addons
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="solutions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TFX Cloud Solutions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="keras" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Keras with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="non_tf" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Non-TensorFlow Frameworks in TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/tfx/tfx_for_mobile" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mobile & IoT: TFX for TensorFlow Lite
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX Pipelines
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            TFX Pipelines
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="understanding_tfx_pipelines" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Understanding TFX pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="build_tfx_pipeline" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Building a TFX pipeline
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="build_local_pipeline" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX Standard Components
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            TFX Standard Components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examplegen" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ExampleGen
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="statsgen" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    StatisticsGen
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="schemagen" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SchemaGen
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="exampleval" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ExampleValidator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="transform" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Transform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="trainer" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trainer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tuner" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tuner
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="evaluator" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Evaluator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="infra_validator" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    InfraValidator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pusher" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pusher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="bulkinferrer" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    BulkInferrer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX Custom Components
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            TFX Custom Components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="understanding_custom_components" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Understanding custom components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="custom_function_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Python function-based components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="container_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Container-based components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="custom_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fully custom components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Orchestrators
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            Orchestrators
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="local_orchestrator" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local orchestrator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="vertex" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Vertex AI Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="airflow" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Apache Airflow
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="kubeflow" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubeflow Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX CLI
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            TFX CLI
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using the TFX CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Libraries
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            Libraries
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_1" id="__nav_3_8_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Data Validation
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_1">
+            <span class="md-nav__icon md-icon"></span>
+            Data Validation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tfdv" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Check and analyze data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/data_validation/install" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Install
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/data_validation/get_started" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_2" id="__nav_3_8_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Transform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_2">
+            <span class="md-nav__icon md-icon"></span>
+            Transform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tft" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Preprocess and transform data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/install" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Install
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/get_started" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/tf2_support" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using `tf.Transform` with TensorFlow 2.x
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/common_transformations" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Common transformations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tft_bestpractices" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data preprocessing best practices
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_3" id="__nav_3_8_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Modeling
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_3">
+            <span class="md-nav__icon md-icon"></span>
+            Modeling
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="train" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Design modeling code
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_4" id="__nav_3_8_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Model Analysis
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_4">
+            <span class="md-nav__icon md-icon"></span>
+            Model Analysis
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tfma" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Improving Model Quality
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/install" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Install
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/get_started" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/setup" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/metrics" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Metrics and Plots
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/visualizations" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Visualizations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/model_validations" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Model Validations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="fairness_indicators" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Fairness Indicators
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Pandas_Case_Study" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Fairness Indicators with Pandas DataFrames
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/architecture" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/faq" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FAQ
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_5" id="__nav_3_8_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Serving
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_5">
+            <span class="md-nav__icon md-icon"></span>
+            Serving
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="serving" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Serving models
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/docker" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TensorFlow Serving with Docker
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/setup" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_basic" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Serve a TensorFlow model
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/architecture" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_config" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Advanced model server configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_advanced" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build a TensorFlow ModelServer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_kubernetes" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Use TensorFlow Serving with Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/custom_servable" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Create a new kind of servable
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/custom_source" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Create a module that discovers new servable paths
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/custom_op" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Serving TensorFlow models with custom ops
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/signature_defs" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SignatureDefs in SavedModel for TensorFlow Serving
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Related projects
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            Related projects
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://beam.apache.org/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Apache Beam
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://cloud.google.com/dataflow/docs/machine-learning/ml-preprocess-data" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    MLTransform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mlmd" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ML Metadata
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tensorboard" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TensorBoard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    API
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    v1
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            v1
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/v1/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/v1/components" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/v1/dsl" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    dsl
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/v1/extensions" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    extensions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/v1/orchestration" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    orchestration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/v1/proto" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    proto
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/v1/testing" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/v1/types" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/v1/utils" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    utils
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tfx-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      TFX 1.0
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nightly-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Nightly Packages
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#about-tfx" class="md-nav__link">
+    <span class="md-ellipsis">
+      About TFX
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tfx-standard-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      TFX Standard Components
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tfx-libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      TFX Libraries
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="TFX Libraries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supporting-technologies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supporting Technologies
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supporting Technologies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#required" class="md-nav__link">
+    <span class="md-ellipsis">
+      Required
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#portability-and-interoperability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Portability and Interoperability
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-vs-savedmodel" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model vs. SavedModel
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model vs. SavedModel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#savedmodel" class="md-nav__link">
+    <span class="md-ellipsis">
+      SavedModel
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      Schema
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#developing-with-tfx" class="md-nav__link">
+    <span class="md-ellipsis">
+      Developing with TFX
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Developing with TFX">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-exploration-visualization-and-cleaning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Exploration, Visualization, and Cleaning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Visualization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#developing-and-training-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      Developing and Training Models
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#analyzing-and-understanding-model-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Analyzing and Understanding Model Performance
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-analysis-and-visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Analysis and Visualization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validating-model-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validating Model Performance
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validating-that-a-model-can-be-served" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validating That A Model Can Be Served
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Targets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deployment Targets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inference-tensorflow-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inference: TensorFlow Serving
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inference-in-native-mobile-and-iot-applications-tensorflow-lite" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inference in Native Mobile and IoT Applications: TensorFlow Lite
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inference-in-javascript-tensorflow-js" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inference in JavaScript: TensorFlow JS
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-tfx-pipeline-with-airflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a TFX Pipeline With Airflow
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-tfx-pipeline-with-kubeflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a TFX Pipeline With Kubeflow
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Creating a TFX Pipeline With Kubeflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setup
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-and-run-tfx-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure and run TFX pipeline
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#command-line-interface-for-pipeline-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Command line interface for pipeline actions
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/tensorflow/tfx/edit/master/docs/guide/index.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="the-tfx-user-guide">The TFX User Guide<a class="headerlink" href="#the-tfx-user-guide" title="Permanent link">¶</a></h1>
+<h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">¶</a></h2>
+<p>TFX is a Google-production-scale machine learning (ML) platform based on
+TensorFlow. It provides a configuration framework and shared libraries to
+integrate common components needed to define, launch, and monitor your machine
+learning system.</p>
+<h2 id="tfx-10">TFX 1.0<a class="headerlink" href="#tfx-10" title="Permanent link">¶</a></h2>
+<p>We are happy to announce the availability of the
+<a href="https://github.com/tensorflow/tfx/releases">TFX 1.0.0</a>. This
+is the initial post-beta release of TFX, which provides stable public APIs and
+artifacts. You can be assured that your future TFX pipelines will keep working
+after an upgrade within the compatibility scope defined in this
+<a href="https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md">RFC</a>.</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">¶</a></h2>
+<p><a href="https://github.com/tensorflow/tfx"><img alt="Python" src="https://img.shields.io/pypi/pyversions/tfx.svg?style=plastic"></a>
+<a href="https://badge.fury.io/py/tfx"><img alt="PyPI" src="https://badge.fury.io/py/tfx.svg"></a></p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>tfx
+</span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>See the
+<a href="./serving">TensorFlow Serving</a>,
+<a href="https://js.tensorflow.org/">TensorFlow JS</a>, and/or
+<a href="https://www.tensorflow.org/lite">TensorFlow Lite</a> documentation for installing
+those optional components.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This installs <a href="beam/">Apache Beam</a> with the DirectRunner.  You can also
+separately install runners that perform distributed computation, such as
+<a href="https://flink.apache.org/">Apache Flink</a> or
+<a href="https://spark.apache.org/">Apache Spark</a>.</p>
+</div>
+<h3 id="nightly-packages">Nightly Packages<a class="headerlink" href="#nightly-packages" title="Permanent link">¶</a></h3>
+<p>TFX also hosts nightly packages at https://pypi-nightly.tensorflow.org on Google
+Cloud. To install the latest nightly package, please use the following command:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre tfx
+</span></code></pre></div>
+<p>This will install the nightly packages for the major dependencies of TFX such as
+TensorFlow Model Analysis (TFMA), TensorFlow Data Validation (TFDV), TensorFlow
+Transform (TFT), TFX Basic Shared Libraries (TFX-BSL), ML Metadata (MLMD).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>These nightly packages are unstable and breakages are likely to happen.
+The fix could often take a week or more depending on the complexity involved.</p>
+</div>
+<h2 id="about-tfx">About TFX<a class="headerlink" href="#about-tfx" title="Permanent link">¶</a></h2>
+<p>TFX is a platform for building and managing ML workflows in a production
+environment. TFX provides the following:</p>
+<ul>
+<li>
+<p>A toolkit for building ML pipelines. TFX pipelines let you orchestrate your
+    ML workflow on several platforms, such as: Apache Airflow, Apache Beam, and
+    Kubeflow Pipelines.</p>
+<p><a href="understanding_tfx_pipelines/">Learn more about TFX pipelines</a>.</p>
+</li>
+<li>
+<p>A set of standard components that you can use as a part of a pipeline, or as
+    a part of your ML training script. TFX standard components provide proven
+    functionality to help you get started building an ML process easily.</p>
+<p><a href="#tfx-standard-components">Learn more about TFX standard components</a>.</p>
+</li>
+<li>
+<p>Libraries which provide the base functionality for many of the standard
+    components. You can use the TFX libraries to add this functionality to your
+    own custom components, or use them separately.</p>
+<p><a href="#tfx-libraries">Learn more about the TFX libraries</a>.</p>
+</li>
+</ul>
+<p>TFX is a Google-production-scale machine learning toolkit based on TensorFlow.
+It provides a configuration framework and shared libraries to integrate common
+components needed to define, launch, and monitor your machine learning system.</p>
+<h2 id="tfx-standard-components">TFX Standard Components<a class="headerlink" href="#tfx-standard-components" title="Permanent link">¶</a></h2>
+<p>A TFX pipeline is a sequence of components that implement an <a href="https://en.wikipedia.org/wiki/Pipeline_(computing)">ML
+pipeline</a> which is
+specifically designed for scalable, high-performance machine learning tasks.
+That includes modeling, training, serving inference, and managing deployments to
+online, native mobile, and JavaScript targets.</p>
+<p>A TFX pipeline typically includes the following components:</p>
+<ul>
+<li>
+<p><a href="examplegen/"><strong>ExampleGen</strong></a> is the initial input component of a pipeline
+    that ingests and optionally splits the input dataset.</p>
+</li>
+<li>
+<p><a href="statsgen/"><strong>StatisticsGen</strong></a> calculates statistics for the dataset.</p>
+</li>
+<li>
+<p><a href="schemagen/"><strong>SchemaGen</strong></a> examines the statistics and creates a data
+    schema.</p>
+</li>
+<li>
+<p><a href="exampleval/"><strong>ExampleValidator</strong></a> looks for anomalies and missing values
+    in the dataset.</p>
+</li>
+<li>
+<p><a href="transform/"><strong>Transform</strong></a> performs feature engineering on the dataset.</p>
+</li>
+<li>
+<p><a href="trainer/"><strong>Trainer</strong></a> trains the model.</p>
+</li>
+<li>
+<p><a href="tuner/"><strong>Tuner</strong></a> tunes the hyperparameters of the model.</p>
+</li>
+<li>
+<p><a href="evaluator/"><strong>Evaluator</strong></a> performs deep analysis of the training results
+    and helps you validate your exported models, ensuring that they are "good
+    enough" to be pushed to production.</p>
+</li>
+<li>
+<p><a href="infra_validator/"><strong>InfraValidator</strong></a> checks the model is actually
+    servable from the infrastructure, and prevents bad model from being pushed.</p>
+</li>
+<li>
+<p><a href="pusher/"><strong>Pusher</strong></a> deploys the model on a serving infrastructure.</p>
+</li>
+<li>
+<p><a href="bulkinferrer/"><strong>BulkInferrer</strong></a> performs batch processing on a model
+    with unlabelled inference requests.</p>
+</li>
+</ul>
+<p>This diagram illustrates the flow of data between these components:</p>
+<p><img alt="Component Flow" src="images/prog_fin.png"></p>
+<h2 id="tfx-libraries">TFX Libraries<a class="headerlink" href="#tfx-libraries" title="Permanent link">¶</a></h2>
+<p>TFX includes both libraries and pipeline components.  This diagram illustrates
+the relationships between TFX libraries and pipeline components:</p>
+<p><img alt="Libraries and Components" src="images/libraries_components.png"></p>
+<p>TFX provides several Python packages that are the libraries which are used to
+create pipeline components.  You'll use these libraries to create the components
+of your pipelines so that your code can focus on the unique aspects of your
+pipeline.</p>
+<p>TFX libraries include:</p>
+<ul>
+<li>
+<p><a href="tfdv/"><strong>TensorFlow Data Validation (TFDV)</strong></a> is a library for analyzing
+    and validating machine learning data. It is designed to be highly scalable
+    and to work well with TensorFlow and TFX. TFDV includes:</p>
+<ul>
+<li>Scalable calculation of summary statistics of training and test data.</li>
+<li>Integration with a viewer for data distributions and statistics, as well
+    as faceted comparison of pairs of datasets (Facets).</li>
+<li>Automated data-schema generation to describe expectations about data
+    like required values, ranges, and vocabularies.</li>
+<li>A schema viewer to help you inspect the schema.</li>
+<li>Anomaly detection to identify anomalies, such as missing features,
+    out-of- range values, or wrong feature types, to name a few.</li>
+<li>An anomalies viewer so that you can see what features have anomalies and
+    learn more in order to correct them.</li>
+</ul>
+</li>
+<li>
+<p><a href="tft/"><strong>TensorFlow Transform (TFT)</strong></a> is a library for preprocessing data
+    with TensorFlow. TensorFlow Transform is useful for data that requires a
+    full- pass, such as:</p>
+<ul>
+<li>Normalize an input value by mean and standard deviation.</li>
+<li>Convert strings to integers by generating a vocabulary over all input
+    values.</li>
+<li>Convert floats to integers by assigning them to buckets based on the
+    observed data distribution.</li>
+</ul>
+</li>
+<li>
+<p><a href="train/"><strong>TensorFlow</strong></a> is used for training models with TFX. It ingests
+    training data and modeling code and creates a SavedModel result. It also
+    integrates a feature engineering pipeline created by TensorFlow Transform
+    for preprocessing input data.</p>
+<p><a href="https://www.tensorflow.org/tutorials/keras/keras_tuner">KerasTuner</a> is used
+for tuning hyperparameters for model.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>TFX supports TensorFlow 1.15 and, with some exceptions, 2.x. For
+details, see <a href="train/">Designing TensorFlow Modeling Code For TFX</a>.</p>
+</div>
+</li>
+<li>
+<p><a href="tfma/"><strong>TensorFlow Model Analysis (TFMA)</strong></a> is a library for evaluating
+    TensorFlow models. It is used along with TensorFlow to create an
+    EvalSavedModel, which becomes the basis for its analysis. It allows users to
+    evaluate their models on large amounts of data in a distributed manner,
+    using the same metrics defined in their trainer. These metrics can be
+    computed over different slices of data and visualized in Jupyter notebooks.</p>
+</li>
+<li>
+<p><a href="https://github.com/tensorflow/metadata"><strong>TensorFlow Metadata (TFMD)</strong></a>
+    provides standard representations for metadata that are useful when training
+    machine learning models with TensorFlow. The metadata may be produced by
+    hand or automatically during input data analysis, and may be consumed for
+    data validation, exploration, and transformation. The metadata serialization
+    formats include:</p>
+<ul>
+<li>A schema describing tabular data (e.g., tf.Examples).</li>
+<li>A collection of summary statistics over such datasets.</li>
+</ul>
+</li>
+<li>
+<p><a href="mlmd/"><strong>ML Metadata (MLMD)</strong></a> is a library for recording and retrieving
+    metadata associated with ML developer and data scientist workflows. Most
+    often the metadata uses TFMD representations. MLMD manages persistence using
+    <a href="https://www.sqlite.org/index.html">SQL-Lite</a>,
+    <a href="https://www.mysql.com/">MySQL</a>, and other similar data stores.</p>
+</li>
+</ul>
+<h3 id="supporting-technologies">Supporting Technologies<a class="headerlink" href="#supporting-technologies" title="Permanent link">¶</a></h3>
+<h4 id="required">Required<a class="headerlink" href="#required" title="Permanent link">¶</a></h4>
+<ul>
+<li><a href="beam/"><strong>Apache Beam</strong></a> is an open source, unified model for defining
+both batch and streaming data-parallel processing pipelines. TFX uses
+Apache Beam to implement data-parallel pipelines.  The pipeline is then executed
+by one of Beam's supported distributed processing back-ends, which include
+Apache Flink, Apache Spark,
+<a href="https://cloud.google.com/dataflow/">Google Cloud Dataflow</a>, and others.</li>
+</ul>
+<h4 id="optional">Optional<a class="headerlink" href="#optional" title="Permanent link">¶</a></h4>
+<p>Orchestrators such as Apache Airflow and Kubeflow make configuring, operating,
+monitoring, and maintaining an ML pipeline easier.</p>
+<ul>
+<li>
+<p><a href="https://airflow.apache.org/"><strong>Apache Airflow</strong></a> is a platform to
+    programmatically author, schedule and monitor workflows. TFX uses Airflow to
+    author workflows as directed acyclic graphs (DAGs) of tasks. The Airflow
+    scheduler executes tasks on an array of workers while following the
+    specified dependencies. Rich command line utilities make performing complex
+    surgeries on DAGs a snap. The rich user interface makes it easy to visualize
+    pipelines running in production, monitor progress, and troubleshoot issues
+    when needed. When workflows are defined as code, they become more
+    maintainable, versionable, testable, and collaborative.</p>
+</li>
+<li>
+<p><a href="https://www.kubeflow.org/"><strong>Kubeflow</strong></a> is dedicated to making deployments
+    of machine learning (ML) workflows on Kubernetes simple, portable and
+    scalable. Kubeflow's goal is not to recreate other services, but to provide
+    a straightforward way to deploy best-of-breed open-source systems for ML to
+    diverse infrastructures.
+    <a href="https://www.kubeflow.org/docs/pipelines/pipelines-overview/">Kubeflow Pipelines</a>
+    enable composition and execution of reproducible workflows on Kubeflow,
+    integrated with experimentation and notebook based experiences. Kubeflow
+    Pipelines services on Kubernetes include the hosted Metadata store,
+    container based orchestration engine, notebook server, and UI to help users
+    develop, run, and manage complex ML pipelines at scale. The Kubeflow
+    Pipelines SDK allows for creation and sharing of components and composition
+    of pipelines programmatically.</p>
+</li>
+</ul>
+<h3 id="portability-and-interoperability">Portability and Interoperability<a class="headerlink" href="#portability-and-interoperability" title="Permanent link">¶</a></h3>
+<p>TFX is designed to be portable to multiple environments and orchestration
+frameworks, including <a href="airflow/">Apache Airflow</a>,
+<a href="beam/">Apache Beam</a> and <a href="kubeflow/">Kubeflow</a> . It is also
+portable to different computing platforms, including on-premise, and
+cloud platforms such as the
+<a href="https://cloud.google.com/">Google Cloud Platform (GCP)</a>. In particular,
+TFX interoperates with serveral managed GCP services, such as
+<a href="https://cloud.google.com/ai-platform/">Cloud AI Platform</a> for
+<a href="https://cloud.google.com/ml-engine/">Training and Prediction</a>, and
+<a href="https://cloud.google.com/dataflow/">Cloud Dataflow</a> for distributed data
+processing for several other aspects of the ML lifecycle.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The current revision of this user guide primarily discusses deployment
+on a bare-metal system using Apache Airflow for orchestration.</p>
+</div>
+<h3 id="model-vs-savedmodel">Model vs. SavedModel<a class="headerlink" href="#model-vs-savedmodel" title="Permanent link">¶</a></h3>
+<h4 id="model">Model<a class="headerlink" href="#model" title="Permanent link">¶</a></h4>
+<p>A model is the output of the training process. It is the serialized record of
+the weights that have been learned during the training process. These weights
+can be subsequently used to compute predictions for new input examples. For TFX
+and TensorFlow, 'model' refers to the checkpoints containing the weights learned
+up to that point.</p>
+<p>Note that 'model' might also refer to the definition of the TensorFlow
+computation graph (i.e. a Python file) that expresses how a prediction will be
+computed. The two senses may be used interchangeably based on context.</p>
+<h4 id="savedmodel">SavedModel<a class="headerlink" href="#savedmodel" title="Permanent link">¶</a></h4>
+<ul>
+<li><strong>What is a <a href="https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/saved_model">SavedModel</a></strong>: a universal,
+language-neutral, hermetic, recoverable serialization of a TensorFlow model.</li>
+<li><strong>Why is it important</strong>: It enables higher-level systems to produce,
+transform, and consume TensorFlow models using a single abstraction.</li>
+</ul>
+<p>SavedModel is the recommended serialization format for serving a TensorFlow
+model in production, or exporting a trained model for a native mobile or
+JavaScript application. For example, to turn a model into a REST service for
+making predictions, you can serialize the model as a SavedModel and serve it
+using TensorFlow Serving. See
+<a href="https://www.tensorflow.org/tfx/serving/serving_basic">Serving a TensorFlow Model</a>
+for more information.</p>
+<h3 id="schema">Schema<a class="headerlink" href="#schema" title="Permanent link">¶</a></h3>
+<p>Some TFX components use a description of your input data called a <em>schema</em>. The
+schema is an instance of
+<a href="https://github.com/tensorflow/metadata/tree/master/tensorflow_metadata/proto/v0">schema.proto</a>.
+Schemas are a type of <a href="https://developers.google.com/protocol-buffers/">protocol buffer</a>, more generally known as a
+"protobuf".  The schema can specify data types for feature values,
+whether a feature has to be present in all examples, allowed value ranges, and
+other properties.  One of the benefits of using TensorFlow Data Validation
+(TFDV) is that it will automatically generate a schema by inferring types,
+categories, and ranges from the training data.</p>
+<p>Here's an excerpt from a schema protobuf:</p>
+<div class="language-proto highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="o">...</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">feature</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="n">name</span><span class="o">:</span><span class="w"> </span><span class="s">"age"</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="n">value_count</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="n">min</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="k">max</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="n">type</span><span class="o">:</span><span class="w"> </span><span class="n">FLOAT</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="n">presence</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="n">min_fraction</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="n">min_count</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="p">}</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="n">feature</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">  </span><span class="n">name</span><span class="o">:</span><span class="w"> </span><span class="s">"capital-gain"</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">  </span><span class="n">value_count</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">    </span><span class="n">min</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">    </span><span class="k">max</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span>
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">  </span><span class="n">type</span><span class="o">:</span><span class="w"> </span><span class="n">FLOAT</span>
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">  </span><span class="n">presence</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">    </span><span class="n">min_fraction</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span>
+</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">    </span><span class="n">min_count</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span>
+</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">  </span><span class="p">}</span>
+</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="p">}</span>
+</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="o">...</span>
+</span></code></pre></div>
+<p>The following components use the schema:</p>
+<ul>
+<li>TensorFlow Data Validation</li>
+<li>TensorFlow Transform</li>
+</ul>
+<p>In a typical TFX pipeline TensorFlow Data Validation generates a schema, which
+is consumed by the other components.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The auto-generated schema is best-effort and only tries to infer basic
+properties of the data. It is expected that developers review and modify it as
+needed.</p>
+</div>
+<h2 id="developing-with-tfx">Developing with TFX<a class="headerlink" href="#developing-with-tfx" title="Permanent link">¶</a></h2>
+<p>TFX provides a powerful platform for every phase of a machine learning project,
+from research, experimentation, and development on your local machine, through
+deployment. In order to avoid code duplication and eliminate the potential for
+<a href="./tfdv#training-serving-skew-detection">training/serving skew</a>
+it is strongly recommended to implement your TFX pipeline for both model
+training and deployment of trained models, and use <a href="transform/">Transform</a>
+components which leverage the <a href="tft/">TensorFlow Transform</a> library for both
+training and inference. By doing so you will use the same preprocessing and
+analysis code consistently, and avoid differences between data used for training
+and data fed to your trained models in production, as well as benefitting from
+writing that code once.</p>
+<h3 id="data-exploration-visualization-and-cleaning">Data Exploration, Visualization, and Cleaning<a class="headerlink" href="#data-exploration-visualization-and-cleaning" title="Permanent link">¶</a></h3>
+<p><img alt="Data Exploration, Visualization, and Cleaning" src="images/prog_schemagen.png"></p>
+<p>TFX pipelines typically begin with an <a href="examplegen/">ExampleGen</a> component, which
+accepts input data and formats it as tf.Examples.  Often this is done after the
+data has been split into training and evaluation datasets so that there are
+actually two copies of ExampleGen components, one each for training and evaluation.
+This is typically followed by a
+<a href="statsgen/">StatisticsGen</a> component and a <a href="schemagen/">SchemaGen</a> component,
+which will examine your data and infer a data
+schema and statistics.  The schema and statistics will be consumed by an
+<a href="exampleval/">ExampleValidator</a> component, which will look for anomalies, missing
+values, and incorrect data types in your data.  All of these components leverage the
+capabilities of the <a href="tfdv/">TensorFlow Data Validation</a> library.</p>
+<p><a href="tfdv/">TensorFlow Data Validation (TFDV)</a> is a valuable tool when doing
+initial exploration, visualization, and cleaning of your dataset.  TFDV examines
+your data and infers the data types, categories, and ranges, and then
+automatically helps identify anomalies and missing values.  It also provides
+visualization tools that can help you examine and understand your dataset.
+After your pipeline completes you can read metadata from <a href="mlmd/">MLMD</a> and use
+the visualization tools of TFDV in a Jupyter notebook to analyze your data.</p>
+<p>Following your initial model training and deployment, TFDV can be used to
+monitor new data from inference requests to your deployed models, and look for
+anomalies and/or drift.  This is especially useful for time series data that
+changes over time as a result of trend or seasonality, and can help inform when
+there are data problems or when models need to be retrained on new data.</p>
+<h3 id="data-visualization">Data Visualization<a class="headerlink" href="#data-visualization" title="Permanent link">¶</a></h3>
+<p>After you have completed your first run of your data through the section of your
+pipeline that uses TFDV (typically StatisticsGen, SchemaGen, and
+ExampleValidator) you
+can visualize the results in a Jupyter style notebook.  For additional runs
+you can
+compare these results as you make adjustments, until your data is optimal
+for your
+model and application.</p>
+<p>You will first query <a href="mlmd/"><strong>ML Metadata (MLMD)</strong></a> to locate the results of
+these executions of these components, and then use the visualization support API
+in TFDV to create the visualizations in your notebook. This includes
+<a href="https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv/load_statistics">tfdv.load_statistics()</a>
+and
+<a href="https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv/visualize_statistics">tfdv.visualize_statistics()</a>
+Using this visualization you can better understand the characteristics of your
+dataset, and if necessary modify as required.</p>
+<h3 id="developing-and-training-models">Developing and Training Models<a class="headerlink" href="#developing-and-training-models" title="Permanent link">¶</a></h3>
+<p><img alt="Feature Engineering" src="images/prog_transform.png"></p>
+<p>A typical TFX pipeline will include a <a href="transform/">Transform</a> component, which
+will perform feature engineering by leveraging the capabilities of the
+<a href="tft/">TensorFlow Transform (TFT)</a> library. A Transform component consumes the
+schema created by a SchemaGen component, and applies
+<a href="../tutorials/transform/simple">data transformations</a>
+to create, combine, and transform the features that will be used to train your
+model. Cleanup of missing values and conversion of types should also be done in
+the Transform component if there is ever a possibility that these will also be
+present in data sent for inference requests.
+<a href="train/">There are some important considerations</a> when designing TensorFlow
+code for training in TFX.</p>
+<p><img alt="Modeling and Training" src="images/prog_trainer.png"></p>
+<p>The result of a Transform component is a SavedModel which will be imported and
+used in your modeling code in TensorFlow, during a <a href="trainer/">Trainer</a>
+component.  This
+SavedModel includes all of the data engineering transformations that were
+created in the Transform component, so that the identical transforms are
+performed
+using the exact same code during both training and inference.  Using the
+modeling code, including the SavedModel from the Transform component, you can
+consume your training and evaluation data and train your model.</p>
+<p>An optional <a href="tuner/">Tuner</a> component can be added before Trainer to tune the
+hyperparameters (e.g., number of layers) for the model. With the given model and
+hyperparameters' search space, tuning algorithm will find the best
+hyperparameters based on the objective.</p>
+<h3 id="analyzing-and-understanding-model-performance">Analyzing and Understanding Model Performance<a class="headerlink" href="#analyzing-and-understanding-model-performance" title="Permanent link">¶</a></h3>
+<p><img alt="Model Analysis" src="images/prog_evaluator.png"></p>
+<p>Following initial model development and training it's important to analyze and
+really understand your model's performance.  A typical TFX pipeline will include
+an <a href="evaluator/">Evaluator</a> component, which leverages the capabilities of the
+<a href="tfma/">TensorFlow Model Analysis (TFMA)</a> library, which provides a power
+toolset for this phase of development.  An Evaluator component consumes the
+model that you exported above, and allows you to specify a list of
+<a href="https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/SlicingSpec"><code>tfma.SlicingSpec</code></a>
+that you can use when visualizing and analyzing your model's performance. Each
+<code>SlicingSpec</code> defines a slice of your training data that you want to examine,
+such as particular categories for categorical features, or particular ranges for
+numerical features.</p>
+<p>For example, this would be important for trying to understand your model's
+performance for different segments of your customers, which could be segmented
+by annual purchases, geographical data, age group, or gender.  This can be
+especially important for datasets with long tails, where the performance of a
+dominant group may mask unacceptable performance for important, yet smaller
+groups.  For example, your model may perform well for average employees but fail
+miserably for executive staff, and it might be important to you to know that.</p>
+<h3 id="model-analysis-and-visualization">Model Analysis and Visualization<a class="headerlink" href="#model-analysis-and-visualization" title="Permanent link">¶</a></h3>
+<p>After you have completed your first run of your data through training your
+model and running the <a href="evaluator/">Evaluator</a> component (which leverages
+<a href="tfma/">TFMA</a>) on the training results, you can visualize the results in a
+Jupyter style notebook.  For additional runs you can compare these results as
+you make adjustments, until your results are optimal for your model and
+application.</p>
+<p>You will first query
+<a href="mlmd/"><strong>ML Metadata (MLMD)</strong></a> to locate the results of these
+executions of these components, and then use the visualization support API in
+TFMA to create the visualizations in your notebook.  This includes
+<a href="https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/load_eval_results">tfma.load_eval_results</a>
+and <a href="https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/view/render_slicing_metrics">tfma.view.render_slicing_metrics</a>
+Using this visualization you can better understand the characteristics of your
+model, and if necessary modify as required.</p>
+<h3 id="validating-model-performance">Validating Model Performance<a class="headerlink" href="#validating-model-performance" title="Permanent link">¶</a></h3>
+<p>As part of analyzing a model's performance you might want to validate the
+performance against a baseline (such as the currently serving model). Model
+validation is performed by passing both a candidate and baseline model to the
+<a href="evaluator/">Evaluator</a> component. The Evaluator computes metrics
+(e.g. AUC, loss) for both the candidate and baseline along with a corresponding
+set of diff metrics. Thresholds may then be applied and used to gate pushing
+your models to production.</p>
+<h3 id="validating-that-a-model-can-be-served">Validating That A Model Can Be Served<a class="headerlink" href="#validating-that-a-model-can-be-served" title="Permanent link">¶</a></h3>
+<p><img alt="Infra Validation" src="images/prog_infraval.png"></p>
+<p>Before deploying the trained model, you might want to validate whether the model
+is really servable in the serving infrastructure. This is especially important
+in production environments to ensure that the newly published model does not
+prevent the system from serving predictions. The
+<a href="infra_validator/">InfraValidator</a> component will make a canary deployment of
+your model in a sandboxed environment, and optionally send real requests to
+check that your model works correctly.</p>
+<h2 id="deployment-targets">Deployment Targets<a class="headerlink" href="#deployment-targets" title="Permanent link">¶</a></h2>
+<p>Once you have developed and trained a model that you're happy with, it's now
+time to deploy it to one or more deployment target(s) where it will receive
+inference requests.  TFX supports deployment to three classes of deployment
+targets.  Trained models which have been exported as SavedModels can be deployed
+to any or all of these deployment targets.</p>
+<p><img alt="Component Flow" src="images/prog_fin.png"></p>
+<h3 id="inference-tensorflow-serving">Inference: TensorFlow Serving<a class="headerlink" href="#inference-tensorflow-serving" title="Permanent link">¶</a></h3>
+<p><a href="serving/">TensorFlow Serving (TFS)</a> is a flexible, high-performance serving
+system for machine learning models, designed for production environments. It
+consumes a SavedModel and will accept inference requests over either REST or
+gRPC interfaces. It runs as a set of processes on one or more network servers,
+using one of several advanced architectures to handle synchronization and
+distributed computation. See the <a href="serving/">TFS documentation</a> for more
+information on developing and deploying TFS solutions.</p>
+<p>In a typical pipeline, a SavedModel which has been trained in a
+<a href="trainer/">Trainer</a> component would first be infra-validated in an
+<a href="infra_validator/">InfraValidator</a> component. InfraValidator launches a canary
+TFS model server to actually serve the SavedModel. If validation has passed, a
+<a href="pusher/">Pusher</a> component will finally deploy the SavedModel to your TFS
+infrastructure. This includes handling multiple versions and model updates.</p>
+<h3 id="inference-in-native-mobile-and-iot-applications-tensorflow-lite">Inference in Native Mobile and IoT Applications: TensorFlow Lite<a class="headerlink" href="#inference-in-native-mobile-and-iot-applications-tensorflow-lite" title="Permanent link">¶</a></h3>
+<p><a href="https://www.tensorflow.org/lite">TensorFlow Lite</a> is a suite of tools which is
+dedicated to help developers use their trained TensorFlow Models in native
+mobile and IoT applications.  It consumes the same SavedModels as TensorFlow
+Serving, and applies optimizations such as quantization and pruning to optimize
+the size and performance of the resulting models for the challenges of running
+on mobile and IoT devices.  See the TensorFlow Lite documentation for more
+information on using TensorFlow Lite.</p>
+<h3 id="inference-in-javascript-tensorflow-js">Inference in JavaScript: TensorFlow JS<a class="headerlink" href="#inference-in-javascript-tensorflow-js" title="Permanent link">¶</a></h3>
+<p><a href="https://js.tensorflow.org/">TensorFlow JS</a> is a JavaScript library for training
+and deploying ML models in the browser and on Node.js.  It consumes the same
+SavedModels as TensorFlow Serving and TensorFlow Lite, and converts them to the
+TensorFlow.js Web format.  See the TensorFlow JS documentation for more details
+on using TensorFlow JS.</p>
+<h2 id="creating-a-tfx-pipeline-with-airflow">Creating a TFX Pipeline With Airflow<a class="headerlink" href="#creating-a-tfx-pipeline-with-airflow" title="Permanent link">¶</a></h2>
+<p>Check
+<a href="../tutorials/tfx/airflow_workshop/">airflow workshop</a>
+for details</p>
+<h2 id="creating-a-tfx-pipeline-with-kubeflow">Creating a TFX Pipeline With Kubeflow<a class="headerlink" href="#creating-a-tfx-pipeline-with-kubeflow" title="Permanent link">¶</a></h2>
+<h3 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">¶</a></h3>
+<p>Kubeflow requires a Kubernetes cluster to run the pipelines at scale. See the
+Kubeflow deployment guideline that guide through the options for
+<a href="https://www.kubeflow.org/docs/started/installing-kubeflow/">deploying the Kubeflow cluster.</a></p>
+<h3 id="configure-and-run-tfx-pipeline">Configure and run TFX pipeline<a class="headerlink" href="#configure-and-run-tfx-pipeline" title="Permanent link">¶</a></h3>
+<p>Please follow the
+<a href="../tutorials/tfx/cloud-ai-platform-pipelines/">TFX on Cloud AI Platform Pipeline tutorial</a>
+to run the TFX example pipeline on Kubeflow. TFX components have been
+containerized to compose the Kubeflow pipeline and the sample illustrates the
+ability to configure the pipeline to read large public dataset and execute
+training and data processing steps at scale in the cloud.</p>
+<h2 id="command-line-interface-for-pipeline-actions">Command line interface for pipeline actions<a class="headerlink" href="#command-line-interface-for-pipeline-actions" title="Permanent link">¶</a></h2>
+<p>TFX provides a unified CLI which helps the perform full range of pipeline
+actions such as create, update, run, list, and delete pipelines on various
+orchestrators including Apache Airflow, Apache Beam, and Kubeflow. For details,
+please follow
+<a href="cli/">these instructions</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "content.code.select", "content.action.edit"], "search": "../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.83f73b43.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,4622 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/tf_full_color_primary_icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.47">
+    
+    
+      
+        <title>Using the TFX Command-line Interface - TFX</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.6f8fc17f.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#using-the-tfx-command-line-interface" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="TFX" class="md-header__button md-logo" aria-label="TFX" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TFX
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Using the TFX Command-line Interface
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/tensorflow/tfx" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TFX
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="TFX" class="md-nav__button md-logo" aria-label="TFX" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    TFX
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/tensorflow/tfx" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TFX
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX: Getting started tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            TFX: Getting started tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/penguin_simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    1. Starter pipeline
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/penguin_tfdv" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    2. Adding data validation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/penguin_tft" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    3. Adding feature engineering
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/penguin_tfma" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    4. Adding model analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX: Interactive tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            TFX: Interactive tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/components_keras" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactive tutorial (TF2 Keras)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/components" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactive tutorial (Estimator)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX on Google Cloud
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            TFX on Google Cloud
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/gcp/vertex_pipelines_simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Running on Vertex Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/gcp/vertex_pipelines_bq" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Read data from BigQuery
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/gcp/vertex_pipelines_vertex_training" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Vertex AI Training and Serving
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/cloud-ai-platform-pipelines" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud AI Platform Pipelines tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX: Advanced tutorials
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            TFX: Advanced tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/gpt2_finetuning_and_conversion" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    LLM finetuning and conversion
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/python_function_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Custom component tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/recommenders" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Recommenders with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/recommenders/examples/ranking_tfx" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Ranking with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/airflow_workshop" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Airflow tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/neural_structured_learning" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Neural Structured Learning in TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Data Validation
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            Data Validation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/data_validation/tfdv_basic" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with TFDV
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Transform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            Transform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/transform/simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Preprocess data (beginner)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/transform/census" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Preprocess data (advanced)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/transform/data_preprocessing_with_cloud" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data preprocessing for ML with Google Cloud
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Model Analysis
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            Model Analysis
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/model_analysis/tfma_basic" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with TFMA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fairness Indicators tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Deploy a trained model
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            Deploy a trained model
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/serving/rest_simple" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Servers: TFX for TensorFlow Serving
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/tfx_for_mobile" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mobile & IoT: TFX for TensorFlow Lite
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    ML Metadata
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            ML Metadata
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/mlmd/mlmd_tutorial" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started with MLMD
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Guide
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    What's New
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            What's New
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../addons" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TFX-Addons
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../solutions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TFX Cloud Solutions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../keras" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Keras with TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../non_tf" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Non-TensorFlow Frameworks in TFX
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/tfx/tfx_for_mobile" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Mobile & IoT: TFX for TensorFlow Lite
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX Pipelines
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            TFX Pipelines
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../understanding_tfx_pipelines" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Understanding TFX pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../build_tfx_pipeline" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Building a TFX pipeline
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../build_local_pipeline" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX Standard Components
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            TFX Standard Components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examplegen" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ExampleGen
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../statsgen" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    StatisticsGen
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schemagen" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SchemaGen
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../exampleval" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ExampleValidator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transform" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Transform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../trainer" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Trainer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tuner" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tuner
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluator" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Evaluator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infra_validator" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    InfraValidator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pusher" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pusher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bulkinferrer" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    BulkInferrer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX Custom Components
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            TFX Custom Components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../understanding_custom_components" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Understanding custom components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_function_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Python function-based components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../container_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Container-based components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_component" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Fully custom components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Orchestrators
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            Orchestrators
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local_orchestrator" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Local orchestrator
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vertex" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Vertex AI Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../airflow" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Apache Airflow
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kubeflow" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Kubeflow Pipelines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7" id="__nav_3_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    TFX CLI
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            TFX CLI
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using the TFX CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8" id="__nav_3_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Libraries
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            Libraries
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_1" id="__nav_3_8_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Data Validation
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_1">
+            <span class="md-nav__icon md-icon"></span>
+            Data Validation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tfdv" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Check and analyze data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/data_validation/install" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Install
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/data_validation/get_started" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_2" id="__nav_3_8_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Transform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_2">
+            <span class="md-nav__icon md-icon"></span>
+            Transform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tft" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Preprocess and transform data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/install" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Install
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/get_started" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/tf2_support" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using `tf.Transform` with TensorFlow 2.x
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/transform/common_transformations" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Common transformations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tft_bestpractices" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data preprocessing best practices
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_3" id="__nav_3_8_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Modeling
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_3">
+            <span class="md-nav__icon md-icon"></span>
+            Modeling
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../train" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Design modeling code
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_4" id="__nav_3_8_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Model Analysis
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_4">
+            <span class="md-nav__icon md-icon"></span>
+            Model Analysis
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tfma" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Improving Model Quality
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/install" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Install
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/get_started" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Get started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/setup" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/metrics" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Metrics and Plots
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/visualizations" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Visualizations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/model_validations" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Model Validations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fairness_indicators" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Fairness Indicators
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Pandas_Case_Study" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Using Fairness Indicators with Pandas DataFrames
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/architecture" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/model_analysis/faq" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    FAQ
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_8_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_8_5" id="__nav_3_8_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Serving
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_8_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8_5">
+            <span class="md-nav__icon md-icon"></span>
+            Serving
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../serving" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Serving models
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/docker" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TensorFlow Serving with Docker
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/setup" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_basic" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Serve a TensorFlow model
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/architecture" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_config" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Advanced model server configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_advanced" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build a TensorFlow ModelServer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/serving_kubernetes" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Use TensorFlow Serving with Kubernetes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/custom_servable" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Create a new kind of servable
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/custom_source" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Create a module that discovers new servable paths
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/custom_op" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Serving TensorFlow models with custom ops
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tfx/serving/signature_defs" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SignatureDefs in SavedModel for TensorFlow Serving
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_9" id="__nav_3_9_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Related projects
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            Related projects
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://beam.apache.org/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Apache Beam
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://cloud.google.com/dataflow/docs/machine-learning/ml-preprocess-data" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    MLTransform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mlmd" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ML Metadata
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://www.tensorflow.org/tensorboard" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TensorBoard
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    API
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    v1
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            v1
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/v1/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/v1/components" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/v1/dsl" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    dsl
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/v1/extensions" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    extensions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/v1/orchestration" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    orchestration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/v1/proto" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    proto
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/v1/testing" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/v1/types" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/v1/utils" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    utils
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#about-the-tfx-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      About the TFX CLI
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tfx-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      tfx pipeline
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="tfx pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create" class="md-nav__link">
+    <span class="md-ellipsis">
+      create
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="create">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#update" class="md-nav__link">
+    <span class="md-ellipsis">
+      update
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="update">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compile" class="md-nav__link">
+    <span class="md-ellipsis">
+      compile
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="compile">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      delete
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="delete">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list" class="md-nav__link">
+    <span class="md-ellipsis">
+      list
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="list">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tfx-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      tfx run
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="tfx run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      create
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="create">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#terminate" class="md-nav__link">
+    <span class="md-ellipsis">
+      terminate
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="terminate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      list
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="list">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status" class="md-nav__link">
+    <span class="md-ellipsis">
+      status
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="status">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      delete
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="delete">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tfx-template-experimental" class="md-nav__link">
+    <span class="md-ellipsis">
+      tfx template [Experimental]
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="tfx template [Experimental]">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#list_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      list
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy" class="md-nav__link">
+    <span class="md-ellipsis">
+      copy
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-tfx-cli-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Understanding TFX CLI Flags
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Understanding TFX CLI Flags">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kubeflow-specific-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Kubeflow specific flags
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generated-files-by-tfx-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      Generated files by TFX CLI
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+    <a href="https://github.com/tensorflow/tfx/edit/master/docs/guide/cli.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="using-the-tfx-command-line-interface">Using the TFX Command-line Interface<a class="headerlink" href="#using-the-tfx-command-line-interface" title="Permanent link">¶</a></h1>
+<p>The TFX command-line interface (CLI) performs a full range of pipeline actions
+using pipeline orchestrators, such as Kubeflow Pipelines, Vertex Pipelines.
+Local orchestrator can be also used for faster development or debugging. Apache
+Beam and Apache airflow is supported as experimental features. For example, you
+can use the CLI to:</p>
+<ul>
+<li>Create, update, and delete pipelines.</li>
+<li>Run a pipeline and monitor the run on various orchestrators.</li>
+<li>List pipelines and pipeline runs.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The TFX CLI doesn't currently provide compatibility guarantees. The CLI
+interface might change as new versions are released.</p>
+</div>
+<h2 id="about-the-tfx-cli">About the TFX CLI<a class="headerlink" href="#about-the-tfx-cli" title="Permanent link">¶</a></h2>
+<p>The TFX CLI is installed as a part of the TFX package. All CLI commands follow
+the structure below:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>tfx<span class="w"> </span>&lt;command-group&gt;<span class="w"> </span>&lt;command&gt;<span class="w"> </span>&lt;flags&gt;
+</span></code></pre></div>
+<p>The following command-group options are currently supported:</p>
+<ul>
+<li><a href="#tfx-pipeline"><code>tfx pipeline</code></a> - Create and manage TFX pipelines.</li>
+<li><a href="#tfx-run"><code>tfx run</code></a> - Create and manage runs of TFX pipelines on various
+    orchestration platforms.</li>
+<li><a href="#tfx-template-experimental"><code>tfx template</code></a> - Experimental commands for
+    listing and copying TFX pipeline templates.</li>
+</ul>
+<p>Each command group provides a set of commands. Follow the
+instructions in the <a href="#tfx-pipeline">pipeline commands</a>,
+<a href="#tfx-run">run commands</a>, and <a href="#tfx-template-experimental">template commands</a>
+sections to learn more about using these commands.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Currently not all commands are supported in every orchestrator. Such
+commands explicitly mention the engines supported.</p>
+</div>
+<p>Flags let you pass arguments into CLI commands. Words in flags are separated
+with either a hyphen (<code>-</code>) or an underscore (<code>_</code>). For example, the pipeline
+name flag can be specified as either <code>--pipeline-name</code> or <code>--pipeline_name</code>.
+This document specifies flags with underscores for brevity. Learn more about
+<a href="#understanding-tfx-cli-flags">flags used in the TFX CLI</a>.</p>
+<h2 id="tfx-pipeline">tfx pipeline<a class="headerlink" href="#tfx-pipeline" title="Permanent link">¶</a></h2>
+<p>The structure for commands in the <code>tfx pipeline</code> command group is as follows:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span><span class="nb">command</span><span class="w"> </span>required-flags<span class="w"> </span><span class="o">[</span>optional-flags<span class="o">]</span>
+</span></code></pre></div>
+<p>Use the following sections to learn more about the commands in the <code>tfx
+pipeline</code> command group.</p>
+<h3 id="create">create<a class="headerlink" href="#create" title="Permanent link">¶</a></h3>
+<p>Creates a new pipeline in the given orchestrator.</p>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>create<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path<span class="w"> </span><span class="o">[</span>--endpoint<span class="o">=</span>endpoint<span class="w"> </span>--engine<span class="o">=</span>engine<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>--build_image<span class="w"> </span>--build_base_image<span class="o">=</span>build-base-image<span class="o">]</span>
+</span></code></pre></div>
+<dl>
+<dt>--pipeline_path=<code class="variable">pipeline-path</code></dt>
+<dd>The path to the pipeline configuration file.</dd>
+<dt>--endpoint=<code class="variable">endpoint</code></dt>
+<dd>
+<p>(Optional.) Endpoint of the Kubeflow Pipelines API service. The endpoint of your Kubeflow Pipelines API service is the same as URL of the Kubeflow Pipelines dashboard. Your endpoint value should be something like:</p>
+<div class="language-text highlight"><pre><span></span><code>https://host-name/pipeline
+</code></pre></div>
+<p>If you do not know the endpoint for your Kubeflow Pipelines cluster, contact you cluster administrator.</p>
+<p>If the <code>--endpoint</code> is not specified, the in-cluster service DNS name is used as the default value. This name works only if the CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a <a class="external" href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/">Kubeflow Jupyter notebooks</a> instance.</p>
+</dd>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>(Optional.) The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+<li><strong>local</strong>: sets engine to local orchestrator</li>
+<li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+<li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+<li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</div>
+</dd>
+<dt>--iap_client_id=<code class="variable">iap-client-id</code></dt>
+<dd>(Optional.) Client ID for IAP protected endpoint when using Kubeflow Pipelines.</dd>
+<dt>--namespace=<code class="variable">namespace</code></dt>
+<dd>(Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API. If the namespace is not specified, the value defaults to <code>kubeflow</code>.</dd>
+<dt>--build_image</dt>
+<dd>
+<p>(Optional.) When the <code class="variable">engine</code> is <strong>kubeflow</strong> or <strong>vertex</strong>, TFX creates a container image for your pipeline if specified. <code>Dockerfile</code> in the current directory will be used, and TFX will automatically generate one if not exists.</p>
+<p>The built image will be pushed to the remote registry which is specified in <code>KubeflowDagRunnerConfig</code> or <code>KubeflowV2DagRunnerConfig</code>.</p>
+</dd>
+<dt>--build_base_image=<code class="variable">build-base-image</code></dt>
+<dd>
+<p>(Optional.) When the <code class="variable">engine</code> is <strong>kubeflow</strong>, TFX creates a container image for your pipeline. The build base image specifies the base container image to use when building the pipeline container image.</p>
+</dd>
+</dl>
+<h4 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">¶</a></h4>
+<p>Kubeflow:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>create<span class="w"> </span>--engine<span class="o">=</span>kubeflow<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="w"> </span>--endpoint<span class="o">=</span>endpoint<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>--build_image
+</span></code></pre></div>
+<p>Local:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>create<span class="w"> </span>--engine<span class="o">=</span><span class="nb">local</span><span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path
+</span></code></pre></div>
+<p>Vertex:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>create<span class="w"> </span>--engine<span class="o">=</span>vertex<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>--build_image
+</span></code></pre></div>
+<p>To autodetect engine from user environment, simply avoid using the engine flag
+like the example below. For more details, check the flags section.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>create<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path
+</span></code></pre></div>
+<h3 id="update">update<a class="headerlink" href="#update" title="Permanent link">¶</a></h3>
+<p>Updates an existing pipeline in the given orchestrator.</p>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>update<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path<span class="w"> </span><span class="o">[</span>--endpoint<span class="o">=</span>endpoint<span class="w"> </span>--engine<span class="o">=</span>engine<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="w"> </span>--build_image<span class="o">]</span>
+</span></code></pre></div>
+<dl>
+<dt>--pipeline_path=<code class="variable">pipeline-path</code></dt>
+<dd>The path to the pipeline configuration file.</dd>
+<dt>--endpoint=<code class="variable">endpoint</code></dt>
+<dd>
+<p>(Optional.) Endpoint of the Kubeflow Pipelines API service. The endpoint of your Kubeflow Pipelines API service is the same as URL of the Kubeflow Pipelines dashboard. Your endpoint value should be something like:</p>
+<div class="language-text highlight"><pre><span></span><code>https://host-name/pipeline
+</code></pre></div>
+<p>If you do not know the endpoint for your Kubeflow Pipelines cluster, contact you cluster administrator.</p>
+<p>If the <code>--endpoint</code> is not specified, the in-cluster service DNS name is used as the default value. This name works only if the CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a <a class="external" href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/">Kubeflow Jupyter notebooks</a> instance.</p>
+</dd>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>(Optional.) The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+<li><strong>local</strong>: sets engine to local orchestrator</li>
+<li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+<li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+<li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</div>
+</dd>
+<dt>--iap_client_id=<code class="variable">iap-client-id</code></dt>
+<dd>(Optional.) Client ID for IAP protected endpoint.</dd>
+<dt>--namespace=<code class="variable">namespace</code></dt>
+<dd>(Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API. If the namespace is not specified, the value defaults to <code>kubeflow</code>.</dd>
+<dt>--build_image</dt>
+<dd>
+<p>(Optional.) When the <code class="variable">engine</code> is <strong>kubeflow</strong> or <strong>vertex</strong>, TFX creates a container image for your pipeline if specified. <code>Dockerfile</code> in the current directory will be used.</p>
+<p>The built image will be pushed to the remote registry which is specified in <code>KubeflowDagRunnerConfig</code> or <code>KubeflowV2DagRunnerConfig</code>.</p>
+</dd>
+</dl>
+<h4 id="examples_1">Examples<a class="headerlink" href="#examples_1" title="Permanent link">¶</a></h4>
+<p>Kubeflow:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>update<span class="w"> </span>--engine<span class="o">=</span>kubeflow<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="w"> </span>--endpoint<span class="o">=</span>endpoint<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>--build_image
+</span></code></pre></div>
+<p>Local:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>update<span class="w"> </span>--engine<span class="o">=</span><span class="nb">local</span><span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path
+</span></code></pre></div>
+<p>Vertex:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>update<span class="w"> </span>--engine<span class="o">=</span>vertex<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>--build_image
+</span></code></pre></div>
+<h3 id="compile">compile<a class="headerlink" href="#compile" title="Permanent link">¶</a></h3>
+<p>Compiles the pipeline config file to create a workflow file in Kubeflow and
+performs the following checks while compiling:</p>
+<ol>
+<li>Checks if the pipeline path is valid.</li>
+<li>Checks if the pipeline details are extracted successfully from the pipeline
+    config file.</li>
+<li>Checks if the DagRunner in the pipeline config matches the engine.</li>
+<li>Checks if the workflow file is created successfully in the package path
+    provided (only for Kubeflow).</li>
+</ol>
+<p>Recommended to use before creating or updating a pipeline.</p>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>compile<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path<span class="w"> </span><span class="o">[</span>--engine<span class="o">=</span>engine<span class="o">]</span>
+</span></code></pre></div>
+<dl>
+<dt>--pipeline_path=<code class="variable">pipeline-path</code></dt>
+<dd>The path to the pipeline configuration file.</dd>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>(Optional.) The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+<li><strong>local</strong>: sets engine to local orchestrator</li>
+<li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+<li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+<li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</div>
+</dd>
+</dl>
+<h4 id="examples_2">Examples<a class="headerlink" href="#examples_2" title="Permanent link">¶</a></h4>
+<p>Kubeflow:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>compile<span class="w"> </span>--engine<span class="o">=</span>kubeflow<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path
+</span></code></pre></div>
+<p>Local:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>compile<span class="w"> </span>--engine<span class="o">=</span><span class="nb">local</span><span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path
+</span></code></pre></div>
+<p>Vertex:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>compile<span class="w"> </span>--engine<span class="o">=</span>vertex<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path
+</span></code></pre></div>
+<h3 id="delete">delete<a class="headerlink" href="#delete" title="Permanent link">¶</a></h3>
+<p>Deletes a pipeline from the given orchestrator.</p>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>delete<span class="w"> </span>--pipeline_path<span class="o">=</span>pipeline-path<span class="w"> </span><span class="o">[</span>--endpoint<span class="o">=</span>endpoint<span class="w"> </span>--engine<span class="o">=</span>engine<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="o">]</span>
+</span></code></pre></div>
+<dl>
+<dt>--pipeline_path=<code class="variable">pipeline-path</code></dt>
+<dd>The path to the pipeline configuration file.</dd>
+<dt>--endpoint=<code class="variable">endpoint</code></dt>
+<dd>
+<p>(Optional.) Endpoint of the Kubeflow Pipelines API service. The endpoint of your Kubeflow Pipelines API service is the same as URL of the Kubeflow Pipelines dashboard. Your endpoint value should be something like:</p>
+<div class="language-text highlight"><pre><span></span><code>https://host-name/pipeline
+</code></pre></div>
+<p>If you do not know the endpoint for your Kubeflow Pipelines cluster, contact you cluster administrator.</p>
+<p>If the <code>--endpoint</code> is not specified, the in-cluster service DNS name is used as the default value. This name works only if the CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a <a class="external" href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/">Kubeflow Jupyter notebooks</a> instance.</p>
+</dd>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>(Optional.) The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+<li><strong>local</strong>: sets engine to local orchestrator</li>
+<li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+<li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+<li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</div>
+</dd>
+<dt>--iap_client_id=<code class="variable">iap-client-id</code></dt>
+<dd>(Optional.) Client ID for IAP protected endpoint.</dd>
+<dt>--namespace=<code class="variable">namespace</code></dt>
+<dd>(Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API. If the namespace is not specified, the value defaults to <code>kubeflow</code>.</dd>
+</dl>
+<h4 id="examples_3">Examples<a class="headerlink" href="#examples_3" title="Permanent link">¶</a></h4>
+<p>Kubeflow:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>delete<span class="w"> </span>--engine<span class="o">=</span>kubeflow<span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="w"> </span>--endpoint<span class="o">=</span>endpoint
+</span></code></pre></div>
+<p>Local:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>delete<span class="w"> </span>--engine<span class="o">=</span><span class="nb">local</span><span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name
+</span></code></pre></div>
+<p>Vertex:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>delete<span class="w"> </span>--engine<span class="o">=</span>vertex<span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name
+</span></code></pre></div>
+<h3 id="list">list<a class="headerlink" href="#list" title="Permanent link">¶</a></h3>
+<p>Lists all the pipelines in the given orchestrator.</p>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>--endpoint<span class="o">=</span>endpoint<span class="w"> </span>--engine<span class="o">=</span>engine<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="o">]</span>
+</span></code></pre></div>
+<dl>
+<dt>--endpoint=<code class="variable">endpoint</code></dt>
+<dd>
+<p>(Optional.) Endpoint of the Kubeflow Pipelines API service. The endpoint of your Kubeflow Pipelines API service is the same as URL of the Kubeflow Pipelines dashboard. Your endpoint value should be something like:</p>
+<div class="language-text highlight"><pre><span></span><code>https://host-name/pipeline
+</code></pre></div>
+<p>If you do not know the endpoint for your Kubeflow Pipelines cluster, contact you cluster administrator.</p>
+<p>If the <code>--endpoint</code> is not specified, the in-cluster service DNS name is used as the default value. This name works only if the CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a <a class="external" href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/">Kubeflow Jupyter notebooks</a> instance.</p>
+</dd>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>(Optional.) The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+<li><strong>local</strong>: sets engine to local orchestrator</li>
+<li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+<li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+<li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</div>
+</dd>
+<dt>--iap_client_id=<code class="variable">iap-client-id</code></dt>
+<dd>(Optional.) Client ID for IAP protected endpoint.</dd>
+<dt>--namespace=<code class="variable">namespace</code></dt>
+<dd>(Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API. If the namespace is not specified, the value defaults to <code>kubeflow</code>.</dd>
+</dl>
+<h4 id="examples_4">Examples<a class="headerlink" href="#examples_4" title="Permanent link">¶</a></h4>
+<p>Kubeflow:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>list<span class="w"> </span>--engine<span class="o">=</span>kubeflow<span class="w"> </span>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>--namespace<span class="o">=</span>namespace<span class="w"> </span>--endpoint<span class="o">=</span>endpoint
+</span></code></pre></div>
+<p>Local:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>list<span class="w"> </span>--engine<span class="o">=</span><span class="nb">local</span>
+</span></code></pre></div>
+<p>Vertex:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>tfx<span class="w"> </span>pipeline<span class="w"> </span>list<span class="w"> </span>--engine<span class="o">=</span>vertex
+</span></code></pre></div>
+<h2 id="tfx-run">tfx run<a class="headerlink" href="#tfx-run" title="Permanent link">¶</a></h2>
+<p>The structure for commands in the <code>tfx run</code> command group is as follows:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>tfx<span class="w"> </span>run<span class="w"> </span><span class="nb">command</span><span class="w"> </span>required-flags<span class="w"> </span><span class="o">[</span>optional-flags<span class="o">]</span>
+</span></code></pre></div>
+<p>Use the following sections to learn more about the commands in the <code>tfx run</code>
+command group.</p>
+<h3 id="create_1">create<a class="headerlink" href="#create_1" title="Permanent link">¶</a></h3>
+<p>Creates a new run instance for a pipeline in the orchestrator. For Kubeflow, the
+most recent pipeline version of the pipeline in the cluster is used.</p>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>create<span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name<span class="w"> </span><span class="o">[</span>--endpoint<span class="o">=</span>endpoint<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>--engine<span class="o">=</span>engine<span class="w"> </span>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="o">]</span>
+</span></code></pre></div>
+<dl>
+<dt>--pipeline_name=<code class="variable">pipeline-name</code></dt>
+<dd>The name of the pipeline.</dd>
+<dt>--endpoint=<code class="variable">endpoint</code></dt>
+<dd>
+<p>(Optional.) Endpoint of the Kubeflow Pipelines API service. The endpoint of your Kubeflow Pipelines API service is the same as URL of the Kubeflow Pipelines dashboard. Your endpoint value should be something like:</p>
+<div class="language-text highlight"><pre><span></span><code>https://host-name/pipeline
+</code></pre></div>
+<p>If you do not know the endpoint for your Kubeflow Pipelines cluster, contact you cluster administrator.</p>
+<p>If the <code>--endpoint</code> is not specified, the in-cluster service DNS name is used as the default value. This name works only if the CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a <a class="external" href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/">Kubeflow Jupyter notebooks</a> instance.</p>
+</dd>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>(Optional.) The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+<li><strong>local</strong>: sets engine to local orchestrator</li>
+<li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+<li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+<li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</div>
+</dd>
+<dt>--runtime_parameter=<code class="variable">parameter-name</code>=<code class="variable">parameter-value</code></dt>
+<dd>(Optional.) Sets a runtime parameter value. Can be set multiple times to set values of multiple variables. Only applicable to <code>airflow</code>, <code>kubeflow</code> and <code>vertex</code> engine.</dd>
+<dt>--iap_client_id=<code class="variable">iap-client-id</code></dt>
+<dd>(Optional.) Client ID for IAP protected endpoint.</dd>
+<dt>--namespace=<code class="variable">namespace</code></dt>
+<dd>(Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API. If the namespace is not specified, the value defaults to <code>kubeflow</code>.</dd>
+<dt>--project=<code class="variable">GCP-project-id</code></dt>
+<dd>(Required for Vertex.) GCP project id for the vertex pipeline.</dd>
+<dt>--region=<code class="variable">GCP-region</code></dt>
+<dd>(Required for Vertex.) GCP region name like us-central1. See [Vertex documentation](https://cloud.google.com/vertex-ai/docs/general/locations) for available regions.</dd>
+</dl>
+<h4 id="examples_5">Examples<a class="headerlink" href="#examples_5" title="Permanent link">¶</a></h4>
+<p>Kubeflow:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>create<span class="w"> </span>--engine<span class="o">=</span>kubeflow<span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name<span class="w"> </span>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>--namespace<span class="o">=</span>namespace<span class="w"> </span>--endpoint<span class="o">=</span>endpoint
+</span></code></pre></div>
+<p>Local:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>create<span class="w"> </span>--engine<span class="o">=</span><span class="nb">local</span><span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name
+</span></code></pre></div>
+<p>Vertex:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>create<span class="w"> </span>--engine<span class="o">=</span>vertex<span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="w">  </span>--runtime_parameter<span class="o">=</span><span class="nv">var_name</span><span class="o">=</span>var_value<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="w">  </span>--project<span class="o">=</span>gcp-project-id<span class="w"> </span>--region<span class="o">=</span>gcp-region
+</span></code></pre></div>
+<h3 id="terminate">terminate<a class="headerlink" href="#terminate" title="Permanent link">¶</a></h3>
+<p>Stops a run of a given pipeline.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>Currently supported only in Kubeflow.</p>
+</div>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>terminate<span class="w"> </span>--run_id<span class="o">=</span>run-id<span class="w"> </span><span class="o">[</span>--endpoint<span class="o">=</span>endpoint<span class="w"> </span>--engine<span class="o">=</span>engine<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="o">]</span>
+</span></code></pre></div>
+<dl>
+<dt>--run_id=<code class="variable">run-id</code></dt>
+<dd>Unique identifier for a pipeline run.</dd>
+<dt>--endpoint=<code class="variable">endpoint</code></dt>
+<dd>
+<p>(Optional.) Endpoint of the Kubeflow Pipelines API service. The endpoint of your Kubeflow Pipelines API service is the same as URL of the Kubeflow Pipelines dashboard. Your endpoint value should be something like:</p>
+<div class="language-text highlight"><pre><span></span><code>https://host-name/pipeline
+</code></pre></div>
+<p>If you do not know the endpoint for your Kubeflow Pipelines cluster, contact you cluster administrator.</p>
+<p>If the <code>--endpoint</code> is not specified, the in-cluster service DNS name is used as the default value. This name works only if the CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a <a class="external" href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/">Kubeflow Jupyter notebooks</a> instance.</p>
+</dd>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>(Optional.) The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</div>
+</dd>
+<dt>--iap_client_id=<code class="variable">iap-client-id</code></dt>
+<dd>(Optional.) Client ID for IAP protected endpoint.</dd>
+<dt>--namespace=<code class="variable">namespace</code></dt>
+<dd>(Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API. If the namespace is not specified, the value defaults to <code>kubeflow</code>.</dd>
+</dl>
+<h4 id="examples_6">Examples<a class="headerlink" href="#examples_6" title="Permanent link">¶</a></h4>
+<p>Kubeflow:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>delete<span class="w"> </span>--engine<span class="o">=</span>kubeflow<span class="w"> </span>--run_id<span class="o">=</span>run-id<span class="w"> </span>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-29-2"><a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>--namespace<span class="o">=</span>namespace<span class="w"> </span>--endpoint<span class="o">=</span>endpoint
+</span></code></pre></div>
+<h3 id="list_1">list<a class="headerlink" href="#list_1" title="Permanent link">¶</a></h3>
+<p>Lists all runs of a pipeline.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>Currently not supported in Local and Apache Beam.</p>
+</div>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>list<span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name<span class="w"> </span><span class="o">[</span>--endpoint<span class="o">=</span>endpoint<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-30-2"><a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>--engine<span class="o">=</span>engine<span class="w"> </span>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="o">]</span>
+</span></code></pre></div>
+<dl>
+<dt>--pipeline_name=<code class="variable">pipeline-name</code></dt>
+<dd>The name of the pipeline.</dd>
+<dt>--endpoint=<code class="variable">endpoint</code></dt>
+<dd>
+<p>(Optional.) Endpoint of the Kubeflow Pipelines API service. The endpoint of your Kubeflow Pipelines API service is the same as URL of the Kubeflow Pipelines dashboard. Your endpoint value should be something like:</p>
+<div class="language-text highlight"><pre><span></span><code>https://host-name/pipeline
+</code></pre></div>
+<p>If you do not know the endpoint for your Kubeflow Pipelines cluster, contact you cluster administrator.</p>
+<p>If the <code>--endpoint</code> is not specified, the in-cluster service DNS name is used as the default value. This name works only if the CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a <a class="external" href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/">Kubeflow Jupyter notebooks</a> instance.</p>
+</dd>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>(Optional.) The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+<li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</div>
+</dd>
+<dt>--iap_client_id=<code class="variable">iap-client-id</code></dt>
+<dd>(Optional.) Client ID for IAP protected endpoint.</dd>
+<dt>--namespace=<code class="variable">namespace</code></dt>
+<dd>(Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API. If the namespace is not specified, the value defaults to <code>kubeflow</code>.</dd>
+</dl>
+<h4 id="examples_7">Examples<a class="headerlink" href="#examples_7" title="Permanent link">¶</a></h4>
+<p>Kubeflow:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-31-1"><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>list<span class="w"> </span>--engine<span class="o">=</span>kubeflow<span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name<span class="w"> </span>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>--namespace<span class="o">=</span>namespace<span class="w"> </span>--endpoint<span class="o">=</span>endpoint
+</span></code></pre></div>
+<h3 id="status">status<a class="headerlink" href="#status" title="Permanent link">¶</a></h3>
+<p>Returns the current status of a run.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>Currently not supported in Local and Apache Beam.</p>
+</div>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>status<span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name<span class="w"> </span>--run_id<span class="o">=</span>run-id<span class="w"> </span><span class="o">[</span>--endpoint<span class="o">=</span>endpoint<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>--engine<span class="o">=</span>engine<span class="w"> </span>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="o">]</span>
+</span></code></pre></div>
+<dl>
+<dt>--pipeline_name=<code class="variable">pipeline-name</code></dt>
+<dd>The name of the pipeline.</dd>
+<dt>--run_id=<code class="variable">run-id</code></dt>
+<dd>Unique identifier for a pipeline run.</dd>
+<dt>--endpoint=<code class="variable">endpoint</code></dt>
+<dd>
+<p>(Optional.) Endpoint of the Kubeflow Pipelines API service. The endpoint of your Kubeflow Pipelines API service is the same as URL of the Kubeflow Pipelines dashboard. Your endpoint value should be something like:</p>
+<div class="language-text highlight"><pre><span></span><code>https://host-name/pipeline
+</code></pre></div>
+<p>If you do not know the endpoint for your Kubeflow Pipelines cluster, contact you cluster administrator.</p>
+<p>If the <code>--endpoint</code> is not specified, the in-cluster service DNS name is used as the default value. This name works only if the CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a <a class="external" href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/">Kubeflow Jupyter notebooks</a> instance.</p>
+</dd>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>(Optional.) The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+<li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</div>
+</dd>
+<dt>--iap_client_id=<code class="variable">iap-client-id</code></dt>
+<dd>(Optional.) Client ID for IAP protected endpoint.</dd>
+<dt>--namespace=<code class="variable">namespace</code></dt>
+<dd>(Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API. If the namespace is not specified, the value defaults to <code>kubeflow</code>.</dd>
+</dl>
+<h4 id="examples_8">Examples<a class="headerlink" href="#examples_8" title="Permanent link">¶</a></h4>
+<p>Kubeflow:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-33-1"><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>status<span class="w"> </span>--engine<span class="o">=</span>kubeflow<span class="w"> </span>--run_id<span class="o">=</span>run-id<span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-33-2"><a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span>--namespace<span class="o">=</span>namespace<span class="w"> </span>--endpoint<span class="o">=</span>endpoint
+</span></code></pre></div>
+<h3 id="delete_1">delete<a class="headerlink" href="#delete_1" title="Permanent link">¶</a></h3>
+<p>Deletes a run of a given pipeline.</p>
+<div class="admonition note important note">
+<p class="admonition-title">Note</p>
+<p>Currently supported only in Kubeflow</p>
+</div>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-34-1"><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>delete<span class="w"> </span>--run_id<span class="o">=</span>run-id<span class="w"> </span><span class="o">[</span>--engine<span class="o">=</span>engine<span class="w"> </span>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-34-2"><a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>--namespace<span class="o">=</span>namespace<span class="w"> </span>--endpoint<span class="o">=</span>endpoint<span class="o">]</span>
+</span></code></pre></div>
+<dl>
+<dt>--run_id=<code class="variable">run-id</code></dt>
+<dd>Unique identifier for a pipeline run.</dd>
+<dt>--endpoint=<code class="variable">endpoint</code></dt>
+<dd>
+<p>(Optional.) Endpoint of the Kubeflow Pipelines API service. The endpoint of your Kubeflow Pipelines API service is the same as URL of the Kubeflow Pipelines dashboard. Your endpoint value should be something like:</p>
+<div class="language-text highlight"><pre><span></span><code>https://host-name/pipeline
+</code></pre></div>
+<p>If you do not know the endpoint for your Kubeflow Pipelines cluster, contact you cluster administrator.</p>
+<p>If the <code>--endpoint</code> is not specified, the in-cluster service DNS name is used as the default value. This name works only if the CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a <a class="external" href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/">Kubeflow Jupyter notebooks</a> instance.</p>
+</dd>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>(Optional.) The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+</div>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</dd>
+<dt>--iap_client_id=<code class="variable">iap-client-id</code></dt>
+<dd>(Optional.) Client ID for IAP protected endpoint.</dd>
+<dt>--namespace=<code class="variable">namespace</code></dt>
+<dd>(Optional.) Kubernetes namespace to connect to the Kubeflow Pipelines API. If the namespace is not specified, the value defaults to <code>kubeflow</code>.</dd>
+</dl>
+<h4 id="examples_9">Examples<a class="headerlink" href="#examples_9" title="Permanent link">¶</a></h4>
+<p>Kubeflow:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-35-1"><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>tfx<span class="w"> </span>run<span class="w"> </span>delete<span class="w"> </span>--engine<span class="o">=</span>kubeflow<span class="w"> </span>--run_id<span class="o">=</span>run-id<span class="w"> </span>--iap_client_id<span class="o">=</span>iap-client-id<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-35-2"><a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>--namespace<span class="o">=</span>namespace<span class="w"> </span>--endpoint<span class="o">=</span>endpoint
+</span></code></pre></div>
+<h2 id="tfx-template-experimental">tfx template [Experimental]<a class="headerlink" href="#tfx-template-experimental" title="Permanent link">¶</a></h2>
+<p>The structure for commands in the <code>tfx template</code> command group is as follows:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>tfx<span class="w"> </span>template<span class="w"> </span><span class="nb">command</span><span class="w"> </span>required-flags<span class="w"> </span><span class="o">[</span>optional-flags<span class="o">]</span>
+</span></code></pre></div>
+<p>Use the following sections to learn more about the commands in the <code>tfx
+template</code> command group. Template is an experimental feature and subject to
+change at any time.</p>
+<h3 id="list_2">list<a class="headerlink" href="#list_2" title="Permanent link">¶</a></h3>
+<p>List available TFX pipeline templates.</p>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-37-1"><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>tfx<span class="w"> </span>template<span class="w"> </span>list
+</span></code></pre></div>
+<h3 id="copy">copy<a class="headerlink" href="#copy" title="Permanent link">¶</a></h3>
+<p>Copy a template to the destination directory.</p>
+<p>Usage:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-38-1"><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>tfx<span class="w"> </span>template<span class="w"> </span>copy<span class="w"> </span>--model<span class="o">=</span>model<span class="w"> </span>--pipeline_name<span class="o">=</span>pipeline-name<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-38-2"><a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>--destination_path<span class="o">=</span>destination-path
+</span></code></pre></div>
+<dl>
+<dt>--model=<code class="variable">model</code></dt>
+<dd>The name of the model built by the pipeline template.</dd>
+<dt>--pipeline_name=<code class="variable">pipeline-name</code></dt>
+<dd>The name of the pipeline.</dd>
+<dt>--destination_path=<code class="variable">destination-path</code></dt>
+<dd>The path to copy the template to.</dd>
+</dl>
+<h2 id="understanding-tfx-cli-flags">Understanding TFX CLI Flags<a class="headerlink" href="#understanding-tfx-cli-flags" title="Permanent link">¶</a></h2>
+<h3 id="common-flags">Common flags<a class="headerlink" href="#common-flags" title="Permanent link">¶</a></h3>
+<dl>
+<dt>--engine=<code class="variable">engine</code></dt>
+<dd>
+<p>The orchestrator to be used for the pipeline. The value of engine must match on of the following values:</p>
+<ul>
+<li><strong>kubeflow</strong>: sets engine to Kubeflow</li>
+<li><strong>local</strong>: sets engine to local orchestrator</li>
+<li><strong>vertex</strong>: sets engine to Vertex Pipelines</li>
+<li><strong>airflow</strong>: (experimental) sets engine to Apache Airflow</li>
+<li><strong>beam</strong>: (experimental) sets engine to Apache Beam</li>
+</ul>
+<p>If the engine is not set, the engine is auto-detected based on the environment.</p>
+<div class="admonition note">
+<p class="admonition-title">Important Note</p>
+<p>The orchestrator required by the DagRunner in the pipeline config file must match the selected or autodetected engine. Engine auto-detection is based on user environment. If Apache Airflow and Kubeflow Pipelines are not installed, then the local orchestrator is used by default.</p>
+</div>
+</dd>
+<dt>--pipeline_name=<code class="variable">pipeline-name</code></dt>
+<dd>The name of the pipeline.</dd>
+<dt>--pipeline_path=<code class="variable">pipeline-path</code></dt>
+<dd>The path to the pipeline configuration file.</dd>
+<dt>--run_id=<code class="variable">run-id</code></dt>
+<dd>Unique identifier for a pipeline run.</dd>
+</dl>
+<h3 id="kubeflow-specific-flags">Kubeflow specific flags<a class="headerlink" href="#kubeflow-specific-flags" title="Permanent link">¶</a></h3>
+<dl>
+<dt>--endpoint=<code class="variable">endpoint</code></dt>
+<dd>
+<p>Endpoint of the Kubeflow Pipelines API service. The endpoint of your Kubeflow Pipelines API service is the same as URL of the Kubeflow Pipelines dashboard. Your endpoint value should be something like:</p>
+<div class="language-text highlight"><pre><span></span><code>https://host-name/pipeline
+</code></pre></div>
+<p>If you do not know the endpoint for your Kubeflow Pipelines cluster, contact you cluster administrator.</p>
+<p>If the <code>--endpoint</code> is not specified, the in-cluster service DNS name is used as the default value. This name works only if the CLI command executes in a pod on the Kubeflow Pipelines cluster, such as a <a class="external" href="https://www.kubeflow.org/docs/components/notebooks/jupyter-tensorflow-examples/">Kubeflow Jupyter notebooks</a> instance.</p>
+</dd>
+<dt>--iap_client_id=<code class="variable">iap-client-id</code></dt>
+<dd>Client ID for IAP protected endpoint.</dd>
+<dt>--namespace=<code class="variable">namespace</code></dt>
+<dd>Kubernetes namespace to connect to the Kubeflow Pipelines API. If the namespace is not specified, the value defaults to <code>kubeflow</code>.</dd>
+</dl>
+<h2 id="generated-files-by-tfx-cli">Generated files by TFX CLI<a class="headerlink" href="#generated-files-by-tfx-cli" title="Permanent link">¶</a></h2>
+<p>When pipelines are created and run, several files are generated for pipeline
+management.</p>
+<ul>
+<li>${HOME}/tfx/local, beam, airflow, vertex<ul>
+<li>Pipeline metadata read from the configuration is stored under
+    <code>${HOME}/tfx/${ORCHESTRATION_ENGINE}/${PIPELINE_NAME}</code>. This location
+    can be customized by setting environment varaible like <code>AIRFLOW_HOME</code> or
+    <code>KUBEFLOW_HOME</code>. This behavior might be changed in future releases. This
+    directory is used to store pipeline information including pipeline ids
+    in the Kubeflow Pipelines cluster which is needed to create runs or
+    update pipelines.</li>
+<li>Before TFX 0.25, these files were located under
+    <code>${HOME}/${ORCHESTRATION_ENGINE}</code>. In TFX 0.25, files in the old
+    location will be moved to the new location automatically for smooth
+    migration.</li>
+<li>From TFX 0.27, kubeflow doesn't create these metadata files in local
+    filesystem. However, see below for other files that kubeflow creates.</li>
+</ul>
+</li>
+<li>(Kubeflow only) Dockerfile and a container image<ul>
+<li>Kubeflow Pipelines requires two kinds of input for a pipeline. These
+    files are generated by TFX in the current directory.</li>
+<li>One is a container image which will be used to run components in the
+    pipeline. This container image is built when a pipeline for Kubeflow
+    Pipelines is created or updated with <code>--build-image</code> flag. TFX CLI will
+    generate <code>Dockerfile</code> if not exists, and will build and push a container
+    image to the registry specified in KubeflowDagRunnerConfig.</li>
+</ul>
+</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.copy", "content.code.select", "content.action.edit"], "search": "../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.83f73b43.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
