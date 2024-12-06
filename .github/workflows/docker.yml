@@ -1,0 +1,43 @@
+name: Build docker image
+# Note: This doesn't push images to the repository,
+# since GCP authorization hasn't been set up.
+
+on:
+  pull_request:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+env:
+  USE_BAZEL_VERSION: "7.2.1"
+
+jobs:
+  build_docker:
+    name: Build docker
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out the repo
+      uses: actions/checkout@v4
+
+    - name: Set up python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: install python dependencies
+      run: |
+        pip install pip --upgrade --quiet
+        pip install wheel setuptools pipdeptree --upgrade --quiet
+
+    - name: install docker
+      run: |
+        docker --version
+
+    - name: Build docker
+      run: |
+        export BUILD_ID="$(date +%s)-$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 10)"
+        export DOCKER_IMAGE="gcr.io/tfx-oss-public/tfx_smoke_test:${BUILD_ID}"
+        export docker_image_repo=$(echo "${DOCKER_IMAGE}" | cut -d ':' -f 1)
+        export docker_image_tag=$(echo "${DOCKER_IMAGE}" | cut -d ':' -f 2)
+        DOCKER_IMAGE_REPO="${docker_image_repo}" DOCKER_IMAGE_TAG="${docker_image_tag}" tfx/tools/docker/build_docker_image.sh
+        docker inspect ${DOCKER_IMAGE}
