@@ -769,7 +769,7 @@ gcloud config set project YOUR_PROJECT_ID
 gcloud services list --available | grep Dataflow
 
 # If you don't see dataflow.googleapis.com listed, that means you haven't been
-# granted access to enable the Dataflow API.  See your account adminstrator.
+# granted access to enable the Dataflow API.  See your account administrator.
 
 # Enable the Dataflow service:
 

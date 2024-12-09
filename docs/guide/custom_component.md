@@ -69,7 +69,7 @@ class HelloComponentSpec(types.ComponentSpec):
 
 Next, write the executor code for the new component. Basically, a new subclass
 of `base_executor.BaseExecutor` needs to be created with its `Do` function
-overriden. In the `Do` function, the arguments `input_dict`, `output_dict` and
+overridden. In the `Do` function, the arguments `input_dict`, `output_dict` and
 `exec_properties` that are passed in map to `INPUTS`, `OUTPUTS` and `PARAMETERS`
 that are defined in ComponentSpec respectively. For `exec_properties`, the value
 can be fetched directly through a dictionary lookup. For artifacts in
