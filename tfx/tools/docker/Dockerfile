@@ -26,6 +26,7 @@ WORKDIR ${TFX_DIR}
 # Specify what version of dependent libraries will be used. See dependencies.py.
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
+ENV USE_BAZEL_VERSION=6.5.0
 
 RUN python -m pip install --upgrade pip wheel setuptools tomli
 
