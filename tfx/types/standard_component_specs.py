@@ -411,6 +411,8 @@ class TrainerSpec(ComponentSpec):
       HYPERPARAMETERS_KEY:
           ChannelParameter(
               type=standard_artifacts.HyperParameters, optional=True),
+      STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics, optional=True),
   }
   OUTPUTS = {
       MODEL_KEY: ChannelParameter(type=standard_artifacts.Model),
