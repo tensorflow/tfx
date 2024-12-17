@@ -72,6 +72,7 @@ class Trainer(base_component.BaseComponent):
 
   def __init__(
       self,
+      statistics: Optional[types.BaseChannel] = None,
       examples: Optional[types.BaseChannel] = None,
       transformed_examples: Optional[types.BaseChannel] = None,
       transform_graph: Optional[types.BaseChannel] = None,
@@ -170,6 +171,7 @@ class Trainer(base_component.BaseComponent):
     model = types.Channel(type=standard_artifacts.Model)
     model_run = types.Channel(type=standard_artifacts.ModelRun)
     spec = standard_component_specs.TrainerSpec(
+        statistics=statistics,
         examples=examples,
         transform_graph=transform_graph,
         schema=schema,
