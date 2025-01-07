@@ -26,9 +26,9 @@ WORKDIR ${TFX_DIR}
 # Specify what version of dependent libraries will be used. See dependencies.py.
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
+ENV USE_BAZEL_VERSION=6.5.0
 
-RUN python -m pip install --upgrade pip wheel setuptools
-RUN python -m pip install tomli
+RUN python -m pip install --upgrade pip wheel setuptools tomli
 
 # TODO(b/175089240): clean up conditional checks on whether ml-pipelines-sdk is
 # built after TFX versions <= 0.25 are no longer eligible for cherry-picks.

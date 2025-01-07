@@ -234,25 +234,28 @@ def create_pipeline_components(
       model_blessing=tfx.dsl.Channel(
           type=tfx.types.standard_artifacts.ModelBlessing)).with_id(
               'Resolver.latest_blessed_model_resolver')
-  # Set the TFMA config for Model Evaluation and Validation.
+  # Uses TFMA to compute a evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(signature_name='eval')],
-      metrics_specs=[
-          tfma.MetricsSpec(
-              metrics=[tfma.MetricConfig(class_name='ExampleCount')],
-              thresholds={
-                  'binary_accuracy':
-                      tfma.MetricThreshold(
-                          value_threshold=tfma.GenericValueThreshold(
-                              lower_bound={'value': 0.5}),
-                          change_threshold=tfma.GenericChangeThreshold(
-                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                              absolute={'value': -1e-10}))
-              })
+      model_specs=[
+          tfma.ModelSpec(
+              signature_name='serving_default', label_key='tips_xf',
+              preprocessing_function_names=['transform_features'])
       ],
-      slicing_specs=[
-          tfma.SlicingSpec(),
-          tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+      slicing_specs=[tfma.SlicingSpec()],
+      metrics_specs=[
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='BinaryAccuracy',
+                  threshold=tfma.MetricThreshold(
+                      value_threshold=tfma.GenericValueThreshold(
+                          lower_bound={'value': 0.6}),
+                      # Change threshold will be ignored if there is no
+                      # baseline model resolved from MLMD (first run).
+                      change_threshold=tfma.GenericChangeThreshold(
+                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                          absolute={'value': -1e-10})))
+          ])
       ])
   evaluator = tfx.components.Evaluator(
       examples=example_gen.outputs['examples'],
