@@ -25,7 +25,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
-from tfx_bs.tfxio.tensor_representation_util import (InferTensorRepresentationsFromSchema, 
+from tfx_bsl.tfxio.tensor_representation_util import (InferTensorRepresentationsFromSchema, 
   SetTensorRepresentationsInSchema)
 
 
