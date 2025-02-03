@@ -326,7 +326,7 @@ tensorstore==0.1.66
 termcolor==2.5.0
 terminado==0.18.1
 text-unidecode==1.3
-tflite-support==0.4.4
+# tflite-support==0.4.4
 tfx-bsl>=1.16.1
 threadpoolctl==3.5.0
 time-machine==2.16.0
