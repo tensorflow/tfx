@@ -314,7 +314,7 @@ tensorflow-decision-forests==1.9.2
 tensorflow-estimator==2.15.0
 tensorflow-hub==0.15.0
 tensorflow-io==0.24.0
-tensorflow-io-gcs-filesystem==0.24.0
+# tensorflow-io-gcs-filesystem==0.24.0
 tensorflow-metadata>=1.16.1
 # tensorflow-ranking==0.5.5
 tensorflow-serving-api==2.16.1
