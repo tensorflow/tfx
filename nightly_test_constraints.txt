@@ -246,7 +246,6 @@ promise==2.3
 prompt_toolkit==3.0.48
 propcache==0.2.0
 proto-plus==1.24.0
-protobuf==3.20.3
 psutil==6.0.0
 ptyprocess==0.7.0
 pyarrow-hotfix==0.6
