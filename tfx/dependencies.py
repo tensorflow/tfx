@@ -186,14 +186,6 @@ def make_extra_packages_tfjs():
     ]
 
 
-# def make_extra_packages_tflite_support():
-    # Required for tfx/examples/cifar10
-  #  return [
-       # "flatbuffers>=1.12",
-       # "tflite-support>=0.4.3,<0.4.5",
-   # ]
-
-
 def make_extra_packages_tf_ranking():
     # Packages needed for tf-ranking which is used in tfx/examples/ranking.
     return [
@@ -272,7 +264,6 @@ def make_extra_packages_all():
     return [
         *make_extra_packages_test(),
         *make_extra_packages_tfjs(),
-      #  *make_extra_packages_tflite_support(),
         *make_extra_packages_tf_ranking(),
         *make_extra_packages_tfdf(),
         *make_extra_packages_flax(),
