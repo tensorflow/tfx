@@ -65,8 +65,7 @@ def make_pipeline_sdk_required_install_packages():
         ),
         "packaging>=22",
         "portpicker>=1.3.1,<2",
-        'protobuf>=4.25.2,<6;python_version>="3.11"',
-        'protobuf>=3.20.3,<5;python_version<"3.11"',
+        "protobuf>=3.20.3,<5",
         "docker>=7,<8",
         "google-apitools>=0.5,<1",
         "google-api-python-client>=1.8,<2",
@@ -147,7 +146,7 @@ def make_extra_packages_airflow():
 def make_extra_packages_kfp():
     """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
     return [
-        "kfp>=2.11.0",
+        "kfp>=2",
         "kfp-pipeline-spec>=0.2.2",
     ]
 
@@ -169,7 +168,7 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
     # Packages needed for tfx docker image.
     return [
-        "kfp>=2.11.0",
+        "kfp>=2",
         "kfp-pipeline-spec>=0.2.2",
         "mmh>=2.2,<3",
         "python-snappy>=0.7",
@@ -183,6 +182,14 @@ def make_extra_packages_tfjs():
     # Packages needed for tfjs.
     return [
         "tensorflowjs>=4.5,<5",
+    ]
+
+
+def make_extra_packages_tflite_support():
+    # Required for tfx/examples/cifar10
+    return [
+        "flatbuffers>=1.12",
+        # "tflite-support>=0.4.3,<0.4.5",
     ]
 
 
@@ -264,6 +271,7 @@ def make_extra_packages_all():
     return [
         *make_extra_packages_test(),
         *make_extra_packages_tfjs(),
+        # *make_extra_packages_tflite_support(),
         *make_extra_packages_tf_ranking(),
         *make_extra_packages_tfdf(),
         *make_extra_packages_flax(),
