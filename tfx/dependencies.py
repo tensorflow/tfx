@@ -191,7 +191,7 @@ def make_extra_packages_tfjs():
   #  return [
        # "flatbuffers>=1.12",
        # "tflite-support>=0.4.3,<0.4.5",
-    ]
+   # ]
 
 
 def make_extra_packages_tf_ranking():
