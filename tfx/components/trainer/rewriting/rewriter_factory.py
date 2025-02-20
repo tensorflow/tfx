@@ -55,14 +55,14 @@ class _RewriterFactory:
       cls._LOADERS[lower_rewriter_type]()
       cls._loaded.add(lower_rewriter_type)
 
-  @classmethod
-  def get_rewriter_cls(cls, rewriter_type: str):
-    rewriter_type = rewriter_type.lower()
-    cls._maybe_load_public_rewriter(rewriter_type)
-    for subcls in rewriter.BaseRewriter.__subclasses__():
-      if subcls.__name__.lower() == rewriter_type:
-        return subcls
-    raise ValueError('Failed to find rewriter: {}'.format(rewriter_type))
+#  @classmethod
+#  def get_rewriter_cls(cls, rewriter_type: str):
+#    rewriter_type = rewriter_type.lower()
+#    cls._maybe_load_public_rewriter(rewriter_type)
+#    for subcls in rewriter.BaseRewriter.__subclasses__():
+#      if subcls.__name__.lower() == rewriter_type:
+#        return subcls
+#    raise ValueError('Failed to find rewriter: {}'.format(rewriter_type))
 
 
 def create_rewriter(rewriter_type: str, *args,
