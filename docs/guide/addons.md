@@ -73,7 +73,7 @@ tfxa.feast_examplegen.FeastExampleGen(...)
 
 	Client library to inspect content in [ML Metadata](mlmd.md) populated by TFX pipelines.
 
-	[:octicons-arrow-right-24: MLMD Cleint](https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/mlmd_client)
+	[:octicons-arrow-right-24: MLMD Client](https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/mlmd_client)
 
 -   [__Model Card Generator__](https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/model_card_generator)
 
