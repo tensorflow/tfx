@@ -138,7 +138,7 @@ itsdangerous==2.2.0
 jax==0.4.23
 jaxlib==0.4.23
 jedi==0.19.1
-Jinja2==3.1.4
+Jinja2==3.1.6
 jmespath==1.0.1
 joblib==1.4.2
 Js2Py==0.74
