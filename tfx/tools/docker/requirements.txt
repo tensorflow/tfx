@@ -158,7 +158,7 @@ jupyterlab_pygments==0.3.0
 jupyterlab_server==2.27.3
 jupyterlab_widgets==1.1.10
 tf-keras==2.16.0
-keras==3.6.0
+keras==3.9.0
 keras-tuner==1.4.7
 kfp==2.5.0
 kfp-pipeline-spec==0.2.2
