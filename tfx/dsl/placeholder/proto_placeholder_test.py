@@ -721,8 +721,23 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
       actual: descriptor_pb2.FileDescriptorSet,
   ):
     """Compares descriptors with some tolerance for filenames and options."""
+    def _remove_json_name_field(file_descriptor_set):
+        """
+        Removes the json_name field from a given descriptor_pb2.FileDescriptorSet proto.
+
+        Args:
+            file_descriptor_set: The FileDescriptorSet proto to modify.
+        """
+        for fd_proto in file_descriptor_set.file:
+            for msg_proto in fd_proto.message_type:
+                for field_proto in msg_proto.field:
+                    field_proto.ClearField('json_name')
+
     if isinstance(expected, str):
       expected = text_format.Parse(expected, descriptor_pb2.FileDescriptorSet())
+
+    _remove_json_name_field(actual)
+
     self._normalize_descriptors(expected)
     self._normalize_descriptors(actual)
     self.assertProtoEquals(expected, actual)

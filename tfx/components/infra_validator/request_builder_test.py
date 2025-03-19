@@ -440,7 +440,7 @@ class TestBuildRequests(tf.test.TestCase):
   def _PrepareTFServingRequestBuilder(self):
     patcher = mock.patch.object(
         request_builder, '_TFServingRpcRequestBuilder',
-        wraps=request_builder._TFServingRpcRequestBuilder)
+        autospec=True)
     builder_cls = patcher.start()
     self.addCleanup(patcher.stop)
     return builder_cls
@@ -466,7 +466,7 @@ class TestBuildRequests(tf.test.TestCase):
         model_name='foo',
         signatures={'serving_default': mock.ANY})
     builder.ReadExamplesArtifact.assert_called_with(
-        self._examples,
+        examples=self._examples,
         split_name='eval',
         num_examples=1)
     builder.BuildRequests.assert_called()
