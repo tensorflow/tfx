@@ -27,8 +27,8 @@ from tfx.types import system_artifacts
 from tfx.types import value_artifact
 from tfx.utils import json_utils
 
-from google.protobuf import json_format
 from google.protobuf import struct_pb2
+from google.protobuf import json_format
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
@@ -177,7 +177,9 @@ class ArtifactTest(tf.test.TestCase):
       return super().assertProtoEquals(proto1, new_proto2)
     return super().assertProtoEquals(proto1, proto2)
 
-  def assertArtifactString(self, expected_artifact_text, expected_artifact_type_text, actual_instance):
+  def assertArtifactString(
+      self, expected_artifact_text, expected_artifact_type_text, actual_instance
+  ):
     expected_artifact_text = textwrap.dedent(expected_artifact_text)
     expected_artifact_type_text = textwrap.dedent(expected_artifact_type_text)
     expected_artifact = metadata_store_pb2.Artifact()
@@ -185,7 +187,8 @@ class ArtifactTest(tf.test.TestCase):
     expected_artifact_type = metadata_store_pb2.ArtifactType()
     text_format.Parse(expected_artifact_type_text, expected_artifact_type)
     expected_text = 'Artifact(artifact: {}, artifact_type: {})'.format(
-        str(expected_artifact), str(expected_artifact_type))
+        str(expected_artifact), str(expected_artifact_type)
+    )
     self.assertEqual(expected_text, str(actual_instance))
 
 
@@ -598,7 +601,6 @@ class ArtifactTest(tf.test.TestCase):
             }
           }
         }"""
-
     expected_artifact_type_text = """\
         name: "MyTypeName2"
         properties {
