@@ -668,10 +668,10 @@ class ArtifactTest(tf.test.TestCase):
     self.assertArtifactString(expected_artifact_text, expected_artifact_type_text, my_artifact)
 
     # Test json serialization.
-    json_dict = json_utils.dumps(instance)
+    json_dict = json_utils.dumps(my_artifact)
     other_instance = json_utils.loads(json_dict)
-    self.assertEqual(instance.mlmd_artifact, other_instance.mlmd_artifact)
-    self.assertEqual(instance.artifact_type, other_instance.artifact_type)
+    self.assertEqual(my_artifact.mlmd_artifact, other_instance.mlmd_artifact)
+    self.assertEqual(my_artifact.artifact_type, other_instance.artifact_type)
 
   def testArtifactTypeFunctionAndProto(self):
     # Test usage of _MyArtifact2 and _MyArtifact3, which were defined using the
