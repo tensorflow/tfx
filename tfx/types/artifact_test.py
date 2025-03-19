@@ -27,8 +27,9 @@ from tfx.types import system_artifacts
 from tfx.types import value_artifact
 from tfx.utils import json_utils
 
-from google.protobuf import struct_pb2
 from google.protobuf import json_format
+from google.protobuf import struct_pb2
+from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -176,6 +177,18 @@ class ArtifactTest(tf.test.TestCase):
       return super().assertProtoEquals(proto1, new_proto2)
     return super().assertProtoEquals(proto1, proto2)
 
+  def assertArtifactString(self, expected_artifact_text, expected_artifact_type_text, actual_instance):
+    expected_artifact_text = textwrap.dedent(expected_artifact_text)
+    expected_artifact_type_text = textwrap.dedent(expected_artifact_type_text)
+    expected_artifact = metadata_store_pb2.Artifact()
+    text_format.Parse(expected_artifact_text, expected_artifact)
+    expected_artifact_type = metadata_store_pb2.ArtifactType()
+    text_format.Parse(expected_artifact_type_text, expected_artifact_type)
+    expected_text = 'Artifact(artifact: {}, artifact_type: {})'.format(
+        str(expected_artifact), str(expected_artifact_type))
+    self.assertEqual(expected_text, str(actual_instance))
+
+
   def testArtifact(self):
     instance = _MyArtifact()
 
@@ -251,9 +264,9 @@ class ArtifactTest(tf.test.TestCase):
         instance.external_id,
     )
 
-    self.assertEqual(
-        textwrap.dedent("""\
-        Artifact(artifact: id: 1
+    expected_artifact_text = """\
+        id: 1
+        name: "test_artifact"
         type_id: 2
         uri: "/tmp/uri2"
         custom_properties {
@@ -293,9 +306,10 @@ class ArtifactTest(tf.test.TestCase):
           }
         }
         state: DELETED
-        name: "test_artifact"
         external_id: "mlmd://prod:owner/project_name:pipeline_name:type:artifact:100"
-        , artifact_type: name: "MyTypeName"
+    """
+    expected_artifact_type_text = """
+        name: "MyTypeName"
         properties {
           key: "bool1"
           value: BOOLEAN
@@ -331,10 +345,8 @@ class ArtifactTest(tf.test.TestCase):
         properties {
           key: "string2"
           value: STRING
-        }
-        )"""),
-        str(instance),
-    )
+        }"""
+    self.assertArtifactString(expected_artifact_text, expected_artifact_type_text, instance)
 
     # Test json serialization.
     json_dict = json_utils.dumps(instance)
@@ -421,8 +433,7 @@ class ArtifactTest(tf.test.TestCase):
     self.assertTrue(my_artifact.has_custom_property('customjson2'))
 
     # Test string and proto serialization.
-    self.assertEqual(
-        textwrap.dedent("""\
+    expected_artifact_text = """\
         Artifact(artifact: properties {
           key: "jsonvalue_dict"
           value {
@@ -586,8 +597,9 @@ class ArtifactTest(tf.test.TestCase):
               }
             }
           }
-        }
-        , artifact_type: name: "MyTypeName2"
+        }"""
+    expected_artifact_type_text = """\
+        name: "MyTypeName2"
         properties {
           key: "bool1"
           value: BOOLEAN
@@ -652,7 +664,326 @@ class ArtifactTest(tf.test.TestCase):
           key: "string2"
           value: STRING
         }
-        )"""), str(my_artifact))
+        )"""
+    self.assertArtifactString(expected_artifact_text, expected_artifact_type_text, my_artifact)
+
+    # Test json serialization.
+    json_dict = json_utils.dumps(instance)
+    other_instance = json_utils.loads(json_dict)
+    self.assertEqual(instance.mlmd_artifact, other_instance.mlmd_artifact)
+    self.assertEqual(instance.artifact_type, other_instance.artifact_type)
+
+  def testArtifactTypeFunctionAndProto(self):
+    # Test usage of _MyArtifact2 and _MyArtifact3, which were defined using the
+    # _ArtifactType function.
+    types_and_names = [
+        (_MyArtifact2, 'MyTypeName2'),
+        (_MyArtifact3, 'MyTypeName3'),
+    ]
+    for type_cls, name in types_and_names:
+      self.assertEqual(type_cls.TYPE_NAME, name)
+      my_artifact = type_cls()
+      self.assertEqual(0, my_artifact.int1)
+      self.assertEqual(0, my_artifact.int2)
+      my_artifact.int1 = 111
+      my_artifact.int2 = 222
+      self.assertEqual(0.0, my_artifact.float1)
+      self.assertEqual(0.0, my_artifact.float2)
+      my_artifact.float1 = 111.1
+      my_artifact.float2 = 222.2
+      self.assertIsNone(my_artifact.proto1)
+      self.assertIsNone(my_artifact.proto2)
+      my_artifact.proto1 = struct_pb2.Value(string_value='pb1')
+      my_artifact.proto2 = struct_pb2.Value(null_value=0)
+      self.assertEqual('', my_artifact.string1)
+      self.assertEqual('', my_artifact.string2)
+      my_artifact.string1 = '111'
+      my_artifact.string2 = '222'
+      self.assertEqual(False, my_artifact.bool1)
+      my_artifact.bool1 = True
+      self.assertEqual(my_artifact.int1, 111)
+      self.assertEqual(my_artifact.int2, 222)
+      self.assertEqual(my_artifact.float1, 111.1)
+      self.assertEqual(my_artifact.float2, 222.2)
+      self.assertEqual(my_artifact.string1, '111')
+      self.assertEqual(my_artifact.string2, '222')
+      self.assertEqual(my_artifact.bool1, True)
+      self.assertProtoEquals(my_artifact.proto1,
+                             struct_pb2.Value(string_value='pb1'))
+      self.assertProtoEquals(my_artifact.proto2, struct_pb2.Value(null_value=0))
+
+  def testArtifactJsonValue(self):
+    # Construct artifact.
+    my_artifact = _MyArtifact2()
+    my_artifact.jsonvalue_string = 'aaa'
+    my_artifact.jsonvalue_dict = {'k1': ['v1', 'v2', 333]}
+    my_artifact.jsonvalue_int = 123
+    my_artifact.jsonvalue_float = 3.14
+    my_artifact.jsonvalue_list = ['a1', '2', 3, {'4': 5.0}]
+    my_artifact.jsonvalue_null = None
+    self.assertFalse(my_artifact.has_custom_property('customjson1'))
+    self.assertFalse(my_artifact.has_custom_property('customjson2'))
+    my_artifact.set_json_value_custom_property('customjson1', {})
+    my_artifact.set_json_value_custom_property('customjson2', ['a', 'b', 3])
+    my_artifact.set_json_value_custom_property('customjson3', 'xyz')
+    my_artifact.set_json_value_custom_property('customjson4', 3.14)
+    my_artifact.set_json_value_custom_property('customjson5', False)
+
+    # Test that the JsonValue getters return the same values we just set
+    self.assertEqual(my_artifact.jsonvalue_string, 'aaa')
+    self.assertEqual(my_artifact.jsonvalue_dict, {'k1': ['v1', 'v2', 333]})
+    self.assertEqual(my_artifact.jsonvalue_int, 123)
+    self.assertEqual(my_artifact.jsonvalue_float, 3.14)
+    self.assertEqual(my_artifact.jsonvalue_list, ['a1', '2', 3, {'4': 5.0}])
+    self.assertIsNone(my_artifact.jsonvalue_null)
+    self.assertEmpty(my_artifact.get_json_value_custom_property('customjson1'))
+    self.assertEqual(
+        my_artifact.get_json_value_custom_property('customjson2'),
+        ['a', 'b', 3])
+    self.assertEqual(
+        my_artifact.get_json_value_custom_property('customjson3'), 'xyz')
+    self.assertEqual(
+        my_artifact.get_json_value_custom_property('customjson4'), 3.14)
+    self.assertEqual(
+        my_artifact.get_json_value_custom_property('customjson5'), False
+    )
+    self.assertEqual(my_artifact.get_bool_custom_property('customjson5'), False)
+    self.assertTrue(my_artifact.has_custom_property('customjson1'))
+    self.assertTrue(my_artifact.has_custom_property('customjson2'))
+
+    # Test string and proto serialization.
+    expected_artifact_text = """\
+        Artifact(artifact: properties {
+          key: "jsonvalue_dict"
+          value {
+            struct_value {
+              fields {
+                key: "k1"
+                value {
+                  list_value {
+                    values {
+                      string_value: "v1"
+                    }
+                    values {
+                      string_value: "v2"
+                    }
+                    values {
+                      number_value: 333.0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_float"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  number_value: 3.14
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_int"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  number_value: 123.0
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_list"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  list_value {
+                    values {
+                      string_value: "a1"
+                    }
+                    values {
+                      string_value: "2"
+                    }
+                    values {
+                      number_value: 3.0
+                    }
+                    values {
+                      struct_value {
+                        fields {
+                          key: "4"
+                          value {
+                            number_value: 5.0
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        properties {
+          key: "jsonvalue_string"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  string_value: "aaa"
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson1"
+          value {
+            struct_value {
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson2"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  list_value {
+                    values {
+                      string_value: "a"
+                    }
+                    values {
+                      string_value: "b"
+                    }
+                    values {
+                      number_value: 3.0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson3"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  string_value: "xyz"
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson4"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  number_value: 3.14
+                }
+              }
+            }
+          }
+        }
+        custom_properties {
+          key: "customjson5"
+          value {
+            struct_value {
+              fields {
+                key: "__value__"
+                value {
+                  bool_value: false
+                }
+              }
+            }
+          }
+        }"""
+    expected_artifact_type_text = """\
+        name: "MyTypeName2"
+        properties {
+          key: "bool1"
+          value: BOOLEAN
+        }
+        properties {
+          key: "float1"
+          value: DOUBLE
+        }
+        properties {
+          key: "float2"
+          value: DOUBLE
+        }
+        properties {
+          key: "int1"
+          value: INT
+        }
+        properties {
+          key: "int2"
+          value: INT
+        }
+        properties {
+          key: "jsonvalue_dict"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_empty"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_float"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_int"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_list"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_null"
+          value: STRUCT
+        }
+        properties {
+          key: "jsonvalue_string"
+          value: STRUCT
+        }
+        properties {
+          key: "proto1"
+          value: PROTO
+        }
+        properties {
+          key: "proto2"
+          value: PROTO
+        }
+        properties {
+          key: "string1"
+          value: STRING
+        }
+        properties {
+          key: "string2"
+          value: STRING
+        }
+        )"""
 
     copied_artifact = _MyArtifact2()
     copied_artifact.set_mlmd_artifact(my_artifact.mlmd_artifact)
@@ -705,9 +1036,8 @@ class ArtifactTest(tf.test.TestCase):
     copied_artifact.get_json_value_custom_property('customjson1')['y'] = ['z']
     copied_artifact.get_json_value_custom_property('customjson2').append(4)
 
-    self.assertEqual(
-        textwrap.dedent("""\
-        Artifact(artifact: properties {
+    expected_artifact_text = """\
+          properties {
           key: "jsonvalue_dict"
           value {
             struct_value {
@@ -902,8 +1232,9 @@ class ArtifactTest(tf.test.TestCase):
               }
             }
           }
-        }
-        , artifact_type: name: "MyTypeName2"
+        }"""
+    expected_artifact_type_text = """
+        name: "MyTypeName2"
         properties {
           key: "bool1"
           value: BOOLEAN
@@ -967,8 +1298,8 @@ class ArtifactTest(tf.test.TestCase):
         properties {
           key: "string2"
           value: STRING
-        }
-        )"""), str(copied_artifact))
+        }"""
+    self.assertArtifactString(expected_artifact_text, expected_artifact_type_text, copied_artifact)
 
   def testArtifactProtoValue(self):
     # Construct artifact.
@@ -994,9 +1325,8 @@ class ArtifactTest(tf.test.TestCase):
     self.assertTrue(my_artifact.has_custom_property('customproto2'))
 
     # Test string and proto serialization.
-    self.assertEqual(
-        textwrap.dedent("""\
-        Artifact(artifact: properties {
+    expected_artifact_text = """\
+        properties {
           key: "proto2"
           value {
             proto_value {
@@ -1013,8 +1343,9 @@ class ArtifactTest(tf.test.TestCase):
               value: "\\032\\003bbb"
             }
           }
-        }
-        , artifact_type: name: "MyTypeName2"
+        }"""
+    expected_artifact_type_text = """\
+        name: "MyTypeName2"
         properties {
           key: "bool1"
           value: BOOLEAN
@@ -1078,8 +1409,8 @@ class ArtifactTest(tf.test.TestCase):
         properties {
           key: "string2"
           value: STRING
-        }
-        )"""), str(my_artifact))
+        }"""
+    self.assertArtifactString(expected_artifact_text, expected_artifact_type_text, my_artifact)
 
     copied_artifact = _MyArtifact2()
     copied_artifact.set_mlmd_artifact(my_artifact.mlmd_artifact)
@@ -1097,9 +1428,8 @@ class ArtifactTest(tf.test.TestCase):
     copied_artifact.get_proto_custom_property(
         'customproto2').string_value = 'updated_custom'
 
-    self.assertEqual(
-        textwrap.dedent("""\
-        Artifact(artifact: properties {
+    expected_artifact_text = """\
+        properties {
           key: "proto2"
           value {
             proto_value {
@@ -1116,8 +1446,9 @@ class ArtifactTest(tf.test.TestCase):
               value: "\\032\\016updated_custom"
             }
           }
-        }
-        , artifact_type: name: "MyTypeName2"
+        }"""
+    expected_artifact_type_text = """\
+        name: "MyTypeName2"
         properties {
           key: "bool1"
           value: BOOLEAN
@@ -1181,8 +1512,8 @@ class ArtifactTest(tf.test.TestCase):
         properties {
           key: "string2"
           value: STRING
-        }
-        )"""), str(copied_artifact))
+        }"""
+    self.assertArtifactString(expected_artifact_text, expected_artifact_type_text, copied_artifact)
 
   def testInvalidArtifact(self):
     with self.assertRaisesRegex(
