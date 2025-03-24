@@ -151,13 +151,13 @@ class UdfUtilsTest(tf.test.TestCase):
             temp_pipeline_root, '_wheels', 'tfx_user_code_MyComponent-0.0+'
             '1c9b861db85cc54c56a56cbf64f77c1b9d1ded487d60a97d082ead6b250ee62c'
             '-py3-none-any.whl'))
-     expected_dependencies.append(
+    expected_dependencies.append(
         os.path.join(
             temp_pipeline_root, '_wheels', 'tfx_user_code_mycomponent-0.0+'
             '1c9b861db85cc54c56a56cbf64f77c1b9d1ded487d60a97d082ead6b250ee62c'
             '-py3-none-any.whl'))
     self.assertIn(dependency, expected_dependencies)
-    
+
     # Test import behavior within context manager.
     with udf_utils.TempPipInstallContext([dependency]):
       # Test import from same process.
