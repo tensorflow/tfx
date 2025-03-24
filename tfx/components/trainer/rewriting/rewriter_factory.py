@@ -21,13 +21,12 @@ import importlib
 
 from tfx.components.trainer.rewriting import rewriter
 
-TFLITE_REWRITER = 'TFLiteRewriter'
+# TFLITE_REWRITER = 'TFLiteRewriter'
 TFJS_REWRITER = 'TFJSRewriter'
 
 
-def _load_tflite_rewriter():
-  importlib.import_module('tfx.components.trainer.rewriting.tflite_rewriter')
-
+# def _load_tflite_rewriter():
+#  importlib.import_module('tfx.components.trainer.rewriting.tflite_rewriter')
 
 def _load_tfjs_rewriter():
   try:
@@ -43,7 +42,7 @@ def _load_tfjs_rewriter():
 class _RewriterFactory:
   """Factory class for rewriters."""
   _LOADERS = {
-      TFLITE_REWRITER.lower(): _load_tflite_rewriter,
+     # TFLITE_REWRITER.lower(): _load_tflite_rewriter,
       TFJS_REWRITER.lower(): _load_tfjs_rewriter,
   }
   _loaded = set()
@@ -55,14 +54,14 @@ class _RewriterFactory:
       cls._LOADERS[lower_rewriter_type]()
       cls._loaded.add(lower_rewriter_type)
 
-  @classmethod
-  def get_rewriter_cls(cls, rewriter_type: str):
-    rewriter_type = rewriter_type.lower()
-    cls._maybe_load_public_rewriter(rewriter_type)
-    for subcls in rewriter.BaseRewriter.__subclasses__():
-      if subcls.__name__.lower() == rewriter_type:
-        return subcls
-    raise ValueError('Failed to find rewriter: {}'.format(rewriter_type))
+#  @classmethod
+#  def get_rewriter_cls(cls, rewriter_type: str):
+#    rewriter_type = rewriter_type.lower()
+#    cls._maybe_load_public_rewriter(rewriter_type)
+#    for subcls in rewriter.BaseRewriter.__subclasses__():
+#      if subcls.__name__.lower() == rewriter_type:
+#        return subcls
+#    raise ValueError('Failed to find rewriter: {}'.format(rewriter_type))
 
 
 def create_rewriter(rewriter_type: str, *args,
