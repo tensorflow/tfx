@@ -128,6 +128,13 @@ class ChannelTest(tf.test.TestCase):
     pred3 = future2.value != '0'
     self.assertFalse(pred1.internal_equals(pred3))
 
+  def testLatestProducsPlaceholder(self):
+    chnl = channel.Channel(type=_MyType)
+    latest = chnl.latest()
+    self.assertIsInstance(latest, placeholder.ChannelWrappedPlaceholder)
+    self.assertIs(latest.channel, chnl)
+    self.assertIsInstance(latest.value, placeholder.ChannelWrappedPlaceholder)
+
   def testValidUnionChannel(self):
     channel1 = channel.Channel(type=_MyType)
     channel2 = channel.Channel(type=_MyType)
