@@ -316,7 +316,9 @@ class ComponentSpec(json_utils.Jsonable):
 
   def migrate_output_channels(self, producer_component: _BaseNode):
     for key, channel_ in list(self.outputs.items()):
-      if not isinstance(channel_, channel.OutputChannel):
+      if not isinstance(channel_, channel.OutputChannel) and not isinstance(
+          channel_, channel.UnionChannel
+      ):
         self.outputs[key] = channel_.as_output_channel(producer_component, key)
 
 
