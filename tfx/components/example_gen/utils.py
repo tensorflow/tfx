@@ -98,6 +98,10 @@ def pyval_to_feature(pyval: List[Any]) -> feature_pb2.Feature:
             value=[v.encode(_DEFAULT_ENCODING) for v in pyval]
         )
     )
+  elif isinstance(pyval[0], list) and isinstance(pyval[0][0], (int, float, str)):
+    return feature_pb2.FeatureList(
+    feature=[pyval_to_feature(sublist) for sublist in pyval]
+  )
   raise RuntimeError(
       f'Value type {type(pyval[0])} is not supported.'
   )
@@ -128,8 +132,22 @@ def dict_to_example(instance: Dict[str, Any]) -> example_pb2.Example:
       feature[key] = pyval_to_feature(pyval)
     else:
       raise RuntimeError(f'Value type {type(value[0])} is not supported.')
+    
+  feature_lists = {
+    k:v for k,v in feature.items() 
+    if isinstance(v, feature_pb2.FeatureList)
+  }
 
-  return example_pb2.Example(features=feature_pb2.Features(feature=feature))
+  if not feature_lists:
+    return example_pb2.Example(features=feature_pb2.Features(feature=feature))
+  else: 
+    for k in feature_lists.keys():
+      feature.remove(k)
+    
+    context = feature_pb2.Features(feature=feature)
+    feature_lists = feature_pb2.FeatureLists(feature_list=feature_lists)
+
+    return example_pb2.SequenceExample(context=context, feature_lists=feature_lists)
 
 
 def generate_output_split_names(
