@@ -64,7 +64,10 @@ RUN cd ${TFX_DIR}/src; \
 FROM apache/beam_python3.10_sdk:${BEAM_VERSION} as beam-worker
 
 # Build stage to extend DLVM image.
-FROM ${BASE_IMAGE} as install
+RUN if [ -n "$BASE_IMAGE" ]; then \
+        echo "Using base image: $BASE_IMAGE"; \
+        FROM ${BASE_IMAGE} as install; \
+    fi
 
 # Additional Python packages which will be installed.
 ARG ADDITIONAL_PACKAGES
