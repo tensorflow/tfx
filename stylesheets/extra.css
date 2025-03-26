@@ -1,0 +1,42 @@
+:root {
+  --md-primary-fg-color:        #FFA800;
+  --md-primary-fg-color--light: #CCCCCC;
+  --md-primary-fg-color--dark:  #425066;
+}
+
+.video-wrapper {
+  max-width: 240px;
+  display: flex;
+  flex-direction: row;
+}
+.video-wrapper > iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.buttons-wrapper {
+    flex-wrap: wrap;
+    gap: 1em;
+    display: flex;
+    /* flex-grow: 1; */
+    /* justify-content: center; */
+    /* align-content: center; */
+}
+
+.buttons-wrapper > a {
+    justify-content: center;
+    align-content: center;
+    flex-wrap: nowrap;
+    /* gap: 1em; */
+    align-items: center;
+    text-align: center;
+    flex: 1 1 30%;
+    display: flex;
+}
+
+.md-button > .buttons-content {
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    gap: 1em;
+}
