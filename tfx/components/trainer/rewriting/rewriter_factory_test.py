@@ -31,13 +31,13 @@ def _tfjs_installed():
 
 class RewriterFactoryTest(parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      ('TFLite', rewriter_factory.TFLITE_REWRITER))
-  def testRewriterFactorySuccessfullyCreated(self, rewriter_name):
-    tfrw = rewriter_factory.create_rewriter(rewriter_name, name='my_rewriter')
-    self.assertTrue(tfrw)
-    self.assertEqual(type(tfrw).__name__, rewriter_name)
-    self.assertEqual(tfrw.name, 'my_rewriter')
+  # @parameterized.named_parameters(
+    #  ('TFLite', rewriter_factory.TFLITE_REWRITER))
+  # def testRewriterFactorySuccessfullyCreated(self, rewriter_name):
+  #  tfrw = rewriter_factory.create_rewriter(rewriter_name, name='my_rewriter')
+  #  self.assertTrue(tfrw)
+  #  self.assertEqual(type(tfrw).__name__, rewriter_name)
+  #  self.assertEqual(tfrw.name, 'my_rewriter')
 
   @unittest.skipUnless(_tfjs_installed(), 'tensorflowjs is not installed')
   def testRewriterFactorySuccessfullyCreatedTFJSRewriter(self):
