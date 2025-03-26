@@ -100,6 +100,9 @@ class ResolvedChannel(channel.BaseChannel):
   def invocation(self) -> Invocation:
     return self._invocation
 
+  def future(self) -> channel.ChannelWrappedPlaceholder:
+    return channel.ChannelWrappedPlaceholder(self)
+
   def __repr__(self) -> str:
     debug_str = str(self._output_node)
     if self._for_each_context is not None:

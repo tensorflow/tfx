@@ -277,7 +277,3 @@ class NodeTest(tf.test.TestCase):
     self.assertCountEqual(
         resolver_op.get_input_nodes(result),
         [input_x, input_y, input_z])
-
-
-if __name__ == '__main__':
-  tf.test.main()

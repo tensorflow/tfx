@@ -17,7 +17,6 @@ import os
 from unittest import mock
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx.dsl.io import fileio
 from tfx.examples.penguin import penguin_pipeline_kubeflow
 from tfx.utils import test_case_utils
@@ -64,24 +63,11 @@ class PenguinPipelineKubeflowTest(test_case_utils.TfxTest,
         serving_model_dir=penguin_pipeline_kubeflow._serving_model_dir)
     self.assertLen(kubeflow_pipeline.components, 9)
 
-    if use_vertex:
-      v2_dag_runner = orchestration.experimental.KubeflowV2DagRunner(
-          config=orchestration.experimental.KubeflowV2DagRunnerConfig(),
-          output_dir=self.tmp_dir,
-          output_filename=penguin_pipeline_kubeflow._pipeline_definition_file)
-      v2_dag_runner.run(kubeflow_pipeline)
-      file_path = os.path.join(
-          self.tmp_dir, penguin_pipeline_kubeflow._pipeline_definition_file)
-      self.assertTrue(fileio.exists(file_path))
-    else:
-      v1_dag_runner = orchestration.experimental.KubeflowDagRunner(
-          config=orchestration.experimental.KubeflowDagRunnerConfig(
-              kubeflow_metadata_config=orchestration.experimental
-              .get_default_kubeflow_metadata_config()))
-      v1_dag_runner.run(kubeflow_pipeline)
-      file_path = os.path.join(self.tmp_dir, 'penguin-kubeflow.tar.gz')
-      self.assertTrue(fileio.exists(file_path))
-
-
-if __name__ == '__main__':
-  tf.test.main()
+    v2_dag_runner = orchestration.experimental.KubeflowV2DagRunner(
+        config=orchestration.experimental.KubeflowV2DagRunnerConfig(),
+        output_dir=self.tmp_dir,
+        output_filename=penguin_pipeline_kubeflow._pipeline_definition_file)
+    v2_dag_runner.run(kubeflow_pipeline)
+    file_path = os.path.join(
+        self.tmp_dir, penguin_pipeline_kubeflow._pipeline_definition_file)
+    self.assertTrue(fileio.exists(file_path))

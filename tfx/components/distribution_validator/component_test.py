@@ -58,7 +58,3 @@ class DistributionValidatorTest(tf.test.TestCase):
     restored_config = distribution_validator.exec_properties[
         standard_component_specs.DISTRIBUTION_VALIDATOR_CONFIG_KEY]
     self.assertEqual(config, restored_config)
-
-
-if __name__ == '__main__':
-  tf.test.main()

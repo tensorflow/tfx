@@ -148,7 +148,3 @@ class PartitionUtilsTest(tf.test.TestCase):
             (partition(x=2, y=2, z=4), 'x2y2z4'),
         ]
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

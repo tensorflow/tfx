@@ -23,6 +23,8 @@ from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.types import component_spec
 
+import pytest
+
 
 class _HelloWorldSpec(component_spec.ComponentSpec):
   INPUTS = {}
@@ -66,6 +68,7 @@ def _create_pipeline(
   )
 
 
+@pytest.mark.e2e
 class DockerComponentLauncherE2eTest(tf.test.TestCase):
 
   def setUp(self):
@@ -93,7 +96,3 @@ class DockerComponentLauncherE2eTest(tf.test.TestCase):
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
       self.assertEqual(1, len(m.store.get_executions()))
-
-
-if __name__ == '__main__':
-  tf.test.main()

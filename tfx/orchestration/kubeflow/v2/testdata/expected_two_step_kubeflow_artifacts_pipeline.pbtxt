@@ -36,6 +36,12 @@ deployment_spec {
                             string_value: "{{$}}"
                           }
                           values {
+                            string_value: "--json_serialized_inputs_spec_args"
+                          }
+                          values {
+                            string_value: "{\n  \"artifacts\": {\n    \"examples\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Dataset\\ntype: object\\n\"\n      }\n    },\n    \"external_data\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.File\\ntype: object\\n\"\n      }\n    }\n  }\n}"
+                          }
+                          values {
                             string_value: "--project=my-gcp-project"
                           }
                         }
@@ -76,6 +82,12 @@ deployment_spec {
                           }
                           values {
                             string_value: "{{$}}"
+                          }
+                          values {
+                            string_value: "--json_serialized_inputs_spec_args"
+                          }
+                          values {
+                            string_value: "{}"
                           }
                           values {
                             string_value: "--project=my-gcp-project"

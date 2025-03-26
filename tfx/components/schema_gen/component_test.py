@@ -56,7 +56,3 @@ class SchemaGenTest(tf.test.TestCase):
         str(schema_gen.spec.exec_properties[
             standard_component_specs.INFER_FEATURE_SHAPE_KEY]),
         str(infer_shape))
-
-
-if __name__ == '__main__':
-  tf.test.main()

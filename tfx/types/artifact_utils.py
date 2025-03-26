@@ -65,8 +65,8 @@ decode_split_names = standard_artifact_utils.decode_split_names
 def parse_artifact_dict(json_str: str) -> Dict[str, List[Artifact]]:
   """Parse a dict from key to list of Artifact from its json format."""
   tfx_artifacts = {}
-  for k, l in json.loads(json_str).items():
-    tfx_artifacts[k] = [Artifact.from_json_dict(v) for v in l]
+  for k, j in json.loads(json_str).items():
+    tfx_artifacts[k] = [Artifact.from_json_dict(v) for v in j]
   return tfx_artifacts
 
 
@@ -74,8 +74,8 @@ def parse_artifact_dict(json_str: str) -> Dict[str, List[Artifact]]:
 def jsonify_artifact_dict(artifact_dict: Dict[str, List[Artifact]]) -> str:
   """Serialize a dict from key to list of Artifact into json format."""
   d = {}
-  for k, l in artifact_dict.items():
-    d[k] = [v.to_json_dict() for v in l]
+  for k, j in artifact_dict.items():
+    d[k] = [v.to_json_dict() for v in j]
   return json.dumps(d)
 
 
@@ -143,7 +143,6 @@ def get_artifact_type_class(
   # definitions is imported. Modules containing custom artifact subclasses that
   # need to be deserialized should be imported by the entrypoint of the
   # application or container.
-  from tfx.types import standard_artifacts  # pylint: disable=g-import-not-at-top,import-outside-toplevel,unused-import,unused-variable
 
   # Enumerate the Artifact type ontology, separated into auto-generated and
   # natively-defined classes.

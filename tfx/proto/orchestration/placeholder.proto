@@ -51,7 +51,14 @@ message PlaceholderExpressionOperator {
     ListConcatOperator list_concat_op = 12;
     MakeDictOperator make_dict_op = 13;
     MakeProtoOperator make_proto_op = 14;
+    DirNameOperator dir_name_op = 16;
   }
+}
+
+// DirNameOperator extracts the directory name from a file path.
+message DirNameOperator {
+  // Required. It must evaluate to a file path string.
+  PlaceholderExpression expression = 1;
 }
 
 // ArtifactUriOperator extracts the Artifact URI from a placeholder expression.

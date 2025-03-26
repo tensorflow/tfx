@@ -77,7 +77,3 @@ class TemplateTest(tf.test.TestCase):
     ])
     self.assertEqual(0, result.exit_code)
     self.assertIn('Copying', result.output)
-
-
-if __name__ == '__main__':
-  tf.test.main()

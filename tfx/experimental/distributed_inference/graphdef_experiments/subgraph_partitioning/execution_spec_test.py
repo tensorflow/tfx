@@ -35,7 +35,3 @@ class ExecutionSpecTest(tf.test.TestCase):
     self.assertEqual(spec.input_names, input_names)
     self.assertEqual(spec.output_names, output_names)
     self.assertEqual(spec.is_remote_op, is_remote_op)
-
-
-if __name__ == '__main__':
-  tf.test.main()

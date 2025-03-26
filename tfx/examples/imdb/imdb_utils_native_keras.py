@@ -130,18 +130,32 @@ def _build_keras_model() -> keras.Model:
   Returns:
     A Keras Model.
   """
-  # The model below is built with Sequential API, please refer to
-  # https://www.tensorflow.org/guide/keras/sequential_model
-  model = keras.Sequential([
-      keras.layers.Embedding(
-          _VOCAB_SIZE + 2,
-          _EMBEDDING_UNITS,
-          name=_transformed_name(_FEATURE_KEY)),
-      keras.layers.Bidirectional(
-          keras.layers.LSTM(_LSTM_UNITS, dropout=_DROPOUT_RATE)),
-      keras.layers.Dense(_HIDDEN_UNITS, activation='relu'),
-      keras.layers.Dense(1)
-  ])
+  # Input layer explicitly defined to handle dictionary input
+  input_layer = keras.layers.Input(
+      shape=(_MAX_LEN,),
+      dtype=tf.int64,
+      name=_transformed_name(_FEATURE_KEY, True))
+
+  embedding_layer = keras.layers.Embedding(
+      _VOCAB_SIZE + 2,
+      _EMBEDDING_UNITS,
+      name=_transformed_name(_FEATURE_KEY)
+  )(input_layer)
+
+  # Note: With dropout=_DROPOUT_RATE,
+  # TF 1.16 cannot save the model with tf.saved_model.save().
+  # dropout=0 is a workaround currently, need to find a solution.
+  lstm_layer = keras.layers.Bidirectional(
+      keras.layers.LSTM(_LSTM_UNITS, dropout=0)
+  )(embedding_layer)
+
+  hidden_layer = keras.layers.Dense(_HIDDEN_UNITS, activation='relu')(lstm_layer)
+  output_layer = keras.layers.Dense(1)(hidden_layer)
+
+  # Create the model with the specified input and output
+  model = keras.Model(
+      inputs={_transformed_name(_FEATURE_KEY, True): input_layer},
+      outputs=output_layer)
 
   model.compile(
       loss=keras.losses.BinaryCrossentropy(from_logits=True),
@@ -214,4 +228,4 @@ def run_fn(fn_args: FnArgs):
                                             name='examples')),
   }
 
-  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
+  tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)

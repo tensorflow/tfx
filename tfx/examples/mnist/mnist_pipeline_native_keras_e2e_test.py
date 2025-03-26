@@ -22,7 +22,10 @@ from tfx.examples.mnist import mnist_pipeline_native_keras
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
+import pytest
 
+
+@pytest.mark.e2e
 class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
@@ -35,11 +38,7 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self._data_root = os.path.join(os.path.dirname(__file__), 'data')
     self._module_file = os.path.join(
         os.path.dirname(__file__), 'mnist_utils_native_keras.py')
-    self._module_file_lite = os.path.join(
-        os.path.dirname(__file__), 'mnist_utils_native_keras_lite.py')
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
-    self._serving_model_dir_lite = os.path.join(
-        self._test_dir, 'serving_model_lite')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
                                        self._pipeline_name)
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
@@ -70,14 +69,11 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('ImportExampleGen')
     self.assertExecutedOnce('Evaluator.mnist')
-    self.assertExecutedOnce('Evaluator.mnist_lite')
     self.assertExecutedOnce('ExampleValidator')
     self.assertExecutedOnce('Pusher.mnist')
-    self.assertExecutedOnce('Pusher.mnist_lite')
     self.assertExecutedOnce('SchemaGen')
     self.assertExecutedOnce('StatisticsGen')
     self.assertExecutedOnce('Trainer.mnist')
-    self.assertExecutedOnce('Trainer.mnist_lite')
     self.assertExecutedOnce('Transform')
 
   def testMNISTPipelineNativeKeras(self):
@@ -88,20 +84,17 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
-            module_file_lite=self._module_file_lite,
             serving_model_dir=self._serving_model_dir,
-            serving_model_dir_lite=self._serving_model_dir_lite,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
             beam_pipeline_args=[],
             accuracy_threshold=0.5))  # Use a low value to make test stable.
 
     self.assertTrue(fileio.exists(self._serving_model_dir))
-    self.assertTrue(fileio.exists(self._serving_model_dir_lite))
     self.assertTrue(fileio.exists(self._metadata_path))
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
-    expected_execution_count = 11
+    expected_execution_count = 8
     with metadata.Metadata(metadata_config) as m:
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
@@ -116,9 +109,7 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
-            module_file_lite=self._module_file_lite,
             serving_model_dir=self._serving_model_dir,
-            serving_model_dir_lite=self._serving_model_dir_lite,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
             beam_pipeline_args=[],
@@ -129,7 +120,3 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
       # Artifact count is unchanged.
       self.assertLen(m.store.get_artifacts(), artifact_count)
       self.assertLen(m.store.get_executions(), expected_execution_count * 2)
-
-
-if __name__ == '__main__':
-  tf.test.main()

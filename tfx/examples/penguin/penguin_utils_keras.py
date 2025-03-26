@@ -172,4 +172,4 @@ def run_fn(fn_args: tfx.components.FnArgs):
       callbacks=[tensorboard_callback])
 
   signatures = base.make_serving_signatures(model, tf_transform_output)
-  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
+  tf.saved_model.save(model, fn_args.serving_model_dir, signatures=signatures)

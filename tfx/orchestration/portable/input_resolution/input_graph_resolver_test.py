@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.input_resolution.input_graph_resolver."""
+
 from unittest import mock
 
 from absl.testing import parameterized
@@ -490,7 +491,7 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
         key: "op_1"
         value {
           op_node {
-            op_type: "__main__.RenameStrategy"
+            op_type: "tfx.orchestration.portable.input_resolution.input_graph_resolver_test.RenameStrategy"
             args {
               node_id: "dict_1"
             }
@@ -515,7 +516,3 @@ class InputGraphResolverTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(input_keys, ['x'])
     result = graph_fn({'x': [Integer(42)]})
     self.assertEqual(result, {'y': [Integer(42)]})
-
-
-if __name__ == '__main__':
-  tf.test.main()

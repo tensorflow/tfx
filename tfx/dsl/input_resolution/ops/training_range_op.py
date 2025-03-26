@@ -19,11 +19,11 @@ from tfx import types
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.orchestration.portable.input_resolution import exceptions
+from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.types import artifact_utils
 
 from ml_metadata.proto import metadata_store_pb2
-from ml_metadata.tools.mlmd_resolver import metadata_resolver
 
 
 def _validate_input_list(
@@ -91,13 +91,13 @@ def training_range(
   )
   if not upstream_examples_dict:
     return []
-  upstream_examples = upstream_examples_dict[model.id]
-  if not upstream_examples:
+  upstream_example_and_type = upstream_examples_dict[model.id]
+  if not upstream_example_and_type:
     return []
 
   # Get the sets of artifact IDs for Examples produced by Transform and by
   # ExampleGen.
-  all_examples_ids = {a.id for a in upstream_examples}
+  all_examples_ids = {a.id for a, _ in upstream_example_and_type}
   transformed_examples_ids = set()
   for event in store.get_events_by_artifact_ids(all_examples_ids):
     if event_lib.is_valid_output_event(
@@ -110,7 +110,7 @@ def training_range(
   examples_ids = all_examples_ids - transformed_examples_ids
 
   mlmd_artifacts = []
-  for artifact in upstream_examples:
+  for artifact, _ in upstream_example_and_type:
     # Only consider Examples artifacts that are marked LIVE. This excludes
     # garbage collected artifacts (which are marked as DELETED).
     if artifact.state != metadata_store_pb2.Artifact.State.LIVE:
@@ -123,7 +123,8 @@ def training_range(
     return []
 
   # Find the ArtifactType associated with the artifacts.
-  artifact_type = store.get_artifact_types_by_id([mlmd_artifacts[0].type_id])[0]
+  artifact_type_by_id = {t.id: t for _, t in upstream_example_and_type}
+  artifact_type = artifact_type_by_id[mlmd_artifacts[0].type_id]
 
   # Return the sorted, serialized Examples.
   artifacts = artifact_utils.deserialize_artifacts(

@@ -1,0 +1,61 @@
+# proto-file: tfx/orchestration/kubeflow/v2/testdata/expected_dynamic_execution_properties.pbtxt
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "BigQueryExampleGen"
+}
+inputs {
+  parameters {
+    key: "input_config"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_config"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_data_format"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 6
+        }
+      }
+    }
+  }
+  parameters {
+    key: "output_file_format"
+    value {
+      runtime_value {
+        constant_value {
+          int_value: 5
+        }
+      }
+    }
+  }
+  parameters {
+    key: "range_config"
+    value {
+      task_output_parameter {
+        producer_task: "range_config_generator_task"
+        output_parameter_key: "range_config"
+      }
+    }
+  }
+}
+dependent_tasks: "range_config_generator"
+component_ref {
+  name: "BigQueryExampleGen"
+}

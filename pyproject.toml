@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=72", "wheel", "tomli"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tfx-dev"
+dynamic = ["version", "dependencies", "optional-dependencies", "scripts"]
+description = "TensorFlow Extended (TFX) is a TensorFlow-based general-purpose machine learning platform implemented at Google."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Google LLC", email = "tensorflow-extended-dev@googlegroups.com" }
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+keywords = ["tensorflow", "tfx"]
+requires-python = ">=3.9,<3.11"
+[project.urls]
+Homepage = "https://www.tensorflow.org/tfx"
+Repository = "https://github.com/tensorflow/tfx"
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+testpaths = "tfx"
+python_files = "*_test.py"
+norecursedirs = ["custom_components", ".*", "*.egg", "tfx/orchestration/experimental/core"]
+markers = [
+    "e2e: end-to-end tests which are slow and require more dependencies (deselect with '-m \"not end_to_end\"')",
+    "serial: mark tests that should not run in parallel",
+    "integration: integration tests that are slow and require more dependencies (deselect with `-m 'not integration'`)",
+    "perf: performance 'perf' tests that are slow and require more dependencies (deselect with `-m 'not perf'`)",
+]

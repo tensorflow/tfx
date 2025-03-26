@@ -4,7 +4,7 @@
     "pipelineInfo": {
       "name": "full-taxi-pipeline"
     },
-    "schemaVersion": "2.0.0",
+    "schemaVersion": "2.1.0",
     "sdkVersion": "tfx-0.30.0.dev",
     "deploymentSpec": {
       "executors": {
@@ -20,13 +20,17 @@
               "--executor_class_path",
               "tfx.components.example_gen.csv_example_gen.executor.Executor",
               "--json_serialized_invocation_args",
-              "{{$}}"
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"parameters\": {\n    \"input_base\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"input_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_data_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"output_file_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    }\n  }\n}"
             ],
             "lifecycle": {
               "preCacheCheck": {
                 "args": [
                   "--json_serialized_invocation_args",
-                  "{{$}}"
+                  "{{$}}",
+                  "--json_serialized_inputs_spec_args",
+                  "{\n  \"parameters\": {\n    \"input_base\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"input_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_data_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"output_file_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    }\n  }\n}"
                 ],
                 "command": [
                   "python",
@@ -43,7 +47,9 @@
               "--executor_class_path",
               "tfx.components.pusher.executor.Executor",
               "--json_serialized_invocation_args",
-              "{{$}}"
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"_Evaluator.blessing\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.ModelBlessing\\ntype: object\\n\"\n      }\n    },\n    \"model\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Model\\ntype: object\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"custom_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"push_destination\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
             ],
             "image": "tensorflow/tfx:latest",
             "command": [
@@ -66,9 +72,11 @@
           "container": {
             "args": [
               "--executor_class_path",
-              "tfx.components.trainer.executor.Executor",
+              "tfx.components.trainer.executor.GenericExecutor",
               "--json_serialized_invocation_args",
-              "{{$}}"
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"base_model\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Model\\ntype: object\\n\"\n      }\n    },\n    \"examples\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    },\n    \"schema\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Schema\\ntype: object\\n\"\n      }\n    },\n    \"transform_graph\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.TransformGraph\\ntype: object\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"custom_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"eval_args\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"module_file\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"train_args\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
             ],
             "image": "tensorflow/tfx:latest",
             "command": [
@@ -89,7 +97,9 @@
               "--executor_class_path",
               "tfx.components.evaluator.executor.Executor",
               "--json_serialized_invocation_args",
-              "{{$}}"
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"baseline_model\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Model\\ntype: object\\n\"\n      }\n    },\n    \"examples\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    },\n    \"model\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Model\\ntype: object\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"eval_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"example_splits\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"fairness_indicator_thresholds\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
             ],
             "image": "tensorflow/tfx:latest"
           }
@@ -106,7 +116,9 @@
               "--executor_class_path",
               "tfx.components.transform.executor.Executor",
               "--json_serialized_invocation_args",
-              "{{$}}"
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"examples\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    },\n    \"schema\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Schema\\ntype: object\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"custom_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"disable_statistics\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"force_tf_compat_v1\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"module_file\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
             ]
           }
         },
@@ -131,7 +143,9 @@
               "--executor_class_path",
               "tfx.components.statistics_gen.executor.Executor",
               "--json_serialized_invocation_args",
-              "{{$}}"
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"examples\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"exclude_splits\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
             ]
           }
         },
@@ -155,7 +169,9 @@
               "--executor_class_path",
               "tfx.components.example_validator.executor.Executor",
               "--json_serialized_invocation_args",
-              "{{$}}"
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"schema\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Schema\\ntype: object\\n\"\n      }\n    },\n    \"statistics\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.ExampleStatistics\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"exclude_splits\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
             ],
             "image": "tensorflow/tfx:latest"
           }
@@ -172,7 +188,9 @@
               "--executor_class_path",
               "tfx.components.schema_gen.executor.Executor",
               "--json_serialized_invocation_args",
-              "{{$}}"
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"statistics\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.ExampleStatistics\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"exclude_splits\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"infer_feature_shape\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    }\n  }\n}"
             ]
           }
         }
@@ -190,10 +208,10 @@
           },
           "parameters": {
             "infer_feature_shape": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             },
             "exclude_splits": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           }
         },
@@ -227,16 +245,16 @@
         "inputDefinitions": {
           "parameters": {
             "module_file": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "train_args": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "custom_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "eval_args": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           },
           "artifacts": {
@@ -299,13 +317,13 @@
           },
           "parameters": {
             "example_splits": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "eval_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "fairness_indicator_thresholds": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           }
         }
@@ -327,7 +345,7 @@
         "inputDefinitions": {
           "parameters": {
             "exclude_splits": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           },
           "artifacts": {
@@ -429,16 +447,16 @@
           },
           "parameters": {
             "module_file": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "disable_statistics": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             },
             "custom_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "force_tf_compat_v1": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             }
           }
         },
@@ -470,10 +488,10 @@
           },
           "parameters": {
             "push_destination": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "custom_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           }
         }
@@ -492,19 +510,19 @@
         "inputDefinitions": {
           "parameters": {
             "input_base": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "input_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "output_config": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "output_data_format": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             },
             "output_file_format": {
-              "type": "INT"
+              "parameterType": "NUMBER_INTEGER"
             }
           }
         }
@@ -523,7 +541,7 @@
         "inputDefinitions": {
           "parameters": {
             "exclude_splits": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           },
           "artifacts": {
@@ -554,10 +572,10 @@
         "inputDefinitions": {
           "parameters": {
             "source_uri": {
-              "type": "STRING"
+              "parameterType": "STRING"
             },
             "resolver_class": {
-              "type": "STRING"
+              "parameterType": "STRING"
             }
           }
         }
@@ -591,30 +609,23 @@
               "parameters": {
                 "module_file": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "path/to/my/module_utils.py"
-                    }
+                    "constant": "path/to/my/module_utils.py"
                   }
                 },
                 "disable_statistics": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "intValue": "0"
-                    }
+                    "constant": 0.0
                   }
                 },
                 "custom_config": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "null"
-                    }
+                    "constant": "null"
                   }
                 },
                 "force_tf_compat_v1": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "intValue": "0"
-                    }
+                    "constant": 0.0
+
                   }
                 }
               }
@@ -632,9 +643,7 @@
               "parameters": {
                 "exclude_splits": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "[]"
-                    }
+                    "constant": "[]"
                   }
                 }
               },
@@ -697,23 +706,17 @@
               "parameters": {
                 "eval_config": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "{\n  \"metrics_specs\": [\n    {\n      \"metrics\": [\n        {\n          \"class_name\": \"ExampleCount\"\n        }\n      ],\n      \"thresholds\": {\n        \"binary_accuracy\": {\n          \"change_threshold\": {\n            \"absolute\": -1e-10,\n            \"direction\": \"HIGHER_IS_BETTER\"\n          },\n          \"value_threshold\": {\n            \"lower_bound\": 0.5\n          }\n        }\n      }\n    }\n  ],\n  \"model_specs\": [\n    {\n      \"signature_name\": \"eval\"\n    }\n  ],\n  \"slicing_specs\": [\n    {},\n    {\n      \"feature_keys\": [\n        \"trip_start_hour\"\n      ]\n    }\n  ]\n}"
-                    }
+                    "constant": "{\n  \"metrics_specs\": [\n    {\n      \"metrics\": [\n        {\n          \"class_name\": \"BinaryAccuracy\",\n          \"threshold\": {\n            \"change_threshold\": {\n              \"absolute\": -1e-10,\n              \"direction\": \"HIGHER_IS_BETTER\"\n            },\n            \"value_threshold\": {\n              \"lower_bound\": 0.6\n            }\n          }\n        }\n      ]\n    }\n  ],\n  \"model_specs\": [\n    {\n      \"label_key\": \"tips_xf\",\n      \"preprocessing_function_names\": [\n        \"transform_features\"\n      ],\n      \"signature_name\": \"serving_default\"\n    }\n  ],\n  \"slicing_specs\": [\n    {}\n  ]\n}"
                   }
                 },
                 "example_splits": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "null"
-                    }
+                    "constant": "null"
                   }
                 },
                 "fairness_indicator_thresholds": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "null"
-                    }
+                    "constant": "null"
                   }
                 }
               }
@@ -745,30 +748,22 @@
               "parameters": {
                 "train_args": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "{\n  \"num_steps\": 10\n}"
-                    }
+                    "constant": "{\n  \"num_steps\": 10\n}"
                   }
                 },
                 "eval_args": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "{\n  \"num_steps\": 5\n}"
-                    }
+                    "constant": "{\n  \"num_steps\": 5\n}"
                   }
                 },
                 "module_file": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "path/to/my/module_utils.py"
-                    }
+                    "constant": "path/to/my/module_utils.py"
                   }
                 },
                 "custom_config": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "null"
-                    }
+                    "constant": "null"
                   }
                 }
               },
@@ -813,16 +808,12 @@
               "parameters": {
                 "infer_feature_shape": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "intValue": "0"
-                    }
+                    "constant": 0.0
                   }
                 },
                 "exclude_splits": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "[]"
-                    }
+                    "constant": "[]"
                   }
                 }
               },
@@ -874,16 +865,12 @@
               "parameters": {
                 "custom_config": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "null"
-                    }
+                    "constant": "null"
                   }
                 },
                 "push_destination": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "{\n  \"filesystem\": {\n    \"base_directory\": \"path/to/my/root/model_serving\"\n  }\n}"
-                    }
+                    "constant": "{\n  \"filesystem\": {\n    \"base_directory\": \"path/to/my/root/model_serving\"\n  }\n}"
                   }
                 }
               }
@@ -897,37 +884,27 @@
               "parameters": {
                 "output_config": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
-                    }
+                    "constant": "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
                   }
                 },
                 "input_config": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
-                    }
+                    "constant": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
                   }
                 },
                 "input_base": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "path/to/my/data"
-                    }
+                    "constant": "path/to/my/data"
                   }
                 },
                 "output_data_format": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "intValue": "6"
-                    }
+                    "constant": 6.0
                   }
                 },
                 "output_file_format": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "intValue": "5"
-                    }
+                    "constant": 5.0
                   }
                 }
               }
@@ -944,9 +921,7 @@
               "parameters": {
                 "exclude_splits": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "[]"
-                    }
+                    "constant": "[]"
                   }
                 }
               },
@@ -988,16 +963,12 @@
               "parameters": {
                 "source_uri": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "{}"
-                    }
+                    "constant": "{}"
                   }
                 },
                 "resolver_class": {
                   "runtimeValue": {
-                    "constantValue": {
-                      "stringValue": "{\"__class__\": \"LatestArtifactStrategy\", \"__module__\": \"tfx.dsl.input_resolution.strategies.latest_artifact_strategy\", \"__tfx_object_type__\": \"class\"}"
-                    }
+                    "constant": "{\"__class__\": \"LatestArtifactStrategy\", \"__module__\": \"tfx.dsl.input_resolution.strategies.latest_artifact_strategy\", \"__tfx_object_type__\": \"class\"}"
                   }
                 }
               }

@@ -249,6 +249,3 @@ class ExecutorTest(tf.test.TestCase):
           {standard_component_specs.INFRA_BLESSING_KEY: [infra_blessing]},
           self._output_dict,
           self._exec_properties)
-
-if __name__ == '__main__':
-  tf.test.main()

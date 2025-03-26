@@ -15,13 +15,15 @@
 
 from __future__ import annotations
 
-from typing import Dict, Generic, Iterator, Mapping, Optional, TypeVar, Union
+import collections
+from typing import Callable, Dict, Generic, Iterable, Iterator, Mapping, MutableSequence, Optional, Sequence, TypeVar, Union
 
 from tfx.dsl.placeholder import placeholder_base
 from tfx.proto.orchestration import placeholder_pb2
 from tfx.utils import proto_utils
 
 from google.protobuf import any_pb2
+from google.protobuf import descriptor_pb2
 from google.protobuf import descriptor as descriptor_lib
 from google.protobuf import message
 from google.protobuf import message_factory
@@ -132,6 +134,18 @@ _PROTO_TO_PY_TYPE = {
 }
 
 
+_E = TypeVar('_E')
+
+
+def _remove_unless(
+    container: MutableSequence[_E], condition: Callable[[_E], bool]
+) -> None:
+  """yaqs/5214174899863552#a5707702298738688n5649050225344512 in a function."""
+  keep_items = [item for item in container if condition(item)]
+  del container[:]
+  container.extend(keep_items)
+
+
 class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
   """A placeholder that evaluates to a proto message."""
 
@@ -148,6 +162,8 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
       value = self._validate_and_transform_field(key, value)
       if value is not None:
         self._fields[key] = value
+
+    self._descriptor_collector: Optional[_DescriptorCollector] = None
 
   def _validate_and_transform_field(
       self, field: str, value: _InputFieldValues
@@ -246,30 +262,24 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
                 descriptor.message_type
             )(**value)
         )
-      elif (
-          not isinstance(value, placeholder_base.Placeholder)
-          or not value._is_maybe_proto_valued()  # pylint: disable=protected-access
-      ):
+      elif not isinstance(value, MakeProtoPlaceholder):
         raise ValueError(
-            f'Expected submessage proto or placeholder for field {field_name}, '
-            f'got {value!r}.'
+            'Expected submessage proto or another make_proto() placeholder '
+            f'for field {field_name}, got {value!r}.'
         )
 
-      # Some best-effort validation for the proto type.
+      # Validate that the sub-proto type matches the field type.
       submsg_type = value.expected_type
-      if isinstance(submsg_type, type) and issubclass(
-          submsg_type, message.Message
+      assert isinstance(submsg_type, type)
+      assert issubclass(submsg_type, message.Message)
+      if descriptor.message_type.full_name not in (
+          submsg_type.DESCRIPTOR.full_name,
+          any_pb2.Any.DESCRIPTOR.full_name,
       ):
-        # The proto placeholder knows exactly which proto type it will resolve
-        # to. So we can verify that it's the right one.
-        if descriptor.message_type.full_name not in (
-            submsg_type.DESCRIPTOR.full_name,
-            any_pb2.Any.DESCRIPTOR.full_name,
-        ):
-          raise ValueError(
-              f'Expected message of type {descriptor.message_type.full_name} '
-              f'for field {field_name}, got {submsg_type.DESCRIPTOR.full_name}.'
-          )
+        raise ValueError(
+            f'Expected message of type {descriptor.message_type.full_name} '
+            f'for field {field_name}, got {submsg_type.DESCRIPTOR.full_name}.'
+        )
       return value
 
     # Now we know it's a scalar field.
@@ -288,6 +298,19 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
       )
     return value  # pytype: disable=bad-return-type
 
+  def internal_equals(self, other: placeholder_base.Placeholder) -> bool:
+    return (
+        isinstance(other, MakeProtoPlaceholder)
+        and self._base_message == other._base_message  # pylint: disable=protected-access
+        and self._fields.keys() == other._fields.keys()  # pylint: disable=protected-access
+        and all(
+            placeholder_base.internal_equals_value_like(
+                self_value, other._fields[key]  # pylint: disable=protected-access
+            )
+            for key, self_value in self._fields.items()  # pylint: disable=protected-access
+        )
+    )
+
   def traverse(self) -> Iterator[placeholder_base.Placeholder]:
     """Yields all placeholders under and including this one."""
     yield from super().traverse()
@@ -295,49 +318,214 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
       if isinstance(value, placeholder_base.Placeholder):
         yield from value.traverse()
 
-  def _lift_up_descriptors(
-      self, op: placeholder_pb2.MakeProtoOperator
-  ) -> None:
-    """Moves+deduplicates descriptors from sub-messages to the given `op`."""
-    known_descriptors = {fd.name for fd in op.file_descriptors.file}
-    for field_value in op.fields.values():
-      operator_type = field_value.operator.WhichOneof('operator_type')
-      if operator_type == 'list_concat_op':
-        sub_expressions = field_value.operator.list_concat_op.expressions
-      elif operator_type == 'make_dict_op':
-        entries = field_value.operator.make_dict_op.entries
-        sub_expressions = [entry.key for entry in entries] + [
-            entry.value for entry in entries
-        ]
-      else:
-        sub_expressions = [field_value]
-      for sub_expression in sub_expressions:
-        if (
-            sub_expression.operator.WhichOneof('operator_type')
-            == 'make_proto_op'
-        ):
-          sub_op = sub_expression.operator.make_proto_op
-          for fd in sub_op.file_descriptors.file:
-            if fd.name not in known_descriptors:
-              known_descriptors.add(fd.name)
-              op.file_descriptors.file.append(fd)
-          sub_op.ClearField('file_descriptors')
-
   def encode(
       self, component_spec: Optional[type['_types.ComponentSpec']] = None
   ) -> placeholder_pb2.PlaceholderExpression:
+    # In a tree of MakeProtoPlaceholder.encode() calls, only the root will
+    # create a _DescriptorCollector(). This will cause all of the sub-calls to
+    # send their descriptors there and _not_ write them to their output
+    # PlaceholderExpression.
+    descriptor_collector = None  # Populated only in the root.
+    if self._descriptor_collector is None:
+      descriptor_collector = _DescriptorCollector()
+      for p in self.traverse():
+        if isinstance(p, MakeProtoPlaceholder):
+          p._descriptor_collector = descriptor_collector  # pylint: disable=protected-access
+    assert self._descriptor_collector is not None
+
     result = placeholder_pb2.PlaceholderExpression()
     op = result.operator.make_proto_op
     op.base.Pack(self._base_message)
-    proto_utils.build_file_descriptor_set(
-        self._base_message, op.file_descriptors
-    )
-
     for key, value in self._fields.items():
       op.fields[key].MergeFrom(
           placeholder_base.encode_value_like(value, component_spec)
       )
 
-    self._lift_up_descriptors(op)
+    self._descriptor_collector.add(self._base_message, self._fields.keys())
+    if descriptor_collector is not None:
+      # This is the root, so emit all the descriptors.
+      descriptor_collector.build(op.file_descriptors)
+      for p in self.traverse():
+        if isinstance(p, MakeProtoPlaceholder):
+          p._descriptor_collector = None  # pylint: disable=protected-access
 
     return result
+
+
+class _DescriptorCollector:
+  """Collects and shrinks proto descriptors for nested make_proto operators."""
+
+  def __init__(self):
+    # All files from which we potentially need to include descriptors into the
+    # final placeholder IR. It's important that this dict is insertion-ordered,
+    # so that it doesn't destroy the order from gather_file_descriptors(). Every
+    # dependent file must be processed after its dependencies.
+    self.descriptor_files: collections.OrderedDict[
+        str, descriptor_lib.FileDescriptor
+    ] = collections.OrderedDict()
+    # Fully-qualified names of the proto messages/enums whose descriptors we
+    # need to keep, because (a) they're the type being constructed by the
+    # placeholder, or (b) any of the sub-messages, or (c) any of their nested
+    # messages/enum declarations are needed. Crucially, we need to keep a type
+    # even if none of its fields occur in `_keep_fields`, in case the user wants
+    # to create an empty proto of that type.
+    self._keep_types: set[str] = set()
+    # Fully-qualified names of fields ("<message_fqn>.<field_name>") we need to
+    # keep, because they occur in a base message or as a placeholder field.
+    self._keep_fields: set[str] = set()
+
+  def add(self, base_message: message.Message, fields: Iterable[str]) -> None:
+    self._collect_from_message(base_message)
+    msg_name = base_message.DESCRIPTOR.full_name
+    self._keep_fields.update({f'{msg_name}.{field}' for field in fields})
+
+    root_file = base_message.DESCRIPTOR.file
+    if root_file.name in self.descriptor_files:
+      return
+    for fd in proto_utils.gather_file_descriptors(root_file):
+      if fd.name not in self.descriptor_files:
+        self.descriptor_files[fd.name] = fd
+
+  def _collect_from_message(self, msg: message.Message) -> None:
+    """Marks this message and all fields and submessages to be kept."""
+    msg_name = msg.DESCRIPTOR.full_name
+    self._keep_types.add(msg_name)
+    for field, value in msg.ListFields():
+      self._keep_fields.add(f'{msg_name}.{field.name}')
+      if isinstance(value, message.Message):
+        self._collect_from_message(value)
+      elif isinstance(value, Sequence):
+        for item in value:
+          if isinstance(item, message.Message):
+            self._collect_from_message(item)
+      elif isinstance(value, Mapping):
+        self._keep_fields.update({
+            f'{field.message_type.full_name}.key',
+            f'{field.message_type.full_name}.value',
+        })
+        for item in value.values():
+          if isinstance(item, message.Message):
+            self._collect_from_message(item)
+
+  def _shrink_descriptors(self, fds: descriptor_pb2.FileDescriptorSet) -> None:
+    """Deletes all field/message descriptors not used by this placeholder."""
+    # We don't want to shrink any of the "well-known" proto types (like Any),
+    # because because the proto runtime verifies that the descriptor for these
+    # well-known types matches what it expects. The runtimes do this because
+    # they then replace the message classes with more specific, native classes,
+    # to offer APIs like `Any.Pack()`, for instance.
+    well_known_types_pkg = 'google.protobuf.'
+
+    # Step 1: Go over all the message descriptors a first time, including
+    #         recursion into nested declarations. Delete field declarations we
+    #         don't need. Collect target types we need because they're the value
+    #         type of a field we want to keep.
+    def _shrink_message(
+        name_prefix: str, message_descriptor: descriptor_pb2.DescriptorProto
+    ) -> None:
+      msg_name = f'{name_prefix}.{message_descriptor.name}'
+      if not msg_name.startswith(well_known_types_pkg):
+        # Mark map<> entry key/value fields as used if the map field is used.
+        if (
+            message_descriptor.options.map_entry
+            and msg_name in self._keep_types
+        ):
+          self._keep_fields.update({f'{msg_name}.key', f'{msg_name}.value'})
+
+        # Delete unused fields.
+        del message_descriptor.extension[:]  # We don't support extension fields
+        _remove_unless(
+            message_descriptor.field,
+            lambda f: f'{msg_name}.{f.name}' in self._keep_fields,
+        )
+
+        # Clean up oneofs that have no fields left.
+        i = 0
+        while i < len(message_descriptor.oneof_decl):
+          if all(
+              not f.HasField('oneof_index') or f.oneof_index != i
+              for f in message_descriptor.field
+          ):
+            # No references left. Delete this one and shift all indices down.
+            del message_descriptor.oneof_decl[i]
+            for f in message_descriptor.field:
+              if f.oneof_index > i:
+                f.oneof_index -= 1
+          else:
+            i += 1
+
+      # Mark target types of fields as used.
+      for field_descriptor in message_descriptor.field:
+        if (
+            field_descriptor.type
+            in (
+                descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+                descriptor_pb2.FieldDescriptorProto.TYPE_ENUM,
+            )
+            and f'{msg_name}.{field_descriptor.name}' in self._keep_fields
+        ):
+          assert field_descriptor.type_name.startswith('.')
+          self._keep_types.add(field_descriptor.type_name.removeprefix('.'))
+
+      # Recurse into nested message types.
+      for nested_descriptor in message_descriptor.nested_type:
+        _shrink_message(msg_name, nested_descriptor)
+
+    # Outer invocation of step 1 on all files.
+    for file_descriptor in fds.file:
+      del file_descriptor.service[:]  # We never need RPC services.
+      del file_descriptor.extension[:]  # We don't support extension fields.
+      for message_descriptor in file_descriptor.message_type:
+        _shrink_message(file_descriptor.package, message_descriptor)
+
+    # Step 2: Go over all message descriptors a second time, including recursion
+    #         into nested declarations. Delete any nested declarations that were
+    #         not marked in the first pass. Mark any messages that have nested
+    #         declarations, because runtime descriptor pools require the parent
+    #         message to be present (even if unused) before allowing to add
+    #         nested message.
+    #         (This step is actually called within step 3.)
+    def _purge_types(
+        name_prefix: str, message_descriptor: descriptor_pb2.DescriptorProto
+    ) -> None:
+      msg_name = f'{name_prefix}.{message_descriptor.name}'
+      for nested_descriptor in message_descriptor.nested_type:
+        _purge_types(msg_name, nested_descriptor)
+      _remove_unless(
+          message_descriptor.nested_type,
+          lambda n: f'{msg_name}.{n.name}' in self._keep_types,
+      )
+      _remove_unless(
+          message_descriptor.enum_type,
+          lambda e: f'{msg_name}.{e.name}' in self._keep_types,
+      )
+      if message_descriptor.nested_type or message_descriptor.enum_type:
+        self._keep_types.add(msg_name)
+
+    # Step 3: Remove the unused messages and enums from the file descriptors.
+    for file_descriptor in fds.file:
+      name_prefix = file_descriptor.package
+      for message_descriptor in file_descriptor.message_type:
+        _purge_types(name_prefix, message_descriptor)  # Step 2
+      _remove_unless(
+          file_descriptor.message_type,
+          lambda m: f'{name_prefix}.{m.name}' in self._keep_types,  # pylint: disable=cell-var-from-loop
+      )
+      _remove_unless(
+          file_descriptor.enum_type,
+          lambda e: f'{name_prefix}.{e.name}' in self._keep_types,  # pylint: disable=cell-var-from-loop
+      )
+
+    # Step 4: Remove file descriptors that became empty. Remove declared
+    # dependencies on other .proto files if those files were removed themselves.
+    _remove_unless(fds.file, lambda fd: fd.message_type or fd.enum_type)
+    keep_file_names = {fd.name for fd in fds.file}
+    for fd in fds.file:
+      _remove_unless(fd.dependency, lambda dep: dep in keep_file_names)
+      del fd.public_dependency[:]
+      del fd.weak_dependency[:]
+
+  def build(self, result: descriptor_pb2.FileDescriptorSet) -> None:
+    for fd in self.descriptor_files.values():
+      fd.CopyToProto(result.file.add())
+    self._shrink_descriptors(result)

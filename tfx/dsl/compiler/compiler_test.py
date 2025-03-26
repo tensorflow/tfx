@@ -16,6 +16,7 @@ r"""Tests for tfx.dsl.compiler.compiler.
 To update the golden IR proto, use --persist_test_protos flag.
 """
 
+
 import os
 import threading
 import types
@@ -33,6 +34,7 @@ from tfx.dsl.compiler.testdata import composable_pipeline_async
 from tfx.dsl.compiler.testdata import conditional_pipeline
 from tfx.dsl.compiler.testdata import consumer_pipeline
 from tfx.dsl.compiler.testdata import consumer_pipeline_different_project
+from tfx.dsl.compiler.testdata import consumer_pipeline_with_tags
 from tfx.dsl.compiler.testdata import dynamic_exec_properties_pipeline
 from tfx.dsl.compiler.testdata import external_artifacts_pipeline
 from tfx.dsl.compiler.testdata import foreach_pipeline
@@ -143,6 +145,7 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
           consumer_pipeline,
           external_artifacts_pipeline,
           consumer_pipeline_different_project,
+          consumer_pipeline_with_tags,
       ])
   )
   def testCompile(
@@ -205,10 +208,24 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
   def testCompileDynamicExecPropTypeError(self):
     dsl_compiler = compiler.Compiler()
     test_pipeline = dynamic_exec_properties_pipeline.create_test_pipeline()
+    upstream_component = next(
+        c
+        for c in test_pipeline.components
+        if isinstance(
+            c,
+            type(
+                dynamic_exec_properties_pipeline.UpstreamComponent(start_num=0)
+            ),
+        )
+    )
     downstream_component = next(
-        c for c in test_pipeline.components
-        if isinstance(c, dynamic_exec_properties_pipeline.DownstreamComponent))
-    test_wrong_type_channel = channel.Channel(_MyType).future().value
+        c
+        for c in test_pipeline.components
+        if isinstance(c, dynamic_exec_properties_pipeline.DownstreamComponent)
+    )
+    test_wrong_type_channel = (
+        channel.OutputChannel(_MyType, upstream_component, "foo").future().value
+    )
     downstream_component.exec_properties["input_num"] = test_wrong_type_channel
     with self.assertRaisesRegex(
         ValueError, ".*channel must be of a value artifact type.*"
@@ -270,7 +287,3 @@ class CompilerTest(tf.test.TestCase, parameterized.TestCase):
         ValueError, "Resolver nodes can not be used in ASYNC mode."
     ):
       dsl_compiler.compile(test_pipeline)
-
-
-if __name__ == "__main__":
-  tf.test.main()

@@ -34,15 +34,16 @@ components for these data sources and formats:
 * [Parquet](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/custom_executors/parquet_executor.py)
 
 See the usage examples in the source code and
-[this discussion](/tfx/guide/examplegen#custom_examplegen) for more information on
+[this discussion](examplegen.md#custom-examplegen) for more information on
 how to use and develop custom executors.
 
-Note: In most case it's better to inherit from `base_example_gen_executor`
-instead of `base_executor`. So following the Avro or Parquet example in the
-Executor source code may be advisable.
+!!! Note
+    In most case it's better to inherit from `base_example_gen_executor`
+    instead of `base_executor`. So following the Avro or Parquet example in the
+    Executor source code may be advisable.
 
 In addition, these data sources and formats are available as
-[custom component](/tfx/guide/understanding_custom_components) examples:
+[custom component](understanding_custom_components.md) examples:
 
 * [Presto](https://github.com/tensorflow/tfx/tree/master/tfx/examples/custom_components/presto_example_gen)
 
@@ -50,10 +51,10 @@ In addition, these data sources and formats are available as
 
 Apache Beam supports ingesting data from a
 [broad range of data sources and formats](https://beam.apache.org/documentation/io/built-in/),
-([see below](#additional_data_formats)).  These capabilities
+([see below](#additional-data-formats)).  These capabilities
 can be used to create custom ExampleGen components for TFX, which is
 demonstrated by some existing ExampleGen components
-([see below](#additional_data_formats)).
+([see below](#additional-data-formats)).
 
 ## How to use an ExampleGen Component
 
@@ -92,7 +93,8 @@ data.
 
 ### Custom input/output split
 
-Note: this feature is only available after TFX 0.14.
+!!! Note
+    This feature is only available after TFX 0.14.
 
 To customize the train/eval split ratio which ExampleGen will output, set the
 `output_config` for ExampleGen component. For example:
@@ -135,7 +137,7 @@ the train and eval output split is generated with a 2:1 ratio.
 Please refer to
 [proto/example_gen.proto](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
 for ExampleGen's input and output split configuration. And refer to
-[downstream components guide](#examplegen_downstream_components) for utilizing
+[downstream components guide](#examplegen-downstream-components) for utilizing
 the custom splits downstream.
 
 #### Splitting Method
@@ -185,7 +187,8 @@ Notice how the `partition_feature_name` was set in this example.
 
 ### Span
 
-Note: this feature is only available after TFX 0.15.
+!!! Note
+    This feature is only available after TFX 0.15.
 
 Span can be retrieved by using '{SPAN}' spec in the
 [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto):
@@ -244,7 +247,8 @@ Retrieving a certain span can be done with RangeConfig, which is detailed below.
 
 ### Date
 
-Note: this feature is only availible after TFX 0.24.0.
+!!! Note
+    This feature is only available after TFX 0.24.0.
 
 If your data source is organized on filesystem by date, TFX supports mapping
 dates directly to span numbers. There are three specs to represent mapping from
@@ -303,7 +307,8 @@ example_gen = CsvExampleGen(input_base='/tmp', input_config=input)
 
 ### Version
 
-Note: this feature is only availible after TFX 0.24.0.
+!!! Note
+    This feature is only available after TFX 0.24.0.
 
 Version can be retrieved by using '{VERSION}' spec in the
 [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto):
@@ -363,7 +368,8 @@ example_gen = CsvExampleGen(input_base='/tmp', input_config=input)
 
 ### Range Config
 
-Note: this feature is only available after TFX 0.24.0.
+!!! Note
+    This feature is only available after TFX 0.24.0.
 
 TFX supports retrieval and processing of a specific span in file-based
 ExampleGen using range config, an abstract config used to describe ranges for
@@ -629,7 +635,7 @@ evaluator = Evaluator(
 ```
 
 More details are available in the
-[CsvExampleGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/CsvExampleGen),
-[FileBasedExampleGen API implementation](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/component.py)
+[CsvExampleGen API reference][tfx.v1.components.CsvExampleGen],
+[FileBasedExampleGen API implementation](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/component.py),
 and
-[ImportExampleGen API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/ImportExampleGen).
+[ImportExampleGen API reference][tfx.v1.components.ImportExampleGen].

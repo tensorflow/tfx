@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Testing utility for builtin resolver ops."""
-from typing import Type, Any, Dict, List, Optional, Sequence, Tuple, Union, Mapping
+
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 from unittest import mock
 
 from absl.testing import parameterized
-
 from tfx import types
 from tfx.dsl.compiler import compiler_context
 from tfx.dsl.compiler import node_inputs_compiler
@@ -26,7 +26,9 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
+from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact as tfx_artifact
 from tfx.types import artifact_utils
@@ -201,6 +203,7 @@ class ResolverTestCase(
       properties: Optional[Dict[str, Union[int, str]]] = None,
       custom_properties: Optional[Dict[str, Union[int, str]]] = None,
       state: metadata_store_pb2.Artifact.State = metadata_store_pb2.Artifact.State.LIVE,
+      connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
   ) -> types.Artifact:
     """Adds a single artifact to MLMD and returns the TFleX Artifact object."""
     mlmd_artifact = self.put_artifact(
@@ -208,8 +211,11 @@ class ResolverTestCase(
         properties=properties,
         custom_properties=custom_properties,
         state=state,
+        connection_config=connection_config,
     )
-    artifact_type = self.store.get_artifact_type(artifact.TYPE_NAME)
+
+    store = self.get_store(connection_config)
+    artifact_type = store.get_artifact_type(artifact.TYPE_NAME)
     return artifact_utils.deserialize_artifact(artifact_type, mlmd_artifact)
 
   def unwrap_tfx_artifacts(
@@ -222,10 +228,13 @@ class ResolverTestCase(
       self,
       pipeline_name: str,
       node_id: str,
+      connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
   ):
     """Returns a "node" Context with name "pipeline_name.node_id."""
     context = self.put_context(
-        context_type='node', context_name=f'{pipeline_name}.{node_id}'
+        context_type='node',
+        context_name=f'{pipeline_name}.{node_id}',
+        connection_config=connection_config,
     )
     return context
 
@@ -233,20 +242,24 @@ class ResolverTestCase(
       self,
       spans_and_versions: Sequence[Tuple[int, int]],
       contexts: Sequence[metadata_store_pb2.Context] = (),
+      connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
   ) -> List[types.Artifact]:
     """Build Examples artifacts and add an ExampleGen execution to MLMD."""
     examples = []
     for span, version in spans_and_versions:
       examples.append(
           self.prepare_tfx_artifact(
-              Examples, properties={'span': span, 'version': version}
-          )
+              Examples,
+              properties={'span': span, 'version': version},
+              connection_config=connection_config,
+          ),
       )
     self.put_execution(
         'ExampleGen',
         inputs={},
         outputs={'examples': self.unwrap_tfx_artifacts(examples)},
         contexts=contexts,
+        connection_config=connection_config,
     )
     return examples
 
@@ -254,9 +267,12 @@ class ResolverTestCase(
       self,
       examples: List[types.Artifact],
       contexts: Sequence[metadata_store_pb2.Context] = (),
+      connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
   ) -> types.Artifact:
     inputs = {'examples': self.unwrap_tfx_artifacts(examples)}
-    transform_graph = self.prepare_tfx_artifact(TransformGraph)
+    transform_graph = self.prepare_tfx_artifact(
+        TransformGraph, connection_config=connection_config
+    )
     self.put_execution(
         'Transform',
         inputs=inputs,
@@ -264,6 +280,7 @@ class ResolverTestCase(
             'transform_graph': self.unwrap_tfx_artifacts([transform_graph])
         },
         contexts=contexts,
+        connection_config=connection_config,
     )
     return transform_graph
 
@@ -273,6 +290,7 @@ class ResolverTestCase(
       examples: List[types.Artifact],
       transform_graph: Optional[types.Artifact] = None,
       contexts: Sequence[metadata_store_pb2.Context] = (),
+      connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
   ):
     """Add an Execution to MLMD where a Trainer trains on the examples."""
     inputs = {'examples': self.unwrap_tfx_artifacts(examples)}
@@ -283,6 +301,7 @@ class ResolverTestCase(
         inputs=inputs,
         outputs={'model': self.unwrap_tfx_artifacts([model])},
         contexts=contexts,
+        connection_config=connection_config,
     )
 
   def evaluator_bless_model(
@@ -291,10 +310,13 @@ class ResolverTestCase(
       blessed: bool = True,
       baseline_model: Optional[types.Artifact] = None,
       contexts: Sequence[metadata_store_pb2.Context] = (),
+      connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
   ) -> types.Artifact:
     """Add an Execution to MLMD where the Evaluator blesses the model."""
     model_blessing = self.prepare_tfx_artifact(
-        ModelBlessing, custom_properties={'blessed': int(blessed)}
+        ModelBlessing,
+        custom_properties={'blessed': int(blessed)},
+        connection_config=connection_config,
     )
 
     inputs = {'model': self.unwrap_tfx_artifacts([model])}
@@ -306,6 +328,7 @@ class ResolverTestCase(
         inputs=inputs,
         outputs={'blessing': self.unwrap_tfx_artifacts([model_blessing])},
         contexts=contexts,
+        connection_config=connection_config,
     )
 
     return model_blessing
@@ -315,6 +338,7 @@ class ResolverTestCase(
       model: types.Artifact,
       blessed: bool = True,
       contexts: Sequence[metadata_store_pb2.Context] = (),
+      connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
   ) -> types.Artifact:
     """Add an Execution to MLMD where the InfraValidator blesses the model."""
     if blessed:
@@ -322,7 +346,9 @@ class ResolverTestCase(
     else:
       custom_properties = {'blessing_status': 'INFRA_NOT_BLESSED'}
     model_infra_blessing = self.prepare_tfx_artifact(
-        ModelInfraBlessing, custom_properties=custom_properties
+        ModelInfraBlessing,
+        custom_properties=custom_properties,
+        connection_config=connection_config,
     )
 
     self.put_execution(
@@ -330,6 +356,7 @@ class ResolverTestCase(
         inputs={'model': self.unwrap_tfx_artifacts([model])},
         outputs={'result': self.unwrap_tfx_artifacts([model_infra_blessing])},
         contexts=contexts,
+        connection_config=connection_config,
     )
 
     return model_infra_blessing
@@ -339,15 +366,19 @@ class ResolverTestCase(
       model: types.Artifact,
       model_push: Optional[types.Artifact] = None,
       contexts: Sequence[metadata_store_pb2.Context] = (),
+      connection_config: Optional[metadata_store_pb2.ConnectionConfig] = None,
   ):
     """Add an Execution to MLMD where the Pusher pushes the model."""
     if model_push is None:
-      model_push = self.prepare_tfx_artifact(ModelPush)
+      model_push = self.prepare_tfx_artifact(
+          ModelPush, connection_config=connection_config
+      )
     self.put_execution(
         'ServomaticPusher',
         inputs={'model_export': self.unwrap_tfx_artifacts([model])},
         outputs={'model_push': self.unwrap_tfx_artifacts([model_push])},
         contexts=contexts,
+        connection_config=connection_config,
     )
     return model_push
 
@@ -370,6 +401,7 @@ def strict_run_resolver_op(
     args: Tuple[Any, ...],
     kwargs: Mapping[str, Any],
     store: Optional[mlmd.MetadataStore] = None,
+    mlmd_handle_like: Optional[mlmd_cm.HandleLike] = None,
 ):
   """Runs ResolverOp with strict type checking."""
   if len(args) != len(op_type.arg_data_types):
@@ -393,10 +425,18 @@ def strict_run_resolver_op(
               f'Expected ARTIFACT_MULTIMAP_LIST but arg[{i}] = {arg}'
           )
   op = op_type.create(**kwargs)
+
+  if mlmd_handle_like is not None:
+    mlmd_handle = mlmd_handle_like
+  else:
+    mlmd_handle = metadata.Metadata(
+        connection_config=metadata_store_pb2.ConnectionConfig(),
+    )
+    mlmd_handle._store = (  # pylint: disable=protected-access
+        store if store is not None else mock.MagicMock(spec=mlmd.MetadataStore)
+    )
   context = resolver_op.Context(
-      store=store
-      if store is not None
-      else mock.MagicMock(spec=mlmd.MetadataStore)
+      mlmd_handle_like=mlmd_handle,
   )
   op.set_context(context)
   result = op.apply(*args)

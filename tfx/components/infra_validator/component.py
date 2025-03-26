@@ -36,7 +36,7 @@ class InfraValidator(base_component.BaseComponent):
 
   Full example using TensorFlowServing binary running on local docker.
 
-  ```
+  ``` python
   infra_validator = InfraValidator(
       model=trainer.outputs['model'],
       examples=test_example_gen.outputs['examples'],
@@ -59,7 +59,7 @@ class InfraValidator(base_component.BaseComponent):
 
   Minimal example when running on Kubernetes.
 
-  ```
+  ``` python
   infra_validator = InfraValidator(
       model=trainer.outputs['model'],
       examples=test_example_gen.outputs['examples'],
@@ -73,11 +73,12 @@ class InfraValidator(base_component.BaseComponent):
   ```
 
   Component `outputs` contains:
-   - `blessing`: Channel of type `standard_artifacts.InfraBlessing` that
+
+   - `blessing`: Channel of type [`standard_artifacts.InfraBlessing`][tfx.v1.types.standard_artifacts.InfraBlessing] that
                  contains the validation result.
 
   See [the InfraValidator
-  guide](https://www.tensorflow.org/tfx/guide/infra_validator) for more
+  guide](../../../guide/infra_validator) for more
   details.
   """
 
@@ -95,13 +96,13 @@ class InfraValidator(base_component.BaseComponent):
     """Construct a InfraValidator component.
 
     Args:
-      model: A `BaseChannel` of `ModelExportPath` type, usually produced by
-        [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
+      model: A [`BaseChannel`][tfx.v1.types.BaseChannel] of `ModelExportPath` type, usually produced by
+        [Trainer](../../../guide/trainer) component.
           _required_
       serving_spec: A `ServingSpec` configuration about serving binary and test
         platform config to launch model server for validation. _required_
-      examples: A `BaseChannel` of `ExamplesPath` type, usually produced by
-        [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
+      examples: A [`BaseChannel`][tfx.v1.types.BaseChannel] of `ExamplesPath` type, usually produced by
+        [ExampleGen](../../../guide/examplegen) component.
           If not specified, InfraValidator does not issue requests for
           validation.
       request_spec: Optional `RequestSpec` configuration about making requests

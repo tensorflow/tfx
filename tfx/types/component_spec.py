@@ -16,7 +16,7 @@
 import copy
 import inspect
 import itertools
-from typing import Any, Dict, List, Mapping, Optional, Type, cast
+from typing import Any, cast, Dict, List, Mapping, Optional, Type
 
 from tfx.dsl.component.experimental.json_compat import check_strict_json_compat
 from tfx.dsl.placeholder import placeholder
@@ -30,6 +30,26 @@ from google.protobuf import message
 
 # Use Any to avoid cyclic import.
 _BaseNode = Any
+
+# Execution parameters that have `use_proto=True` but cannot be optimized with
+# Placeholder ph.make_proto.
+# TODO(b/350820714): Placeholder needs to be supported at runtime so that
+# TensorflowTrainerConfig, EventExporterConfig, and TensorflowApiOption
+# can be placeholders.
+# TODO(b/349459258): ExampleDiff executor needs to be updated to support
+# placeholder proto fields not being present.
+# TODO(b/352623284); DistributionValidator test needs to be updated to
+# support placeholder proto.
+# TODO(b/354748588): Support ExecutionParameter list of protos as placeholder so
+# that EvalArgs can be optimized.
+_MAKE_PROTO_EXEMPT_EXEC_PARAMETERS = [
+    'tensorflow_trainer',
+    'example_diff_config',
+    'distribution_validator_config',
+    'event_exporter_config',
+    'tensorflow_api_option',
+    'eval_args',
+]
 
 
 def _is_runtime_param(data: Any) -> bool:
@@ -229,11 +249,16 @@ class ComponentSpec(json_utils.Jsonable):
       if (inspect.isclass(arg.type) and issubclass(arg.type, message.Message)  # pytype: disable=not-supported-yet
           and value and not _is_runtime_param(value)) and not isinstance(
               value, placeholder.Placeholder):
+        # If the parameter is defined with use_proto=True, convert the value to
+        # proto from dict or json string if necessary before creating the proto
+        # placeholder.
         if arg.use_proto:
           if isinstance(value, dict):
             value = proto_utils.dict_to_proto(value, arg.type())
           elif isinstance(value, str):
             value = proto_utils.json_to_proto(value, arg.type())
+          if arg_name not in _MAKE_PROTO_EXEMPT_EXEC_PARAMETERS:
+            value = placeholder.make_proto(value)
         else:
           # Create deterministic json string as it will be stored in metadata
           # for cache check.

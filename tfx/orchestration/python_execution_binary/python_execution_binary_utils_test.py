@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.orchestration.python_execution_binary.python_execution_binary_utils."""
 
+
+
 from typing import Dict, List, Union
 
 import tensorflow as tf
@@ -157,7 +159,3 @@ class PythonExecutorBinaryUtilsTest(tf.test.TestCase):
     )
 
     self.assertProtoEquals(rehydrated_connection_config, connection_config)
-
-
-if __name__ == '__main__':
-  tf.test.main()

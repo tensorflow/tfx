@@ -21,7 +21,7 @@ import abc
 from ml_metadata.metadata_store import mlmd_types
 
 
-class SystemExecution(abc.ABC):
+class SystemExecution(abc.ABC):  # noqa: B024
   """TFX system execution base class.
 
   A user may create a subclass of SystemExecution and override the
@@ -30,7 +30,6 @@ class SystemExecution(abc.ABC):
   The subclasses, e.g, Train, Transform, Process, e.t.c, match the MLMD types
   from third_party/ml_metadata/metadata_store/mlmd_types.py.
   """
-
   # MLMD system base type enum. Override it when creating subclasses.
   MLMD_SYSTEM_BASE_TYPE = None
 

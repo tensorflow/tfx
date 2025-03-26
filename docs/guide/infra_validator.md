@@ -54,7 +54,7 @@ modes:
 Usually InfraValidator is defined next to an Evaluator component, and its output
 is fed to a Pusher. If InfraValidator fails, the model will not be pushed.
 
-```python {highlight="lines:8-11 context:infra_blessing,1"}
+```python hl_lines="8-11"
 evaluator = Evaluator(
     model=trainer.outputs['model'],
     examples=example_gen.outputs['examples'],
@@ -91,11 +91,12 @@ For model server types (called serving binary) we support
 
 -   [TensorFlow Serving](serving.md)
 
-Note: InfraValidator allows specifying multiple versions of the same model
-server type in order to upgrade the model server version without affecting model
-compatibility. For example, user can test `tensorflow/serving` image with both
-`2.1.0` and `latest` versions, to ensure the model will be compatible with the
-latest `tensorflow/serving` version as well.
+!!! Note
+    InfraValidator allows specifying multiple versions of the same model
+    server type in order to upgrade the model server version without affecting model
+    compatibility. For example, user can test `tensorflow/serving` image with both
+    `2.1.0` and `latest` versions, to ensure the model will be compatible with the
+    latest `tensorflow/serving` version as well.
 
 Following serving platforms are currently supported:
 
@@ -108,7 +109,7 @@ block of the `ServingSpec`. For example to use TensorFlow Serving binary running
 on the Kubernetes cluster, `tensorflow_serving` and `kubernetes` field should be
 set.
 
-```python {highlight="lines:4:9-4:26,7:9-7:18"}
+```python hl_lines="4 7"
 infra_validator=InfraValidator(
     model=trainer.outputs['model'],
     serving_spec=tfx.proto.ServingSpec(
@@ -127,7 +128,7 @@ To further configure `ServingSpec`, please check out the
 
 Optional configuration to adjust the infra validation criteria or workflow.
 
-```python {highlight="lines:4-10"}
+```python hl_lines="4-10"
 infra_validator=InfraValidator(
     model=trainer.outputs['model'],
     serving_spec=tfx.proto.ServingSpec(...),
@@ -151,7 +152,7 @@ infra validation in `LOAD_AND_QUERY` mode. In order to use `LOAD_AND_QUERY`
 mode, it is required to specify both `request_spec` execution properties as well
 as `examples` input channel in the component definition.
 
-```python {highlight="lines:7:9-7:62 lines:10-16"}
+```python hl_lines="8 11-17"
 infra_validator = InfraValidator(
     model=trainer.outputs['model'],
     # This is the source for the data that will be used to build a request.
@@ -198,7 +199,7 @@ and can also be pushed by the [Pusher](pusher.md), just like `Model` artifact.
 
 Current InfraValidator is not complete yet, and has some limitations.
 
--   Only TensorFlow [SavedModel](/guide/saved_model) model format can be
+-   Only TensorFlow [SavedModel](https://www.tensorflow.org/guide/saved_model) model format can be
     validated.
 -   When running TFX on Kubernetes, the pipeline should be executed by
     `KubeflowDagRunner` inside Kubeflow Pipelines. The model server will be
@@ -206,13 +207,13 @@ Current InfraValidator is not complete yet, and has some limitations.
     using.
 -   InfraValidator is primarily focused on deployments to
     [TensorFlow Serving](serving.md), and while still useful it is less accurate
-    for deployments to [TensorFlow Lite](/lite) and [TensorFlow.js](/js), or
+    for deployments to [TensorFlow Lite](https://www.tensorflow.org/lite) and [TensorFlow.js](https://www.tensorflow.org/js), or
     other inference frameworks.
 -   There's a limited support on `LOAD_AND_QUERY` mode for the
-    [Predict](/versions/r1.15/api_docs/python/tf/saved_model/predict_signature_def)
+    [Predict](https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/saved_model/predict_signature_def)
     method signature (which is the only exportable method in TensorFlow 2).
     InfraValidator requires the Predict signature to consume a serialized
-    [`tf.Example`](/tutorials/load_data/tfrecord#tfexample) as the only input.
+    [`tf.Example`](https://www.tensorflow.org/tutorials/load_data/tfrecord#tfexample) as the only input.
 
     ```python
     @tf.function

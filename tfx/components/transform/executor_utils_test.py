@@ -211,7 +211,3 @@ class ExecutorUtilsTest(tf.test.TestCase):
           standard_component_specs.PRE_TRANSFORM_STATS_KEY:
               [pre_transform_stats]
       })
-
-
-if __name__ == '__main__':
-  tf.test.main()

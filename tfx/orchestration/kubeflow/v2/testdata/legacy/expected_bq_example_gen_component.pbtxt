@@ -1,0 +1,40 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: ComponentSpec
+
+input_definitions {
+  parameters {
+    key: "input_config"
+    value {
+      type: STRING
+    }
+  }
+  parameters {
+    key: "output_config"
+    value {
+      type: STRING
+    }
+  }
+  parameters {
+    key: "output_data_format"
+    value {
+      type: INT
+    }
+  }
+  parameters {
+    key: "output_file_format"
+    value {
+      type: INT
+    }
+  }
+}
+output_definitions {
+  artifacts {
+    key: "examples"
+    value {
+      artifact_type {
+        instance_schema: "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+      }
+    }
+  }
+}
+executor_label: "BigQueryExampleGen_executor"

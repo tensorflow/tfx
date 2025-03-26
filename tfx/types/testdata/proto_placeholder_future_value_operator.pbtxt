@@ -8,7 +8,7 @@ operator {
         index_op {
           expression {
             placeholder {
-              key: "_component.num"
+              key: "_producer.num"
             }
           }
         }

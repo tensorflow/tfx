@@ -91,7 +91,3 @@ class ContainerUtilsTest(tf.test.TestCase):
                 'serviceAccount': 'sa-1'
             }
         }, pod_dict)
-
-
-if __name__ == '__main__':
-  tf.test.main()

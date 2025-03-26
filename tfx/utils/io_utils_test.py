@@ -339,7 +339,3 @@ class IoUtilsTest(tf.test.TestCase):
     io_utils.write_bytes_file(file_path, content)
     read_content = io_utils.read_bytes_file(file_path)
     self.assertEqual(content, read_content)
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -41,7 +41,3 @@ class PipUtilsTest(tf.test.TestCase):
     self.assertSameElements(pip_utils.get_package_names(),
                             ['absl-py', 'aiohttp', 'alembic'])
     mock_subprocess.assert_called_once()
-
-
-if __name__ == '__main__':
-  tf.test.main()

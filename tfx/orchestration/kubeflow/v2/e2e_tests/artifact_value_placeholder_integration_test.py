@@ -13,12 +13,14 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubeflow.v2.e2e_tests.artifact_value_placeholder_integration."""
 
-import tensorflow as tf
+from absl.testing import parameterized
 from tfx import v1 as tfx
 from tfx.dsl.component.experimental import placeholders
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2.e2e_tests import base_test_case
 from tfx.types.experimental import simple_artifacts
+
+import pytest
 
 
 def _tasks_for_pipeline_with_artifact_value_passing():
@@ -68,10 +70,17 @@ def _tasks_for_pipeline_with_artifact_value_passing():
   return [producer_task, print_task]
 
 
-class ArtifactValuePlaceholderIntegrationTest(base_test_case.BaseKubeflowV2Test
-                                             ):
+@pytest.mark.integration
+@pytest.mark.e2e
+class ArtifactValuePlaceholderIntegrationTest(
+    base_test_case.BaseKubeflowV2Test, parameterized.TestCase
+):
 
-  def testArtifactValuePlaceholders(self):
+  @parameterized.named_parameters(
+      dict(testcase_name='use_pipeline_spec_2_1', use_pipeline_spec_2_1=True),
+      dict(testcase_name='use_pipeline_spec_2_0', use_pipeline_spec_2_1=False),
+  )
+  def testArtifactValuePlaceholders(self, use_pipeline_spec_2_1):
     component_instances = (_tasks_for_pipeline_with_artifact_value_passing())
 
     pipeline_name = 'kubeflow-v2-test-artifact-value-{}'.format(
@@ -82,8 +91,4 @@ class ArtifactValuePlaceholderIntegrationTest(base_test_case.BaseKubeflowV2Test
         pipeline_components=component_instances,
     )
 
-    self._run_pipeline(pipeline)
-
-
-if __name__ == '__main__':
-  tf.test.main()
+    self._run_pipeline(pipeline, use_pipeline_spec_2_1=use_pipeline_spec_2_1)

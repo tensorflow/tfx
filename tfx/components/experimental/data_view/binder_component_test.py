@@ -31,7 +31,3 @@ class BinderComponentTest(tf.test.TestCase):
         data_view=channel_utils.as_channel([standard_artifacts.DataView()])
     )
     self.assertIsNotNone(binder.outputs['output_examples'])
-
-
-if __name__ == '__main__':
-  tf.test.main()

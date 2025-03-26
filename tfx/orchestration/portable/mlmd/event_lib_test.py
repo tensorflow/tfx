@@ -391,7 +391,3 @@ class EventLibTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.subTest('Non-matching key.'):
       self.assertFalse(event_lib.contains_key(event, 'bar'))
-
-
-if __name__ == '__main__':
-  tf.test.main()

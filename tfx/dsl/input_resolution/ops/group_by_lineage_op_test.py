@@ -90,7 +90,6 @@ class GroupByDisjointLineageTest(
         _shuffle(verts), _shuffle(edges)
     )
     self.assertEqual(actual, expected_disjoint_sets)
-
   def testGroupByDisjointLineage(self):
     a1, a2, a3, b1, b2, b3, b4, c1, c2, c3, c4 = self._prepare_tfx_artifacts(11)
     self._put_lineage(a1, b1, c1)
@@ -344,7 +343,3 @@ class GroupByPivotTest(tf.test.TestCase, _LineageUtils):
     [a] = self._prepare_tfx_artifacts(1)
     result = self._group_by_pivot({'a': [a, a]}, pivot_key='a')
     self.assertEqual(result, [{'a': [a]}, {'a': [a]}])
-
-
-if __name__ == '__main__':
-  tf.test.main()

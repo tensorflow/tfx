@@ -103,6 +103,3 @@ class UtilsTest(tf.test.TestCase):
 
     self.assertIn('BigQuery column "time" has non-supported type TIMESTAMP',
                   str(context.exception))
-
-if __name__ == '__main__':
-  tf.test.main()

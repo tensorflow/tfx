@@ -36,7 +36,3 @@ class ComponentTest(tf.test.TestCase):
         timeout_sec=3600)
     self.assertEqual(standard_artifacts.ModelBlessing.TYPE_NAME,
                      slack_component.outputs['slack_blessing'].type_name)
-
-
-if __name__ == '__main__':
-  tf.test.main()

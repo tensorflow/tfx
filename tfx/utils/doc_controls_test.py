@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.utils.doc_controls."""
 
+
+
 import tensorflow as tf
 
 from tfx.utils import doc_controls as tfx_doc_controls
@@ -28,11 +30,9 @@ class DocControlsTest(tf.test.TestCase):
                      doc_controls.do_not_doc_in_subclasses)
 
   def testDocumentSuccess(self):
+    # Clean up EXTRA_DOCS since pytest can import other modules in other tests.
+    tfx_doc_controls.EXTRA_DOCS = dict()
     documented_test_key = tfx_doc_controls.documented('test key', 'test value')
     self.assertEqual(1, len(tfx_doc_controls.EXTRA_DOCS))
     self.assertEqual('test value',
                      tfx_doc_controls.EXTRA_DOCS.get(id(documented_test_key)))
-
-
-if __name__ == '__main__':
-  tf.test.main()

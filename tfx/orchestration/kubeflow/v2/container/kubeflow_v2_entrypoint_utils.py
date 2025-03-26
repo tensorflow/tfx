@@ -113,54 +113,87 @@ def refactor_model_blessing(model_blessing: artifact.Artifact,
             name_from_id=name_from_id))
 
 
-def parse_execution_properties(exec_properties: Any) -> Dict[str, Any]:
+def parse_execution_properties(
+    google_parameters: Any,
+    kubeflow_parameters: Any,
+    inputs_spec: Optional[pipeline_pb2.ComponentInputsSpec] = None,
+) -> Dict[str, Any]:
   """Parses a map from key to Value proto as execution properties.
 
   Parses a mapping field in a protobuf message, whose value is a Kubeflow Value
   proto messages, to a Python dict, whose value is a Python primitive object.
 
   Args:
-    exec_properties: the mapping field in the proto message, representing the
+    google_parameters: the mapping field in the proto message, representing the
       execution properties of the component.
+    kubeflow_parameters: the mapping field in the proto message, representing
+      the execution properties of the component, which is deprecated with
+      Pipeline spec 2.1.
+    inputs_spec: Component input spec which has the information of parameter
+      types of exec_properties.
 
   Returns:
     dictionary of the parsed execution properties.
   """
   result = {}
+  if inputs_spec:
+    exec_properties = google_parameters
+  else:
+    exec_properties = kubeflow_parameters
   for k, v in exec_properties.items():
     # TODO(b/159835994): Remove this once pipeline populates INPUT_BASE_KEY
     if k == _OLD_INPUT_BASE_PROPERTY_NAME:
       k = standard_component_specs.INPUT_BASE_KEY
     # Translate each field from Value pb to plain value.
-    result[k] = getattr(v, v.WhichOneof('value'))
+    if isinstance(v, struct_pb2.Value):
+      result[k] = getattr(v, v.WhichOneof('kind'))
+      if inputs_spec:
+        parameter = inputs_spec.parameters.get(k)
+        if (
+            parameter
+            and parameter.parameter_type
+            == pipeline_pb2.ParameterType.NUMBER_INTEGER
+        ):
+          result[k] = int(result[k])
+    elif isinstance(v, pipeline_pb2.Value):
+      result[k] = getattr(v, v.WhichOneof('value'))
+    else:
+      continue
     if result[k] is None:
-      raise TypeError('Unrecognized type encountered at field %s of execution'
-                      ' properties %s' % (k, exec_properties))
+      raise TypeError(
+          'Unrecognized type encountered at field %s of execution properties %s'
+          % (k, exec_properties)
+      )
 
   return result
 
 
 def translate_executor_output(
     output_dict: Mapping[str, List[artifact.Artifact]],
-    name_from_id: Mapping[int,
-                          str]) -> Dict[str, pipeline_pb2.ArtifactList]:
+    name_from_id: Mapping[int, str],
+) -> Dict[str, pipeline_pb2.ArtifactList]:
   """Translates output_dict to a Kubeflow ArtifactList mapping."""
   result = {}
   for k, v in output_dict.items():
-    result[k] = pipeline_pb2.ArtifactList(artifacts=[
-        to_runtime_artifact(
-            artifact_utils.get_single_instance(v), name_from_id)
-    ])
+    result[k] = pipeline_pb2.ArtifactList(
+        artifacts=[
+            to_runtime_artifact(
+                artifact_utils.get_single_instance(v), name_from_id
+            )
+        ]
+    )
 
   return result
 
 
 def _get_json_value_mapping(
-    mlmd_value_mapping: Dict[str, metadata_store_pb2.Value]) -> Dict[str, Any]:
+    mlmd_value_mapping: Dict[str, metadata_store_pb2.Value],
+) -> Dict[str, Any]:
   """Converts a mapping field with MLMD Value to JSON Value."""
 
   def get_json_value(
-      mlmd_value: metadata_store_pb2.Value) -> artifact.JsonValueType:
+      mlmd_value: metadata_store_pb2.Value,
+  ) -> artifact.JsonValueType:
     if not mlmd_value.HasField('value'):
       return None
     elif mlmd_value.WhichOneof('value') == 'int_value':

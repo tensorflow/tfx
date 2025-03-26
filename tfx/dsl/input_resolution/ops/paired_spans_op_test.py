@@ -151,7 +151,3 @@ class PairedSpansOpTest(tf.test.TestCase):
     self.assertLen(actual, 2)
     self.assertPairedVersion(actual[0], 0, 1)
     self.assertPairedVersion(actual[1], 1, 1)
-
-
-if __name__ == '__main__':
-  tf.test.main()

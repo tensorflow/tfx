@@ -23,3 +23,13 @@ from tfx.dsl.components.base.base_component import BaseComponent
 from tfx.dsl.components.base.base_node import BaseNode
 from tfx.types.channel import BaseChannel
 from tfx.v1.types import standard_artifacts
+
+__all__ = [
+    "standard_artifacts",
+    "BaseBeamComponent",
+    "BaseChannel",
+    "BaseComponent",
+    "BaseFunctionalComponent",
+    "BaseFunctionalComponentFactory",
+    "BaseNode",
+]

@@ -74,11 +74,11 @@ class ModelValidator(base_beam_component.BaseBeamComponent):
     Args:
       examples: A BaseChannel of type `standard_artifacts.Examples`, usually
         produced by an
-        [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
+        [ExampleGen](../../../guide/examplegen) component.
           _required_
       model: A BaseChannel of type `standard_artifacts.Model`, usually produced
         by
-        a [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
+        a [Trainer](../../../guide/trainer) component.
           _required_
       blessing: Output channel of type `standard_artifacts.ModelBlessing` that
         contains the validation result.

@@ -400,7 +400,3 @@ class ExecutorTest(tf.test.TestCase):
 
       expected_elwc_examples = [_ELWC_1, _ELWC_2, _ELWC_3, _ELWC_4, _ELWC_5]
       util.assert_that(elwc_examples, util.equal_to(expected_elwc_examples))
-
-
-if __name__ == '__main__':
-  tf.test.main()

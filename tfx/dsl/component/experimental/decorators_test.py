@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.decorators."""
 
+
 import os
 from typing import Any, Dict, List, Optional
 
@@ -41,6 +42,7 @@ from tfx.types.channel_utils import union
 from tfx.types.system_executions import SystemExecution
 
 _TestBeamPipelineArgs = ['--my_testing_beam_pipeline_args=foo']
+_TestEmptyBeamPipeline = beam.Pipeline()
 
 
 class _InputArtifact(types.Artifact):
@@ -79,84 +81,87 @@ class _VerifyAnnotation(SystemExecution):
   MLMD_SYSTEM_BASE_TYPE = 3
 
 
-def _no_op():
+def no_op():
   pass
 
 
-_decorated_no_op = component(_no_op)
-_decorated_with_arg_no_op = component()(_no_op)
+_decorated_no_op = component(no_op)
+_decorated_with_arg_no_op = component()(no_op)
 
 
 @component
-def _injector_1(
-    foo: Parameter[int], bar: Parameter[str]) -> OutputDict(
-        a=int, b=int, c=str, d=bytes):  # pytype: disable=invalid-annotation,wrong-arg-types
+def injector_1(
+    foo: Parameter[int], bar: Parameter[str]
+) -> OutputDict(a=int, b=int, c=str, d=bytes):  # pytype: disable=invalid-annotation,wrong-arg-types
   assert foo == 9
   assert bar == 'secret'
   return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
 
 
 @component(component_annotation=_InjectorAnnotation)
-def _injector_1_with_annotation(
-    foo: Parameter[int], bar: Parameter[str]) -> OutputDict(
-        a=int, b=int, c=str, d=bytes):  # pytype: disable=invalid-annotation,wrong-arg-types
+def injector_1_with_annotation(
+    foo: Parameter[int], bar: Parameter[str]
+) -> OutputDict(a=int, b=int, c=str, d=bytes):  # pytype: disable=invalid-annotation,wrong-arg-types
   assert foo == 9
   assert bar == 'secret'
   return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
 
 
 @component
-def _simple_component(
-    a: int, b: int, c: str, d: bytes) -> OutputDict(
-        e=float, f=float, g=Optional[str], h=Optional[str]):  # pytype: disable=invalid-annotation,wrong-arg-types
+def simple_component(
+    a: int, b: int, c: str, d: bytes
+) -> OutputDict(e=float, f=float, g=Optional[str], h=Optional[str]):  # pytype: disable=invalid-annotation,wrong-arg-types
   del c, d
   return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
 
 
 @component(component_annotation=_SimpleComponentAnnotation)
-def _simple_component_with_annotation(
-    a: int, b: int, c: str, d: bytes) -> OutputDict(
-        e=float, f=float, g=Optional[str], h=Optional[str]):  # pytype: disable=invalid-annotation,wrong-arg-types
+def simple_component_with_annotation(
+    a: int, b: int, c: str, d: bytes
+) -> OutputDict(e=float, f=float, g=Optional[str], h=Optional[str]):  # pytype: disable=invalid-annotation,wrong-arg-types
   del c, d
   return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
 
 
 @component(use_beam=True)
-def _simple_beam_component(
-    a: int, b: int, c: str, d: bytes,
+def simple_beam_component(
+    a: int,
+    b: int,
+    c: str,
+    d: bytes,
     beam_pipeline: BeamComponentParameter[beam.Pipeline] = None,
-) -> OutputDict(
-    e=float, f=float, g=Optional[str], h=Optional[str]):  # pytype: disable=invalid-annotation,wrong-arg-types
+) -> OutputDict(e=float, f=float, g=Optional[str], h=Optional[str]):  # pytype: disable=invalid-annotation,wrong-arg-types
   del c, d, beam_pipeline
   return {'e': float(a + b), 'f': float(a * b), 'g': 'OK', 'h': None}
 
 
-def _verify_beam_pipeline_arg(a: int) -> OutputDict(b=float):  # pytype: disable=invalid-annotation,wrong-arg-types
+def verify_beam_pipeline_arg(a: int) -> OutputDict(b=float):  # pytype: disable=invalid-annotation,wrong-arg-types
   return {'b': float(a)}
 
 
-def _verify_beam_pipeline_arg_non_none_default_value(
+def verify_beam_pipeline_arg_non_none_default_value(
     a: int,
-    beam_pipeline: BeamComponentParameter[beam.Pipeline] = beam.Pipeline()
+    beam_pipeline: BeamComponentParameter[beam.Pipeline] = _TestEmptyBeamPipeline,
 ) -> OutputDict(b=float):  # pytype: disable=invalid-annotation,wrong-arg-types
   del beam_pipeline
   return {'b': float(a)}
 
 
 @component
-def _verify(e: float, f: float, g: Optional[str], h: Optional[str]):
+def verify(e: float, f: float, g: Optional[str], h: Optional[str]):
   assert (e, f, g, h) == (32.0, 220.0, 'OK', None), (e, f, g, h)
 
 
 @component(component_annotation=_VerifyAnnotation)
-def _verify_with_annotation(e: float, f: float, g: Optional[str],
-                            h: Optional[str]):
+def verify_with_annotation(
+    e: float, f: float, g: Optional[str], h: Optional[str]
+):
   assert (e, f, g, h) == (32.0, 220.0, 'OK', None), (e, f, g, h)
 
 
 @component
-def _injector_2(
-    examples: OutputArtifact[standard_artifacts.Examples]
+def injector_2(
+    examples: OutputArtifact[standard_artifacts.Examples],
 ) -> OutputDict(  # pytype: disable=invalid-annotation,wrong-arg-types
     a=int,
     b=float,
@@ -164,7 +169,8 @@ def _injector_2(
     d=bytes,
     e=str,
     f=List[Dict[str, float]],
-    g=Dict[str, Dict[str, List[bool]]]):
+    g=Dict[str, Dict[str, List[bool]]],
+):
   fileio.makedirs(examples.uri)
   return {
       'a': 1,
@@ -182,8 +188,8 @@ def _injector_2(
 
 
 @component
-def _injector_3(
-    examples: OutputArtifact[standard_artifacts.Examples]
+def injector_3(
+    examples: OutputArtifact[standard_artifacts.Examples],
 ) -> OutputDict(  # pytype: disable=invalid-annotation,wrong-arg-types
     a=int,
     b=float,
@@ -191,7 +197,8 @@ def _injector_3(
     d=bytes,
     e=str,
     f=Dict[str, Dict[str, List[bool]]],
-    g=List[Dict[str, float]]):
+    g=List[Dict[str, float]],
+):
   fileio.makedirs(examples.uri)
   return {
       'a': 1,
@@ -205,13 +212,14 @@ def _injector_3(
 
 
 @component
-def _injector_4() -> OutputDict(  # pytype: disable=invalid-annotation,wrong-arg-types
+def injector_4() -> OutputDict(  # pytype: disable=invalid-annotation,wrong-arg-types
     a=Dict[str, List[List[Any]]],
     b=List[Any],
     c=Optional[Dict[str, Dict[str, Any]]],
     d=Dict[str, List[List[int]]],
     e=List[float],
-    f=Dict[str, Dict[str, List[float]]]):
+    f=Dict[str, Dict[str, List[float]]],
+):
   return {
       'a': {'foo': [[1., 2]]},
       'b': [[{'e': 1}, {'e': 2}], [{'e': 3}, {'e': 4}]],
@@ -223,15 +231,18 @@ def _injector_4() -> OutputDict(  # pytype: disable=invalid-annotation,wrong-arg
 
 
 @component
-def _injector_4_invalid() -> OutputDict(  # pytype: disable=invalid-annotation,wrong-arg-types
-    a=Dict[str, List[List[int]]]):
+def injector_4_invalid() -> (
+    OutputDict(  # pytype: disable=invalid-annotation,wrong-arg-types
+        a=Dict[str, List[List[int]]]
+    )
+):
   return {
       'a': {'foo': [[1.], [2]]},
   }
 
 
 @component
-def _json_compat_check_component(
+def json_compat_check_component(
     a: Optional[Dict[str, List[List[Any]]]] = None,
     b: Optional[List[Any]] = None,
     c: Optional[Dict[str, Dict[str, Any]]] = None,
@@ -243,7 +254,7 @@ def _json_compat_check_component(
 
 
 @component
-def _optionalarg_component(
+def optionalarg_component(
     foo: Parameter[int],
     bar: Parameter[str],
     examples: InputArtifact[standard_artifacts.Examples],
@@ -260,7 +271,8 @@ def _optionalarg_component(
     optional_examples_2: InputArtifact[standard_artifacts.Examples] = None,
     list_input: Optional[List[Dict[str, float]]] = None,
     dict_input: Optional[Dict[str, Dict[str, List[bool]]]] = None,
-    non_passed_dict: Optional[Dict[str, int]] = None):
+    non_passed_dict: Optional[Dict[str, int]] = None,
+):
   # Test non-optional parameters.
   assert foo == 9
   assert bar == 'secret'
@@ -293,7 +305,7 @@ def _optionalarg_component(
 
 
 @component(use_beam=True)
-def _beam_component_with_artifact_inputs(
+def beam_component_with_artifact_inputs(
     foo: Parameter[int],
     a: int,
     b: float,
@@ -308,7 +320,7 @@ def _beam_component_with_artifact_inputs(
     g: Parameter[float] = 1000.0,
     h: Parameter[str] = '2000',
     beam_pipeline: BeamComponentParameter[beam.Pipeline] = None,
-    ):
+):
   # Test non-optional parameters.
   assert foo == 9
   assert isinstance(examples, standard_artifacts.Examples)
@@ -333,12 +345,12 @@ def _beam_component_with_artifact_inputs(
 
 
 @component
-def _json_compat_parameters(
+def json_compat_parameters(
     a: Parameter[Dict[str, int]],
     b: Parameter[List[bool]],
     c: Parameter[Dict[str, List[bool]]],
     d: Parameter[List[Dict[str, float]]],
-    e: Parameter[List[str]]
+    e: Parameter[List[str]],
 ):
   assert a == {'foo': 1, 'bar': 2}
   assert b == [True, False]
@@ -348,7 +360,7 @@ def _json_compat_parameters(
 
 
 @component
-def _list_of_artifacts(
+def list_of_artifacts(
     one_examples: InputArtifact[List[standard_artifacts.Examples]],
     two_examples: InputArtifact[List[standard_artifacts.Examples]],
 ):
@@ -413,16 +425,16 @@ class ComponentDecoratorTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         ValueError,
         'expects arguments to be passed as keyword arguments'):
-      _injector_1(9, 'secret')
+      injector_1(9, 'secret')
 
   def testReturnsCorrectTypes(self):
     """Ensure the expected types are returned."""
     # The BaseFunctionalComponentFactory protocol isn't runtime-checkable, but
     # we can instead check that we can access its members:
-    self.assertIsNotNone(_injector_1.test_call)
-    self.assertIsNone(_injector_1.platform_classlevel_extensions)
+    self.assertIsNotNone(injector_1.test_call)
+    self.assertIsNone(injector_1.platform_classlevel_extensions)
 
-    instance = _injector_1(foo=9, bar='secret')
+    instance = injector_1(foo=9, bar='secret')
     self.assertIsInstance(instance, BaseFunctionalComponent)
 
   def testNoBeamPipelineWhenUseBeamIsTrueFails(self):
@@ -431,29 +443,31 @@ class ComponentDecoratorTest(tf.test.TestCase):
         'The decorated function must have one and only one optional parameter '
         'of type BeamComponentParameter[beam.Pipeline] with '
         'default value None when use_beam=True.'):
-      component(use_beam=True)(_verify_beam_pipeline_arg)(a=1)
+      component(use_beam=True)(verify_beam_pipeline_arg)(a=1)
 
   def testBeamPipelineDefaultIsNotNoneFails(self):
     with self.assertRaisesWithLiteralMatch(
         ValueError,
         'The default value for BeamComponentParameter must be None.'):
-      component(use_beam=True)(
-          _verify_beam_pipeline_arg_non_none_default_value
-      )(a=1)
+      component(use_beam=True)(verify_beam_pipeline_arg_non_none_default_value)(
+          a=1
+      )
 
   def testBeamExecutionSuccess(self):
     """Test execution with return values; success case."""
-    instance_1 = _injector_1(foo=9, bar='secret')
-    instance_2 = _simple_component(
+    instance_1 = injector_1(foo=9, bar='secret')
+    instance_2 = simple_component(
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
         c=instance_1.outputs['c'],
-        d=instance_1.outputs['d'])
-    instance_3 = _verify(
+        d=instance_1.outputs['d'],
+    )
+    instance_3 = verify(
         e=instance_2.outputs['e'],
         f=instance_2.outputs['f'],
         g=instance_2.outputs['g'],
-        h=instance_2.outputs['h'])  # pylint: disable=assignment-from-no-return
+        h=instance_2.outputs['h'],
+    )  # pylint: disable=assignment-from-no-return
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -467,17 +481,19 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
   def testBeamComponentBeamExecutionSuccess(self):
     """Test execution with return values; success case."""
-    instance_1 = _injector_1(foo=9, bar='secret')
-    instance_2 = _simple_beam_component(
+    instance_1 = injector_1(foo=9, bar='secret')
+    instance_2 = simple_beam_component(
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
         c=instance_1.outputs['c'],
-        d=instance_1.outputs['d'])
-    instance_3 = _verify(
+        d=instance_1.outputs['d'],
+    )
+    instance_3 = verify(
         e=instance_2.outputs['e'],
         f=instance_2.outputs['f'],
         g=instance_2.outputs['g'],
-        h=instance_2.outputs['h'])  # pylint: disable=assignment-from-no-return
+        h=instance_2.outputs['h'],
+    )  # pylint: disable=assignment-from-no-return
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -491,18 +507,20 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
   def testBeamExecutionFailure(self):
     """Test execution with return values; failure case."""
-    instance_1 = _injector_1(foo=9, bar='secret')
-    instance_2 = _simple_component(
+    instance_1 = injector_1(foo=9, bar='secret')
+    instance_2 = simple_component(
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
         c=instance_1.outputs['c'],
-        d=instance_1.outputs['d'])
+        d=instance_1.outputs['d'],
+    )
     # Swapped 'e' and 'f'.
-    instance_3 = _verify(
+    instance_3 = verify(
         e=instance_2.outputs['f'],
         f=instance_2.outputs['e'],
         g=instance_2.outputs['g'],
-        h=instance_2.outputs['h'])  # pylint: disable=assignment-from-no-return
+        h=instance_2.outputs['h'],
+    )  # pylint: disable=assignment-from-no-return
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -513,14 +531,14 @@ class ComponentDecoratorTest(tf.test.TestCase):
         components=[instance_1, instance_2, instance_3])
 
     with self.assertRaisesRegex(
-        RuntimeError, r'AssertionError: \(220.0, 32.0, \'OK\', None\)'):
+        AssertionError, r'\(220.0, 32.0, \'OK\', None\)'):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
   def testOptionalInputsAndParameters(self):
     """Test execution with optional inputs and parameters."""
-    instance_1 = _injector_2()  # pylint: disable=no-value-for-parameter
+    instance_1 = injector_2()  # pylint: disable=no-value-for-parameter
     self.assertLen(instance_1.outputs['examples'].get(), 1)
-    instance_2 = _optionalarg_component(  # pylint: disable=assignment-from-no-return
+    instance_2 = optionalarg_component(  # pylint: disable=assignment-from-no-return
         foo=9,
         bar='secret',
         examples=instance_1.outputs['examples'],
@@ -533,7 +551,8 @@ class ComponentDecoratorTest(tf.test.TestCase):
         g=999.0,
         optional_examples_1=instance_1.outputs['examples'],
         list_input=instance_1.outputs['f'],
-        dict_input=instance_1.outputs['g'])
+        dict_input=instance_1.outputs['g'],
+    )
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -547,9 +566,9 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
   def testBeamExecutionBeamComponentWithInputArtifactAndParameters(self):
     """Test execution of a beam component with InputArtifact and parameters."""
-    instance_1 = _injector_2()  # pylint: disable=no-value-for-parameter
+    instance_1 = injector_2()  # pylint: disable=no-value-for-parameter
     self.assertLen(instance_1.outputs['examples'].get(), 1)
-    instance_2 = _beam_component_with_artifact_inputs(  # pylint: disable=assignment-from-no-return, no-value-for-parameter
+    instance_2 = beam_component_with_artifact_inputs(  # pylint: disable=assignment-from-no-return, no-value-for-parameter
         foo=9,
         examples=instance_1.outputs['examples'],
         dict_input=instance_1.outputs['g'],
@@ -559,7 +578,8 @@ class ComponentDecoratorTest(tf.test.TestCase):
         d=instance_1.outputs['d'],
         e1=instance_1.outputs['e'],
         e2=instance_1.outputs['e'],
-        g=999.0)
+        g=999.0,
+    )
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -573,9 +593,9 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
   def testBeamExecutionNonNullableReturnError(self):
     """Test failure when None used for non-optional primitive return value."""
-    instance_1 = _injector_3()  # pylint: disable=no-value-for-parameter
+    instance_1 = injector_3()  # pylint: disable=no-value-for-parameter
     self.assertLen(instance_1.outputs['examples'].get(), 1)
-    instance_2 = _optionalarg_component(  # pylint: disable=assignment-from-no-return
+    instance_2 = optionalarg_component(  # pylint: disable=assignment-from-no-return
         foo=9,
         bar='secret',
         examples=instance_1.outputs['examples'],
@@ -588,7 +608,8 @@ class ComponentDecoratorTest(tf.test.TestCase):
         g=999.0,
         optional_examples_1=instance_1.outputs['examples'],
         dict_input=instance_1.outputs['f'],
-        list_input=instance_1.outputs['g'])
+        list_input=instance_1.outputs['g'],
+    )
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -603,17 +624,19 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
   def testComponentAnnotation(self):
     """Test component annotation parsed from decorator param."""
-    instance_1 = _injector_1_with_annotation(foo=9, bar='secret')
-    instance_2 = _simple_component_with_annotation(
+    instance_1 = injector_1_with_annotation(foo=9, bar='secret')
+    instance_2 = simple_component_with_annotation(
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
         c=instance_1.outputs['c'],
-        d=instance_1.outputs['d'])
-    instance_3 = _verify_with_annotation(
+        d=instance_1.outputs['d'],
+    )
+    instance_3 = verify_with_annotation(
         e=instance_2.outputs['e'],
         f=instance_2.outputs['f'],
         g=instance_2.outputs['g'],
-        h=instance_2.outputs['h'])  # pylint: disable=assignment-from-no-return
+        h=instance_2.outputs['h'],
+    )  # pylint: disable=assignment-from-no-return
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -626,22 +649,26 @@ class ComponentDecoratorTest(tf.test.TestCase):
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
     # Verify base_type annotation parsed from component decorator is correct.
-    self.assertEqual(test_pipeline.components[0].type,
-                     '__main__._injector_1_with_annotation')
+    self.assertEqual(
+        test_pipeline.components[0].type, 'tfx.dsl.component.experimental.decorators_test.injector_1_with_annotation'
+    )
     self.assertEqual(
         test_pipeline.components[0].type_annotation.MLMD_SYSTEM_BASE_TYPE, 1)
-    self.assertEqual(test_pipeline.components[1].type,
-                     '__main__._simple_component_with_annotation')
+    self.assertEqual(
+        test_pipeline.components[1].type,
+        'tfx.dsl.component.experimental.decorators_test.simple_component_with_annotation',
+    )
     self.assertEqual(
         test_pipeline.components[1].type_annotation.MLMD_SYSTEM_BASE_TYPE, 2)
-    self.assertEqual(test_pipeline.components[2].type,
-                     '__main__._verify_with_annotation')
+    self.assertEqual(
+        test_pipeline.components[2].type, 'tfx.dsl.component.experimental.decorators_test.verify_with_annotation'
+    )
     self.assertEqual(
         test_pipeline.components[2].type_annotation.MLMD_SYSTEM_BASE_TYPE, 3)
 
   def testJsonCompatible(self):
-    instance_1 = _injector_4()
-    instance_2 = _json_compat_check_component(
+    instance_1 = injector_4()
+    instance_2 = json_compat_check_component(
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
         c=instance_1.outputs['c'],
@@ -658,8 +685,8 @@ class ComponentDecoratorTest(tf.test.TestCase):
         components=[instance_1, instance_2])
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
-    instance_1 = _injector_4()
-    instance_2 = _json_compat_check_component(
+    instance_1 = injector_4()
+    instance_2 = json_compat_check_component(
         a=instance_1.outputs['d'],
         b=instance_1.outputs['e'],
         c=instance_1.outputs['f'],
@@ -681,10 +708,10 @@ class ComponentDecoratorTest(tf.test.TestCase):
                 ):
       with self.assertRaisesRegex(
           TypeError, 'Argument.* should be a Channel of type .* \(got .*\)\.$'):  # pylint: disable=anomalous-backslash-in-string
-        instance_2 = _json_compat_check_component(**arg)
+        instance_2 = json_compat_check_component(**arg)
 
-    invalid_instance = _injector_4_invalid()
-    instance_2 = _json_compat_check_component(
+    invalid_instance = injector_4_invalid()
+    instance_2 = json_compat_check_component(
         a=invalid_instance.outputs['a'],
     )
     test_pipeline = pipeline.Pipeline(
@@ -699,22 +726,13 @@ class ComponentDecoratorTest(tf.test.TestCase):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
   def testJsonCompatParameter(self):
-    instance_1 = _json_compat_parameters(
-        a={
-            'foo': 1,
-            'bar': 2
-        },
+    instance_1 = json_compat_parameters(
+        a={'foo': 1, 'bar': 2},
         b=[True, False],
-        c={
-            'foo': [True, False],
-            'bar': [True, False]
-        },
-        d=[{
-            'foo': 1.0
-        }, {
-            'bar': 2.0
-        }],
-        e=['foo', 'bar'])
+        c={'foo': [True, False], 'bar': [True, False]},
+        d=[{'foo': 1.0}, {'bar': 2.0}],
+        e=['foo', 'bar'],
+    )
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     test_pipeline = pipeline.Pipeline(
@@ -725,17 +743,17 @@ class ComponentDecoratorTest(tf.test.TestCase):
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
   def testPyComponentTestCallIsTheFuncBeingDecorated(self):
-    self.assertEqual(_decorated_no_op.test_call, _no_op)
-    self.assertEqual(_decorated_with_arg_no_op.test_call, _no_op)
+    self.assertEqual(_decorated_no_op.test_call, no_op)
+    self.assertEqual(_decorated_with_arg_no_op.test_call, no_op)
 
   def testListOfArtifacts(self):
     """Test execution withl list of artifact inputs and outputs."""
     # pylint: disable=no-value-for-parameter
-    instance_1 = _injector_2().with_id('instance_1')
-    instance_2 = _injector_2().with_id('instance_2')
-    instance_3 = _injector_2().with_id('instance_3')
+    instance_1 = injector_2().with_id('instance_1')
+    instance_2 = injector_2().with_id('instance_2')
+    instance_3 = injector_2().with_id('instance_3')
 
-    list_artifacts_instance = _list_of_artifacts(
+    list_artifacts_instance = list_of_artifacts(
         one_examples=instance_1.outputs['examples'],
         two_examples=union(
             [instance_1.outputs['examples'], instance_2.outputs['examples']]
@@ -759,7 +777,3 @@ class ComponentDecoratorTest(tf.test.TestCase):
     )
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
-
-
-if __name__ == '__main__':
-  tf.test.main()

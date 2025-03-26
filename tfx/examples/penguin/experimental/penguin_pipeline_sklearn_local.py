@@ -17,7 +17,6 @@ import os
 from typing import List
 
 import absl
-import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
 
 _pipeline_name = 'penguin_sklearn_local'
@@ -111,37 +110,14 @@ def _create_pipeline(
           type=tfx.types.standard_artifacts.ModelBlessing)).with_id(
               'latest_blessed_model_resolver')
 
-  # Uses TFMA to compute evaluation statistics over features of a model and
-  # perform quality validation of a candidate model (compared to a baseline).
-  eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(label_key='species')],
-      slicing_specs=[tfma.SlicingSpec()],
-      metrics_specs=[
-          tfma.MetricsSpec(metrics=[
-              tfma.MetricConfig(
-                  class_name='Accuracy',
-                  threshold=tfma.MetricThreshold(
-                      value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.6}),
-                      change_threshold=tfma.GenericChangeThreshold(
-                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                          absolute={'value': -1e-10})))
-          ])
-      ])
-  evaluator = tfx.components.Evaluator(
-      module_file=evaluator_module_file,
-      examples=example_gen.outputs['examples'],
-      model=trainer.outputs['model'],
-      baseline_model=model_resolver.outputs['model'],
-      eval_config=eval_config)
-
   pusher = tfx.components.Pusher(
       model=trainer.outputs['model'],
-      model_blessing=evaluator.outputs['blessing'],
       push_destination=tfx.proto.PushDestination(
           filesystem=tfx.proto.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
 
+  # Note: Because TFMA 0.47.0 doesn't support custom model evaluation,
+  # the evaluator step is ruled out here.
   return tfx.dsl.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
@@ -152,7 +128,6 @@ def _create_pipeline(
           example_validator,
           trainer,
           model_resolver,
-          evaluator,
           pusher,
       ],
       enable_cache=True,

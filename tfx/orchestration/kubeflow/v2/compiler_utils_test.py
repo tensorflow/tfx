@@ -18,6 +18,7 @@ import os
 from absl.testing import parameterized
 from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow as tf
+from tfx.dsl.components.base.testing import test_node
 from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.v2 import compiler_utils
@@ -70,7 +71,11 @@ class _MyArtifactWithProperty(artifact.Artifact):
   }
 
 
-_TEST_CHANNEL = channel.Channel(type=_MyArtifactWithProperty)
+_TEST_CHANNEL = channel.OutputChannel(
+    artifact_type=_MyArtifactWithProperty,
+    producer_component=test_node.TestNode('producer'),
+    output_key='foo',
+)
 
 
 class CompilerUtilsTest(tf.test.TestCase):
@@ -133,9 +138,10 @@ class CompilerUtilsTest(tf.test.TestCase):
     with self.assertRaisesRegex(TypeError, 'Property type mismatched at'):
       compiler_utils._validate_properties_schema(
           _MY_BAD_ARTIFACT_SCHEMA_WITH_PROPERTIES,
-          _MyArtifactWithProperty.PROPERTIES)
+          _MyArtifactWithProperty.PROPERTIES,
+      )
 
-  def testBuildParameterTypeSpec(self):
+  def testBuildParameterTypeSpecLegacy(self):
     type_enum = pipeline_pb2.PrimitiveType.PrimitiveTypeEnum
     testdata = {
         42: type_enum.INT,
@@ -147,8 +153,29 @@ class CompilerUtilsTest(tf.test.TestCase):
     }
     for value, expected_type_enum in testdata.items():
       self.assertEqual(
-          compiler_utils.build_parameter_type_spec(value).type,
-          expected_type_enum)
+          compiler_utils.build_parameter_type_spec_legacy(value).type,
+          expected_type_enum,
+      )
+
+  def testBuildParameterTypeSpec(self):
+    type_enum = pipeline_pb2.ParameterType.ParameterTypeEnum
+    testdata = {
+        42: type_enum.NUMBER_INTEGER,
+        42.1: type_enum.NUMBER_DOUBLE,
+        '42': type_enum.STRING,
+        data_types.RuntimeParameter(
+            name='_', ptype=int
+        ): type_enum.NUMBER_INTEGER,
+        data_types.RuntimeParameter(
+            name='_', ptype=float
+        ): type_enum.NUMBER_DOUBLE,
+        data_types.RuntimeParameter(name='_', ptype=str): type_enum.STRING,
+    }
+    for value, expected_type_enum in testdata.items():
+      self.assertEqual(
+          compiler_utils.build_parameter_type_spec(value).parameter_type,
+          expected_type_enum,
+      )
 
   def testBuildOutputParameterSpecValueArtifact(self):
     param = pipeline_pb2.ParameterType
@@ -239,36 +266,38 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(
       {
-          'testcase_name':
-              'two_sides_placeholder',
-          'predicate':
-              _TEST_CHANNEL.future()[0].property('int1') <
-              _TEST_CHANNEL.future()[0].property('int2'),
-          'expected_cel':
-              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'int1\'] < '
-              'inputs.artifacts[\'key\'].artifacts[0].metadata[\'int2\'])',
+          'testcase_name': 'two_sides_placeholder',
+          'predicate': _TEST_CHANNEL.future()[0].property(
+              'int1'
+          ) < _TEST_CHANNEL.future()[0].property('int2'),
+          'expected_cel': (
+              "(inputs.artifacts['_producer.foo'].artifacts[0].metadata['int1'] < "
+              "inputs.artifacts['_producer.foo'].artifacts[0].metadata['int2'])"
+          ),
       },
       {
-          'testcase_name':
-              'left_side_placeholder_right_side_int',
-          'predicate':
-              _TEST_CHANNEL.future()[0].property('int') < 1,
-          'expected_cel':
-              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'int\'] < 1.0)',
+          'testcase_name': 'left_side_placeholder_right_side_int',
+          'predicate': _TEST_CHANNEL.future()[0].property('int') < 1,
+          'expected_cel': (
+              "(inputs.artifacts['_producer.foo'].artifacts[0].metadata['int']"
+              ' < 1.0)'
+          ),
       },
       {
           'testcase_name': 'left_side_placeholder_right_side_float',
           'predicate': _TEST_CHANNEL.future()[0].property('float') < 1.1,
-          'expected_cel':
-              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'float\'] < '
-              '1.1)',
+          'expected_cel': (
+              "(inputs.artifacts['_producer.foo'].artifacts[0].metadata['float']"
+              ' < 1.1)'
+          ),
       },
       {
           'testcase_name': 'left_side_placeholder_right_side_string',
           'predicate': _TEST_CHANNEL.future()[0].property('str') == 'test_str',
-          'expected_cel':
-              '(inputs.artifacts[\'key\'].artifacts[0].metadata[\'str\'] == '
-              '\'test_str\')',
+          'expected_cel': (
+              "(inputs.artifacts['_producer.foo'].artifacts[0].metadata['str']"
+              " == 'test_str')"
+          ),
       },
   )
   def testComparison(self, predicate, expected_cel):
@@ -283,8 +312,9 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
 
   def testArtifactUri(self):
     predicate = _TEST_CHANNEL.future()[0].uri == 'test_str'
-    expected_cel = ('(inputs.artifacts[\'key\'].artifacts[0].uri == '
-                    '\'test_str\')')
+    expected_cel = (
+        "(inputs.artifacts['_producer.foo'].artifacts[0].uri == 'test_str')"
+    )
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
@@ -296,8 +326,10 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
 
   def testNegation(self):
     predicate = _TEST_CHANNEL.future()[0].property('int') != 1
-    expected_cel = ('!((inputs.artifacts[\'key\'].artifacts[0]'
-                    '.metadata[\'int\'] == 1.0))')
+    expected_cel = (
+        "!((inputs.artifacts['_producer.foo'].artifacts[0]"
+        ".metadata['int'] == 1.0))"
+    )
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
@@ -310,8 +342,9 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
   def testConcat(self):
     predicate = _TEST_CHANNEL.future()[0].uri + 'something' == 'test_str'
     expected_cel = (
-        '((inputs.artifacts[\'key\'].artifacts[0].uri + \'something\') == '
-        '\'test_str\')')
+        "((inputs.artifacts['_producer.foo'].artifacts[0].uri + 'something') =="
+        " 'test_str')"
+    )
     channel_to_key_map = {
         _TEST_CHANNEL: 'key',
     }
@@ -332,15 +365,3 @@ class PlaceholderToCELTest(parameterized.TestCase, tf.test.TestCase):
     with self.assertRaisesRegex(
         ValueError, 'Got unsupported placeholder operator base64_encode_op.'):
       compiler_utils.placeholder_to_cel(placeholder_pb)
-
-  def testPlaceholderWithoutKey(self):
-    predicate = _TEST_CHANNEL.future()[0].uri == 'test_str'
-    placeholder_pb = predicate.encode()
-    with self.assertRaisesRegex(
-        ValueError,
-        'Only supports accessing placeholders with a key on KFPv2.'):
-      compiler_utils.placeholder_to_cel(placeholder_pb)
-
-
-if __name__ == '__main__':
-  tf.test.main()

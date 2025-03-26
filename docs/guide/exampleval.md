@@ -38,4 +38,4 @@ validate_stats = ExampleValidator(
 ```
 
 More details are available in the
-[ExampleValidator API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/v1/components/ExampleValidator).
+[ExampleValidator API reference][tfx.v1.components.ExampleValidator].

@@ -15,7 +15,6 @@
 
 from typing import Sequence, Union
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.control_flow import for_each
 from tfx.dsl.input_resolution import canned_resolver_functions
@@ -355,7 +354,9 @@ class CannedResolverFunctionsTest(
         skip_num_recent_spans=1,
         keep_all_versions=False,
         exclude_span_numbers=[5],
+        stride=2,
     )
+
     with for_each.ForEach(xs) as each_x:
       inputs = {'x': each_x}
     pipeline_node = test_utils.compile_inputs(inputs)
@@ -370,8 +371,8 @@ class CannedResolverFunctionsTest(
     self.assertNotEmpty(resolved)  # Non-empty resolution implies Trigger.
 
     # The resolved artifacts should have (span, version) tuples of:
-    # [(1, 0), (2, 0), (3, 1)], [(2, 0), (3, 1), (4,0)].
-    expected_artifact_idxs = [[0, 1, 2], [1, 2, 4]]
+    # [(1, 0), (2, 0), (3, 1)], [(3, 1), (4, 0), (7,0)].
+    expected_artifact_idxs = [[0, 1, 2], [2, 3, 6]]
     for i, artifacts in enumerate(resolved):
       actual_artifacts = [r.mlmd_artifact for r in artifacts['x']]
       expected_artifacts = [
@@ -628,7 +629,3 @@ class CannedResolverFunctionsTest(
     self.assertIsInstance(channel.invocation.args[0], resolver_op.InputNode)
 
     self.assertEqual(channel.invocation.kwargs, {'n': 2})
-
-
-if __name__ == '__main__':
-  tf.test.main()

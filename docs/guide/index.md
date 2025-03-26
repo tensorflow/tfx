@@ -26,16 +26,18 @@ https://github.com/tensorflow/tfx)
 pip install tfx
 ```
 
-Note: See the
-[TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving),
-[TensorFlow JS](https://js.tensorflow.org/), and/or
-[TensorFlow Lite](https://www.tensorflow.org/lite) documentation for installing
-those optional components.
+!!! Note
+    See the
+    [TensorFlow Serving](./serving),
+    [TensorFlow JS](https://js.tensorflow.org/), and/or
+    [TensorFlow Lite](https://www.tensorflow.org/lite) documentation for installing
+    those optional components.
 
-Note: This installs [Apache Beam](beam.md) with the DirectRunner.  You can also
-separately install runners that perform distributed computation, such as
-[Apache Flink](https://flink.apache.org/) or
-[Apache Spark](https://spark.apache.org/).
+!!! Note
+    This installs [Apache Beam](beam.md) with the DirectRunner.  You can also
+    separately install runners that perform distributed computation, such as
+    [Apache Flink](https://flink.apache.org/) or
+    [Apache Spark](https://spark.apache.org/).
 
 ### Nightly Packages
 
@@ -50,8 +52,9 @@ This will install the nightly packages for the major dependencies of TFX such as
 TensorFlow Model Analysis (TFMA), TensorFlow Data Validation (TFDV), TensorFlow
 Transform (TFT), TFX Basic Shared Libraries (TFX-BSL), ML Metadata (MLMD).
 
-Note: These nightly packages are unstable and breakages are likely to happen.
-The fix could often take a week or more depending on the complexity involved.
+!!! Note
+    These nightly packages are unstable and breakages are likely to happen.
+    The fix could often take a week or more depending on the complexity involved.
 
 ## About TFX
 
@@ -62,19 +65,19 @@ environment. TFX provides the following:
     ML workflow on several platforms, such as: Apache Airflow, Apache Beam, and
     Kubeflow Pipelines.
 
-    [Learn more about TFX pipelines](https://www.tensorflow.org/tfx/guide/understanding_tfx_pipelines).
+    [Learn more about TFX pipelines](understanding_tfx_pipelines.md).
 
 *   A set of standard components that you can use as a part of a pipeline, or as
     a part of your ML training script. TFX standard components provide proven
     functionality to help you get started building an ML process easily.
 
-    [Learn more about TFX standard components](#tfx_standard_components).
+    [Learn more about TFX standard components](#tfx-standard-components).
 
 *   Libraries which provide the base functionality for many of the standard
     components. You can use the TFX libraries to add this functionality to your
     own custom components, or use them separately.
 
-    [Learn more about the TFX libraries](#tfx_libraries).
+    [Learn more about the TFX libraries](#tfx-libraries).
 
 TFX is a Google-production-scale machine learning toolkit based on TensorFlow.
 It provides a configuration framework and shared libraries to integrate common
@@ -170,8 +173,9 @@ TFX libraries include:
     [KerasTuner](https://www.tensorflow.org/tutorials/keras/keras_tuner) is used
     for tuning hyperparameters for model.
 
-    Note: TFX supports TensorFlow 1.15 and, with some exceptions, 2.x. For
-    details, see [Designing TensorFlow Modeling Code For TFX](train.md).
+    !!! Note
+        TFX supports TensorFlow 1.15 and, with some exceptions, 2.x. For
+        details, see [Designing TensorFlow Modeling Code For TFX](train.md).
 
 *   [**TensorFlow Model Analysis (TFMA)**](tfma.md) is a library for evaluating
     TensorFlow models. It is used along with TensorFlow to create an
@@ -240,18 +244,19 @@ monitoring, and maintaining an ML pipeline easier.
 
 TFX is designed to be portable to multiple environments and orchestration
 frameworks, including [Apache Airflow](airflow.md),
-[Apache Beam](beam_orchestrator.md) and [Kubeflow](kubeflow.md) . It is also
+[Apache Beam](beam.md) and [Kubeflow](kubeflow.md) . It is also
 portable to different computing platforms, including on-premise, and
 cloud platforms such as the
 [Google Cloud Platform (GCP)](https://cloud.google.com/). In particular,
-TFX interoperates with serveral managed GCP services, such as
+TFX interoperates with several managed GCP services, such as
 [Cloud AI Platform](https://cloud.google.com/ai-platform/) for
 [Training and Prediction](https://cloud.google.com/ml-engine/), and
 [Cloud Dataflow](https://cloud.google.com/dataflow/) for distributed data
 processing for several other aspects of the ML lifecycle.
 
-Note: The current revision of this user guide primarily discusses deployment
-on a bare-metal system using Apache Airflow for orchestration.
+!!! Note
+    The current revision of this user guide primarily discusses deployment
+    on a bare-metal system using Apache Airflow for orchestration.
 
 ### Model vs. SavedModel
 
@@ -336,16 +341,17 @@ The following components use the schema:
 In a typical TFX pipeline TensorFlow Data Validation generates a schema, which
 is consumed by the other components.
 
-Note: The auto-generated schema is best-effort and only tries to infer basic
-properties of the data. It is expected that developers review and modify it as
-needed.
+!!! Note
+    The auto-generated schema is best-effort and only tries to infer basic
+    properties of the data. It is expected that developers review and modify it as
+    needed.
 
 ## Developing with TFX
 
 TFX provides a powerful platform for every phase of a machine learning project,
 from research, experimentation, and development on your local machine, through
 deployment. In order to avoid code duplication and eliminate the potential for
-[training/serving skew](https://www.tensorflow.org/tfx/guide/tfdv#training-serving_skew_detection)
+[training/serving skew](./tfdv#training-serving-skew-detection)
 it is strongly recommended to implement your TFX pipeline for both model
 training and deployment of trained models, and use [Transform](transform.md)
 components which leverage the [TensorFlow Transform](tft.md) library for both
@@ -412,7 +418,7 @@ A typical TFX pipeline will include a [Transform](transform.md) component, which
 will perform feature engineering by leveraging the capabilities of the
 [TensorFlow Transform (TFT)](tft.md) library. A Transform component consumes the
 schema created by a SchemaGen component, and applies
-[data transformations](https://www.tensorflow.org/tfx/tutorials/transform/simple)
+[data transformations](../tutorials/transform/simple)
 to create, combine, and transform the features that will be used to train your
 model. Cleanup of missing values and conversion of types should also be done in
 the Transform component if there is ever a possibility that these will also be
@@ -431,23 +437,6 @@ performed
 using the exact same code during both training and inference.  Using the
 modeling code, including the SavedModel from the Transform component, you can
 consume your training and evaluation data and train your model.
-
-When working with Estimator based models, the last section of your modeling
-code should save your model as both a SavedModel and an EvalSavedModel.  Saving
-as an EvalSavedModel ensures the metrics used at training time are also
-available during evaluation (note that this is not required for keras based
-models).  Saving an EvalSavedModel requires that you import the
-[TensorFlow Model Analysis (TFMA)](tfma.md) library in your Trainer component.
-
-```python
-import tensorflow_model_analysis as tfma
-...
-
-tfma.export.export_eval_savedmodel(
-        estimator=estimator,
-        export_dir_base=eval_model_dir,
-        eval_input_receiver_fn=receiver_fn)
-```
 
 An optional [Tuner](tuner.md) component can be added before Trainer to tune the
 hyperparameters (e.g., number of layers) for the model. With the given model and
@@ -568,7 +557,7 @@ on using TensorFlow JS.
 ## Creating a TFX Pipeline With Airflow
 
 Check
-[airflow workshop](https://www.tensorflow.org/tfx/tutorials/tfx/airflow_workshop/)
+[airflow workshop](../tutorials/tfx/airflow_workshop/)
 for details
 
 ## Creating a TFX Pipeline With Kubeflow
@@ -582,7 +571,7 @@ Kubeflow deployment guideline that guide through the options for
 ### Configure and run TFX pipeline
 
 Please follow the
-[TFX on Cloud AI Platform Pipeline tutorial](https://www.tensorflow.org/tfx/tutorials/tfx/cloud-ai-platform-pipelines)
+[TFX on Cloud AI Platform Pipeline tutorial](../tutorials/tfx/cloud-ai-platform-pipelines/)
 to run the TFX example pipeline on Kubeflow. TFX components have been
 containerized to compose the Kubeflow pipeline and the sample illustrates the
 ability to configure the pipeline to read large public dataset and execute
@@ -594,4 +583,4 @@ TFX provides a unified CLI which helps the perform full range of pipeline
 actions such as create, update, run, list, and delete pipelines on various
 orchestrators including Apache Airflow, Apache Beam, and Kubeflow. For details,
 please follow
-[these instructions](https://github.com/tensorflow/tfx/blob/master/docs/guide/cli.md).
+[these instructions](cli.md).

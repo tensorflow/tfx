@@ -13,10 +13,12 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.input_resolution.node_inputs_resolver."""
 
+
 from typing import Set
 from unittest import mock
 
 import tensorflow as tf
+from tfx.dsl.components.base.testing import test_node
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.input_resolution import input_graph_resolver
 from tfx.orchestration.portable.input_resolution import node_inputs_resolver
@@ -24,6 +26,7 @@ from tfx.orchestration.portable.input_resolution import partition_utils
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.proto.orchestration import pipeline_pb2
 import tfx.types
+from tfx.types import channel
 from tfx.types import channel_utils
 from tfx.utils import test_case_utils
 
@@ -76,12 +79,18 @@ class ProtectedFunctionTest(tf.test.TestCase):
       except exceptions.FailedPreconditionError:
         self.fail('Expected no cycle but has cycle.')
 
-    no('', {})
-    yes('a', {'a': 'a'})
-    yes('ab', {'a': 'b', 'b': 'a'})
-    yes('abc', {'a': 'b', 'b': 'c', 'c': 'a'})
-    no('abcd', {'a': 'bcd', 'b': '', 'c': '', 'd': ''})
-    no('abcd', {'a': 'bc', 'b': 'd', 'c': 'd', 'd': ''})
+    no(list(), {})
+    yes(list('a'), {'a': list('a')})
+    yes(list('ab'), {'a': list('b'), 'b': list('a')})
+    yes(list('abc'), {'a': list('b'), 'b': list('c'), 'c': list('a')})
+    no(
+        list('abcd'),
+        {'a': list('bcd'), 'b': list(''), 'c': list(''), 'd': list('')},
+    )
+    no(
+        list('abcd'),
+        {'a': list('bc'), 'b': list('d'), 'c': list('d'), 'd': list('')},
+    )
 
   def testTopologicallySortedInputKeys(self):
     node_inputs = self.parse_node_inputs("""
@@ -264,8 +273,8 @@ class NodeInputsResolverTest(tf.test.TestCase):
 
   def mock_channel_resolution_result(self, input_spec, artifacts):
     assert len(input_spec.channels) == 1
-    for channel in input_spec.channels:
-      channel_key = text_format.MessageToString(channel, as_one_line=True)
+    for chnl in input_spec.channels:
+      channel_key = text_format.MessageToString(chnl, as_one_line=True)
       self._channel_resolve_result[channel_key] = artifacts
 
   def mock_graph_fn_result(self, input_graph, graph_fn, dependent_inputs=()):
@@ -275,8 +284,8 @@ class NodeInputsResolverTest(tf.test.TestCase):
   def _mock_resolve_union_channels(self, store, channels):
     del store  # Unused.
     result = []
-    for channel in channels:
-      channel_key = text_format.MessageToString(channel, as_one_line=True)
+    for chnl in channels:
+      channel_key = text_format.MessageToString(chnl, as_one_line=True)
       result.extend(self._channel_resolve_result[channel_key])
     return result
 
@@ -676,15 +685,28 @@ class NodeInputsResolverTest(tf.test.TestCase):
     # Only allows artifact.custom_properties['blessed'] == 1,
     # which is a1 and a4.
     is_blessed = channel_utils.encode_placeholder_with_channels(
-        DummyChannel('x').future()[0].custom_property('blessed') == 1,
-        lambda channel: channel.name,
+        channel.OutputChannel(
+            artifact_type=DummyArtifact,
+            producer_component=test_node.TestNode('foo'),
+            output_key='x',
+        )
+        .future()[0]
+        .custom_property('blessed')
+        == 1,
+        lambda _: 'x',
     )
-
     # Only allows artifact.custom_properties['tag'] == 'foo'
     # which is a1 and a2.
     is_foo = channel_utils.encode_placeholder_with_channels(
-        (DummyChannel('x').future()[0].custom_property('tag') == 'foo'),
-        lambda channel: channel.name,
+        channel.OutputChannel(
+            artifact_type=DummyArtifact,
+            producer_component=test_node.TestNode('foo'),
+            output_key='x',
+        )
+        .future()[0]
+        .custom_property('tag')
+        == 'foo',
+        lambda _: 'x',
     )
 
     cond_1 = pipeline_pb2.NodeInputs.Conditional(
@@ -694,21 +716,23 @@ class NodeInputsResolverTest(tf.test.TestCase):
 
     with self.subTest('blessed == 1'):
       node_inputs = pipeline_pb2.NodeInputs(
-          inputs={'x': x},
+          inputs={'_foo.x': x},
           input_graphs={'graph_1': graph_1},
-          conditionals={'cond_1': cond_1})
+          conditionals={'cond_1': cond_1},
+      )
 
       result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
-      self.assertEqual(result, [{'x': [a1]}, {'x': [a4]}])
+      self.assertEqual(result, [{'_foo.x': [a1]}, {'_foo.x': [a4]}])
 
     with self.subTest('blessed == 1 and tag == foo'):
       node_inputs = pipeline_pb2.NodeInputs(
-          inputs={'x': x},
+          inputs={'_foo.x': x},
           input_graphs={'graph_1': graph_1},
-          conditionals={'cond_1': cond_1, 'cond_2': cond_2})
+          conditionals={'cond_1': cond_1, 'cond_2': cond_2},
+      )
 
       result = node_inputs_resolver.resolve(self._mlmd_handle, node_inputs)
-      self.assertEqual(result, [{'x': [a1]}])
+      self.assertEqual(result, [{'_foo.x': [a1]}])
 
   def testConditionals_FalseCondAlwaysReturnsEmpty(self):
     a = self.create_artifacts(1)
@@ -740,8 +764,15 @@ class NodeInputsResolverTest(tf.test.TestCase):
 
     # Only allows artifact.custom_properties['blessed'] == 1,
     is_blessed = channel_utils.encode_placeholder_with_channels(
-        DummyChannel('b').future()[0].custom_property('blessed') == 1,
-        lambda channel: channel.name,
+        channel.OutputChannel(
+            artifact_type=DummyArtifact,
+            producer_component=test_node.TestNode('foo'),
+            output_key='x',
+        )
+        .future()[0]
+        .custom_property('blessed')
+        == 1,
+        lambda _: 'b',
     )
     cond = pipeline_pb2.NodeInputs.Conditional(
         placeholder_expression=is_blessed
@@ -750,7 +781,7 @@ class NodeInputsResolverTest(tf.test.TestCase):
     node_inputs = NodeInputs(
         inputs={
             'a': x1,
-            'b': x2,
+            '_foo.x': x2,
         },
         conditionals={'cond': cond},
     )
@@ -825,7 +856,7 @@ class LiveTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
   def testStaticInputs(self):
     e1 = self.put_artifact('Examples')
     e2 = self.put_artifact('Examples')
-    e3 = self.put_artifact('Examples')  # pylint: disable=unused-variable
+    e3 = self.put_artifact('Examples')  # noqa: F841
     e4 = self.put_artifact('Examples')
 
     node_inputs = NodeInputs(
@@ -881,7 +912,3 @@ class LiveTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
     )
     with self.assertRaises(exceptions.FailedPreconditionError):
       node_inputs_resolver.resolve(self.mlmd_cm, node_inputs)
-
-
-if __name__ == '__main__':
-  tf.test.main()

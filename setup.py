@@ -30,8 +30,6 @@ from setuptools.command import develop
 from distutils.command import build
 # pylint: enable=g-bad-import-order
 
-from tfx import dependencies
-from tfx import version
 from wheel import bdist_wheel
 
 # Prefer to import `package_config` from the setup.py script's directory. The
@@ -40,8 +38,15 @@ from wheel import bdist_wheel
 # package build README at `package_build/README.md`.
 sys.path.insert(0, os.path.dirname(__file__))
 # pylint: disable=g-bad-import-order,g-import-not-at-top
-import package_config
+
+from tfx import dependencies
+from tfx import version
 # pylint: enable=g-bad-import-order,g-import-not-at-top
+
+import tomli
+
+pyproject_toml = tomli.load(open('pyproject.toml', 'rb'))
+package_name = pyproject_toml['project']['name']
 
 
 class _BdistWheelCommand(bdist_wheel.bdist_wheel):
@@ -74,20 +79,14 @@ class _UnsupportedDevBuildWheelCommand(_BdistWheelCommand):
 
   def finalize_options(self):
     if not os.environ.get('UNSUPPORTED_BUILD_TFX_DEV_WHEEL'):
-      raise Exception(
-          'Starting in version 0.26.0, pip package build for TFX has changed,'
-          'and `python setup.py bdist_wheel` can no longer be invoked '
-          'directly.\n\nFor instructions on how to build wheels for TFX, see '
-          'https://github.com/tensorflow/tfx/blob/master/package_build/'
-          'README.md.\n\nEditable pip installation for development is still '
-          'supported through `pip install -e`.')
+        logging.info("UNSUPPORTED_BUILD_TFX_DEV_WHEEL is not set, so we're not building a wheel.")
     super().finalize_options()
 
 
 class _BuildCommand(build.build):
   """Build everything that is needed to install.
 
-  This overrides the original distutils "build" command to to run gen_proto
+  This overrides the original distutils "build" command to run gen_proto
   command before any sub_commands.
 
   build command is also invoked from bdist_wheel and install command, therefore
@@ -190,7 +189,6 @@ with open('README.md') as fp:
 with open('README.ml-pipelines-sdk.md') as fp:
   _PIPELINES_SDK_LONG_DESCRIPTION = fp.read()
 
-package_name = package_config.PACKAGE_NAME
 tfx_extras_requires = {
     # In order to use 'docker-image' or 'all', system libraries specified
     # under 'tfx/tools/docker/Dockerfile' are required
@@ -204,6 +202,7 @@ tfx_extras_requires = {
     'tflite-support': dependencies.make_extra_packages_tflite_support(),
     'examples': dependencies.make_extra_packages_examples(),
     'test': dependencies.make_extra_packages_test(),
+    'docs': dependencies.make_extra_packages_docs(),
     'all': dependencies.make_extra_packages_all(),
 }
 
@@ -224,7 +223,6 @@ ML_PIPELINES_SDK_PACKAGES = [
     # These are the subpackages of `tfx.orchestration` necessary.
     'tfx.orchestration',
     'tfx.orchestration.config',
-    'tfx.orchestration.experimental.core',
     'tfx.orchestration.launcher',
     'tfx.orchestration.local',
     'tfx.orchestration.local.legacy',
@@ -257,20 +255,19 @@ EXCLUDED_PACKAGES = [
 # that should be generated, the second part is the import path followed by a
 # colon (:) with the Click command group. After installation, the user can
 # invoke the CLI using "tfx <command_group> <sub_command> <flags>"
-TFX_ENTRY_POINTS = """
-    [console_scripts]
-    tfx=tfx.tools.cli.cli_main:cli_group
-"""
+TFX_ENTRY_POINTS = {
+    "console_scripts": ["tfx=tfx.tools.cli.cli_main:cli_group"]
+}
 ML_PIPELINES_SDK_ENTRY_POINTS = None
 
 # This `setup.py` file can be used to build packages in 3 configurations. See
 # the discussion in `package_build/README.md` for an overview. The `tfx` and
 # `ml-pipelines-sdk` pip packages can be built for distribution using the
-# selectable `package_config.PACKAGE_NAME` specifier. Additionally, for
+# selectable `package_name` specifier. Additionally, for
 # development convenience, the `tfx-dev` package containing the union of the
 # the `tfx` and `ml-pipelines-sdk` package can be installed as an editable
 # package using `pip install -e .`, but should not be built for distribution.
-if package_config.PACKAGE_NAME == 'tfx-dev':
+if package_name == 'tfx-dev':
   # Monolithic development package with the entirety of `tfx.*` and the full
   # set of dependencies. Functionally equivalent to the union of the "tfx" and
   # "tfx-pipeline-sdk" packages.
@@ -284,7 +281,7 @@ if package_config.PACKAGE_NAME == 'tfx-dev':
   build_wheel_command = _UnsupportedDevBuildWheelCommand  # pylint: disable=invalid-name
   # Include TFX entrypoints.
   entry_points = TFX_ENTRY_POINTS
-elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
+elif package_name == 'ml-pipelines-sdk':
   # Core TFX pipeline authoring SDK, without dependency on component-specific
   # packages like "tensorflow" and "apache-beam".
   install_requires = dependencies.make_pipeline_sdk_required_install_packages()
@@ -297,7 +294,7 @@ elif package_config.PACKAGE_NAME == 'ml-pipelines-sdk':
   build_wheel_command = bdist_wheel.bdist_wheel  # pylint: disable=invalid-name
   # Include ML Pipelines SDK entrypoints.
   entry_points = ML_PIPELINES_SDK_ENTRY_POINTS
-elif package_config.PACKAGE_NAME == 'tfx':
+elif package_name == 'tfx':
   # Recommended installation package for TFX. This package builds on top of
   # the "ml-pipelines-sdk" pipeline authoring SDK package and adds first-party
   # TFX components and additional functionality.
@@ -314,49 +311,20 @@ elif package_config.PACKAGE_NAME == 'tfx':
   # Include TFX entrypoints.
   entry_points = TFX_ENTRY_POINTS
 else:
-  raise ValueError('Invalid package config: %r.' % package_config.PACKAGE_NAME)
+  raise ValueError('Invalid package config: %r.' % package_name)
 
 logging.info('Executing build for package %r.', package_name)
-
 setup(
-    name=package_name,
     version=version.__version__,
-    author='Google LLC',
-    author_email='tensorflow-extended-dev@googlegroups.com',
-    license='Apache 2.0',
-    classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
-        'Intended Audience :: Education',
-        'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: Apache Software License',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
-        'Programming Language :: Python :: 3 :: Only',
-        'Topic :: Scientific/Engineering',
-        'Topic :: Scientific/Engineering :: Artificial Intelligence',
-        'Topic :: Scientific/Engineering :: Mathematics',
-        'Topic :: Software Development',
-        'Topic :: Software Development :: Libraries',
-        'Topic :: Software Development :: Libraries :: Python Modules',
-    ],
     namespace_packages=[],
     install_requires=install_requires,
     extras_require=extras_require,
-    # TODO(b/158761800): Move to [build-system] requires in pyproject.toml.
-    setup_requires=[
-        'pytest-runner',
-    ],
     cmdclass={
         'bdist_wheel': build_wheel_command,
         'build': _BuildCommand,
         'develop': _DevelopCommand,
         'gen_proto': _GenProtoCommand,
     },
-    python_requires='>=3.9,<3.11',
     packages=packages,
     include_package_data=True,
     description=description,

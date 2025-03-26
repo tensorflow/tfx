@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.components.base.executor_spec."""
 
+
 import tensorflow as tf
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
@@ -44,7 +45,7 @@ class ExecutorSpecTest(tf.test.TestCase):
     del spec
     self.assertProtoEquals(
         """
-        class_path: "__main__._DummyExecutor"
+        class_path: "tfx.dsl.components.base.executor_spec_test._DummyExecutor"
         extra_flags: "a"
         """,
         spec_copy.encode())
@@ -58,7 +59,7 @@ class ExecutorSpecTest(tf.test.TestCase):
     self.assertProtoEquals(
         """
         python_executor_spec: {
-            class_path: "__main__._DummyExecutor"
+            class_path: "tfx.dsl.components.base.executor_spec_test._DummyExecutor"
             extra_flags: "a"
         }
         beam_pipeline_args: "b"
@@ -77,6 +78,3 @@ class ExecutorSpecTest(tf.test.TestCase):
     self.assertEqual(spec_copy.image, 'path/to:image')
     self.assertEqual(spec_copy.command, ['command'])
     self.assertEqual(spec_copy.args, ['args'])
-
-if __name__ == '__main__':
-  tf.test.main()

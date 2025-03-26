@@ -130,4 +130,4 @@ class Executor(GenericExecutor):
   """Start a trainer job on Google Cloud AI Platform using a default Trainer."""
 
   def _GetExecutorClass(self):
-    return tfx_trainer_executor.Executor
+    return tfx_trainer_executor.GenericExecutor

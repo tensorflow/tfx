@@ -35,7 +35,7 @@ pip install tfx
 ```
 
 If you are new to TFX pipelines,
-[learn more about the core concepts for TFX pipelines](understanding_tfx_pipelines)
+[learn more about the core concepts for TFX pipelines](understanding_tfx_pipelines.md)
 before continuing.
 
 ## Build a pipeline using a template
@@ -51,24 +51,24 @@ it to meet your needs.
 
 1.  See list of the available TFX pipeline templates:
 
-    <pre class="devsite-click-to-copy devsite-terminal">
+    ```bash
     tfx template list
-    </pre>
+    ```
 
 1.  Select a template from the list
 
-    <pre class="devsite-click-to-copy devsite-terminal">
-    tfx template copy --model=<var>template</var> --pipeline_name=<var>pipeline-name</var> \
-    --destination_path=<var>destination-path</var>
-    </pre>
+    ```bash
+    tfx template copy --model=template --pipeline_name=pipeline-name \
+    --destination_path=destination-path
+    ```
 
     Replace the following:
 
-    *   <var>template</var>: The name of the template you want to copy.
-    *   <var>pipeline-name</var>: The name of the pipeline to create.
-    *   <var>destination-path</var>: The path to copy the template into.
+    *   `template`: The name of the template you want to copy.
+    *   `pipeline-name`: The name of the pipeline to create.
+    *   `destination-path`: The path to copy the template into.
 
-    Learn more about the [`tfx template copy` command](cli#copy).
+    Learn more about the [`tfx template copy` command](cli.md#copy).
 
 1.  A copy of the pipeline template has been created at the path you specified.
 
@@ -99,13 +99,13 @@ This section provides an overview of the scaffolding created by a template.
 
 1.  Run the following commands in your pipeline directory:
 
-    <pre class="devsite-click-to-copy devsite-terminal">
+    ```bash
     tfx pipeline create --pipeline_path local_runner.py
-    </pre>
+    ```
 
-    <pre class="devsite-click-to-copy devsite-terminal">
+    ```bash
     tfx run create --pipeline_name <var>pipeline_name</var>
-    </pre>
+    ```
 
     The command creates a pipeline run using `LocalDagRunner`, which adds the
     following directories to your pipeline:
@@ -157,8 +157,8 @@ template.
     implement a pipeline for tabular data using the TFX standard components. If
     you are moving an existing ML workflow into a pipeline, you may need to
     revise your code to make full use of
-    [TFX standard components](index#tfx_standard_components). You may also need
-    to create [custom components](understanding_custom_components) that
+    [TFX standard components](index.md#tfx-standard-components). You may also need
+    to create [custom components](understanding_custom_components.md) that
     implement features which are unique to your workflow or that are not yet
     supported by TFX standard components.
 
@@ -194,17 +194,17 @@ without using a template.
     functionality to help you implement a complete ML workflow. If you are
     moving an existing ML workflow into a pipeline, you may need to revise your
     code to make full use of TFX standard components. You may also need to
-    create [custom components](understanding_custom_components) that implement
+    create [custom components](understanding_custom_components.md) that implement
     features such as data augmentation.
 
     *   Learn more about
-        [standard TFX components](index#tfx_standard_components).
-    *   Learn more about [custom components](understanding_custom_components).
+        [standard TFX components](index.md#tfx-standard-components).
+    *   Learn more about [custom components](understanding_custom_components.md).
 
 1.  Create a script file to define your pipeline using the following example.
     This guide refers to this file as `my_pipeline.py`.
 
-    <pre class="devsite-click-to-copy prettyprint">
+    ```python
     import os
     from typing import Optional, Text, List
     from absl import logging
@@ -248,7 +248,7 @@ without using a template.
     if __name__ == '__main__':
       logging.set_verbosity(logging.INFO)
       run_pipeline()
-    </pre>
+    ```
 
     In the coming steps, you define your pipeline in `create_pipeline` and run
     your pipeline locally using the local runner.
@@ -277,7 +277,7 @@ without using a template.
     pipeline uses the `ExampleGen` standard component to load a CSV from a
     directory at `./data`.
 
-    <pre class="devsite-click-to-copy prettyprint">
+    ```python
     from tfx.components import CsvExampleGen
 
     DATA_PATH = os.path.join('.', 'data')
@@ -315,7 +315,7 @@ without using a template.
         )
 
       tfx.orchestration.LocalDagRunner().run(my_pipeline)
-    </pre>
+    ```
 
     `CsvExampleGen` creates serialized example records using the data in the CSV
     at the specified data path. By setting the `CsvExampleGen` component's
@@ -326,13 +326,13 @@ without using a template.
 
 1.  Use the following command to run your `my_pipeline.py` script.
 
-    <pre class="devsite-click-to-copy devsite-terminal">
+    ```bash
     python my_pipeline.py
-    </pre>
+    ```
 
     The result should be something like the following:
 
-    <pre>
+    ```
     INFO:absl:Component CsvExampleGen depends on [].
     INFO:absl:Component CsvExampleGen is scheduled.
     INFO:absl:Component CsvExampleGen is running.
@@ -347,6 +347,6 @@ without using a template.
     INFO:absl:Running publisher for CsvExampleGen
     INFO:absl:MetadataStore with DB connection initialized
     INFO:absl:Component CsvExampleGen is finished.
-    </pre>
+    ```
 
 1.  Continue to iteratively add components to your pipeline.

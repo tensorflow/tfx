@@ -29,14 +29,14 @@ multiple times with different inputs `x`.
 import collections
 import dataclasses
 import functools
-from typing import Union, Sequence, Mapping, Tuple, List, Iterable, Callable
+from typing import Callable, Iterable, List, Mapping, Sequence, Tuple, Union
 
 from tfx import types
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops
 from tfx.orchestration import data_types_utils
-from tfx.orchestration import metadata
+from tfx.orchestration import mlmd_connection_manager as mlmd_cm
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import topsort
@@ -52,8 +52,12 @@ _GraphFn = Callable[[Mapping[str, _Data]], _Data]
 
 @dataclasses.dataclass
 class _Context:
-  mlmd_handle: metadata.Metadata
   input_graph: pipeline_pb2.InputGraph
+  mlmd_handle_like: mlmd_cm.HandleLike
+
+  @property
+  def mlmd_handle(self):
+    return mlmd_cm.get_handle(self.mlmd_handle_like)
 
 
 def _topologically_sorted_node_ids(
@@ -131,7 +135,11 @@ def _evaluate_op_node(
           f'nodes[{node_id}] has unknown op_type {op_node.op_type}.') from e
   if issubclass(op_type, resolver_op.ResolverOp):
     op: resolver_op.ResolverOp = op_type.create(**kwargs)
-    op.set_context(resolver_op.Context(store=ctx.mlmd_handle.store))
+    op.set_context(
+        resolver_op.Context(
+            mlmd_handle_like=ctx.mlmd_handle_like,
+        )
+    )
     return op.apply(*args)
   elif issubclass(op_type, resolver.ResolverStrategy):
     if len(args) != 1:
@@ -207,7 +215,7 @@ def _reduce_graph_fn(ctx: _Context, node_id: str, graph_fn: _GraphFn):
 
 
 def build_graph_fn(
-    mlmd_handle: metadata.Metadata,
+    handle_like: mlmd_cm.HandleLike,
     input_graph: pipeline_pb2.InputGraph,
 ) -> Tuple[_GraphFn, List[str]]:
   """Build a functional interface for the `input_graph`.
@@ -222,7 +230,7 @@ def build_graph_fn(
     z = graph_fn({'x': inputs['x'], 'y': inputs['y']})
 
   Args:
-    mlmd_handle: A `Metadata` instance.
+    handle_like: A `mlmd_cm.HandleLike` instance.
     input_graph: An `pipeline_pb2.InputGraph` proto.
 
   Returns:
@@ -235,7 +243,7 @@ def build_graph_fn(
         f'result_node {input_graph.result_node} does not exist in input_graph. '
         f'Valid node ids: {list(input_graph.nodes.keys())}')
 
-  context = _Context(mlmd_handle=mlmd_handle, input_graph=input_graph)
+  context = _Context(mlmd_handle_like=handle_like, input_graph=input_graph)
 
   input_key_to_node_id = {}
   for node_id in input_graph.nodes:

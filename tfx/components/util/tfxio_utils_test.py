@@ -365,7 +365,3 @@ class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
       tfxio_utils.get_tfxio_factory_from_artifact(
           [examples], _TELEMETRY_DESCRIPTORS, read_as_raw_records=True)(
               _FAKE_FILE_PATTERN)
-
-
-if __name__ == '__main__':
-  tf.test.main()

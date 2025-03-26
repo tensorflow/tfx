@@ -73,36 +73,8 @@ _YAML_STRING_TYPE = 'string'
 _YAML_DOUBLE_TYPE = 'double'
 
 
-def build_runtime_parameter_spec(
-    parameters: List[data_types.RuntimeParameter]
-) -> Dict[str, pipeline_pb2.PipelineSpec.RuntimeParameter]:
-  """Converts RuntimeParameters to mapping from names to proto messages."""
-
-  def to_message(parameter: data_types.RuntimeParameter):
-    """Converts a RuntimeParameter to RuntimeParameter message."""
-    result = pipeline_pb2.PipelineSpec.RuntimeParameter()
-    # 1. Map the RuntimeParameter type to an enum in the proto definition.
-    if parameter.ptype == int or parameter.ptype == bool:
-      result.type = pipeline_pb2.PrimitiveType.INT
-    elif parameter.ptype == float:
-      result.type = pipeline_pb2.PrimitiveType.DOUBLE
-    elif parameter.ptype == str:
-      result.type = pipeline_pb2.PrimitiveType.STRING
-    else:
-      raise TypeError(
-          'Unknown parameter type: {} found in parameter: {}'.format(
-              parameter.ptype, parameter.name))
-    # 2. Convert its default value.
-    default = value_converter(parameter.default)
-    if default is not None:
-      result.default_value.CopyFrom(default.constant_value)
-    return result
-
-  return {param.name: to_message(param) for param in parameters}
-
-
-def build_parameter_type_spec(
-    value: Union[types.Property, data_types.RuntimeParameter]
+def build_parameter_type_spec_legacy(
+    value: Union[types.Property, data_types.RuntimeParameter],
 ) -> pipeline_pb2.ComponentInputsSpec.ParameterSpec:
   """Extracts the artifact type info into ComponentInputsSpec.ParameterSpec."""
   is_runtime_param = isinstance(value, data_types.RuntimeParameter)
@@ -120,9 +92,29 @@ def build_parameter_type_spec(
   return result
 
 
+def build_parameter_type_spec(
+    value: Union[types.Property, data_types.RuntimeParameter],
+) -> pipeline_pb2.ComponentInputsSpec.ParameterSpec:
+  """Extracts the artifact type info into ComponentInputsSpec.ParameterSpec."""
+  is_runtime_param = isinstance(value, data_types.RuntimeParameter)
+  result = pipeline_pb2.ComponentInputsSpec.ParameterSpec()
+  if isinstance(value, int) or (is_runtime_param and value.ptype == int):
+    result.parameter_type = pipeline_pb2.ParameterType.NUMBER_INTEGER
+  elif isinstance(value, float) or (is_runtime_param and value.ptype == float):
+    result.parameter_type = pipeline_pb2.ParameterType.NUMBER_DOUBLE
+  elif isinstance(value, str) or (is_runtime_param and value.ptype == str):
+    result.parameter_type = pipeline_pb2.ParameterType.STRING
+  else:
+    # By default, unrecognized object will be json dumped, hence is string type.
+    # For example, resolver class.
+    result.parameter_type = pipeline_pb2.ParameterType.STRING
+  return result
+
+
 def _validate_properties_schema(
     instance_schema: str,
-    properties: Optional[Mapping[str, artifact.PropertyType]] = None):
+    properties: Optional[Mapping[str, artifact.Property]] = None,
+):
   """Validates the declared property types are consistent with the schema.
 
   Args:
@@ -154,8 +146,10 @@ def _validate_properties_schema(
         v.type != artifact.PropertyType.STRING or
         schema[k]['type'] == _YAML_DOUBLE_TYPE and
         v.type != artifact.PropertyType.FLOAT):
-      raise TypeError(f'Property type mismatched at {k} for schema: {schema}. '
-                      f'Expected {schema[k]["type"]} but got {v.type}')
+      raise TypeError(
+          f'Property type mismatched at {k} for schema: {schema}. Expected'
+          f' {schema[k]["type"]} but got {v.type}'
+      )
     # pytype: enable=attribute-error  # use-enum-overlay
 
 
@@ -228,8 +222,9 @@ def pack_artifact_properties(artifact_instance: artifact.Artifact):
   return struct_proto
 
 
-def value_converter(
-    tfx_value: Any) -> Optional[pipeline_pb2.ValueOrRuntimeParameter]:
+def value_converter_legacy(
+    tfx_value: Any,
+) -> Optional[pipeline_pb2.ValueOrRuntimeParameter]:
   """Converts TFX/MLMD values into Kubeflow pipeline ValueOrRuntimeParameter."""
   if tfx_value is None:
     return None
@@ -266,6 +261,53 @@ def value_converter(
   return result
 
 
+def value_converter(
+    tfx_value: Any,
+) -> Optional[pipeline_pb2.ValueOrRuntimeParameter]:
+  """Converts TFX/MLMD values into Kubeflow pipeline ValueOrRuntimeParameter."""
+  if tfx_value is None:
+    return None
+
+  result = pipeline_pb2.ValueOrRuntimeParameter()
+  if isinstance(tfx_value, (int, float, str)):
+    result.constant.CopyFrom(get_google_value(tfx_value))
+  elif isinstance(tfx_value, (Dict, List)):
+    result.constant.CopyFrom(
+        struct_pb2.Value(string_value=json.dumps(tfx_value))
+    )
+  elif isinstance(tfx_value, data_types.RuntimeParameter):
+    # Attach the runtime parameter to the context.
+    parameter_utils.attach_parameter(tfx_value)
+    result.runtime_parameter = tfx_value.name
+  elif isinstance(tfx_value, metadata_store_pb2.Value):
+    if tfx_value.WhichOneof('value') == 'int_value':
+      result.constant.CopyFrom(
+          struct_pb2.Value(number_value=tfx_value.int_value)
+      )
+    elif tfx_value.WhichOneof('value') == 'double_value':
+      result.constant.CopyFrom(
+          struct_pb2.Value(number_value=tfx_value.double_value)
+      )
+    elif tfx_value.WhichOneof('value') == 'string_value':
+      result.constant.CopyFrom(
+          struct_pb2.Value(string_value=tfx_value.string_value)
+      )
+  elif isinstance(tfx_value, message.Message):
+    result.constant.CopyFrom(
+        struct_pb2.Value(
+            string_value=json_format.MessageToJson(
+                message=tfx_value, sort_keys=True
+            )
+        )
+    )
+  else:
+    # By default will attempt to encode the object using json_utils.dumps.
+    result.constant.CopyFrom(
+        struct_pb2.Value(string_value=json_utils.dumps(tfx_value))
+    )
+  return result
+
+
 def get_kubeflow_value(
     tfx_value: Union[int, float, str]) -> Optional[pipeline_pb2.Value]:
   """Converts TFX/MLMD values into Kubeflow pipeline Value proto message."""
@@ -277,6 +319,24 @@ def get_kubeflow_value(
     result.int_value = tfx_value
   elif isinstance(tfx_value, float):
     result.double_value = tfx_value
+  elif isinstance(tfx_value, str):
+    result.string_value = tfx_value
+  else:
+    raise TypeError('Got unknown type of value: {}'.format(tfx_value))
+
+  return result
+
+
+def get_google_value(
+    tfx_value: Union[int, float, str],
+) -> Optional[struct_pb2.Value]:
+  """Converts TFX/MLMD values into Kubeflow pipeline Value proto message."""
+  if tfx_value is None:
+    return None
+
+  result = struct_pb2.Value()
+  if isinstance(tfx_value, int) or isinstance(tfx_value, float):
+    result.number_value = tfx_value
   elif isinstance(tfx_value, str):
     result.string_value = tfx_value
   else:

@@ -5,7 +5,7 @@ input_definitions {
   parameters {
     key: "param1"
     value {
-      type: INT
+      parameter_type: NUMBER_INTEGER
     }
   }
   artifacts {

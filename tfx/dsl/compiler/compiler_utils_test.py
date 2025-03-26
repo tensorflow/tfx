@@ -15,25 +15,24 @@
 import itertools
 
 import tensorflow as tf
+from tfx import components
 from tfx import types
-from tfx.components import CsvExampleGen
-from tfx.components import StatisticsGen
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.components.base import base_component
 from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
+from tfx.dsl.components.base.testing import test_node
 from tfx.dsl.components.common import importer
 from tfx.dsl.components.common import resolver
 from tfx.dsl.input_resolution.strategies import latest_blessed_model_strategy
 from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import pipeline
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.types import channel
 from tfx.types import standard_artifacts
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
-from tfx.types.channel import Channel
-from tfx.types.channel import OutputChannel
 from tfx.types.channel_utils import external_pipeline_artifact_query
 
 from google.protobuf import text_format
@@ -98,7 +97,7 @@ class CompilerUtilsTest(tf.test.TestCase):
         strategy_class=latest_blessed_model_strategy.LatestBlessedModelStrategy)
     self.assertTrue(compiler_utils.is_resolver(resv))
 
-    example_gen = CsvExampleGen(input_base="data_path")
+    example_gen = components.CsvExampleGen(input_base="data_path")
     self.assertFalse(compiler_utils.is_resolver(example_gen))
 
   def testHasResolverNode(self):
@@ -116,7 +115,7 @@ class CompilerUtilsTest(tf.test.TestCase):
         source_uri="uri/to/schema", artifact_type=standard_artifacts.Schema)
     self.assertTrue(compiler_utils.is_importer(impt))
 
-    example_gen = CsvExampleGen(input_base="data_path")
+    example_gen = components.CsvExampleGen(input_base="data_path")
     self.assertFalse(compiler_utils.is_importer(example_gen))
 
   def testEnsureTopologicalOrder(self):
@@ -128,9 +127,9 @@ class CompilerUtilsTest(tf.test.TestCase):
     valid_orders = {"abc", "acb"}
     for order in itertools.permutations([a, b, c]):
       if "".join([c.id for c in order]) in valid_orders:
-        self.assertTrue(compiler_utils.ensure_topological_order(order))
+        self.assertTrue(compiler_utils.ensure_topological_order(list(order)))
       else:
-        self.assertFalse(compiler_utils.ensure_topological_order(order))
+        self.assertFalse(compiler_utils.ensure_topological_order(list(order)))
 
   def testIncompatibleExecutionMode(self):
     p = pipeline.Pipeline(
@@ -143,8 +142,10 @@ class CompilerUtilsTest(tf.test.TestCase):
       compiler_utils.resolve_execution_mode(p)
 
   def testHasTaskDependency(self):
-    example_gen = CsvExampleGen(input_base="data_path")
-    statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
+    example_gen = components.CsvExampleGen(input_base="data_path")
+    statistics_gen = components.StatisticsGen(
+        examples=example_gen.outputs["examples"]
+    )
     p1 = pipeline.Pipeline(
         pipeline_name="fake_name",
         pipeline_root="fake_root",
@@ -204,7 +205,14 @@ class ValidateExecPropertyPlaceholderTest(tf.test.TestCase):
   def test_accepts_canonical_dynamic_exec_prop_placeholder(self):
     # .future()[0].uri is how we tell users to hook up a dynamic exec prop.
     compiler_utils.validate_exec_property_placeholder(
-        "testkey", Channel(type=_MyType).future()[0].value
+        "testkey",
+        channel.OutputChannel(
+            artifact_type=_MyType,
+            producer_component=test_node.TestNode("producer"),
+            output_key="foo",
+        )
+        .future()[0]
+        .value,
     )
 
   def test_accepts_complex_exec_prop_placeholder(self):
@@ -219,7 +227,13 @@ class ValidateExecPropertyPlaceholderTest(tf.test.TestCase):
   def test_accepts_complex_dynamic_exec_prop_placeholder(self):
     compiler_utils.validate_exec_property_placeholder(
         "testkey",
-        Channel(type=_MyType).future()[0].value
+        channel.OutputChannel(
+            artifact_type=_MyType,
+            producer_component=test_node.TestNode("producer"),
+            output_key="foo",
+        )
+        .future()[0]
+        .value
         + "foo"
         + ph.input("someartifact").uri
         + "/somefile.txt",
@@ -265,14 +279,14 @@ class ValidateExecPropertyPlaceholderTest(tf.test.TestCase):
       )
 
   def testOutputSpecFromChannel_AsyncOutputChannel(self):
-    channel = OutputChannel(
+    ch = channel.OutputChannel(
         artifact_type=standard_artifacts.Model,
         output_key="model",
         producer_component="trainer",
         is_async=True,
     )
 
-    actual = compiler_utils.output_spec_from_channel(channel, "trainer")
+    actual = compiler_utils.output_spec_from_channel(ch, "trainer")
     expected = text_format.Parse(
         """
         artifact_spec {
@@ -286,7 +300,3 @@ class ValidateExecPropertyPlaceholderTest(tf.test.TestCase):
         pipeline_pb2.OutputSpec(),
     )
     self.assertProtoEquals(actual, expected)
-
-
-if __name__ == "__main__":
-  tf.test.main()

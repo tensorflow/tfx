@@ -126,7 +126,3 @@ class CommonUtilsTest(tf.test.TestCase, parameterized.TestCase):
       with self.assertRaisesRegex(RuntimeError, 'Conflicting properties'):
         common_utils.register_type_if_not_exist(m,
                                                 type_with_different_properties)
-
-
-if __name__ == '__main__':
-  tf.test.main()

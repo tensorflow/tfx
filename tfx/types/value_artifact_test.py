@@ -171,7 +171,3 @@ class ValueArtifactTest(tf.test.TestCase):
     instance.read()
     instance.value = _STRING_VALUE
     self.assertEqual(_STRING_VALUE, instance.value)
-
-
-if __name__ == '__main__':
-  tf.test.main()

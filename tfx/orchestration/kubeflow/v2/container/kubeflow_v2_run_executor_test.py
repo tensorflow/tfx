@@ -13,14 +13,14 @@
 # limitations under the License.
 """Tests for kubeflow_v2_run_executor.py."""
 
+
 import json
 import os
 from typing import Any, Mapping, Sequence
-
 from unittest import mock
-from kfp.pipeline_spec import pipeline_spec_pb2
-import tensorflow as tf
 
+from absl.testing import parameterized
+from kfp.pipeline_spec import pipeline_spec_pb2
 from tfx import version
 from tfx.components.evaluator import constants
 from tfx.components.evaluator import executor as evaluator_executor
@@ -99,7 +99,9 @@ class _FakeExecutor(evaluator_executor.Executor):
 _EXEC_PROPERTIES = {"key_1": "value_1", "key_2": 536870911}
 
 
-class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
+class KubeflowV2RunExecutorTest(
+    test_case_utils.TfxTest, parameterized.TestCase
+):
 
   def setUp(self):
     super().setUp()
@@ -145,7 +147,11 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
     filepath = os.path.join(os.path.dirname(__file__), "testdata", filename)
     return fileio.open(filepath, "r").read()
 
-  def testEntryPoint(self):
+  @parameterized.named_parameters(
+      dict(testcase_name="use_pipeline_spec_2_1", use_pipeline_spec_2_1=True),
+      dict(testcase_name="use_pipeline_spec_2_0", use_pipeline_spec_2_1=False),
+  )
+  def testEntryPoint(self, use_pipeline_spec_2_1):
     """Test the entrypoint with toy inputs."""
     # Test both current version metadata and legacy property/custom property
     # metadata styles.
@@ -156,8 +162,11 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
         args = [
             "--executor_class_path",
             name_utils.get_full_name(_FakeExecutor),
-            "--json_serialized_invocation_args", serialized_metadata
+            "--json_serialized_invocation_args",
+            serialized_metadata,
         ]
+        if use_pipeline_spec_2_1:
+          args.extend(["--json_serialized_inputs_spec_args", "{}"])
         kubeflow_v2_run_executor.main(
             kubeflow_v2_run_executor._parse_flags(args))
         # TODO(b/131417512): Add equal comparison to types.Artifact class so we
@@ -177,7 +186,11 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
       self.assertEqual(actual_output, self._expected_output)
       os.remove(_TEST_OUTPUT_METADATA_JSON)
 
-  def testDynamicExecutionProperties(self):
+  @parameterized.named_parameters(
+      dict(testcase_name="use_pipeline_spec_2_1", use_pipeline_spec_2_1=True),
+      dict(testcase_name="use_pipeline_spec_2_0", use_pipeline_spec_2_1=False),
+  )
+  def testDynamicExecutionProperties(self, use_pipeline_spec_2_1):
     """Test the entrypoint with dynamic execution properties."""
 
     test_value_artifact_float_dir = os.path.join(self.tmp_dir,
@@ -212,8 +225,10 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
           "--executor_class_path",
           name_utils.get_full_name(_FakeExecutor),
           "--json_serialized_invocation_args",
-          serialized_metadata_dynamic_execution
+          serialized_metadata_dynamic_execution,
       ]
+      if use_pipeline_spec_2_1:
+        args.extend(["--json_serialized_inputs_spec_args", "{}"])
       kubeflow_v2_run_executor.main(kubeflow_v2_run_executor._parse_flags(args))
 
       self.assertEqual(
@@ -247,12 +262,20 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
       self.assertEqual(
           io_utils.read_string_file(test_value_artifact_integer_dir), "1")
 
-  def testEntryPointWithDriver(self):
+  @parameterized.named_parameters(
+      dict(testcase_name="use_pipeline_spec_2_1", use_pipeline_spec_2_1=True),
+      dict(testcase_name="use_pipeline_spec_2_0", use_pipeline_spec_2_1=False),
+  )
+  def testEntryPointWithDriver(self, use_pipeline_spec_2_1):
     """Test the entrypoint with Driver's output metadata."""
     # Mock the driver's output metadata.
     output_metadata = pipeline_spec_pb2.ExecutorOutput()
-    output_metadata.parameters["key_1"].string_value = "driver"
-    output_metadata.parameters["key_3"].string_value = "driver3"
+    if use_pipeline_spec_2_1:
+      output_metadata.parameter_values["key_1"].string_value = "driver"
+      output_metadata.parameter_values["key_3"].string_value = "driver3"
+    else:
+      output_metadata.parameters["key_1"].string_value = "driver"
+      output_metadata.parameters["key_3"].string_value = "driver3"
     fileio.makedirs(os.path.dirname(_TEST_OUTPUT_METADATA_JSON))
     with fileio.open(_TEST_OUTPUT_METADATA_JSON, "wb") as f:
       f.write(json_format.MessageToJson(output_metadata, sort_keys=True))
@@ -261,8 +284,11 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
       args = [
           "--executor_class_path",
           name_utils.get_full_name(_FakeExecutor),
-          "--json_serialized_invocation_args", self._serialized_metadata
+          "--json_serialized_invocation_args",
+          self._serialized_metadata,
       ]
+      if use_pipeline_spec_2_1:
+        args.extend(["--json_serialized_inputs_spec_args", "{}"])
       kubeflow_v2_run_executor.main(kubeflow_v2_run_executor._parse_flags(args))
       # TODO(b/131417512): Add equal comparison to types.Artifact class so we
       # can use asserters.
@@ -287,7 +313,3 @@ class KubeflowV2RunExecutorTest(test_case_utils.TfxTest):
 
     self.assertEqual(actual_output, self._expected_output)
     os.remove(_TEST_OUTPUT_METADATA_JSON)
-
-
-if __name__ == "__main__":
-  tf.test.main()

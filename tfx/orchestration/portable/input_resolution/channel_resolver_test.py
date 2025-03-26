@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.input_resolution.channel_resolver."""
 
-import tensorflow as tf
+
 from tfx.orchestration.portable.input_resolution import channel_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import test_case_utils
@@ -451,7 +451,3 @@ class ChannelResolverTest(test_case_utils.TfxTest, test_case_utils.MlmdMixins):
         self.mlmd_handle, [ch, ch])
     self.assertLen(resolved, 1)
     self.assertEqual(resolved[0].id, e1.id)
-
-
-if __name__ == '__main__':
-  tf.test.main()

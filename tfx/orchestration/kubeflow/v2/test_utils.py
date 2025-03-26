@@ -21,7 +21,6 @@ from kfp.pipeline_spec import pipeline_spec_pb2 as pipeline_pb2
 import tensorflow_model_analysis as tfma
 from tfx import v1 as tfx
 from tfx.components.example_gen import utils
-from tfx.components.trainer.executor import Executor
 from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
 from tfx.dsl.components.base import base_component
@@ -33,6 +32,7 @@ from tfx.types import component_spec
 from tfx.types.experimental import simple_artifacts
 from tfx.utils import proto_utils
 
+from google.protobuf import struct_pb2
 from google.protobuf import message
 
 _ph = tfx.dsl.placeholders
@@ -49,13 +49,23 @@ _TEST_INPUT_DATA = 'path/to/my/data'
 
 _TEST_MODULE_FILE_LOCATION = 'path/to/my/module_utils.py'
 
-TEST_RUNTIME_CONFIG = pipeline_pb2.PipelineJob.RuntimeConfig(
+TEST_RUNTIME_CONFIG_LEGACY = pipeline_pb2.PipelineJob.RuntimeConfig(
     gcs_output_directory=_TEST_PIPELINE_ROOT,
     parameters={
         'string_param': pipeline_pb2.Value(string_value='test-string'),
         'int_param': pipeline_pb2.Value(int_value=42),
-        'float_param': pipeline_pb2.Value(double_value=3.14)
-    })
+        'float_param': pipeline_pb2.Value(double_value=3.14),
+    },
+)
+
+TEST_RUNTIME_CONFIG = pipeline_pb2.PipelineJob.RuntimeConfig(
+    gcs_output_directory=_TEST_PIPELINE_ROOT,
+    parameter_values={
+        'string_param': struct_pb2.Value(string_value='test-string'),
+        'int_param': struct_pb2.Value(number_value=42),
+        'float_param': struct_pb2.Value(number_value=3.14),
+    },
+)
 
 
 # TODO(b/158245564): Reevaluate whether to keep this test helper function
@@ -209,7 +219,6 @@ def create_pipeline_components(
       model=tfx.dsl.Channel(type=tfx.types.standard_artifacts.Model)).with_id(
           'Resolver.latest_model_resolver')
   trainer = tfx.components.Trainer(
-      custom_executor_spec=executor_spec.ExecutorClassSpec(Executor),
       examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
       base_model=latest_model_resolver.outputs['model'],
@@ -225,25 +234,28 @@ def create_pipeline_components(
       model_blessing=tfx.dsl.Channel(
           type=tfx.types.standard_artifacts.ModelBlessing)).with_id(
               'Resolver.latest_blessed_model_resolver')
-  # Set the TFMA config for Model Evaluation and Validation.
+  # Uses TFMA to compute a evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(signature_name='eval')],
-      metrics_specs=[
-          tfma.MetricsSpec(
-              metrics=[tfma.MetricConfig(class_name='ExampleCount')],
-              thresholds={
-                  'binary_accuracy':
-                      tfma.MetricThreshold(
-                          value_threshold=tfma.GenericValueThreshold(
-                              lower_bound={'value': 0.5}),
-                          change_threshold=tfma.GenericChangeThreshold(
-                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                              absolute={'value': -1e-10}))
-              })
+      model_specs=[
+          tfma.ModelSpec(
+              signature_name='serving_default', label_key='tips_xf',
+              preprocessing_function_names=['transform_features'])
       ],
-      slicing_specs=[
-          tfma.SlicingSpec(),
-          tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+      slicing_specs=[tfma.SlicingSpec()],
+      metrics_specs=[
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='BinaryAccuracy',
+                  threshold=tfma.MetricThreshold(
+                      value_threshold=tfma.GenericValueThreshold(
+                          lower_bound={'value': 0.6}),
+                      # Change threshold will be ignored if there is no
+                      # baseline model resolved from MLMD (first run).
+                      change_threshold=tfma.GenericChangeThreshold(
+                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                          absolute={'value': -1e-10})))
+          ])
       ])
   evaluator = tfx.components.Evaluator(
       examples=example_gen.outputs['examples'],
@@ -532,16 +544,29 @@ def pipeline_with_two_container_spec_components_2() -> tfx.dsl.Pipeline:
   )
 
 
-def get_proto_from_test_data(filename: str,
-                             pb_message: message.Message) -> message.Message:
+def get_proto_from_test_data(
+    filename: str, pb_message: message.Message, use_legacy_data: bool = False
+) -> message.Message:
   """Helper function that gets proto from testdata."""
-  filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
+  if use_legacy_data:
+    filepath = os.path.join(
+        os.path.dirname(__file__), 'testdata', 'legacy', filename
+    )
+  else:
+    filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
   return tfx.utils.parse_pbtxt_file(filepath, pb_message)
 
 
-def get_text_from_test_data(filename: str) -> str:
+def get_text_from_test_data(
+    filename: str, use_legacy_data: bool = False
+) -> str:
   """Helper function that gets raw string from testdata."""
-  filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
+  if use_legacy_data:
+    filepath = os.path.join(
+        os.path.dirname(__file__), 'testdata', 'legacy', filename
+    )
+  else:
+    filepath = os.path.join(os.path.dirname(__file__), 'testdata', filename)
   return tfx.dsl.io.fileio.open(filepath, 'rb').read().decode('utf-8')
 
 

@@ -53,7 +53,7 @@ _data_root = os.path.join(_input_bucket, 'data', 'simple')
 
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_taxi_trainer_func = 'example.taxi_utils_slack.trainer_fn'
+_taxi_module_file = os.path.join(_taxi_root, 'taxi_utils_slack.py')
 _taxi_transformer_func = 'example.taxi_utils_slack.preprocessing_fn'
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
@@ -104,7 +104,7 @@ def _create_pipeline():
 
   # Uses user-provided Python function that implements a model.
   trainer = Trainer(
-      trainer_fn=_taxi_trainer_func,
+      module_file=_taxi_module_file,
       examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],

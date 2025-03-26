@@ -101,7 +101,6 @@ INFRA_BLESSING_KEY = 'infra_blessing'
 PUSHED_MODEL_KEY = 'pushed_model'
 # Key for TrainerSpec
 RUN_FN_KEY = 'run_fn'
-TRAINER_FN_KEY = 'trainer_fn'
 BASE_MODEL_KEY = 'base_model'
 HYPERPARAMETERS_KEY = 'hyperparameters'
 MODEL_RUN_KEY = 'model_run'
@@ -397,7 +396,6 @@ class TrainerSpec(ComponentSpec):
       MODULE_FILE_KEY: ExecutionParameter(type=str, optional=True),
       MODULE_PATH_KEY: ExecutionParameter(type=str, optional=True),
       RUN_FN_KEY: ExecutionParameter(type=str, optional=True),
-      TRAINER_FN_KEY: ExecutionParameter(type=str, optional=True),
       CUSTOM_CONFIG_KEY: ExecutionParameter(type=str, optional=True),
   }
   INPUTS = {
@@ -413,6 +411,8 @@ class TrainerSpec(ComponentSpec):
       HYPERPARAMETERS_KEY:
           ChannelParameter(
               type=standard_artifacts.HyperParameters, optional=True),
+      STATISTICS_KEY:
+          ChannelParameter(type=standard_artifacts.ExampleStatistics, optional=True),
   }
   OUTPUTS = {
       MODEL_KEY: ChannelParameter(type=standard_artifacts.Model),

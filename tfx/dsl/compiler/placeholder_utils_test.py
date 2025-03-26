@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for tfx.dsl.compiler.placeholder_utils."""
 
+
 import base64
 import itertools
 import re
@@ -22,6 +23,7 @@ import tensorflow as tf
 from tfx.dsl.compiler import placeholder_utils
 from tfx.orchestration.portable import data_types
 from tfx.proto import infra_validator_pb2
+from tfx.proto import trainer_pb2
 from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_invocation_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -35,6 +37,9 @@ from google.protobuf import descriptor_pool
 from google.protobuf import json_format
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
+
+
+TrainArgs = trainer_pb2.TrainArgs()
 
 # Concatenate the URI of `examples` input artifact's `train` split with /1
 _CONCAT_SPLIT_URI_EXPRESSION = """
@@ -112,7 +117,7 @@ execution_properties_with_schema {
     }
   }
 }
-output_metadata_uri: "test_executor_output_uri"
+output_metadata_uri: "/execution_output_dir/file"
 input_dict {
   key: "examples"
   value {
@@ -188,7 +193,7 @@ output_dict {
     }
   }
 }
-stateful_working_dir: "test_stateful_working_dir"
+stateful_working_dir: "/stateful_working_dir/"
 pipeline_info {
    id: "test_pipeline_id"
 }
@@ -229,15 +234,20 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
                 "proto_property": proto_utils.proto_to_json(self._serving_spec),
                 "list_proto_property": [self._serving_spec],
             },
-            execution_output_uri="test_executor_output_uri",
-            stateful_working_dir="test_stateful_working_dir",
+            execution_output_uri="/execution_output_dir/file",
+            stateful_working_dir="/stateful_working_dir/",
             pipeline_node=pipeline_pb2.PipelineNode(
                 node_info=pipeline_pb2.NodeInfo(
                     type=metadata_store_pb2.ExecutionType(
-                        name="infra_validator"))),
-            pipeline_info=pipeline_pb2.PipelineInfo(id="test_pipeline_id")),
+                        name="infra_validator"
+                    )
+                )
+            ),
+            pipeline_info=pipeline_pb2.PipelineInfo(id="test_pipeline_id"),
+        ),
         executor_spec=executable_spec_pb2.PythonClassExecutableSpec(
-            class_path="test_class_path"),
+            class_path="test_class_path"
+        ),
     )
     # Resolution context to simulate missing optional values.
     self._none_resolution_context = placeholder_utils.ResolutionContext(
@@ -305,7 +315,7 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     )
     self.assertEqual(
         resolved_str,
-        "test_stateful_working_dir/foo/test_pipeline_id",
+        "/stateful_working_dir/foo/test_pipeline_id",
     )
 
   def testArtifactProperty(self):
@@ -665,6 +675,43 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
         placeholder_utils.resolve_placeholder_expression(
             pb, self._resolution_context), expected_result)
 
+  def testListConcatWithAbsentElement(self):
+    # When an exec prop has type Union[T, None] and the user passes None, it is
+    # actually completely absent from the exec_properties dict in
+    # ExecutionInvocation. See also b/172001324 and the corresponding todo in
+    # placeholder_utils.py.
+    placeholder_expression = """
+      operator {
+        list_concat_op {
+          expressions {
+            value {
+              string_value: "random_before"
+            }
+          }
+          expressions {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "doesnotexist"
+            }
+          }
+          expressions {
+            value {
+              string_value: "random_after"
+            }
+          }
+        }
+      }
+    """
+    pb = text_format.Parse(
+        placeholder_expression, placeholder_pb2.PlaceholderExpression()
+    )
+    self.assertEqual(
+        placeholder_utils.resolve_placeholder_expression(
+            pb, self._resolution_context
+        ),
+        ["random_before", None, "random_after"],
+    )
+
   def testListConcatAndSerialize(self):
     placeholder_expression = """
       operator {
@@ -782,7 +829,7 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     )
     expected_result = {
         "plain_key": 42,
-        "test_stateful_working_dir": "plain_value",
+        "/stateful_working_dir/": "plain_value",
     }
     self.assertEqual(
         placeholder_utils.resolve_placeholder_expression(
@@ -1043,9 +1090,17 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     infra_validator_pb2.ServingSpec().DESCRIPTOR.file.CopyToProto(fd)
     pb.operator.proto_op.proto_schema.file_descriptors.file.append(fd)
 
-    with self.assertRaises(ValueError):
-      placeholder_utils.resolve_placeholder_expression(pb,
-                                                       self._resolution_context)
+    resolved_pb = placeholder_utils.resolve_placeholder_expression(
+        pb, self._resolution_context)
+    self.assertProtoEquals(
+        """
+        tensorflow_serving {
+          tags: "latest"
+          tags: "1.15.0-gpu"
+        }
+        """,
+        resolved_pb,
+    )
 
   def testExecutionInvocationPlaceholderSimple(self):
     placeholder_expression = """
@@ -1092,7 +1147,7 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
                            placeholder_pb2.PlaceholderExpression())
     resolved = placeholder_utils.resolve_placeholder_expression(
         pb, self._resolution_context)
-    self.assertEqual(resolved, "test_stateful_working_dir")
+    self.assertEqual(resolved, "/stateful_working_dir/")
 
   def testExecutionInvocationDescriptor(self):
     # Test if ExecutionInvocation proto is in the default descriptor pool
@@ -1426,13 +1481,13 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     """,
         placeholder_pb2.PlaceholderExpression(),
     )
-    self.assertEqual(
-        placeholder_utils.debug_str(pb),
-        "MakeProto("
-        'type_url: "type.googleapis.com/tfx.orchestration.ExecutionInvocation",'
-        ' field_1=input("channel_1")[0].value,'
-        ' field_2=input("channel_2")[0].value)',
-    )
+
+    actual = placeholder_utils.debug_str(pb)
+
+    # Note: The exact formatting depends on the Python version and platform.
+    self.assertIn("tfx.orchestration.ExecutionInvocation", actual)
+    self.assertIn('field_1=input("channel_1")[0].value', actual)
+    self.assertIn('field_2=input("channel_2")[0].value', actual)
 
   def testGetAllTypesInPlaceholderExpressionFails(self):
     self.assertRaises(
@@ -1573,6 +1628,38 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
     )
     self.assertSetEqual(actual_types, set(ph_types))
 
+  def testGetTypesOfMakeDictOperator(self):
+    ph_types = placeholder_pb2.Placeholder.Type.values()
+    expressions = " ".join(f"""
+          entries {{
+            key: {{
+              value: {{
+                string_value: "field_{_ph_type_to_str(ph_type)}"
+              }}
+            }}
+            value: {{
+              placeholder: {{
+                type: {ph_type}
+                key: 'baz'
+              }}
+            }}
+          }}
+        """ for ph_type in ph_types)
+    placeholder_expression = text_format.Parse(
+        f"""
+          operator {{
+            make_dict_op {{
+              {expressions}
+            }}
+          }}
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    actual_types = placeholder_utils.get_all_types_in_placeholder_expression(
+        placeholder_expression
+    )
+    self.assertSetEqual(actual_types, set(ph_types))
+
   def testGetsOperatorsFromProtoReflection(self):
     self.assertSetEqual(
         placeholder_utils.get_unary_operator_names(),
@@ -1585,6 +1672,7 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
             "unary_logical_op",
             "artifact_property_op",
             "list_serialization_op",
+            "dir_name_op",
         },
     )
     self.assertSetEqual(
@@ -1602,6 +1690,84 @@ class PlaceholderUtilsTest(parameterized.TestCase, tf.test.TestCase):
             "list_concat_op",
         },
     )
+
+  def testMakeProtoOpResolvesProto(self):
+    placeholder_expression = text_format.Parse(
+        r"""
+        operator: {
+          proto_op: {
+            expression: {
+              operator: {
+                make_proto_op: {
+                  base: {
+                    type_url: "type.googleapis.com/tensorflow.service.TrainArgs"
+                    value: "\n\005train"
+                  }
+                  file_descriptors: {
+                    file: {
+                      name: "third_party/tfx/trainer.proto"
+                      package: "tensorflow.service"
+                      message_type: {
+                        name: "TrainArgs"
+                        field: {
+                          name: "splits"
+                          number: 1
+                          label: LABEL_REPEATED
+                          type: TYPE_STRING
+                        }
+                      }
+                      syntax: "proto3"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    resolved_proto = placeholder_utils.resolve_placeholder_expression(
+        placeholder_expression, placeholder_utils.empty_placeholder_context()
+    )
+    self.assertProtoEquals(
+        """
+        splits: "train"
+        """,
+        resolved_proto,
+    )
+
+  def testDirNameOp(self):
+    placeholder_expression = text_format.Parse(
+        r"""
+        operator {
+          dir_name_op {
+            expression {
+              operator {
+                proto_op {
+                  expression {
+                    placeholder {
+                      type: EXEC_INVOCATION
+                    }
+                  }
+                  proto_field_path: ".output_metadata_uri"
+                }
+              }
+            }
+          }
+        }
+        """,
+        placeholder_pb2.PlaceholderExpression(),
+    )
+    resolved_result = placeholder_utils.resolve_placeholder_expression(
+        placeholder_expression, self._resolution_context
+    )
+    self.assertEqual(resolved_result, "/execution_output_dir")
+
+    actual = placeholder_utils.debug_str(placeholder_expression)
+    self.assertEqual(
+        actual,
+        "dirname(execution_invocation().output_metadata_uri)")
 
 
 class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
@@ -2264,7 +2430,3 @@ class PredicateResolutionTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(
         re.sub(r"\s+", "", actual_debug_str),
         re.sub(r"\s+", "", expected_debug_str_pretty))
-
-
-if __name__ == "__main__":
-  tf.test.main()

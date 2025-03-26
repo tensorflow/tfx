@@ -193,9 +193,15 @@ class Launcher:
     self._driver_operators.update(custom_driver_operators or {})
 
     self._executor_operator = None
+    # redundant line for external usage.
+    executor_operator = None
     if executor_spec:
-      self._executor_operator = self._executor_operators[type(executor_spec)](
-          executor_spec, platform_config)
+      if executor_operator is None:
+        executor_operator = self._executor_operators[type(executor_spec)](
+            executor_spec=executor_spec, platform_config=platform_config
+        )
+      self._executor_operator = executor_operator
+
     self._output_resolver = outputs_utils.OutputsResolver(
         pipeline_node=self._pipeline_node,
         pipeline_info=self._pipeline_info,

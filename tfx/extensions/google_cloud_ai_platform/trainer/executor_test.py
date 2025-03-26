@@ -49,7 +49,7 @@ class ExecutorTest(tf.test.TestCase):
         },
     }
     self._executor_class_path = name_utils.get_full_name(
-        tfx_trainer_executor.Executor)
+        tfx_trainer_executor.GenericExecutor)
     self._generic_executor_class_path = name_utils.get_full_name(
         tfx_trainer_executor.GenericExecutor)
 
@@ -117,7 +117,3 @@ class ExecutorTest(tf.test.TestCase):
             'project': self._project_id,
             'jobDir': self._job_dir,
         }, None, {}, enable_vertex, vertex_region)
-
-
-if __name__ == '__main__':
-  tf.test.main()

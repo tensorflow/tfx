@@ -185,7 +185,15 @@ class ComposablePipelineProtoView(NodeProtoView):
       self._contexts = pipeline_pb2.NodeContexts()
       self._contexts.CopyFrom(self._begin_node.contexts)
       for context in self._contexts.contexts:
-        if context.type.name == compiler_constants.NODE_CONTEXT_TYPE_NAME:
+        # All nodes in this pipeline will *also* belong to the
+        # parent_pipeline.subpipeline *node* context, which should not be
+        # stripped.
+        if (
+            context.type.name == compiler_constants.NODE_CONTEXT_TYPE_NAME
+            and context.name.field_value.string_value.endswith(
+                compiler_constants.PIPELINE_BEGIN_NODE_SUFFIX
+            )
+        ):
           context.name.field_value.string_value = (
               self._strip_begin_node_suffix(
                   context.name.field_value.string_value))
@@ -268,7 +276,6 @@ def get_view(
   raise ValueError(f'Got unknown pipeline or node type: {pipeline_or_node}.')
 
 
-# TODO: b/270960179 - Migrate all usages of pipeline_state.get_all_nodes here.
 def get_view_for_all_in(
     pipeline: pipeline_pb2.Pipeline,
 ) -> Sequence[NodeProtoView]:

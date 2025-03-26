@@ -1,0 +1,29 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "my_resolver2-model-blessing-resolver_executor"
+  value {
+    resolver {
+      output_artifact_queries {
+        key: "model_blessing"
+        value {
+          filter: "schema_title=\"tfx.ModelBlessing\" AND state=LIVE AND metadata.blessed.number_value=1"
+        }
+      }
+    }
+  }
+}
+executors {
+  key: "my_resolver2-model-resolver_executor"
+  value {
+    resolver {
+      output_artifact_queries {
+        key: "model"
+        value {
+          filter: "schema_title=\"tfx.Model\" AND state=LIVE AND name=\"{{$.inputs.artifacts['input'].metadata['current_model_id']}}\""
+        }
+      }
+    }
+  }
+}

@@ -63,7 +63,3 @@ class BinderExecutorTest(tf.test.TestCase):
     self.assertEqual(
         oe.get_string_custom_property(existing_custom_property),
         input_examples.get_string_custom_property(existing_custom_property))
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -13,9 +13,9 @@
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.graph_traversal_op."""
 
+
 from typing import Sequence
 
-import tensorflow as tf
 from tfx import types
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
@@ -336,7 +336,3 @@ class GraphTraversalOpTest(
             'TransformGraph': [self.transform_graph],
         },
     )
-
-
-if __name__ == '__main__':
-  tf.test.main()

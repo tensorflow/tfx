@@ -22,7 +22,10 @@ import tensorflow as tf
 
 from tfx.tools.cli.cli_main import cli_group
 
+import pytest
 
+
+@pytest.mark.e2e
 class CliCommonEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
@@ -71,7 +74,3 @@ class CliCommonEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Missing option', result.output)
     self.assertIn('--run_id', result.output)
-
-
-if __name__ == '__main__':
-  tf.test.main()

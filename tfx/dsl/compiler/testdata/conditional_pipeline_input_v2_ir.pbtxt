@@ -1203,6 +1203,55 @@ nodes {
         }
       }
       inputs {
+        key: "_Trainer.model"
+        value {
+          channels {
+            producer_node_query {
+              id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "cond"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "cond.Trainer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "model"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
         key: "model"
         value {
           channels {
@@ -1333,7 +1382,7 @@ nodes {
                                       index_op {
                                         expression {
                                           placeholder {
-                                            key: "model"
+                                            key: "_Trainer.model"
                                           }
                                         }
                                       }

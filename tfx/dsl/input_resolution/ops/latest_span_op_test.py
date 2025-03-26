@@ -357,7 +357,3 @@ class LatestSpanOpTest(tf.test.TestCase):
         keep_all_versions=True,
     )
     self.assertEqual(actual, [a30, a31])
-
-
-if __name__ == '__main__':
-  tf.test.main()

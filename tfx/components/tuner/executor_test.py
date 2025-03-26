@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for tfx.components.tuner.executor."""
 
+
+
 import copy
 import json
 import os
@@ -191,7 +193,3 @@ class ExecutorTest(tf.test.TestCase):
         exec_properties=self._exec_properties)
 
     self._verify_output()
-
-
-if __name__ == '__main__':
-  tf.test.main()

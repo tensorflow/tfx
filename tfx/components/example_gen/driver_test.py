@@ -381,7 +381,3 @@ class DriverTest(tf.test.TestCase):
     self.assertEqual(output_example.uri, example.uri)
     self.assertEqual(
         output_example.custom_properties[utils.SPAN_PROPERTY_NAME].int_value, 2)
-
-
-if __name__ == '__main__':
-  tf.test.main()

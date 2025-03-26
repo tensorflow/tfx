@@ -14,3 +14,5 @@
 """TFX DSL I/O module."""
 
 from tfx.v1.dsl.io import fileio
+
+__all__ = ["fileio"]

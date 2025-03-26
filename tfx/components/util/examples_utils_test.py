@@ -86,7 +86,3 @@ class ExamplesUtilsTest(tf.test.TestCase):
     with self.assertRaises(AssertionError):
       examples_utils.set_payload_format(
           artifact, example_gen_pb2.PayloadFormat.FORMAT_PROTO)
-
-
-if __name__ == '__main__':
-  tf.test.main()

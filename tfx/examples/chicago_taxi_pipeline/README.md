@@ -16,7 +16,7 @@ performance, and serve it. This example uses the following
 * [Transform](https://github.com/tensorflow/tfx/blob/master/docs/guide/transform.md)
   performs feature engineering on the dataset.
 * [Trainer](https://github.com/tensorflow/tfx/blob/master/docs/guide/trainer.md)
-  trains the model using TensorFlow [Estimators](https://www.tensorflow.org/guide/estimators)
+  trains the model using native Keras.
   or [Keras](https://www.tensorflow.org/guide/keras).
 * [Evaluator](https://github.com/tensorflow/tfx/blob/master/docs/guide/evaluator.md)
   performs deep analysis of the training results.

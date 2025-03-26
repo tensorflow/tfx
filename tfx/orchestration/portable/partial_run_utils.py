@@ -649,16 +649,52 @@ class _ArtifactRecycler:
 
   def _get_node_context(
       self, node: node_proto_view.NodeProtoView
-  ) -> metadata_store_pb2.Context:
-    """Returns node context for node."""
+  ) -> list[metadata_store_pb2.Context]:
+    """Returns node contexts for node.
+
+    For subpipelines, both the end node context and subpipeline as node context
+    are returned.
+
+    Args:
+      node: The node to get the contexts for.
+
+    Returns: The node contexts for the node.
+
+    Raises:
+      LookupError: If the node context is not found.
+      ValueError: If fetching contexts for a subpipeline with no parent pipeline
+        ids.
+    """
+    contexts = []
     node_id = node.node_info.id
     # Return the end node context if we want to reuse a subpipeline. We do this
     # because nodes dependent on a subpipeline use the subpipeline's end node
     # to get their aritfacts from, so we reuse those artifacts.
     if isinstance(node, node_proto_view.ComposablePipelineProtoView):
+      # TODO: b/340911977 - Once we only have subpipeline as node for input
+      # context queries, we should remove the end node context.
       context_name = compiler_utils.end_node_context_name_from_subpipeline_id(
           node_id
       )
+      # Subpipelines are also considered a node in the parent pipeline, so we
+      # also need to add the pipeline as node context.
+      parent_pipeline_ids = node.raw_proto().pipeline_info.parent_ids
+      if not parent_pipeline_ids:
+        raise ValueError(
+            f'Subpipeline {node_id} does not have any parent pipelines.'
+        )
+      parent_pipeline_name = parent_pipeline_ids[-1]
+      pipeline_as_node_name = compiler_utils.node_context_name(
+          parent_pipeline_name, node_id
+      )
+      pipeline_as_node_context = self._node_context_by_name.get(
+          pipeline_as_node_name
+      )
+      if pipeline_as_node_context is None:
+        raise LookupError(
+            f'node context {pipeline_as_node_name} not found in MLMD.'
+        )
+      contexts.append(pipeline_as_node_context)
     else:
       context_name = compiler_utils.node_context_name(
           self._pipeline_name, node_id
@@ -666,7 +702,8 @@ class _ArtifactRecycler:
     node_context = self._node_context_by_name.get(context_name)
     if node_context is None:
       raise LookupError(f'node context {context_name} not found in MLMD.')
-    return node_context
+    contexts.append(node_context)
+    return contexts
 
   def _get_successful_executions(
       self, node: node_proto_view.NodeProtoView
@@ -682,7 +719,7 @@ class _ArtifactRecycler:
     Raises:
       LookupError: If no successful Execution was found.
     """
-    node_context = self._get_node_context(node)
+    node_contexts = self._get_node_context(node)
     node_id = node.node_info.id
     if not self._base_run_context:
       raise LookupError(
@@ -693,10 +730,9 @@ class _ArtifactRecycler:
 
     all_associated_executions = (
         execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd, contexts=[node_context, self._base_run_context]
+            self._mlmd, contexts=[self._base_run_context] + node_contexts
         )
     )
-
     cache_only_succesful_executions = (
         not node.execution_options.node_success_optional
     )
@@ -741,15 +777,15 @@ class _ArtifactRecycler:
       return
 
     # Check if there are any previous attempts to cache and publish.
-    node_context = self._get_node_context(node)
+    node_contexts = self._get_node_context(node)
     cached_execution_contexts = [
         self._pipeline_context,
-        node_context,
         self._new_pipeline_run_context,
-    ]
+    ] + node_contexts
     prev_cache_executions = (
         execution_lib.get_executions_associated_with_all_contexts(
-            self._mlmd, contexts=[node_context, self._new_pipeline_run_context]
+            self._mlmd,
+            contexts=[self._new_pipeline_run_context] + node_contexts,
         )
     )
     if not prev_cache_executions:
@@ -796,8 +832,8 @@ class _ArtifactRecycler:
     if not self._base_run_context or not self._new_pipeline_run_context:
       logging.warning(
           'base run context %s or new pipeline run context %s not found.',
-          self._base_run_context.name,
-          self._new_pipeline_run_context.name,
+          self._base_run_context,
+          self._new_pipeline_run_context,
       )
       return
 

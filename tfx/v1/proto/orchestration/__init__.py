@@ -16,3 +16,5 @@
 from tfx.proto.orchestration import run_state_pb2
 
 RunState = run_state_pb2.RunState
+
+__all__ = ["RunState"]

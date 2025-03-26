@@ -14,7 +14,6 @@
 """Tests for tfx.components.transform.executor with sequnce examples."""
 
 import os
-import tensorflow as tf
 from tfx.components.testdata.module_file import transform_sequence_module
 from tfx.components.transform import executor_test
 from tfx.proto import example_gen_pb2
@@ -48,7 +47,3 @@ class ExecutorWithSequenceExampleTest(executor_test.ExecutorTest):
       'num_instances_tfx.DataValidation_1st_run': 25500,
       'num_instances_tfx.DataValidation_2nd_run': 25500
   }
-
-
-if __name__ == '__main__':
-  tf.test.main()

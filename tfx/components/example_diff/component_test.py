@@ -49,7 +49,3 @@ class ComponentTest(tf.test.TestCase):
     restored_config = example_diff.exec_properties[
         standard_component_specs.EXAMPLE_DIFF_CONFIG_KEY]
     self.assertEqual(restored_config, config)
-
-
-if __name__ == '__main__':
-  tf.test.main()

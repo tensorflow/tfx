@@ -49,6 +49,26 @@ class Code(enum.IntEnum):
   UNAUTHENTICATED = 16
 
 
+# These are the error codes that are retriable for USER_FACING traffic.
+# See go/stubs-retries.
+USER_FACING_RETRIABLE_STATUS_CODES = frozenset(
+    c.value
+    for c in [
+        Code.UNAVAILABLE,
+    ]
+)
+
+BATCH_RETRIABLE_ERROR_CODES = frozenset(
+    c.value
+    for c in [
+        Code.DEADLINE_EXCEEDED,
+        Code.INTERNAL,
+        Code.UNAVAILABLE,
+        Code.RESOURCE_EXHAUSTED,
+    ]
+)
+
+
 @attr.s(auto_attribs=True, frozen=True)
 class Status:
   """Class to record status of operations.

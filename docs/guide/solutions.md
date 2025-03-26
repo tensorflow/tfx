@@ -3,12 +3,13 @@
 Looking for insights into how TFX can be applied to build a solution that meets
 your needs? These in-depth articles and guides may help!
 
-Note: These articles discuss complete solutions in which TFX is a key part, but
-not the only part. This is nearly always the case for real-world deployments. So
-implementing these solutions yourself will require more than just TFX. The main
-goal is to give you some insight into how others have implemented solutions that
-may meet requirements that are similar to yours, and not to serve as a cookbook
-or list of approved applications of TFX.
+!!! Note
+    These articles discuss complete solutions in which TFX is a key part, but
+    not the only part. This is nearly always the case for real-world deployments. So
+    implementing these solutions yourself will require more than just TFX. The main
+    goal is to give you some insight into how others have implemented solutions that
+    may meet requirements that are similar to yours, and not to serve as a cookbook
+    or list of approved applications of TFX.
 
 ## Architecture of a machine learning system for near real-time item matching
 
@@ -18,8 +19,7 @@ understand what items your customers consider to be similar, which enables you
 to offer real-time "similar item" suggestions in your application. This solution
 shows you how to identify similar songs in a dataset, and then use this
 information to make song recommendations.
-<a href="https://cloud.google.com/solutions/real-time-item-matching" class="external" target="_blank">Read
-more</a>
+[Read more](https://cloud.google.com/solutions/real-time-item-matching)
 
 ## Data preprocessing for machine learning: options and recommendations
 
@@ -31,10 +31,8 @@ article focuses on using TensorFlow and the open source TensorFlow Transform
 prediction. This part highlights the challenges of preprocessing data for
 machine learning, and illustrates the options and scenarios for performing data
 transformation on Google Cloud effectively.
-<a href="https://cloud.google.com/solutions/machine-learning/data-preprocessing-for-ml-with-tf-transform-pt1" class="external" target="_blank">Part
-1</a>
-<a href="https://cloud.google.com/solutions/machine-learning/data-preprocessing-for-ml-with-tf-transform-pt2" class="external" target="_blank">Part
-2</a>
+[Part 1](https://cloud.google.com/solutions/machine-learning/data-preprocessing-for-ml-with-tf-transform-pt1)
+[Part 2](https://cloud.google.com/solutions/machine-learning/data-preprocessing-for-ml-with-tf-transform-pt2)
 
 ## Architecture for MLOps using TFX, Kubeflow Pipelines, and Cloud Build
 
@@ -42,8 +40,7 @@ This document describes the overall architecture of a machine learning (ML)
 system using TensorFlow Extended (TFX) libraries. It also discusses how to set
 up a continuous integration (CI), continuous delivery (CD), and continuous
 training (CT) for the ML system using Cloud Build and Kubeflow Pipelines.
-<a href="https://cloud.google.com/solutions/machine-learning/architecture-for-mlops-using-tfx-kubeflow-pipelines-and-cloud-build" class="external" target="_blank">Read
-more</a>
+[Read more](https://cloud.google.com/solutions/machine-learning/architecture-for-mlops-using-tfx-kubeflow-pipelines-and-cloud-build)
 
 ## MLOps: Continuous delivery and automation pipelines in machine learning
 
@@ -52,8 +49,7 @@ integration (CI), continuous delivery (CD), and continuous training (CT) for
 machine learning (ML) systems. Data science and ML are becoming core
 capabilities for solving complex real-world problems, transforming industries,
 and delivering value in all domains.
-<a href="https://cloud.google.com/solutions/machine-learning/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning" class="external" target="_blank">Read
-more</a>
+[Read more](https://cloud.google.com/solutions/machine-learning/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning)
 
 ## Setting up an MLOps environment on Google Cloud
 
@@ -64,8 +60,7 @@ environment described here. Virtually all industries are adopting machine
 learning (ML) at a rapidly accelerating pace. A key challenge for getting value
 from ML is to create ways to deploy and operate ML systems effectively. This
 guide is intended for machine learning (ML) and DevOps engineers.
-<a href="https://cloud.google.com/solutions/machine-learning/setting-up-an-mlops-environment" class="external" target="_blank">Read
-more</a>
+[Read more](https://cloud.google.com/solutions/machine-learning/setting-up-an-mlops-environment)
 
 ## Key requirements for an MLOps foundation
 
@@ -78,8 +73,7 @@ McKinsey Global Institute.
 
 But it’s not easy right now. Machine learning (ML) systems have a special
 capacity for creating technical debt if not managed well.
-<a href="https://cloud.google.com/blog/products/ai-machine-learning/key-requirements-for-an-mlops-foundation" class="external" target="_blank">Read
-more</a>
+[Read more](https://cloud.google.com/blog/products/ai-machine-learning/key-requirements-for-an-mlops-foundation)
 
 ## How to create and deploy a model card in the cloud with Scikit-Learn
 
@@ -88,8 +82,7 @@ With their vast potential, ML models also raise questions about their usage,
 construction, and limitations. Documenting the answers to these questions helps
 to bring clarity and shared understanding. To help advance these goals, Google
 has introduced model cards.
-<a href="https://cloud.google.com/blog/products/ai-machine-learning/create-a-model-card-with-scikit-learn" class="external" target="_blank">Read
-more</a>
+[Read more](https://cloud.google.com/blog/products/ai-machine-learning/create-a-model-card-with-scikit-learn)
 
 ## Analyzing and validating data at scale for machine learning with TensorFlow Data Validation
 
@@ -99,5 +92,4 @@ scientists and machine learning (ML) engineers can use TFDV in a production ML
 system to validate data that's used in a continuous training (CT) pipeline, and
 to detect skews and outliers in data received for prediction serving. It
 includes **hands-on labs**.
-<a href="https://cloud.google.com/solutions/machine-learning/analyzing-and-validating-data-at-scale-for-ml-using-tfx" class="external" target="_blank">Read
-more</a>
+[Read more](https://cloud.google.com/solutions/machine-learning/analyzing-and-validating-data-at-scale-for-ml-using-tfx)

@@ -354,7 +354,3 @@ class KubernetesRunnerTest(tf.test.TestCase):
     # Check calls.
     self.assertEqual(self._mock_sleep.call_count, 4)
     self.assertEqual(self._mock_core_v1_api.delete_namespaced_pod.call_count, 5)
-
-
-if __name__ == '__main__':
-  tf.test.main()

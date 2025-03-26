@@ -62,7 +62,3 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(
         standard_artifacts.Examples.TYPE_NAME,
         big_query_to_elwc_example_gen.outputs['examples'].type_name)
-
-
-if __name__ == '__main__':
-  tf.test.main()

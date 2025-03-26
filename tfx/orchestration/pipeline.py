@@ -40,7 +40,7 @@ from google.protobuf import message
 _MAX_PIPELINE_NAME_LENGTH = 63
 
 # Pipeline root is by default specified as a RuntimeParameter when runnning on
-# KubeflowDagRunner. This constant offers users an easy access to the pipeline
+# KubeflowV2DagRunner. This constant offers users an easy access to the pipeline
 # root placeholder when defining a pipeline. For example,
 #
 # pusher = Pusher(
@@ -233,7 +233,7 @@ class Pipeline(base_node.BaseNode):
   Pipeline object represents the DAG of TFX components, which can be run using
   one of the pipeline orchestration systems that TFX supports. For details,
   please refer to the
-  [guide](https://github.com/tensorflow/tfx/blob/master/docs/guide/build_tfx_pipeline.md).
+  [guide](../../../guide/build_tfx_pipeline).
 
   Attributes:
     components: A deterministic list of logical components of this pipeline,

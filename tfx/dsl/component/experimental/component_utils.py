@@ -189,7 +189,9 @@ def create_tfx_component_class(
   )
 
   for fn in (pre_execution, post_execution):
-    _type_check_execution_function_params(tfx_component_spec_class, fn)
+    if fn is not None:
+      _type_check_execution_function_params(tfx_component_spec_class, fn)
+      utils.assert_no_private_func_in_main(fn)
   try:
     pre_execution_spec, post_execution_spec = [
         _convert_function_to_python_executable_spec(fn)

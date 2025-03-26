@@ -13,7 +13,10 @@
 # limitations under the License.
 """Tests for tfx.types.artifact."""
 
+import gc
 import json
+import importlib
+import pytest
 import textwrap
 from unittest import mock
 
@@ -27,6 +30,12 @@ from tfx.utils import json_utils
 from google.protobuf import struct_pb2
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup():
+  yield
+  importlib.reload(struct_pb2)
 
 
 Dataset = system_artifacts.Dataset
@@ -130,14 +139,6 @@ _MyArtifact6 = artifact._ArtifactType(  # pylint: disable=invalid-name
     })
 
 
-class _ArtifactWithInvalidAnnotation(artifact.Artifact):
-  TYPE_NAME = 'InvalidAnnotationArtifact'
-  TYPE_ANNOTATION = artifact.Artifact
-  PROPERTIES = {
-      'int1': artifact.Property(type=artifact.PropertyType.INT),
-  }
-
-
 class _MyValueArtifact(value_artifact.ValueArtifact):
   TYPE_NAME = 'MyValueTypeName'
 
@@ -163,6 +164,18 @@ _BAD_URI = '/tmp/to/a/bad/dir'
 
 class ArtifactTest(tf.test.TestCase):
 
+  def tearDown(self):
+    # This cleans up __subclasses__() that has InvalidAnnotation artifact classes.
+    gc.collect()
+
+  def assertProtoEquals(self, proto1, proto2):
+    if type(proto1) is not type(proto2):
+      # GetProtoType() doesn't return the orignal type.
+      new_proto2 = type(proto1)()
+      new_proto2.CopyFrom(proto2)
+      return super().assertProtoEquals(proto1, new_proto2)
+    return super().assertProtoEquals(proto1, proto2)
+
   def testArtifact(self):
     instance = _MyArtifact()
 
@@ -173,6 +186,7 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual('MyTypeName', instance.type_name)
     self.assertEqual('', instance.state)
     self.assertFalse(instance.is_external)
+    self.assertEqual('', instance.external_id)
 
     # Default property does not have span or split_names.
     with self.assertRaisesRegex(AttributeError, "has no property 'span'"):
@@ -229,6 +243,14 @@ class ArtifactTest(tf.test.TestCase):
     )
     self.assertFalse(instance.get_bool_custom_property('fake_key'))
 
+    instance.mlmd_artifact.external_id = (
+        'mlmd://prod:owner/project_name:pipeline_name:type:artifact:100'
+    )
+    self.assertEqual(
+        'mlmd://prod:owner/project_name:pipeline_name:type:artifact:100',
+        instance.external_id,
+    )
+
     self.assertEqual(
         textwrap.dedent("""\
         Artifact(artifact: id: 1
@@ -272,6 +294,7 @@ class ArtifactTest(tf.test.TestCase):
         }
         state: DELETED
         name: "test_artifact"
+        external_id: "mlmd://prod:owner/project_name:pipeline_name:type:artifact:100"
         , artifact_type: name: "MyTypeName"
         properties {
           key: "bool1"
@@ -1356,6 +1379,13 @@ class ArtifactTest(tf.test.TestCase):
                      metadata_store_pb2.ArtifactType.DATASET)
 
   def testInvalidTypeAnnotation(self):
+    class _ArtifactWithInvalidAnnotation(artifact.Artifact):
+      TYPE_NAME = 'InvalidAnnotationArtifact'
+      TYPE_ANNOTATION = artifact.Artifact
+      PROPERTIES = {
+          'int1': artifact.Property(type=artifact.PropertyType.INT),
+      }
+
     with self.assertRaisesRegex(
         ValueError, 'is not a subclass of SystemArtifact'):
       _ArtifactWithInvalidAnnotation()
@@ -1374,6 +1404,3 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(tfx_artifact.mlmd_artifact.state,
                      metadata_store_pb2.Artifact.State.UNKNOWN)
     self.assertEqual(tfx_artifact.state, 'foobar')
-
-if __name__ == '__main__':
-  tf.test.main()

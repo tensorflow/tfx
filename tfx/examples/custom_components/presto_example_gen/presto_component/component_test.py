@@ -61,7 +61,3 @@ class ComponentTest(tf.test.TestCase):
         component.PrestoExampleGen,
         conn_config=port_only_config,
         query='')
-
-
-if __name__ == '__main__':
-  tf.test.main()

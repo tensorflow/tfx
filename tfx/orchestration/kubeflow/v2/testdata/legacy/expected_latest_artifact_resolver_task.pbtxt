@@ -1,0 +1,31 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineTaskSpec
+
+task_info {
+  name: "my_resolver"
+}
+inputs {
+  parameters {
+    key: "resolver_class"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{\"__class__\": \"LatestArtifactStrategy\", \"__module__\": \"tfx.dsl.input_resolution.strategies.latest_artifact_strategy\", \"__tfx_object_type__\": \"class\"}"
+        }
+      }
+    }
+  }
+  parameters {
+    key: "source_uri"
+    value {
+      runtime_value {
+        constant_value {
+          string_value: "{}"
+        }
+      }
+    }
+  }
+}
+component_ref {
+  name: "my_resolver"
+}

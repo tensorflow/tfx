@@ -17,7 +17,6 @@ from typing import Any, Optional
 
 from tfx.dsl.compiler import placeholder_utils
 from tfx.dsl.placeholder import placeholder_base
-from tfx.orchestration.portable import data_types
 
 
 def resolve(
@@ -39,9 +38,7 @@ def resolve(
   return placeholder_utils.resolve_placeholder_expression(
       placeholder.encode(),
       resolution_context
-      or placeholder_utils.ResolutionContext(
-          exec_info=data_types.ExecutionInfo()
-      ),
+      or placeholder_utils.empty_placeholder_context(),
   )
 
 

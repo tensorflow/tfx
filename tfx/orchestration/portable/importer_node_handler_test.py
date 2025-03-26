@@ -14,7 +14,6 @@
 """Tests for tfx.orchestration.portable.importer_node_handler."""
 import os
 
-import tensorflow as tf
 from tfx import version as tfx_version
 from tfx.dsl.compiler import constants
 from tfx.orchestration import metadata
@@ -344,7 +343,3 @@ class ImporterNodeHandlerTest(test_case_utils.TfxTest):
               'name',
           ],
       )
-
-
-if __name__ == '__main__':
-  tf.test.main()

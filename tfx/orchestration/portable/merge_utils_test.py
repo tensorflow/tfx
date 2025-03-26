@@ -15,7 +15,6 @@
 from typing import Dict, Mapping, Optional, Sequence
 
 from absl.testing import parameterized
-import tensorflow as tf
 from tfx import types
 from tfx.orchestration.portable import merge_utils
 from tfx.orchestration.portable import outputs_utils
@@ -272,7 +271,3 @@ class MergeUtilsTest(test_case_utils.TfxTest, parameterized.TestCase):
                                 'URIs should be direct sub-directories'):
       merge_utils.merge_updated_output_artifacts(
           original_artifacts, _build_output_artifact_dict(updated_artifacts))
-
-
-if __name__ == '__main__':
-  tf.test.main()

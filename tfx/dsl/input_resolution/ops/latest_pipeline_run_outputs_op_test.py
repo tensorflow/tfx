@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.latest_pipeline_run_op."""
+
 import contextlib
 
 import tensorflow as tf
@@ -217,7 +218,3 @@ class LatestPipelineRunOutputsTest(
         result_ids = [a.mlmd_artifact.id for a in result[key]]
         expected_ids = [a.id for a in expected_result[key]]
         self.assertAllEqual(result_ids, expected_ids)
-
-
-if __name__ == '__main__':
-  tf.test.main()

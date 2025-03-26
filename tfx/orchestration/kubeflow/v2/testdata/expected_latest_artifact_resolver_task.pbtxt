@@ -9,7 +9,7 @@ inputs {
     key: "resolver_class"
     value {
       runtime_value {
-        constant_value {
+        constant {
           string_value: "{\"__class__\": \"LatestArtifactStrategy\", \"__module__\": \"tfx.dsl.input_resolution.strategies.latest_artifact_strategy\", \"__tfx_object_type__\": \"class\"}"
         }
       }
@@ -19,7 +19,7 @@ inputs {
     key: "source_uri"
     value {
       runtime_value {
-        constant_value {
+        constant {
           string_value: "{}"
         }
       }
