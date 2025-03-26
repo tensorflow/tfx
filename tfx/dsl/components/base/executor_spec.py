@@ -14,7 +14,7 @@
 """Executor specifications for defining what to to execute."""
 
 import copy
-from typing import cast, Iterable, List, Optional, Type, Union
+from typing import Callable, Iterable, List, Optional, Type, TypeVar, Union, cast
 
 from tfx import types
 from tfx.dsl.components.base import base_executor
@@ -66,6 +66,19 @@ class ExecutorSpec(json_utils.Jsonable):
 
     """
     return cast('ExecutorSpec', copy.deepcopy(self))
+
+  _T = TypeVar('_T')
+
+  def update_resources(
+      self,
+      resource_updater: Callable[[_T], _T],
+  ) -> None:
+    """Updates the resources of the executor."""
+    raise NotImplementedError(
+        '{} has not implemented update_resources.'.format(
+            name_utils.get_full_name(self.__class__)
+        )
+    )
 
 
 class ExecutorClassSpec(ExecutorSpec):
