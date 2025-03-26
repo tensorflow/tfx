@@ -18,6 +18,7 @@ from typing import Any, Dict, List
 from absl import logging
 import tensorflow_data_validation as tfdv
 from tensorflow_data_validation.statistics import stats_options as options
+from tensorflow_data_validation.utils import dashboard_util
 from tfx import types
 from tfx.components.statistics_gen import stats_artifact_utils
 from tfx.components.util import examples_utils
@@ -27,7 +28,6 @@ from tfx.types import artifact_utils
 from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
-from tfx.utils import stats_utils
 
 
 # Default file name for stats generated.
@@ -145,8 +145,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
 
     try:
       statistics_artifact.set_string_custom_property(
-          STATS_DASHBOARD_LINK,
-          stats_utils.generate_stats_dashboard_link(statistics_artifact),
+          STATS_DASHBOARD_LINK, dashboard_util.generate_stats_dashboard_link()
       )
     except Exception as e:  # pylint: disable=broad-except
       # log on failures to not bring down Statsgen jobs
