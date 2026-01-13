@@ -69,7 +69,7 @@ exceptiongroup==1.2.2
 fastavro==1.9.7
 fasteners==0.19
 fastjsonschema==2.20.0
-filelock==3.16.1
+filelock==3.20.3
 Flask==2.2.5
 Flask-Babel==2.0.0
 Flask-Caching==2.3.0
