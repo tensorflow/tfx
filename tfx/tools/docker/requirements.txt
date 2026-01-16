@@ -242,7 +242,7 @@ protobuf==3.20.3
 psutil==6.0.0
 ptyprocess==0.7.0
 pyarrow-hotfix==0.6
-pyasn1==0.6.1
+pyasn1==0.6.2
 pyasn1_modules==0.4.1
 pybind11==2.13.6
 pycparser==2.22
