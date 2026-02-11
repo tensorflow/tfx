@@ -79,7 +79,7 @@ def tfx_workspace():
         name = "com_github_google_ml_metadata",
         repo = "google/ml-metadata",
         # LINT.IfChange
-        tag = "v1.16.0",
+        tag = "v1.17.1",
         # LINT.ThenChange(//tfx/dependencies.py)
     )
 
