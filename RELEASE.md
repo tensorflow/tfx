@@ -16,6 +16,40 @@
 
 ## Documentation Updates
 
+# Version 1.17.0
+
+## Major Features and Improvements
+
+*   N/A
+  
+## Breaking Changes
+
+*   N/A
+  
+### For Pipeline Authors
+
+*   N/A
+  
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+  
+## Bug Fixes and Other Changes
+
+*   N/A
+  
+## Dependency Updates
+
+*   N/A
+  
+## Documentation Updates
+
+*   N/A
+
 # Version 1.16.0
 
 ## Major Features and Improvements
