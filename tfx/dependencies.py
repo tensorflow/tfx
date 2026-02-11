@@ -58,7 +58,7 @@ def make_pipeline_sdk_required_install_packages():
         "ml-metadata"
         + select_constraint(
             # LINT.IfChange
-            default=">=1.16.0,<1.17.0",
+            default=">=1.17.1,<1.18.0",
             # LINT.ThenChange(tfx/workspace.bzl)
             nightly=">=1.17.0.dev",
             git_master="@git+https://github.com/google/ml-metadata@master",
