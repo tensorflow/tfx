@@ -89,7 +89,7 @@ google-api-core==2.21.0
 google-api-python-client==1.12.11
 google-apitools==0.5.31
 google-auth==2.35.0
-google-auth-httplib2==0.2.0
+google-auth-httplib2==0.1.1
 google-auth-oauthlib==1.2.1
 google-cloud-aiplatform==1.70.0
 google-cloud-bigquery==3.26.0
