@@ -309,7 +309,7 @@ tensorboard==2.16.2
 tensorboard-data-server==0.7.2
 tensorflow==2.17.1
 tensorflow-cloud==0.1.16
-tensorflow-data-validation>=1.17.1
+tensorflow-data-validation>=1.17.0
 tensorflow-datasets==4.9.3
 tensorflow-decision-forests==1.9.2
 tensorflow-estimator==2.15.0
