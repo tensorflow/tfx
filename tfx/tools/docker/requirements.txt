@@ -13,7 +13,7 @@ alembic==1.13.3
 annotated-types==0.7.0
 anyio==4.6.0
 apache-airflow==2.10.3
-apache-beam==2.59.0
+apache-beam==2.50.0
 apispec==6.6.1
 argcomplete==3.5.1
 argon2-cffi==23.1.0
