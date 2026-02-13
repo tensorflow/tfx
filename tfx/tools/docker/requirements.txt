@@ -160,9 +160,9 @@ jupyterlab_widgets==1.1.10
 tf-keras==2.17.0
 keras==3.6.0
 keras-tuner==1.4.7
-kfp==2.15.2
-kfp-pipeline-spec==2.15.2
-kfp-server-api==2.15.2
+kfp==0.8.0
+kfp-pipeline-spec==0.1.16
+kfp-server-api==1.8.5
 kt-legacy==1.0.5
 kubernetes==26.1.0
 lazy-object-proxy==1.10.0

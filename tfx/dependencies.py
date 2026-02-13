@@ -146,8 +146,8 @@ def make_extra_packages_airflow():
 def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
-      "kfp>=2.15.2",
-      "kfp-pipeline-spec>=2.15.2",
+      "kfp>=0.8.0,<0.9.0",
+      "kfp-pipeline-spec>=0.1.16,<0.2.0",
   ]
 
 
@@ -168,8 +168,8 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
     # Packages needed for tfx docker image.
     return [
-        "kfp>=2.15.2",
-        "kfp-pipeline-spec>=2.15.2",
+        "kfp>=0.8.0,<0.9.0",
+        "kfp-pipeline-spec>=0.1.16,<0.2.0",
         "mmh>=2.2,<3",
         "python-snappy>=0.7",
         # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
