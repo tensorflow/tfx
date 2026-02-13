@@ -169,7 +169,8 @@ jupyterlab_widgets==1.1.10
 tf-keras==2.17.0
 keras-tuner==1.4.7
 kfp==2.6.0
-kfp-pipeline-spec==2.6.0
+kfp-pipeline-spec==0.3.0
+protobuf>=3.20.3
 kfp-server-api==2.6.0
 kt-legacy==1.0.5
 kubernetes==26.1.0

@@ -65,7 +65,7 @@ def make_pipeline_sdk_required_install_packages():
         ),
         "packaging>=22",
         "portpicker>=1.3.1,<2",
-        "protobuf>=3.20.3,<5",
+        "protobuf>=3.20.3",
         "docker>=7,<8",
         "google-apitools>=0.5,<1",
         "google-api-python-client>=1.8,<2",
@@ -147,7 +147,7 @@ def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
       "kfp>=2.6.0",
-      "kfp-pipeline-spec>=2.6.0",
+      "kfp-pipeline-spec>=0.3.0",
   ]
 
 
