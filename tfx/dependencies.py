@@ -147,7 +147,7 @@ def make_extra_packages_kfp():
       """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
       return [
           "kfp>=2.5.0",
-          "kfp-pipeline-spec>=0.3.0",
+          "kfp-pipeline-spec>=2.5.0",
       ]
 
 def make_extra_packages_test():
