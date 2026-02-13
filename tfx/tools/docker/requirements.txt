@@ -164,7 +164,7 @@ kfp==1.8.22
 kfp-pipeline-spec==0.1.16
 kfp-server-api==1.8.5
 kt-legacy==1.0.5
-kubernetes==26.1.0
+kubernetes==25.3.0
 lazy-object-proxy==1.10.0
 libclang==18.1.1
 limits==3.13.0
