@@ -144,12 +144,11 @@ def make_extra_packages_airflow():
 
 
 def make_extra_packages_kfp():
-      """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
-      return [
-          "kfp>=2.5.0",
-          "kfp-pipeline-spec>=2.5.0",
-      ]
-
+        """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
+        return [
+            "kfp>=2.5.0",
+            "kfp-pipeline-spec>=0.2.2",
+        ]
 def make_extra_packages_test():
     """Prepare extra packages needed for running unit tests."""
     # Note: It is okay to pin packages to exact versions in this list to minimize
