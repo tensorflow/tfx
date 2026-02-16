@@ -710,10 +710,18 @@ class MakeProtoPlaceholderTest(tf.test.TestCase):
       # The options may differ between environments and we don't need to assert
       # them.
       file.ClearField('options')
-      for message_type in file.message_type:
+      def _normalize_message_type(
+          message_type: descriptor_pb2.DescriptorProto,
+      ) -> None:
         message_type.ClearField('options')
         for field in message_type.field:
           field.ClearField('options')
+          field.ClearField('json_name')
+        for nested_type in message_type.nested_type:
+          _normalize_message_type(nested_type)
+
+      for message_type in file.message_type:
+        _normalize_message_type(message_type)
 
   def assertDescriptorsEqual(
       self,
