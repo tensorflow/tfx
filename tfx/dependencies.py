@@ -60,7 +60,7 @@ def make_pipeline_sdk_required_install_packages():
             # LINT.IfChange
             default=">=1.17.0,<1.18.0",
             # LINT.ThenChange(tfx/workspace.bzl)
-            nightly=">=1.18.0.dev",
+            nightly=">=1.17.0",
             git_master="@git+https://github.com/google/ml-metadata@master",
         ),
         "packaging>=22",
@@ -111,26 +111,26 @@ def make_required_install_packages():
         "tensorflow-data-validation"
         + select_constraint(
             default=">=1.17.0,<1.18.0",
-            nightly=">=1.18.0.dev",
+            nightly=">=1.17.0",
             git_master=("@git+https://github.com/tensorflow/data-validation@master"),
         ),
         "tensorflow-model-analysis"
         + select_constraint(
             default=">=0.48.0,<0.49.0",
-            nightly=">=0.49.0.dev",
+            nightly=">=0.48.0",
             git_master="@git+https://github.com/tensorflow/model-analysis@master",
         ),
         "tensorflow-serving-api>=2.17,<2.18",
         "tensorflow-transform"
         + select_constraint(
             default=">=1.17.0,<1.18.0",
-            nightly=">=1.18.0.dev",
+            nightly=">=1.17.0",
             git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
             default=">=1.17.1,<1.18.0",
-            nightly=">=1.18.0.dev",
+            nightly=">=1.17.1",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
     ]
@@ -189,7 +189,7 @@ def make_extra_packages_tflite_support():
     # Required for tfx/examples/cifar10
     return [
         "flatbuffers>=1.12",
-    
+
     ]
 
 
@@ -200,7 +200,7 @@ def make_extra_packages_tf_ranking():
         "struct2tensor"
         + select_constraint(
             default=">=0.48.0,<0.49.0",
-            nightly=">=0.49.0.dev",
+            nightly=">=0.48.0",
             git_master="@git+https://github.com/google/struct2tensor@master",
         ),
     ]
