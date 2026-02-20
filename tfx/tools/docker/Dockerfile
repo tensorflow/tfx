@@ -88,6 +88,43 @@ RUN sed -i 's/python3/python/g' /usr/bin/pip
 
 RUN python -m pip install --upgrade pip setuptools==70.0.0 wheel
 
+RUN CURRENT_DIR="$(pwd)" && \
+  mkdir -p /usr/local/lib/bazel/bin && \
+  cd "/usr/local/lib/bazel/bin" && \
+  curl -fLO https://releases.bazel.build/6.5.0/release/bazel-6.5.0-linux-x86_64 && \
+  chmod +x bazel-6.5.0-linux-x86_64 && \
+  ln -sf /usr/local/lib/bazel/bin/bazel-6.5.0-linux-x86_64 /usr/local/bin/bazel && \
+  cd "$CURRENT_DIR"
+
+# Build tensorflow-data-validation wheels from source with patch
+RUN wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh" && \
+  bash Miniforge3.sh -b -u "/opt/conda" && \
+  . "/opt/conda/etc/profile.d/conda.sh"
+
+ENV PATH=/opt/conda/bin:${PATH}
+
+RUN conda create -y -n tfdv-build python=3.10 && \
+  conda install -y -n tfdv-build -c conda-forge \
+    gcc_linux-64=13 \
+    gxx_linux-64=13 \
+    binutils_linux-64=2.40 \
+    ld_impl_linux-64=2.40
+
+ENV PATH=/opt/conda/envs/tfdv-build/bin:${PATH}
+ENV CC=/opt/conda/envs/tfdv-build/bin/x86_64-conda-linux-gnu-gcc
+ENV CXX=/opt/conda/envs/tfdv-build/bin/x86_64-conda-linux-gnu-g++
+ENV LD=/opt/conda/envs/tfdv-build/bin/x86_64-conda-linux-gnu-ld
+
+COPY tfx/tools/docker/build_tfdv_wheels.sh /tmp/
+COPY tfx/tools/docker/tfdv.patch /tmp/
+RUN mkdir -p /tmp/wheels && \
+    bash /tmp/build_tfdv_wheels.sh /tmp/wheels
+
+# Build tfx-bsl wheels from source with patch
+COPY tfx/tools/docker/build_tfx_bsl_wheels.sh /tmp/
+COPY tfx/tools/docker/tfx_bsl.patch /tmp/
+RUN bash /tmp/build_tfx_bsl_wheels.sh /tmp/wheels
+
 # Copy constraint file and wheels
 COPY tfx/tools/docker/build_constraints.txt /tmp/
 COPY tfx/tools/docker/wheels/*.whl /tmp/wheels/

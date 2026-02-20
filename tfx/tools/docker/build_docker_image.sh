@@ -33,18 +33,7 @@ else
   patch_applied=false
 fi
 
-# Download tensorflow-data-validation wheel
-echo "Downloading tensorflow-data-validation wheel..."
-TFDV_WHEEL_URL="https://files.pythonhosted.org/packages/e8/56/7fe17a62045cf02b725a76cf0d5fb2d2792ca455fa61d18d7c4b80c3cad1/tensorflow_data_validation-1.17.0-cp310-cp310-manylinux_2_39_x86_64.whl"
-TFDV_WHEEL_FILE="tensorflow_data_validation-1.17.0-cp310-cp310-manylinux_2_39_x86_64.whl"
 mkdir -p tfx/tools/docker/wheels
-curl -L -o tfx/tools/docker/wheels/${TFDV_WHEEL_FILE} ${TFDV_WHEEL_URL}
-
-# Download tfx-bsl wheel
-echo "Downloading tfx-bsl wheel..."
-TFXBSL_WHEEL_URL="https://files.pythonhosted.org/packages/00/84/4b359481924da5af44f17e252b87ac6a60f810b58a577c27b8aa815a68bb/tfx_bsl-1.17.1-cp310-cp310-manylinux_2_39_x86_64.whl"
-TFXBSL_WHEEL_FILE="tfx_bsl-1.17.1-cp310-cp310-manylinux_2_39_x86_64.whl"
-curl -L -o tfx/tools/docker/wheels/${TFXBSL_WHEEL_FILE} ${TFXBSL_WHEEL_URL}
 
 # Download tensorflow-model-analysis wheel
 echo "Downloading tensorflow-model-analysis wheel..."
