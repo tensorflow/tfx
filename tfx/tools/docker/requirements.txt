@@ -91,7 +91,7 @@ google-apitools==0.5.31
 google-auth==2.35.0
 google-auth-httplib2==0.2.0
 google-auth-oauthlib==1.2.1
-google-cloud-aiplatform==1.70.0
+google-cloud-aiplatform==1.133.0
 google-cloud-bigquery==3.26.0
 google-cloud-bigquery-storage==2.26.0
 google-cloud-bigtable==2.26.0
