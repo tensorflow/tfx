@@ -15,6 +15,7 @@
 import os
 
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -89,18 +90,18 @@ def create_test_pipeline():
   #     model_blessing=Channel(type=standard_artifacts.ModelBlessing)).with_id(
   #         "latest_blessed_model_resolver")
 
-  eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(signature_name="eval")],
-      slicing_specs=[tfma.SlicingSpec()],
+  eval_config = config_pb2.EvalConfig(
+      model_specs=[tfma.proto.config_pb2.ModelSpec(signature_name="eval")],
+      slicing_specs=[tfma.proto.config_pb2.SlicingSpec()],
       metrics_specs=[
-          tfma.MetricsSpec(
+          tfma.proto.config_pb2.MetricsSpec(
               thresholds={
                   "sparse_categorical_accuracy":
-                      tfma.MetricThreshold(
-                          value_threshold=tfma.GenericValueThreshold(
+                      tfma.proto.config_pb2.MetricThreshold(
+                          value_threshold=tfma.proto.config_pb2.GenericValueThreshold(
                               lower_bound={"value": 0.6}),
-                          change_threshold=tfma.GenericChangeThreshold(
-                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                          change_threshold=tfma.proto.config_pb2.GenericChangeThreshold(
+                              direction=tfma.proto.config_pb2.MetricDirection.HIGHER_IS_BETTER,
                               absolute={"value": -1e-10}))
               })
       ])

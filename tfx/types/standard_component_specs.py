@@ -14,7 +14,7 @@
 """Component specifications for the standard set of TFX Components."""
 
 from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
-from tensorflow_model_analysis import sdk as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import distribution_validator_pb2
 from tfx.proto import evaluator_pb2
@@ -168,7 +168,7 @@ class EvaluatorSpec(ComponentSpec):
   """Evaluator component spec."""
 
   PARAMETERS = {
-      EVAL_CONFIG_KEY: ExecutionParameter(type=tfma.EvalConfig, optional=True),
+      EVAL_CONFIG_KEY: ExecutionParameter(type=config_pb2.EvalConfig, optional=True),
       # TODO(b/181911822): Deprecated, use eval_config.slicing_specs.
       FEATURE_SLICING_SPEC_KEY: ExecutionParameter(
           type=evaluator_pb2.FeatureSlicingSpec, optional=True

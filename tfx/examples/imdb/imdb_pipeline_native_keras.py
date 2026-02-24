@@ -18,6 +18,7 @@ from typing import List
 
 import absl
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -119,22 +120,22 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
 
   # Uses TFMA to compute evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
-  eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(label_key='label')],
-      slicing_specs=[tfma.SlicingSpec()],
+  eval_config = config_pb2.EvalConfig(
+      model_specs=[tfma.proto.config_pb2.ModelSpec(label_key='label')],
+      slicing_specs=[tfma.proto.config_pb2.SlicingSpec()],
       metrics_specs=[
-          tfma.MetricsSpec(metrics=[
-              tfma.MetricConfig(
+          tfma.proto.config_pb2.MetricsSpec(metrics=[
+              tfma.proto.config_pb2.MetricConfig(
                   class_name='BinaryAccuracy',
-                  threshold=tfma.MetricThreshold(
-                      value_threshold=tfma.GenericValueThreshold(
+                  threshold=tfma.proto.config_pb2.MetricThreshold(
+                      value_threshold=tfma.proto.config_pb2.GenericValueThreshold(
                           # Increase this threshold when training on complete
                           # dataset.
                           lower_bound={'value': 0.01}),
                       # Change threshold will be ignored if there is no
                       # baseline model resolved from MLMD (first run).
-                      change_threshold=tfma.GenericChangeThreshold(
-                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                      change_threshold=tfma.proto.config_pb2.GenericChangeThreshold(
+                          direction=tfma.proto.config_pb2.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-2})))
           ])
       ])

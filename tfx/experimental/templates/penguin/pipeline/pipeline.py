@@ -19,6 +19,7 @@ This file defines TFX pipeline and various components in the pipeline.
 from typing import List, Optional
 
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx import v1 as tfx
 from tfx.experimental.templates.penguin.models import features
 
@@ -103,25 +104,25 @@ def create_pipeline(
 
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
-  eval_config = tfma.EvalConfig(
+  eval_config = config_pb2.EvalConfig(
       model_specs=[
-          tfma.ModelSpec(
+          tfma.proto.config_pb2.ModelSpec(
               signature_name='serving_default',
               label_key=features.LABEL_KEY,
               # Use transformed label key if Transform is used.
               # label_key=features.transformed_name(features.LABEL_KEY),
               preprocessing_function_names=['transform_features'])
       ],
-      slicing_specs=[tfma.SlicingSpec()],
+      slicing_specs=[tfma.proto.config_pb2.SlicingSpec()],
       metrics_specs=[
-          tfma.MetricsSpec(metrics=[
-              tfma.MetricConfig(
+          tfma.proto.config_pb2.MetricsSpec(metrics=[
+              tfma.proto.config_pb2.MetricConfig(
                   class_name='SparseCategoricalAccuracy',
-                  threshold=tfma.MetricThreshold(
-                      value_threshold=tfma.GenericValueThreshold(
+                  threshold=tfma.proto.config_pb2.MetricThreshold(
+                      value_threshold=tfma.proto.config_pb2.GenericValueThreshold(
                           lower_bound={'value': eval_accuracy_threshold}),
-                      change_threshold=tfma.GenericChangeThreshold(
-                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                      change_threshold=tfma.proto.config_pb2.GenericChangeThreshold(
+                          direction=tfma.proto.config_pb2.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-10})))
           ])
       ])

@@ -19,6 +19,7 @@ from typing import Any, Dict, List
 from absl import logging
 import apache_beam as beam
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 # Need to import the following module so that the fairness indicator post-export
 # metric is registered.
 from tfx import types
@@ -74,7 +75,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       output_dict: Output dict from output key to a list of Artifacts.
         - evaluation: model evaluation results.
       exec_properties: A dict of execution properties.
-        - eval_config: JSON string of tfma.EvalConfig.
+        - eval_config: JSON string of config_pb2.EvalConfig.
         - feature_slicing_spec: JSON string of evaluator_pb2.FeatureSlicingSpec
           instance, providing the way to slice the data. Deprecated, use
           eval_config.slicing_specs instead.
@@ -126,7 +127,7 @@ class Executor(base_beam_executor.BaseBeamExecutor):
       slice_spec = None
       has_baseline = bool(
           input_dict.get(standard_component_specs.BASELINE_MODEL_KEY))
-      eval_config = tfma.EvalConfig()
+      eval_config = config_pb2.EvalConfig()
       proto_utils.json_to_proto(
           exec_properties[standard_component_specs.EVAL_CONFIG_KEY],
           eval_config)

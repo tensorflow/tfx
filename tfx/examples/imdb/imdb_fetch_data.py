@@ -23,7 +23,7 @@ import tensorflow_datasets as tfds
 # Change the hyperparameters to better suit the bigger dataset.
 # The configurations that were found reasonable are listed below:
 # imdb_pipeline_native_keras.py:
-#    tfma.GenericValueThreshold(lower_bound={'value':0.85}
+#    tfma.proto.config_pb2.GenericValueThreshold(lower_bound={'value':0.85}
 #    trainer_pb2.TrainArgs(num_steps=7000)
 #    trainer_pb2.EvalArgs(num_steps=800)
 # imdb_utils_native_keras.py:

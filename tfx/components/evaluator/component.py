@@ -17,6 +17,7 @@ from typing import List, Optional, Union
 
 from absl import logging
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx import types
 from tfx.components.evaluator import executor
 from tfx.components.util import udf_utils
@@ -57,7 +58,7 @@ class Evaluator(base_beam_component.BaseBeamComponent):
       fairness_indicator_thresholds: Optional[Union[
           List[float], data_types.RuntimeParameter]] = None,
       example_splits: Optional[List[str]] = None,
-      eval_config: Optional[tfma.EvalConfig] = None,
+      eval_config: Optional[config_pb2.EvalConfig] = None,
       schema: Optional[types.BaseChannel] = None,
       module_file: Optional[str] = None,
       module_path: Optional[str] = None):
@@ -82,7 +83,7 @@ class Evaluator(base_beam_component.BaseBeamComponent):
       example_splits: Names of splits on which the metrics are computed.
         Default behavior (when example_splits is set to None or Empty) is using
         the 'eval' split.
-      eval_config: Instance of tfma.EvalConfig containg configuration settings
+      eval_config: Instance of config_pb2.EvalConfig containg configuration settings
         for running the evaluation. This config has options for both estimator
         and Keras.
       schema: A `Schema` channel to use for TFXIO.

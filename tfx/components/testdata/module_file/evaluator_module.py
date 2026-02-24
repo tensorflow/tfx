@@ -16,6 +16,7 @@
 from typing import Any, Dict, List
 
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tensor_adapter
 
 
@@ -35,7 +36,7 @@ except AttributeError:
 
 
 def custom_eval_shared_model(eval_saved_model_path: str, model_name: str,
-                             eval_config: tfma.EvalConfig,
+                             eval_config: config_pb2.EvalConfig,
                              **kwargs: Dict[str, Any]) -> _EvalSharedModel:
   return tfma.default_eval_shared_model(
       eval_saved_model_path=eval_saved_model_path,
@@ -46,7 +47,7 @@ def custom_eval_shared_model(eval_saved_model_path: str, model_name: str,
 
 def custom_extractors(
     eval_shared_model: _MaybeMultipleEvalSharedModels,
-    eval_config: tfma.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     tensor_adapter_config: tensor_adapter.TensorAdapterConfig,
 ) -> List[tfma.extractors.Extractor]:
   return tfma.default_extractors(

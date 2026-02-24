@@ -18,6 +18,7 @@ from typing import List
 
 import absl
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx.components import Evaluator
 from tfx.components import ImportExampleGen
 from tfx.components import Pusher
@@ -110,28 +111,28 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
       schema=schema_gen.outputs['schema'],
       eval_args=trainer_pb2.EvalArgs(num_steps=10))
 
-  eval_config = tfma.EvalConfig(
+  eval_config = config_pb2.EvalConfig(
       model_specs=[
-          tfma.ModelSpec(
+          tfma.proto.config_pb2.ModelSpec(
               signature_name='',
               label_key='relevance',
               padding_options=tfma.PaddingOptions(
                   label_float_padding=-1.0, prediction_float_padding=-1.0))
       ],
       slicing_specs=[
-          tfma.SlicingSpec(),
-          tfma.SlicingSpec(feature_keys=['query_tokens']),
+          tfma.proto.config_pb2.SlicingSpec(),
+          tfma.proto.config_pb2.SlicingSpec(feature_keys=['query_tokens']),
       ],
       metrics_specs=[
-          tfma.MetricsSpec(
+          tfma.proto.config_pb2.MetricsSpec(
               per_slice_thresholds={
                   'metric/ndcg_10':
                       tfma.PerSliceMetricThresholds(thresholds=[
                           tfma.PerSliceMetricThreshold(
                               # The overall slice.
-                              slicing_specs=[tfma.SlicingSpec()],
-                              threshold=tfma.MetricThreshold(
-                                  value_threshold=tfma.GenericValueThreshold(
+                              slicing_specs=[tfma.proto.config_pb2.SlicingSpec()],
+                              threshold=tfma.proto.config_pb2.MetricThreshold(
+                                  value_threshold=tfma.proto.config_pb2.GenericValueThreshold(
                                       lower_bound={'value': 0.6})))
                       ])
               })

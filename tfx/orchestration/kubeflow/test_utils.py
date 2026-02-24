@@ -23,6 +23,7 @@ from absl import logging
 import kfp
 from kfp_server_api import rest
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -274,24 +275,24 @@ def create_e2e_components(
       module_file=trainer_module,
   )
   # Set the TFMA config for Model Evaluation and Validation.
-  eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(signature_name='eval')],
+  eval_config = config_pb2.EvalConfig(
+      model_specs=[tfma.proto.config_pb2.ModelSpec(signature_name='eval')],
       metrics_specs=[
-          tfma.MetricsSpec(
-              metrics=[tfma.MetricConfig(class_name='ExampleCount')],
+          tfma.proto.config_pb2.MetricsSpec(
+              metrics=[tfma.proto.config_pb2.MetricConfig(class_name='ExampleCount')],
               thresholds={
                   'accuracy':
-                      tfma.MetricThreshold(
-                          value_threshold=tfma.GenericValueThreshold(
+                      tfma.proto.config_pb2.MetricThreshold(
+                          value_threshold=tfma.proto.config_pb2.GenericValueThreshold(
                               lower_bound={'value': 0.5}),
-                          change_threshold=tfma.GenericChangeThreshold(
-                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                          change_threshold=tfma.proto.config_pb2.GenericChangeThreshold(
+                              direction=tfma.proto.config_pb2.MetricDirection.HIGHER_IS_BETTER,
                               absolute={'value': -1e-10}))
               })
       ],
       slicing_specs=[
-          tfma.SlicingSpec(),
-          tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+          tfma.proto.config_pb2.SlicingSpec(),
+          tfma.proto.config_pb2.SlicingSpec(feature_keys=['trip_start_hour'])
       ])
   evaluator = Evaluator(
       examples=example_gen.outputs['examples'],

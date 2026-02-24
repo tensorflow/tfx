@@ -18,6 +18,7 @@ import os
 from typing import List
 
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -129,23 +130,23 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
 
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
-  eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(signature_name='eval')],
+  eval_config = config_pb2.EvalConfig(
+      model_specs=[tfma.proto.config_pb2.ModelSpec(signature_name='eval')],
       slicing_specs=[
-          tfma.SlicingSpec(),
-          tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+          tfma.proto.config_pb2.SlicingSpec(),
+          tfma.proto.config_pb2.SlicingSpec(feature_keys=['trip_start_hour'])
       ],
       metrics_specs=[
-          tfma.MetricsSpec(
+          tfma.proto.config_pb2.MetricsSpec(
               thresholds={
                   'accuracy':
-                      tfma.MetricThreshold(
-                          value_threshold=tfma.GenericValueThreshold(
+                      tfma.proto.config_pb2.MetricThreshold(
+                          value_threshold=tfma.proto.config_pb2.GenericValueThreshold(
                               lower_bound={'value': 0.6}),
                           # Change threshold will be ignored if there is no
                           # baseline model resolved from MLMD (first run).
-                          change_threshold=tfma.GenericChangeThreshold(
-                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                          change_threshold=tfma.proto.config_pb2.GenericChangeThreshold(
+                              direction=tfma.proto.config_pb2.MetricDirection.HIGHER_IS_BETTER,
                               absolute={'value': -1e-10}))
               })
       ])

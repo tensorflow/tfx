@@ -15,6 +15,7 @@
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 
 from tfx.components.evaluator import component
 from tfx.orchestration import data_types
@@ -102,8 +103,8 @@ class ComponentTest(tf.test.TestCase):
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
         model=channel_utils.as_channel([model_exports]),
-        eval_config=tfma.EvalConfig(
-            slicing_specs=[tfma.SlicingSpec(feature_keys=['trip_start_hour'])]),
+        eval_config=config_pb2.EvalConfig(
+            slicing_specs=[tfma.proto.config_pb2.SlicingSpec(feature_keys=['trip_start_hour'])]),
         schema=channel_utils.as_channel([schema]),)
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
                      evaluator.outputs['evaluation'].type_name)

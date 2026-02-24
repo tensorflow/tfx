@@ -23,6 +23,7 @@
 #from apache_beam.testing import util
 #from sklearn import neural_network as nn
 #import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 #from tfx.examples.penguin.experimental import sklearn_predict_extractor
 #from tfx_bsl.tfxio import tensor_adapter
 #from tfx_bsl.tfxio import test_util
@@ -36,7 +37,7 @@
 #    super().setUp()
 #    self._eval_export_dir = os.path.join(self._getTempDir(), 'eval_export')
 #    self._create_sklearn_model(self._eval_export_dir)
-#    self._eval_config = tfma.EvalConfig(model_specs=[tfma.ModelSpec()])
+#    self._eval_config = config_pb2.EvalConfig(model_specs=[tfma.proto.config_pb2.ModelSpec()])
 #    self._eval_shared_model = (
 #        sklearn_predict_extractor.custom_eval_shared_model(
 #            eval_saved_model_path=self._eval_export_dir,
@@ -103,9 +104,9 @@
 #"and the test fails.", strict=True)
 #  def testMakeSklearnPredictExtractorWithMultiModels(self):
 #    """Tests that predictions are made from extracts for multiple models."""
-#    eval_config = tfma.EvalConfig(model_specs=[
-#        tfma.ModelSpec(name='model1'),
-#        tfma.ModelSpec(name='model2'),
+#    eval_config = config_pb2.EvalConfig(model_specs=[
+#        tfma.proto.config_pb2.ModelSpec(name='model1'),
+#        tfma.proto.config_pb2.ModelSpec(name='model2'),
 #    ])
 #    eval_export_dir_1 = os.path.join(self._eval_export_dir, '1')
 #    self._create_sklearn_model(eval_export_dir_1)

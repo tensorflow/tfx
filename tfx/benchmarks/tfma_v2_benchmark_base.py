@@ -21,6 +21,7 @@ import apache_beam as beam
 import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.evaluators import poisson_bootstrap
 from tensorflow_model_analysis.extractors import example_weights_extractor
@@ -73,16 +74,16 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
       if validation:
         # Only one metric, adding a threshold for all slices.
         metric_specs[0].metrics[0].threshold.CopyFrom(
-            tfma.MetricThreshold(
-                value_threshold=tfma.GenericValueThreshold(
+            tfma.proto.config_pb2.MetricThreshold(
+                value_threshold=tfma.proto.config_pb2.GenericValueThreshold(
                     lower_bound={"value": 0.5}, upper_bound={"value": 0.5}),
-                change_threshold=tfma.GenericChangeThreshold(
+                change_threshold=tfma.proto.config_pb2.GenericChangeThreshold(
                     absolute={"value": -0.001},
-                    direction=tfma.MetricDirection.HIGHER_IS_BETTER)))
-      self._eval_config = tfma.EvalConfig(
+                    direction=tfma.proto.config_pb2.MetricDirection.HIGHER_IS_BETTER)))
+      self._eval_config = config_pb2.EvalConfig(
           model_specs=[
-              tfma.ModelSpec(name="candidate", label_key="tips"),
-              tfma.ModelSpec(
+              tfma.proto.config_pb2.ModelSpec(name="candidate", label_key="tips"),
+              tfma.proto.config_pb2.ModelSpec(
                   name="baseline", label_key="tips", is_baseline=True)
           ],
           metrics_specs=metric_specs)
@@ -104,11 +105,11 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
       if validation:
         # Only one metric, adding a threshold for all slices.
         metric_specs[0].metrics[0].threshold.CopyFrom(
-            tfma.MetricThreshold(
-                value_threshold=tfma.GenericValueThreshold(
+            tfma.proto.config_pb2.MetricThreshold(
+                value_threshold=tfma.proto.config_pb2.GenericValueThreshold(
                     lower_bound={"value": 0.5}, upper_bound={"value": 0.5})))
-      self._eval_config = tfma.EvalConfig(
-          model_specs=[tfma.ModelSpec(label_key="tips")],
+      self._eval_config = config_pb2.EvalConfig(
+          model_specs=[tfma.proto.config_pb2.ModelSpec(label_key="tips")],
           metrics_specs=metric_specs)
       self._eval_shared_models = {
           "":

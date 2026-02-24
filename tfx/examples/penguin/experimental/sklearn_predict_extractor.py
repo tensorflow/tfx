@@ -21,6 +21,7 @@ from typing import Dict, Iterable, List
 import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx_bsl.tfxio import tensor_adapter
 
 _PREDICT_EXTRACTOR_STAGE_NAME = 'SklearnPredict'
@@ -160,7 +161,7 @@ def custom_eval_shared_model(
 
 def custom_extractors(
     eval_shared_model: tfma.MaybeMultipleEvalSharedModels,
-    eval_config: tfma.EvalConfig,
+    eval_config: config_pb2.EvalConfig,
     tensor_adapter_config: tensor_adapter.TensorAdapterConfig,
 ) -> List[tfma.extractors.Extractor]:
   """Returns default extractors plus a custom prediction extractor."""

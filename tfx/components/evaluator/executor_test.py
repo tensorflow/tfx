@@ -22,6 +22,7 @@ from absl import logging
 from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tfx.components.evaluator import executor
 from tfx.components.testdata.module_file import evaluator_module
 from tfx.dsl.io import fileio
@@ -40,18 +41,18 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       ('evaluation_w_eval_config', {
           standard_component_specs.EVAL_CONFIG_KEY:
               proto_utils.proto_to_json(
-                  tfma.EvalConfig(slicing_specs=[
-                      tfma.SlicingSpec(feature_keys=['trip_start_hour']),
-                      tfma.SlicingSpec(
+                  config_pb2.EvalConfig(slicing_specs=[
+                      tfma.proto.config_pb2.SlicingSpec(feature_keys=['trip_start_hour']),
+                      tfma.proto.config_pb2.SlicingSpec(
                           feature_keys=['trip_start_day', 'trip_miles']),
                   ]))
       }),
       ('evaluation_w_module_file', {
           standard_component_specs.EVAL_CONFIG_KEY:
               proto_utils.proto_to_json(
-                  tfma.EvalConfig(slicing_specs=[
-                      tfma.SlicingSpec(feature_keys=['trip_start_hour']),
-                      tfma.SlicingSpec(
+                  config_pb2.EvalConfig(slicing_specs=[
+                      tfma.proto.config_pb2.SlicingSpec(feature_keys=['trip_start_hour']),
+                      tfma.proto.config_pb2.SlicingSpec(
                           feature_keys=['trip_start_day', 'trip_miles']),
                   ])),
           standard_component_specs.MODULE_FILE_KEY:
@@ -60,9 +61,9 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       ('evaluation_w_module_path', {
           standard_component_specs.EVAL_CONFIG_KEY:
               proto_utils.proto_to_json(
-                  tfma.EvalConfig(slicing_specs=[
-                      tfma.SlicingSpec(feature_keys=['trip_start_hour']),
-                      tfma.SlicingSpec(
+                  config_pb2.EvalConfig(slicing_specs=[
+                      tfma.proto.config_pb2.SlicingSpec(feature_keys=['trip_start_hour']),
+                      tfma.proto.config_pb2.SlicingSpec(
                           feature_keys=['trip_start_day', 'trip_miles']),
                   ])),
           standard_component_specs.MODULE_PATH_KEY:
@@ -71,14 +72,14 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
       ('model_agnostic_evaluation', {
           standard_component_specs.EVAL_CONFIG_KEY:
               proto_utils.proto_to_json(
-                  tfma.EvalConfig(
+                  config_pb2.EvalConfig(
                       model_specs=[
-                          tfma.ModelSpec(
+                          tfma.proto.config_pb2.ModelSpec(
                               label_key='tips', prediction_key='tips'),
                       ],
                       slicing_specs=[
-                          tfma.SlicingSpec(feature_keys=['trip_start_hour']),
-                          tfma.SlicingSpec(
+                          tfma.proto.config_pb2.SlicingSpec(feature_keys=['trip_start_hour']),
+                          tfma.proto.config_pb2.SlicingSpec(
                               feature_keys=['trip_start_day', 'trip_miles']),
                       ]))
       }, True),
@@ -214,22 +215,22 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
           {
               standard_component_specs.EVAL_CONFIG_KEY:
                   proto_utils.proto_to_json(
-                      tfma.EvalConfig(
+                      config_pb2.EvalConfig(
                           model_specs=[
-                              tfma.ModelSpec(label_key='tips'),
+                              tfma.proto.config_pb2.ModelSpec(label_key='tips'),
                           ],
                           metrics_specs=[
-                              tfma.MetricsSpec(metrics=[
-                                  tfma.MetricConfig(
+                              tfma.proto.config_pb2.MetricsSpec(metrics=[
+                                  tfma.proto.config_pb2.MetricConfig(
                                       class_name='ExampleCount',
                                       # Count > 0, OK.
-                                      threshold=tfma.MetricThreshold(
+                                      threshold=tfma.proto.config_pb2.MetricThreshold(
                                           value_threshold=tfma
-                                          .GenericValueThreshold(
+                                          .proto.config_pb2.GenericValueThreshold(
                                               lower_bound={'value': 0}))),
                               ]),
                           ],
-                          slicing_specs=[tfma.SlicingSpec()]))
+                          slicing_specs=[tfma.proto.config_pb2.SlicingSpec()]))
           },
           True,
           True),
@@ -238,27 +239,27 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
           {
               standard_component_specs.EVAL_CONFIG_KEY:
                   proto_utils.proto_to_json(
-                      tfma.EvalConfig(
+                      config_pb2.EvalConfig(
                           model_specs=[
-                              tfma.ModelSpec(
+                              tfma.proto.config_pb2.ModelSpec(
                                   name='baseline1',
                                   label_key='tips',
                                   is_baseline=True),
-                              tfma.ModelSpec(
+                              tfma.proto.config_pb2.ModelSpec(
                                   name='candidate1', label_key='tips'),
                           ],
                           metrics_specs=[
-                              tfma.MetricsSpec(metrics=[
-                                  tfma.MetricConfig(
+                              tfma.proto.config_pb2.MetricsSpec(metrics=[
+                                  tfma.proto.config_pb2.MetricConfig(
                                       class_name='ExampleCount',
                                       # Count < -1, NOT OK.
-                                      threshold=tfma.MetricThreshold(
+                                      threshold=tfma.proto.config_pb2.MetricThreshold(
                                           value_threshold=tfma
-                                          .GenericValueThreshold(
+                                          .proto.config_pb2.GenericValueThreshold(
                                               upper_bound={'value': -1}))),
                               ]),
                           ],
-                          slicing_specs=[tfma.SlicingSpec()]))
+                          slicing_specs=[tfma.proto.config_pb2.SlicingSpec()]))
           },
           False,
           True),
@@ -267,36 +268,36 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
           {
               standard_component_specs.EVAL_CONFIG_KEY:
                   proto_utils.proto_to_json(
-                      tfma.EvalConfig(
+                      config_pb2.EvalConfig(
                           model_specs=[
-                              tfma.ModelSpec(
+                              tfma.proto.config_pb2.ModelSpec(
                                   name='baseline',
                                   label_key='tips',
                                   is_baseline=True),
-                              tfma.ModelSpec(
+                              tfma.proto.config_pb2.ModelSpec(
                                   name='candidate', label_key='tips'),
                           ],
                           metrics_specs=[
-                              tfma.MetricsSpec(metrics=[
-                                  tfma.MetricConfig(
+                              tfma.proto.config_pb2.MetricsSpec(metrics=[
+                                  tfma.proto.config_pb2.MetricConfig(
                                       class_name='ExampleCount',
                                       # Count > 0, OK.
-                                      threshold=tfma.MetricThreshold(
+                                      threshold=tfma.proto.config_pb2.MetricThreshold(
                                           value_threshold=tfma
-                                          .GenericValueThreshold(
+                                          .proto.config_pb2.GenericValueThreshold(
                                               lower_bound={'value': 0}))),
-                                  tfma.MetricConfig(
+                                  tfma.proto.config_pb2.MetricConfig(
                                       class_name='Accuracy',
                                       # Should be ignored due to no baseline.
-                                      threshold=tfma.MetricThreshold(
+                                      threshold=tfma.proto.config_pb2.MetricThreshold(
                                           change_threshold=tfma
-                                          .GenericChangeThreshold(
+                                          .proto.config_pb2.GenericChangeThreshold(
                                               relative={'value': 0},
-                                              direction=tfma.MetricDirection
+                                              direction=tfma.proto.config_pb2.MetricDirection
                                               .LOWER_IS_BETTER))),
                               ]),
                           ],
-                          slicing_specs=[tfma.SlicingSpec()]))
+                          slicing_specs=[tfma.proto.config_pb2.SlicingSpec()]))
           },
           True,
           False))

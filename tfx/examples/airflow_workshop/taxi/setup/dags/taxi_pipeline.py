@@ -21,6 +21,7 @@ import os
 from typing import List
 
 import tensorflow_model_analysis as tfma  # Step 5
+from tensorflow_model_analysis.proto import config_pb2
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator  # Step 6
 from tfx.components import ExampleValidator  # Step 3
@@ -130,17 +131,17 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
 
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
-  eval_config = tfma.EvalConfig(  # Step 6
+  eval_config = config_pb2.EvalConfig(  # Step 6
       model_specs=[  # Step 6
           # This assumes a serving model with signature 'serving_default'.
-          tfma.ModelSpec(  # Step 6
+          tfma.proto.config_pb2.ModelSpec(  # Step 6
               signature_name='serving_default',  # Step 6
               label_key='tips',  # Step 6
               preprocessing_function_names=['transform_features'],  # Step 6
           )  # Step 6
       ],  # Step 6
       metrics_specs=[  # Step 6
-          tfma.MetricsSpec(  # Step 6
+          tfma.proto.config_pb2.MetricsSpec(  # Step 6
               # The metrics added here are in addition to those saved with the
               # model (assuming either a keras model or EvalSavedModel is used).
               # Any metrics added into the saved model (for example using
@@ -149,17 +150,17 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
               # To add validation thresholds for metrics saved with the model,
               # add them keyed by metric name to the thresholds map.
               metrics=[  # Step 6
-                  tfma.MetricConfig(class_name='ExampleCount'),  # Step 6
-                  tfma.MetricConfig(
+                  tfma.proto.config_pb2.MetricConfig(class_name='ExampleCount'),  # Step 6
+                  tfma.proto.config_pb2.MetricConfig(
                       class_name='BinaryAccuracy',  # Step 6
-                      threshold=tfma.MetricThreshold(  # Step 6
-                          value_threshold=tfma.GenericValueThreshold(  # Step 6
+                      threshold=tfma.proto.config_pb2.MetricThreshold(  # Step 6
+                          value_threshold=tfma.proto.config_pb2.GenericValueThreshold(  # Step 6
                               lower_bound={'value': 0.5}),  # Step 6
                           # Change threshold will be ignored if there is no
                           # baseline model resolved from MLMD (first run).
                           change_threshold=tfma
                           .GenericChangeThreshold(  # Step 6
-                              direction=tfma.MetricDirection
+                              direction=tfma.proto.config_pb2.MetricDirection
                               .HIGHER_IS_BETTER,  # Step 6
                               absolute={'value': -1e-10})))  # Step 6
               ]  # Step 6
@@ -167,10 +168,10 @@ def _create_pipeline(pipeline_name: str, pipeline_root: str, data_root: str,
       ],  # Step 6
       slicing_specs=[  # Step 6
           # An empty slice spec means the overall slice, i.e. the whole dataset.
-          tfma.SlicingSpec(),  # Step 6
+          tfma.proto.config_pb2.SlicingSpec(),  # Step 6
           # Data can be sliced along a feature column. In this case, data is
           # sliced along feature column trip_start_hour.
-          tfma.SlicingSpec(  # Step 6
+          tfma.proto.config_pb2.SlicingSpec(  # Step 6
               feature_keys=['trip_start_hour'])  # Step 6
       ])  # Step 6
 
