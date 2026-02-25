@@ -17,6 +17,7 @@ import os
 from unittest import mock
 
 from absl.testing import parameterized
+import tfx
 from tfx.dsl.components.base import base_component
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow.v2 import test_utils as kubeflow_v2_test_utils
@@ -28,7 +29,9 @@ import pytest
 
 # The location of test data.
 # This location depends on install path of TFX in the docker image.
-_TEST_DATA_ROOT = '/opt/conda/lib/python3.10/site-packages/tfx/examples/chicago_taxi_pipeline/data/simple'
+_TEST_DATA_ROOT = os.path.join(
+    os.path.dirname(tfx.__file__), 'examples/chicago_taxi_pipeline/data/simple'
+)
 
 
 @pytest.mark.integration
