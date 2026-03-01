@@ -29,4 +29,3 @@ index 9f67ea5..8e6c248 100644
         branch = "ed8aeec4f00680f9e88cd75c85ee60d8aa6789df",
         remote = "https://github.com/tensorflow/tfx-bsl",
     )
-    
