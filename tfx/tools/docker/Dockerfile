@@ -86,6 +86,32 @@ LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
 RUN sed -i 's/python3/python/g' /usr/bin/pip
 
+# docker build command should be run under root directory of github checkout.
+ENV TFX_SRC_DIR=/tfx-src
+ADD . ${TFX_SRC_DIR}
+WORKDIR ${TFX_SRC_DIR}
+RUN python setup.py bdist_wheel
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) pip install $(find dist -name "tfx-*.whl")[docker_image]
+
+RUN  /opt/conda/bin/conda install -y -c conda-forge \
+     gcc_linux-64=13 \
+     gxx_linux-64=13 \
+     binutils_linux-64=2.40 \
+     ld_impl_linux-64=2.40
+
+ENV CC=/opt/conda/bin/x86_64-conda-linux-gnu-gcc
+ENV CXX=/opt/conda/bin/x86_64-conda-linux-gnu-g++
+ENV LD=/opt/conda/bin/x86_64-conda-linux-gnu-ld
+
+ARG gather_third_party_licenses=true
+RUN if [ "${gather_third_party_licenses}" = "true" ]; then \
+  /tfx-src/tfx/tools/docker/license.sh \
+  /tfx-src/tfx/tools/docker/third_party_licenses.csv \
+  /third_party/licenses; \
+  fi
+
+# TODO(b/139532550): Consolidate container entrypoint with Kubeflow runner.
+ENTRYPOINT ["python3.6", "/tfx-src/tfx/scripts/run_executor.py"]
 RUN python -m pip install --upgrade pip
 
 COPY --from=wheel-builder /tfx/src/dist/*.whl /tfx/src/dist/
