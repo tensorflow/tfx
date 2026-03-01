@@ -10,6 +10,5 @@ index a837043..496c379 100644
 -    strip_prefix = "zetasql-%s" % ZETASQL_COMMIT,
 +    sha256 = "33e03478ef90063e22d1875eb6185d3d7caca2b21ae22572f5d8e85b9654c64c",
 +    strip_prefix = "googlesql-%s" % ZETASQL_COMMIT,
-     urls = ["https://github.com/google/zetasql/archive/%s.tar.gz" % ZETASQL_COMMIT],
- )
- 
+         urls = ["https://github.com/google/zetasql/archive/%s.tar.gz" % ZETASQL_COMMIT],
+     )

@@ -89,11 +89,8 @@ index 19489315a..05b464767 100644
 -            nightly=">=1.17.1",
 -            git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
 -        ),
-     ]
- 
- 
-@@ -173,7 +149,6 @@ def make_extra_packages_docker_image():
-         "mmh>=2.2,<3",
+         ]
+     @@ -173,7 +149,6 @@ def make_extra_packages_docker_image():         "mmh>=2.2,<3",
          "python-snappy>=0.7",
          # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
 -        "tensorflow-cloud>=0.1,<0.2",
@@ -105,12 +102,9 @@ index 19489315a..05b464767 100644
          #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
          # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
 -        "tensorflow-cloud>=0.1,<0.2",
-     ]
- 
- 
-diff --git a/tfx/tools/docker/requirements.txt b/tfx/tools/docker/requirements.txt
-index d7b3e960e..7e7862afc 100644
---- a/tfx/tools/docker/requirements.txt
+                 ]
+         diff --git a/tfx/tools/docker/requirements.txt b/tfx/tools/docker/requirements.txt
+         index d7b3e960e..7e7862afc 100644--- a/tfx/tools/docker/requirements.txt
 +++ b/tfx/tools/docker/requirements.txt
 @@ -300,8 +300,6 @@ tenacity==9.0.0
  tensorboard==2.17.1
