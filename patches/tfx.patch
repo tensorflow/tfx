@@ -104,7 +104,6 @@ index 19489315a..05b464767 100644
         # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
     ]
 
-
 diff --git a/tfx/tools/docker/requirements.txt b/tfx/tools/docker/requirements.txt
 index d7b3e960e..7e7862afc 100644
 --- a/tfx/tools/docker/requirements.txt
