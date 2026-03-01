@@ -97,23 +97,17 @@ RUN CURRENT_DIR="$(pwd)" && \
   cd "$CURRENT_DIR"
 
 # Build tensorflow-data-validation wheels from source with patch
-RUN wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh" && \
-  bash Miniforge3.sh -b -u "/opt/conda" && \
-  . "/opt/conda/etc/profile.d/conda.sh"
-
-ENV PATH=/opt/conda/bin:${PATH}
-
-RUN conda create -y -n tfdv-build python=3.10 && \
-  conda install -y -n tfdv-build -c conda-forge \
+RUN  /opt/conda/bin/conda install -y -c conda-forge \
     gcc_linux-64=13 \
     gxx_linux-64=13 \
     binutils_linux-64=2.40 \
     ld_impl_linux-64=2.40
 
-ENV PATH=/opt/conda/envs/tfdv-build/bin:${PATH}
-ENV CC=/opt/conda/envs/tfdv-build/bin/x86_64-conda-linux-gnu-gcc
-ENV CXX=/opt/conda/envs/tfdv-build/bin/x86_64-conda-linux-gnu-g++
-ENV LD=/opt/conda/envs/tfdv-build/bin/x86_64-conda-linux-gnu-ld
+ ENV CC=/opt/conda/bin/x86_64-conda-linux-gnu-gcc
+
+ ENV CXX=/opt/conda/bin/x86_64-conda-linux-gnu-g++
+
+ ENV LD=/opt/conda/bin/x86_64-conda-linux-gnu-ld
 
 COPY tfx/tools/docker/build_tfdv_wheels.sh /tmp/
 COPY tfx/tools/docker/tfdv.patch /tmp/
