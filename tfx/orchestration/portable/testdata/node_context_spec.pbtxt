@@ -1,0 +1,63 @@
+# schema: tfx.orchestration.NodeContexts
+contexts {
+  type {
+    name: "my_context_type_one"
+  }
+  name {
+    field_value {
+      string_value: "my_context_one"
+    }
+  }
+  properties {
+    key: "property_a"
+    value {
+      field_value {
+        int_value: 1
+      }
+    }
+  }
+}
+contexts {
+  type {
+    name: "my_context_type_one"
+  }
+  name {
+    field_value {
+      string_value: "my_context_two"
+    }
+  }
+  properties {
+    key: "property_a"
+    value {
+      field_value {
+        int_value: 2
+      }
+    }
+  }
+}
+contexts {
+  type {
+    name: "my_context_type_two"
+  }
+  name {
+    field_value {
+      string_value: "my_context_three"
+    }
+  }
+  properties {
+    key: "property_a"
+    value {
+      field_value {
+        int_value: 3
+      }
+    }
+  }
+  properties {
+    key: "property_b"
+    value {
+      field_value {
+        string_value: "4"
+      }
+    }
+  }
+}

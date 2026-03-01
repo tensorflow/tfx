@@ -1,0 +1,56 @@
+// Copyright 2022 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.components.example_diff;
+
+
+// Pairs examples using an identifier feature and compares feature values.
+message PairedExampleSkew {
+  // Names of the features that are to be used as identifiers.
+  repeated string identifier_features = 1;
+
+  // Size of the sample of baseline-test example pairs which exhibit skew
+  // to include in the skew results.
+  uint32 skew_sample_size = 2;
+
+  // Names of features for which no skew detection is done.
+  repeated string ignore_features = 3;
+
+  // Number of digits of precision after the decimal point to which to round
+  // float values before detecting skew.
+  uint32 float_round_ndigits = 4;
+
+  // If set, skew detection will be done on examples for which there are
+  // duplicate identifier feature values. In this case, the counts in the
+  // FeatureSkew result are based on each training-serving example pair
+  // analyzed.
+  // If not set, the feature skew detector will skip examples with duplicate
+  // identifier feature values.
+  // Examples with a given identifier feature values must all fit in memory.
+  bool allow_duplicate_identifiers = 5;
+
+  // If enabled for a feature, output will include a count for each paired
+  // value of that feature appearing in base and test. Currently supports
+  // univalent bytes features.
+  message ConfusionConfig {
+    string feature_name = 1;
+  }
+
+  repeated ConfusionConfig confusion_config = 6;
+}
+
+message ExampleDiffConfig {
+  PairedExampleSkew paired_example_skew = 1;
+}

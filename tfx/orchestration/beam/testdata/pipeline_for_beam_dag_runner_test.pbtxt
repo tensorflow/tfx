@@ -1,0 +1,384 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+
+execution_mode: SYNC
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "ExampleGen"
+      }
+      id: "my_example_gen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_example_gen"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "output_examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+            }
+          }
+        }
+      }
+    }
+    downstream_nodes: "my_trainer"
+    downstream_nodes: "my_transform"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "Transform"
+      }
+      id: "my_transform"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_transform"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_example_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_example_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "output_examples"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "transform_graph"
+        value {
+          artifact_spec {
+            type {
+              name: "TransformGraph"
+            }
+          }
+        }
+      }
+    }
+    upstream_nodes: "my_example_gen"
+    downstream_nodes: "my_trainer"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "Trainer"
+      }
+      id: "my_trainer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_trainer"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_example_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_example_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "output_examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "transform_graph"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_transform"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_transform"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "TransformGraph"
+              }
+            }
+            output_key: "transform_graph"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "model"
+        value {
+          artifact_spec {
+            type {
+              name: "Model"
+            }
+          }
+        }
+      }
+    }
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+    upstream_nodes: "my_example_gen"
+    upstream_nodes: "my_transform"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.components.common.importer.Importer"
+      }
+      id: "my_importer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_importer"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "result"
+        value {
+          artifact_spec {
+            type {
+              name: "Schema"
+            }
+            additional_custom_properties {
+              key: "str_custom_property"
+              value {
+                field_value {
+                  string_value: "abc"
+                }
+              }
+            }
+            additional_custom_properties {
+              key: "int_custom_property"
+              value {
+                field_value {
+                  int_value: 123
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "artifact_uri"
+        value {
+          field_value {
+            string_value: "my_url"
+          }
+        }
+      }
+      parameters {
+        key: "reimport"
+        value {
+          field_value {
+            int_value: 1
+          }
+        }
+      }
+    }
+  }
+}

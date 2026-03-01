@@ -1,0 +1,989 @@
+{
+  "displayName": "my-pipeline",
+  "pipelineSpec": {
+    "pipelineInfo": {
+      "name": "full-taxi-pipeline"
+    },
+    "schemaVersion": "2.1.0",
+    "sdkVersion": "tfx-0.30.0.dev",
+    "deploymentSpec": {
+      "executors": {
+        "CsvExampleGen_executor": {
+          "container": {
+            "command": [
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "image": "tensorflow/tfx:latest",
+            "args": [
+              "--executor_class_path",
+              "tfx.components.example_gen.csv_example_gen.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"parameters\": {\n    \"input_base\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"input_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_data_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"output_file_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    }\n  }\n}"
+            ],
+            "lifecycle": {
+              "preCacheCheck": {
+                "args": [
+                  "--json_serialized_invocation_args",
+                  "{{$}}",
+                  "--json_serialized_inputs_spec_args",
+                  "{\n  \"parameters\": {\n    \"input_base\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"input_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_data_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"output_file_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    }\n  }\n}"
+                ],
+                "command": [
+                  "python",
+                  "-m",
+                  "tfx.orchestration.kubeflow.v2.file_based_example_gen.driver"
+                ]
+              }
+            }
+          }
+        },
+        "Pusher_executor": {
+          "container": {
+            "args": [
+              "--executor_class_path",
+              "tfx.components.pusher.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"_Evaluator.blessing\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.ModelBlessing\\ntype: object\\n\"\n      }\n    },\n    \"model\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Model\\ntype: object\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"custom_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"push_destination\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
+            ],
+            "image": "tensorflow/tfx:latest",
+            "command": [
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ]
+          }
+        },
+        "Resolver.latest_blessed_model_resolver-model-resolver_executor": {
+          "resolver": {
+            "outputArtifactQueries": {
+              "model": {
+                "filter": "schema_title=\"tfx.Model\" AND state=LIVE AND name=\"{{$.inputs.artifacts['input'].metadata['current_model_id']}}\""
+              }
+            }
+          }
+        },
+        "Trainer_executor": {
+          "container": {
+            "args": [
+              "--executor_class_path",
+              "tfx.components.trainer.executor.GenericExecutor",
+              "--json_serialized_invocation_args",
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"base_model\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Model\\ntype: object\\n\"\n      }\n    },\n    \"examples\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    },\n    \"schema\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Schema\\ntype: object\\n\"\n      }\n    },\n    \"transform_graph\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.TransformGraph\\ntype: object\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"custom_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"eval_args\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"module_file\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"train_args\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
+            ],
+            "image": "tensorflow/tfx:latest",
+            "command": [
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ]
+          }
+        },
+        "Evaluator_executor": {
+          "container": {
+            "command": [
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "args": [
+              "--executor_class_path",
+              "tfx.components.evaluator.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"baseline_model\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Model\\ntype: object\\n\"\n      }\n    },\n    \"examples\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    },\n    \"model\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Model\\ntype: object\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"eval_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"example_splits\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"fairness_indicator_thresholds\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
+            ],
+            "image": "tensorflow/tfx:latest"
+          }
+        },
+        "Transform_executor": {
+          "container": {
+            "command": [
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "image": "tensorflow/tfx:latest",
+            "args": [
+              "--executor_class_path",
+              "tfx.components.transform.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"examples\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    },\n    \"schema\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Schema\\ntype: object\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"custom_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"disable_statistics\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"force_tf_compat_v1\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"module_file\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
+            ]
+          }
+        },
+        "Resolver.latest_model_resolver_executor": {
+          "resolver": {
+            "outputArtifactQueries": {
+              "model": {
+                "filter": "schema_title=\"tfx.Model\" AND state=LIVE"
+              }
+            }
+          }
+        },
+        "StatisticsGen_executor": {
+          "container": {
+            "command": [
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "image": "tensorflow/tfx:latest",
+            "args": [
+              "--executor_class_path",
+              "tfx.components.statistics_gen.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"examples\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Examples\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  version:\\n    type: integer\\n    description: Version for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"exclude_splits\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
+            ]
+          }
+        },
+        "Resolver.latest_blessed_model_resolver-model-blessing-resolver_executor": {
+          "resolver": {
+            "outputArtifactQueries": {
+              "model_blessing": {
+                "filter": "schema_title=\"tfx.ModelBlessing\" AND state=LIVE AND metadata.blessed.number_value=1"
+              }
+            }
+          }
+        },
+        "ExampleValidator_executor": {
+          "container": {
+            "command": [
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "args": [
+              "--executor_class_path",
+              "tfx.components.example_validator.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"schema\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.Schema\\ntype: object\\n\"\n      }\n    },\n    \"statistics\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.ExampleStatistics\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"exclude_splits\": {\n      \"parameterType\": \"STRING\"\n    }\n  }\n}"
+            ],
+            "image": "tensorflow/tfx:latest"
+          }
+        },
+        "SchemaGen_executor": {
+          "container": {
+            "image": "tensorflow/tfx:latest",
+            "command": [
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "args": [
+              "--executor_class_path",
+              "tfx.components.schema_gen.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}",
+              "--json_serialized_inputs_spec_args",
+              "{\n  \"artifacts\": {\n    \"statistics\": {\n      \"artifactType\": {\n        \"instanceSchema\": \"title: tfx.ExampleStatistics\\ntype: object\\nproperties:\\n  span:\\n    type: integer\\n    description: Span for an artifact.\\n  split_names:\\n    type: string\\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\\n\"\n      }\n    }\n  },\n  \"parameters\": {\n    \"exclude_splits\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"infer_feature_shape\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    }\n  }\n}"
+            ]
+          }
+        }
+      }
+    },
+    "components": {
+      "SchemaGen": {
+        "inputDefinitions": {
+          "artifacts": {
+            "statistics": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            }
+          },
+          "parameters": {
+            "infer_feature_shape": {
+              "parameterType": "NUMBER_INTEGER"
+            },
+            "exclude_splits": {
+              "parameterType": "STRING"
+            }
+          }
+        },
+        "outputDefinitions": {
+          "artifacts": {
+            "schema": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Schema\ntype: object\n"
+              }
+            }
+          }
+        },
+        "executorLabel": "SchemaGen_executor"
+      },
+      "Trainer": {
+        "outputDefinitions": {
+          "artifacts": {
+            "model_run": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ModelRun\ntype: object\n"
+              }
+            },
+            "model": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Model\ntype: object\n"
+              }
+            }
+          }
+        },
+        "executorLabel": "Trainer_executor",
+        "inputDefinitions": {
+          "parameters": {
+            "module_file": {
+              "parameterType": "STRING"
+            },
+            "train_args": {
+              "parameterType": "STRING"
+            },
+            "custom_config": {
+              "parameterType": "STRING"
+            },
+            "eval_args": {
+              "parameterType": "STRING"
+            }
+          },
+          "artifacts": {
+            "base_model": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Model\ntype: object\n"
+              }
+            },
+            "transform_graph": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.TransformGraph\ntype: object\n"
+              }
+            },
+            "examples": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            },
+            "schema": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Schema\ntype: object\n"
+              }
+            }
+          }
+        }
+      },
+      "Evaluator": {
+        "executorLabel": "Evaluator_executor",
+        "outputDefinitions": {
+          "artifacts": {
+            "blessing": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ModelBlessing\ntype: object\n"
+              }
+            },
+            "evaluation": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ModelEvaluation\ntype: object\n"
+              }
+            }
+          }
+        },
+        "inputDefinitions": {
+          "artifacts": {
+            "examples": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            },
+            "model": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Model\ntype: object\n"
+              }
+            },
+            "baseline_model": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Model\ntype: object\n"
+              }
+            }
+          },
+          "parameters": {
+            "example_splits": {
+              "parameterType": "STRING"
+            },
+            "eval_config": {
+              "parameterType": "STRING"
+            },
+            "fairness_indicator_thresholds": {
+              "parameterType": "STRING"
+            }
+          }
+        }
+      },
+      "Resolver.latest_blessed_model_resolver-model-blessing-resolver": {
+        "outputDefinitions": {
+          "artifacts": {
+            "model_blessing": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ModelBlessing\ntype: object\n"
+              }
+            }
+          }
+        },
+        "executorLabel": "Resolver.latest_blessed_model_resolver-model-blessing-resolver_executor"
+      },
+      "StatisticsGen": {
+        "executorLabel": "StatisticsGen_executor",
+        "inputDefinitions": {
+          "parameters": {
+            "exclude_splits": {
+              "parameterType": "STRING"
+            }
+          },
+          "artifacts": {
+            "examples": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            }
+          }
+        },
+        "outputDefinitions": {
+          "artifacts": {
+            "statistics": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            }
+          }
+        }
+      },
+      "Resolver.latest_blessed_model_resolver-model-resolver": {
+        "outputDefinitions": {
+          "artifacts": {
+            "model": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Model\ntype: object\n"
+              }
+            }
+          }
+        },
+        "inputDefinitions": {
+          "artifacts": {
+            "input": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ModelBlessing\ntype: object\n"
+              }
+            }
+          }
+        },
+        "executorLabel": "Resolver.latest_blessed_model_resolver-model-resolver_executor"
+      },
+      "Transform": {
+        "outputDefinitions": {
+          "artifacts": {
+            "pre_transform_schema": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Schema\ntype: object\n"
+              }
+            },
+            "pre_transform_stats": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            },
+            "post_transform_stats": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            },
+            "post_transform_schema": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Schema\ntype: object\n"
+              }
+            },
+            "post_transform_anomalies": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ExampleAnomalies\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            },
+            "updated_analyzer_cache": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.TransformCache\ntype: object\n"
+              }
+            },
+            "transformed_examples": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            },
+            "transform_graph": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.TransformGraph\ntype: object\n"
+              }
+            }
+          }
+        },
+        "inputDefinitions": {
+          "artifacts": {
+            "examples": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            },
+            "schema": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Schema\ntype: object\n"
+              }
+            }
+          },
+          "parameters": {
+            "module_file": {
+              "parameterType": "STRING"
+            },
+            "disable_statistics": {
+              "parameterType": "NUMBER_INTEGER"
+            },
+            "custom_config": {
+              "parameterType": "STRING"
+            },
+            "force_tf_compat_v1": {
+              "parameterType": "NUMBER_INTEGER"
+            }
+          }
+        },
+        "executorLabel": "Transform_executor"
+      },
+      "Pusher": {
+        "executorLabel": "Pusher_executor",
+        "outputDefinitions": {
+          "artifacts": {
+            "pushed_model": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.PushedModel\ntype: object\n"
+              }
+            }
+          }
+        },
+        "inputDefinitions": {
+          "artifacts": {
+              "_Evaluator.blessing": {
+                  "artifactType": {
+                      "instanceSchema": "title: tfx.ModelBlessing\ntype: object\n"
+                  }
+              },
+              "model": {
+                  "artifactType": {
+                      "instanceSchema": "title: tfx.Model\ntype: object\n"
+                  }
+              }
+          },
+          "parameters": {
+            "push_destination": {
+              "parameterType": "STRING"
+            },
+            "custom_config": {
+              "parameterType": "STRING"
+            }
+          }
+        }
+      },
+      "CsvExampleGen": {
+        "outputDefinitions": {
+          "artifacts": {
+            "examples": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            }
+          }
+        },
+        "executorLabel": "CsvExampleGen_executor",
+        "inputDefinitions": {
+          "parameters": {
+            "input_base": {
+              "parameterType": "STRING"
+            },
+            "input_config": {
+              "parameterType": "STRING"
+            },
+            "output_config": {
+              "parameterType": "STRING"
+            },
+            "output_data_format": {
+              "parameterType": "NUMBER_INTEGER"
+            },
+            "output_file_format": {
+              "parameterType": "NUMBER_INTEGER"
+            }
+          }
+        }
+      },
+      "ExampleValidator": {
+        "executorLabel": "ExampleValidator_executor",
+        "outputDefinitions": {
+          "artifacts": {
+            "anomalies": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ExampleAnomalies\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            }
+          }
+        },
+        "inputDefinitions": {
+          "parameters": {
+            "exclude_splits": {
+              "parameterType": "STRING"
+            }
+          },
+          "artifacts": {
+            "statistics": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            },
+            "schema": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Schema\ntype: object\n"
+              }
+            }
+          }
+        }
+      },
+      "Resolver.latest_model_resolver": {
+        "executorLabel": "Resolver.latest_model_resolver_executor",
+        "outputDefinitions": {
+          "artifacts": {
+            "model": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Model\ntype: object\n"
+              }
+            }
+          }
+        },
+        "inputDefinitions": {
+          "parameters": {
+            "source_uri": {
+              "parameterType": "STRING"
+            },
+            "resolver_class": {
+              "parameterType": "STRING"
+            }
+          }
+        }
+      }
+    },
+    "root": {
+      "dag": {
+        "tasks": {
+          "Transform": {
+            "taskInfo": {
+              "name": "Transform"
+            },
+            "componentRef": {
+              "name": "Transform"
+            },
+            "inputs": {
+              "artifacts": {
+                "schema": {
+                  "taskOutputArtifact": {
+                    "producerTask": "SchemaGen",
+                    "outputArtifactKey": "schema"
+                  }
+                },
+                "examples": {
+                  "taskOutputArtifact": {
+                    "outputArtifactKey": "examples",
+                    "producerTask": "CsvExampleGen"
+                  }
+                }
+              },
+              "parameters": {
+                "module_file": {
+                  "runtimeValue": {
+                    "constant": "path/to/my/module_utils.py"
+                  }
+                },
+                "disable_statistics": {
+                  "runtimeValue": {
+                    "constant": 0.0
+                  }
+                },
+                "custom_config": {
+                  "runtimeValue": {
+                    "constant": "null"
+                  }
+                },
+                "force_tf_compat_v1": {
+                  "runtimeValue": {
+                    "constant": 0.0
+
+                  }
+                }
+              }
+            },
+            "dependentTasks": [
+              "CsvExampleGen",
+              "SchemaGen"
+            ]
+          },
+          "ExampleValidator": {
+            "taskInfo": {
+              "name": "ExampleValidator"
+            },
+            "inputs": {
+              "parameters": {
+                "exclude_splits": {
+                  "runtimeValue": {
+                    "constant": "[]"
+                  }
+                }
+              },
+              "artifacts": {
+                "schema": {
+                  "taskOutputArtifact": {
+                    "outputArtifactKey": "schema",
+                    "producerTask": "SchemaGen"
+                  }
+                },
+                "statistics": {
+                  "taskOutputArtifact": {
+                    "producerTask": "StatisticsGen",
+                    "outputArtifactKey": "statistics"
+                  }
+                }
+              }
+            },
+            "dependentTasks": [
+              "SchemaGen",
+              "StatisticsGen"
+            ],
+            "componentRef": {
+              "name": "ExampleValidator"
+            }
+          },
+          "Evaluator": {
+            "componentRef": {
+              "name": "Evaluator"
+            },
+            "dependentTasks": [
+              "CsvExampleGen",
+              "Resolver.latest_blessed_model_resolver-model-resolver",
+              "Trainer"
+            ],
+            "taskInfo": {
+              "name": "Evaluator"
+            },
+            "inputs": {
+              "artifacts": {
+                "model": {
+                  "taskOutputArtifact": {
+                    "producerTask": "Trainer",
+                    "outputArtifactKey": "model"
+                  }
+                },
+                "baseline_model": {
+                  "taskOutputArtifact": {
+                    "outputArtifactKey": "model",
+                    "producerTask": "Resolver.latest_blessed_model_resolver-model-resolver"
+                  }
+                },
+                "examples": {
+                  "taskOutputArtifact": {
+                    "outputArtifactKey": "examples",
+                    "producerTask": "CsvExampleGen"
+                  }
+                }
+              },
+              "parameters": {
+                "eval_config": {
+                  "runtimeValue": {
+                    "constant": "{\n  \"metrics_specs\": [\n    {\n      \"metrics\": [\n        {\n          \"class_name\": \"BinaryAccuracy\",\n          \"threshold\": {\n            \"change_threshold\": {\n              \"absolute\": -1e-10,\n              \"direction\": \"HIGHER_IS_BETTER\"\n            },\n            \"value_threshold\": {\n              \"lower_bound\": 0.6\n            }\n          }\n        }\n      ]\n    }\n  ],\n  \"model_specs\": [\n    {\n      \"label_key\": \"tips_xf\",\n      \"preprocessing_function_names\": [\n        \"transform_features\"\n      ],\n      \"signature_name\": \"serving_default\"\n    }\n  ],\n  \"slicing_specs\": [\n    {}\n  ]\n}"
+                  }
+                },
+                "example_splits": {
+                  "runtimeValue": {
+                    "constant": "null"
+                  }
+                },
+                "fairness_indicator_thresholds": {
+                  "runtimeValue": {
+                    "constant": "null"
+                  }
+                }
+              }
+            }
+          },
+          "Resolver.latest_blessed_model_resolver-model-resolver": {
+            "taskInfo": {
+              "name": "Resolver.latest_blessed_model_resolver-model-resolver"
+            },
+            "inputs": {
+              "artifacts": {
+                "input": {
+                  "taskOutputArtifact": {
+                    "producerTask": "Resolver.latest_blessed_model_resolver-model-blessing-resolver",
+                    "outputArtifactKey": "model_blessing"
+                  }
+                }
+              }
+            },
+            "componentRef": {
+              "name": "Resolver.latest_blessed_model_resolver-model-resolver"
+            }
+          },
+          "Trainer": {
+            "componentRef": {
+              "name": "Trainer"
+            },
+            "inputs": {
+              "parameters": {
+                "train_args": {
+                  "runtimeValue": {
+                    "constant": "{\n  \"num_steps\": 10\n}"
+                  }
+                },
+                "eval_args": {
+                  "runtimeValue": {
+                    "constant": "{\n  \"num_steps\": 5\n}"
+                  }
+                },
+                "module_file": {
+                  "runtimeValue": {
+                    "constant": "path/to/my/module_utils.py"
+                  }
+                },
+                "custom_config": {
+                  "runtimeValue": {
+                    "constant": "null"
+                  }
+                }
+              },
+              "artifacts": {
+                "base_model": {
+                  "taskOutputArtifact": {
+                    "producerTask": "Resolver.latest_model_resolver",
+                    "outputArtifactKey": "model"
+                  }
+                },
+                "transform_graph": {
+                  "taskOutputArtifact": {
+                    "producerTask": "Transform",
+                    "outputArtifactKey": "transform_graph"
+                  }
+                },
+                "examples": {
+                  "taskOutputArtifact": {
+                    "producerTask": "Transform",
+                    "outputArtifactKey": "transformed_examples"
+                  }
+                },
+                "schema": {
+                  "taskOutputArtifact": {
+                    "outputArtifactKey": "schema",
+                    "producerTask": "SchemaGen"
+                  }
+                }
+              }
+            },
+            "dependentTasks": [
+              "Resolver.latest_model_resolver",
+              "SchemaGen",
+              "Transform"
+            ],
+            "taskInfo": {
+              "name": "Trainer"
+            }
+          },
+          "SchemaGen": {
+            "inputs": {
+              "parameters": {
+                "infer_feature_shape": {
+                  "runtimeValue": {
+                    "constant": 0.0
+                  }
+                },
+                "exclude_splits": {
+                  "runtimeValue": {
+                    "constant": "[]"
+                  }
+                }
+              },
+              "artifacts": {
+                "statistics": {
+                  "taskOutputArtifact": {
+                    "producerTask": "StatisticsGen",
+                    "outputArtifactKey": "statistics"
+                  }
+                }
+              }
+            },
+            "componentRef": {
+              "name": "SchemaGen"
+            },
+            "taskInfo": {
+              "name": "SchemaGen"
+            },
+            "dependentTasks": [
+              "StatisticsGen"
+            ]
+          },
+          "Pusher": {
+            "dependentTasks": [
+              "Evaluator",
+              "Trainer"
+            ],
+            "taskInfo": {
+              "name": "Pusher"
+            },
+            "componentRef": {
+              "name": "Pusher"
+            },
+            "inputs": {
+              "artifacts": {
+                  "_Evaluator.blessing": {
+                      "taskOutputArtifact": {
+                          "outputArtifactKey": "blessing",
+                          "producerTask": "Evaluator"
+                      }
+                  },
+                  "model": {
+                      "taskOutputArtifact": {
+                          "outputArtifactKey": "model",
+                          "producerTask": "Trainer"
+                      }
+                  }
+              },
+              "parameters": {
+                "custom_config": {
+                  "runtimeValue": {
+                    "constant": "null"
+                  }
+                },
+                "push_destination": {
+                  "runtimeValue": {
+                    "constant": "{\n  \"filesystem\": {\n    \"base_directory\": \"path/to/my/root/model_serving\"\n  }\n}"
+                  }
+                }
+              }
+            },
+            "triggerPolicy": {
+                "condition": "(inputs.artifacts['_Evaluator.blessing'].artifacts[0].metadata['blessed'] == 1.0)"
+            }
+          },
+          "CsvExampleGen": {
+            "inputs": {
+              "parameters": {
+                "output_config": {
+                  "runtimeValue": {
+                    "constant": "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+                  }
+                },
+                "input_config": {
+                  "runtimeValue": {
+                    "constant": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
+                  }
+                },
+                "input_base": {
+                  "runtimeValue": {
+                    "constant": "path/to/my/data"
+                  }
+                },
+                "output_data_format": {
+                  "runtimeValue": {
+                    "constant": 6.0
+                  }
+                },
+                "output_file_format": {
+                  "runtimeValue": {
+                    "constant": 5.0
+                  }
+                }
+              }
+            },
+            "componentRef": {
+              "name": "CsvExampleGen"
+            },
+            "taskInfo": {
+              "name": "CsvExampleGen"
+            }
+          },
+          "StatisticsGen": {
+            "inputs": {
+              "parameters": {
+                "exclude_splits": {
+                  "runtimeValue": {
+                    "constant": "[]"
+                  }
+                }
+              },
+              "artifacts": {
+                "examples": {
+                  "taskOutputArtifact": {
+                    "producerTask": "CsvExampleGen",
+                    "outputArtifactKey": "examples"
+                  }
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "StatisticsGen"
+            },
+            "componentRef": {
+              "name": "StatisticsGen"
+            },
+            "dependentTasks": [
+              "CsvExampleGen"
+            ]
+          },
+          "Resolver.latest_blessed_model_resolver-model-blessing-resolver": {
+            "taskInfo": {
+              "name": "Resolver.latest_blessed_model_resolver-model-blessing-resolver"
+            },
+            "componentRef": {
+              "name": "Resolver.latest_blessed_model_resolver-model-blessing-resolver"
+            }
+          },
+          "Resolver.latest_model_resolver": {
+            "taskInfo": {
+              "name": "Resolver.latest_model_resolver"
+            },
+            "componentRef": {
+              "name": "Resolver.latest_model_resolver"
+            },
+            "inputs": {
+              "parameters": {
+                "source_uri": {
+                  "runtimeValue": {
+                    "constant": "{}"
+                  }
+                },
+                "resolver_class": {
+                  "runtimeValue": {
+                    "constant": "{\"__class__\": \"LatestArtifactStrategy\", \"__module__\": \"tfx.dsl.input_resolution.strategies.latest_artifact_strategy\", \"__tfx_object_type__\": \"class\"}"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "labels": {
+    "tfx_version": "0-30-0-dev",
+    "tfx_runner": "kubeflow_v2",
+    "tfx_py_version": "3-7"
+  },
+  "runtimeConfig": {
+    "gcsOutputDirectory": "path/to/my/root"
+  }
+}

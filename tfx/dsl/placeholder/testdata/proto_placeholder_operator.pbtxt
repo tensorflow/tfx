@@ -1,0 +1,46 @@
+# proto-file: tfx/proto/orchestration/placeholder.proto
+# proto-message: PlaceholderExpression
+
+operator {
+  index_op {
+    expression {
+      operator {
+        proto_op {
+          expression {
+            placeholder {
+              type: EXEC_PROPERTY
+              key: "splits_config"
+            }
+          }
+          proto_field_path: ".analyze"
+          proto_schema {
+            message_type: "tfx.components.transform.SplitsConfig"
+            file_descriptors {
+              file {
+                name: "tfx/proto/transform.proto"
+                package: "tfx.components.transform"
+                message_type {
+                  name: "SplitsConfig"
+                  field {
+                    name: "analyze"
+                    number: 1
+                    label: LABEL_REPEATED
+                    type: TYPE_STRING
+                  }
+                  field {
+                    name: "transform"
+                    number: 2
+                    label: LABEL_REPEATED
+                    type: TYPE_STRING
+                  }
+                }
+                syntax: "proto3"
+              }
+            }
+          }
+        }
+      }
+    }
+    index: 0
+  }
+}

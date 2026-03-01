@@ -11,97 +11,82 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX ExampleValidator component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""TFX SchemaGen component definition."""
 
-from typing import Optional, Text
+from typing import List, Optional, Union
 
+from absl import logging
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
 from tfx.components.schema_gen import executor
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import SchemaGenSpec
+from tfx.types import standard_component_specs
+from tfx.utils import json_utils
 
 
 class SchemaGen(base_component.BaseComponent):
   """A TFX SchemaGen component to generate a schema from the training data.
 
   The SchemaGen component uses [TensorFlow Data
-  Validation](https://www.tensorflow.org/tfx/data_validation) to
-  generate a schema from input statistics.  The following TFX libraries use the
-  schema:
+  Validation](https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv)
+  to generate a schema from input statistics. The following TFX libraries use
+  the schema:
     - TensorFlow Data Validation
     - TensorFlow Transform
     - TensorFlow Model Analysis
 
-  In a typical TFX pipeline, the SchemaGen component generates a schema which is
+  In a typical TFX pipeline, the SchemaGen component generates a schema which
   is consumed by the other pipeline components.
 
-  Please see https://www.tensorflow.org/tfx/data_validation for more details.
+  !!! Example
+      ``` python
+      # Generates schema based on statistics files.
+      infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
+      ```
 
-  ## Example
-  ```
-    # Generates an inferred schema based on given statistics files.
-    infer_schema = SchemaGen(stats=statistics_gen.outputs['output'])
+  Component `outputs` contains:
 
-    # Provide an instance of schema that has already been implemented.
-    # Schema is the pipeline's expectation towards training data, under
-    # the assumption of which Transform and Trainer are implemented, and
-    # by which ExampleValidator validates which future training data and
-    # identify anomalies.
-    # Schema may have been inferred from previous executions of SchemaGen,
-    # or implemented manually.
-    fixed_schema = SchemaGen(schema=...)
-  ```
+   - `schema`: Channel of type [`standard_artifacts.Schema`][tfx.v1.types.standard_artifacts.Schema] for schema
+   result.
+
+  See [the SchemaGen guide](../../../guide/schemagen)
+  for more details.
   """
-  # TODO(b/123941608): Update pydoc about how to use a user provided schema
-
-  SPEC_CLASS = SchemaGenSpec
+  SPEC_CLASS = standard_component_specs.SchemaGenSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(self,
-               stats: Optional[types.Channel] = None,
-               schema: Optional[types.Channel] = None,
-               infer_feature_shape: Optional[bool] = False,
-               output: Optional[types.Channel] = None,
-               statistics: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      statistics: types.BaseChannel,
+      infer_feature_shape: Optional[Union[bool,
+                                          data_types.RuntimeParameter]] = True,
+      exclude_splits: Optional[List[str]] = None):
     """Constructs a SchemaGen component.
 
     Args:
-      stats: A Channel of `ExampleStatistics` type (required if spec is not
-        passed). This should contain at least a `train` split. Other splits are
-        currently ignored. Exactly one of 'stats'/'statistics' or 'schema'
-        is required.
-      schema: A Channel of `Schema` type that provides an instance of Schema.
-        If provided, pass through this schema artifact as the output. Exactly
-        one of 'stats'/'statistics' or 'schema' is required.
-      infer_feature_shape: Boolean value indicating whether or not to infer the
-        shape of features. If the feature shape is not inferred, downstream
-        Tensorflow Transform component using the schema will parse input
-        as tf.SparseTensor.
-      output: Output `Schema` channel for schema result.
-      statistics: Future replacement of the 'stats' argument.
-      instance_name: Optional name assigned to this specific instance of
-        SchemaGen.  Required only if multiple SchemaGen components are declared
-        in the same pipeline.
-
-      Either `statistics` or `stats` must be present in the input arguments.
+      statistics: A [BaseChannel][tfx.v1.types.BaseChannel]
+        of `ExampleStatistics` type (required if spec is not passed).
+        This should contain at least a `train` split. Other splits
+        are currently ignored. _required_
+      infer_feature_shape: Boolean (or [RuntimeParameter][tfx.v1.dsl.experimental.RuntimeParameter]) value indicating
+        whether or not to infer the shape of features. If the feature shape is
+        not inferred, downstream Tensorflow Transform component using the schema
+        will parse input as tf.SparseTensor. Default to True if not set.
+      exclude_splits: Names of splits that will not be taken into consideration
+        when auto-generating a schema. Default behavior (when exclude_splits is
+        set to None) is excluding no splits.
     """
-    stats = stats or statistics
-    output = output or types.Channel(
-        type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
-
-    if bool(stats) == bool(schema):
-      raise ValueError(
-          'Exactly one of statistics or schema must be supplied.')
-
-    spec = SchemaGenSpec(
-        stats=stats,
-        schema=schema,
+    if exclude_splits is None:
+      exclude_splits = []
+      logging.info('Excluding no splits because exclude_splits is not set.')
+    schema = types.Channel(type=standard_artifacts.Schema)
+    if isinstance(infer_feature_shape, bool):
+      infer_feature_shape = int(infer_feature_shape)
+    spec = standard_component_specs.SchemaGenSpec(
+        statistics=statistics,
         infer_feature_shape=infer_feature_shape,
-        output=output)
-    super(SchemaGen, self).__init__(spec=spec, instance_name=instance_name)
+        exclude_splits=json_utils.dumps(exclude_splits),
+        schema=schema)
+    super().__init__(spec=spec)

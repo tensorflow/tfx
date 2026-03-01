@@ -13,42 +13,54 @@
 # limitations under the License.
 """Common code shared by test code."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-import tensorflow as tf
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
+
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import base_driver
-from tfx.components.base import base_executor
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_driver
+from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import executor_spec
+from tfx.dsl.io import fileio
 from tfx.orchestration import data_types
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import component_spec
 
 
+class _InputArtifact(types.Artifact):
+  TYPE_NAME = 'InputArtifact'
+
+
+class _OutputArtifact(types.Artifact):
+  TYPE_NAME = 'OutputArtifact'
+
+
 class _FakeDriver(base_driver.BaseDriver):
   """Fake driver for testing purpose only."""
 
-  def pre_execution(
+  def pre_execution(  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
       self,
-      input_dict: Dict[Text, types.Channel],
-      output_dict: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],
+      input_dict: Dict[str, types.Channel],
+      output_dict: Dict[str, types.Channel],
+      exec_properties: Dict[str, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> data_types.ExecutionDecision:
     input_artifacts = channel_utils.unwrap_channel_dict(input_dict)
     output_artifacts = channel_utils.unwrap_channel_dict(output_dict)
-    tf.gfile.MakeDirs(pipeline_info.pipeline_root)
-    artifact_utils.get_single_instance(
-        output_artifacts['output']).uri = os.path.join(
-            pipeline_info.pipeline_root, 'output')
+
+    # Generating missing output artifact URIs
+    for name, artifacts in output_artifacts.items():
+      for idx, artifact in enumerate(artifacts):
+        if not artifact.uri:
+          suffix = str(idx + 1) if idx > 0 else ''
+          artifact.uri = os.path.join(
+              pipeline_info.pipeline_root, 'artifacts', name + suffix, 'data',
+          )
+          fileio.makedirs(os.path.dirname(artifact.uri))
+
     return data_types.ExecutionDecision(input_artifacts, output_artifacts,
                                         exec_properties, 123, False)
 
@@ -56,19 +68,19 @@ class _FakeDriver(base_driver.BaseDriver):
 class _FakeExecutor(base_executor.BaseExecutor):
   """Fake executor for testing purpose only."""
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     input_path = artifact_utils.get_single_uri(input_dict['input'])
     output_path = artifact_utils.get_single_uri(output_dict['output'])
-    tf.gfile.Copy(input_path, output_path)
+    fileio.copy(input_path, output_path)
 
 
 class _FakeComponentSpec(types.ComponentSpec):
   """Fake component spec for testing purpose only."""
   PARAMETERS = {}
-  INPUTS = {'input': component_spec.ChannelParameter(type_name='InputPath')}
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='OutputPath')}
+  INPUTS = {'input': component_spec.ChannelParameter(type=_InputArtifact)}
+  OUTPUTS = {'output': component_spec.ChannelParameter(type=_OutputArtifact)}
 
 
 class _FakeComponent(base_component.BaseComponent):
@@ -77,15 +89,14 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
   DRIVER_CLASS = _FakeDriver
 
-  def __init__(self,
-               name: Text,
-               input_channel: types.Channel,
-               output_channel: Optional[types.Channel] = None,
-               custom_executor_spec: executor_spec.ExecutorSpec = None):
+  def __init__(
+      self,
+      name: str,
+      input_channel: types.Channel,
+      output_channel: Optional[types.Channel] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     output_channel = output_channel or types.Channel(
-        type_name='OutputPath', artifacts=[types.Artifact('OutputPath')])
+        type=_OutputArtifact).set_artifacts([_OutputArtifact()])
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
-    super(_FakeComponent, self).__init__(
-        spec=spec,
-        instance_name=name,
-        custom_executor_spec=custom_executor_spec)
+    super().__init__(spec=spec, custom_executor_spec=custom_executor_spec)
+    self._id = '{}.{}'.format(self.__class__.__name__, name)

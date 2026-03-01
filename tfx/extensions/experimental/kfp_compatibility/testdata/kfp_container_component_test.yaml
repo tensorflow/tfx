@@ -1,0 +1,26 @@
+name: Test_Kfp_Container_Component
+description: Component spec for testing kfp_container_component
+metadata:
+  annotations: {annotation1: annotation1, annotation2: annotation2}
+  labels: {labels1: labels1}
+inputs:
+- {name: input1, type: Directory, description: description1, default: default1, optional: false}
+- {name: input2, type: String, description: description2, default: default2, optional: true}
+outputs:
+- {name: output1, type: File, description: description3}
+implementation:
+  container:
+    image: image1
+    command:
+    - command1
+    - command2
+    - command3
+    - inputPath: Directory
+    - inputValue: Subpath
+    - outputPath: File
+    args: [
+      --arg1, {inputPath: input1},
+      --arg2, {inputValue: input2},
+      --arg3, {outputPath: output1},
+    ]
+version: version1

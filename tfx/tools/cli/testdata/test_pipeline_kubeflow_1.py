@@ -11,71 +11,54 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Chicago Taxi example using TFX DSL on Kubeflow."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Test pipeline for Kubeflow."""
 
 import os
 
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.schema_gen.component import SchemaGen
-from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.orchestration import pipeline
-from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
-from tfx.utils.dsl_utils import csv_input
+from tfx.orchestration import pipeline as tfx_pipeline
+from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.tools.cli.e2e import test_utils
 
-# This example assumes that the taxi data is stored in ~/taxi/data and the
-# taxi utility function is in ~/taxi.  Feel free to customize this as needed.
-_taxi_root = os.path.join(os.environ['HOME'], 'taxi')
-_data_root = os.path.join(_taxi_root, 'data/simple')
+from ml_metadata.proto import metadata_store_pb2
 
-_output_dir = os.path.join(os.environ['HOME'], 'tfx')
-_pipeline_root = os.path.join(_output_dir, 'tfx')
+# The base container image name to use when building the image used in tests.
+_BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
 
-# Google Cloud Platform project id to use when deploying this pipeline.
-_project_id = 'my-gcp-project'
+# The GCP bucket to use to write output artifacts.
+_BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
 
-# Region to use for Dataflow jobs and AI Platform training jobs.
-_gcp_region = 'us-central1'
+# The location of test data. The input files are copied to a test-local
+# location for each invocation, and cleaned up at the end of test.
+_TESTDATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
+
+
+def _get_test_output_dir():
+  return 'gs://{}/test_output'.format(_BUCKET_NAME)
+
+
+def _get_csv_input_location():
+  return os.path.join(_TESTDATA_ROOT, 'external', 'csv')
+
+
+# Name of the pipeline
+_PIPELINE_NAME = 'chicago_taxi_pipeline_kubeflow'
 
 
 def _create_pipeline():
-  """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines."""
-
-  examples = csv_input(_data_root)
-
-  # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input_base=examples)
-
-  # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
-
-  # Generates schema based on statistics files.
-  infer_schema = SchemaGen(stats=statistics_gen.outputs['output'])
-
-  # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs['output'],
-      schema=infer_schema.outputs['output'])
-
-  return pipeline.Pipeline(
-      pipeline_name='chicago_taxi_pipeline_kubeflow',
-      pipeline_root=_pipeline_root,
-      components=[example_gen, statistics_gen, infer_schema, validate_stats],
-      additional_pipeline_args={
-          'beam_pipeline_args': [
-              '--runner=DataflowRunner',
-              '--experiments=shuffle_mode=auto',
-              '--project=' + _project_id,
-              '--temp_location=' + os.path.join(_output_dir, 'tmp'),
-              '--region=' + _gcp_region,
-          ],
-      },
-      log_root='/var/tmp/tfx/logs',
+  pipeline_name = _PIPELINE_NAME
+  pipeline_root = os.path.join(_get_test_output_dir(), pipeline_name)
+  components = test_utils.create_e2e_components(_get_csv_input_location())
+  return tfx_pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
+      components=components[:2],  # Run two components only to reduce overhead.
   )
 
 
-_ = KubeflowDagRunner().run(_create_pipeline())
+runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
+    kubeflow_metadata_config=kubeflow_dag_runner
+    .get_default_kubeflow_metadata_config(),
+    tfx_image=_BASE_CONTAINER_IMAGE)
+_ = kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
+    _create_pipeline())

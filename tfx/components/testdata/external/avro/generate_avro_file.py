@@ -13,13 +13,8 @@
 # limitations under the License.
 """Generate avro file from Chicago taxi csv data."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import fastavro
 import pandas as pd
-from typing import Text
 
 
 def get_schema():
@@ -52,7 +47,7 @@ def get_schema():
   return {'name': 'Chicago Taxi dataset', 'type': 'record', 'fields': fields}
 
 
-def generate_avro(src_file: Text, output_file: Text):
+def generate_avro(src_file: str, output_file: str):
   """Generates avro file based on src file.
 
   Args:

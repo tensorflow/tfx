@@ -13,31 +13,31 @@
 # limitations under the License.
 """TFX publisher."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import Any, Dict, List, Optional
 
-import tensorflow as tf
-from typing import Dict, List, Text
+from absl import logging
 
 from tfx import types
+from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.orchestration.portable import outputs_utils
 
 
-class Publisher(object):
+class Publisher:
   """Publish execution to metadata.
 
   Attributes:
-    _metadata_handler: An instance of Metadata.
+    _metadata_handle: An instance of Metadata.
   """
 
-  def __init__(self, metadata_handler: metadata.Metadata):
-    self._metadata_handler = metadata_handler
+  def __init__(self, metadata_handle: metadata.Metadata):
+    self._metadata_handle = metadata_handle
 
   def publish_execution(
-      self, execution_id: int, input_dict: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, List[types.Artifact]],
-      use_cached_results: bool) -> Dict[Text, List[types.Artifact]]:
+      self,
+      component_info: data_types.ComponentInfo,
+      output_artifacts: Optional[Dict[str, List[types.Artifact]]] = None,
+      exec_properties: Optional[Dict[str, Any]] = None):
     """Publishes a component execution to metadata.
 
     This function will do two things:
@@ -47,23 +47,22 @@ class Publisher(object):
        artifact to the execution, with type INPUT or OUTPUT respectively
 
     Args:
-      execution_id: the execution id for the
-      input_dict: key -> Artifacts that are used as inputs in the execution
-      output_dict: key -> Artifacts that are declared as outputs for the
+      component_info: the information of the component
+      output_artifacts: optional key -> Artifacts to be published as outputs
+        of the execution
+      exec_properties: optional execution properties to be published for the
         execution
-      use_cached_results: whether or not the execution has used cached results
 
     Returns:
       A dict containing output artifacts.
     """
-    tf.logging.info('Whether cached results are used: %s', use_cached_results)
-    tf.logging.info('Execution id: %s', execution_id)
-    tf.logging.info('Inputs: %s', input_dict)
-    tf.logging.info('Outputs: %s', output_dict)
+    outputs_utils.tag_output_artifacts_with_version(output_artifacts)
 
-    final_execution_state = metadata.EXECUTION_STATE_CACHED if use_cached_results else metadata.EXECUTION_STATE_COMPLETE
-    return self._metadata_handler.publish_execution(
-        execution_id=execution_id,
-        input_dict=input_dict,
-        output_dict=output_dict,
-        state=final_execution_state)
+    logging.debug('Outputs: %s', output_artifacts)
+    logging.debug('Execution properties: %s', exec_properties)
+
+    self._metadata_handle.publish_execution(
+        component_info=component_info,
+        output_artifacts=output_artifacts,
+        exec_properties=exec_properties,
+    )

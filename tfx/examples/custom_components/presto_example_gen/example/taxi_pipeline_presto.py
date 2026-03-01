@@ -13,25 +13,19 @@
 # limitations under the License.
 """Chicago taxi example using TFX."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
-from presto_component.component import PrestoExampleGen
-from proto import presto_config_pb2
-import tensorflow as tf
-from typing import Text
-
-from tfx.components.evaluator.component import Evaluator
-from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.model_validator.component import ModelValidator
-from tfx.components.pusher.component import Pusher
-from tfx.components.schema_gen.component import SchemaGen
-from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.components.trainer.component import Trainer
-from tfx.components.transform.component import Transform
+import absl
+from tfx.components import Evaluator
+from tfx.components import ExampleValidator
+from tfx.components import ModelValidator
+from tfx.components import Pusher
+from tfx.components import SchemaGen
+from tfx.components import StatisticsGen
+from tfx.components import Trainer
+from tfx.components import Transform
+from tfx.examples.custom_components.presto_example_gen.presto_component.component import PrestoExampleGen
+from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -67,45 +61,44 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
-                     module_file: Text,
+def _create_pipeline(pipeline_name: str, pipeline_root: str, module_file: str,
                      presto_config: presto_config_pb2.PrestoConnConfig,
-                     query: Text, serving_model_dir: Text,
-                     metadata_path: Text) -> pipeline.Pipeline:
+                     query: str, serving_model_dir: str,
+                     metadata_path: str) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
   # Brings data into the pipeline or otherwise joins/converts training data
   example_gen = PrestoExampleGen(presto_config, query=query)
 
   # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(stats=statistics_gen.outputs['output'])
+  schema_gen = SchemaGen(statistics=statistics_gen.outputs['statistics'])
 
   # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs['output'],
-      schema=infer_schema.outputs['output'])
+  example_validator = ExampleValidator(
+      statistics=statistics_gen.outputs['statistics'],
+      schema=schema_gen.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
-      input_data=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['output'],
+      examples=example_gen.outputs['examples'],
+      schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  # Uses user-provided Python function that implements a model using TF-Learn.
+  # Uses user-provided Python function that implements a model.
   trainer = Trainer(
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['output'],
-      transform_output=transform.outputs['transform_output'],
+      schema=schema_gen.outputs['schema'],
+      transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
-      model_exports=trainer.outputs['output'],
+      model=trainer.outputs['model'],
       feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
           evaluator_pb2.SingleSlicingSpec(
               column_for_slicing=['trip_start_hour'])
@@ -113,12 +106,12 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
 
   # Performs quality validation of a candidate model (compared to a baseline).
   model_validator = ModelValidator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['output'])
+      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
   pusher = Pusher(
-      model_export=trainer.outputs['output'],
+      model=trainer.outputs['model'],
       model_blessing=model_validator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
@@ -128,20 +121,19 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
-          example_gen, statistics_gen, infer_schema, validate_stats, transform,
-          trainer, model_analyzer, model_validator, pusher
+          example_gen, statistics_gen, schema_gen, example_validator, transform,
+          trainer, evaluator, model_validator, pusher
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      additional_pipeline_args={},
   )
 
 
 # To run this pipeline from the python CLI:
 #   $python taxi_pipeline_presto.py
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  absl.logging.set_verbosity(absl.logging.INFO)
 
   BeamDagRunner().run(
       _create_pipeline(

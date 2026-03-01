@@ -13,18 +13,14 @@
 # limitations under the License.
 """Deprecated definition of Kubeflow TFX runner."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.utils import deprecation_utils
 
-KubeflowRunner = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+KubeflowRunner = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
     deprecated_name='runner.KubeflowRunner',
     name='kubeflow_dag_runner.KubeflowDagRunner',
     func_or_class=kubeflow_dag_runner.KubeflowDagRunner)
-KubeflowRunnerConfig = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+KubeflowRunnerConfig = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
     deprecated_name='runner.KubeflowRunnerConfig',
     name='kubeflow_dag_runner.KubeflowDagRunnerConfig',
     func_or_class=kubeflow_dag_runner.KubeflowDagRunnerConfig)

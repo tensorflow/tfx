@@ -1,0 +1,51 @@
+tensor_representation_group {
+  key: ""
+  value {
+    tensor_representation {
+      key: "f"
+      value { varlen_sparse_tensor { column_name: "f" } }
+    }
+    tensor_representation {
+      key: "i"
+      value { varlen_sparse_tensor { column_name: "i" } }
+    }
+    tensor_representation {
+      key: "seq_s"
+      value {
+        ragged_tensor {
+          feature_path { step: "##SEQUENCE##" step: "s" }
+        }
+      }
+    }
+  }
+}
+feature {
+  name: "f"
+  type: FLOAT
+  value_count {
+    min: 0
+    max: 1
+  }
+}
+feature {
+  name: "i"
+  type: INT
+  value_count {
+    min: 1
+    max: 1
+  }
+}
+feature {
+  name: "##SEQUENCE##"
+  type: STRUCT
+  struct_domain {
+    feature {
+      name: "s"
+      type: BYTES
+      value_count {
+        min: 0
+        max: 2
+      }
+    }
+  }
+}

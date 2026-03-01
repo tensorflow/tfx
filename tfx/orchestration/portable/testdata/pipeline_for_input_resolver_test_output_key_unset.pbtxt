@@ -1,0 +1,136 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "Trainer"
+      }
+      id: "my_trainer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          field_value {
+            string_value: "123456"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_trainer"
+          }
+        }
+      }
+    }
+   outputs {
+      outputs {
+        key: "model"
+        value {
+          artifact_spec {
+            type {
+              name: "Model"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "Pusher"
+      }
+      id: "my_pusher"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline_run"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_pusher"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "model"
+        value {
+          channels {
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                field_value {
+                  string_value: "123456"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+              }
+            }
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "pushed_model"
+        value {
+          artifact_spec {
+            type {
+              name: "PushedModel"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -2,99 +2,88 @@
 
 ## Introduction
 
-TFX is a Google-production-scale machine learning platform based on TensorFlow.
-It provides a configuration framework and shared libraries to integrate common
-components needed to define, launch, and monitor your machine learning system.
+TFX is a Google-production-scale machine learning (ML) platform based on
+TensorFlow. It provides a configuration framework and shared libraries to
+integrate common components needed to define, launch, and monitor your machine
+learning system.
+
+## TFX 1.0
+
+We are happy to announce the availability of the
+[TFX 1.0.0](https://github.com/tensorflow/tfx/releases). This
+is the initial post-beta release of TFX, which provides stable public APIs and
+artifacts. You can be assured that your future TFX pipelines will keep working
+after an upgrade within the compatibility scope defined in this
+[RFC](https://github.com/tensorflow/community/blob/master/rfcs/20210307-tfx-api-artifact-compat.md).
 
 ## Installation
-
 
 [![Python](https://img.shields.io/pypi/pyversions/tfx.svg?style=plastic)](
 https://github.com/tensorflow/tfx)
 [![PyPI](https://badge.fury.io/py/tfx.svg)](https://badge.fury.io/py/tfx)
 
-```
-pip install tensorflow
+```bash
 pip install tfx
 ```
 
-Note: See the [TensorFlow Serving](https://www.tensorflow.org/serving/),
-[TensorFlow JS](https://js.tensorflow.org/), and/or
-[TensorFlow Lite](https://www.tensorflow.org/lite) documentation for
-installing those optional components.
+!!! Note
+    See the
+    [TensorFlow Serving](./serving),
+    [TensorFlow JS](https://js.tensorflow.org/), and/or
+    [TensorFlow Lite](https://www.tensorflow.org/lite) documentation for installing
+    those optional components.
 
-Note: This installs [Apache Beam](beam.md) with the Direct runner.  You will
-need to install streaming runners such as [Flink](https://flink.apache.org/)
-separately.
+!!! Note
+    This installs [Apache Beam](beam.md) with the DirectRunner.  You can also
+    separately install runners that perform distributed computation, such as
+    [Apache Flink](https://flink.apache.org/) or
+    [Apache Spark](https://spark.apache.org/).
 
-## Core Concepts
+### Nightly Packages
 
-### TFX Pipelines
+TFX also hosts nightly packages at https://pypi-nightly.tensorflow.org on Google
+Cloud. To install the latest nightly package, please use the following command:
 
-A TFX pipeline defines a data flow through several components, with the goal of
-implementing a specific ML task (e.g., building and deploying a regression model
-for specific data). Pipeline components are built upon TFX libraries.
-The result of a pipeline is a TFX deployment target and/or service of an
-inference request.
+```
+pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre tfx
+```
 
-### Artifacts
+This will install the nightly packages for the major dependencies of TFX such as
+TensorFlow Model Analysis (TFMA), TensorFlow Data Validation (TFDV), TensorFlow
+Transform (TFT), TFX Basic Shared Libraries (TFX-BSL), ML Metadata (MLMD).
 
-In a pipeline, an **artifact** is a unit of data that is passed between
-components. Generally, components have at least one input artifact and one
-output artifact. All artifacts must have associated **metadata**, which defines
-the **type** and **properties** of the artifact. Artifacts must be strongly
-typed with an artifact type registered in the
-[ML Metadata](https://www.tensorflow.org/tfx/guide/mlmd) store. The concepts of
-**artifact** and **artifact type** originate from the data model that
-[ML Metadata](https://github.com/google/ml-metadata) defines, as described in
-[this document](https://github.com/google/ml-metadata/blob/master/g3doc/get_started.md#concepts).
-TFX defines and implements its own artifact type ontology to realize its
-higher-level functionality. As of TFX 0.14,
-[10 known artifact types](https://github.com/tensorflow/tfx/blob/1e931c461ed38de51ae3e9975fd10a0cba75e58b/tfx/types/standard_artifacts.py)
-are defined and used throught the TFX system.
+!!! Note
+    These nightly packages are unstable and breakages are likely to happen.
+    The fix could often take a week or more depending on the complexity involved.
 
-An **artifact type** has a unique name and a schema of properties of its
-instances. TFX utilizes artifact type as how the artifact is used by components
-in the pipeline, but not necessarily to determine what the artifact content
-physically is on a filesystem.
+## About TFX
 
-For instance, the *Example* artifact type may represent Examples materialized in
-TFRecord of `tensorflow::Example` protocol buffer, CSV, JSON, or any other
-physical format. Regardless, the way Examples are used in a pipeline is exactly
-the same: being analyzed to generate statistics, being validated against
-expected schema, being pre-processed in advance to training, and being supplied
-to a Trainer to training models, and so forth. Likewise, the *Model* artifact
-type may represent trained model objects exported in various physical formats
-such as TensorFlow SavedModel, ONNX, PMML or PKL (of various types of model
-objects in Python). In any case, models are always to be evaluated, analyzed and
-deployed for serving in pipelines.
+TFX is a platform for building and managing ML workflows in a production
+environment. TFX provides the following:
 
-NOTE: As of TFX 0.14, *Examples* artifact is assumed to be `tensorflow::Example`
-protocol buffer in gzip-compressed TFRecord format. *Model* artifact is assumed
-to be TensorFlow SavedModel. Future versions of TFX may expand those artifact
-types to support more variants.
+*   A toolkit for building ML pipelines. TFX pipelines let you orchestrate your
+    ML workflow on several platforms, such as: Apache Airflow, Apache Beam, and
+    Kubeflow Pipelines.
 
-In order to differentiate such possible variants of the same **artifact type**,
-the ML Metadata defines a set of **artifact properties**. For instance, one such
-**artifact property** for an *Examples* artifact may be *format*, whose values
-may be one of `TFRecord`, `JSON`, `CSV`, and so forth. Artifacts of type
-*Examples* can always be passed to a component that is designed to take Examples
-as an input artifact (for example, a Trainer). However, the actual
-implementation of the consuming component may adjust its behavior in response to
-a particular value of the *format* property, or simply raise a runtime error if
-it doesn’t have implementation to process the particular format of the Examples.
+    [Learn more about TFX pipelines](understanding_tfx_pipelines.md).
 
-In summary, **artifact type**s define the ontology of **artifact**s in the
-entire TFX pipeline system, whereas **artifact properties** define the ontology
-specific to an **artifact type**. Users of the pipeline system can choose to
-extend such ontology locally to their pipeline applications, by defining and
-populating new custom properties. Users can also choose to extend the ontology
-globally for the system as a whole, by introducing new artifact types, and/or
-modifying predefined type-properties, in which case such extension would be
-contributed back to the master repository of the pipeline system (the TFX
-repository).
+*   A set of standard components that you can use as a part of a pipeline, or as
+    a part of your ML training script. TFX standard components provide proven
+    functionality to help you get started building an ML process easily.
 
-## TFX Pipeline Components
+    [Learn more about TFX standard components](#tfx-standard-components).
+
+*   Libraries which provide the base functionality for many of the standard
+    components. You can use the TFX libraries to add this functionality to your
+    own custom components, or use them separately.
+
+    [Learn more about the TFX libraries](#tfx-libraries).
+
+TFX is a Google-production-scale machine learning toolkit based on TensorFlow.
+It provides a configuration framework and shared libraries to integrate common
+components needed to define, launch, and monitor your machine learning system.
+
+## TFX Standard Components
 
 A TFX pipeline is a sequence of components that implement an [ML
 pipeline](https://en.wikipedia.org/wiki/Pipeline_(computing)) which is
@@ -104,64 +93,45 @@ online, native mobile, and JavaScript targets.
 
 A TFX pipeline typically includes the following components:
 
-* [**ExampleGen**](examplegen.md) is the initial input component of a pipeline
-that ingests and optionally splits the input dataset.
+*   [**ExampleGen**](examplegen.md) is the initial input component of a pipeline
+    that ingests and optionally splits the input dataset.
 
-* [**StatisticsGen**](statsgen.md) calculates statistics for the dataset.
+*   [**StatisticsGen**](statsgen.md) calculates statistics for the dataset.
 
-* [**SchemaGen**](schemagen.md) examines the statistics and creates a data
-schema.
+*   [**SchemaGen**](schemagen.md) examines the statistics and creates a data
+    schema.
 
-* [**ExampleValidator**](exampleval.md) looks for anomalies and missing values
-in the dataset.
+*   [**ExampleValidator**](exampleval.md) looks for anomalies and missing values
+    in the dataset.
 
-* [**Transform**](transform.md) performs feature engineering on the dataset.
+*   [**Transform**](transform.md) performs feature engineering on the dataset.
 
-* [**Trainer**](trainer.md) trains the model.
+*   [**Trainer**](trainer.md) trains the model.
 
-* [**Evaluator**](evaluator.md) performs deep analysis of the training results.
+*   [**Tuner**](tuner.md) tunes the hyperparameters of the model.
 
-* [**ModelValidator**](modelval.md) helps you validate your exported models, ensuring that
-they are "good enough" to be pushed to production.
+*   [**Evaluator**](evaluator.md) performs deep analysis of the training results
+    and helps you validate your exported models, ensuring that they are "good
+    enough" to be pushed to production.
 
-* [**Pusher**](pusher.md) deploys the model on a serving infrastructure.
+*   [**InfraValidator**](infra_validator.md) checks the model is actually
+    servable from the infrastructure, and prevents bad model from being pushed.
+
+*   [**Pusher**](pusher.md) deploys the model on a serving infrastructure.
+
+*   [**BulkInferrer**](bulkinferrer.md) performs batch processing on a model
+    with unlabelled inference requests.
 
 This diagram illustrates the flow of data between these components:
 
-![Component Flow](diag_all.svg)
-
-### Anatomy of a Component
-
-TFX components consist of three main pieces:
-
-* Driver
-* Executor
-* Publisher
-
-<img src="images/component.svg" alt="Component Anatomy" style="width:40%" />
-
-#### Driver and Publisher
-
-The driver supplies metadata to the executor by querying the metadata store,
-while the publisher accepts the results of the executor and stores them in
-metadata. As a developer you will typically not need to interact with the
-driver and publisher directly, but messages logged by the driver and publisher
-may be useful during debugging.  See [Troubleshooting](#troubleshooting).
-
-#### Executor
-
-The executor is where a component performs its processing.  As a developer you
-write code which runs in the executor, based on the requirements
-of the classes which implement the type of component that you're working with.
-For example, when you're working on a [Transform component](transform.md) you
-will need to develop a `preprocessing_fn`.
+![Component Flow](images/prog_fin.png)
 
 ## TFX Libraries
 
 TFX includes both libraries and pipeline components.  This diagram illustrates
 the relationships between TFX libraries and pipeline components:
 
-![Libraries and Components](libraries_components.svg)
+![Libraries and Components](images/libraries_components.png)
 
 TFX provides several Python packages that are the libraries which are used to
 create pipeline components.  You'll use these libraries to create the components
@@ -171,67 +141,75 @@ pipeline.
 TFX libraries include:
 
 *   [**TensorFlow Data Validation (TFDV)**](tfdv.md) is a library for analyzing
-and validating machine learning data. It is designed to be highly scalable and
-to work well with TensorFlow and TFX.  TFDV includes:
+    and validating machine learning data. It is designed to be highly scalable
+    and to work well with TensorFlow and TFX. TFDV includes:
 
-    * Scalable calculation of summary statistics of training and test data.
-    * Integration with a viewer for data distributions and statistics, as well
-    as faceted comparison of pairs of datasets (Facets).
-    * Automated data-schema generation to describe expectations about data like
-    required values, ranges, and vocabularies.
-    * A schema viewer to help you inspect the schema.
-    * Anomaly detection to identify anomalies, such as missing features, out-of-
-    range values, or wrong feature types, to name a few.
-    * An anomalies viewer so that you can see what features have anomalies and
-    learn more in order to correct them.
+    *   Scalable calculation of summary statistics of training and test data.
+    *   Integration with a viewer for data distributions and statistics, as well
+        as faceted comparison of pairs of datasets (Facets).
+    *   Automated data-schema generation to describe expectations about data
+        like required values, ranges, and vocabularies.
+    *   A schema viewer to help you inspect the schema.
+    *   Anomaly detection to identify anomalies, such as missing features,
+        out-of- range values, or wrong feature types, to name a few.
+    *   An anomalies viewer so that you can see what features have anomalies and
+        learn more in order to correct them.
 
 *   [**TensorFlow Transform (TFT)**](tft.md) is a library for preprocessing data
-with TensorFlow. TensorFlow Transform is useful for data that requires a full-
-pass, such as:
+    with TensorFlow. TensorFlow Transform is useful for data that requires a
+    full- pass, such as:
 
-    * Normalize an input value by mean and standard deviation.
-    * Convert strings to integers by generating a vocabulary over all input
-    values.
-    * Convert floats to integers by assigning them to buckets based on the
-    observed data distribution.
+    *   Normalize an input value by mean and standard deviation.
+    *   Convert strings to integers by generating a vocabulary over all input
+        values.
+    *   Convert floats to integers by assigning them to buckets based on the
+        observed data distribution.
 
-*   [**TensorFlow**](train.md) is used for training models with TFX.  It ingests
-training data and modeling code and creates a SavedModel result.  It also
-integrates a feature engineering pipeline created by TensorFlow Transform for
-preprocessing input data.
+*   [**TensorFlow**](train.md) is used for training models with TFX. It ingests
+    training data and modeling code and creates a SavedModel result. It also
+    integrates a feature engineering pipeline created by TensorFlow Transform
+    for preprocessing input data.
+
+    [KerasTuner](https://www.tensorflow.org/tutorials/keras/keras_tuner) is used
+    for tuning hyperparameters for model.
+
+    !!! Note
+        TFX supports TensorFlow 1.15 and, with some exceptions, 2.x. For
+        details, see [Designing TensorFlow Modeling Code For TFX](train.md).
 
 *   [**TensorFlow Model Analysis (TFMA)**](tfma.md) is a library for evaluating
-TensorFlow models. It is used along with TensorFlow to create an EvalSavedModel,
-which becomes the basis for its analysis.  It allows users to evaluate their
-models on large amounts of data in a distributed manner, using the same metrics
-defined in their trainer. These metrics can be computed over different slices of
-data and visualized in Jupyter notebooks.
+    TensorFlow models. It is used along with TensorFlow to create an
+    EvalSavedModel, which becomes the basis for its analysis. It allows users to
+    evaluate their models on large amounts of data in a distributed manner,
+    using the same metrics defined in their trainer. These metrics can be
+    computed over different slices of data and visualized in Jupyter notebooks.
 
-* [**TensorFlow Metadata (TFMD)**](https://github.com/tensorflow/metadata)
-provides standard representations
-for metadata that are useful when training machine learning models with
-TensorFlow. The metadata may be produced by hand or automatically during input
-data analysis, and may be consumed for data validation, exploration, and
-transformation. The metadata serialization formats include:
+*   [**TensorFlow Metadata (TFMD)**](https://github.com/tensorflow/metadata)
+    provides standard representations for metadata that are useful when training
+    machine learning models with TensorFlow. The metadata may be produced by
+    hand or automatically during input data analysis, and may be consumed for
+    data validation, exploration, and transformation. The metadata serialization
+    formats include:
 
-    * A schema describing tabular data (e.g., tf.Examples).
-    * A collection of summary statistics over such datasets.
+    *   A schema describing tabular data (e.g., tf.Examples).
+    *   A collection of summary statistics over such datasets.
 
-* [**ML Metadata (MLMD)**](mlmd.md)
-is a library for recording and retrieving metadata associated with ML developer
-and data scientist workflows.  Most often the metadata uses TFMD representations.
-MLMD manages persistence using [SQL-Lite](https://www.sqlite.org/index.html),
-[MySQL](https://www.mysql.com/), and other similar data stores.
+*   [**ML Metadata (MLMD)**](mlmd.md) is a library for recording and retrieving
+    metadata associated with ML developer and data scientist workflows. Most
+    often the metadata uses TFMD representations. MLMD manages persistence using
+    [SQL-Lite](https://www.sqlite.org/index.html),
+    [MySQL](https://www.mysql.com/), and other similar data stores.
 
 ### Supporting Technologies
 
 #### Required
 
 *   [**Apache Beam**](beam.md) is an open source, unified model for defining
-both batch and streaming data-parallel processing pipelines. TFX uses Beam to
-implement data-parallel pipelines.  The pipeline is then executed by one of
-Beam's supported distributed processing back-ends, which include Apache
-Flink, Google Cloud Dataflow, and others.
+both batch and streaming data-parallel processing pipelines. TFX uses
+Apache Beam to implement data-parallel pipelines.  The pipeline is then executed
+by one of Beam's supported distributed processing back-ends, which include
+Apache Flink, Apache Spark,
+[Google Cloud Dataflow](https://cloud.google.com/dataflow/), and others.
 
 #### Optional
 
@@ -262,16 +240,23 @@ monitoring, and maintaining an ML pipeline easier.
     Pipelines SDK allows for creation and sharing of components and composition
     of pipelines programmatically.
 
-### Orchestration and Portability
+### Portability and Interoperability
 
 TFX is designed to be portable to multiple environments and orchestration
 frameworks, including [Apache Airflow](airflow.md),
-[Apache Beam](beam_orchestrator.md) and [Kubeflow](kubeflow.md) . It is also
-portable to different computing platforms, including bare-metal and the Google
-Cloud Platform (GCP).
+[Apache Beam](beam.md) and [Kubeflow](kubeflow.md) . It is also
+portable to different computing platforms, including on-premise, and
+cloud platforms such as the
+[Google Cloud Platform (GCP)](https://cloud.google.com/). In particular,
+TFX interoperates with several managed GCP services, such as
+[Cloud AI Platform](https://cloud.google.com/ai-platform/) for
+[Training and Prediction](https://cloud.google.com/ml-engine/), and
+[Cloud Dataflow](https://cloud.google.com/dataflow/) for distributed data
+processing for several other aspects of the ML lifecycle.
 
-Note: The current revision of this user guide primarily discusses deployment
-on a bare-metal system using Apache Airflow for orchestration.
+!!! Note
+    The current revision of this user guide primarily discusses deployment
+    on a bare-metal system using Apache Airflow for orchestration.
 
 ### Model vs. SavedModel
 
@@ -299,9 +284,9 @@ SavedModel is the recommended serialization format for serving a TensorFlow
 model in production, or exporting a trained model for a native mobile or
 JavaScript application. For example, to turn a model into a REST service for
 making predictions, you can serialize the model as a SavedModel and serve it
-using TensorFlow Serving. See [Serving a TensorFlow
-Model](https://www.tensorflow.org/serving/tutorials/Serving_REST_simple) for
-more information.
+using TensorFlow Serving. See
+[Serving a TensorFlow Model](https://www.tensorflow.org/tfx/serving/serving_basic)
+for more information.
 
 ### Schema
 
@@ -356,27 +341,28 @@ The following components use the schema:
 In a typical TFX pipeline TensorFlow Data Validation generates a schema, which
 is consumed by the other components.
 
-Note: The auto-generated schema is best-effort and only tries to infer basic
-properties of the data. It is expected that developers review and modify it as
-needed.
+!!! Note
+    The auto-generated schema is best-effort and only tries to infer basic
+    properties of the data. It is expected that developers review and modify it as
+    needed.
 
 ## Developing with TFX
 
 TFX provides a powerful platform for every phase of a machine learning project,
 from research, experimentation, and development on your local machine, through
 deployment. In order to avoid code duplication and eliminate the potential for
-[training/serving skew](#training-serving-skew-detection) it is strongly
-recommended to implement your TFX pipeline for both model training and
-deployment of trained models, and use [Transform](transform.md) components which
-leverage the [TensorFlow Transform](tft.md) library for both training and
-inference. By doing so you will use the same preprocessing and analysis code
-consistently, and avoid differences between data used for training and data fed
-to your trained models in production, as well as benefitting from writing that
-code once.
+[training/serving skew](./tfdv#training-serving-skew-detection)
+it is strongly recommended to implement your TFX pipeline for both model
+training and deployment of trained models, and use [Transform](transform.md)
+components which leverage the [TensorFlow Transform](tft.md) library for both
+training and inference. By doing so you will use the same preprocessing and
+analysis code consistently, and avoid differences between data used for training
+and data fed to your trained models in production, as well as benefitting from
+writing that code once.
 
 ### Data Exploration, Visualization, and Cleaning
 
-![Data Exploration, Visualization, and Cleaning](wrangling.svg)
+![Data Exploration, Visualization, and Cleaning](images/prog_schemagen.png)
 
 TFX pipelines typically begin with an [ExampleGen](examplegen.md) component, which
 accepts input data and formats it as tf.Examples.  Often this is done after the
@@ -415,32 +401,32 @@ compare these results as you make adjustments, until your data is optimal
 for your
 model and application.
 
-You will first query
-[**ML Metadata (MLMD)**](mlmd.md) to locate the results of these executions
-of these components, and then use the visualization support API in TFDV to
-create
-the visualizations in your notebook.  This includes [tfdv.load_statistics()](
-`tfdv.load_statistics`)
-and [tfdv.visualize_statistics()](`tfdv.visualize_statistics`)
+You will first query [**ML Metadata (MLMD)**](mlmd.md) to locate the results of
+these executions of these components, and then use the visualization support API
+in TFDV to create the visualizations in your notebook. This includes
+[tfdv.load_statistics()](https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv/load_statistics)
+and
+[tfdv.visualize_statistics()](https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv/visualize_statistics)
 Using this visualization you can better understand the characteristics of your
 dataset, and if necessary modify as required.
 
 ### Developing and Training Models
 
-![Feature Engineering](feature_eng.svg)
+![Feature Engineering](images/prog_transform.png)
 
 A typical TFX pipeline will include a [Transform](transform.md) component, which
 will perform feature engineering by leveraging the capabilities of the
-[TensorFlow Transform (TFT)](tft.md) library.  A Transform component consumes
-the schema created by a SchemaGen component, and applies [data transformations](
-//tfx/transform/api_docs/python/tft) to
-create, combine, and transform the features that will be used to train your
+[TensorFlow Transform (TFT)](tft.md) library. A Transform component consumes the
+schema created by a SchemaGen component, and applies
+[data transformations](../tutorials/transform/simple)
+to create, combine, and transform the features that will be used to train your
 model. Cleanup of missing values and conversion of types should also be done in
 the Transform component if there is ever a possibility that these will also be
-present in data sent for inference requests.  [There are some important
-considerations](train.md) when designing TensorFlow code for training in TFX.
+present in data sent for inference requests.
+[There are some important considerations](train.md) when designing TensorFlow
+code for training in TFX.
 
-![Modeling and Training](train.svg)
+![Modeling and Training](images/prog_trainer.png)
 
 The result of a Transform component is a SavedModel which will be imported and
 used in your modeling code in TensorFlow, during a [Trainer](trainer.md)
@@ -452,35 +438,26 @@ using the exact same code during both training and inference.  Using the
 modeling code, including the SavedModel from the Transform component, you can
 consume your training and evaluation data and train your model.
 
-During the last section of your modeling code you should save your model as both
-a SavedModel and an EvalSavedModel.  Saving as an EvalSavedModel will require
-you to import and apply [TensorFlow Model Analysis (TFMA)](tfma.md) library in
-your Trainer component.
-
-```python
-import tensorflow_model_analysis as tfma
-...
-
-tfma.export.export_eval_savedmodel(
-        estimator=estimator,
-        export_dir_base=eval_model_dir,
-        eval_input_receiver_fn=receiver_fn)
-```
+An optional [Tuner](tuner.md) component can be added before Trainer to tune the
+hyperparameters (e.g., number of layers) for the model. With the given model and
+hyperparameters' search space, tuning algorithm will find the best
+hyperparameters based on the objective.
 
 ### Analyzing and Understanding Model Performance
 
-![Model Analysis](analysis.svg)
+![Model Analysis](images/prog_evaluator.png)
 
 Following initial model development and training it's important to analyze and
-really understand you model's performance.  A typical TFX pipeline will include
+really understand your model's performance.  A typical TFX pipeline will include
 an [Evaluator](evaluator.md) component, which leverages the capabilities of the
 [TensorFlow Model Analysis (TFMA)](tfma.md) library, which provides a power
 toolset for this phase of development.  An Evaluator component consumes the
-EvalSavedModel that you exported above, and allows you to specify a list of
-`SliceSpecs` that you can use when visualizing and analyzing your model's
-performance. Each SliceSpec defines a slice of your training data that you want
-to examine, such as particular categories for categorical features, or
-particular ranges for numerical features.
+model that you exported above, and allows you to specify a list of
+[`tfma.SlicingSpec`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/SlicingSpec)
+that you can use when visualizing and analyzing your model's performance. Each
+`SlicingSpec` defines a slice of your training data that you want to examine,
+such as particular categories for categorical features, or particular ranges for
+numerical features.
 
 For example, this would be important for trying to understand your model's
 performance for different segments of your customers, which could be segmented
@@ -501,13 +478,36 @@ application.
 
 You will first query
 [**ML Metadata (MLMD)**](mlmd.md) to locate the results of these
-executions
-of these components, and then use the visualization support API in TFMA to create
-the visualizations in your notebook.  This includes [tfma.load_eval_results()](
+executions of these components, and then use the visualization support API in
+TFMA to create the visualizations in your notebook.  This includes
+[tfma.load_eval_results](
 https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/load_eval_results)
-and [tfma.view.render_slicing_metrics()](`tfma/view/render_slicing_metrics`)
+and [tfma.view.render_slicing_metrics](
+https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/view/render_slicing_metrics)
 Using this visualization you can better understand the characteristics of your
 model, and if necessary modify as required.
+
+### Validating Model Performance
+
+As part of analyzing a model's performance you might want to validate the
+performance against a baseline (such as the currently serving model). Model
+validation is performed by passing both a candidate and baseline model to the
+[Evaluator](evaluator.md) component. The Evaluator computes metrics
+(e.g. AUC, loss) for both the candidate and baseline along with a corresponding
+set of diff metrics. Thresholds may then be applied and used to gate pushing
+your models to production.
+
+### Validating That A Model Can Be Served
+
+![Infra Validation](images/prog_infraval.png)
+
+Before deploying the trained model, you might want to validate whether the model
+is really servable in the serving infrastructure. This is especially important
+in production environments to ensure that the newly published model does not
+prevent the system from serving predictions. The
+[InfraValidator](infra_validator.md) component will make a canary deployment of
+your model in a sandboxed environment, and optionally send real requests to
+check that your model works correctly.
 
 ## Deployment Targets
 
@@ -517,7 +517,7 @@ inference requests.  TFX supports deployment to three classes of deployment
 targets.  Trained models which have been exported as SavedModels can be deployed
 to any or all of these deployment targets.
 
-![Component Flow](diag_all.svg)
+![Component Flow](images/prog_fin.png)
 
 ### Inference: TensorFlow Serving
 
@@ -529,9 +529,12 @@ using one of several advanced architectures to handle synchronization and
 distributed computation. See the [TFS documentation](serving.md) for more
 information on developing and deploying TFS solutions.
 
-In a typical pipeline a [Pusher](pusher.md) component will consume SavedModels which
-have been trained in a Trainer component and deploy them to your TFS infrastructure.
-This includes handling multiple versions and model updates.
+In a typical pipeline, a SavedModel which has been trained in a
+[Trainer](trainer.md) component would first be infra-validated in an
+[InfraValidator](infra_validator.md) component. InfraValidator launches a canary
+TFS model server to actually serve the SavedModel. If validation has passed, a
+[Pusher](pusher.md) component will finally deploy the SavedModel to your TFS
+infrastructure. This includes handling multiple versions and model updates.
 
 ### Inference in Native Mobile and IoT Applications: TensorFlow Lite
 
@@ -553,221 +556,9 @@ on using TensorFlow JS.
 
 ## Creating a TFX Pipeline With Airflow
 
-### Install
-
-Airflow can be installed from PyPi:
-
-```python
-# Airflow
-# set this to avoid the GPL version; no functionality difference either way
-export SLUGIFY_USES_TEXT_UNIDECODE=yes
-pip install apache-airflow
-```
-
-### Creating a DAG
-
-You create a TFX pipeline by developing Python which defines a function that is
-decorated with the `tfx.runtimes.tfx_airflow.PipelineDecorator` and creates your
-pipeline components, linking them together in the sequence that the pipeline needs.
-In the global context of the file you then call `create_pipeline()`. For
-example, a typical pipeline might look like:
-
-```python
-@PipelineDecorator(
-    pipeline_name='tfx_example_solution',
-    schedule_interval=None,
-    start_date=datetime.datetime(2018, 1, 1),
-    enable_cache=True,
-    additional_pipeline_args={'logger_args': logging_utils.LoggerConfig(
-        log_root='/var/tmp/tfx/logs', log_level=logging.INFO)},
-    metadata_db_root=os.path.join(home_dir, 'data/tfx/metadata'),
-    pipeline_root=pipeline_root)
-def create_pipeline():
-  """Implements the example pipeline with TFX."""
-  examples = csv_input(os.path.join(base_dir, 'no_split/span_1'))
-  example_gen = CsvExampleGen(input_data=examples)
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs['output'])
-  infer_schema = SchemaGen(stats=statistics_gen.outputs['output'])
-  validate_stats = ExampleValidator(  # pylint: disable=unused-variable
-      stats=statistics_gen.outputs['output'],
-      schema=infer_schema.outputs['output'])
-  transform = Transform(
-      input_data=example_gen.outputs['output'],
-      schema=infer_schema.outputs['output'],
-      module_file=transforms)
-  trainer = Trainer(
-      module_file=model,
-      transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['output'],
-      transform_output=transform.outputs['transform_output'],
-      train_steps=10000,
-      eval_steps=5000,
-      warm_starting=True)
-  model_analyzer = Evaluator(
-      examples=example_gen.outputs['output'],
-      model_exports=trainer.outputs['output'])
-  model_validator = ModelValidator(
-      examples=example_gen.outputs['output'],
-      model=trainer.outputs['output'])
-  pusher = Pusher(
-      model_export=trainer.outputs['output'],
-      model_blessing=model_validator.outputs['blessing'],
-      serving_model_dir=serving_model_dir)
-
-  return [
-      example_gen, statistics_gen, infer_schema, validate_stats, transform,
-      trainer, model_analyzer, model_validator, pusher
-  ]
-
-pipeline = TfxRunner().run(create_pipeline())
-```
-
-### Initializing Your TFX Pipeline With Airflow
-
-When you install [Apache Airflow](orchestra.md) it will initialize your
-`$AIRFLOW_HOME` (`~/airflow` by default) directory where you will create
-pipelines.  You then need to create the directories that will hold your
-pipeline code:
-
-```bash
-mkdir -p ~/airflow/dags     # or $AIRFLOW_HOME/dags
-mkdir -p ~/airflow/data     # or $AIRFLOW_HOME/data
-mkdir -p ~/airflow/plugins  # or $AIRFLOW_HOME/plugins
-```
-
-#### Pipeline Config
-
-The only real requirement in structuring your code is that the Python file
-which includes your `create_pipeline()` function (your "pipeline config") must
-be placed in your `dags` folder.  We recommend that the Python file containing
-your DAG be named to match the DAG name, so if your DAG is named `taxi` then
-that file should be named `taxi.py`.
-
-The `create_pipeline()` function in your pipeline config is decorated with a
-`PipelineDecorator` which is where you set your `pipeline_name`,
-among other things.  These are important for recognizing your pipeline by name
-in the Airflow web UI, and locating the log files for your pipeline.
-
-
-#### Deploying Your Pipeline Code
-
-You deploy and name your pipeline config as described in the previous section.
-
-You deploy the remainder of your pipeline code by creating folders under `data`
-and `plugins` to hold your pipeline code. A good practice is to name these
-folders to match the name of your pipeline when naming your
-output_dir (which you set in your `PipelineDecorator`), so if your pipeline is
-named `taxi`, you might name your output_dir:
-
-```bash
-mkdir -p ~/airflow/data/taxi     # or $AIRFLOW_HOME/data/taxi
-mkdir -p ~/airflow/plugins/taxi  # or $AIRFLOW_HOME/plugins/taxi
-
-```
-
-```python
-home_dir = os.path.join(os.environ['HOME'], 'airflow/')
-base_dir = os.path.join(home_dir, 'data/taxi/')
-output_dir = os.path.join(base_dir, 'pipelines/')
-```
-
-If you are planning to use files to hold your dataset(s), you should copy your
-data files into your `data` folder:
-
-```bash
-cp data.csv ~/airflow/data/taxi     # or $AIRFLOW_HOME/data/taxi
-```
-
-### Example Code
-
-By convention your pipeline config should contain only the code necessary to
-configure your pipeline, as in
-[this example](
-https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py).
-
-The supporting code, such as your TensorFlow model and your Transform
-`preprocessing_fn`, should all go in a single file, as in
-[this example](
-https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py).
-
-## Deploying and Operating a TFX Pipeline
-
-New pipelines must then be enabled in the Airflow web UI in order to start them
-running.  In many cases they will also need to be triggered in the web UI. When
-you want to stop running a pipeline you can disable it, also in the Airflow web
-UI.  You can also examine the current state and history of your pipeline in the
-Airflow web UI, including logs.
-
-### Starting and Updating Your Pipeline
-
-If your pipeline is not already running, you will need to start Airflow from the
-command line:
-
-```bash
-airflow webserver -p 8080
-airflow scheduler
-```
-
-#### Updating your code
-
-You can make changes to your pipeline code after deployment.  When you make a
-change you will need to wait for the next Airflow refresh (default is 1 minute)
-and then refresh the Airflow web UI page in your browser to see your changes.
-If you change the `pipeline_name` of your pipeline, the old name will still
-be displayed but will show as missing.
-
-#### Using Notebooks for Visualization
-
-Jupyter style notebooks are very useful for inspecting the inputs and outputs
-of TFX components in your pipeline, and comparing results between executions.
-In addition, both TFDV and TFMA include powerful visualization support that
-developers can use to explore their dataset and analyze their modeling results
-in detail.
-
-## Troubleshooting
-
-### Finding Errors In Log Files
-
-TFX will generate log entries in the location defined by the LoggerConfig, set
-as an additional argument in the PipelineDecorator. The default is
-`/var/tmp/tfx/logs/tfx.log`. In addition, the orchestrator (e.g. Airflow,
-Kubeflow) will also generate log files. When trying to diagnose errors in your
-pipeline, these log files are very valuable. For a pipeline named `taxi` with no
-LoggerConfig specified in your pipeline, the TFX logs will be written to
-`/var/tmp/tfx/logs/tfx.log`. This is customizable by creating a
-[logging_utils.LoggerConfig](https://github.com/tensorflow/tfx/blob/master/tfx/utils/logging_utils.py)
-object and adding it as an additional parameter called `logger_args` in your
-pipeline configuration:
-
-```python
-@PipelineDecorator(
-    pipeline_name='tfx_example_solution',
-    schedule_interval=None,
-    start_date=datetime.datetime(2018, 1, 1),
-    enable_cache=True,
-    additional_pipeline_args={'logger_args': logging_utils.LoggerConfig(
-        log_root='/var/tmp/tfx/logs', log_level=logging.INFO)},
-    metadata_db_root=os.path.join(home_dir, 'data/tfx/metadata'),
-    pipeline_root=pipeline_root)
-```
-
-Note: if you are running the executors remotely via Docker or Kubeflow, the
-executor logs will be written onto the remote worker.
-
-If you are using Airflow, the log entries will also be written to the Airflow
-logs. The default for the Airflow logs is `$AIRFLOW_HOME/logs` and will contain
-the following files:
-
-```
-$AIRFLOW_HOME/logs/scheduler/{DATE}/taxi.py.log
-$AIRFLOW_HOME/logs/scheduler/latest/taxi.py.log
-$AIRFLOW_HOME/logs/taxi
-$AIRFLOW_HOME/logs/taxi.COMPONENT_NAME
-```
-
-### Pipeline is listed, but when triggering Airflow cannot find
-
-Try restarting the webserver and scheduler.
+Check
+[airflow workshop](../tutorials/tfx/airflow_workshop/)
+for details
 
 ## Creating a TFX Pipeline With Kubeflow
 
@@ -775,13 +566,21 @@ Try restarting the webserver and scheduler.
 
 Kubeflow requires a Kubernetes cluster to run the pipelines at scale. See the
 Kubeflow deployment guideline that guide through the options for
-[deplopying the Kubeflow cluster.](https://www.kubeflow.org/docs/started/getting-started-gke/)
+[deploying the Kubeflow cluster.](https://www.kubeflow.org/docs/started/installing-kubeflow/)
 
 ### Configure and run TFX pipeline
 
-Please follow the Kubeflow Pipelines
-[instructions](https://github.com/kubeflow/pipelines/tree/master/samples/core/tfx-oss)
+Please follow the
+[TFX on Cloud AI Platform Pipeline tutorial](../tutorials/tfx/cloud-ai-platform-pipelines/)
 to run the TFX example pipeline on Kubeflow. TFX components have been
 containerized to compose the Kubeflow pipeline and the sample illustrates the
 ability to configure the pipeline to read large public dataset and execute
 training and data processing steps at scale in the cloud.
+
+## Command line interface for pipeline actions
+
+TFX provides a unified CLI which helps the perform full range of pipeline
+actions such as create, update, run, list, and delete pipelines on various
+orchestrators including Apache Airflow, Apache Beam, and Kubeflow. For details,
+please follow
+[these instructions](cli.md).

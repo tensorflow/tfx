@@ -13,156 +13,184 @@
 # limitations under the License.
 """Generic TFX ExampleGen custom driver."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+import copy
 import os
-import re
-import tensorflow as tf
-from typing import Any, Dict, List, Text
-from google.protobuf import json_format
+from typing import Any, Dict, List, Iterable, Optional
+
+from absl import logging
 from tfx import types
-from tfx.components.base import base_driver
+from tfx.components.example_gen import input_processor
+from tfx.components.example_gen import utils
+from tfx.dsl.components.base import base_driver
 from tfx.orchestration import data_types
+from tfx.orchestration import data_types_utils
+from tfx.orchestration import metadata
+from tfx.orchestration.portable import base_driver as ir_base_driver
+from tfx.orchestration.portable import data_types as portable_data_types
 from tfx.proto import example_gen_pb2
-from tfx.types import channel_utils
-from tfx.utils import io_utils
+from tfx.proto import range_config_pb2
+from tfx.proto.orchestration import driver_output_pb2
+from tfx.types import standard_component_specs
+from tfx.utils import proto_utils
 
-# Fingerprint custom property.
-_FINGERPRINT = 'input_fingerprint'
-# Span custom property.
-_SPAN = 'span'
-# Span spec used in split pattern.
-_SPAN_SPEC = '{SPAN}'
+from ml_metadata.proto import metadata_store_pb2
 
 
-class Driver(base_driver.BaseDriver):
-  """Custom driver for ExampleGen.
+def update_output_artifact(
+    exec_properties: Dict[str, Any],
+    output_artifact: metadata_store_pb2.Artifact) -> None:
+  """Updates output_artifact for FileBasedExampleGen.
 
-  This driver supports file based ExampleGen, it registers external file path as
-  an artifact, e.g., for CsvExampleGen and ImportExampleGen.
+  Updates output_artifact properties by updating existing entries or creating
+  new entries if not already exists.
+
+  Args:
+    exec_properties: execution properties passed to the example gen.
+    output_artifact: the example artifact to be output.
   """
+  if exec_properties.get(utils.FINGERPRINT_PROPERTY_NAME):
+    output_artifact.custom_properties[
+        utils.FINGERPRINT_PROPERTY_NAME].string_value = (
+            exec_properties[utils.FINGERPRINT_PROPERTY_NAME])
+  output_artifact.custom_properties[
+      utils.SPAN_PROPERTY_NAME].int_value = exec_properties[
+          utils.SPAN_PROPERTY_NAME]
+  # TODO(b/162622803): add default behavior for when version spec not present.
+  if exec_properties[utils.VERSION_PROPERTY_NAME] is not None:
+    output_artifact.custom_properties[
+        utils.VERSION_PROPERTY_NAME].int_value = exec_properties[
+            utils.VERSION_PROPERTY_NAME]
 
-  def _glob_to_regex(self, glob_pattern: Text) -> Text:
-    """Changes glob pattern to regex pattern."""
-    regex_pattern = glob_pattern
-    regex_pattern = regex_pattern.replace('.', '\\.')
-    regex_pattern = regex_pattern.replace('+', '\\+')
-    regex_pattern = regex_pattern.replace('*', '[^/]*')
-    regex_pattern = regex_pattern.replace('?', '[^/]')
-    regex_pattern = regex_pattern.replace('(', '\\(')
-    regex_pattern = regex_pattern.replace(')', '\\)')
-    return regex_pattern
 
-  def _retrieve_latest_span(self, uri: Text,
-                            split: example_gen_pb2.Input.Split) -> Text:
-    split_pattern = os.path.join(uri, split.pattern)
-    assert split_pattern.count(
-        _SPAN_SPEC) == 1, 'Only one {SPAN} is allowed in %s' % (
-            split_pattern)
+class Driver(base_driver.BaseDriver, ir_base_driver.BaseDriver):
+  """Custom driver for ExampleGen."""
 
-    split_glob_pattern = split_pattern.replace(_SPAN_SPEC, '*')
-    tf.logging.info('Glob pattern for split %s: %s' %
-                    (split.name, split_glob_pattern))
-    split_regex_pattern = self._glob_to_regex(split_pattern).replace(
-        _SPAN_SPEC, '(.*)')
-    tf.logging.info('Regex pattern for split %s: %s' %
-                    (split.name, split_regex_pattern))
-    assert re.compile(
-        split_regex_pattern).groups == 1, 'Regex should have only one group'
+  def __init__(self, metadata_handle: metadata.Metadata):
+    base_driver.BaseDriver.__init__(self, metadata_handle)
+    ir_base_driver.BaseDriver.__init__(self, metadata_handle)
 
-    files = tf.io.gfile.glob(split_glob_pattern)
-    latest_span = None
-    for file_path in files:
-      result = re.search(split_regex_pattern, file_path)
-      assert result is not None, ('Glob pattern does not match regex pattern')
-      try:
-        span = int(result.group(1))
-      except ValueError:
-        raise ValueError('Cannot not find span number from %s based on %s' %
-                         (file_path, split_regex_pattern))
-      if latest_span is None or span >= int(latest_span):
-        # Uses str instead of int because of zero padding digits.
-        latest_span = result.group(1)
-
-    if latest_span is None:
-      raise ValueError('Cannot not find matching for split %s based on %s' %
-                       (split.name, split.pattern))
-    return latest_span
-
-  def resolve_input_artifacts(
+  def get_input_processor(
       self,
-      input_channels: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],
-      driver_args: data_types.DriverArgs,
+      splits: Iterable[example_gen_pb2.Input.Split],
+      range_config: Optional[range_config_pb2.RangeConfig] = None,
+      input_base_uri: Optional[str] = None) -> input_processor.InputProcessor:
+    """Returns the custom InputProcessor for this driver."""
+    raise NotImplementedError
+
+  def resolve_exec_properties(
+      self,
+      exec_properties: Dict[str, Any],
       pipeline_info: data_types.PipelineInfo,
-  ) -> Dict[Text, List[types.Artifact]]:
-    """Overrides BaseDriver.resolve_input_artifacts()."""
-    del driver_args  # unused
-    del pipeline_info  # unused
+      component_info: data_types.ComponentInfo,
+  ) -> Dict[str, Any]:
+    """Overrides BaseDriver.resolve_exec_properties()."""
+    del pipeline_info, component_info
 
     input_config = example_gen_pb2.Input()
-    json_format.Parse(exec_properties['input_config'], input_config)
+    proto_utils.json_to_proto(
+        exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
+        input_config)
 
-    input_dict = channel_utils.unwrap_channel_dict(input_channels)
-    for input_list in input_dict.values():
-      for single_input in input_list:
-        tf.logging.info('Processing input %s.' % (single_input.uri))
-        tf.logging.info('single_input %s.' % (single_input))
-        tf.logging.info('single_input.artifact %s.' % (single_input.artifact))
+    input_base = exec_properties.get(standard_component_specs.INPUT_BASE_KEY)
+    logging.debug('Processing input %s.', input_base)
 
-        # Set the fingerprint of input.
-        split_fingerprints = []
-        select_span = None
-        for split in input_config.splits:
-          # If SPAN is specified, pipeline will process the latest span, note
-          # that this span number must be the same for all splits and it will
-          # be stored in metadata as the span of input artifact.
-          if _SPAN_SPEC in split.pattern:
-            latest_span = self._retrieve_latest_span(single_input.uri, split)
-            if select_span is None:
-              select_span = latest_span
-            if select_span != latest_span:
-              raise ValueError(
-                  'Latest span should be the same for each split: %s != %s' %
-                  (select_span, latest_span))
-            split.pattern = split.pattern.replace(_SPAN_SPEC, select_span)
+    range_config = None
+    range_config_entry = exec_properties.get(
+        standard_component_specs.RANGE_CONFIG_KEY)
+    if range_config_entry:
+      range_config = range_config_pb2.RangeConfig()
+      proto_utils.json_to_proto(range_config_entry, range_config)
 
-          pattern = os.path.join(single_input.uri, split.pattern)
-          split_fingerprints.append(
-              io_utils.generate_fingerprint(split.name, pattern))
-        fingerprint = '\n'.join(split_fingerprints)
-        single_input.set_string_custom_property(_FINGERPRINT, fingerprint)
-        if select_span is None:
-          select_span = '0'
-        single_input.set_string_custom_property(_SPAN, select_span)
+    processor = self.get_input_processor(
+        splits=input_config.splits,
+        range_config=range_config,
+        input_base_uri=input_base)
 
-        matched_artifacts = []
-        for artifact in self._metadata_handler.get_artifacts_by_uri(
-            single_input.uri):
-          if (artifact.custom_properties[_FINGERPRINT].string_value ==
-              fingerprint) and (artifact.custom_properties[_SPAN].string_value
-                                == select_span):
-            matched_artifacts.append(artifact)
+    span, version = processor.resolve_span_and_version()
+    fingerprint = processor.get_input_fingerprint(span, version)
 
-        if matched_artifacts:
-          # TODO(b/138845899): consider use span instead of id.
-          # If there are multiple matches, get the latest one for caching.
-          # Using id because spans are the same for matched artifacts.
-          latest_artifact = max(
-              matched_artifacts, key=lambda artifact: artifact.id)
-          tf.logging.info('latest_artifact %s.' % (latest_artifact))
-          tf.logging.info('type(latest_artifact) %s.' % (type(latest_artifact)))
+    # Updates the input_config.splits.pattern.
+    for split in input_config.splits:
+      split.pattern = processor.get_pattern_for_span_version(
+          split.pattern, span, version)
 
-          single_input.set_artifact(latest_artifact)
-        else:
-          # TODO(jyzhao): whether driver should be read-only for metadata.
-          [new_artifact] = self._metadata_handler.publish_artifacts(
-              [single_input])  # pylint: disable=unbalanced-tuple-unpacking
-          tf.logging.info('Registered new input: %s' % (new_artifact))
-          single_input.set_artifact(new_artifact)
+    exec_properties[standard_component_specs
+                    .INPUT_CONFIG_KEY] = proto_utils.proto_to_json(input_config)
+    exec_properties[utils.SPAN_PROPERTY_NAME] = span
+    exec_properties[utils.VERSION_PROPERTY_NAME] = version
+    exec_properties[utils.FINGERPRINT_PROPERTY_NAME] = fingerprint
 
-    exec_properties['input_config'] = json_format.MessageToJson(
-        input_config, sort_keys=True)
-    return input_dict
+    return exec_properties
+
+  def _prepare_output_artifacts(
+      self,
+      input_artifacts: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, types.Channel],
+      exec_properties: Dict[str, Any],
+      execution_id: int,
+      pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo,
+  ) -> Dict[str, List[types.Artifact]]:
+    """Overrides BaseDriver._prepare_output_artifacts()."""
+    del input_artifacts
+
+    example_artifact = output_dict[standard_component_specs.EXAMPLES_KEY].type()
+    base_output_dir = os.path.join(pipeline_info.pipeline_root,
+                                   component_info.component_id)
+
+    example_artifact.uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
+        base_output_dir, standard_component_specs.EXAMPLES_KEY, execution_id)
+    update_output_artifact(exec_properties, example_artifact.mlmd_artifact)
+    base_driver._prepare_output_paths(example_artifact)  # pylint: disable=protected-access
+
+    return {standard_component_specs.EXAMPLES_KEY: [example_artifact]}
+
+  def run(
+      self, execution_info: portable_data_types.ExecutionInfo
+  ) -> driver_output_pb2.DriverOutput:
+
+    # Populate exec_properties
+    result = driver_output_pb2.DriverOutput()
+    # PipelineInfo and ComponentInfo are not actually used, two fake one are
+    # created just to be compatible with the old API.
+    pipeline_info = data_types.PipelineInfo('', '')
+    component_info = data_types.ComponentInfo('', '', pipeline_info)
+    exec_properties = self.resolve_exec_properties(
+        execution_info.exec_properties, pipeline_info, component_info)
+    for k, v in exec_properties.items():
+      if v is not None:
+        data_types_utils.set_metadata_value(result.exec_properties[k], v)
+
+    # Populate output_dict
+    output_example = copy.deepcopy(execution_info.output_dict[
+        standard_component_specs.EXAMPLES_KEY][0].mlmd_artifact)
+    update_output_artifact(exec_properties, output_example)
+    result.output_artifacts[
+        standard_component_specs.EXAMPLES_KEY].artifacts.append(output_example)
+    return result
+
+
+class FileBasedDriver(Driver):
+  """Custom Driver for file based ExampleGen, e.g., ImportExampleGen."""
+
+  def get_input_processor(
+      self,
+      splits: Iterable[example_gen_pb2.Input.Split],
+      range_config: Optional[range_config_pb2.RangeConfig] = None,
+      input_base_uri: Optional[str] = None) -> input_processor.InputProcessor:
+    """Returns FileBasedInputProcessor."""
+    assert input_base_uri
+    return input_processor.FileBasedInputProcessor(input_base_uri, splits,
+                                                   range_config)
+
+
+class QueryBasedDriver(Driver):
+  """Custom Driver for query based ExampleGen, e.g., BigQueryExampleGen."""
+
+  def get_input_processor(
+      self,
+      splits: Iterable[example_gen_pb2.Input.Split],
+      range_config: Optional[range_config_pb2.RangeConfig] = None,
+      input_base_uri: Optional[str] = None) -> input_processor.InputProcessor:
+    """Returns QueryBasedInputProcessor."""
+    return input_processor.QueryBasedInputProcessor(splits, range_config)

@@ -1,0 +1,18 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "DummyProducerComponent_executor"
+  value {
+    container {
+      image: "dummy/producer"
+      command: "producer"
+      command: "--output1"
+      command: "{{$.outputs.artifacts[\'output1\'].uri}}"
+      command: "--param1"
+      command: "{{$.inputs.parameters[\'param1\']}}"
+      command: "--wrapped-param"
+      command: "prefix-{{$.inputs.parameters[\'param1\']}}-suffix"
+    }
+  }
+}

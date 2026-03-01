@@ -13,24 +13,21 @@
 # limitations under the License.
 """Tests for presto_component.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import random
+from unittest import mock
 
 import apache_beam as beam
 from apache_beam.testing import util
-import mock
-from presto_component import executor
 import prestodb
-from proto import presto_config_pb2
 import tensorflow as tf
-
-from google.protobuf import json_format
+from tfx.dsl.io import fileio
+from tfx.examples.custom_components.presto_example_gen.presto_component import executor
+from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
 from tfx.proto import example_gen_pb2
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import proto_utils
 
 
 class _MockReadPrestoDoFn(beam.DoFn):
@@ -82,12 +79,11 @@ class ExecutorTest(tf.test.TestCase):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline | 'ToTFExample' >> executor._PrestoToExample(
-              input_dict={},
               exec_properties={
                   'input_config':
-                      json_format.MessageToJson(example_gen_pb2.Input()),
+                      proto_utils.proto_to_json(example_gen_pb2.Input()),
                   'custom_config':
-                      json_format.MessageToJson(example_gen_pb2.CustomConfig())
+                      proto_utils.proto_to_json(example_gen_pb2.CustomConfig())
               },
               split_pattern='SELECT i, f, s FROM `fake`'))
 
@@ -112,24 +108,22 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create output dict.
-    train_examples = standard_artifacts.Examples(split='train')
-    train_examples.uri = os.path.join(output_data_dir, 'train')
-    eval_examples = standard_artifacts.Examples(split='eval')
-    eval_examples.uri = os.path.join(output_data_dir, 'eval')
-    output_dict = {'examples': [train_examples, eval_examples]}
+    examples = standard_artifacts.Examples()
+    examples.uri = output_data_dir
+    output_dict = {'examples': [examples]}
 
     # Create exe properties.
     exec_properties = {
         'input_config':
-            json_format.MessageToJson(
+            proto_utils.proto_to_json(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='bq', pattern='SELECT i, f, s FROM `fake`'),
                 ])),
         'custom_config':
-            json_format.MessageToJson(example_gen_pb2.CustomConfig()),
+            proto_utils.proto_to_json(example_gen_pb2.CustomConfig()),
         'output_config':
-            json_format.MessageToJson(
+            proto_utils.proto_to_json(
                 example_gen_pb2.Output(
                     split_config=example_gen_pb2.SplitConfig(splits=[
                         example_gen_pb2.SplitConfig.Split(
@@ -143,17 +137,17 @@ class ExecutorTest(tf.test.TestCase):
     presto_example_gen = executor.Executor()
     presto_example_gen.Do({}, output_dict, exec_properties)
 
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        examples.split_names)
+
     # Check Presto example gen outputs.
-    train_output_file = os.path.join(train_examples.uri,
+    train_output_file = os.path.join(examples.uri, 'Split-train',
                                      'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(eval_examples.uri,
+    eval_output_file = os.path.join(examples.uri, 'Split-eval',
                                     'data_tfrecord-00000-of-00001.gz')
-    self.assertTrue(tf.gfile.Exists(train_output_file))
-    self.assertTrue(tf.gfile.Exists(eval_output_file))
+    self.assertTrue(fileio.exists(train_output_file))
+    self.assertTrue(fileio.exists(eval_output_file))
     self.assertGreater(
-        tf.gfile.GFile(train_output_file).size(),
-        tf.gfile.GFile(eval_output_file).size())
-
-
-if __name__ == '__main__':
-  tf.test.main()
+        fileio.open(train_output_file).size(),
+        fileio.open(eval_output_file).size())

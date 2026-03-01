@@ -13,207 +13,499 @@
 # limitations under the License.
 """Definition and related classes for TFX pipeline."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+import copy
+import enum
+from typing import Any, Collection, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
+import warnings
 
-import collections
-import functools
-import json
-import os
-
-import tensorflow as tf
-
-from typing import List, Optional, Text
-from ml_metadata.proto import metadata_store_pb2
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
-from tfx.components.base import base_component
+from tfx.dsl.compiler import constants
+from tfx.dsl.components.base import base_node
+from tfx.dsl.components.base import executor_spec
+from tfx.dsl.context_managers import dsl_context_registry as dsl_context_registry_lib
+from tfx.dsl.experimental.conditionals import conditional
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import channel
+from tfx.types import channel_utils
+from tfx.utils import doc_controls
+from tfx.utils import topsort
+
+from google.protobuf import message
 
 # Argo's workflow name cannot exceed 63 chars:
 # see https://github.com/argoproj/argo/issues/1324.
 # MySQL's database name cannot exceed 64 chars:
 # https://dev.mysql.com/doc/refman/5.6/en/identifiers.html
-MAX_PIPELINE_NAME_LENGTH = 63
+_MAX_PIPELINE_NAME_LENGTH = 63
+
+# Pipeline root is by default specified as a RuntimeParameter when runnning on
+# KubeflowV2DagRunner. This constant offers users an easy access to the pipeline
+# root placeholder when defining a pipeline. For example,
+#
+# pusher = Pusher(
+#     model=trainer.outputs['model'],
+#     model_blessing=evaluator.outputs['blessing'],
+#     push_destination=pusher_pb2.PushDestination(
+#         filesystem=pusher_pb2.PushDestination.Filesystem(
+#             base_directory=os.path.join(
+#                 str(pipeline.ROOT_PARAMETER), 'model_serving'))))
+ROOT_PARAMETER = data_types.RuntimeParameter(
+    name=constants.PIPELINE_ROOT_PARAMETER_NAME, ptype=str)
 
 
-@deprecation.deprecated(
-    None,
-    'PipelineDecorator is no longer needed. Please construct a pipeline '
-    'directly from a list of components  using the constructor call to '
-    'pipeline.Pipeline.',
-)
-class PipelineDecorator(object):
-  """Pipeline decorator that has pipeline-level specification."""
+class ExecutionMode(enum.Enum):
+  """Execution mode of a pipeline.
 
-  def __init__(self, **kwargs):
-    self._pipeline = self._new_pipeline(**kwargs)
-
-  # TODO(b/126411144): Come up with a better style to construct TFX pipeline.
-  def __call__(self, func):
-
-    @functools.wraps(func)
-    def decorated():
-      self._pipeline.components = func()
-      return self._pipeline
-
-    return decorated
-
-  def _new_pipeline(self, **kwargs):
-    return Pipeline(**kwargs)
+  Please see this
+  [RFC](https://github.com/tensorflow/community/blob/master/rfcs/20200601-tfx-udsl-semantics.md)
+  for more details.
+  """
+  SYNC = 1
+  ASYNC = 2
 
 
-class Pipeline(object):
-  """Logical TFX pipeline object.
+def add_beam_pipeline_args_to_component(component, beam_pipeline_args):
+  if isinstance(component.executor_spec, executor_spec.BeamExecutorSpec):
+    # Prepend pipeline-level beam_pipeline_args in front of component specific
+    # ones to make component-level override pipeline-level args.
+    cast(
+        executor_spec.BeamExecutorSpec,
+        component.executor_spec).beam_pipeline_args = beam_pipeline_args + cast(
+            executor_spec.BeamExecutorSpec,
+            component.executor_spec).beam_pipeline_args
 
-  Attributes:
-    pipeline_args: kwargs used to create real pipeline implementation. This is
-      forwarded to PipelineRunners instead of consumed in this class. This
-      should include:
-      - pipeline_name: Required. The unique name of this pipeline.
-      - pipeline_root: Required. The root of the pipeline outputs.
-    components: logical components of this pipeline.
-    pipeline_info: An instance of data_types.PipelineInfo that contains basic
-      properties of the pipeline.
-    enable_cache: whether or not cache is enabled for this run.
-    metadata_connection_config: the config to connect to ML metadata.
-    beam_pipeline_args: Beam pipeline args for beam jobs within executor.
-      Executor will use beam DirectRunner as Default.
-    additional_pipeline_args: other pipeline args.
+
+class PipelineInputs:
+  """A utility class to help declare input signatures of composable pipelines."""
+
+  def __init__(self, inputs: Optional[Dict[str, channel.BaseChannel]] = None):
+    self._inputs = inputs or {}
+    self._wrapped_inputs = {
+        k: channel.PipelineInputChannel(v, output_key=k)
+        for k, v in self._inputs.items()
+    }
+    self._pipeline = None
+
+  @property
+  def raw_inputs(self) -> Dict[str, channel.BaseChannel]:
+    return self._inputs
+
+  @property
+  def inputs(self) -> Dict[str, channel.PipelineInputChannel]:
+    return self._wrapped_inputs
+
+  def __getitem__(self, key) -> channel.PipelineInputChannel:
+    return self._wrapped_inputs[key]
+
+  @property
+  def pipeline(self) -> Optional['Pipeline']:
+    return self._pipeline
+
+  @pipeline.setter
+  def pipeline(self, pipeline: 'Pipeline'):
+    self._pipeline = pipeline
+    for c in self._wrapped_inputs.values():
+      c.pipeline = pipeline
+
+
+class RunOptions:
+  r"""Run-time options for running a pipeline (such as partial run).
+
+  To run a sub-graph of the Pipeline, include this when constructing the
+  Pipeline object.
+
+  ### Specifying the sub-graph to run
+
+  To define the sub-graph to run, specify a set of *source nodes* and a set
+  of *sink nodes*. These can be provided as collections of node_id strings, or
+  as functions that takes a node id string and returns a boolean.
+
+  Consider this pipeline graph:
+
+
+                            -- CsvExampleGen --
+                            |        |        |
+                            v        |        |
+               -- StatisticsGen      |        |
+               |           |         |        |
+               |           v         |        |
+               |       SchemaGen     |        |
+               |     /     |     \   |        |
+               v    v      |      v  v        |
+        ExampleValidator   |     Transform    |
+                           |    /             |
+                           v   v              |
+                          Trainer -----       |
+                              \        \      |
+                               \        v     v
+                                \      Evaluator
+                                 \        /
+                                  \      /
+                                   v    v
+                                   Pusher
+
+
+  Suppose the user has already done a full pipeline run, and now only wants to
+  run "Trainer" and "Evaluator". To specify this:
+
+  ```python
+  my_pipeline = pipeline.Pipeline(
+      # How you'll normally define a pipeline.
+      pipeline_name=...,
+      # Include *all* pipeline components as usual, even the ones to be skipped.
+      components=[
+          example_gen_component,
+          ...,
+          pusher_component,
+      ],
+      # Add RunOptions to specify a partial run.
+      run_options=pipeline.RunOptions(
+          from_nodes=[trainer_component.id],
+          to_nodes=[evaluator_component.id],
+      ),
+  )
+  ```
+
+  The compiler will find the nodes reachable downstream from Trainer and
+  reachable upstream from Evaluator to obtain {Trainer, Evaluator}, and mark
+  those nodes in the pipeline IR accordingly.
+
+  Alternatively, the user can specify:
+
+  ```python
+  nodes_to_include = {trainer_component.id, evaluator_component.id}
+  run_options = pipeline.RunOptions(
+      from_nodes=nodes_to_include,
+      to_nodes=nodes_to_include,
+  )
+  ```
+
+  ### Specifying the artifact reuse strategy
+
+  In the above example, the Trainer node is the first node in the partial run.
+  How would it resolve its dependencies? By default, nodes in a partial run
+  would use the output artifacts from the *previous pipeline run* (including
+  partial runs) to resolve any dependencies that cannot be provided by other
+  nodes in the same partial run.
+
+  Using the previous pipeline run is sufficient in most cases. However,
+  the user may wish to use a different pipeline run to provide missing
+  dependencies -- perhaps an even earlier pipeline run. To specify this:
+
+  ```python
+  run_options = pipeline.RunOptions(
+      from_nodes=...,
+      to_nodes=...,
+      base_pipeline_run_id=<the pipeline run id whose artifacts are to be used>,
+  )
+  ```
   """
 
   def __init__(self,
-               pipeline_name: Text,
-               pipeline_root: Text,
-               metadata_connection_config: Optional[
-                   metadata_store_pb2.ConnectionConfig] = None,
-               components: Optional[List[base_component.BaseComponent]] = None,
-               enable_cache: Optional[bool] = False,
-               metadata_db_root: Optional[Text] = None,
-               beam_pipeline_args: Optional[List[Text]] = None,
-               **kwargs):
+               from_nodes: Optional[Collection[str]] = None,
+               to_nodes: Optional[Collection[str]] = None,
+               base_pipeline_run_id: Optional[str] = None):
+    """Constructor.
+
+    Args:
+      from_nodes: node_ids to be used as "from_nodes". Defaults to None,
+        which indicates all nodes.
+      to_nodes: node_ids to be used as "to_nodes". Defaults to None, which
+        indicates all nodes.
+      base_pipeline_run_id: If provided, will use this as the pipeline run id
+        from which missing dependencies are provided. If None, will use the
+        previous pipeline run id. Defaults to None.
+
+    Raises:
+      ValueError if both from_nodes or to_nodes are empty.
+    """
+    if not(from_nodes or to_nodes):
+      raise ValueError('from_nodes or to_nodes cannot both be empty.')
+    self.from_nodes = from_nodes
+    self.to_nodes = to_nodes
+    self.base_pipeline_run_id = base_pipeline_run_id
+
+
+class Pipeline(base_node.BaseNode):
+  """Logical TFX pipeline object.
+
+  Pipeline object represents the DAG of TFX components, which can be run using
+  one of the pipeline orchestration systems that TFX supports. For details,
+  please refer to the
+  [guide](../../../guide/build_tfx_pipeline).
+
+  Attributes:
+    components: A deterministic list of logical components of this pipeline,
+      which are deduped and topologically sorted.
+    enable_cache: Whether or not cache is enabled for this run.
+    metadata_connection_config: The config to connect to ML metadata.
+    execution_mode: Execution mode of the pipeline. Currently only support
+      synchronous execution mode.
+    beam_pipeline_args: Pipeline arguments for Beam powered Components. Use
+      `with_beam_pipeline_args` to set component level Beam args.
+    platform_config: Pipeline level platform config, in proto form.
+  """
+
+  def __init__(
+      self,
+      pipeline_name: str,
+      pipeline_root: Optional[Union[str, ph.Placeholder]] = '',
+      metadata_connection_config: Optional[
+          metadata.ConnectionConfigType
+      ] = None,
+      components: Iterable[base_node.BaseNode] = (),
+      enable_cache: bool = False,
+      beam_pipeline_args: Optional[List[Union[str, ph.Placeholder]]] = None,
+      platform_config: Optional[message.Message] = None,
+      execution_mode: ExecutionMode = ExecutionMode.SYNC,
+      inputs: Optional[PipelineInputs] = None,
+      outputs: Optional[Dict[str, channel.OutputChannel]] = None,
+      dsl_context_registry: Optional[
+          dsl_context_registry_lib.DslContextRegistry
+      ] = None,
+  ):
     """Initialize pipeline.
 
     Args:
-      pipeline_name: name of the pipeline;
-      pipeline_root: path to root directory of the pipeline;
-      metadata_connection_config: the config to connect to ML metadata.
-      components: a list of components in the pipeline (optional only for
-        backward compatible purpose to be used with deprecated
-        PipelineDecorator).
-      enable_cache: whether or not cache is enabled for this run.
-      metadata_db_root: Deprecated. the uri to the metadata database root.
-        Deprecated and will be removed in future version. Please use
-        metadata_connection_config instead.
-      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
-        Executor will use beam DirectRunner as Default.
-      **kwargs: additional kwargs forwarded as pipeline args.
+      pipeline_name: Name of the pipeline;
+      pipeline_root: Path to root directory of the pipeline. This will most
+        often be just a string. Some orchestrators may have limited support for
+        constructing this from a Placeholder, e.g. a RuntimeInfoPlaceholder that
+        refers to fields from the platform config. pipeline_root is optional
+        only if the pipeline is composed within another parent pipeline, in
+        which case it will inherit its parent pipeline's root.
+      metadata_connection_config: The config to connect to ML metadata.
+      components: Optional list of components to construct the pipeline.
+      enable_cache: Whether or not cache is enabled for this run.
+      beam_pipeline_args: Pipeline arguments for Beam powered Components.
+      platform_config: Pipeline level platform config, in proto form.
+      execution_mode: The execution mode of the pipeline, can be SYNC or ASYNC.
+      inputs: Optional inputs of a pipeline.
+      outputs: Optional outputs of a pipeline.
+      dsl_context_registry: DslContextRegistry to use for this pipeline, if not
+        provided then the current context (potentially a new DslContext) will be
+        used.
     """
-    if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
-      raise ValueError('pipeline name %s exceeds maximum allowed lenght' %
-                       pipeline_name)
-    # TODO(b/138406006): Deprecate pipeline args after 0.14 release.
-    self.pipeline_args = dict(kwargs)
-    self.pipeline_args.update({
-        'pipeline_name': pipeline_name,
-        'pipeline_root': pipeline_root,
-    })
+    if len(pipeline_name) > _MAX_PIPELINE_NAME_LENGTH:
+      raise ValueError(
+          f'pipeline {pipeline_name} exceeds maximum allowed length: {_MAX_PIPELINE_NAME_LENGTH}.'
+      )
+    self.pipeline_name = pipeline_name
 
-    self.pipeline_info = data_types.PipelineInfo(
-        pipeline_name=pipeline_name, pipeline_root=pipeline_root)
-    self.enable_cache = enable_cache
-    if metadata_connection_config:
-      self.metadata_connection_config = metadata_connection_config
-      assert not metadata_db_root, ('At most one of metadata_connection_config '
-                                    'and metadata_db_root should be set')
+    # Registry extraction should come before super().__init__() which put self
+    # to the active DslContextRegistry.
+    self._dsl_context_registry = dsl_context_registry
+    if self._dsl_context_registry is None:
+      parent_reg = dsl_context_registry_lib.get()
+      self._dsl_context_registry = parent_reg.extract_for_pipeline(components)
+
+    # Initialize pipeline as a node.
+    super().__init__()
+
+    if inputs:
+      inputs.pipeline = self
+    self._inputs = inputs
+    if outputs:
+      self._outputs = {
+          k: channel.PipelineOutputChannel(v, pipeline=self, output_key=k)
+          for k, v in outputs.items()
+      }
     else:
-      # TODO(b/138406006): Drop metadata_db_root support after 0.14 release.
-      # We also need to make metadata_connection_config required.
-      tf.logging.info(
-          'metadata_db_root is deprecated, metadata_connection_config will be required in next release'
-      )
-      if metadata_db_root:
-        self.metadata_connection_config = metadata.sqlite_metadata_connection_config(
-            metadata_db_root)
-      else:
-        self.metadata_connection_config = None
+      self._outputs = {}
+    self._id = pipeline_name
 
-    self.beam_pipeline_args = beam_pipeline_args or []
+    # Once pipeline is finalized, this instance is regarded as immutable and
+    # any detectable mutation will raise an error.
+    self._finalized = False
 
-    self.additional_pipeline_args = self.pipeline_args.get(
-        'additional_pipeline_args', {})
+    # TODO(b/183621450): deprecate PipelineInfo.
+    self.pipeline_info = data_types.PipelineInfo(  # pylint: disable=g-missing-from-attributes
+        pipeline_name=pipeline_name,
+        pipeline_root=pipeline_root)
+    self.enable_cache = enable_cache
+    self.metadata_connection_config = metadata_connection_config
+    self.execution_mode = execution_mode
 
-    # TODO(jyzhao): deprecate beam_pipeline_args of additional_pipeline_args.
-    if 'beam_pipeline_args' in self.additional_pipeline_args:
-      tf.logging.warning(
-          'Please use the top level beam_pipeline_args instead of the one in additional_pipeline_args.'
-      )
-      self.beam_pipeline_args = self.additional_pipeline_args[
-          'beam_pipeline_args']
+    self._beam_pipeline_args = beam_pipeline_args or []
 
-    # Store pipeline_args in a json file only when temp file exists.
-    if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
-      pipeline_args_path = os.environ.get('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH')
-      with open(pipeline_args_path, 'w') as f:
-        json.dump(self.pipeline_args, f)
+    self.platform_config = platform_config
 
-    # Calls property setter.
-    self.components = components or []
+    # TODO: b/324635891 - Remove all references and clean this up.
+    self.additional_pipeline_args = {}
+
+    # TODO(b/216581002): Use self._dsl_context_registry to obtain components.
+    self._components = []
+    if components:
+      self._set_components(components)
+
+  def _check_mutable(self):
+    if self._finalized:
+      raise RuntimeError('Cannot mutate Pipeline after finalize.')
+
+  @property
+  def beam_pipeline_args(self):
+    """Beam pipeline args used for all components in the pipeline."""
+    return self._beam_pipeline_args
+
+  @property
+  @doc_controls.do_not_generate_docs
+  def dsl_context_registry(self) -> dsl_context_registry_lib.DslContextRegistry:  # pylint: disable=g-missing-from-attributes
+    if self._dsl_context_registry is None:
+      raise RuntimeError('DslContextRegistry is not persisted yet. Run '
+                         'pipeline.finalize() first.')
+    return self._dsl_context_registry
+
+  @property
+  def id(self):
+    return self._id
 
   @property
   def components(self):
-    """A list of logical components that are deduped and topological sorted."""
+    """A deterministic list of logical components that are deduped and topologically sorted."""
     return self._components
 
   @components.setter
-  def components(self, components: List[base_component.BaseComponent]):
+  def components(self, components: List[base_node.BaseNode]):
+    self._set_components(components)
+
+  def _set_components(self, components: Iterable[base_node.BaseNode]) -> None:
+    """Set a full list of components of the pipeline."""
+    self._check_mutable()
+
     deduped_components = set(components)
-    producer_map = {}
-    instances_per_component_type = collections.defaultdict(set)
+    for upstream_component, component in enumerate_implicit_dependencies(
+        list(deduped_components),
+        registry=self._dsl_context_registry,
+        pipeline=self,
+    ):
+      component.add_upstream_node(upstream_component)
 
-    # Fills in producer map.
-    for component in deduped_components:
-      # Guarantees every component of a component type has unique component_id.
-      if component.id in instances_per_component_type[component.type]:
-        raise RuntimeError('Duplicated component_id %s for component type %s' %
-                           (component.id, component.type))
-      instances_per_component_type[component.type].add(component.id)
-      for key, output_channel in component.outputs.get_all().items():
-        assert not producer_map.get(
-            output_channel), '{} produced more than once'.format(output_channel)
-        producer_map[output_channel] = component
-        # Fill in detailed artifact properties.
-        for artifact in output_channel.get():
-          artifact.name = key
-          artifact.pipeline_name = self.pipeline_info.pipeline_name
-          artifact.producer_component = component.id
-
-    # Connects nodes based on producer map.
-    for component in deduped_components:
-      for i in component.inputs.get_all().values():
-        if producer_map.get(i):
-          component.add_upstream_node(producer_map[i])
-          producer_map[i].add_downstream_node(component)
-
+    layers = topsort.topsorted_layers(
+        list(deduped_components),
+        get_node_id_fn=lambda c: c.id,
+        get_parent_nodes=lambda c: c.upstream_nodes,
+        get_child_nodes=lambda c: c.downstream_nodes)
     self._components = []
-    visited = set()
-
-    # Finds the nodes with indegree 0.
-    current_layer = [c for c in deduped_components if not c.upstream_nodes]
-    # Sorts component in topological order.
-    while current_layer:
-      next_layer = []
-      for component in current_layer:
+    for layer in layers:
+      for component in layer:
         self._components.append(component)
-        visited.add(component)
-        for downstream_node in component.downstream_nodes:
-          if downstream_node.upstream_nodes.issubset(visited):
-            next_layer.append(downstream_node)
-      current_layer = next_layer
-    # If there is a cycle in the graph, upon visiting the cycle, no node will be
-    # ready to be processed because it is impossible to find a single node that
-    # has all its dependencies visited.
-    if len(self._components) < len(deduped_components):
-      raise RuntimeError('There is a cycle in the pipeline')
+
+    if self.beam_pipeline_args:
+      for component in self._components:
+        add_beam_pipeline_args_to_component(component, self.beam_pipeline_args)
+
+  @doc_controls.do_not_generate_docs
+  def finalize(self):
+    self._persist_dsl_context_registry()
+    self._finalized = True
+
+  def _persist_dsl_context_registry(self):
+    """Persist the DslContextRegistry to the pipeline."""
+    assert self._dsl_context_registry is not None
+    self._dsl_context_registry = copy.copy(self._dsl_context_registry)
+    self._dsl_context_registry.finalize()
+
+    given_components = set(self._components)
+    registry_components = set(self._dsl_context_registry.all_nodes)
+    for unseen_component in given_components - registry_components:
+      warnings.warn(
+          f'Component {unseen_component.id} is not found from the registry. '
+          'This is probably due to reusing component from another pipeline '
+          'or interleaved pipeline definitions. Make sure each component '
+          'belong to exactly one pipeline, and pipeline definitions are '
+          'separated.')
+
+  @property
+  def inputs(self) -> Dict[str, Any]:
+    # If we view a Pipeline as a Node, its inputs should be unwrapped (raw)
+    # channels that are provided through PipelineInputs, and consumed by nodes
+    # in the inner pipeline.
+    if self._inputs:
+      return self._inputs.raw_inputs
+    else:
+      return {}
+
+  @property
+  def outputs(self) -> Dict[str, Any]:
+    # If we view a Pipeline as a Node, its outputs should be wrapped channels
+    # that will be consumed by nodes in the outer pipeline.
+    return self._outputs
+
+  @property
+  def exec_properties(self) -> Dict[str, Any]:
+    return {}
+
+
+def enumerate_implicit_dependencies(
+    components: Collection[base_node.BaseNode],
+    registry: dsl_context_registry_lib.DslContextRegistry,
+    pipeline: Optional[Pipeline] = None,
+) -> Iterator[Tuple[base_node.BaseNode, base_node.BaseNode]]:
+  """Enumerate component dependencies arising from data deps between them.
+
+  Args:
+    components: Components to consider.
+    registry: DslContextRegistry to use for looking up conditional predicates.
+    pipeline: Pipeline object if calling from the context of one.
+
+  Yields:
+    Pairs of the form (upstream_component, component). If a component has no
+    upstream components within `components` then it will not be present as the
+    first element of any tuple in the output. A warning is generated if an
+    `upstream_component` of some node in `components` is not part of the
+    supplied pipeline's components.
+
+  Raises:
+    RuntimeError: When duplicate components are detected.
+  """
+  node_by_id = {}
+
+  # Fills in producer map.
+  for component in components:
+    # Checks every node has an unique id.
+    if component.id in node_by_id:
+      raise RuntimeError(
+          f'Duplicated node_id {component.id} for component type'
+          f'{component.type}. Try setting a different node_id using '
+          '`.with_id()`.'
+      )
+    if pipeline and component.id == pipeline.pipeline_name:
+      raise RuntimeError(
+          f'node id {component.id} is the same as its enclosing pipeline id.'
+          'Try setting a different node_id using `.with_id()`.'
+      )
+    node_by_id[component.id] = component
+
+  # Deduce upstream nodes based on producer map.
+  for component in components:
+    channels = list(component.inputs.values())
+    for exec_property in component.exec_properties.values():
+      if isinstance(exec_property, ph.Placeholder):
+        channels.extend(channel_utils.get_dependent_channels(exec_property))
+    if component in registry.all_nodes:
+      # Backward compatibility; component might not be part of the current
+      # pipeline registry in the case
+      for predicate in conditional.get_predicates(component, registry):
+        channels.extend(channel_utils.get_dependent_channels(predicate))
+
+    pipeline_component_ids = set(
+        (component.id for component in pipeline.components)
+    ) if pipeline else set()
+    for input_channel in channels:
+      for upstream_node_id in input_channel.get_data_dependent_node_ids():
+        if pipeline and upstream_node_id == pipeline.id:
+          # If a component's input channel depends on the (self) pipeline,
+          # it means that component consumes pipeline-level inputs. No need to
+          # add upstream node here. Pipeline-level inputs will be handled
+          # during compilation.
+          continue
+        upstream_node = node_by_id.get(upstream_node_id)
+        if upstream_node:
+          yield (upstream_node, component)
+        elif pipeline and upstream_node_id not in pipeline_component_ids:
+          warnings.warn(
+              f'Node {component.id} depends on the output of node'
+              f' {upstream_node_id}, but {upstream_node_id} is not included in'
+              ' the components of pipeline. Did you forget to add it?'
+          )

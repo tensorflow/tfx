@@ -13,36 +13,34 @@
 # limitations under the License.
 """TFX PrestoExampleGen component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import Optional
 
-from presto_component import executor
-from proto import presto_config_pb2
-from typing import Optional, Text
-
-from tfx import types
-from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
+from tfx.dsl.components.base import executor_spec
+from tfx.examples.custom_components.presto_example_gen.presto_component import executor
+from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
 from tfx.proto import example_gen_pb2
 
 
-class PrestoExampleGen(component._QueryBasedExampleGen):  # pylint: disable=protected-access
+class PrestoExampleGen(component.QueryBasedExampleGen):  # pylint: disable=protected-access
   """Official TFX PrestoExampleGen component.
 
   The Presto examplegen component takes a query, connection client
-  configuration, and generates train and eval examples for downsteam components.
+  configuration, and generates train and eval examples for downstream
+  components.
+
+  Component `outputs` contains:
+   - `examples`: Channel of type `standard_artifacts.Examples` for output train
+                 and eval examples.
   """
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(self,
                conn_config: presto_config_pb2.PrestoConnConfig,
-               query: Optional[Text] = None,
+               query: Optional[str] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               output_config: Optional[example_gen_pb2.Output] = None):
     """Constructs a PrestoExampleGen component.
 
     Args:
@@ -55,10 +53,6 @@ class PrestoExampleGen(component._QueryBasedExampleGen):  # pylint: disable=prot
       output_config: An example_gen_pb2.Output instance, providing output
         configuration. If unset, default splits will be 'train' and 'eval' with
         size 2:1.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
-        eval examples.
-      instance_name: Optional unique instance name. Necessary if multiple
-        PrestoExampleGen components are declared in the same pipeline.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set. Or
@@ -78,9 +72,7 @@ class PrestoExampleGen(component._QueryBasedExampleGen):  # pylint: disable=prot
     output_config = output_config or utils.make_default_output_config(
         input_config)
 
-    super(PrestoExampleGen, self).__init__(
+    super().__init__(
         input_config=input_config,
         output_config=output_config,
-        custom_config=packed_custom_config,
-        example_artifacts=example_artifacts,
-        instance_name=instance_name)
+        custom_config=packed_custom_config)

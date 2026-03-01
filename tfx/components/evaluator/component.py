@@ -13,96 +13,138 @@
 # limitations under the License.
 """TFX Evaluator component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import List, Optional, Union
 
-from typing import Optional, Text
-
+from absl import logging
+import tensorflow_model_analysis as tfma
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
 from tfx.components.evaluator import executor
+from tfx.components.util import udf_utils
+from tfx.dsl.components.base import base_beam_component
+from tfx.dsl.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import EvaluatorSpec
+from tfx.types import standard_component_specs
+from tfx.utils import json_utils
 
 
-class Evaluator(base_component.BaseComponent):
+class Evaluator(base_beam_component.BaseBeamComponent):
   """A TFX component to evaluate models trained by a TFX Trainer component.
 
-  The Evaluator component performs model evaluations in the TFX pipeline and
-  the resultant metrics can be viewed in a Jupyter notebook.  It uses the
-  input examples generated from the
-  [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen)
-  component to evaluate the models.
+  Component `outputs` contains:
 
-  Specifically, it can provide:
-    - metrics computed on entire training and eval dataset
-    - tracking metrics over time
-    - model quality performance on different feature slices
+   - `evaluation`: Channel of type [`standard_artifacts.ModelEvaluation`][tfx.v1.types.standard_artifacts.ModelEvaluation] to
+                   store the evaluation results.
+   - `blessing`: Channel of type [`standard_artifacts.ModelBlessing`][tfx.v1.types.standard_artifacts.ModelBlessing] that
+                 contains the blessing result.
 
-  ## Exporting the EvalSavedModel in Trainer
-
-  In order to setup Evaluator in a TFX pipeline, an EvalSavedModel needs to be
-  exported during training, which is a special SavedModel containing
-  annotations for the metrics, features, labels, and so on in your model.
-  Evaluator uses this EvalSavedModel to compute metrics.
-
-  As part of this, the Trainer component creates eval_input_receiver_fn,
-  analogous to the serving_input_receiver_fn, which will extract the features
-  and labels from the input data. As with serving_input_receiver_fn, there are
-  utility functions to help with this.
-
-  Please see https://www.tensorflow.org/tfx/model_analysis for more details.
-
-  ## Example
-  ```
-    # Uses TFMA to compute a evaluation statistics over features of a model.
-    model_analyzer = Evaluator(
-        examples=example_gen.outputs['examples'],
-        model_exports=trainer.outputs['output'])
-  ```
+  See [the Evaluator guide](../../../guide/evaluator) for
+  more details.
   """
 
-  SPEC_CLASS = EvaluatorSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  SPEC_CLASS = standard_component_specs.EvaluatorSpec
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
   def __init__(
       self,
-      examples: types.Channel = None,
-      model_exports: types.Channel = None,
-      feature_slicing_spec: Optional[evaluator_pb2.FeatureSlicingSpec] = None,
-      output: Optional[types.Channel] = None,
-      model: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      examples: types.BaseChannel,
+      model: Optional[types.BaseChannel] = None,
+      baseline_model: Optional[types.BaseChannel] = None,
+      # TODO(b/148618405): deprecate feature_slicing_spec.
+      feature_slicing_spec: Optional[Union[evaluator_pb2.FeatureSlicingSpec,
+                                           data_types.RuntimeParameter]] = None,
+      fairness_indicator_thresholds: Optional[Union[
+          List[float], data_types.RuntimeParameter]] = None,
+      example_splits: Optional[List[str]] = None,
+      eval_config: Optional[tfma.EvalConfig] = None,
+      schema: Optional[types.BaseChannel] = None,
+      module_file: Optional[str] = None,
+      module_path: Optional[str] = None):
     """Construct an Evaluator component.
 
     Args:
-      examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
-        component. _required_
-      model_exports: A Channel of 'ModelExportPath' type, usually produced by
-        Trainer component.  Will be deprecated in the future for the `model`
-        parameter.
-      feature_slicing_spec:
+      examples: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples], usually
+        produced by an ExampleGen component. _required_
+      model: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Model`][tfx.v1.types.standard_artifacts.Model], usually produced
+        by a [Trainer][tfx.v1.components.Trainer] component.
+      baseline_model: An optional channel of type ['standard_artifacts.Model'][tfx.v1.types.standard_artifacts.Model] as
+        the baseline model for model diff and model validation purpose.
+      feature_slicing_spec: Deprecated, please use eval_config instead. Only
+        support estimator.
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
         instance that describes how Evaluator should slice the data.
-      output: Channel of `ModelEvalPath` to store the evaluation results.
-      model: Future replacement of the `model_exports` argument.
-      instance_name: Optional name assigned to this specific instance of
-        Evaluator. Required only if multiple Evaluator components are declared
-        in the same pipeline.
-
-      Either `model_exports` or `model` must be present in the input arguments.
+      fairness_indicator_thresholds: Optional list of float (or
+        [RuntimeParameter][tfx.v1.dsl.experimental.RuntimeParameter]) threshold values for use with TFMA fairness
+          indicators. Experimental functionality: this interface and
+          functionality may change at any time. TODO(b/142653905): add a link
+          to additional documentation for TFMA fairness indicators here.
+      example_splits: Names of splits on which the metrics are computed.
+        Default behavior (when example_splits is set to None or Empty) is using
+        the 'eval' split.
+      eval_config: Instance of tfma.EvalConfig containg configuration settings
+        for running the evaluation. This config has options for both estimator
+        and Keras.
+      schema: A `Schema` channel to use for TFXIO.
+      module_file: A path to python module file containing UDFs for Evaluator
+        customization. This functionality is experimental and may change at any
+        time. The module_file can implement following functions at its top
+        level.
+          ``` {.py .no-copy}
+          def custom_eval_shared_model(
+             eval_saved_model_path, model_name, eval_config, **kwargs,
+          ) -> tfma.EvalSharedModel:
+          ```
+          ``` {.py .no-copy}
+          def custom_extractors(
+            eval_shared_model, eval_config, tensor_adapter_config,
+          ) -> List[tfma.extractors.Extractor]:
+          ```
+      module_path: A python path to the custom module that contains the UDFs.
+        See 'module_file' for the required signature of UDFs. This functionality
+        is experimental and this API may change at any time. Note this can not
+        be set together with module_file.
     """
-    model_exports = model_exports or model
-    output = output or types.Channel(
-        type=standard_artifacts.ModelEvaluation,
-        artifacts=[standard_artifacts.ModelEvaluation()])
-    spec = EvaluatorSpec(
+    if bool(module_file) and bool(module_path):
+      raise ValueError(
+          'Python module path can not be set together with module file path.')
+
+    if eval_config is not None and feature_slicing_spec is not None:
+      raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
+                       'must be supplied.')
+    if eval_config is None and feature_slicing_spec is None:
+      feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
+      logging.info('Neither eval_config nor feature_slicing_spec is passed, '
+                   'the model is treated as estimator.')
+
+    if feature_slicing_spec:
+      logging.warning('feature_slicing_spec is deprecated, please use '
+                      'eval_config instead.')
+
+    blessing = types.Channel(type=standard_artifacts.ModelBlessing)
+    evaluation = types.Channel(type=standard_artifacts.ModelEvaluation)
+    spec = standard_component_specs.EvaluatorSpec(
         examples=examples,
-        model_exports=model_exports,
-        feature_slicing_spec=(feature_slicing_spec or
-                              evaluator_pb2.FeatureSlicingSpec()),
-        output=output)
-    super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)
+        model=model,
+        baseline_model=baseline_model,
+        feature_slicing_spec=feature_slicing_spec,
+        fairness_indicator_thresholds=(
+            fairness_indicator_thresholds if isinstance(
+                fairness_indicator_thresholds, data_types.RuntimeParameter) else
+            json_utils.dumps(fairness_indicator_thresholds)),
+        example_splits=json_utils.dumps(example_splits),
+        evaluation=evaluation,
+        eval_config=eval_config,
+        blessing=blessing,
+        schema=schema,
+        module_file=module_file,
+        module_path=module_path)
+    super().__init__(spec=spec)
+
+    if udf_utils.should_package_user_modules():
+      # In this case, the `MODULE_PATH_KEY` execution property will be injected
+      # as a reference to the given user module file after packaging, at which
+      # point the `MODULE_FILE_KEY` execution property will be removed.
+      udf_utils.add_user_module_dependency(
+          self, standard_component_specs.MODULE_FILE_KEY,
+          standard_component_specs.MODULE_PATH_KEY)

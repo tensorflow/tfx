@@ -13,22 +13,20 @@
 # limitations under the License.
 """Tests for tfx.scripts.run_executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
+from typing import Any, Dict, List
 
 import tensorflow as tf
-from typing import Any, Dict, List, Text
 
 from tfx import types
-from tfx.components.base import base_executor
+from tfx.dsl.components.base import base_executor
 from tfx.scripts import run_executor
 from tfx.types import artifact_utils
+from tfx.types import standard_artifacts
+from tfx.utils import name_utils
 
 
-class ArgsCapture(object):
+class ArgsCapture:
   instance = None
 
   def __enter__(self):
@@ -41,9 +39,9 @@ class ArgsCapture(object):
 
 class FakeExecutor(base_executor.BaseExecutor):
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Overrides BaseExecutor.Do()."""
     args_capture = ArgsCapture.instance
     args_capture.input_dict = input_dict
@@ -56,20 +54,21 @@ class RunExecutorTest(tf.test.TestCase):
   def testMainEmptyInputs(self):
     """Test executor class import under empty inputs/outputs."""
     inputs = {
-        'x': [types.Artifact(type_name='X'),
-              types.Artifact(type_name='X')]
+        'x': [
+            standard_artifacts.ExternalArtifact(),
+            standard_artifacts.ExternalArtifact()
+        ]
     }
-    outputs = {'y': [types.Artifact(type_name='Y')]}
+    outputs = {'y': [standard_artifacts.Examples()]}
     exec_properties = {'a': 'b'}
     args = [
-        '--executor_class_path=%s.%s' %
-        (FakeExecutor.__module__, FakeExecutor.__name__),
+        '--executor_class_path=%s' % name_utils.get_full_name(FakeExecutor),
         '--inputs=%s' % artifact_utils.jsonify_artifact_dict(inputs),
         '--outputs=%s' % artifact_utils.jsonify_artifact_dict(outputs),
         '--exec-properties=%s' % json.dumps(exec_properties),
     ]
     with ArgsCapture() as args_capture:
-      run_executor.main(args)
+      run_executor.main(run_executor.parse_flags(args))
       # TODO(b/131417512): Add equal comparison to types.Artifact class so we
       # can use asserters.
       self.assertSetEqual(
@@ -82,6 +81,3 @@ class RunExecutorTest(tf.test.TestCase):
 # TODO(zhitaoli): Add tests for:
 # - base64 decoding of flags;
 # - write output.
-
-if __name__ == '__main__':
-  tf.test.main()

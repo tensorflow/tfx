@@ -1,0 +1,50 @@
+// Copyright 2020 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.orchestration.executable_spec;
+
+import "tfx/proto/orchestration/placeholder.proto";
+
+// Specification for Python-class based executables.
+message PythonClassExecutableSpec {
+  // The full class path of the executable.
+  string class_path = 1;
+  // Extra flags for running the Python executable.
+  repeated string extra_flags = 2;
+}
+
+// Specification for Beam based executables.
+message BeamExecutableSpec {
+  // Nested python executor spec.
+  PythonClassExecutableSpec python_executor_spec = 1;
+  // Args for Apache Beam pipeline.
+  // NOTE: This is deprecated in favour of beam_pipeline_args_placeholder
+  // which supports strings as well as placeholders.
+  // TODO(b/251703242): Deprecate `beam_pipeline_args`.
+  repeated string beam_pipeline_args = 2 [deprecated = true];
+  // Args for Apache Beam pipeline with support for placeholders.
+  repeated PlaceholderExpression beam_pipeline_args_placeholders = 3;
+}
+
+// Specification for Container based executables.
+// This executable resembles the spec defined by TemplatedExecutorContainerSpec.
+message ContainerExecutableSpec {
+  // The uri of the container image.
+  string image = 1;
+  // The commands of the container.
+  repeated PlaceholderExpression commands = 2;
+  // The args of the container entrypoint.
+  repeated PlaceholderExpression args = 3;
+}

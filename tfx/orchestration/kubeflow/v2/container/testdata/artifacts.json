@@ -1,0 +1,42 @@
+{
+  "inputs": {
+    "artifacts": {
+      "input_1": {
+        "artifacts": [
+          {
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/11111",
+            "uri": "gs://root/string/",
+            "metadata": {
+              "my_property_1": "Test string."
+            },
+            "type": { "schemaTitle": "tfx.String" }
+          }
+        ]
+      },
+      "input_2": {
+        "artifacts": [
+          {
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/22222",
+            "uri": "gs://root/model/",
+            "metadata": {
+              "my_property_2": 42.0
+            },
+            "type": { "schemaTitle": "tfx.ModelBlessing" }
+          }
+        ]
+      },
+      "input_3": {
+        "artifacts": [
+          {
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/33333",
+            "uri": "gs://root/examples/",
+            "metadata": {
+              "span": 9000
+            },
+            "type": { "schemaTitle": "tfx.Examples" }
+          }
+        ]
+      }
+    }
+  }
+}

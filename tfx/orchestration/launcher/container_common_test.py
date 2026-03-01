@@ -13,13 +13,10 @@
 # limitations under the License.
 """Tests for tfx.orchestration.launcher.container_common."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+from kubernetes import client
 import tensorflow as tf
 
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration.launcher import container_common
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
@@ -67,6 +64,30 @@ class ContainerUtilsTest(tf.test.TestCase):
         'gcs://model',
     ], actual_spec.args)
 
+  def testToSwaggerDict(self):
+    pod = client.V1Pod(
+        metadata=client.V1ObjectMeta(owner_references=[
+            client.V1OwnerReference(
+                api_version='argoproj.io/v1alpha1',
+                kind='Workflow',
+                name='wf-1',
+                uid='wf-uid-1')
+        ]),
+        spec=client.V1PodSpec(containers=[], service_account='sa-1'))
 
-if __name__ == '__main__':
-  tf.test.main()
+    pod_dict = container_common.to_swagger_dict(pod)
+
+    self.assertDictEqual(
+        {
+            'metadata': {
+                'ownerReferences': [{
+                    'apiVersion': 'argoproj.io/v1alpha1',
+                    'kind': 'Workflow',
+                    'name': 'wf-1',
+                    'uid': 'wf-uid-1'
+                }]
+            },
+            'spec': {
+                'serviceAccount': 'sa-1'
+            }
+        }, pod_dict)

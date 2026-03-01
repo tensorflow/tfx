@@ -1,0 +1,48 @@
+{
+  "inputs": {
+    "artifacts": {
+      "input_1": {
+        "artifacts": [
+          {
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/11111",
+            "uri": "gs://root/string/",
+            "customProperties": {
+              "my_property_1": {
+                "stringValue":"Test string."
+              }
+            },
+            "type": { "instanceSchema": "title: tfx.String\ntype: object\nproperties:\n" }
+          }
+        ]
+      },
+      "input_2": {
+        "artifacts": [
+          {
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/22222",
+            "uri": "gs://root/model/",
+            "customProperties": {
+              "my_property_2": {
+                "intValue": 42.0
+              }
+            },
+            "type": { "instanceSchema": "title: tfx.ModelBlessing\ntype: object\nproperties:\n" }
+          }
+        ]
+      },
+      "input_3": {
+        "artifacts": [
+          {
+            "name": "projects/123456789/locations/us-central1/metadataStores/default/artifacts/33333",
+            "uri": "gs://root/examples/",
+            "properties": {
+              "span": {
+                "intValue":9000.0
+              }
+            },
+            "type": { "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: int\n    description: Span for an artifact.\n  version:\n    type: int\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n" }
+          }
+        ]
+      }
+    }
+  }
+}

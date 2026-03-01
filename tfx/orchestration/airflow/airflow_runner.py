@@ -13,14 +13,10 @@
 # limitations under the License.
 """Deprecated definition of Airflow TFX runner."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.orchestration.airflow import airflow_dag_runner
+from tfx.utils import deprecation_utils
 
-AirflowDAGRunner = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+AirflowDAGRunner = deprecation_utils.deprecated_alias(  # pylint: disable=invalid-name
     deprecated_name='airflow_runner.AirflowDAGRunner',
     name='airflow_dag_runner.AirflowDagRunner',
     func_or_class=airflow_dag_runner.AirflowDagRunner)

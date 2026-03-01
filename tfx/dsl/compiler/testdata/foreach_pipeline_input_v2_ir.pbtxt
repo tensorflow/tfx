@@ -1,0 +1,1129 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+#
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/foreach_pipeline.py
+
+pipeline_info {
+  id: "foreach"
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.example_gen.csv_example_gen.component.CsvExampleGen"
+      }
+      id: "CsvExampleGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "foreach"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "foreach.CsvExampleGen"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+              base_type: DATASET
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "input_base"
+        value {
+          field_value {
+            string_value: "/data/mydummy_dataset"
+          }
+        }
+      }
+      parameters {
+        key: "input_config"
+        value {
+          field_value {
+            string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_config"
+        value {
+          field_value {
+            string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+          }
+        }
+      }
+      parameters {
+        key: "output_data_format"
+        value {
+          field_value {
+            int_value: 6
+          }
+        }
+      }
+      parameters {
+        key: "output_file_format"
+        value {
+          field_value {
+            int_value: 5
+          }
+        }
+      }
+    }
+    downstream_nodes: "StatisticsGen"
+    downstream_nodes: "Trainer"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.statistics_gen.component.StatisticsGen"
+        base_type: PROCESS
+      }
+      id: "StatisticsGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "foreach"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "foreach.StatisticsGen"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "_CsvExampleGen.examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "foreach"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "foreach.CsvExampleGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+                base_type: DATASET
+              }
+            }
+            output_key: "examples"
+          }
+          hidden: true
+        }
+      }
+      inputs {
+        key: "examples"
+        value {
+          min_count: 1
+          input_graph_ref {
+            graph_id: "graph_1"
+            key: "out"
+          }
+        }
+      }
+      input_graphs {
+        key: "graph_1"
+        value {
+          nodes {
+            key: "dict_2"
+            value {
+              output_data_type: ARTIFACT_MULTIMAP
+              dict_node {
+                node_ids {
+                  key: "out"
+                  value: "input_3"
+                }
+              }
+            }
+          }
+          nodes {
+            key: "input_3"
+            value {
+              output_data_type: ARTIFACT_LIST
+              input_node {
+                input_key: "_CsvExampleGen.examples"
+              }
+            }
+          }
+          nodes {
+            key: "op_1"
+            value {
+              output_data_type: ARTIFACT_MULTIMAP_LIST
+              op_node {
+                op_type: "tfx.internal.Unnest"
+                args {
+                  node_id: "dict_2"
+                }
+                kwargs {
+                  key: "key"
+                  value {
+                    value {
+                      field_value {
+                        string_value: "out"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          result_node: "op_1"
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "statistics"
+        value {
+          artifact_spec {
+            type {
+              name: "ExampleStatistics"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              base_type: STATISTICS
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+    }
+    upstream_nodes: "CsvExampleGen"
+    downstream_nodes: "latest_stats_resolver"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.components.common.resolver.Resolver"
+      }
+      id: "latest_stats_resolver"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "foreach"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "foreach.latest_stats_resolver"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "_StatisticsGen.statistics"
+        value {
+          channels {
+            producer_node_query {
+              id: "StatisticsGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "foreach"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "foreach.StatisticsGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ExampleStatistics"
+                base_type: STATISTICS
+              }
+            }
+            output_key: "statistics"
+          }
+          hidden: true
+        }
+      }
+      inputs {
+        key: "statistics"
+        value {
+          input_graph_ref {
+            graph_id: "graph_1"
+            key: "statistics"
+          }
+        }
+      }
+      input_graphs {
+        key: "graph_1"
+        value {
+          nodes {
+            key: "dict_2"
+            value {
+              output_data_type: ARTIFACT_MULTIMAP
+              dict_node {
+                node_ids {
+                  key: "statistics"
+                  value: "input_3"
+                }
+              }
+            }
+          }
+          nodes {
+            key: "input_3"
+            value {
+              output_data_type: ARTIFACT_LIST
+              input_node {
+                input_key: "_StatisticsGen.statistics"
+              }
+            }
+          }
+          nodes {
+            key: "op_1"
+            value {
+              output_data_type: ARTIFACT_MULTIMAP
+              op_node {
+                op_type: "tfx.dsl.input_resolution.strategies.latest_artifact_strategy.LatestArtifactStrategy"
+                args {
+                  node_id: "dict_2"
+                }
+              }
+            }
+          }
+          result_node: "op_1"
+        }
+      }
+    }
+    upstream_nodes: "StatisticsGen"
+    downstream_nodes: "SchemaGen"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.schema_gen.component.SchemaGen"
+        base_type: PROCESS
+      }
+      id: "SchemaGen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "foreach"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "foreach.SchemaGen"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "statistics"
+        value {
+          channels {
+            producer_node_query {
+              id: "latest_stats_resolver"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "foreach"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "foreach.latest_stats_resolver"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ExampleStatistics"
+                base_type: STATISTICS
+              }
+            }
+            output_key: "statistics"
+          }
+          min_count: 1
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "schema"
+        value {
+          artifact_spec {
+            type {
+              name: "Schema"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+      parameters {
+        key: "infer_feature_shape"
+        value {
+          field_value {
+            int_value: 1
+          }
+        }
+      }
+    }
+    upstream_nodes: "latest_stats_resolver"
+    downstream_nodes: "Trainer"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.trainer.component.Trainer"
+        base_type: TRAIN
+      }
+      id: "Trainer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "foreach"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "foreach.Trainer"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "_CsvExampleGen.examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "CsvExampleGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "foreach"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "foreach.CsvExampleGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+                base_type: DATASET
+              }
+            }
+            output_key: "examples"
+          }
+          hidden: true
+        }
+      }
+      inputs {
+        key: "examples"
+        value {
+          min_count: 1
+          input_graph_ref {
+            graph_id: "graph_1"
+            key: "out"
+          }
+        }
+      }
+      inputs {
+        key: "schema"
+        value {
+          channels {
+            producer_node_query {
+              id: "SchemaGen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "foreach"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "foreach.SchemaGen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Schema"
+              }
+            }
+            output_key: "schema"
+          }
+        }
+      }
+      input_graphs {
+        key: "graph_1"
+        value {
+          nodes {
+            key: "dict_2"
+            value {
+              output_data_type: ARTIFACT_MULTIMAP
+              dict_node {
+                node_ids {
+                  key: "out"
+                  value: "input_3"
+                }
+              }
+            }
+          }
+          nodes {
+            key: "input_3"
+            value {
+              output_data_type: ARTIFACT_LIST
+              input_node {
+                input_key: "_CsvExampleGen.examples"
+              }
+            }
+          }
+          nodes {
+            key: "op_1"
+            value {
+              output_data_type: ARTIFACT_MULTIMAP_LIST
+              op_node {
+                op_type: "tfx.internal.Unnest"
+                args {
+                  node_id: "dict_2"
+                }
+                kwargs {
+                  key: "key"
+                  value {
+                    value {
+                      field_value {
+                        string_value: "out"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          result_node: "op_1"
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "model"
+        value {
+          artifact_spec {
+            type {
+              name: "Model"
+              base_type: MODEL
+            }
+          }
+        }
+      }
+      outputs {
+        key: "model_run"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelRun"
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "custom_config"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+      parameters {
+        key: "eval_args"
+        value {
+          field_value {
+            string_value: "{}"
+          }
+        }
+      }
+      parameters {
+        key: "module_file"
+        value {
+          field_value {
+            string_value: "/src/train.py"
+          }
+        }
+      }
+      parameters {
+        key: "train_args"
+        value {
+          field_value {
+            string_value: "{\n  \"num_steps\": 2000\n}"
+          }
+        }
+      }
+    }
+    upstream_nodes: "CsvExampleGen"
+    upstream_nodes: "SchemaGen"
+    downstream_nodes: "Pusher"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.components.pusher.component.Pusher"
+        base_type: DEPLOY
+      }
+      id: "Pusher"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "foreach"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "foreach.Pusher"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "_Trainer.model"
+        value {
+          channels {
+            producer_node_query {
+              id: "Trainer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "foreach"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "foreach.Trainer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "model"
+          }
+          hidden: true
+        }
+      }
+      inputs {
+        key: "model"
+        value {
+          input_graph_ref {
+            graph_id: "graph_1"
+            key: "out"
+          }
+        }
+      }
+      input_graphs {
+        key: "graph_1"
+        value {
+          nodes {
+            key: "dict_2"
+            value {
+              output_data_type: ARTIFACT_MULTIMAP
+              dict_node {
+                node_ids {
+                  key: "out"
+                  value: "input_3"
+                }
+              }
+            }
+          }
+          nodes {
+            key: "input_3"
+            value {
+              output_data_type: ARTIFACT_LIST
+              input_node {
+                input_key: "_Trainer.model"
+              }
+            }
+          }
+          nodes {
+            key: "op_1"
+            value {
+              output_data_type: ARTIFACT_MULTIMAP_LIST
+              op_node {
+                op_type: "tfx.internal.Unnest"
+                args {
+                  node_id: "dict_2"
+                }
+                kwargs {
+                  key: "key"
+                  value {
+                    value {
+                      field_value {
+                        string_value: "out"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          result_node: "op_1"
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "pushed_model"
+        value {
+          artifact_spec {
+            type {
+              name: "PushedModel"
+              base_type: MODEL
+            }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "custom_config"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
+      parameters {
+        key: "push_destination"
+        value {
+          field_value {
+            string_value: "{\n  \"filesystem\": {\n    \"base_directory\": \"/models\"\n  }\n}"
+          }
+        }
+      }
+    }
+    upstream_nodes: "Trainer"
+    execution_options {
+      caching_options {
+        enable_cache: true
+      }
+    }
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline-root"
+      type: STRING
+      default_value {
+        string_value: "/tfx/pipelines/foreach"
+      }
+    }
+  }
+  pipeline_run_id {
+    runtime_parameter {
+      name: "pipeline-run-id"
+      type: STRING
+    }
+  }
+}
+execution_mode: SYNC
+deployment_config {
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "CsvExampleGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "Pusher"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.pusher.executor.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "SchemaGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.schema_gen.executor.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "StatisticsGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.BeamExecutableSpec] {
+          python_executor_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "Trainer"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.trainer.executor.GenericExecutor"
+        }
+      }
+    }
+    custom_driver_specs {
+      key: "CsvExampleGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_gen.driver.FileBasedDriver"
+        }
+      }
+    }
+  }
+}

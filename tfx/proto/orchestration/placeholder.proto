@@ -1,0 +1,322 @@
+// Copyright 2020 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.orchestration;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/descriptor.proto";
+import "ml_metadata/proto/metadata_store.proto";
+
+// PlaceholderExpression is used in DSL IR executor specs to represent
+// information that is not available at the authoring time. It will be rendered
+// at execution time to provide the needed information.
+message PlaceholderExpression {
+  oneof expression_type {
+    // ml_metadata.Value currently does not support boolean type.
+    // Boolean values should be stored as string literals "true" or "false".
+    ml_metadata.Value value = 1;
+    Placeholder placeholder = 2;
+    PlaceholderExpressionOperator operator = 3;
+  }
+}
+
+// Placeholder operator helps extract or render placeholders.
+// TODO(b/167431029): Add custom options to annotate operator types.
+message PlaceholderExpressionOperator {
+  oneof operator_type {
+    ArtifactUriOperator artifact_uri_op = 1;
+    ArtifactValueOperator artifact_value_op = 2;
+    ConcatOperator concat_op = 3;
+    JoinPathOperator join_path_op = 15;
+    IndexOperator index_op = 4;
+    ProtoOperator proto_op = 5;
+    Base64EncodeOperator base64_encode_op = 6;
+    ComparisonOperator compare_op = 7;
+    UnaryLogicalOperator unary_logical_op = 8;
+    BinaryLogicalOperator binary_logical_op = 9;
+    ArtifactPropertyOperator artifact_property_op = 10;
+    ListSerializationOperator list_serialization_op = 11;
+    ListConcatOperator list_concat_op = 12;
+    MakeDictOperator make_dict_op = 13;
+    MakeProtoOperator make_proto_op = 14;
+    DirNameOperator dir_name_op = 16;
+  }
+}
+
+// DirNameOperator extracts the directory name from a file path.
+message DirNameOperator {
+  // Required. It must evaluate to a file path string.
+  PlaceholderExpression expression = 1;
+}
+
+// ArtifactUriOperator extracts the Artifact URI from a placeholder expression.
+// ArtifactUriOperator: Artifact -> String
+message ArtifactUriOperator {
+  // Required. It must evaluate to an INPUT_ARTIFACT or OUTPUT_ARTIFACT type
+  // placeholder.
+  PlaceholderExpression expression = 1;
+
+  // Optional. If provided, this operator returns the URI for a specific split.
+  // It's needed if one artifact, e.g., Examples Artifact, has multiple splits.
+  string split = 2;
+}
+
+// ArtifactPropertyOperator gets the property from a artifact placeholder.
+// ArtifactPropertyOperator: Artifact -> String/Int/Float
+message ArtifactPropertyOperator {
+  // Required. It must evaluate to an INPUT_ARTIFACT or OUTPUT_ARTIFACT type
+  // placeholder.
+  PlaceholderExpression expression = 1;
+
+  // Required. The key of the Artifact property.
+  string key = 2;
+
+  // Optional. If the property key is associated with a custom property.
+  bool is_custom_property = 3;
+}
+
+// ArtifactValueOperator evaluates to the value of primitive-type artifacts
+// from a placeholder expression, by reading the contents at the Artifact's URI.
+// ArtifactValueOperator: Artifact -> String/Int/Float
+message ArtifactValueOperator {
+  // Required. It must evaluate to a primitive-type artifact.
+  PlaceholderExpression expression = 1;
+}
+
+// ConcatOperator concatenates multiple placeholder expressions.
+// ConcatOperator: List[String] -> String
+message ConcatOperator {
+  // Required. The placeholders to be concatenated.
+  repeated PlaceholderExpression expressions = 1;
+}
+
+// JoinPathOperator calls os.path.join(*args).
+// JoinPathOperator: List[str] -> str
+message JoinPathOperator {
+  repeated PlaceholderExpression expressions = 1;
+}
+
+// IndexOperator extracts an element at the index if the PlaceholderExpression
+// evaluates to something list-like or dict-like. For example, an INPUT_ARTIFACT
+// or OUTPUT_ARTIFACT placeholder may contain multiple artifacts.
+// IndexOperator: List[T] | Dict[str, T] -> T
+message IndexOperator {
+  // Required. The placeholder expression must evaluate to something list-like
+  // or dict-like. Otherwise a runtime error will be thrown when evaluating
+  // this operator.
+  PlaceholderExpression expression = 1;
+
+  // Optional. The element index to be accessed if the expression is list-like.
+  int64 index = 2;
+
+  // Optional. The key of the key-value pair if the expression is dict-like.
+  // When evaluated, the corresponding value will be returned.
+  string key = 3;
+}
+
+// ProtoOperator helps access and serialize the information in
+// PlaceholderExpression if it evaluates to a proto.
+// ProtoOperator: Proto -> String
+message ProtoOperator {
+  message ProtoSchema {
+    // Message type for the proto. It must exist in the file_descriptors below.
+    string message_type = 1;
+    // Definitions of all dependencies of the above message type.
+    // Optional if the descriptor exists in the base file descriptor pool
+    // during placeholder evaluation.
+    google.protobuf.FileDescriptorSet file_descriptors = 2;
+  }
+
+  // Required. An expression that evaluates to a proto type. For example,
+  // EXEC_PROPERTY, RUNTIME_INFO or EXEC_INVOCATION type placeholders.
+  PlaceholderExpression expression = 1;
+
+  // Required. Proto schema makes proto-valued placeholder expression
+  // self-describing.
+  ProtoSchema proto_schema = 2;
+
+  // Optional. Access a field inside the proto, using proto notations.
+  // If provided, the value at the proto_field_path is a non-message type,
+  // it will be rendered directly.
+  // If this field is not provided, or the proto_field_path points to a
+  // sub-message, serialization_format is required. The sub-message will be
+  // rendered using serialization_format.
+  //
+  // For example: proto_field_path=["[0]", ".a", ".b", "['c']"] is equivalent to
+  // accessing p[0].a.b['c'], where p is the proto evaluated from the above
+  // expression.
+  repeated string proto_field_path = 3;
+
+  // Supported formats to serialize a proto.
+  enum SerializationFormat {
+    DEFAULT = 0;  // Currently unused.
+    TEXT_FORMAT = 1;
+    JSON = 2;
+    BINARY = 3;
+    // Emits an /inline/... file path with the proto's text-formatted content.
+    // This is useful for passing to flags that expect a textproto config file.
+    INLINE_FILE_TEXT_FORMAT = 4;
+  }
+
+  // The format that the proto is serialized to.
+  // Required if proto_field_path is unprovided or points to a sub-message.
+  SerializationFormat serialization_format = 4;
+}
+
+// Base64EncodeOperator encodes the output of another placeholder using
+// base64 encoding.
+// The output of another placeholder must be string or bytes.
+// Base64EncodeOperator: String/Bytes -> String
+message Base64EncodeOperator {
+  // Required. It must evaluate to a String-like type value.
+  PlaceholderExpression expression = 1;
+  // Optional. If true, standard base64 encoding will be used.
+  // Otherwise, the url-safe base64 encoding will be used.
+  bool is_standard_b64 = 2;
+}
+
+// ComparisonOperator compares one ArtifactPlaceholder with another, evaluating
+// to a boolean at run time. This is primary used for encoding predicates used
+// by conditionals in the Pipeline-authoring DSL.
+//
+// Example:
+// Suppose `lhs` evaluates to 1, `rhs` evaluates to 2, and `op` is
+// Operation.LESS_THAN.
+// Then this comparison should evaluate to "true".
+message ComparisonOperator {
+  // Required. It must evaluate to something that can be compared (e.g., int,
+  // float, str). During evaluation, this expression is on the left side of the
+  // comparison operation.
+  PlaceholderExpression lhs = 1;
+
+  // Required. The placeholder expression to be compared against.
+  // It must evaluate to something that can be compared (e.g., int, float, str).
+  // During evaluation, this expression is on the right side of the comparison
+  // operation.
+  PlaceholderExpression rhs = 2;
+
+  enum Operation {
+    UNKNOWN = 0;
+    EQUAL = 1;
+    LESS_THAN = 2;
+    GREATER_THAN = 3;
+  }
+
+  // Required. The comparison op.
+  Operation op = 3;
+}
+
+// NotOperator applies a `NOT` boolean operation to a boolean expression.
+message UnaryLogicalOperator {
+  // Required. It must evaluate to a boolean.
+  PlaceholderExpression expression = 1;
+
+  enum Operation {
+    UNKNOWN = 0;
+    NOT = 1;
+  }
+
+  // Required. The boolean op.
+  Operation op = 2;
+}
+
+// BinaryLogicalOperator applies `AND`, or `OR` to two boolean expressions.
+message BinaryLogicalOperator {
+  // Required. It must evaluate to a boolean.
+  PlaceholderExpression lhs = 1;
+
+  // Required. It must evaluate to a boolean.
+  PlaceholderExpression rhs = 2;
+
+  enum Operation {
+    UNKNOWN = 0;
+    AND = 1;
+    OR = 2;
+  }
+
+  // Required. The boolean op.
+  Operation op = 3;
+}
+
+// ListSerializationOperator encodes the output of another placeholder as json
+// string. If elements in the list are proto messages, they get json serialized
+// first. ListSerializationOperator: List[Any] -> String
+message ListSerializationOperator {
+  // Required. It must evaluate to a List type value.
+  PlaceholderExpression expression = 1;
+
+  // Supported formats to serialize a list.
+  enum SerializationFormat {
+    FORMAT_UNSPECIFIED = 0;
+    JSON = 1;
+    COMMA_SEPARATED_STR = 2;
+  }
+
+  SerializationFormat serialization_format = 2;
+}
+
+// ListConcatOperator encodes a list of placeholders.
+message ListConcatOperator {
+  // Required. The list of placeholders to be encoded.
+  repeated PlaceholderExpression expressions = 1;
+}
+
+// MakeDictOperator encodes a dict (aka. map) of placeholders.
+message MakeDictOperator {
+  // Required. The list of dict entries to be encoded.
+  repeated Entry entries = 1;
+  message Entry {
+    PlaceholderExpression key = 1;  // Must evaluate to a string.
+    PlaceholderExpression value = 2;
+  }
+}
+
+// MakeProtoOperator constructs a new proto message based on placeholder fields.
+message MakeProtoOperator {
+  // Required. The base message, which may have some of its fields populated.
+  // This also determines the type of the produced proto message.
+  google.protobuf.Any base = 1;
+  // Optional. Additional proto fields to populate based on sub-placeholders:
+  // * For scalar fields, this must set PlaceholderExpression.value.
+  // * For sub-message fields, this must set
+  //   PlaceholderExpression.operator.make_proto_op.
+  // * For repeated fields, this must set
+  //   PlaceholderExpression.operator.list_concat_op.
+  // * For map<> fields, this must set
+  //   PlaceholderExpression.operator.make_dict_op.
+  map<string, PlaceholderExpression> fields = 2;
+  // Additional descriptors needed to construct the proto.
+  google.protobuf.FileDescriptorSet file_descriptors = 3;
+}
+
+// Placeholder is an inseparable unit in a placeholder expression that
+// pipeline information will be injected.
+message Placeholder {
+  // A Placeholder can represent an input artifact, an output artifact,
+  // or an execution property.
+  enum Type {
+    INPUT_ARTIFACT = 0;
+    OUTPUT_ARTIFACT = 1;
+    EXEC_PROPERTY = 2;
+    RUNTIME_INFO = 3;
+    EXEC_INVOCATION = 4;
+    ENVIRONMENT_VARIABLE = 5;
+  }
+  // Required. Type of the placeholder.
+  Type type = 1;
+
+  // Required. Key to the placeholder.
+  string key = 2;
+}

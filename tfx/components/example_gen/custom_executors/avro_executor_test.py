@@ -13,38 +13,36 @@
 # limitations under the License.
 """Tests for tfx.components.example_gen.custom_executos.avro_executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
+
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
 from tfx.components.example_gen.custom_executors import avro_executor
+from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-from google.protobuf import json_format
+from tfx.types import standard_component_specs
+from tfx.utils import proto_utils
 
 
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    input_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata')
-
-    # Create input dict.
-    input_base = standard_artifacts.ExternalArtifact()
-    input_base.uri = os.path.join(input_data_dir, 'external')
-    self._input_dict = {'input_base': [input_base]}
+    super().setUp()
+    self._input_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata',
+        'external')
 
   def testAvroToExample(self):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline
           | 'ToTFExample' >> avro_executor._AvroToExample(
-              input_dict=self._input_dict,
-              exec_properties={},
+              exec_properties={
+                  standard_component_specs.INPUT_BASE_KEY: self._input_data_dir
+              },
               split_pattern='avro/*.avro'))
 
       def check_result(got):
@@ -61,22 +59,22 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create output dict.
-    train_examples = standard_artifacts.Examples(split='train')
-    train_examples.uri = os.path.join(output_data_dir, 'train')
-    eval_examples = standard_artifacts.Examples(split='eval')
-    eval_examples.uri = os.path.join(output_data_dir, 'eval')
-    output_dict = {'examples': [train_examples, eval_examples]}
+    examples = standard_artifacts.Examples()
+    examples.uri = output_data_dir
+    output_dict = {standard_component_specs.EXAMPLES_KEY: [examples]}
 
     # Create exec proterties.
     exec_properties = {
-        'input_config':
-            json_format.MessageToJson(
+        standard_component_specs.INPUT_BASE_KEY:
+            self._input_data_dir,
+        standard_component_specs.INPUT_CONFIG_KEY:
+            proto_utils.proto_to_json(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='avro', pattern='avro/*.avro'),
                 ])),
-        'output_config':
-            json_format.MessageToJson(
+        standard_component_specs.OUTPUT_CONFIG_KEY:
+            proto_utils.proto_to_json(
                 example_gen_pb2.Output(
                     split_config=example_gen_pb2.SplitConfig(splits=[
                         example_gen_pb2.SplitConfig.Split(
@@ -88,19 +86,19 @@ class ExecutorTest(tf.test.TestCase):
 
     # Run executor.
     avro_example_gen = avro_executor.Executor()
-    avro_example_gen.Do(self._input_dict, output_dict, exec_properties)
+    avro_example_gen.Do({}, output_dict, exec_properties)
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        examples.split_names)
 
     # Check Avro example gen outputs.
-    train_output_file = os.path.join(train_examples.uri,
+    train_output_file = os.path.join(examples.uri, 'Split-train',
                                      'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(eval_examples.uri,
+    eval_output_file = os.path.join(examples.uri, 'Split-eval',
                                     'data_tfrecord-00000-of-00001.gz')
-    self.assertTrue(tf.gfile.Exists(train_output_file))
-    self.assertTrue(tf.gfile.Exists(eval_output_file))
+    self.assertTrue(fileio.exists(train_output_file))
+    self.assertTrue(fileio.exists(eval_output_file))
     self.assertGreater(
-        tf.gfile.GFile(train_output_file).size(),
-        tf.gfile.GFile(eval_output_file).size())
-
-
-if __name__ == '__main__':
-  tf.test.main()
+        fileio.open(train_output_file).size(),
+        fileio.open(eval_output_file).size())

@@ -13,39 +13,51 @@
 # limitations under the License.
 """Tests for tfx.components.example_gen.import_example_gen.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
+
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
+from tfx.components.example_gen import utils
 from tfx.components.example_gen.import_example_gen import executor
+from tfx.dsl.io import fileio
 from tfx.proto import example_gen_pb2
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-from google.protobuf import json_format
+from tfx.types import standard_component_specs
+from tfx.utils import proto_utils
 
 
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    input_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata')
+    super().setUp()
+    self._input_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata',
+        'external')
 
-    # Create input dict.
-    input_base = standard_artifacts.ExternalArtifact()
-    input_base.uri = os.path.join(input_data_dir, 'external')
-    self._input_dict = {'input_base': [input_base]}
+    # Create values in exec_properties
+    self._input_config = proto_utils.proto_to_json(
+        example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(name='tfrecord', pattern='tfrecord/*'),
+        ]))
+    self._output_config = proto_utils.proto_to_json(
+        example_gen_pb2.Output(
+            split_config=example_gen_pb2.SplitConfig(splits=[
+                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
+                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
+            ])))
 
   def testImportExample(self):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline
-          | 'ToTFExample' >> executor._ImportExample(
-              input_dict=self._input_dict,
-              exec_properties={},
-              split_pattern='tfrecord/*'))
+          | 'ToSerializedRecord' >> executor._ImportSerializedRecord(
+              exec_properties={
+                  standard_component_specs.INPUT_BASE_KEY: self._input_data_dir
+              },
+              split_pattern='tfrecord/*')
+          | 'ToTFExample' >> beam.Map(tf.train.Example.FromString))
 
       def check_result(got):
         # We use Python assertion here to avoid Beam serialization error in
@@ -55,52 +67,89 @@ class ExecutorTest(tf.test.TestCase):
 
       util.assert_that(examples, check_result)
 
-  def testDo(self):
+  def _test_do(self, payload_format):
+    exec_properties = {
+        standard_component_specs.INPUT_BASE_KEY: self._input_data_dir,
+        standard_component_specs.INPUT_CONFIG_KEY: self._input_config,
+        standard_component_specs.OUTPUT_CONFIG_KEY: self._output_config,
+        standard_component_specs.OUTPUT_DATA_FORMAT_KEY: payload_format,
+    }
+
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
     # Create output dict.
-    train_examples = standard_artifacts.Examples(split='train')
-    train_examples.uri = os.path.join(output_data_dir, 'train')
-    eval_examples = standard_artifacts.Examples(split='eval')
-    eval_examples.uri = os.path.join(output_data_dir, 'eval')
-    output_dict = {'examples': [train_examples, eval_examples]}
-
-    # Create exec proterties.
-    exec_properties = {
-        'input_config':
-            json_format.MessageToJson(
-                example_gen_pb2.Input(splits=[
-                    example_gen_pb2.Input.Split(
-                        name='tfrecord', pattern='tfrecord/*'),
-                ])),
-        'output_config':
-            json_format.MessageToJson(
-                example_gen_pb2.Output(
-                    split_config=example_gen_pb2.SplitConfig(splits=[
-                        example_gen_pb2.SplitConfig.Split(
-                            name='train', hash_buckets=2),
-                        example_gen_pb2.SplitConfig.Split(
-                            name='eval', hash_buckets=1)
-                    ])))
-    }
+    self.examples = standard_artifacts.Examples()
+    self.examples.uri = output_data_dir
+    output_dict = {standard_component_specs.EXAMPLES_KEY: [self.examples]}
 
     # Run executor.
     import_example_gen = executor.Executor()
-    import_example_gen.Do(self._input_dict, output_dict, exec_properties)
+    import_example_gen.Do({}, output_dict, exec_properties)
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        self.examples.split_names)
 
     # Check import_example_gen outputs.
-    train_output_file = os.path.join(train_examples.uri,
-                                     'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(eval_examples.uri,
-                                    'data_tfrecord-00000-of-00001.gz')
-    self.assertTrue(tf.gfile.Exists(train_output_file))
-    self.assertTrue(tf.gfile.Exists(eval_output_file))
+    if payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
+      train_output_file = os.path.join(self.examples.uri, 'Split-train',
+                                       'data_parquet-00000-of-00001.parquet')
+      eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
+                                      'data_parquet-00000-of-00001.parquet')
+    else:
+      train_output_file = os.path.join(self.examples.uri, 'Split-train',
+                                       'data_tfrecord-00000-of-00001.gz')
+      eval_output_file = os.path.join(self.examples.uri, 'Split-eval',
+                                      'data_tfrecord-00000-of-00001.gz')
+
+    self.assertTrue(fileio.exists(train_output_file))
+    self.assertTrue(fileio.exists(eval_output_file))
     self.assertGreater(
-        tf.gfile.GFile(train_output_file).size(),
-        tf.gfile.GFile(eval_output_file).size())
+        fileio.open(train_output_file).size(),
+        fileio.open(eval_output_file).size())
 
+  def testDoWithExamples(self):
+    self._test_do(example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE)
+    self.assertEqual(
+        example_gen_pb2.PayloadFormat.Name(
+            example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE),
+        self.examples.get_string_custom_property(
+            utils.PAYLOAD_FORMAT_PROPERTY_NAME))
 
-if __name__ == '__main__':
-  tf.test.main()
+  def testDoWithProto(self):
+    self._test_do(example_gen_pb2.PayloadFormat.FORMAT_PROTO)
+    self.assertEqual(
+        example_gen_pb2.PayloadFormat.Name(
+            example_gen_pb2.PayloadFormat.FORMAT_PROTO),
+        self.examples.get_string_custom_property(
+            utils.PAYLOAD_FORMAT_PROPERTY_NAME))
+
+  def testDoWithSequenceExamples(self):
+    self._input_config = proto_utils.proto_to_json(
+        example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(
+                name='tfrecord_sequence', pattern='tfrecord_sequence/*'),
+        ]))
+
+    self._test_do(example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE)
+    self.assertEqual(
+        example_gen_pb2.PayloadFormat.Name(
+            example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE),
+        self.examples.get_string_custom_property(
+            utils.PAYLOAD_FORMAT_PROPERTY_NAME))
+
+  def testDoWithParquet(self):
+    self._input_config = proto_utils.proto_to_json(
+        example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(
+                name='parquet_records', pattern='parquet/*'),
+        ]))
+
+    self._test_do(example_gen_pb2.PayloadFormat.FORMAT_PARQUET)
+    self.assertEqual(
+        example_gen_pb2.PayloadFormat.Name(
+            example_gen_pb2.PayloadFormat.FORMAT_PARQUET),
+        self.examples.get_string_custom_property(
+            utils.PAYLOAD_FORMAT_PROPERTY_NAME))

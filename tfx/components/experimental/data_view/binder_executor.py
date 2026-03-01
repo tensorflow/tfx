@@ -1,0 +1,65 @@
+# Copyright 2020 Google LLC. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""TFX DataViewBinder component executor."""
+import json
+from typing import Any, Dict, List
+
+from absl import logging
+from tfx import types
+from tfx.components.experimental.data_view import constants
+from tfx.dsl.components.base import base_executor
+from tfx.orchestration import data_types_utils
+from tfx.types import artifact_utils
+
+
+# Keys for input_dict.
+_INPUT_EXAMPLES_KEY = 'input_examples'
+_DATA_VIEW_KEY = 'data_view'
+
+# Keys for output_dict.
+_OUTPUT_EXAMPLES_KEY = 'output_examples'
+
+
+class DataViewBinderExecutor(base_executor.BaseExecutor):
+  """Executor for DataViewBinder."""
+
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
+    # TODO(b/261951727): Remove unnecessary logging after fixing the failure.
+    logging.debug('Inputs for %s are: %s', self.__class__.__name__,
+                  artifact_utils.jsonify_artifact_dict(input_dict))
+    logging.debug('Outputs for %s are: %s', self.__class__.__name__,
+                  artifact_utils.jsonify_artifact_dict(output_dict))
+    logging.debug(
+        'Execution properties for %s are: %s', self.__class__.__name__,
+        json.dumps(
+            data_types_utils.build_value_dict(
+                data_types_utils.build_metadata_value_dict(exec_properties))))
+
+    data_view_artifact = artifact_utils.get_single_instance(
+        input_dict.get(_DATA_VIEW_KEY))
+    input_examples_artifact = artifact_utils.get_single_instance(
+        input_dict.get(_INPUT_EXAMPLES_KEY))
+    output_examples_artifact = artifact_utils.get_single_instance(
+        output_dict.get(_OUTPUT_EXAMPLES_KEY, []))
+
+    # The output artifact shares the URI and all other properties with the
+    # input, with the following additional custom properties added.
+    output_examples_artifact.copy_from(input_examples_artifact)
+    output_examples_artifact.set_string_custom_property(
+        constants.DATA_VIEW_CREATE_TIME_KEY,
+        str(data_view_artifact.mlmd_artifact.create_time_since_epoch))
+    output_examples_artifact.set_string_custom_property(
+        constants.DATA_VIEW_URI_PROPERTY_KEY, data_view_artifact.uri)

@@ -13,24 +13,55 @@
 # limitations under the License.
 """A client for the chicago_taxi demo."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
 import base64
+import csv
 import json
 import os
 import subprocess
 import tempfile
+from typing import List
 
+from absl import app
+from absl.flags import argparse_flags
 import requests
-import tensorflow as tf
+import tensorflow_data_validation as tfdv
+from tensorflow_transform import coders as tft_coders
+from tensorflow_transform.tf_metadata import schema_utils
 
+from google.protobuf import text_format
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
-from tfx.examples.chicago_taxi.trainer import taxi
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 _LOCAL_INFERENCE_TIMEOUT_SECONDS = 5.0
+
+_LABEL_KEY = 'tips'
+
+
+# Tf.Transform considers these features as "raw"
+def _get_raw_feature_spec(schema):
+  return schema_utils.schema_as_feature_spec(schema).feature_spec
+
+
+def _make_proto_coder(schema):
+  raw_feature_spec = _get_raw_feature_spec(schema)
+  raw_schema = schema_utils.schema_from_feature_spec(raw_feature_spec)
+  return tft_coders.ExampleProtoCoder(raw_schema)
+
+
+def _read_schema(path):
+  """Reads a schema from the provided location.
+
+  Args:
+    path: The location of the file holding a serialized Schema proto.
+
+  Returns:
+    An instance of Schema or None if the input argument is None
+  """
+  result = schema_pb2.Schema()
+  contents = file_io.read_file_to_string(path)
+  text_format.Parse(contents, result)
+  return result
 
 
 def _do_local_inference(host, port, serialized_examples):
@@ -62,8 +93,8 @@ def _do_aiplatform_inference(model, version, serialized_examples):
   for serialized_example in serialized_examples:
     # The encoding follows the example in:
     # https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/quests/tpu/invoke_model.py
-    json_examples.append(
-        '{ "inputs": { "b64": "%s" } }' % base64.b64encode(serialized_example))
+    json_examples.append('{ "inputs": { "b64": "%s" } }' %
+                         base64.b64encode(serialized_example).decode('utf-8'))
   file_io.write_string_to_file(instances_file, '\n'.join(json_examples))
   gcloud_command = [
       'gcloud', 'ai-platform', 'predict', '--model', model, '--version',
@@ -87,24 +118,47 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
     Response from model server
   """
   filtered_features = [
-      feature for feature in schema.feature if feature.name != taxi.LABEL_KEY
+      feature for feature in schema.feature if feature.name != _LABEL_KEY
   ]
   del schema.feature[:]
   schema.feature.extend(filtered_features)
 
-  csv_coder = taxi.make_csv_coder(schema)
-  proto_coder = taxi.make_proto_coder(schema)
+  proto_coder = _make_proto_coder(schema)
 
-  input_file = open(examples_file, 'r')
-  input_file.readline()  # skip header line
+  csv_reader = csv.DictReader(open(examples_file, 'r'))
 
+  dataset_stats = tfdv.generate_statistics_from_csv(examples_file)
   serialized_examples = []
   for _ in range(num_examples):
-    one_line = input_file.readline()
+    one_line = next(csv_reader)
     if not one_line:
       print('End of example file reached')
       break
-    one_example = csv_coder.decode(one_line)
+    one_example = {}
+    for feature in schema.feature:
+      name = feature.name
+      feature_stats = tfdv.get_feature_stats(dataset_stats.datasets[0],
+                                             tfdv.FeaturePath([name]))
+      if one_line[name]:
+        if feature.type == schema_pb2.FLOAT:
+          one_example[name] = [float(one_line[name])]
+        elif feature.type == schema_pb2.INT:
+          one_example[name] = [int(one_line[name])]
+        elif feature.type == schema_pb2.BYTES:
+          one_example[name] = [one_line[name].encode('utf8')]
+      else:
+        # TF serve does not like missing features, so we'll populate
+        # the missing features with their mean/mode instead
+        if feature.type == schema_pb2.FLOAT:
+          one_example[name] = [feature_stats.num_stats.mean]
+        elif feature.type == schema_pb2.INT:
+          one_example[name] = [int(feature_stats.num_stats.mean)]
+        elif feature.type == schema_pb2.BYTES:
+          top_values = list(feature_stats.string_stats.top_values)
+          if top_values:
+            one_example[name] = [top_values[0].value.encode('utf8')]
+          else:
+            one_example[name] = [''.encode('utf8')]
 
     serialized_example = proto_coder.encode(one_example)
     serialized_examples.append(serialized_example)
@@ -122,8 +176,9 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
         serialized_examples=serialized_examples)
 
 
-def main(_):
-  parser = argparse.ArgumentParser()
+def _parse_flags(argv: List[str]) -> argparse.Namespace:
+  """Command lines flag parsing."""
+  parser = argparse_flags.ArgumentParser()
   parser.add_argument(
       '--num_examples',
       help=('Number of examples to send to the server.'),
@@ -142,11 +197,13 @@ def main(_):
 
   parser.add_argument(
       '--schema_file', help='File holding the schema for the input data')
-  known_args, _ = parser.parse_known_args()
-  _do_inference(known_args.server,
-                known_args.examples_file, known_args.num_examples,
-                taxi.read_schema(known_args.schema_file))
+  return parser.parse_args(argv[1:])
+
+
+def main(args: argparse.Namespace):
+  _do_inference(args.server, args.examples_file,
+                args.num_examples, _read_schema(args.schema_file))
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run(main, flags_parser=_parse_flags)

@@ -1,0 +1,22 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "my_resolver_executor"
+  value {
+    resolver {
+      output_artifact_queries {
+        key: "examples"
+        value {
+          filter: "schema_title=\"tfx.Examples\" AND state=LIVE"
+        }
+      }
+      output_artifact_queries {
+        key: "model"
+        value {
+          filter: "schema_title=\"tfx.Model\" AND state=LIVE"
+        }
+      }
+    }
+  }
+}

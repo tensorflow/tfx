@@ -1,0 +1,227 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineSpec
+
+pipeline_info {
+  name: "pipeline-with-container"
+}
+deployment_spec {
+  fields {
+    key: "executors"
+    value {
+      struct_value {
+        fields {
+          key: "DummyContainerSpecComponent_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "transformer"
+                          }
+                          values {
+                            string_value: "--input1"
+                          }
+                          values {
+                            string_value: "{{$.inputs.artifacts[\'input1\'].uri}}"
+                          }
+                          values {
+                            string_value: "--output1"
+                          }
+                          values {
+                            string_value: "{{$.outputs.artifacts[\'output1\'].uri}}"
+                          }
+                          values {
+                            string_value: "--param1"
+                          }
+                          values {
+                            string_value: "{{$.inputs.parameters[\'param1\']}}"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "dummy/transformer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "DummyProducerComponent_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "producer"
+                          }
+                          values {
+                            string_value: "--output1"
+                          }
+                          values {
+                            string_value: "{{$.outputs.artifacts[\'output1\'].uri}}"
+                          }
+                          values {
+                            string_value: "--param1"
+                          }
+                          values {
+                            string_value: "{{$.inputs.parameters[\'param1\']}}"
+                          }
+                          values {
+                            string_value: "--wrapped-param"
+                          }
+                          values {
+                            string_value: "prefix-{{$.inputs.parameters[\'param1\']}}-suffix"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "dummy/producer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+components {
+  key: "DummyContainerSpecComponent"
+  value {
+    input_definitions {
+      artifacts {
+        key: "input1"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Model\ntype: object\n"
+          }
+        }
+      }
+      parameters {
+        key: "param1"
+        value {
+          type: STRING
+        }
+      }
+    }
+    output_definitions {
+      artifacts {
+        key: "output1"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Model\ntype: object\n"
+          }
+        }
+      }
+    }
+    executor_label: "DummyContainerSpecComponent_executor"
+  }
+}
+components {
+  key: "DummyProducerComponent"
+  value {
+    input_definitions {
+      parameters {
+        key: "param1"
+        value {
+          type: STRING
+        }
+      }
+    }
+    output_definitions {
+      artifacts {
+        key: "output1"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Model\ntype: object\n"
+          }
+        }
+      }
+    }
+    executor_label: "DummyProducerComponent_executor"
+  }
+}
+root {
+  dag {
+    tasks {
+      key: "DummyContainerSpecComponent"
+      value {
+        task_info {
+          name: "DummyContainerSpecComponent"
+        }
+        inputs {
+          parameters {
+            key: "param1"
+            value {
+              runtime_value {
+                constant_value {
+                  string_value: "value2"
+                }
+              }
+            }
+          }
+          artifacts {
+            key: "input1"
+            value {
+              task_output_artifact {
+                producer_task: "DummyProducerComponent"
+                output_artifact_key: "output1"
+              }
+            }
+          }
+        }
+        dependent_tasks: "DummyProducerComponent"
+        component_ref {
+          name: "DummyContainerSpecComponent"
+        }
+      }
+    }
+    tasks {
+      key: "DummyProducerComponent"
+      value {
+        task_info {
+          name: "DummyProducerComponent"
+        }
+        inputs {
+          parameters {
+            key: "param1"
+            value {
+              runtime_value {
+                constant_value {
+                  string_value: "value1"
+                }
+              }
+            }
+          }
+        }
+        component_ref {
+          name: "DummyProducerComponent"
+        }
+      }
+    }
+  }
+}

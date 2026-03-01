@@ -1,0 +1,12 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "DummyConsumerComponent_executor"
+  value {
+    container {
+      image: "dummy/consumer"
+      command: "consumer"
+    }
+  }
+}

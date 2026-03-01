@@ -13,132 +13,273 @@
 # limitations under the License.
 """Tests for tfx.orchestration.pipeline."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import itertools
 import os
-import tempfile
-
-import tensorflow as tf
-from typing import Any, Dict, Text
+from typing import Any, Dict, Optional, Type
 
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import base_executor
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import base_beam_component
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import base_node
+from tfx.dsl.components.base import executor_spec
+from tfx.dsl.context_managers import dsl_context_registry
+from tfx.dsl.context_managers import test_utils
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.types.component_spec import ChannelParameter
+from tfx.types.component_spec import ExecutionParameter
+from tfx.utils import test_case_utils
 
 
-def _make_fake_component_instance(name: Text, inputs: Dict[Text, types.Channel],
-                                  outputs: Dict[Text, types.Channel]):
+Node = test_utils.Node
+TestContext = test_utils.TestContext
+
+
+class _OutputArtifact(types.Artifact):
+  TYPE_NAME = 'OutputArtifact'
+
+
+def _make_fake_node_instance(name: str):
+
+  class _FakeNode(base_node.BaseNode):
+
+    @property
+    def inputs(self) -> Dict[str, Any]:
+      return {}
+
+    @property
+    def outputs(self) -> Dict[str, Any]:
+      return {}
+
+    @property
+    def exec_properties(self) -> Dict[str, Any]:
+      return {}
+
+  return _FakeNode().with_id(name)
+
+
+def _make_fake_component_instance(
+    name: str,
+    output_type: Type[types.Artifact],
+    inputs: Dict[str, types.Channel],
+    outputs: Dict[str, types.Channel],
+    with_beam: bool = False,
+    dynamic_exec_property: Optional[ph.Placeholder] = None):
 
   class _FakeComponentSpec(types.ComponentSpec):
-    PARAMETERS = {}
-    INPUTS = dict([(arg, ChannelParameter(type_name=channel.type_name))
+    PARAMETERS = {
+        'exec_prop': ExecutionParameter(type=int)
+    } if dynamic_exec_property is not None else {}
+    INPUTS = dict([(arg, ChannelParameter(type=channel.type))
                    for arg, channel in inputs.items()])
-    OUTPUTS = dict([(arg, ChannelParameter(type_name=channel.type_name))
+    OUTPUTS = dict([(arg, ChannelParameter(type=channel.type))
                     for arg, channel in outputs.items()] +
-                   [('output', ChannelParameter(type_name=name))])
+                   [('output', ChannelParameter(type=output_type))])
 
   class _FakeComponent(base_component.BaseComponent):
 
     SPEC_CLASS = _FakeComponentSpec
     EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
-    def __init__(self, name: Text, spec_kwargs: Dict[Text, Any]):
-      spec = _FakeComponentSpec(
-          output=types.Channel(type_name=name), **spec_kwargs)
-      super(_FakeComponent, self).__init__(spec=spec, instance_name=name)
+    def __init__(
+        self,
+        type: Type[types.Artifact],  # pylint: disable=redefined-builtin
+        spec_kwargs: Dict[str, Any]):
+      spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
+      super().__init__(spec=spec)
+      self._id = name
+
+  class _FakeBeamComponent(base_beam_component.BaseBeamComponent):
+
+    SPEC_CLASS = _FakeComponentSpec
+    EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(base_executor.BaseExecutor)
+
+    def __init__(
+        self,
+        type: Type[types.Artifact],  # pylint: disable=redefined-builtin
+        spec_kwargs: Dict[str, Any]):
+      spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
+      super().__init__(spec=spec)
+      self._id = name
+      if dynamic_exec_property is not None:
+        self.exec_properties['exec_prop'] = dynamic_exec_property
 
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
-  return _FakeComponent(name, spec_kwargs)
+  if dynamic_exec_property is not None:
+    spec_kwargs['exec_prop'] = dynamic_exec_property
+  return _FakeBeamComponent(output_type,
+                            spec_kwargs) if with_beam else _FakeComponent(
+                                output_type, spec_kwargs)
 
 
-class PipelineTest(tf.test.TestCase):
+class _ArtifactTypeOne(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeOne'
+
+
+class _ArtifactTypeTwo(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeTwo'
+
+
+class _ArtifactTypeThree(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeThree'
+
+
+class _OutputTypeA(types.Artifact):
+  TYPE_NAME = 'OutputTypeA'
+
+
+class _OutputTypeB(types.Artifact):
+  TYPE_NAME = 'OutputTypeB'
+
+
+class _OutputTypeC(types.Artifact):
+  TYPE_NAME = 'OutputTypeC'
+
+
+class _OutputTypeD(types.Artifact):
+  TYPE_NAME = 'OutputTypeD'
+
+
+class _OutputTypeE(types.Artifact):
+  TYPE_NAME = 'OutputTypeE'
+
+
+class PipelineTest(test_case_utils.TfxTest):
+  assert_registry_equal = test_utils.assert_registry_equal
 
   def setUp(self):
-    super(PipelineTest, self).setUp()
-    self._tmp_file = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName,
-        tempfile.mkstemp(prefix='cli_tmp_')[1])
-    self._original_tmp_value = os.environ.get(
-        'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', '')
+    super().setUp()
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
-        os.path.join(self._tmp_file, 'metadata'))
+        os.path.join(self.tmp_dir, 'metadata'))
 
-  def tearDown(self):
-    super(PipelineTest, self).tearDown()
-    os.environ['TFX_TMP_DIR'] = self._original_tmp_value
+  def testPipelineWithDynamicExecProperties(self):
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
+    dynamic_exec_prop = component_a.outputs['output'].future()[0].value + 'foo'
+    component_b = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={},
+        outputs={},
+        with_beam=True,
+        dynamic_exec_property=dynamic_exec_prop)
+
+    my_pipeline = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        components=[component_a, component_b],
+        enable_cache=True,
+        metadata_connection_config=self._metadata_connection_config,
+        beam_pipeline_args=['--runner=PortableRunner'],
+    )
+    self.assertCountEqual(my_pipeline.components[0].downstream_nodes,
+                          [component_b])
+    self.assertCountEqual(my_pipeline.components[1].upstream_nodes,
+                          [component_a])
 
   def testPipeline(self):
-    component_a = _make_fake_component_instance('component_a', {}, {})
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
     component_b = _make_fake_component_instance(
-        'component_b', {'a': component_a.outputs['output']}, {})
+        'component_b', _OutputTypeB, {'a': component_a.outputs['output']}, {})
     component_c = _make_fake_component_instance(
-        'component_c', {'a': component_a.outputs['output']}, {})
-    component_d = _make_fake_component_instance('component_d', {
+        'component_c', _OutputTypeC, {'a': component_a.outputs['output']}, {})
+    component_d = _make_fake_component_instance('component_d', _OutputTypeD, {
         'b': component_b.outputs['output'],
         'c': component_c.outputs['output']
     }, {})
     component_e = _make_fake_component_instance(
-        'component_e', {
+        'component_e',
+        _OutputTypeE, {
             'a': component_a.outputs['output'],
             'b': component_b.outputs['output'],
             'd': component_d.outputs['output']
-        }, {})
+        }, {},
+        with_beam=True)
 
     my_pipeline = pipeline.Pipeline(
         pipeline_name='a',
         pipeline_root='b',
         components=[
-            component_d, component_c, component_a, component_b, component_e,
-            component_a
+            component_d,
+            component_c,
+            component_a,
+            component_b,
+            component_e,
+            component_a,
         ],
         enable_cache=True,
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=['--runner=PortableRunner'],
-        additional_pipeline_args={})
-    self.assertItemsEqual(
+    )
+    self.assertCountEqual(
         my_pipeline.components,
         [component_a, component_b, component_c, component_d, component_e])
-    self.assertItemsEqual(my_pipeline.components[0].downstream_nodes,
+    self.assertCountEqual(my_pipeline.components[0].downstream_nodes,
                           [component_b, component_c, component_e])
     self.assertEqual(my_pipeline.components[-1], component_e)
-    self.assertDictEqual(my_pipeline.pipeline_args, {
-        'pipeline_name': 'a',
-        'pipeline_root': 'b',
-        'additional_pipeline_args': {},
-    })
     self.assertEqual(my_pipeline.pipeline_info.pipeline_name, 'a')
     self.assertEqual(my_pipeline.pipeline_info.pipeline_root, 'b')
     self.assertEqual(my_pipeline.metadata_connection_config,
                      self._metadata_connection_config)
     self.assertTrue(my_pipeline.enable_cache)
-    self.assertItemsEqual(my_pipeline.beam_pipeline_args,
+    self.assertEqual(component_e.executor_spec.beam_pipeline_args,
+                     ['--runner=PortableRunner'])
+    self.assertCountEqual(my_pipeline.beam_pipeline_args,
                           ['--runner=PortableRunner'])
     self.assertDictEqual(my_pipeline.additional_pipeline_args, {})
 
   def testPipelineWithLongname(self):
     with self.assertRaises(ValueError):
       pipeline.Pipeline(
-          pipeline_name='a' * (1 + pipeline.MAX_PIPELINE_NAME_LENGTH),
+          pipeline_name='a' * (1 + pipeline._MAX_PIPELINE_NAME_LENGTH),
           pipeline_root='root',
           components=[],
           metadata_connection_config=self._metadata_connection_config)
 
-  def testPipelineWithLoop(self):
-    channel_one = types.Channel(type_name='channel_one')
-    channel_two = types.Channel(type_name='channel_two')
-    channel_three = types.Channel(type_name='channel_three')
-    component_a = _make_fake_component_instance('component_a', {}, {})
+  def testPipelineWithNode(self):
+    my_pipeline = pipeline.Pipeline(
+        pipeline_name='my_pipeline',
+        pipeline_root='root',
+        components=[_make_fake_node_instance('my_node')],
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertEqual(1, len(my_pipeline.components))
+
+  def testPipelineWarnMissingNode(self):
+    channel_one = types.Channel(type=_ArtifactTypeOne)
+    channel_two = types.Channel(type=_ArtifactTypeTwo)
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA,
+                                                {'a': channel_one}, {})
     component_b = _make_fake_component_instance(
         name='component_b',
+        output_type=_OutputTypeB,
+        inputs={'a': component_a.outputs['output']},
+        outputs={'b': channel_two})
+
+    warn_text = (
+        'Node component_b depends on the output of node component_a, '
+        'but component_a is not included in the components of pipeline. '
+        'Did you forget to add it?')
+    with self.assertWarnsRegex(UserWarning, warn_text):
+      pipeline.Pipeline(
+          pipeline_name='name',
+          pipeline_root='root',
+          components=[
+              component_b,
+          ],
+          metadata_connection_config=self._metadata_connection_config)
+
+  def testPipelineWithLoop(self):
+    channel_one = types.Channel(type=_ArtifactTypeOne)
+    channel_two = types.Channel(type=_ArtifactTypeTwo)
+    channel_three = types.Channel(type=_ArtifactTypeThree)
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
+    component_b = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
         inputs={
             'a': component_a.outputs['output'],
             'one': channel_one
@@ -146,6 +287,7 @@ class PipelineTest(tf.test.TestCase):
         outputs={'two': channel_two})
     component_c = _make_fake_component_instance(
         name='component_b',
+        output_type=_OutputTypeB,
         inputs={
             'a': component_a.outputs['output'],
             'two': channel_two
@@ -153,6 +295,7 @@ class PipelineTest(tf.test.TestCase):
         outputs={'three': channel_three})
     component_d = _make_fake_component_instance(
         name='component_b',
+        output_type=_OutputTypeB,
         inputs={
             'a': component_a.outputs['output'],
             'three': channel_three
@@ -166,10 +309,59 @@ class PipelineTest(tf.test.TestCase):
           components=[component_c, component_d, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
 
-  def testPipelineWithDuplicatedComponentId(self):
-    component_a = _make_fake_component_instance('component_a', {}, {})
-    component_b = _make_fake_component_instance('component_a', {}, {})
-    component_c = _make_fake_component_instance('component_a', {}, {})
+  def testPipelineWithOldReferences(self):
+    component_a = _make_fake_component_instance(
+        name='component_a', output_type=_OutputTypeA, inputs={}, outputs={})
+    component_b_v1 = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={
+            'a': component_a.outputs['output'],
+        },
+        outputs={})
+    component_c_v1 = _make_fake_component_instance(
+        name='component_c',
+        output_type=_OutputTypeC,
+        inputs={
+            'b': component_b_v1.outputs['output'],
+        },
+        outputs={})
+    my_pipeline_v1 = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        components=[component_a, component_b_v1, component_c_v1],
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertEqual(3, len(my_pipeline_v1.components))
+
+    component_b_v2 = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={
+            'a': component_a.outputs['output'],  # reuses component_a
+        },
+        outputs={})
+    component_c_v2 = _make_fake_component_instance(
+        name='component_c',
+        output_type=_OutputTypeC,
+        inputs={
+            # no dependency on component_b_v1, only depends on component_b_v2
+            'b': component_b_v2.outputs['output'],
+        },
+        outputs={})
+
+    my_pipeline_v2 = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        components=[component_a, component_b_v2, component_c_v2],
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertEqual(3, len(my_pipeline_v2.components))
+
+  def testPipelineWithDuplicatedNodeId(self):
+    component_a = _make_fake_node_instance('').with_id('component_a')
+    component_b = _make_fake_component_instance('', _OutputTypeA, {},
+                                                {}).with_id('component_a')
+    component_c = _make_fake_component_instance('', _OutputTypeA, {},
+                                                {}).with_id('component_a')
 
     with self.assertRaises(RuntimeError):
       pipeline.Pipeline(
@@ -178,82 +370,84 @@ class PipelineTest(tf.test.TestCase):
           components=[component_c, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
 
-  def testPipelineWithArtifactInfo(self):
-    artifacts_collection = [types.Artifact('channel_one')]
-    channel_one = types.Channel(
-        type_name='channel_one', artifacts=artifacts_collection)
-    component_a = _make_fake_component_instance(
-        name='component_a', inputs={}, outputs={'one': channel_one})
-    component_b = _make_fake_component_instance(
-        name='component_b',
-        inputs={
-            'a': component_a.outputs['one'],
-        },
-        outputs={})
-
-    my_pipeline = pipeline.Pipeline(
+  def testPipelineWithBeamPipelineArgs(self):
+    expected_args = [
+        '--my_first_beam_pipeline_args=foo',
+        '--my_second_beam_pipeline_args=bar'
+    ]
+    p = pipeline.Pipeline(
         pipeline_name='a',
         pipeline_root='b',
-        components=[component_b, component_a],
+        components=[
+            _make_fake_component_instance(
+                'component_a', _OutputTypeA, {}, {},
+                with_beam=True).with_beam_pipeline_args([expected_args[1]])
+        ],
+        beam_pipeline_args=[expected_args[0]],
         metadata_connection_config=self._metadata_connection_config)
-    expected_artifact = types.Artifact('channel_one')
-    expected_artifact.name = 'one'
-    expected_artifact.pipeline_name = 'a'
-    expected_artifact.pipeline_timestamp_ms = 0
-    expected_artifact.producer_component = 'component_a'
-    self.assertItemsEqual(my_pipeline.components, [component_a, component_b])
-    self.assertEqual(component_a.outputs['one']._artifacts[0].pipeline_name,
-                     'a')
-    self.assertEqual(
-        component_a.outputs['one']._artifacts[0].producer_component,
-        component_a.id)
-    self.assertEqual(component_a.outputs['one']._artifacts[0].name, 'one')
-    self.assertEqual(component_b.inputs['a']._artifacts[0].pipeline_name, 'a')
-    self.assertEqual(component_b.inputs['a']._artifacts[0].producer_component,
-                     component_a.id)
-    self.assertEqual(component_b.inputs['a']._artifacts[0].name, 'one')
+    self.assertEqual(expected_args,
+                     p.components[0].executor_spec.beam_pipeline_args)
 
-  def testPipelineDecorator(self):
-
-    @pipeline.PipelineDecorator(
+  def testComponentsSetAfterCreationWithBeamPipelineArgs(self):
+    expected_args = [
+        '--my_first_beam_pipeline_args=foo',
+        '--my_second_beam_pipeline_args=bar'
+    ]
+    p = pipeline.Pipeline(
         pipeline_name='a',
         pipeline_root='b',
-        log_root='c',
+        beam_pipeline_args=[expected_args[0]],
         metadata_connection_config=self._metadata_connection_config)
-    def create_pipeline():
-      self.component_a = _make_fake_component_instance('component_a', {}, {})
-      self.component_b = _make_fake_component_instance('component_b', {}, {})
-      return [self.component_a, self.component_b]
+    p.components = [
+        _make_fake_component_instance(
+            'component_a', _OutputTypeA, {}, {},
+            with_beam=True).with_beam_pipeline_args([expected_args[1]])
+    ]
+    self.assertEqual(expected_args,
+                     p.components[0].executor_spec.beam_pipeline_args)
 
-    my_pipeline = create_pipeline()
+  def testNestedPipelineRegistry(self):
+    with dsl_context_registry.new_registry() as reg:
+      with TestContext('Ctx1'):
+        a = Node('A')
+        b = Node('B')
+        with TestContext('Ctx2'):
+          c = Node('C')
+          with TestContext('Ctx3'):
+            d = Node('D')
+          p1 = pipeline.Pipeline(pipeline_name='p1', components=[c, d])
+        p2 = pipeline.Pipeline(pipeline_name='p2', components=[b, p1])
+      p3 = pipeline.Pipeline(pipeline_name='p3', components=[a, p2])
 
-    self.assertItemsEqual(my_pipeline.components,
-                          [self.component_a, self.component_b])
-    self.assertDictEqual(my_pipeline.pipeline_args, {
-        'pipeline_name': 'a',
-        'pipeline_root': 'b',
-        'log_root': 'c',
-    })
+    p1.finalize()
+    p2.finalize()
+    p3.finalize()
 
-  def testPipelineSavePipelineArgs(self):
-    os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._tmp_file
-    pipeline.Pipeline(
-        pipeline_name='a',
-        pipeline_root='b',
-        log_root='c',
-        components=[_make_fake_component_instance('component_a', {}, {})],
-        metadata_connection_config=self._metadata_connection_config)
-    self.assertTrue(tf.io.gfile.exists(self._tmp_file))
-
-  def testPipelineNoTmpFolder(self):
-    pipeline.Pipeline(
-        pipeline_name='a',
-        pipeline_root='b',
-        log_root='c',
-        components=[_make_fake_component_instance('component_a', {}, {})],
-        metadata_connection_config=self._metadata_connection_config)
-    self.assertNotIn('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', os.environ)
-
-
-if __name__ == '__main__':
-  tf.test.main()
+    self.assert_registry_equal(
+        p1.dsl_context_registry,
+        """
+        C
+        Ctx3 {
+          D
+        }
+        """,
+    )
+    self.assert_registry_equal(
+        p2.dsl_context_registry,
+        """
+        B
+        Ctx2 {
+          p1
+        }
+        """,
+    )
+    self.assert_registry_equal(
+        p3.dsl_context_registry,
+        """
+        Ctx1 {
+          A
+          p2
+        }
+        """,
+    )
+    self.assert_registry_equal(reg, 'p3')

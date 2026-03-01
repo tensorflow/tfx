@@ -1,0 +1,24 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "ImportExampleGen_executor"
+  value {
+    container {
+      image: "gcr.io/tensorflow/tfx:latest"
+      args: "--executor_class_path"
+      args: "tfx.components.example_gen.import_example_gen.executor.Executor"
+      args: "--json_serialized_invocation_args"
+      args: "{{$}}"
+      lifecycle {
+        pre_cache_check {
+          command: "python"
+          command: "-m"
+          command: "tfx.orchestration.kubeflow.v2.file_based_example_gen.driver"
+          args: "--json_serialized_invocation_args"
+          args: "{{$}}"
+        }
+      }
+    }
+  }
+}

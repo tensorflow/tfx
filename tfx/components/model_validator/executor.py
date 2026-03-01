@@ -13,28 +13,30 @@
 # limitations under the License.
 """Generic TFX model validator executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
+from typing import Any, Dict, List
+
+import absl
 import apache_beam as beam
-import tensorflow as tf
+
 import tensorflow_model_analysis as tfma
-from typing import Any, Dict, List, Text
 from tfx import types
-from tfx.components.base import base_executor
+from tfx.components.model_validator import constants
+from tfx.dsl.components.base import base_beam_executor
+from tfx.dsl.io import fileio
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
-# Path to store model eval results for validation.
-CURRENT_MODEL_EVAL_RESULT_PATH = 'eval_results/current_model/'
-BLESSED_MODEL_EVAL_RESULT_PATH = 'eval_results/blessed_model/'
+try:
+  # Try to access EvalResult from tfma directly
+  _EvalResult = tfma.EvalResult
+except AttributeError:
+  # If tfma doesn't have EvalResult, use the one from view_types
+  from tensorflow_model_analysis.view.view_types import EvalResult as _EvalResult
 
-
-class Executor(base_executor.BaseExecutor):
-  """TFX model validator executor.
+class Executor(base_beam_executor.BaseBeamExecutor):
+  """DEPRECATED: Please use `Evaluator` instead.
 
   The model validator helps prevent bad models from being pushed to production.
   It does this by validating exported models against known good models (e.g. the
@@ -55,13 +57,13 @@ class Executor(base_executor.BaseExecutor):
   """
 
   # TODO(jyzhao): customized threshold support.
-  def _pass_threshold(self, eval_result: tfma.EvalResult) -> bool:
+  def _pass_threshold(self, eval_result: _EvalResult) -> bool:
     """Check threshold."""
     return True
 
   # TODO(jyzhao): customized validation support.
-  def _compare_eval_result(self, current_model_eval_result: tfma.EvalResult,
-                           blessed_model_eval_result: tfma.EvalResult) -> bool:
+  def _compare_eval_result(self, current_model_eval_result: _EvalResult,
+                           blessed_model_eval_result: _EvalResult) -> bool:
     """Compare accuracy of all metrics and return true if current is better or equal."""
     for current_metric, blessed_metric in zip(
         current_model_eval_result.slicing_metrics,
@@ -82,22 +84,22 @@ class Executor(base_executor.BaseExecutor):
         blessed_model_accuracy = blessed_model_metrics['']['']['accuracy']
       if (current_model_accuracy['doubleValue'] <
           blessed_model_accuracy['doubleValue']):
-        tf.logging.info(
+        absl.logging.info(
             'Current model accuracy is worse than blessed model: {}'.format(
                 current_metric[0]))
         return False
     return True
 
-  def _generate_blessing_result(self, eval_examples_uri: Text,
+  def _generate_blessing_result(self, eval_examples_uri: str,
                                 slice_spec: List[tfma.slicer.SingleSliceSpec],
-                                current_model_dir: Text,
-                                blessed_model_dir: Text) -> bool:
+                                current_model_dir: str,
+                                blessed_model_dir: str) -> bool:
     current_model_eval_result_path = os.path.join(
-        self._temp_path, CURRENT_MODEL_EVAL_RESULT_PATH)
+        self._temp_path, constants.CURRENT_MODEL_EVAL_RESULT_PATH)
     blessed_model_eval_result_path = os.path.join(
-        self._temp_path, BLESSED_MODEL_EVAL_RESULT_PATH)
+        self._temp_path, constants.BLESSED_MODEL_EVAL_RESULT_PATH)
 
-    with beam.Pipeline(argv=self._get_beam_pipeline_args()) as pipeline:
+    with self._make_beam_pipeline() as pipeline:
       eval_data = (
           pipeline | 'ReadData' >> beam.io.ReadFromTFRecord(
               file_pattern=io_utils.all_files_pattern(eval_examples_uri)))
@@ -117,32 +119,35 @@ class Executor(base_executor.BaseExecutor):
             slice_spec=slice_spec,
             output_path=blessed_model_eval_result_path))
 
+    absl.logging.info('all files in current_model_eval_result_path: [%s]',
+                      str(fileio.listdir(current_model_eval_result_path)))
     current_model_eval_result = tfma.load_eval_result(
         output_path=current_model_eval_result_path)
 
     if not self._pass_threshold(current_model_eval_result):
-      tf.logging.info('Current model does not pass threshold.')
+      absl.logging.info('Current model does not pass threshold.')
       return False
-    tf.logging.info('Current model passes threshold.')
+    absl.logging.info('Current model passes threshold.')
 
     if blessed_model_dir is None:
-      tf.logging.info('No blessed model yet.')
+      absl.logging.info('No blessed model yet.')
       return True
-
+    absl.logging.info('all files in blessed_model_eval_result: [%s]',
+                      str(fileio.listdir(blessed_model_eval_result_path)))
     blessed_model_eval_result = tfma.load_eval_result(
         output_path=blessed_model_eval_result_path)
 
     if (self._compare_eval_result(current_model_eval_result,
                                   blessed_model_eval_result)):
-      tf.logging.info('Current model better than blessed model.')
+      absl.logging.info('Current model better than blessed model.')
       return True
     else:
-      tf.logging.info('Current model worse than blessed model.')
+      absl.logging.info('Current model worse than blessed model.')
       return False
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict: Dict[str, List[types.Artifact]],
+         output_dict: Dict[str, List[types.Artifact]],
+         exec_properties: Dict[str, Any]) -> None:
     """Validate current model against last blessed model.
 
     Args:
@@ -160,47 +165,57 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
     self._temp_path = self._get_tmp_dir()
-    tf.logging.info('Using temp path {} for tft.beam'.format(self._temp_path))
+    absl.logging.info('Using temp path {} for tft.beam'.format(self._temp_path))
 
-    eval_examples_uri = artifact_utils.get_split_uri(input_dict['examples'],
-                                                     'eval')
-    blessing = artifact_utils.get_single_instance(output_dict['blessing'])
+    eval_examples_uri = artifact_utils.get_split_uri(
+        input_dict[constants.EXAMPLES_KEY], 'eval')
+    blessing = artifact_utils.get_single_instance(
+        output_dict[constants.BLESSING_KEY])
 
-    # Current model.
-    current_model = artifact_utils.get_single_instance(input_dict['model'])
-    tf.logging.info('Using {} as current model.'.format(current_model.uri))
-    blessing.set_string_custom_property('current_model', current_model.uri)
-    blessing.set_int_custom_property('current_model_id', current_model.id)
+    # Current model to be validated.
+    current_model = artifact_utils.get_single_instance(
+        input_dict[constants.MODEL_KEY])
+    absl.logging.info('Using {} as current model.'.format(current_model.uri))
+    blessing.set_string_custom_property(
+        constants.ARTIFACT_PROPERTY_CURRENT_MODEL_URI_KEY, current_model.uri)
+    blessing.set_int_custom_property(
+        constants.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY, current_model.id)
 
     # Denote model component_name.
-    component_id = exec_properties['component_id']
+    component_id = exec_properties['current_component_id']
     blessing.set_string_custom_property('component_id', component_id)
 
-    # Blessed model.
+    # Previous blessed model to be validated against.
     blessed_model_dir = exec_properties['blessed_model']
     blessed_model_id = exec_properties['blessed_model_id']
-    tf.logging.info('Using {} as blessed model.'.format(blessed_model_dir))
+    absl.logging.info('Using {} as blessed model.'.format(blessed_model_dir))
     if blessed_model_dir:
-      blessing.set_string_custom_property('blessed_model', blessed_model_dir)
-      blessing.set_int_custom_property('blessed_model_id', blessed_model_id)
+      blessing.set_string_custom_property(
+          constants.ARTIFACT_PROPERTY_BLESSED_MODEL_URI_KEY, blessed_model_dir)
+      blessing.set_int_custom_property(
+          constants.ARTIFACT_PROPERTY_BLESSED_MODEL_ID_KEY, blessed_model_id)
 
-    tf.logging.info('Validating model.')
+    absl.logging.info('Validating model.')
     # TODO(b/125853306): support customized slice spec.
     blessed = self._generate_blessing_result(
         eval_examples_uri=eval_examples_uri,
-        slice_spec=[tfma.slicer.slicer.SingleSliceSpec()],
+        slice_spec=[tfma.slicer.SingleSliceSpec()],
         current_model_dir=current_model.uri,
         blessed_model_dir=blessed_model_dir)
 
     if blessed:
-      io_utils.write_string_file(os.path.join(blessing.uri, 'BLESSED'), '')
-      blessing.set_int_custom_property('blessed', 1)
+      io_utils.write_string_file(
+          os.path.join(blessing.uri, constants.BLESSED_FILE_NAME), '')
+      blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
+                                       constants.BLESSED_VALUE)
     else:
-      io_utils.write_string_file(os.path.join(blessing.uri, 'NOT_BLESSED'), '')
-      blessing.set_int_custom_property('blessed', 0)
-    tf.logging.info('Blessing result {} written to {}.'.format(
+      io_utils.write_string_file(
+          os.path.join(blessing.uri, constants.NOT_BLESSED_FILE_NAME), '')
+      blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
+                                       constants.NOT_BLESSED_VALUE)
+    absl.logging.info('Blessing result {} written to {}.'.format(
         blessed, blessing.uri))
 
     io_utils.delete_dir(self._temp_path)
-    tf.logging.info('Cleaned up temp path {} on executor success.'.format(
+    absl.logging.info('Cleaned up temp path {} on executor success.'.format(
         self._temp_path))

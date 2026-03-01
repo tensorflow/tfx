@@ -1,14 +1,17 @@
 # The Pusher TFX Pipeline Component
 
 The Pusher component is used to push a validated model to a
-[deployment target](index.md#deployment_targets) during model training or
-re-training.
-It relies on a [ModelValidator](modelval.md) component to ensure that the new
-model is "good enough" to be pushed to production.
+[deployment target](index.md#deployment-targets) during model training or
+re-training. Before the deployment, Pusher relies on one or more blessings from
+other validation components to decide whether to push the model or not.
 
-* Consumes: A Trained model in [SavedModel](
-https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/saved_model) format
-* Emits: The same SavedModel, along with versioning metadata
+-   [Evaluator](evaluator.md) blesses the model if the new trained model is "good
+    enough" to be pushed to production.
+-   (Optional but recommended) [InfraValidator](infra_validator.md) blesses the
+    model if the model is mechanically servable in a production environment.
+
+A Pusher component consumes a trained model in [SavedModel](https://www.tensorflow.org/guide/saved_model)
+format, and produces the same SavedModel, along with versioning metadata.
 
 ## Using the Pusher Component
 
@@ -17,16 +20,39 @@ customization, since all of the work is done by the Pusher TFX component.
 Typical code looks like this:
 
 ```python
-from tfx import components
-
-...
-
-pusher = components.Pusher(
-  model_export=trainer.outputs['output'],
-  model_blessing=model_validator.outputs['blessing'],
-  push_destination=pusher_pb2.PushDestination(
-    filesystem=pusher_pb2.PushDestination.Filesystem(
+pusher = Pusher(
+  model=trainer.outputs['model'],
+  model_blessing=evaluator.outputs['blessing'],
+  infra_blessing=infra_validator.outputs['blessing'],
+  push_destination=tfx.proto.PushDestination(
+    filesystem=tfx.proto.PushDestination.Filesystem(
         base_directory=serving_model_dir)
   )
 )
 ```
+
+### Pushing a model produced from InfraValidator.
+
+(From version 0.30.0)
+
+InfraValidator can also produce `InfraBlessing` artifact containing a
+[model with warmup](infra_validator.md#producing-a-savedmodel-with-warmup), and
+Pusher can push it just like a `Model` artifact.
+
+```python
+infra_validator = InfraValidator(
+    ...,
+    # make_warmup=True will produce a model with warmup requests in its
+    # 'blessing' output.
+    request_spec=tfx.proto.RequestSpec(..., make_warmup=True)
+)
+
+pusher = Pusher(
+    # Push model from 'infra_blessing' input.
+    infra_blessing=infra_validator.outputs['blessing'],
+    push_destination=tfx.proto.PushDestination(...)
+)
+```
+
+More details are available in the
+[Pusher API reference][tfx.v1.components.Pusher].

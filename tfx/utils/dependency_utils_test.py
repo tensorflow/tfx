@@ -13,66 +13,78 @@
 # limitations under the License.
 """Tests for tfx.utils.dependency_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import sys
-# Standard Imports
-import mock
+from unittest import mock
+
+
+from absl import logging
+from absl.testing import parameterized
 import tensorflow as tf
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
+from tfx.dsl.io import fileio
 from tfx.utils import dependency_utils
 
 
-class DepsUtilsTest(tf.test.TestCase):
+class DependencyUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
+    super().setUp()
     self._tmp_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
+
+  @mock.patch('tfx.utils.dependency_utils.build_ephemeral_package')
+  def testMakeBeamDependencyFlags(self, mock_build_ephemeral_package):
+    mock_build_ephemeral_package.return_value = 'mock_file'
+    beam_flags = dependency_utils.make_beam_dependency_flags(
+        beam_pipeline_args=[])
+    self.assertListEqual(['--extra_package=mock_file'], beam_flags)
+    mock_build_ephemeral_package.assert_called_with()
+
+  # TODO(zhitaoli): Add check on 'sdk_container_image' once supported version of
+  #                 Beam converges.
+  @parameterized.named_parameters(
+      ('ExtraPackages', '--extra_packages=foo'),
+      ('SetupFile', '--setup_file=foo'),
+      ('RequirementsFile', '--requirements_file=foo'),
+  )
+  def testNoActionOnFlag(self, flag_value):
+    beam_pipeline_args = [flag_value]
+    self.assertListEqual(
+        [flag_value],
+        dependency_utils.make_beam_dependency_flags(beam_pipeline_args),
+    )
 
   @mock.patch('tempfile.mkdtemp')
   def testEphemeralPackage(self, mock_mkdtemp):
     mock_mkdtemp.return_value = self._tmp_dir
     if os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR'):
       # This test requires setuptools which is not available.
-      tf.logging.info('Skipping testEphemeralPackage')
+      logging.info('Skipping testEphemeralPackage')
       return
     package = dependency_utils.build_ephemeral_package()
-    self.assertRegexpMatches(
-        os.path.basename(package), r'tfx_ephemeral-.*\.tar.gz')
+    self.assertRegex(os.path.basename(package), r'tfx_ephemeral-.*\.tar.gz')
 
   @mock.patch('tempfile.mkdtemp')
   @mock.patch('subprocess.call')
   def testEphemeralPackageMocked(self, mock_subprocess_call, mock_mkdtemp):
-    source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 'testdata')
     test_file = os.path.join(source_data_dir, 'test.csv')
     expected_package = 'mypackage.tar.gz'
 
-    def side_effect(cmd):
-      self.assertEqual(3, len(cmd))
+    def side_effect(cmd, stdout, stderr):
+      self.assertLen(cmd, 3)
       self.assertEqual(sys.executable, cmd[0])
       self.assertEqual('sdist', cmd[2])
+      self.assertEqual(stdout, stderr)
       setup_file = cmd[1]
       dist_dir = os.path.join(os.path.dirname(setup_file), 'dist')
-      tf.io.gfile.makedirs(dist_dir)
+      fileio.makedirs(dist_dir)
       dest_file = os.path.join(dist_dir, expected_package)
-      tf.gfile.Copy(test_file, dest_file)
+      fileio.copy(test_file, dest_file)
 
     mock_subprocess_call.side_effect = side_effect
     mock_mkdtemp.return_value = self._tmp_dir
     package = dependency_utils.build_ephemeral_package()
     self.assertEqual(expected_package, os.path.basename(package))
-
-  @mock.patch('tempfile.mkdtemp')
-  def testRequirementFile(self, mock_mkdtemp):
-    mock_mkdtemp.return_value = self._tmp_dir
-    requirements_file = dependency_utils._build_requirements_file()
-    content = file_io.read_file_to_string(requirements_file)
-    self.assertRegexpMatches(content, 'tfx==.*')
-
-
-if __name__ == '__main__':
-  tf.test.main()

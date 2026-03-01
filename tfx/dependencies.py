@@ -11,53 +11,269 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Package dependencies for TFX."""
+"""Package dependencies for TFX.
+
+tfx and family libraries (such as tensorflow-model-analysis) adopts environment
+variable (TFX_DEPENDENCY_SELECTOR) based dependency version selection. This
+dependency will be baked in to the wheel, in other words you cannot change
+dependency string once wheel is built.
+
+- UNCONSTRAINED uses dependency without any version constraint string, which is
+  useful when you manually build wheels of parent library (e.g. tfx-bsl) of
+  arbitrary version, and install it without dependency constraints conflict.
+- NIGHTLY uses x.(y+1).0.dev version as a lower version constraint. tfx nightly
+  will transitively depend on nightly versions of other TFX family libraries,
+  and this version constraint is required.
+- GIT_MASTER uses github master branch URL of the dependency, which is useful
+  during development, or when depending on the github master HEAD version of
+  tfx. This is because tfx github master HEAD version is actually using github
+  master HEAD version of parent libraries.
+  Caveat: URL dependency is not upgraded with --upgrade flag, and you have to
+  specify --force-reinstall flag to fetch the latest change from each master
+  branch HEAD.
+- For the release, we use a range of version, which is also used as a default.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+def select_constraint(default, nightly=None, git_master=None):
+    """Select dependency constraint based on TFX_DEPENDENCY_SELECTOR env var."""
+    selector = os.environ.get("TFX_DEPENDENCY_SELECTOR")
+    if selector == "UNCONSTRAINED":
+        return ""
+    elif selector == "NIGHTLY" and nightly is not None:
+        return nightly
+    elif selector == "GIT_MASTER" and git_master is not None:
+        return git_master
+    else:
+        return default
+
+
+def make_pipeline_sdk_required_install_packages():
+    return [
+        "absl-py>=0.9,<2.0.0",
+        "ml-metadata"
+        + select_constraint(
+            # LINT.IfChange
+            default=">=1.16.0,<1.17.0",
+            # LINT.ThenChange(tfx/workspace.bzl)
+            nightly=">=1.17.0.dev",
+            git_master="@git+https://github.com/google/ml-metadata@master",
+        ),
+        "packaging>=22",
+        "portpicker>=1.3.1,<2",
+        "protobuf>=3.20.3,<5",
+        "docker>=7,<8",
+        "google-apitools>=0.5,<1",
+        "google-api-python-client>=1.8,<2",
+        # TODO(b/176812386): Deprecate usage of jinja2 for placeholders.
+        "jinja2>=2.7.3,<4",
+        # Upper bound is <5 as the semver started from 4.0 according to their doc.
+        "typing-extensions<5",
+    ]
 
 
 def make_required_install_packages():
-  # Make sure to sync the versions of common dependencies (absl-py, numpy,
-  # six, and protobuf) with TF.
-  # TODO(b/130767399): add flask once the frontend is exposed externally.
-  return [
-      'absl-py>=0.1.6,<1',
-      'apache-beam[gcp]>=2.14,<3',
-      'click>=7.0,<8',
-      'google-api-python-client>=1.7.8,<2',
-      'jinja2>=2.7.3,<3',
-      'ml-metadata>=0.14,<0.15',
-      'protobuf>=3.7,<4',
-      'six>=1.10,<2',
-      'tensorflow-data-validation>=0.14.1,<0.15',
-      'tensorflow-model-analysis>=0.14,<0.15',
-      'tensorflow-transform>=0.14,<0.15',
-  ]
+    # Make sure to sync the versions of common dependencies (absl-py, numpy,
+    # and protobuf) with TF.
+    return make_pipeline_sdk_required_install_packages() + [
+        "apache-beam[gcp]>=2.47,<3",
+        "attrs>=19.3.0,<24",
+        "click>=7,<9",
+        "google-api-core<3",
+        "google-cloud-aiplatform>=1.6.2,<2",
+        "google-cloud-bigquery>=3,<4",
+        "grpcio>=1.28.1,<2",
+        "keras-tuner>=1.0.4,<2,!=1.4.0,!=1.4.1",
+        "kubernetes>=10.0.1,<27",
+        "numpy>=1.16,<2",
+        "pyarrow>=10,<11",
+        # TODO: b/358471141 - Orjson 3.10.7 breaks TFX OSS tests.
+        # Unpin once the issue with installation is resolved.
+        "orjson!=3.10.7",
+        # TODO(b/332616741): Scipy version 1.13 breaks the TFX OSS test.
+        # Unpin once the issue is resolved.
+        "scipy<1.13",
+        "scikit-learn==1.5.1",
+        # TODO(b/291837844): Pinned pyyaml to 5.3.1.
+        # Unpin once the issue with installation is resolved.
+        "pyyaml>=6,<7",
+        # Keep the TF version same as TFT to help Pip version resolution.
+        # Pip might stuck in a TF 1.15 dependency although there is a working
+        # dependency set with TF 2.x without the sync.
+        # pylint: disable=line-too-long
+        "tensorflow" + select_constraint(">=2.16.0,<2.17"),
+        # pylint: enable=line-too-long
+        "tensorflow-hub>=0.15.0,<0.16",
+        "tensorflow-data-validation"
+        + select_constraint(
+            default=">=1.16.1,<1.17.0",
+            nightly=">=1.16.1.dev",
+            git_master=("@git+https://github.com/tensorflow/data-validation@master"),
+        ),
+        "tensorflow-model-analysis"
+        + select_constraint(
+            default=">=0.47.0,<0.48.0",
+            nightly=">=0.47.0.dev",
+            git_master="@git+https://github.com/tensorflow/model-analysis@master",
+        ),
+        "tensorflow-serving-api>=2.16,<2.17",
+        "tensorflow-transform"
+        + select_constraint(
+            default=">=1.16.0,<1.17.0",
+            nightly=">=1.16.0.dev",
+            git_master="@git+https://github.com/tensorflow/transform@master",
+        ),
+        "tfx-bsl"
+        + select_constraint(
+            default=">=1.16.1,<1.17.0",
+            nightly=">=1.16.0.dev",
+            git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
+        ),
+    ]
 
 
-def make_required_test_packages():
-  """Prepare extra packages needed for 'python setup.py test'."""
-  return [
-      'apache-airflow>=1.10,<2',
-      'docker>=4.0.0,<5.0.0',
-      # LINT.IfChange
-      'kfp>=0.1.30,<0.2; python_version >= "3.0"',
-      # LINT.ThenChange(
-      #     testing/github/common.sh,
-      #     testing/github/ubuntu/image/image.sh,
-      #     testing/kubeflow/common.sh
-      # )
-      'pytest>=5.0.0,<6.0.0',
-      'tensorflow>=1.14,<2',
-      'tzlocal>=1.5,<2.0',
-  ]
+def make_extra_packages_airflow():
+    """Prepare extra packages needed for Apache Airflow orchestrator."""
+    return [
+        "apache-airflow[mysql]>=1.10.14,<3",
+    ]
+
+
+def make_extra_packages_kfp():
+    """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
+    return [
+        "kfp>=2",
+        "kfp-pipeline-spec>=0.2.2",
+    ]
+
+
+def make_extra_packages_test():
+    """Prepare extra packages needed for running unit tests."""
+    # Note: It is okay to pin packages to exact versions in this list to minimize
+    # conflicts.
+    return (
+        make_extra_packages_airflow()
+        + make_extra_packages_kfp()
+        + [
+            "pytest>=5,<=8",
+            "pytest-subtests==0.13.1",
+        ]
+    )
 
 
 def make_extra_packages_docker_image():
-  # Packages needed for tfx docker image.
-  return [
-      'python-snappy>=0.5,<0.6',
-      'tensorflow>=1.14,<2',
-      # TODO(b/138406006): Remove the narrower dependency for pyarrow
-      # and numpy after Beam 2.15 release.
-      'numpy>=1.16,<1.17',
-      'pyarrow>=0.14,<0.15',
-  ]
+    # Packages needed for tfx docker image.
+    return [
+        "kfp>=2",
+        "kfp-pipeline-spec>=0.2.2",
+        "mmh>=2.2,<3",
+        "python-snappy>=0.7",
+        # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
+        "tensorflow-cloud>=0.1,<0.2",
+        "tensorflow-io>=0.9.0, <=0.24.0",
+    ]
+
+
+def make_extra_packages_tfjs():
+    # Packages needed for tfjs.
+    return [
+        "tensorflowjs>=4.5,<5",
+    ]
+
+
+def make_extra_packages_tflite_support():
+    # Required for tfx/examples/cifar10
+    return [
+        "flatbuffers>=1.12",
+        "tflite-support>=0.4.3,<0.4.5",
+    ]
+
+
+def make_extra_packages_tf_ranking():
+    # Packages needed for tf-ranking which is used in tfx/examples/ranking.
+    return [
+        "tensorflow-ranking>=0.5,<0.6",
+        "struct2tensor"
+        + select_constraint(
+            default=">=0.47.0,<0.48.0",
+            nightly=">=0.47.0.dev",
+            git_master="@git+https://github.com/google/struct2tensor@master",
+        ),
+    ]
+
+
+def make_extra_packages_tfdf():
+    # Packages needed for tensorflow-decision-forests.
+    # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
+    return [
+        # NOTE: TFDF 1.0.1 is only compatible with TF 2.10.x.
+        "tensorflow-decision-forests>=1.8.1,<2",
+    ]
+
+
+def make_extra_packages_flax():
+    # Packages needed for the flax example.
+    # Required for the experimental tfx/examples using Flax, e.g.,
+    # tfx/examples/penguin.
+    return [
+        # TODO(b/324157691): Upgrade jax once we upgrade TF version.
+        "jax<0.4.24",
+        "jaxlib<0.4.24",
+        "flax<1",
+        "optax<1",
+    ]
+
+
+def make_extra_packages_examples():
+    # Extra dependencies required for tfx/examples.
+    return [
+        # Required for presto ExampleGen custom component in
+        # tfx/examples/custom_components/presto_example_gen
+        "presto-python-client>=0.7,<0.8",
+        # Required for slack custom component in
+        # tfx/examples/custom_components/slack
+        "slackclient>=2.8.2,<3",
+        "websocket-client>=0.57,<1",
+        # Required for bert examples in tfx/examples/bert
+        "tensorflow-text>=1.15.1,<3",
+        # Required for tfx/examples/penguin/experimental
+        # LINT.IfChange
+        "scikit-learn>=1.0,<2",
+        # LINT.ThenChange(
+        #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
+        # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
+        "tensorflow-cloud>=0.1,<0.2",
+    ]
+
+
+def make_extra_packages_docs() -> list[str]:
+    """Get a list of packages required for building docs as HTML.
+
+    Returns
+    -------
+    list[str]
+        List of packages required for building docs
+    """
+    with open(Path(__file__).resolve().parent.parent / "requirements-docs.txt", "r") as fp:
+        reqs = fp.readlines()
+
+    reqs = [req.replace("\n", "") for req in reqs]
+
+    return reqs
+
+
+def make_extra_packages_all():
+    # All extra dependencies, not including lint or docs dependencies
+    return [
+        *make_extra_packages_test(),
+        *make_extra_packages_tfjs(),
+        *make_extra_packages_tflite_support(),
+        *make_extra_packages_tf_ranking(),
+        *make_extra_packages_tfdf(),
+        *make_extra_packages_flax(),
+        *make_extra_packages_examples(),
+    ]

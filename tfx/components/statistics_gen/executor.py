@@ -12,29 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX statistics_gen executor."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-import apache_beam as beam
-import tensorflow as tf
-from tensorflow_data_validation.api import stats_api
-from tensorflow_data_validation.coders import tf_example_decoder
+from typing import Any, Dict, List
+
+from absl import logging
+import tensorflow_data_validation as tfdv
 from tensorflow_data_validation.statistics import stats_options as options
-from typing import Any, Dict, List, Text
-from tensorflow_metadata.proto.v0 import statistics_pb2
 from tfx import types
-from tfx.components.base import base_executor
+from tfx.components.statistics_gen import stats_artifact_utils
+from tfx.components.util import examples_utils
+from tfx.components.util import tfxio_utils
+from tfx.dsl.components.base import base_beam_executor
 from tfx.types import artifact_utils
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
+from tfx.utils import json_utils
+from tfx.utils import stats_utils
+
 
 # Default file name for stats generated.
-_DEFAULT_FILE_NAME = 'stats_tfrecord'
+DEFAULT_FILE_NAME = 'FeatureStats.pb'
+
+_TELEMETRY_DESCRIPTORS = ['StatisticsGen']
+STATS_DASHBOARD_LINK = 'stats_dashboard_link'
+SAMPLE_RATE_BY_SPLIT_PROPERTY_NAME = 'sample_rate_by_split'
 
 
-class Executor(base_executor.BaseExecutor):
+class Executor(base_beam_executor.BaseBeamExecutor):
   """Computes statistics over input training data for example validation.
 
   The StatisticsGen component generates features statistics and random samples
@@ -45,45 +49,232 @@ class Executor(base_executor.BaseExecutor):
   https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L75.
   """
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(
+      self,
+      input_dict: Dict[str, List[types.Artifact]],
+      output_dict: Dict[str, List[types.Artifact]],
+      exec_properties: Dict[str, Any],
+  ) -> None:
     """Computes stats for each split of input using tensorflow_data_validation.
 
     Args:
       input_dict: Input dict from input key to a list of Artifacts.
-        - input_data: A list of 'ExamplesPath' type. This should contain both
-          'train' and 'eval' split.
+        - examples: A list of type `standard_artifacts.Examples`. This should
+          contain both 'train' and 'eval' split.
+        - schema: Optionally, a list of type `standard_artifacts.Schema`. When
+          the stats_options exec_property also contains a schema, this input
+          should not be provided.
       output_dict: Output dict from output key to a list of Artifacts.
-        - output: A list of 'ExampleStatisticsPath' type. This should contain
-          both 'train' and 'eval' split.
-      exec_properties: A dict of execution properties. Not used yet.
+        - statistics: A list of type `standard_artifacts.ExampleStatistics`.
+          This should contain both the 'train' and 'eval' splits.
+      exec_properties: A dict of execution properties.
+        - stats_options_json: Optionally, a JSON representation of StatsOptions.
+          When a schema is provided as an input, the StatsOptions value should
+          not also contain a schema.
+        - exclude_splits: JSON-serialized list of names of splits where
+          statistics and sample should not be generated.
+        - sample_rate_by_split: Optionally, A dict mapping split_name to sample
+          rate, which is used to apply a different sample rate to the
+          corresponding split. When this is supplied, it will overwrite the
+          single sample rate on stats_options_json.
+
+    Raises:
+      ValueError when a schema is provided both as an input and as part of the
+      StatsOptions exec_property, or if execution properties specify
+      write_sharded_output when unsupported.
 
     Returns:
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    split_to_instance = {x.split: x for x in input_dict['input_data']}
-    with beam.Pipeline(argv=self._get_beam_pipeline_args()) as p:
-      # TODO(b/126263006): Support more stats_options through config.
-      stats_options = options.StatsOptions()
-      for split, instance in split_to_instance.items():
-        tf.logging.info('Generating statistics for split {}'.format(split))
-        input_uri = io_utils.all_files_pattern(instance.uri)
-        output_uri = artifact_utils.get_split_uri(output_dict['output'], split)
-        output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
+    # Load and deserialize exclude splits from execution properties.
+    exclude_splits = (
+        json_utils.loads(
+            exec_properties.get(
+                standard_component_specs.EXCLUDE_SPLITS_KEY, 'null'
+            )
+        )
+        or []
+    )
+    if not isinstance(exclude_splits, list):
+      raise ValueError(
+          'exclude_splits in execution properties needs to be a '
+          'list. Got %s instead.'
+          % type(exclude_splits)
+      )
+
+    # Load sample_rate_by_split from execution properties.
+    sample_rate_by_split = (
+        json_utils.loads(
+            exec_properties.get(
+                standard_component_specs.SAMPLE_RATE_BY_SPLIT_KEY, 'null'
+            )
+        )
+        or {}
+    )
+
+    # Setup output splits.
+    examples = artifact_utils.get_single_instance(
+        input_dict[standard_component_specs.EXAMPLES_KEY]
+    )
+
+    if examples.has_custom_property(
+        examples_utils.CUSTOM_SPLIT_PATTERN_PROPERTY_NAME
+    ):
+      split_to_pattern = json_utils.loads(
+          examples.get_string_custom_property(
+              examples_utils.CUSTOM_SPLIT_PATTERN_PROPERTY_NAME
+          )
+      )
+      splits = list(split_to_pattern.keys())
+    else:
+      splits = artifact_utils.decode_split_names(examples.split_names)
+
+    split_names = [split for split in splits if split not in exclude_splits]
+
+    statistics_artifact = artifact_utils.get_single_instance(
+        output_dict[standard_component_specs.STATISTICS_KEY]
+    )
+    statistics_artifact.split_names = artifact_utils.encode_split_names(
+        split_names
+    )
+    # set the span property of the statistics artifact equal to
+    # the span of the input examples artifact.
+    statistics_artifact.span = examples.span
+
+    try:
+      statistics_artifact.set_string_custom_property(
+          STATS_DASHBOARD_LINK,
+          stats_utils.generate_stats_dashboard_link(statistics_artifact),
+      )
+    except Exception as e:  # pylint: disable=broad-except
+      # log on failures to not bring down Statsgen jobs
+      logging.exception('Failed to generate stats dashboard link because %s', e)
+      statistics_artifact.set_string_custom_property(STATS_DASHBOARD_LINK, '')
+
+    stats_options = options.StatsOptions()
+    stats_options_json = exec_properties.get(
+        standard_component_specs.STATS_OPTIONS_JSON_KEY
+    )
+
+    if stats_options_json:
+      # TODO(b/150802589): Move jsonable interface to tfx_bsl and use
+      # json_utils
+      stats_options = options.StatsOptions.from_json(stats_options_json)
+
+    sample_rate_by_split_property = {
+        split: stats_options.sample_rate or 1.0 for split in split_names
+    }
+    for split in sample_rate_by_split:
+      # Check if sample_rate_by_split contains invalid split names
+      if split not in split_names:
+        logging.error(
+            'Split %s provided in sample_rate_by_split is not valid.', split
+        )
+        continue
+      sample_rate_by_split_property[split] = sample_rate_by_split[split]
+
+    # Add sample_rate_by_split property to statistics artifact
+    statistics_artifact.set_json_value_custom_property(
+        SAMPLE_RATE_BY_SPLIT_PROPERTY_NAME,
+        json_utils.dumps(sample_rate_by_split_property),
+    )
+
+    write_sharded_output = exec_properties.get(
+        standard_component_specs.SHARDED_STATS_OUTPUT_KEY, False
+    )
+    if write_sharded_output and not tfdv.default_sharded_output_supported():
+      raise ValueError('Sharded output requested but not supported.')
+
+    if input_dict.get(standard_component_specs.SCHEMA_KEY):
+      if stats_options.schema:
+        raise ValueError(
+            'A schema was provided as an input and the '
+            'stats_options exec_property also contains a schema '
+            'value. At most one of these may be set.'
+        )
+      else:
+        schema = io_utils.SchemaReader().read(
+            io_utils.get_only_uri_in_dir(
+                artifact_utils.get_single_uri(
+                    input_dict[standard_component_specs.SCHEMA_KEY]
+                )
+            )
+        )
+        stats_options.schema = schema
+
+    tfxio_schema = None
+    if stats_options.experimental_filter_read_paths:
+      if stats_options.feature_allowlist:
+        # Check that the allowlist contains paths and not names.
+        for path in stats_options.feature_allowlist:
+          if isinstance(path, str):
+            raise ValueError(
+                'experimental_filter_read_paths requires allowlist passed as'
+                ' paths.'
+            )
+          tfxio_schema = tfdv.generate_dummy_schema_with_paths(
+              stats_options.feature_allowlist
+          )
+      elif stats_options.schema is None:
+        raise ValueError(
+            'experimental_filter_read_paths requires allowlist features or'
+            ' schema.'
+        )
+      else:
+        tfxio_schema = stats_options.schema
+
+    split_and_tfxio = []
+
+    for split in split_names:
+      tfxio = tfxio_utils.get_split_tfxio(
+          examples=[examples],
+          split=split,
+          telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
+          schema=tfxio_schema,
+      )
+      split_and_tfxio.append((split, tfxio))
+    if not split_and_tfxio:
+      raise ValueError('No splits for examples artifact: %s' % examples)
+    with self._make_beam_pipeline() as p:
+      for split, tfxio in split_and_tfxio:
+        logging.info('Generating statistics for split %s.', split)
+        output_uri = artifact_utils.get_split_uri(
+            output_dict[standard_component_specs.STATISTICS_KEY], split
+        )
+        binary_stats_output_path = os.path.join(output_uri, DEFAULT_FILE_NAME)
+
+        # Update sample rate for each split in stats_options if
+        # sample_rate_by_split is provided
+        split_stats_options = tfdv.StatsOptions.from_json(
+            stats_options.to_json())
+        if sample_rate_by_split:
+          sample_rate = sample_rate_by_split.get(split, None)
+          if sample_rate is not None:
+            split_stats_options.sample_rate = sample_rate
+
+        data = p | 'TFXIORead[%s]' % split >> tfxio.BeamSource()
+        if write_sharded_output:
+          sharded_stats_output_prefix = os.path.join(
+              output_uri,
+              stats_artifact_utils.SHARDED_STATS_PREFIX
+              + tfdv.default_sharded_output_suffix(),
+          )
+          write_transform = tfdv.WriteStatisticsToRecordsAndBinaryFile(
+              binary_proto_path=binary_stats_output_path,
+              records_path_prefix=sharded_stats_output_prefix,
+          )
+        else:
+          write_transform = tfdv.WriteStatisticsToBinaryFile(
+              binary_stats_output_path
+          )
         _ = (
-            p
-            | 'ReadData.' + split >>
-            beam.io.ReadFromTFRecord(file_pattern=input_uri)
-            | 'DecodeData.' + split >> tf_example_decoder.DecodeTFExample()
-            | 'GenerateStatistics.' + split >>
-            stats_api.GenerateStatistics(stats_options)
-            | 'WriteStatsOutput.' + split >> beam.io.WriteToTFRecord(
-                output_path,
-                shard_name_template='',
-                coder=beam.coders.ProtoCoder(
-                    statistics_pb2.DatasetFeatureStatisticsList)))
-        tf.logging.info('Statistics for split {} written to {}.'.format(
-            split, output_uri))
+            data
+            | 'GenerateStatistics[%s]' % split
+            >> tfdv.GenerateStatistics(split_stats_options)
+            | 'WriteStatsOutput[%s]' % split >> write_transform
+        )
+        logging.info(
+            'Statistics for split %s written to %s.', split, output_uri
+        )

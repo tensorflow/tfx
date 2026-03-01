@@ -13,13 +13,11 @@
 # limitations under the License.
 """Generic TFX model validator custom driver."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import Any, Dict, Optional, Tuple
 
-import tensorflow as tf
-from typing import Any, Dict, Optional, Text, Tuple
-from tfx.components.base import base_driver
+import absl
+
+from tfx.dsl.components.base import base_driver
 from tfx.orchestration import data_types
 
 
@@ -28,12 +26,19 @@ class Driver(base_driver.BaseDriver):
 
   def _fetch_last_blessed_model(
       self,
-      component_id: Text,
-  ) -> Tuple[Optional[Text], Optional[int]]:
+      pipeline_name: str,
+      component_id: str,
+  ) -> Tuple[Optional[str], Optional[int]]:
     """Fetch last blessed model in metadata based on span."""
     previous_blessed_models = []
-    for a in self._metadata_handler.get_artifacts_by_type('ModelBlessingPath'):
-      if (a.custom_properties['blessed'].int_value == 1 and
+    for a in self._metadata_handle.get_artifacts_by_type('ModelBlessing'):
+      # TODO(ccy): get pipeline name from MLMD context.
+      if 'pipeline_name' in a.properties:
+        p = a.properties['pipeline_name'].string_value
+      else:
+        p = a.custom_properties['pipeline_name'].string_value
+      if (p == pipeline_name and
+          a.custom_properties['blessed'].int_value == 1 and
           a.custom_properties['component_id'].string_value == component_id):
         previous_blessed_models.append(a)
 
@@ -47,16 +52,17 @@ class Driver(base_driver.BaseDriver):
     else:
       return None, None
 
+  # pyformat: disable
   def resolve_exec_properties(
-      self,
-      exec_properties: Dict[Text, Any],
-      component_info: data_types.ComponentInfo
-  ) -> Dict[Text, Any]:
+      self, exec_properties: Dict[str, Any],
+      pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo) -> Dict[str, Any]:
+    # pyformat: enable
     """Overrides BaseDriver.resolve_exec_properties()."""
     (exec_properties['blessed_model'],
      exec_properties['blessed_model_id']) = self._fetch_last_blessed_model(
-         component_info.component_id)
-    exec_properties['component_id'] = component_info.component_id
-    tf.logging.info('Resolved last blessed model {}'.format(
+         pipeline_info.pipeline_name, component_info.component_id)
+    exec_properties['current_component_id'] = component_info.component_id
+    absl.logging.info('Resolved last blessed model {}'.format(
         exec_properties['blessed_model']))
     return exec_properties

@@ -13,18 +13,15 @@
 # limitations under the License.
 """Utils for TFX-specific logger."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 import logging
 import os
-import tensorflow as tf
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional
+
+from tfx.dsl.io import fileio
 
 
-class LoggerConfig(object):
+class LoggerConfig:
   """Logger configuration class.
 
   Logger configuration consists of:
@@ -35,16 +32,16 @@ class LoggerConfig(object):
   """
 
   def __init__(self,
-               log_root: Optional[Text] = '/var/tmp/tfx/logs',
+               log_root: Optional[str] = '/var/tmp/tfx/logs',
                log_level: Optional[int] = logging.INFO,
-               pipeline_name: Optional[Text] = '',
-               worker_name: Optional[Text] = ''):
+               pipeline_name: Optional[str] = '',
+               worker_name: Optional[str] = ''):
     self.log_root = log_root
     self.log_level = log_level
     self.pipeline_name = pipeline_name
     self.worker_name = worker_name
 
-  def update(self, config: Optional[Dict[Text, Any]] = None):
+  def update(self, config: Optional[Dict[str, Any]] = None):
     """Updates the log config parameters via elements in a dict.
 
     Args:
@@ -79,9 +76,9 @@ def get_logger(config):
   logger = logging.getLogger(log_path)
   logger.setLevel(config.log_level)
 
-  if not tf.gfile.Exists(config.log_root):
-    tf.io.gfile.makedirs(config.log_root)
-  if not tf.gfile.IsDirectory(config.log_root):
+  if not fileio.exists(config.log_root):
+    fileio.makedirs(config.log_root)
+  if not fileio.isdir(config.log_root):
     raise RuntimeError('Log dir exists as a file: {}'.format(config.log_root))
 
   # Create logfile handler.

@@ -1,0 +1,26 @@
+import absl
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+
+{{ notebook_content }}
+
+absl.logging.set_verbosity(absl.logging.INFO)
+
+# Pipeline args for Beam jobs within Components.
+_beam_pipeline_args = [
+    '--direct_running_mode=multi_processing',
+    # 0 means auto-detect based on on the number of CPUs available
+    # during execution time.
+    '--direct_num_workers=0',
+]
+
+tfx_pipeline = pipeline.Pipeline(
+    pipeline_name=_pipeline_name,
+    pipeline_root=_pipeline_root,
+    components=components,
+    enable_cache=True,
+    metadata_connection_config=(
+        metadata.sqlite_metadata_connection_config(_metadata_path)),
+    beam_pipeline_args=_beam_pipeline_args,
+    additional_pipeline_args={})
+
+BeamDagRunner().run(tfx_pipeline)

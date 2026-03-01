@@ -1,0 +1,250 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+#
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/additional_properties_test_pipeline_async.py
+
+pipeline_info {
+  id: "custom1"
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.compiler.testdata.additional_properties_test_pipeline_async.CustomProducer"
+      }
+      id: "CustomProducer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "custom1"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "custom1.CustomProducer"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "stats"
+        value {
+          artifact_spec {
+            type {
+              name: "ExampleStatistics"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              base_type: STATISTICS
+            }
+            additional_properties {
+              key: "span"
+              value {
+                field_value {
+                  int_value: 42
+                }
+              }
+            }
+            additional_properties {
+              key: "split_names"
+              value {
+                field_value {
+                  string_value: "[\'train\', \'eval\']"
+                }
+              }
+            }
+            additional_custom_properties {
+              key: "bar"
+              value {
+                field_value {
+                  string_value: "foo"
+                }
+              }
+            }
+            additional_custom_properties {
+              key: "baz"
+              value {
+                field_value {
+                  double_value: 0.5
+                }
+              }
+            }
+          }
+        }
+      }
+      outputs {
+        key: "stats_metadata"
+        value {
+          artifact_spec {
+            type {
+              name: "StatsMetadata"
+              properties {
+                key: "timestamp"
+                value: PROTO
+              }
+              properties {
+                key: "ttl"
+                value: PROTO
+              }
+            }
+            additional_properties {
+              key: "timestamp"
+              value {
+                field_value {
+                  proto_value {
+                    [type.googleapis.com/google.protobuf.Timestamp] {
+                      seconds: 999999
+                    }
+                  }
+                }
+              }
+            }
+            additional_properties {
+              key: "ttl"
+              value {
+                field_value {
+                  proto_value {
+                    [type.googleapis.com/google.protobuf.Duration] {
+                      seconds: 600
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    downstream_nodes: "CustomConsumer"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.compiler.testdata.additional_properties_test_pipeline_async.CustomConsumer"
+      }
+      id: "CustomConsumer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "custom1"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "custom1.CustomConsumer"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "data"
+        value {
+          channels {
+            producer_node_query {
+              id: "CustomProducer"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "custom1"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "custom1.CustomProducer"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "ExampleStatistics"
+                base_type: STATISTICS
+              }
+            }
+            output_key: "stats"
+          }
+          min_count: 1
+        }
+      }
+    }
+    upstream_nodes: "CustomProducer"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline-root"
+      type: STRING
+      default_value {
+        string_value: "tfx_root/pipelines/custom1"
+      }
+    }
+  }
+}
+execution_mode: ASYNC
+deployment_config {
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "CustomConsumer"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.dsl.compiler.testdata.additional_properties_test_pipeline_async.DummyExecutor"
+        }
+      }
+    }
+    executor_specs {
+      key: "CustomProducer"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.dsl.compiler.testdata.additional_properties_test_pipeline_async.DummyExecutor"
+        }
+      }
+    }
+  }
+}

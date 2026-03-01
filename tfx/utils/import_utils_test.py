@@ -13,13 +13,9 @@
 # limitations under the License.
 """Tests for tfx.utils.import_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
+import importlib
 import os
-# Standard Imports
+import sys
 
 import tensorflow as tf
 from tfx.utils import import_utils
@@ -36,9 +32,11 @@ class ImportUtilsTest(tf.test.TestCase):
 
   def testImportFuncFromSource(self):
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    test_fn_file = os.path.join(source_data_dir, 'test_fn.py')
-    fn = import_utils.import_func_from_source(test_fn_file, 'test_fn')
-    self.assertEqual(10, fn([1, 2, 3, 4]))
+    test_fn_file = os.path.join(source_data_dir, 'test_fn.ext')
+    fn_1 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
+    fn_2 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
+    self.assertEqual(10, fn_1([1, 2, 3, 4]))
+    self.assertEqual(10, fn_2([1, 2, 3, 4]))
 
   def testImportFuncFromSourceMissingFile(self):
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
@@ -48,7 +46,7 @@ class ImportUtilsTest(tf.test.TestCase):
 
   def testImportFuncFromSourceMissingFunction(self):
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    test_fn_file = os.path.join(source_data_dir, 'test_fn.py')
+    test_fn_file = os.path.join(source_data_dir, 'test_fn.ext')
     with self.assertRaises(AttributeError):
       import_utils.import_func_from_source(test_fn_file, 'non_existing')
 
@@ -66,6 +64,25 @@ class ImportUtilsTest(tf.test.TestCase):
       _ = import_utils.import_func_from_module(test_fn.test_fn.__module__,
                                                'non_existing_fn')
 
-
-if __name__ == '__main__':
-  tf.test.main()
+  def testtestImportFuncFromModuleReload(self):
+    temp_dir = self.create_tempdir().full_path
+    test_fn_file = os.path.join(temp_dir, 'fn.py')
+    with tf.io.gfile.GFile(test_fn_file, mode='w') as f:
+      f.write(
+          """def test_fn(inputs):
+            return sum(inputs)
+          """)
+    count_registered = import_utils._tfx_module_finder.count_registered
+    fn_1 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
+    self.assertEqual(10, fn_1([1, 2, 3, 4]))
+    with tf.io.gfile.GFile(test_fn_file, mode='w') as f:
+      f.write(
+          """def test_fn(inputs):
+            return 1+sum(inputs)
+          """)
+    fn_2 = import_utils.import_func_from_source(test_fn_file, 'test_fn')
+    self.assertEqual(11, fn_2([1, 2, 3, 4]))
+    fn_3 = getattr(
+        importlib.reload(sys.modules['user_module_%d' % count_registered]),
+        'test_fn')
+    self.assertEqual(11, fn_3([1, 2, 3, 4]))

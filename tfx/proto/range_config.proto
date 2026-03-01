@@ -1,0 +1,57 @@
+// Copyright 2020 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.configs;
+
+// Describes a static window within the specified span numbers
+// [start_span_number, end_span_number].
+// Note that both numbers should be specified for StaticRange.
+message StaticRange {
+  int32 start_span_number = 1;
+  int32 end_span_number = 2;
+}
+
+// Describes a rolling range:
+// [most_recent_span - num_spans + 1,
+//  most_recent_span].
+// For example, say you want the range to include only the latest span,
+// the appropriate RollingRange would simply be:
+// RollingRange <
+//   num_spans = 1
+// >
+// The range is clipped based on available data.
+// Note that num_spans is required in RollingRange, while others are optional.
+message RollingRange {
+  // Starting span before which no span will be considered.
+  // This is useful to clip the range in case the user
+  // wants to start front-filling some feature column after a certain date.
+  int32 start_span_number = 1;
+  // Length of the range.
+  int32 num_spans = 2;
+
+  reserved 3;
+}
+
+// RangeConfig is an abstract proto which can be used to describe ranges
+// for different entities in TFX Pipeline. All indices corespond to increasing
+// span numbers starting from the initial span at index 0.
+message RangeConfig {
+  oneof range {
+    StaticRange static_range = 1;
+    RollingRange rolling_range = 2;
+  }
+
+  reserved 3, 4, 5;
+}

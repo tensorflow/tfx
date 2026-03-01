@@ -12,27 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.components.statistics_gen.component."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
+import tensorflow_data_validation as tfdv
 from tfx.components.statistics_gen import component
+from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 
 
 class ComponentTest(tf.test.TestCase):
 
   def testConstruct(self):
-    train_examples = standard_artifacts.Examples(split='train')
-    eval_examples = standard_artifacts.Examples(split='eval')
+    examples = standard_artifacts.Examples()
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    exclude_splits = ['eval']
     statistics_gen = component.StatisticsGen(
-        input_data=channel_utils.as_channel([train_examples, eval_examples]))
-    self.assertEqual('ExampleStatisticsPath',
-                     statistics_gen.outputs['output'].type_name)
+        examples=channel_utils.as_channel([examples]),
+        exclude_splits=exclude_splits)
+    self.assertEqual(
+        standard_artifacts.ExampleStatistics.TYPE_NAME, statistics_gen.outputs[
+            standard_component_specs.STATISTICS_KEY].type_name)
+    self.assertEqual(
+        statistics_gen.spec.exec_properties[
+            standard_component_specs.EXCLUDE_SPLITS_KEY], '["eval"]')
 
-
-if __name__ == '__main__':
-  tf.test.main()
+  def testConstructWithSchemaAndStatsOptions(self):
+    examples = standard_artifacts.Examples()
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    schema = standard_artifacts.Schema()
+    stats_options = tfdv.StatsOptions(
+        weight_feature='weight')
+    statistics_gen = component.StatisticsGen(
+        examples=channel_utils.as_channel([examples]),
+        schema=channel_utils.as_channel([schema]),
+        stats_options=stats_options)
+    self.assertEqual(
+        standard_artifacts.ExampleStatistics.TYPE_NAME, statistics_gen.outputs[
+            standard_component_specs.STATISTICS_KEY].type_name)

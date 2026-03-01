@@ -2,13 +2,15 @@
 
 The Transform TFX pipeline component performs feature engineering on tf.Examples
 emitted from an [ExampleGen](examplegen.md) component, using a data schema created
-by a [SchemaGen](schemagen.md) component, and emits a SavedModel.  When executed,
+by a [SchemaGen](schemagen.md) component, and emits both a SavedModel as well as
+statistics on both pre-transform and post-transform data.  When executed,
 the SavedModel will accept tf.Examples emitted from an ExampleGen component and emit
 the transformed feature data.
 
 * Consumes: tf.Examples from an ExampleGen component, and a data schema from a
 SchemaGen component.
-* Emits: A SavedModel to a Trainer component
+* Emits: A SavedModel to a Trainer component, pre-transform and post-transform
+statistics.
 
 ## Configuring a Transform Component
 
@@ -18,18 +20,15 @@ module will be loaded by transform and the function named `preprocessing_fn`
 will be found and used by Transform to construct the preprocessing pipeline.
 
 ```
-transform_training = components.Transform(
-    input_data=examples_gen.outputs['training_examples'],
-    schema=infer_schema.outputs['output'],
-    module_file=taxi_pipeline_utils,
-    name='transform-training')
-
-transform_eval = components.Transform(
-    input_data=examples_gen.outputs['eval_examples'],
-    schema=infer_schema.outputs['output'],
-    transform_dir=transform_training.outputs['output'],
-    name='transform-eval')
+transform = Transform(
+    examples=example_gen.outputs['examples'],
+    schema=schema_gen.outputs['schema'],
+    module_file=os.path.abspath(_taxi_transform_module_file))
 ```
+
+Additionally, you may wish to provide options to the [TFDV](tfdv.md)-based
+pre-transform or post-transform statistics computation. To do so, define a
+`stats_options_updater_fn` within the same module.
 
 ## Transform and TensorFlow Transform
 
@@ -42,7 +41,7 @@ training process. Common feature transformations include:
     vocabulary) into dense features by finding a meaningful mapping from high-
     dimensional space to low dimensional space. See the [Embeddings unit in the
     Machine-learning Crash Course](
-    https://developers.google.com/machine-learning/crash-course/embedding)
+    https://developers.google.com/machine-learning/crash-course/embeddings)
     for an introduction to embeddings.
 *   **Vocabulary generation**: converting strings or other non-numeric features
     into integers by creating a vocabulary that maps each unique value to an ID
@@ -79,8 +78,9 @@ By contrast, TensorFlow Transform is designed for transformations that require a
 full pass over the data to compute values that are not known in advance. For
 example, vocabulary generation requires a full pass over the data.
 
-Note: These computations are implemented in [Apache Beam](https://beam.apache.org/)
-under the hood.
+!!! Note
+    These computations are implemented in [Apache Beam](https://beam.apache.org/)
+    under the hood.
 
 In addition to computing values using Apache Beam, TensorFlow Transform allows
 users to embed these values into a TensorFlow graph, which can then be loaded
@@ -126,7 +126,7 @@ disk.  As a TFX user, you only have to define a single function called the
 In `preprocessing_fn` you define a series of functions that manipulate the input
 dict of tensors to produce the output dict of tensors. You can find helper
 functions like scale_to_0_1 and compute_and_apply_vocabulary the
-[TensorFlow Transform API](/tfx/transform/api_docs/python/tft) or use
+[TensorFlow Transform API](https://www.tensorflow.org/tfx/transform/api_docs/python/tft) or use
 regular TensorFlow functions as shown below.
 
 ```python
@@ -141,7 +141,7 @@ def preprocessing_fn(inputs):
   """
   outputs = {}
   for key in _DENSE_FLOAT_FEATURE_KEYS:
-    # Preserve this feature as a dense float, setting nan's to the mean.
+    # If sparse make it dense, setting nan's to 0 or '', and apply zscore.
     outputs[_transformed_name(key)] = transform.scale_to_z_score(
         _fill_in_missing(inputs[key]))
 
@@ -176,36 +176,14 @@ def preprocessing_fn(inputs):
 ### Understanding the inputs to the preprocessing_fn
 
 The `preprocessing_fn` describes a series of operations on tensors (that is,
-`Tensor`s or `SparseTensor`s) and so to write the `preprocessing_fn` correctly
-it is necessary to understand how your data is represented as tensors. The input
-to the `preprocessing_fn` is determined by the schema. A `Schema` proto contains
-a list of `Feature`s, and Transform converts these to a "feature spec"
-(sometimes called a "parsing spec") which is a dict whose keys are feature names
-and whose values are one of `FixedLenFeature` or `VarLenFeature` (or other
-options not used by TensorFlow Transform).
-
-The rules for inferring a feature spec from the `Schema` are
-
--   Each `feature` with `shape` set will result in a `tf.FixedLenFeature` with
-    shape and `default_value=None`.  `presence.min_fraction` must be `1`
-    otherwise and error will result, since when there is no default value, a
-    `tf.FixedLenFeature` requires the feature to always be present.
--   Each `feature` with `shape` not set will result in a `VarLenFeature`.
--   Each `sparse_feature` will result in a `tf.SparseFeature` whose `size` and
-    `is_sorted` are determined by the `fixed_shape` and `is_sorted` fields of
-    the `SparseFeature` message.
--   Features used as the `index_feature` or `value_feature` of a
-    `sparse_feature` will not have their own entry generated in the feature
-    spec.
--   The correspondence between `type` field of the `feature` (or the values
-    feature of a `sparse_feature` proto) and the `dtype` of the feature spec is
-    given by the following table:
-
-`type`             | `dtype`
------------------- | ------------
-`schema_pb2.INT`   | `tf.int64`
-`schema_pb2.FLOAT` | `tf.float32`
-`schema_pb2.BYTES` | `tf.string`
+`Tensor`s, `SparseTensor`s, or `RaggedTensor`s). In order to define the
+`preprocessing_fn` correctly it is necessary to understand how the data is
+represented as tensors. The input to the `preprocessing_fn` is determined by the
+schema. A
+[`Schema` proto](https://github.com/tensorflow/metadata/blob/master/tensorflow_metadata/proto/v0/schema.proto#L72)
+is eventually converted to a "feature spec" (sometimes called a "parsing spec")
+that is used for data parsing, see more details about the conversion logic
+[here](https://github.com/tensorflow/tfx-bsl/blob/master/tfx_bsl/docs/schema_interpretation.md).
 
 ## Using TensorFlow Transform to handle string labels
 
@@ -231,15 +209,15 @@ def _preprocessing_fn(inputs):
 
 
   education = inputs[features.RAW_LABEL_KEY]
-  _ = tft.uniques(education, vocab_filename=features.RAW_LABEL_KEY)
+  _ = tft.vocabulary(education, vocab_filename=features.RAW_LABEL_KEY)
 
   ...
 ```
 
 The preprocessing function above takes the raw input feature (which will also be
 returned as part of the output of the preprocessing function) and calls
-`tft.uniques` on it. This results in a vocabulary being generated for `education`
-that can be accessed in the model.
+`tft.vocabulary` on it. This results in a vocabulary being generated for
+`education` that can be accessed in the model.
 
 The example also shows how to transform a label and then generate a vocabulary
 for the transformed label. In particular it takes the raw label `education` and
@@ -247,10 +225,10 @@ converts all but the top 5 labels (by frequency) to `UNKNOWN`, without
 converting the label to an integer.
 
 In the model code, the classifier must be given the vocabulary generated by
-`tft.uniques` as the `label_vocabulary` argument. This is done by first reading
-this vocabulary as a list with a helper function. This is shown in the snippet
-below. Note the example code uses the transformed label discussed above but
-here we show code for using the raw label.
+`tft.vocabulary` as the `label_vocabulary` argument. This is done by first
+reading this vocabulary as a list with a helper function. This is shown in the
+snippet below. Note the example code uses the transformed label discussed above
+but here we show code for using the raw label.
 
 ```python
 def create_estimator(pipeline_inputs, hparams):
@@ -270,3 +248,34 @@ def create_estimator(pipeline_inputs, hparams):
       label_vocabulary=label_vocab,
       ...)
 ```
+
+## Configuring pre-transform and post-transform statistics
+
+As mentioned above, the Transform component invokes TFDV to compute both
+pre-transform and post-transform statistics. TFDV takes as input an optional
+[StatsOptions](https://github.com/tensorflow/data-validation/blob/master/tensorflow_data_validation/statistics/stats_options.py)
+object. Users may wish to configure this object to enable certain additional
+statistics (e.g. NLP statistics) or to set thresholds that are validated (e.g.
+min / max token frequency). To do so, define a `stats_options_updater_fn` in the
+module file.
+
+```python
+def stats_options_updater_fn(stats_type, stats_options):
+  ...
+  if stats_type == stats_options_util.StatsType.PRE_TRANSFORM:
+    # Update stats_options to modify pre-transform statistics computation.
+    # Most constraints are specified in the schema which can be accessed
+    # via stats_options.schema.
+  if stats_type == stats_options_util.StatsType.POST_TRANSFORM
+    # Update stats_options to modify post-transform statistics computation.
+    # Most constraints are specified in the schema which can be accessed
+    # via stats_options.schema.
+  return stats_options
+```
+
+Post-transform statistics often benefit from knowledge of the vocabulary being
+used for preprocessing a feature. The vocabulary name to path mapping is
+provided to StatsOptions (and hence TFDV) for every TFT-generated vocabulary.
+Additionally, mappings for externally-created vocabularies can be added by
+either (i) directly modifying the `vocab_paths` dictionary within StatsOptions
+or by (ii) using `tft.annotate_asset`.

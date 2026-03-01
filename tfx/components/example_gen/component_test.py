@@ -13,21 +13,18 @@
 # limitations under the License.
 """Tests for tfx.components.example_gen.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
-from google.protobuf import any_pb2
-from google.protobuf import json_format
-from tfx.components.base import base_driver
-from tfx.components.base import executor_spec
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen import component
 from tfx.components.example_gen import driver
+from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
-from tfx.types import channel_utils
+from tfx.proto import range_config_pb2
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
+from tfx.utils import proto_utils
+
+from google.protobuf import any_pb2
 
 
 class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
@@ -36,38 +33,36 @@ class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
     pass
 
 
-class TestQueryBasedExampleGenComponent(component._QueryBasedExampleGen):
+class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(TestExampleGenExecutor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(TestExampleGenExecutor)
 
-  def __init__(self,
-               input_config,
-               output_config=None,
-               example_artifacts=None,
-               instance_name=None):
-    super(TestQueryBasedExampleGenComponent, self).__init__(
+  def __init__(
+      self,
+      input_config,
+      output_config=None,
+      range_config=None,
+      output_data_format=example_gen_pb2.FORMAT_TF_EXAMPLE,
+      output_file_format=example_gen_pb2.FORMAT_TFRECORDS_GZIP,
+  ):
+    super().__init__(
         input_config=input_config,
         output_config=output_config,
-        example_artifacts=example_artifacts,
-        instance_name=instance_name)
+        range_config=range_config,
+        output_data_format=output_data_format,
+        output_file_format=output_file_format,
+    )
 
 
 class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(TestExampleGenExecutor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(TestExampleGenExecutor)
 
-  def __init__(self,
-               input_base,
-               input_config=None,
-               output_config=None,
-               example_artifacts=None,
-               instance_name=None):
-    super(TestFileBasedExampleGenComponent, self).__init__(
+  def __init__(self, input_base, input_config=None, output_config=None):
+    super().__init__(
         input_base=input_base,
         input_config=input_config,
-        output_config=output_config,
-        example_artifacts=example_artifacts,
-        instance_name=instance_name)
+        output_config=output_config)
 
 
 class ComponentTest(tf.test.TestCase):
@@ -77,83 +72,151 @@ class ComponentTest(tf.test.TestCase):
         input_config=example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(name='single', pattern='query'),
         ]))
-    self.assertEqual({}, example_gen.inputs.get_all())
-    self.assertEqual(base_driver.BaseDriver, example_gen.driver_class)
-    self.assertEqual('ExamplesPath', example_gen.outputs['examples'].type_name)
-    self.assertIsNone(example_gen.exec_properties.get('custom_config'))
-    artifact_collection = example_gen.outputs['examples'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
+    self.assertEqual({}, example_gen.inputs)
+    self.assertEqual(driver.QueryBasedDriver, example_gen.driver_class)
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
+    self.assertEqual(
+        example_gen.exec_properties[
+            standard_component_specs.OUTPUT_DATA_FORMAT_KEY],
+        example_gen_pb2.FORMAT_TF_EXAMPLE)
+    self.assertEqual(
+        example_gen.exec_properties[
+            standard_component_specs.OUTPUT_FILE_FORMAT_KEY],
+        example_gen_pb2.FORMAT_TFRECORDS_GZIP)
+    self.assertIsNone(
+        example_gen.exec_properties.get(
+            standard_component_specs.CUSTOM_CONFIG_KEY))
+
+  def testConstructSubclassQueryBasedWithRangeConfig(self):
+    # @span_yyyymmdd_utc will replaced to '19700103' to query, span `2` will be
+    # recorded in output Example artifact.
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(
+            start_span_number=2, end_span_number=2))
+    example_gen = TestQueryBasedExampleGenComponent(
+        input_config=example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(
+                name='single',
+                pattern='select * from table where date=@span_yyyymmdd_utc'),
+        ]),
+        range_config=range_config)
+    self.assertEqual({}, example_gen.inputs)
+    self.assertEqual(driver.QueryBasedDriver, example_gen.driver_class)
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
+    stored_range_config = range_config_pb2.RangeConfig()
+    proto_utils.json_to_proto(
+        example_gen.exec_properties[standard_component_specs.RANGE_CONFIG_KEY],
+        stored_range_config)
+    self.assertEqual(range_config, stored_range_config)
+
+  def testConstructSubclassQueryBasedWithInvalidOutputDataFormat(self):
+    self.assertRaises(
+        ValueError,
+        TestQueryBasedExampleGenComponent,
+        input_config=example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(name='single', pattern='query'),
+        ]),
+        output_data_format=-1  # not exists
+    )
+
+  def testConstructSubclassQueryBasedWithInvalidOutputFileFormat(self):
+    self.assertRaises(
+        ValueError,
+        TestQueryBasedExampleGenComponent,
+        input_config=example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(name='single', pattern='query'),
+        ]),
+        output_file_format=-1  # not exists
+    )
 
   def testConstructSubclassFileBased(self):
-    input_base = standard_artifacts.ExternalArtifact()
-    example_gen = TestFileBasedExampleGenComponent(
-        input_base=channel_utils.as_channel([input_base]))
-    self.assertIn('input_base', example_gen.inputs.get_all())
-    self.assertEqual(driver.Driver, example_gen.driver_class)
-    self.assertEqual('ExamplesPath', example_gen.outputs['examples'].type_name)
-    self.assertIsNone(example_gen.exec_properties.get('custom_config'))
-    artifact_collection = example_gen.outputs['examples'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
+    example_gen = TestFileBasedExampleGenComponent(input_base='path')
+    self.assertIn(standard_component_specs.INPUT_BASE_KEY,
+                  example_gen.exec_properties)
+    self.assertEqual(driver.FileBasedDriver, example_gen.driver_class)
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
+    self.assertIsNone(
+        example_gen.exec_properties.get(
+            standard_component_specs.CUSTOM_CONFIG_KEY))
 
   def testConstructCustomExecutor(self):
-    input_base = standard_artifacts.ExternalArtifact()
     example_gen = component.FileBasedExampleGen(
-        input_base=channel_utils.as_channel([input_base]),
-        custom_executor_spec=executor_spec.ExecutorClassSpec(
+        input_base='path',
+        custom_executor_spec=executor_spec.BeamExecutorSpec(
             TestExampleGenExecutor))
-    self.assertEqual(driver.Driver, example_gen.driver_class)
-    self.assertEqual('ExamplesPath', example_gen.outputs['examples'].type_name)
-    artifact_collection = example_gen.outputs['examples'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
+    self.assertEqual(driver.FileBasedDriver, example_gen.driver_class)
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
 
   def testConstructWithOutputConfig(self):
-    input_base = standard_artifacts.ExternalArtifact()
+    output_config = example_gen_pb2.Output(
+        split_config=example_gen_pb2.SplitConfig(splits=[
+            example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
+            example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1),
+            example_gen_pb2.SplitConfig.Split(name='test', hash_buckets=1)
+        ]))
     example_gen = TestFileBasedExampleGenComponent(
-        input_base=channel_utils.as_channel([input_base]),
-        output_config=example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(splits=[
-                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
-                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1),
-                example_gen_pb2.SplitConfig.Split(name='test', hash_buckets=1)
-            ])))
-    self.assertEqual('ExamplesPath', example_gen.outputs['examples'].type_name)
-    artifact_collection = example_gen.outputs['examples'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
-    self.assertEqual('test', artifact_collection[2].split)
+        input_base='path', output_config=output_config)
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
+
+    stored_output_config = example_gen_pb2.Output()
+    proto_utils.json_to_proto(
+        example_gen.exec_properties[standard_component_specs.OUTPUT_CONFIG_KEY],
+        stored_output_config)
+    self.assertEqual(output_config, stored_output_config)
 
   def testConstructWithInputConfig(self):
-    input_base = standard_artifacts.ExternalArtifact()
+    input_config = example_gen_pb2.Input(splits=[
+        example_gen_pb2.Input.Split(name='train', pattern='train/*'),
+        example_gen_pb2.Input.Split(name='eval', pattern='eval/*'),
+        example_gen_pb2.Input.Split(name='test', pattern='test/*')
+    ])
     example_gen = TestFileBasedExampleGenComponent(
-        input_base=channel_utils.as_channel([input_base]),
-        input_config=example_gen_pb2.Input(splits=[
-            example_gen_pb2.Input.Split(name='train', pattern='train/*'),
-            example_gen_pb2.Input.Split(name='eval', pattern='eval/*'),
-            example_gen_pb2.Input.Split(name='test', pattern='test/*')
-        ]))
-    self.assertEqual('ExamplesPath', example_gen.outputs['examples'].type_name)
-    artifact_collection = example_gen.outputs['examples'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
-    self.assertEqual('test', artifact_collection[2].split)
+        input_base='path', input_config=input_config)
+    self.assertEqual(
+        standard_artifacts.Examples.TYPE_NAME,
+        example_gen.outputs[standard_component_specs.EXAMPLES_KEY].type_name)
+
+    stored_input_config = example_gen_pb2.Input()
+    proto_utils.json_to_proto(
+        example_gen.exec_properties[standard_component_specs.INPUT_CONFIG_KEY],
+        stored_input_config)
+    self.assertEqual(input_config, stored_input_config)
 
   def testConstructWithCustomConfig(self):
-    input_base = standard_artifacts.ExternalArtifact()
     custom_config = example_gen_pb2.CustomConfig(custom_config=any_pb2.Any())
     example_gen = component.FileBasedExampleGen(
-        input_base=channel_utils.as_channel([input_base]),
+        input_base='path',
         custom_config=custom_config,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(
+        custom_executor_spec=executor_spec.BeamExecutorSpec(
             TestExampleGenExecutor))
 
     stored_custom_config = example_gen_pb2.CustomConfig()
-    json_format.Parse(example_gen.exec_properties['custom_config'],
-                      stored_custom_config)
+    proto_utils.json_to_proto(
+        example_gen.exec_properties[standard_component_specs.CUSTOM_CONFIG_KEY],
+        stored_custom_config)
     self.assertEqual(custom_config, stored_custom_config)
 
-
-if __name__ == '__main__':
-  tf.test.main()
+  def testConstructWithStaticRangeConfig(self):
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(
+            start_span_number=1, end_span_number=1))
+    example_gen = component.FileBasedExampleGen(
+        input_base='path',
+        range_config=range_config,
+        custom_executor_spec=executor_spec.BeamExecutorSpec(
+            TestExampleGenExecutor))
+    stored_range_config = range_config_pb2.RangeConfig()
+    proto_utils.json_to_proto(
+        example_gen.exec_properties[standard_component_specs.RANGE_CONFIG_KEY],
+        stored_range_config)
+    self.assertEqual(range_config, stored_range_config)

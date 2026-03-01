@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Common data types for orchestration."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from tfx import types
+from tfx.dsl.placeholder import placeholder as ph
 from tfx.utils import json_utils
 
+# Regex pattern of RuntimeParameter.
+# Use \\* to deal with escaping in json-serialized version of objects.
+RUNTIME_PARAMETER_PATTERN = (r'({\\*"__class__\\*": \\*"RuntimeParameter\\*", '
+                             r'.*?})')
 
-class ExecutionDecision(object):
+PARAMETER_NAME_LITERAL = r'(\\*"RuntimeParameter\\*")'
+
+
+class ExecutionDecision:
   """ExecutionDecision records how executor should perform next execution.
 
   Attributes:
@@ -37,10 +42,10 @@ class ExecutionDecision(object):
   """
 
   def __init__(self,
-               input_dict: Dict[Text, List[types.Artifact]],
-               output_dict: Dict[Text, List[types.Artifact]],
-               exec_properties: Dict[Text, Any],
-               execution_id: int = None,
+               input_dict: Dict[str, List[types.Artifact]],
+               output_dict: Dict[str, List[types.Artifact]],
+               exec_properties: Dict[str, Any],
+               execution_id: Optional[int] = None,
                use_cached_results: Optional[bool] = False):
     self.input_dict = input_dict
     self.output_dict = output_dict
@@ -49,7 +54,7 @@ class ExecutionDecision(object):
     self.use_cached_results = use_cached_results
 
 
-class DriverArgs(object):
+class DriverArgs:
   """Args to driver from orchestration system.
 
   Attributes:
@@ -66,7 +71,7 @@ class DriverArgs(object):
     self.interactive_resolution = interactive_resolution
 
 
-class PipelineInfo(object):
+class PipelineInfo:
   """Pipeline info from orchestration system.
 
   Attributes:
@@ -78,51 +83,88 @@ class PipelineInfo(object):
   """
 
   def __init__(self,
-               pipeline_name: Text,
-               pipeline_root: Text,
-               run_id: Optional[Text] = None):
+               pipeline_name: str,
+               pipeline_root: Union[str, ph.Placeholder],
+               run_id: Optional[str] = None):
     self.pipeline_name = pipeline_name
     self.pipeline_root = pipeline_root
     self.run_id = run_id
 
+  def __repr__(self):
+    return ('PipelineInfo('
+            'pipeline_name: %s, '
+            'pipeline_root: %s, '
+            'run_id: %s)') % (self.pipeline_name, self.pipeline_root,
+                              self.run_id)
+
   @property
-  def run_context_name(self) -> Text:
-    """Context name for current run."""
+  def pipeline_run_context_name(self) -> str:
+    """Context name for the current pipeline run."""
     return '{}.{}'.format(self.pipeline_name, self.run_id)
 
+  @property
+  def pipeline_context_name(self) -> str:
+    """Context name for the pipeline."""
+    return self.pipeline_name
 
-class ComponentInfo(object):
+
+class ComponentInfo:
   """Component info.
 
   Attributes:
     component_type: type of the component. Usually determined by the executor
-      python path or image uri of.
+      python path or image uri.
     component_id: a unique identifier of the component instance within pipeline.
+    pipeline_info: the pipeline info of the current pipeline run.
   """
 
-  def __init__(self, component_type: Text, component_id: Text):
+  def __init__(self, component_type: str, component_id: str,
+               pipeline_info: PipelineInfo):
     self.component_type = component_type
     self.component_id = component_id
+    self.pipeline_info = pipeline_info
+
+  def __repr__(self):
+    return ('ComponentInfo('
+            'component_type: %s, '
+            'component_id: %s, '
+            'pipeline_info: %s)') % (self.component_type, self.component_id,
+                                     self.pipeline_info)
+
+  @property
+  def component_run_context_name(self) -> str:
+    """"Context name for current component run."""
+    if self.pipeline_info.run_id:
+      return '{}.{}'.format(self.pipeline_info.pipeline_run_context_name,
+                            self.component_id)
+    else:
+      return '{}.{}'.format(self.pipeline_info.pipeline_context_name,
+                            self.component_id)
 
 
 class RuntimeParameter(json_utils.Jsonable):
   """Runtime parameter.
 
+  Currently only supported on KubeflowV2DagRunner.
+
+  For protos, use text type RuntimeParameter, which holds the proto json
+  string, e.g., `'{"num_steps": 5}'` for TrainArgs proto.
+
   Attributes:
-    name: The name of the runtime parameter
+    name: The name of the runtime parameter.
     default: Default value for runtime params when it's not explicitly
       specified.
-    ptype: The type of the runtime parameter
-    description: Description of the usage of the parameter
+    ptype: The type of the runtime parameter.
+    description: Description of the usage of the parameter.
   """
 
   def __init__(
       self,
-      name: Text,
-      default: Optional[Union[int, float, bool, Text]] = None,
+      name: str,
       ptype: Optional[Type] = None,  # pylint: disable=g-bare-generic
-      description: Optional[Text] = None):
-    if ptype and ptype not in [int, float, bool, Text]:
+      default: Optional[Union[int, float, str]] = None,
+      description: Optional[str] = None):
+    if ptype and ptype not in [int, float, str]:
       raise RuntimeError('Only str and scalar runtime parameters are supported')
     if (default and ptype) and not isinstance(default, ptype):
       raise TypeError('Default value must be consistent with specified ptype')
@@ -132,6 +174,22 @@ class RuntimeParameter(json_utils.Jsonable):
     self.description = description
 
   def __repr__(self):
-    return ('RuntimeParam:\n  name: %s,\n  default: %s,\n  ptype: %s,\n  '
-            'description: %s') % (self.name, self.default, self.ptype,
-                                  self.description)
+    """Easily convert RuntimeParameter to str.
+
+    This provides a unified way to call str(x) when x can be either str or
+    RuntimeParameter. Note: if ptype == Text or None, the serialization will be
+    wrapped in double quotes.
+
+    Returns:
+      The json serialized version of RuntimeParameter.
+    """
+    return json_utils.dumps(self)
+
+  def __eq__(self, other):
+    return (isinstance(other.__class__, self.__class__) and
+            self.name == other.name and self.default == other.default and
+            self.ptype == other.ptype and self.description == other.description)
+
+  def __hash__(self):
+    """RuntimeParameter is uniquely identified by its name."""
+    return self.name.__hash__()

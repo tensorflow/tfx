@@ -12,33 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.airflow.airflow_component."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import datetime
 import os
+from unittest import mock
+
 from airflow import models
-import mock
+from airflow.operators import python_operator
 
 import tensorflow as tf
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import base_executor
-from tfx.components.base import executor_spec
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import base_executor
+from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.airflow import airflow_component
 from tfx.types import component_spec
 
 
+class _ArtifactTypeA(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeA'
+
+
+class _ArtifactTypeB(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeB'
+
+
 class _FakeComponentSpec(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {
-      'input': component_spec.ChannelParameter(type_name='type_a'),
+      'input': component_spec.ChannelParameter(type=_ArtifactTypeA),
   }
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='type_b')}
+  OUTPUTS = {'output': component_spec.ChannelParameter(type=_ArtifactTypeB)}
 
 
 class _FakeComponent(base_component.BaseComponent):
@@ -47,17 +54,17 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    super(_FakeComponent, self).__init__(spec=spec)
+    super().__init__(spec=spec)
 
 
 class AirflowComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(AirflowComponentTest, self).setUp()
+    super().setUp()
     self._component = _FakeComponent(
         _FakeComponentSpec(
-            input=types.Channel(type_name='type_a'),
-            output=types.Channel(type_name='type_b')))
+            input=types.Channel(type=_ArtifactTypeA),
+            output=types.Channel(type=_ArtifactTypeB)))
     self._pipeline_info = data_types.PipelineInfo('name', 'root')
     self._driver_args = data_types.DriverArgs(True)
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
@@ -83,14 +90,16 @@ class AirflowComponentTest(tf.test.TestCase):
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=[],
         additional_pipeline_args={},
-        ti=mock_ti)
+        component_config=None,
+        ti=mock_ti,
+        exec_properties={})
     mock_component_launcher_class.create.assert_called_once()
     arg_list = mock_component_launcher_class.create.call_args_list
     self.assertEqual(arg_list[0][1]['pipeline_info'].run_id, 'run_id')
     mock_component_launcher.launch.assert_called_once()
 
-  @mock.patch('functools.partial')
-  def testAirflowComponent(self, mock_functools_partial):
+  @mock.patch.object(python_operator.PythonOperator, '__init__')
+  def testAirflowComponent(self, mock_python_operator_init):
     mock_component_launcher_class = mock.Mock()
     airflow_component.AirflowComponent(
         parent_dag=self._parent_dag,
@@ -100,19 +109,30 @@ class AirflowComponentTest(tf.test.TestCase):
         enable_cache=True,
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=[],
-        additional_pipeline_args={})
-    mock_functools_partial.assert_called_once_with(
-        airflow_component._airflow_component_launcher,
-        component=self._component,
-        component_launcher_class=mock_component_launcher_class,
-        pipeline_info=self._pipeline_info,
-        driver_args=mock.ANY,
-        metadata_connection_config=self._metadata_connection_config,
-        beam_pipeline_args=[],
-        additional_pipeline_args={})
-    arg_list = mock_functools_partial.call_args_list
-    self.assertTrue(arg_list[0][1]['driver_args'].enable_cache)
+        additional_pipeline_args={},
+        component_config=None,
+        default_args={})
 
+    mock_python_operator_init.assert_called_once_with(
+        task_id=self._component.id,
+        provide_context=True,
+        python_callable=mock.ANY,
+        dag=self._parent_dag,
+        op_kwargs={'exec_properties': {}},
+        default_args={})
 
-if __name__ == '__main__':
-  tf.test.main()
+    python_callable = mock_python_operator_init.call_args_list[0][1][
+        'python_callable']
+    self.assertEqual(python_callable.func,
+                     airflow_component._airflow_component_launcher)
+    self.assertTrue(python_callable.keywords.pop('driver_args').enable_cache)
+    self.assertEqual(
+        python_callable.keywords, {
+            'component': self._component,
+            'component_launcher_class': mock_component_launcher_class,
+            'pipeline_info': self._pipeline_info,
+            'metadata_connection_config': self._metadata_connection_config,
+            'beam_pipeline_args': [],
+            'additional_pipeline_args': {},
+            'component_config': None,
+        })

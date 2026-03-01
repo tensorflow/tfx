@@ -1,0 +1,85 @@
+// LINT: LEGACY_NAMES
+// Copyright 2020 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+// protolint:disable FIELD_NAMES_LOWER_SNAKE_CASE
+// protolint:disable PACKAGE_NAME_LOWER_CASE
+// protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
+
+package tfx.extensions.experimental.kfp_compatibility;
+
+message StringOrPlaceholder {
+  oneof wrapped_value {
+    // arguments with type str are converted to key-value pairs,
+    // where the key is constantValue and the value is the argument
+    string constantValue = 1;
+    string inputValue = 2;
+    string inputPath = 3;
+    string outputPath = 4;
+  }
+}
+
+// Message to specify a Kubeflow component
+message ContainerImplementation {
+  message ContainerSpec {
+    string image = 1;
+    // CommandlineArgumentType, Union[
+    //  str,
+    //  InputValuePlaceholder,
+    //  InputPathPlaceholder,
+    //  OutputPathPlaceholder,
+    //  'ConcatPlaceholder',
+    //  'IfPlaceholder',
+    //] only first four argument types are supported
+    repeated StringOrPlaceholder command = 2;
+    repeated StringOrPlaceholder args = 3;
+    map<string, string> env = 4;
+    map<string, string> file_outputs = 5;
+  }
+  ContainerSpec container = 1;
+}
+
+// Message to specify a Kubeflow component
+message ComponentSpec {
+  // nested MetadataSpec, InputSpec and OutputSpec to avoid naming collisions
+  string name = 1;
+  string description = 2;
+  message InputSpec {
+    string name = 1;
+    // TypeSpecType, Union[str, Dict, List], only strings are supported
+    string type = 2;
+    string description = 3;
+    // PrimitiveTypes = Union[str, int, float, bool]
+    string default = 4;
+    bool optional = 5;
+  }
+  repeated InputSpec inputs = 3;
+  message OutputSpec {
+    string name = 1;
+    // TypeSpecType, Union[str, Dict, List], only strings are supported
+    string type = 2;
+    string description = 3;
+  }
+  repeated OutputSpec outputs = 4;
+  // ImplementationType, Union[ContainerImplementation, GraphImplementation],
+  // only ContainerImplementation is supported
+  ContainerImplementation implementation = 5;
+  string version = 6;
+  message MetadataSpec {
+    map<string, string> annotations = 1;
+    map<string, string> labels = 2;
+  }
+  MetadataSpec metadata = 7;
+}

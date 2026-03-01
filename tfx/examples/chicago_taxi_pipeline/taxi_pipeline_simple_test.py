@@ -13,44 +13,50 @@
 # limitations under the License.
 """Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_simple."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
 import os
+
 from airflow import models
 
-import tensorflow as tf
 
-from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_simple
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
+from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
+from tfx.utils import test_case_utils
 
 
-class TaxiPipelineSimpleTest(tf.test.TestCase):
+class TaxiPipelineSimpleTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(TaxiPipelineSimpleTest, self).setUp()
-    self._test_dir = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName)
+    super().setUp()
+    self._test_dir = self.tmp_dir
 
   def testTaxiPipelineCheckDagConstruction(self):
     airflow_config = {
         'schedule_interval': None,
         'start_date': datetime.datetime(2019, 1, 1),
     }
+
+    # Create directory structure and write expected user module file.
+    os.makedirs(os.path.join(self._test_dir, 'taxi'))
+    module_file = os.path.join(self._test_dir, 'taxi/taxi_utils.py')
+    with open(module_file, 'w') as f:
+      f.write('# Placeholder user module file.')
+
+    # Patch $HOME directory for pipeline DAG construction.
+    original_home = os.environ['HOME']
+    os.environ['HOME'] = self._test_dir
+    from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_simple  # pylint: disable=g-import-not-at-top
+    os.environ['HOME'] = original_home
+
     logical_pipeline = taxi_pipeline_simple._create_pipeline(
         pipeline_name='Test',
         pipeline_root=self._test_dir,
         data_root=self._test_dir,
-        module_file=self._test_dir,
+        module_file=module_file,
         serving_model_dir=self._test_dir,
-        metadata_path=self._test_dir)
+        metadata_path=self._test_dir,
+        beam_pipeline_args=[])
     self.assertEqual(9, len(logical_pipeline.components))
-    pipeline = AirflowDagRunner(airflow_config).run(logical_pipeline)
+    pipeline = AirflowDagRunner(
+        AirflowPipelineConfig(airflow_config)).run(logical_pipeline)
     self.assertIsInstance(pipeline, models.DAG)
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -13,59 +13,62 @@
 # limitations under the License.
 """TFX ImportExampleGen component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import Optional, Union
 
-from typing import Optional, Text
-
-from tfx import types
-from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen.import_example_gen import executor
+from tfx.dsl.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 
 
 class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected-access
   """Official TFX ImportExampleGen component.
 
   The ImportExampleGen component takes TFRecord files with TF Example data
-  format, and generates train and eval examples for downsteam components.
+  format, and generates train and eval examples for downstream components.
   This component provides consistent and configurable partition, and it also
   shuffle the dataset for ML best practice.
+
+  Component `outputs` contains:
+
+   - `examples`: Channel of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples] for output
+     train and eval examples.
   """
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
-  def __init__(self,
-               input_base: types.Channel = None,
-               input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None,
-               input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      input_base: Optional[str] = None,
+      input_config: Optional[Union[example_gen_pb2.Input,
+                                   data_types.RuntimeParameter]] = None,
+      output_config: Optional[Union[example_gen_pb2.Output,
+                                    data_types.RuntimeParameter]] = None,
+      range_config: Optional[Union[range_config_pb2.RangeConfig,
+                                   data_types.RuntimeParameter]] = None,
+      payload_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE):
     """Construct an ImportExampleGen component.
 
     Args:
-      input_base: A Channel of 'ExternalPath' type, which includes one artifact
-        whose uri is an external directory with TFRecord files inside
-        (required).
+      input_base: an external directory containing the TFRecord files.
       input_config: An example_gen_pb2.Input instance, providing input
         configuration. If unset, the files under input_base will be treated as a
         single split.
       output_config: An example_gen_pb2.Output instance, providing output
         configuration. If unset, default splits will be 'train' and 'eval' with
         size 2:1.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
-        eval examples.
-      input: Forwards compatibility alias for the 'input_base' argument.
-      instance_name: Optional unique instance name. Necessary if multiple
-        ImportExampleGen components are declared in the same pipeline.
+      range_config: An optional range_config_pb2.RangeConfig instance,
+        specifying the range of span values to consider. If unset, driver will
+        default to searching for latest span with no restrictions.
+      payload_format: Payload format of input data. Should be one of
+        example_gen_pb2.PayloadFormat enum. Note that payload format of output
+        data is the same as input.
     """
-    super(ImportExampleGen, self).__init__(
+    super().__init__(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        example_artifacts=example_artifacts,
-        input=input,
-        instance_name=instance_name)
+        range_config=range_config,
+        output_data_format=payload_format)

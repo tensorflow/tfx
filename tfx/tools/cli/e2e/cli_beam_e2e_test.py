@@ -13,26 +13,25 @@
 # limitations under the License.
 """E2E Beam tests for CLI."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import codecs
 import locale
 import os
-import tempfile
 
 from click import testing as click_testing
-import tensorflow as tf
 
+from tfx.dsl.io import fileio
 from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
+from tfx.utils import test_case_utils
+
+import pytest
 
 
-class CliBeamEndToEndTest(tf.test.TestCase):
+@pytest.mark.e2e
+class CliBeamEndToEndTest(test_case_utils.TfxTest):
 
   def setUp(self):
-    super(CliBeamEndToEndTest, self).setUp()
+    super().setUp()
 
     # Change the encoding for Click since Python 3 is configured to use ASCII as
     # encoding for the environment.
@@ -40,14 +39,12 @@ class CliBeamEndToEndTest(tf.test.TestCase):
       os.environ['LANG'] = 'en_US.utf-8'
 
     # Setup beam_home in a temp directory
-    self._home = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
-        self._testMethodName)
-    self._old_home = os.environ.get('HOME')
-    os.environ['HOME'] = self._home
-    self._old_beam_home = os.environ.get('BEAM_HOME')
-    os.environ['BEAM_HOME'] = os.path.join(self._home, 'beam', '')
-    self._beam_home = os.environ['BEAM_HOME']
+    self._home = self.tmp_dir
+    self._beam_home = os.path.join(self._home, 'beam')
+    self.enter_context(
+        test_case_utils.override_env_var('BEAM_HOME', self._beam_home))
+    self.enter_context(
+        test_case_utils.override_env_var('HOME', self._home))
 
     # Testdata path.
     self._testdata_dir = os.path.join(
@@ -60,12 +57,12 @@ class CliBeamEndToEndTest(tf.test.TestCase):
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
         'examples', 'chicago_taxi_pipeline', '')
     data_dir = os.path.join(chicago_taxi_pipeline_dir, 'data', 'simple')
-    content = tf.gfile.ListDirectory(data_dir)
+    content = fileio.listdir(data_dir)
     assert content, 'content in {} is empty'.format(data_dir)
     target_data_dir = os.path.join(self._home, 'taxi', 'data', 'simple')
     io_utils.copy_dir(data_dir, target_data_dir)
-    assert tf.gfile.IsDirectory(target_data_dir)
-    content = tf.gfile.ListDirectory(target_data_dir)
+    assert fileio.isdir(target_data_dir)
+    content = fileio.listdir(target_data_dir)
     assert content, 'content in {} is {}'.format(target_data_dir, content)
     io_utils.copy_file(
         os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
@@ -73,13 +70,6 @@ class CliBeamEndToEndTest(tf.test.TestCase):
 
     # Initialize CLI runner.
     self.runner = click_testing.CliRunner()
-
-  def tearDown(self):
-    super(CliBeamEndToEndTest, self).tearDown()
-    if self._old_beam_home:
-      os.environ['BEAM_HOME'] = self._old_beam_home
-    if self._old_home:
-      os.environ['HOME'] = self._old_home
 
   def _valid_create_and_check(self, pipeline_path, pipeline_name):
     handler_pipeline_path = os.path.join(self._beam_home, pipeline_name)
@@ -92,7 +82,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
     self.assertTrue(
-        tf.io.gfile.exists(
+        fileio.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
     self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result.output)
@@ -127,7 +117,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('Updating pipeline', result.output)
     self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
                   result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(fileio.exists(handler_pipeline_path))
 
     # Now update an existing pipeline.
     self._valid_create_and_check(pipeline_path_1, pipeline_name)
@@ -142,7 +132,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('Pipeline "{}" updated successfully.'.format(pipeline_name),
                   result.output)
     self.assertTrue(
-        tf.io.gfile.exists(
+        fileio.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
 
   def testPipelineCompile(self):
@@ -158,15 +148,15 @@ class CliBeamEndToEndTest(tf.test.TestCase):
                   result.output)
 
     # Wrong Runner.
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_kubeflow_1.py')
+    pipeline_path = os.path.join(self.tmp_dir, 'empty_file.py')
+    io_utils.write_string_file(pipeline_path, '')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'compile', '--engine', 'beam', '--pipeline_path',
         pipeline_path
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Compiling pipeline', result.output)
-    self.assertIn('beam runner not found in dsl.', result.output)
+    self.assertIn('Cannot find BeamDagRunner.run()', result.output)
 
     # Successful compilation.
     pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_2.py')
@@ -192,7 +182,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('Deleting pipeline', result.output)
     self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
                   result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(fileio.exists(handler_pipeline_path))
 
     # Create a pipeline.
     self._valid_create_and_check(pipeline_path, pipeline_name)
@@ -204,7 +194,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Deleting pipeline', result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(fileio.exists(handler_pipeline_path))
     self.assertIn('Pipeline "{}" deleted successfully.'.format(pipeline_name),
                   result.output)
 
@@ -294,7 +284,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Getting latest schema.', result.output)
-    self.assertTrue(tf.io.gfile.exists(schema_path))
+    self.assertTrue(fileio.exists(schema_path))
     self.assertIn('Path to schema: {}'.format(schema_path), result.output)
     self.assertIn(
         '*********SCHEMA FOR {}**********'.format(pipeline_name.upper()),
@@ -330,7 +320,3 @@ class CliBeamEndToEndTest(tf.test.TestCase):
 
     # Now run the pipeline
     self._valid_run_and_check(pipeline_name_1)
-
-
-if __name__ == '__main__':
-  tf.test.main()

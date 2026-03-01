@@ -1,0 +1,274 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package tfx.components.infra_validator;
+
+// ServingSpec defines an environment of the validating infrastructure: what
+// (serving binary) and where (serving platform) to run model server.
+message ServingSpec {
+  // The kind of binary used to serve your model.This should be the same as the
+  // one that is used in the pushing environment.
+  //
+  // It is often useful to validate multiple versions of the same serving binary
+  // before pushing, and infra validator allows it. For example, you can specify
+  // multiple versions of TensorFlow Serving image by setting:
+  //
+  //   {
+  //     "tensorflow_serving": {
+  //       "tags": ["1.15.0-gpu", "latest-gpu"]
+  //     }
+  //   }
+  //
+  // Infra validator will validate your model against both versions.
+  oneof serving_binary {
+    TensorFlowServing tensorflow_serving = 1;
+  }
+
+  // The kind of runtime platform for running your model server and
+  // corresponding configuration.
+  oneof serving_platform {
+    LocalDockerConfig local_docker = 2;
+    KubernetesConfig kubernetes = 3;
+  }
+
+  // Optional.
+  // `model_name` is the identifier of the model in the serving platform. If
+  // your infra validation depends on the name heavily (e.g. TensorFlow Serving
+  // requires your model to be stored under the directory structure
+  // `model_name/version`), use this field to set it accordingly. If you're
+  // using TensorFlow Estimator API in the trainer, this is the name of your
+  // exporter.
+  // If not specified, infra validator will assign some default value and use it
+  // consistently throughout the validation.
+  //
+  // For TensorFlow Serving: if `model_name` is not specified or your exported
+  // model path does not comply with TensorFlow Serving directory structure
+  // (i.e. stored under `model_name/version`), your model will be copied to
+  // a temporary directory during validation.
+  string model_name = 4;
+}
+
+// TensorFlow Serving docker image (tensorflow/serving) for serving binary.
+message TensorFlowServing {
+  // Optional docker image name. (e.g. "gcr.io/myProject/serving")
+  // This is provided in case public docker hub is inaccessible from the
+  // deploying environment, so that user can use alternative tensorflow serving
+  // image name. Infra validator assumes this image behaves identical to the
+  // public tensorflow serving image but only the name differs.
+  // By default "tensorflow/serving" is used.
+  string image_name = 3;
+
+  // Docker image tags to use such as "latest", "1.15.0-gpu", etc..
+  repeated string tags = 1;
+
+  // Alternative to `tags`, you can specify docker image `digests`, or even
+  // both.
+  repeated string digests = 2;
+}
+
+// Docker runtime in a local machine. This is useful when you're running
+// pipeline with infra validator component in your your local machine. You need
+// to install docker in advance.
+message LocalDockerConfig {
+  // Optional docker client base URL where docker server is hosted. Default to
+  // your running platform's OS, e.g. "unix://var/run/docker.sock"
+  string client_base_url = 1;
+  // Optional docker API version to specify. If unspecified, it will use the
+  // installed docker client version.
+  string client_api_version = 2;
+  // Optional docker client timeout seconds. Default to the constant defined in
+  // docker-py library.
+  int32 client_timeout_seconds = 3;
+  // Optional host ip address. If not specified, then uses "localhost".
+  string host_ip_address = 4;
+}
+
+// Kubernetes configuration. We currently only support the use case when infra
+// validator is run by KubeflowDagRunner. Model server will be launched in the
+// same namespace KFP is running on, as well as same service account will be
+// used (unless specified).
+//
+// Model server will have ownerReferences to the infra validator, which
+// delegates the strict cleanup guarantee to the kubernetes cluster.
+message KubernetesConfig {
+  // Optional.
+  // Name of the ServiceAccount to use to run this pod. Default to the same
+  // service account that KFP uses.
+  string service_account_name = 1;
+
+  // Optional.
+  // [activeDeadlineSeconds](https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1PodSpec.md#properties)
+  // for the model server Pod. This is a hard deadline for the model server
+  // container. If infra validation finishes earlier, the container would be
+  // gracefully shut down before this deadline.
+  //
+  // Unlike `max_loading_time_seconds` in `ValidationSpec`, this deadline is to
+  // prevent resource leak due to unexpected termination (e.g. SIGKILL) of an
+  // infra validator. The value must be greater than `max_loading_time_seconds`.
+  //
+  // Should be a positive integer. Default to 24 hours (86400).
+  int32 active_deadline_seconds = 2;
+
+  // Optional.
+  // Additional Kubernetes pod overrides to apply to the serving pod.
+  PodOverrides serving_pod_overrides = 3;
+}
+
+// Flattened collections of overridable variables for Pod and its submessages.
+message PodOverrides {
+  // Optional.
+  // Annotations to apply to the pod's ObjectMeta.
+  map<string, string> annotations = 1;
+
+  // Optional.
+  // Environment variables to apply to the pod's Container.
+  repeated EnvVar env = 2;
+
+  // Optional.
+  // Pod resources (cpu, memory).
+  Resources resources = 3;
+}
+
+// https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1EnvVar.md
+// EnvVar represents an environment variable present in a Container.
+message EnvVar {
+  // Required.
+  // Name of the environment variable.
+  string name = 1;
+
+  // Optional.
+  // Raw value for the environment variable. Interpolating other environment
+  // variables is allowed. See the link from the message for more information.
+  // Defaults to "".
+  string value = 2;
+
+  // Optional.
+  // Source for the environment variable's value. Cannot be used if value is
+  // not empty.
+  EnvVarSource value_from = 3;
+}
+
+// https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1EnvVarSource.md
+// EnvVarSource represents a source for the value of an EnvVar.
+message EnvVarSource {
+  // Optional.
+  // Selects a key of a secret in the pod's namespace.
+  SecretKeySelector secret_key_ref = 4;
+
+  // Reserved fields:
+  //  1: field_ref
+  //  2: resource_field_ref
+  //  3: config_map_key_ref
+  reserved 1, 2, 3;
+}
+
+// https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1SecretKeySelector.md
+// SecretKeySelector selects a key of a Secret.
+message SecretKeySelector {
+  // Name of the referent. More info:
+  // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+  string name = 1;
+  // The key of the secret to select from.  Must be a valid secret key.
+  string key = 2;
+}
+
+// https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1ResourceRequirements.md
+message Resources {
+  map<string, string> requests = 1;
+  map<string, string> limits = 2;
+  map<string, string> claims = 3;
+}
+
+// Specification for validation criteria and thresholds.
+message ValidationSpec {
+  // Optional.
+  // If the model is not loaded until this time, validation will fail. Should
+  // be a positive number. Default to 300 seconds (5 minutes)
+  int32 max_loading_time_seconds = 1;
+
+  // Optional.
+  // Number of infra validation tries. Infra validation will be retried until
+  // it fails `num_tries` times to mark model as not blessed. Default to 5.
+  int32 num_tries = 2;
+}
+
+// InfraValidator can optionally send sample requests to the loaded model to
+// check model is truly servable. Model should return successful responses to be
+// infra validated.
+message RequestSpec {
+  // Required.
+  // Request kind should be compatible with the serving_binary specified in the
+  // ServingSpec.
+  oneof kind {
+    // Generates TF Serving RPC requests. This is compatible with
+    // TensorFlowServing.
+    TensorFlowServingRequestSpec tensorflow_serving = 1;
+  }
+
+  // Optional.
+  // InfraValidator consumes "examples" artifact to generate a request. You can
+  // choose the split to be used for request generation. If not specified, any
+  // available split will be chosen automatically.
+  string split_name = 2;
+
+  // Optional.
+  // Number of examples to use for building model server requests. Actual number
+  // of requests will be multiplied by the number of request type to make. For
+  // example the following request_spec:
+  //
+  // request_spec: {
+  //   tensorflow_serving: {
+  //     signature_names: ['serving_default', 'classification']
+  //   }
+  //   num_examples: 3
+  // }
+  //
+  // will send total 6 requests (3 for each signature) to a model server.
+  // Default to 1.
+  int32 num_examples = 3;
+
+  // Optional.
+  // If True, requests built from the RequestSpec would be used as warmup
+  // requests of the model, and output InfraBlessing artifact would contain the
+  // model with warmup.
+  //
+  // WARNING: Examples data that is used to build the warmup request will be
+  // included to model assets without any encryption, so make sure the data
+  // does not contain any sensitive information. For example, personally
+  // identifiable information (PII) SHOULD NOT be included in the examples data.
+  //
+  // Currently only supports [TensorFlow SavedModel
+  // warmup](https://www.tensorflow.org/tfx/serving/saved_model_warmup) now.
+  bool make_warmup = 4;
+}
+
+// Request spec for building TF Serving requests.
+message TensorFlowServingRequestSpec {
+  // Optional.
+  // Exact set of tags that MetaGraphDef should have. If SavedModel contains
+  // multiple MetaGraphDef with different tag set, use this field to find the
+  // right one.
+  // Note that you must specify the exact set of tags, not a subset or a
+  // superset of tags.
+  // Default to [tf.saved_model.SERVING] (i.e. ['serve']).
+  repeated string tag_set = 1;
+
+  // Optional.
+  // List of signatures to make request of.
+  // Default to [tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY] (i.e.
+  // ['serving_default']).
+  repeated string signature_names = 2;
+}

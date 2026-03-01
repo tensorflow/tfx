@@ -1,27 +1,32 @@
 # Chicago Taxi Example
 
-The Chicago Taxi example demonstrates the end-to-end workflow and steps of how
-to analyze, validate and transform data, train a model, analyze and serve it. It
-uses the following [TFX](https://www.tensorflow.org/tfx) components:
+The Chicago Taxi example demonstrates the end-to-end workflow and the steps
+required to analyze, validate, and transform data, train a model, analyze its
+performance, and serve it. This example uses the following
+[TFX](https://www.tensorflow.org/tfx) components:
 
 * [ExampleGen](https://github.com/tensorflow/tfx/blob/master/docs/guide/examplegen.md)
   ingests and splits the input dataset.
 * [StatisticsGen](https://github.com/tensorflow/tfx/blob/master/docs/guide/statsgen.md)
   calculates statistics for the dataset.
 * [SchemaGen](https://github.com/tensorflow/tfx/blob/master/docs/guide/schemagen.md)
-  SchemaGen examines the statistics and creates a data schema.
+  examines the statistics and creates a data schema.
 * [ExampleValidator](https://github.com/tensorflow/tfx/blob/master/docs/guide/exampleval.md)
   looks for anomalies and missing values in the dataset.
 * [Transform](https://github.com/tensorflow/tfx/blob/master/docs/guide/transform.md)
   performs feature engineering on the dataset.
 * [Trainer](https://github.com/tensorflow/tfx/blob/master/docs/guide/trainer.md)
-  trains the model using TensorFlow [Estimators](https://www.tensorflow.org/guide/estimators)
+  trains the model using native Keras.
+  or [Keras](https://www.tensorflow.org/guide/keras).
 * [Evaluator](https://github.com/tensorflow/tfx/blob/master/docs/guide/evaluator.md)
   performs deep analysis of the training results.
-* [ModelValidator](https://github.com/tensorflow/tfx/blob/master/docs/guide/modelval.md)
-  ensures that the model is "good enough" to be pushed to production.
+* [InfraValidator](https://github.com/tensorflow/tfx/blob/master/docs/guide/infra_validator.md)
+  checks the model is actually servable from the infrastructure, and prevents
+  bad model from being pushed.
 * [Pusher](https://github.com/tensorflow/tfx/blob/master/docs/guide/pusher.md)
   deploys the model to a serving infrastructure.
+* [BulkInferrer](https://github.com/tensorflow/tfx/blob/master/docs/guide/bulkinferrer.md)
+  batch inference on the model with unlabelled examples.
 
 Inference in the example is powered by:
 
@@ -39,9 +44,9 @@ accuracy, timeliness, or completeness of any of the data provided at this site.
 The data provided at this site is subject to change at any time. It is
 understood that the data provided at this site is being used at one’s own risk.
 
-You can [read more](https://cloud.google.com/bigquery/public-data/chicago-taxi) about
-the dataset in [Google BigQuery](https://cloud.google.com/bigquery/). Explore
-the full dataset in the
+You can [read more](https://console.cloud.google.com/marketplace/details/city-of-chicago-public-data/chicago-taxi-trips)
+about the dataset in [Google BigQuery](https://cloud.google.com/bigquery/).
+Explore the full dataset in the
 [BigQuery UI](https://bigquery.cloud.google.com/dataset/bigquery-public-data:chicago_taxi_trips).
 
 ## Local prerequisites
@@ -90,16 +95,9 @@ export TFX_DIR=~/tfx
 
 Next, install the dependencies required by the Chicago Taxi example:
 
-<!--- bring back once requirements.txt file is available
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install -r requirements.txt
-</pre>
--->
-
-<pre class="devsite-terminal devsite-click-to-copy">
-pip install tensorflow==1.14.0
-pip install apache-airflow==1.10.5
-pip install tfx==0.14.0
+pip install apache-airflow==1.10.9
+pip install -U tfx[examples]
 </pre>
 
 Next, initialize Airflow
@@ -219,33 +217,20 @@ $TAXI_DIR/data/simple/data.csv \
 $TFX_DIR/pipelines/chicago_taxi_simple/SchemaGen/output/<b>CHANGE_TO_LATEST_DIR</b>/schema.pbtxt
 </pre>
 
+For Gooogle Cloud AI Platform serving example, use
+`start_model_server_aiplatform.sh` and `classify_aiplatform.sh` in a similar way
+as above local example with local directory changing to `gs://YOUR_BUCKET`.
+
 For more information, see [TensorFlow Serving](https://www.tensorflow.org/serving).
 
-# Chicago Taxi Flink Example (python 2.7, 3.5, 3.6, 3.7)
+# Chicago Taxi Kubeflow Orchestrator Example
 
-Start local Flink cluster and Beam job server:
+Use [Kubeflow as orchestrator](https://github.com/tensorflow/tfx/blob/r0.21/docs/guide/kubeflow.md), check [here](https://github.com/kubeflow/pipelines/tree/master/samples/core/tfx-oss) for details.
 
-<pre class="devsite-terminal devsite-click-to-copy">
-git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
-sh tfx/examples/chicago_taxi/setup_beam_on_flink.sh
-</pre>
+# Chicago Taxi Native Keras Example (tfx 0.21.1)
 
-Follow above instructions of Chicago Taxi Example with 'taxi_pipeline_simple'
-replaced by 'taxi_pipeline_portable_beam'.
-(Check http://localhost:8081 for the Flink Cluster Dashboard)
-
-# Chicago Taxi Spark Example (python 2.7, 3.5, 3.6, 3.7)
-
-Start local Spark cluster and Beam job server:
-
-<pre class="devsite-terminal devsite-click-to-copy">
-git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
-sh tfx/examples/chicago_taxi/setup_beam_on_spark.sh
-</pre>
-
-Follow above instructions of Chicago Taxi Example with 'taxi_pipeline_simple'
-replaced by 'taxi_pipeline_portable_beam'.
-(Check http://localhost:8081 for the Spark Cluster Dashboard)
+Instead of estimator, this example uses native Keras in user module file
+`taxi_utils_native_keras.py`.
 
 # Learn more
 

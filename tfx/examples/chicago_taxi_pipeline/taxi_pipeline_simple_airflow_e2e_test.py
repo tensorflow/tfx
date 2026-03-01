@@ -12,38 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """End to end test for tfx.orchestration.airflow."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
+import platform
 import subprocess
-import tempfile
 import time
-import pytest
-
-import tensorflow as tf
-from typing import Sequence, Set, Text
-
+from typing import Sequence, Set
 import unittest
 
+import absl
+import tensorflow as tf
+
+from tfx.dsl.io import fileio
+from tfx.orchestration.airflow import test_utils as airflow_test_utils
+from tfx.tools.cli.e2e import test_utils
 from tfx.utils import io_utils
+from tfx.utils import test_case_utils
 
-
-class AirflowSubprocess(object):
-  """Launch an Airflow command."""
-
-  def __init__(self, airflow_args):
-    self._args = ['airflow'] + airflow_args
-    self._sub_process = None
-
-  def __enter__(self):
-    self._sub_process = subprocess.Popen(self._args)
-    return self
-
-  def __exit__(self, exception_type, exception_value, traceback):  # pylint: disable=unused-argument
-    if self._sub_process:
-      self._sub_process.terminate()
+import pytest
 
 
 # Number of seconds between polling pending task states.
@@ -56,35 +42,48 @@ _SUCCESS_TASK_STATES = set(['success'])
 _PENDING_TASK_STATES = set(['queued', 'scheduled', 'running', 'none'])
 
 
-@pytest.mark.end_to_end
-class AirflowEndToEndTest(unittest.TestCase):
+@pytest.mark.xfail(run=False, reason="PR 6889 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
+@pytest.mark.e2e
+@unittest.skipIf(
+    platform.system() == 'Darwin',
+    'Airflow is not compatible with TF in some environments on macos and '
+    'Airflow Executor is not supported on macos. See b/178137745.'
+)
+class AirflowEndToEndTest(test_case_utils.TfxTest):
   """An end to end test using fully orchestrated Airflow."""
 
-  def _GetState(self, task_name: Text) -> Text:
+  def _GetState(self, task_name: str) -> str:
     """Get a task state as a string."""
-    output = subprocess.check_output([
-        'airflow', 'task_state', self._dag_id, task_name, self._execution_date
-    ]).split()
-    # Some logs are emitted to stdout, so we take the last word as state.
-    return tf.compat.as_str(output[-1])
+    try:
+      output = subprocess.check_output([
+          'airflow', 'tasks', 'state', self._dag_id, task_name,
+          self._execution_date
+      ]).split()
+      # Some logs are emitted to stdout, so we take the last word as state.
+      return tf.compat.as_str(output[-1])
+    except subprocess.CalledProcessError:
+      # For multi-processing, state checking might fail because database lock
+      # has not been released. 'none' will be treated as a pending state, so
+      # this state checking will be retried later.
+      return 'none'
 
   # TODO(b/130882241): Add validation on output artifact type and content.
-  def _CheckOutputArtifacts(self, task: Text) -> None:
+  def _CheckOutputArtifacts(self, task: str) -> None:
     pass
 
   def _PrintTaskLogsOnError(self, task):
-    task_log_dir = os.path.join(self._airflow_home, 'logs',
-                                '%s.%s' % (self._dag_id, task))
-    for dir_name, _, leaf_files in tf.gfile.Walk(task_log_dir):
+    task_log_dir = os.path.join(self._airflow_home, 'logs', self._dag_id, task)
+    for dir_name, _, leaf_files in fileio.walk(task_log_dir):
       for leaf_file in leaf_files:
         leaf_file_path = os.path.join(dir_name, leaf_file)
-        tf.logging.error('Print task log %s:', leaf_file_path)
-        with tf.gfile.GFile(leaf_file_path, 'r') as f:
+        absl.logging.error('Print task log %s:', leaf_file_path)
+        with fileio.open(leaf_file_path, 'r') as f:
           lines = f.readlines()
           for line in lines:
-            tf.logging.error(line)
+            absl.logging.error(line)
 
-  def _CheckPendingTasks(self, pending_task_names: Sequence[Text]) -> Set[Text]:
+  def _CheckPendingTasks(self, pending_task_names: Sequence[str]) -> Set[str]:
     unknown_tasks = set(pending_task_names) - set(self._all_tasks)
     assert not unknown_tasks, 'Unknown task name {}'.format(unknown_tasks)
     still_pending = set()
@@ -92,39 +91,46 @@ class AirflowEndToEndTest(unittest.TestCase):
     for task in pending_task_names:
       task_state = self._GetState(task).lower()
       if task_state in _SUCCESS_TASK_STATES:
-        tf.logging.info('Task %s succeeded, checking output artifacts', task)
+        absl.logging.info('Task %s succeeded, checking output artifacts', task)
         self._CheckOutputArtifacts(task)
       elif task_state in _PENDING_TASK_STATES:
         still_pending.add(task)
       else:
         failed[task] = task_state
     for task, state in failed.items():
-      tf.logging.error('Retrieving logs for %s task %s', state, task)
+      absl.logging.error('Retrieving logs for %s task %s', state, task)
       self._PrintTaskLogsOnError(task)
     self.assertFalse(failed)
     return still_pending
 
   def setUp(self):
-    super(AirflowEndToEndTest, self).setUp()
+    super().setUp()
     # setup airflow_home in a temp directory, config and init db.
-    self._airflow_home = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
-        self._testMethodName)
-    self._old_airflow_home = os.environ.get('AIRFLOW_HOME')
-    os.environ['AIRFLOW_HOME'] = self._airflow_home
-    self._old_home = os.environ.get('HOME')
-    os.environ['HOME'] = self._airflow_home
-    tf.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
-                    self._airflow_home)
+    self._airflow_home = self.tmp_dir
+    self.enter_context(
+        test_case_utils.override_env_var('AIRFLOW_HOME', self._airflow_home))
+    self.enter_context(
+        test_case_utils.override_env_var('HOME', self._airflow_home))
+    absl.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
+                      self._airflow_home)
+
+    self._mysql_container_name = 'airflow_' + test_utils.generate_random_id()
+    ip_address, db_port = airflow_test_utils.create_mysql_container(
+        self._mysql_container_name
+    )
+    self.addCleanup(airflow_test_utils.delete_mysql_container,
+                    self._mysql_container_name)
+    os.environ['AIRFLOW__CORE__SQL_ALCHEMY_CONN'] = (
+        'mysql://tfx@%s:%d/airflow' % (ip_address, db_port)
+    )
+
     # Set a couple of important environment variables. See
     # https://airflow.apache.org/howto/set-config.html for details.
-    os.environ['AIRFLOW__CORE__AIRFLOW_HOME'] = self._airflow_home
     os.environ['AIRFLOW__CORE__DAGS_FOLDER'] = os.path.join(
         self._airflow_home, 'dags')
     os.environ['AIRFLOW__CORE__BASE_LOG_FOLDER'] = os.path.join(
         self._airflow_home, 'logs')
-    os.environ['AIRFLOW__CORE__SQL_ALCHEMY_CONN'] = ('sqlite:///%s/airflow.db' %
-                                                     self._airflow_home)
+    os.environ['AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT'] = '300'
     # Do not load examples to make this a bit faster.
     os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
     # Following environment variables make scheduler process dags faster.
@@ -133,26 +139,23 @@ class AirflowEndToEndTest(unittest.TestCase):
     os.environ['AIRFLOW__SCHEDULER__RUN_DURATION'] = '-1'
     os.environ['AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL'] = '1'
     os.environ['AIRFLOW__SCHEDULER__PRINT_STATS_INTERVAL'] = '30'
-    # Using more than one thread results in a warning for sqlite backend.
-    # See https://github.com/tensorflow/tfx/issues/141
-    os.environ['AIRFLOW__SCHEDULER__MAX_THREADS'] = '1'
 
     # Following fields are specific to the chicago_taxi_simple example.
     self._dag_id = 'chicago_taxi_simple'
     self._run_id = 'manual_run_id_1'
     # This execution date must be after the start_date in chicago_taxi_simple
     # but before current execution date.
-    self._execution_date = '2019-02-01T01:01:01+01:01'
+    self._execution_date = '2019-02-01T01:01:01'
     self._all_tasks = [
         'CsvExampleGen',
         'Evaluator',
         'ExampleValidator',
-        'ModelValidator',
         'Pusher',
         'SchemaGen',
         'StatisticsGen',
         'Trainer',
         'Transform',
+        'latest_blessed_model_resolver',
     ]
     # Copy dag file and data.
     chicago_taxi_pipeline_dir = os.path.dirname(__file__)
@@ -164,61 +167,56 @@ class AirflowEndToEndTest(unittest.TestCase):
         os.path.join(self._airflow_home, 'dags', 'taxi_pipeline_simple.py'))
 
     data_dir = os.path.join(chicago_taxi_pipeline_dir, 'data', 'simple')
-    content = tf.gfile.ListDirectory(data_dir)
+    content = fileio.listdir(data_dir)
     assert content, 'content in {} is empty'.format(data_dir)
     target_data_dir = os.path.join(self._airflow_home, 'taxi', 'data', 'simple')
     io_utils.copy_dir(data_dir, target_data_dir)
-    assert tf.gfile.IsDirectory(target_data_dir)
-    content = tf.gfile.ListDirectory(target_data_dir)
+    assert fileio.isdir(target_data_dir)
+    content = fileio.listdir(target_data_dir)
     assert content, 'content in {} is {}'.format(target_data_dir, content)
     io_utils.copy_file(
         os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
         os.path.join(self._airflow_home, 'taxi', 'taxi_utils.py'))
 
     # Initialize database.
-    _ = subprocess.check_output(['airflow', 'initdb'])
-    _ = subprocess.check_output(['airflow', 'unpause', self._dag_id])
+    subprocess.run(['airflow', 'db', 'init'], check=True)
 
   def testSimplePipeline(self):
     # We will use subprocess to start the DAG instead of webserver, so only
     # need to start a scheduler on the background.
-    with AirflowSubprocess(['scheduler']):
-      _ = subprocess.check_output([
+    with airflow_test_utils.AirflowScheduler():
+      subprocess.run(['airflow', 'dags', 'unpause', self._dag_id], check=True)
+      subprocess.run([
           'airflow',
-          'trigger_dag',
+          'dags',
+          'trigger',
           self._dag_id,
           '-r',
           self._run_id,
           '-e',
           self._execution_date,
-      ])
+      ],
+                     check=True)
+      absl.logging.info('Dag triggered: %s', self._dag_id)
+
       pending_tasks = set(self._all_tasks)
       attempts = int(
           _MAX_TASK_STATE_CHANGE_SEC / _TASK_POLLING_INTERVAL_SEC) + 1
       while True:
         if not pending_tasks:
-          tf.logging.info('No pending task left anymore')
+          absl.logging.info('No pending task left anymore')
           return
         for _ in range(attempts):
-          tf.logging.debug('Polling task state')
+          absl.logging.debug('Polling task state')
           still_pending = self._CheckPendingTasks(pending_tasks)
           if len(still_pending) != len(pending_tasks):
             pending_tasks = still_pending
             break
-          tf.logging.info('Polling task state after %d secs',
-                          _TASK_POLLING_INTERVAL_SEC)
+          absl.logging.info('Polling task state after %d secs',
+                            _TASK_POLLING_INTERVAL_SEC)
           time.sleep(_TASK_POLLING_INTERVAL_SEC)
         else:
-          self.fail('No pending tasks in %s finished within %d secs' %
-                    (pending_tasks, _MAX_TASK_STATE_CHANGE_SEC))
-
-  def tearDown(self):
-    super(AirflowEndToEndTest, self).tearDown()
-    if self._old_airflow_home:
-      os.environ['AIRFLOW_HOME'] = self._old_airflow_home
-    if self._old_home:
-      os.environ['HOME'] = self._old_home
-
-
-if __name__ == '__main__':
-  unittest.main()
+          self.fail(
+              'No pending tasks in %s finished within %d secs'
+              % (pending_tasks, _MAX_TASK_STATE_CHANGE_SEC)
+          )

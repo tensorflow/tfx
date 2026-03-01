@@ -13,31 +13,47 @@
 // limitations under the License.
 syntax = "proto3";
 
-package third_party.tfx.examples.custom_components.presto_example_gen;
+package tfx.examples.custom_components.presto_example_gen;
 
 message PrestoConnConfig {
   // Based off official prestodb-python-client library
   // https://github.com/prestodb/presto-python-client
-  string host = 1; // required
-  oneof opt_port { uint32 port = 2; }
-  oneof opt_user { string user = 3; }
-  oneof opt_source { string source = 4; }
-  oneof opt_catalog { string catalog = 5; }
-  oneof opt_schema { string schema = 6; }
+  string host = 1;  // required
+  oneof opt_port {
+    uint32 port = 2;
+  }
+  oneof opt_user {
+    string user = 3;
+  }
+  oneof opt_source {
+    string source = 4;
+  }
+  oneof opt_catalog {
+    string catalog = 5;
+  }
+  oneof opt_schema {
+    string schema = 6;
+  }
   // TODO session_properties = 7
   // TODO http_headers = 8
-  oneof opt_http_scheme { string http_scheme = 9; }
+  oneof opt_http_scheme {
+    string http_scheme = 9;
+  }
   oneof opt_auth {
-    BasicAuthConfig basic_auth = 10; // prestodb.auth.BasicAuthentication class
+    BasicAuthConfig basic_auth = 10;  // prestodb.auth.BasicAuthentication class
     // TODO KerberosAuthConfig kerberos_auth = 11
   }
   // TODO redirect_handler = 12
-  oneof opt_max_attempts { uint32 max_attempts = 13; }
-  oneof opt_request_timeout { uint32 request_timeout = 14; }
+  oneof opt_max_attempts {
+    uint32 max_attempts = 13;
+  }
+  oneof opt_request_timeout {
+    uint32 request_timeout = 14;
+  }
   // TODO isolation_level = 15
 
   message BasicAuthConfig {
-    string username = 1; // required
-    string password = 2; // required
+    string username = 1;  // required
+    string password = 2;  // required
   }
 }

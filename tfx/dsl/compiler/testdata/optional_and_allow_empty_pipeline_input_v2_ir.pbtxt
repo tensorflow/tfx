@@ -1,0 +1,1114 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+#
+# This file contains the IR of an example pipeline
+# tfx/dsl/compiler/testdata/optional_and_allow_empty_pipeline.py
+
+pipeline_info {
+  id: "optional_and_allow_empty_pipeline"
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.compiler.testdata.optional_and_allow_empty_pipeline.UpstreamComponent"
+      }
+      id: "UpstreamComponent"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "optional_and_allow_empty_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "optional_and_allow_empty_pipeline.UpstreamComponent"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "first_model"
+        value {
+          artifact_spec {
+            type {
+              name: "Model"
+              base_type: MODEL
+            }
+          }
+        }
+      }
+      outputs {
+        key: "second_model"
+        value {
+          artifact_spec {
+            type {
+              name: "Model"
+              base_type: MODEL
+            }
+          }
+        }
+      }
+      outputs {
+        key: "third_model"
+        value {
+          artifact_spec {
+            type {
+              name: "Model"
+              base_type: MODEL
+            }
+          }
+        }
+      }
+    }
+    downstream_nodes: "MyComponent"
+    downstream_nodes: "as_optional_component"
+    downstream_nodes: "subpipeline"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.compiler.testdata.optional_and_allow_empty_pipeline.MyComponent"
+      }
+      id: "MyComponent"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "optional_and_allow_empty_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "optional_and_allow_empty_pipeline.MyComponent"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "mandatory"
+        value {
+          channels {
+            producer_node_query {
+              id: "UpstreamComponent"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline.UpstreamComponent"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "first_model"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "optional_and_not_needed"
+        value {
+          channels {
+            producer_node_query {
+              id: "UpstreamComponent"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline.UpstreamComponent"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "third_model"
+          }
+        }
+      }
+      inputs {
+        key: "optional_but_needed"
+        value {
+          channels {
+            producer_node_query {
+              id: "UpstreamComponent"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline.UpstreamComponent"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "second_model"
+          }
+        }
+      }
+    }
+    upstream_nodes: "UpstreamComponent"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "tfx.dsl.compiler.testdata.optional_and_allow_empty_pipeline.MyComponent"
+      }
+      id: "as_optional_component"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "optional_and_allow_empty_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "pipeline_run"
+        }
+        name {
+          runtime_parameter {
+            name: "pipeline-run-id"
+            type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "optional_and_allow_empty_pipeline.as_optional_component"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "mandatory"
+        value {
+          channels {
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline.UpstreamComponent"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "second_model"
+          }
+        }
+      }
+      inputs {
+        key: "optional_and_not_needed"
+        value {
+          channels {
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline.UpstreamComponent"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "third_model"
+          }
+        }
+      }
+      inputs {
+        key: "optional_but_needed"
+        value {
+          channels {
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "optional_and_allow_empty_pipeline.UpstreamComponent"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "pipeline_run"
+              }
+              name {
+                runtime_parameter {
+                  name: "pipeline-run-id"
+                  type: STRING
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Model"
+                base_type: MODEL
+              }
+            }
+            output_key: "second_model"
+          }
+        }
+      }
+    }
+    upstream_nodes: "UpstreamComponent"
+    execution_options {
+      caching_options {
+      }
+    }
+  }
+}
+nodes {
+  sub_pipeline {
+    pipeline_info {
+      id: "subpipeline"
+      parent_ids: "optional_and_allow_empty_pipeline"
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.orchestration.pipeline.Pipeline_begin"
+          }
+          id: "subpipeline_begin"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "subpipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "subpipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "optional_and_allow_empty_pipeline.subpipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "optional_and_allow_empty_pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "subpipeline.subpipeline_begin"
+              }
+            }
+          }
+        }
+        inputs {
+          inputs {
+            key: "mandatory"
+            value {
+              channels {
+                producer_node_query {
+                  id: "UpstreamComponent"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "optional_and_allow_empty_pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "optional_and_allow_empty_pipeline.UpstreamComponent"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Model"
+                    base_type: MODEL
+                  }
+                }
+                output_key: "first_model"
+              }
+              min_count: 1
+            }
+          }
+          inputs {
+            key: "optional"
+            value {
+              channels {
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "optional_and_allow_empty_pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "optional_and_allow_empty_pipeline.UpstreamComponent"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Model"
+                    base_type: MODEL
+                  }
+                }
+                output_key: "second_model"
+              }
+            }
+          }
+        }
+        outputs {
+          outputs {
+            key: "mandatory"
+            value {
+              artifact_spec {
+                type {
+                  name: "Model"
+                  base_type: MODEL
+                }
+              }
+            }
+          }
+          outputs {
+            key: "optional"
+            value {
+              artifact_spec {
+                type {
+                  name: "Model"
+                  base_type: MODEL
+                }
+              }
+            }
+          }
+        }
+        upstream_nodes: "UpstreamComponent"
+        downstream_nodes: "MyComponent"
+        execution_options {
+          caching_options {
+          }
+        }
+      }
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.dsl.compiler.testdata.optional_and_allow_empty_pipeline.MyComponent"
+          }
+          id: "MyComponent"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "subpipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "subpipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "optional_and_allow_empty_pipeline.subpipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "optional_and_allow_empty_pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "subpipeline.MyComponent"
+              }
+            }
+          }
+        }
+        inputs {
+          inputs {
+            key: "mandatory"
+            value {
+              channels {
+                producer_node_query {
+                  id: "subpipeline_begin"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "subpipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "subpipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "optional_and_allow_empty_pipeline.subpipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "optional_and_allow_empty_pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "subpipeline.subpipeline_begin"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Model"
+                    base_type: MODEL
+                  }
+                }
+                output_key: "mandatory"
+              }
+              min_count: 1
+            }
+          }
+          inputs {
+            key: "optional_but_needed"
+            value {
+              channels {
+                producer_node_query {
+                  id: "subpipeline_begin"
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "subpipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    structural_runtime_parameter {
+                      parts {
+                        constant_value: "subpipeline_"
+                      }
+                      parts {
+                        runtime_parameter {
+                          name: "pipeline-run-id"
+                          type: STRING
+                        }
+                      }
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "optional_and_allow_empty_pipeline.subpipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline"
+                  }
+                  name {
+                    field_value {
+                      string_value: "optional_and_allow_empty_pipeline"
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "pipeline_run"
+                  }
+                  name {
+                    runtime_parameter {
+                      name: "pipeline-run-id"
+                      type: STRING
+                    }
+                  }
+                }
+                context_queries {
+                  type {
+                    name: "node"
+                  }
+                  name {
+                    field_value {
+                      string_value: "subpipeline.subpipeline_begin"
+                    }
+                  }
+                }
+                artifact_query {
+                  type {
+                    name: "Model"
+                    base_type: MODEL
+                  }
+                }
+                output_key: "optional"
+              }
+            }
+          }
+        }
+        upstream_nodes: "subpipeline_begin"
+        execution_options {
+          caching_options {
+          }
+        }
+      }
+    }
+    nodes {
+      pipeline_node {
+        node_info {
+          type {
+            name: "tfx.orchestration.pipeline.Pipeline_end"
+          }
+          id: "subpipeline_end"
+        }
+        contexts {
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "subpipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              structural_runtime_parameter {
+                parts {
+                  constant_value: "subpipeline_"
+                }
+                parts {
+                  runtime_parameter {
+                    name: "pipeline-run-id"
+                    type: STRING
+                  }
+                }
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "optional_and_allow_empty_pipeline.subpipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline"
+            }
+            name {
+              field_value {
+                string_value: "optional_and_allow_empty_pipeline"
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "pipeline_run"
+            }
+            name {
+              runtime_parameter {
+                name: "pipeline-run-id"
+                type: STRING
+              }
+            }
+          }
+          contexts {
+            type {
+              name: "node"
+            }
+            name {
+              field_value {
+                string_value: "subpipeline.subpipeline_end"
+              }
+            }
+          }
+        }
+      }
+    }
+    runtime_spec {
+      pipeline_root {
+        runtime_parameter {
+          name: "pipeline-root"
+          type: STRING
+          default_value {
+            string_value: "pipeline/optional_and_allow_empty_pipeline"
+          }
+        }
+      }
+      pipeline_run_id {
+        structural_runtime_parameter {
+          parts {
+            constant_value: "subpipeline_"
+          }
+          parts {
+            runtime_parameter {
+              name: "pipeline-run-id"
+              type: STRING
+            }
+          }
+        }
+      }
+    }
+    execution_mode: SYNC
+    deployment_config {
+      [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+        executor_specs {
+          key: "MyComponent"
+          value {
+            [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+              class_path: "tfx.dsl.compiler.testdata.optional_and_allow_empty_pipeline.Executor"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+runtime_spec {
+  pipeline_root {
+    runtime_parameter {
+      name: "pipeline-root"
+      type: STRING
+      default_value {
+        string_value: "pipeline/optional_and_allow_empty_pipeline"
+      }
+    }
+  }
+  pipeline_run_id {
+    runtime_parameter {
+      name: "pipeline-run-id"
+      type: STRING
+    }
+  }
+}
+execution_mode: SYNC
+deployment_config {
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "MyComponent"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.dsl.compiler.testdata.optional_and_allow_empty_pipeline.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "UpstreamComponent"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.dsl.compiler.testdata.optional_and_allow_empty_pipeline.Executor"
+        }
+      }
+    }
+    executor_specs {
+      key: "as_optional_component"
+      value {
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.dsl.compiler.testdata.optional_and_allow_empty_pipeline.Executor"
+        }
+      }
+    }
+  }
+}

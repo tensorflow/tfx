@@ -1,0 +1,58 @@
+# proto-file: tfx/proto/orchestration/placeholder.proto
+# proto-message: PlaceholderExpression
+# Note that this file is used in two unit tests:
+# placeholder_test.py asserts that it produces this.
+# placeholder_utils_test.py asserts that it can read this even when the
+# SplitsConfig proto is not in the default descriptor pool. That's why this
+# testdata here contains the entire (shrunk) descriptor.
+
+operator {
+  proto_op {
+    serialization_format: TEXT_FORMAT
+    expression {
+      operator {
+        make_proto_op {
+          base {
+            [type.googleapis.com/tfx.components.transform.SplitsConfig] {
+            }
+          }
+          fields {
+            key: "analyze"
+            value {
+              operator {
+                list_concat_op {
+                  expressions {
+                    value {
+                      string_value: "foo"
+                    }
+                  }
+                  expressions {
+                    value {
+                      string_value: "bar"
+                    }
+                  }
+                }
+              }
+            }
+          }
+          file_descriptors {
+            file {
+              name: "tfx/proto/transform.proto"
+              package: "tfx.components.transform"
+              message_type {
+                name: "SplitsConfig"
+                field {
+                  name: "analyze"
+                  number: 1
+                  label: LABEL_REPEATED
+                  type: TYPE_STRING
+                }
+              }
+              syntax: "proto3"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -13,14 +13,10 @@
 # limitations under the License.
 """Context for @cli_group."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import click
 
 
-class Context(object):
+class Context:
   """Context shared between all command groups.
 
   Attributes :

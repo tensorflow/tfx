@@ -13,12 +13,8 @@
 # limitations under the License.
 """Tests for tfx.components.model_validator.driver."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
-from typing import Text
+
 from tfx.components.model_validator import driver
 from tfx.types import standard_artifacts
 
@@ -26,42 +22,57 @@ from tfx.types import standard_artifacts
 class DriverTest(tf.test.TestCase):
 
   def _create_mock_artifact(self, aid: int, is_blessed: bool,
-                            component_id: Text):
+                            pipeline_name: str, component_id: str):
     model_blessing = standard_artifacts.ModelBlessing()
     model_blessing.id = aid
+    model_blessing.pipeline_name = pipeline_name
     model_blessing.set_string_custom_property('current_model', 'uri-%d' % aid)
     model_blessing.set_int_custom_property('current_model_id', aid)
     model_blessing.set_string_custom_property('component_id', component_id)
     model_blessing.set_int_custom_property('blessed', is_blessed)
-    return model_blessing
+    return model_blessing.mlmd_artifact
 
   def testFetchLastBlessedModel(self):
     # Mock metadata.
-    mock_metadata = tf.test.mock.Mock()
+    mock_metadata = tf.compat.v1.test.mock.Mock()
     model_validator_driver = driver.Driver(mock_metadata)
     component_id = 'test_component'
+    pipeline_name = 'test_pipeline'
 
     # No blessed model.
     mock_metadata.get_artifacts_by_type.return_value = []
-    self.assertEqual(
-        (None, None),
-        model_validator_driver._fetch_last_blessed_model(component_id))
+    self.assertEqual((None, None),
+                     model_validator_driver._fetch_last_blessed_model(
+                         pipeline_name, component_id))
 
     # Mock blessing artifacts.
-    artifacts = []
-    for aid in [4, 3, 2, 1]:
-      model_blessing = self._create_mock_artifact(aid, aid % 2, component_id)
-      artifacts.append(model_blessing.artifact)
+    artifacts = [
+        self._create_mock_artifact(aid, aid % 2, pipeline_name, component_id)
+        for aid in [4, 3, 2, 1]
+    ]
 
     # Mock blessing artifact produced by another component.
-    model_blessing = self._create_mock_artifact(True, 5, 'different_component')
-    artifacts.append(model_blessing.artifact)
+    artifacts.append(
+        self._create_mock_artifact(
+            aid=5,
+            is_blessed=True,
+            pipeline_name=pipeline_name,
+            component_id='different_component'))
 
     mock_metadata.get_artifacts_by_type.return_value = artifacts
-    self.assertEqual(
-        ('uri-3', 3),
-        model_validator_driver._fetch_last_blessed_model(component_id))
+    self.assertEqual(('uri-3', 3),
+                     model_validator_driver._fetch_last_blessed_model(
+                         pipeline_name, component_id))
 
+    # Mock blessing artifact produced by another pipeline.
+    artifacts.append(
+        self._create_mock_artifact(
+            aid=6,
+            is_blessed=True,
+            pipeline_name='different_pipeline',
+            component_id=component_id))
 
-if __name__ == '__main__':
-  tf.test.main()
+    mock_metadata.get_artifacts_by_type.return_value = artifacts
+    self.assertEqual(('uri-3', 3),
+                     model_validator_driver._fetch_last_blessed_model(
+                         pipeline_name, component_id))

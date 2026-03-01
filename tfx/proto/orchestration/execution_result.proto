@@ -1,0 +1,55 @@
+// Copyright 2020 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package tfx.orchestration;
+
+import "google/protobuf/any.proto";
+import "ml_metadata/proto/metadata_store.proto";
+
+// ExecutionResult defines the schema for the result of an execution.
+// An ExecutionResult protobuf message snapshots the updated version of the
+// output artifacts together with (probably updated) MLMD properties.
+// It will also contain return values of the execution.
+message ExecutionResult {
+  // The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+  int32 code = 3;
+  // This is an optional message that might be used by UI to show the
+  // execution result.
+  string result_message = 1;
+
+  // Holds any type of custom proto to be record as execution result.
+  // Please note that such details should only be used in tooling or debugging
+  // purpose. Please don't assume that it will affect orechestration behavior.
+  repeated google.protobuf.Any metadata_details = 2;
+}
+
+// ExecutorOutput defines the schema for an executor output.
+// An ExecutorOutput protobuf message snapshots the updated version of the
+// output artifacts together with (probably updated) MLMD properties.
+message ExecutorOutput {
+  reserved 1;
+
+  message ArtifactList {
+    repeated ml_metadata.Artifact artifacts = 1;
+  }
+  // Holds any execution properties that should be updated.
+  map<string, ml_metadata.Value> execution_properties = 2;
+  // Holds any output artifacts that should be updated. Note that all artifacts
+  // for a certain output key should be updated as a whole.
+  map<string, ArtifactList> output_artifacts = 3;
+  // Holds execution result from executor.
+  ExecutionResult execution_result = 4;
+}

@@ -1,0 +1,261 @@
+site_name: TFX
+repo_name: "TFX"
+repo_url: https://github.com/tensorflow/tfx
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      primary: custom
+      accent: custom
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      primary: custom
+      accent: custom
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  favicon: assets/tf_full_color_primary_icon.svg
+
+  features:
+    - content.code.copy
+    - content.code.select
+    - content.action.edit
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            unwrap_annotated: true
+            show_symbol_type_toc: true
+            show_symbol_type_heading: true
+            merge_init_into_class: true
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            group_by_category: true
+            show_category_heading: true
+            inherited_members: true
+            show_submodules: true
+            show_object_full_path: false
+            show_root_full_path: true
+            docstring_section_style: "spacy"
+            summary: true
+            filters:
+              - "!^_"
+              - "^__init__$"
+              - "^__call__$"
+              - "!^logger"
+            extensions:
+              - griffe_inherited_docstrings
+          import:
+            - https://docs.python.org/3/objects.inv
+  - mkdocs-jupyter:
+      execute: false
+      execute_ignore: # There are issues with executing these notebooks
+        - tutorials/serving/rest_simple.ipynb
+        - tutorials/tfx/gcp/*.ipynb
+  - caption:
+      figure:
+        ignore_alt: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      linenums: false
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+  - markdown_grid_tables
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+watch:
+  - tfx
+nav:
+  - Overview: index.md
+
+  - Tutorials:
+    - Get started with TFX: tutorials/index.md
+    - 'TFX: Getting started tutorials':
+      - 1. Starter pipeline: tutorials/tfx/penguin_simple
+      - 2. Adding data validation: tutorials/tfx/penguin_tfdv
+      - 3. Adding feature engineering: tutorials/tfx/penguin_tft
+      - 4. Adding model analysis: tutorials/tfx/penguin_tfma
+    - 'TFX: Interactive tutorials':
+      - Interactive tutorial (TF2 Keras): tutorials/tfx/components_keras
+      - Interactive tutorial (Estimator): tutorials/tfx/components
+    - TFX on Google Cloud:
+      - Running on Vertex Pipelines: tutorials/tfx/gcp/vertex_pipelines_simple
+      - Read data from BigQuery: tutorials/tfx/gcp/vertex_pipelines_bq
+      - Vertex AI Training and Serving: tutorials/tfx/gcp/vertex_pipelines_vertex_training
+      - Cloud AI Platform Pipelines tutorial: tutorials/tfx/cloud-ai-platform-pipelines
+    - 'TFX: Advanced tutorials':
+      - LLM finetuning and conversion: tutorials/tfx/gpt2_finetuning_and_conversion
+      - Custom component tutorial: tutorials/tfx/python_function_component
+      - Recommenders with TFX: tutorials/tfx/recommenders
+      - Ranking with TFX: https://www.tensorflow.org/recommenders/examples/ranking_tfx
+      - Airflow tutorial: tutorials/tfx/airflow_workshop
+      - Neural Structured Learning in TFX: tutorials/tfx/neural_structured_learning
+    - Data Validation:
+      - Get started with TFDV: tutorials/data_validation/tfdv_basic
+    - Transform:
+      - Preprocess data (beginner): tutorials/transform/simple
+      - Preprocess data (advanced): tutorials/transform/census
+      - Data preprocessing for ML with Google Cloud: tutorials/transform/data_preprocessing_with_cloud
+    - Model Analysis:
+      - Get started with TFMA: tutorials/model_analysis/tfma_basic
+      - Fairness Indicators tutorial: https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Example_Colab
+    - Deploy a trained model:
+      - 'Servers: TFX for TensorFlow Serving': tutorials/serving/rest_simple
+      - 'Mobile & IoT: TFX for TensorFlow Lite': tutorials/tfx/tfx_for_mobile
+    - ML Metadata:
+      - Get started with MLMD: tutorials/mlmd/mlmd_tutorial
+
+  - Guide:
+    - Guide: guide/index.md
+
+    - "What's New":
+      - "TFX-Addons": guide/addons
+      - "TFX Cloud Solutions": guide/solutions.md
+      - "Using Keras with TFX": guide/keras
+      - "Using Non-TensorFlow Frameworks in TFX": guide/non_tf
+      - "Mobile & IoT: TFX for TensorFlow Lite": tutorials/tfx/tfx_for_mobile
+
+    - "TFX Pipelines":
+        - "Understanding TFX pipelines": guide/understanding_tfx_pipelines
+        - "Building a TFX pipeline": guide/build_tfx_pipeline
+        - "Local Pipelines": guide/build_local_pipeline
+
+    - "TFX Standard Components":
+      - "ExampleGen": guide/examplegen
+      - "StatisticsGen": guide/statsgen
+      - "SchemaGen": guide/schemagen
+      - "ExampleValidator": guide/exampleval
+      - "Transform": guide/transform
+      - "Trainer": guide/trainer
+      - "Tuner": guide/tuner
+      - "Evaluator": guide/evaluator
+      - "InfraValidator": guide/infra_validator
+      - "Pusher": guide/pusher
+      - "BulkInferrer": guide/bulkinferrer
+
+    - "TFX Custom Components":
+      - "Understanding custom components": guide/understanding_custom_components
+      - "Python function-based components": guide/custom_function_component
+      - "Container-based components": guide/container_component
+      - "Fully custom components": guide/custom_component
+
+    - "Orchestrators":
+      - "Local orchestrator": guide/local_orchestrator
+      - "Vertex AI Pipelines": guide/vertex
+      - "Apache Airflow": guide/airflow
+      - "Kubeflow Pipelines": guide/kubeflow
+
+    - "TFX CLI":
+      - "Using the TFX CLI": guide/cli
+
+    - "Libraries":
+        - "Data Validation":
+          - "Check and analyze data": guide/tfdv
+          - "Install": https://www.tensorflow.org/tfx/data_validation/install
+          - "Get started": https://www.tensorflow.org/tfx/data_validation/get_started
+
+        - "Transform":
+          - "Preprocess and transform data": guide/tft
+          - "Install": "https://www.tensorflow.org/tfx/transform/install"
+          - "Get started": "https://www.tensorflow.org/tfx/transform/get_started"
+          - "Using `tf.Transform` with TensorFlow 2.x": "https://www.tensorflow.org/tfx/transform/tf2_support"
+          - "Common transformations": "https://www.tensorflow.org/tfx/transform/common_transformations"
+          - "Data preprocessing best practices": guide/tft_bestpractices
+
+        - "Modeling":
+          - "Design modeling code": guide/train
+
+        - "Model Analysis":
+          - "Improving Model Quality": guide/tfma
+          - "Install": https://www.tensorflow.org/tfx/model_analysis/install
+          - "Get started": https://www.tensorflow.org/tfx/model_analysis/get_started
+          - "Setup": https://www.tensorflow.org/tfx/model_analysis/setup
+          - "Metrics and Plots": https://www.tensorflow.org/tfx/model_analysis/metrics
+          - "Visualizations": https://www.tensorflow.org/tfx/model_analysis/visualizations
+          - "Model Validations": https://www.tensorflow.org/tfx/model_analysis/model_validations
+          - "Using Fairness Indicators": guide/fairness_indicators
+          - "Using Fairness Indicators with Pandas DataFrames": https://www.tensorflow.org/responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Pandas_Case_Study
+          - "Architecture": https://www.tensorflow.org/tfx/model_analysis/architecture
+          - "FAQ": https://www.tensorflow.org/tfx/model_analysis/faq
+
+        - "Serving":
+          - "Serving models": guide/serving
+          - TensorFlow Serving with Docker: https://www.tensorflow.org/tfx/serving/docker
+          - Installation: https://www.tensorflow.org/tfx/serving/setup
+          - Serve a TensorFlow model: https://www.tensorflow.org/tfx/serving/serving_basic
+          - Architecture: https://www.tensorflow.org/tfx/serving/architecture
+          - Advanced model server configuration: https://www.tensorflow.org/tfx/serving/serving_config
+          - Build a TensorFlow ModelServer: https://www.tensorflow.org/tfx/serving/serving_advanced
+          - Use TensorFlow Serving with Kubernetes: https://www.tensorflow.org/tfx/serving/serving_kubernetes
+          - Create a new kind of servable: https://www.tensorflow.org/tfx/serving/custom_servable
+          - Create a module that discovers new servable paths: https://www.tensorflow.org/tfx/serving/custom_source
+          - Serving TensorFlow models with custom ops: https://www.tensorflow.org/tfx/serving/custom_op
+          - SignatureDefs in SavedModel for TensorFlow Serving: https://www.tensorflow.org/tfx/serving/signature_defs
+
+    - "Related projects":
+        - "Apache Beam": "https://beam.apache.org/"
+        - "MLTransform": "https://cloud.google.com/dataflow/docs/machine-learning/ml-preprocess-data"
+        - "ML Metadata": guide/mlmd
+        - "TensorBoard": "https://www.tensorflow.org/tensorboard"
+  - API:
+    - v1:
+      - "Overview": api/v1/index.md
+      - "components": api/v1/components
+      - "dsl": api/v1/dsl
+      - "extensions": api/v1/extensions
+      - "orchestration": api/v1/orchestration
+      - "proto": api/v1/proto
+      - "testing": api/v1/testing
+      - "types": api/v1/types
+      - "utils": api/v1/utils

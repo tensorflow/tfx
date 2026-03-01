@@ -1,0 +1,31 @@
+# schema: tfx.orchestration.NodeContexts
+contexts {
+  type {
+    name: "pipeline"
+  }
+  name {
+    field_value {
+      string_value: "pipeline-name"
+    }
+  }
+}
+contexts {
+  type {
+    name: "pipeline_run"
+  }
+  name {
+    field_value {
+      string_value: "run-20220912-213149-252011"
+    }
+  }
+}
+contexts {
+  type {
+    name: "node"
+  }
+  name {
+    field_value {
+      string_value: "pipeline-name.example-gen.import-example"
+    }
+  }
+}

@@ -1,0 +1,189 @@
+{
+  "displayName": "my-pipeline",
+  "pipelineSpec": {
+    "root": {
+      "dag": {
+        "tasks": {
+          "StatisticsGen": {
+            "dependentTasks": [
+              "BigQueryExampleGen"
+            ],
+            "componentRef": {
+              "name": "StatisticsGen"
+            },
+            "taskInfo": {
+              "name": "StatisticsGen"
+            },
+            "inputs": {
+              "artifacts": {
+                "examples": {
+                  "taskOutputArtifact": {
+                    "outputArtifactKey": "examples",
+                    "producerTask": "BigQueryExampleGen"
+                  }
+                }
+              },
+              "parameters": {
+                "exclude_splits": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "[]"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "BigQueryExampleGen": {
+            "inputs": {
+              "parameters": {
+                "output_data_format": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "intValue": "6"
+                    }
+                  }
+                },
+                "output_file_format": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "intValue": "5"
+                    }
+                  }
+                },
+                "input_config": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"SELECT * FROM TABLE\"\n    }\n  ]\n}"
+                    }
+                  }
+                },
+                "output_config": {
+                  "runtimeValue": {
+                    "constantValue": {
+                      "stringValue": "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
+                    }
+                  }
+                }
+              }
+            },
+            "componentRef": {
+              "name": "BigQueryExampleGen"
+            },
+            "taskInfo": {
+              "name": "BigQueryExampleGen"
+            }
+          }
+        }
+      }
+    },
+    "pipelineInfo": {
+      "name": "two-step-pipeline"
+    },
+    "deploymentSpec": {
+      "executors": {
+        "BigQueryExampleGen_executor": {
+          "container": {
+            "command": [
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ],
+            "image": "gcr.io/my-tfx:latest",
+            "args": [
+              "--executor_class_path",
+              "tfx.extensions.google_cloud_big_query.example_gen.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}",
+              "--project=my-gcp-project",
+              "--runner=DataflowRunner"
+            ]
+          }
+        },
+        "StatisticsGen_executor": {
+          "container": {
+            "args": [
+              "--executor_class_path",
+              "tfx.components.statistics_gen.executor.Executor",
+              "--json_serialized_invocation_args",
+              "{{$}}",
+              "--project=my-gcp-project"
+            ],
+            "image": "gcr.io/my-tfx:latest",
+            "command": [
+              "python",
+              "-m",
+              "tfx.orchestration.kubeflow.v2.container.kubeflow_v2_run_executor"
+            ]
+          }
+        }
+      }
+    },
+    "components": {
+      "StatisticsGen": {
+        "outputDefinitions": {
+          "artifacts": {
+            "statistics": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.ExampleStatistics\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            }
+          }
+        },
+        "inputDefinitions": {
+          "artifacts": {
+            "examples": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            }
+          },
+          "parameters": {
+            "exclude_splits": {
+              "type": "STRING"
+            }
+          }
+        },
+        "executorLabel": "StatisticsGen_executor"
+      },
+      "BigQueryExampleGen": {
+        "inputDefinitions": {
+          "parameters": {
+            "output_config": {
+              "type": "STRING"
+            },
+            "input_config": {
+              "type": "STRING"
+            },
+            "output_data_format": {
+              "type": "INT"
+            },
+            "output_file_format": {
+              "type": "INT"
+            }
+          }
+        },
+        "outputDefinitions": {
+          "artifacts": {
+            "examples": {
+              "artifactType": {
+                "instanceSchema": "title: tfx.Examples\ntype: object\nproperties:\n  span:\n    type: integer\n    description: Span for an artifact.\n  version:\n    type: integer\n    description: Version for an artifact.\n  split_names:\n    type: string\n    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.\n"
+              }
+            }
+          }
+        },
+        "executorLabel": "BigQueryExampleGen_executor"
+      }
+    },
+    "sdkVersion": "tfx-0.30.0.dev",
+    "schemaVersion": "2.0.0"
+  },
+  "labels": {
+    "tfx_py_version": "3-7",
+    "tfx_runner": "kubeflow_v2",
+    "tfx_version": "0-30-0-dev"
+  },
+  "runtimeConfig": {
+    "gcsOutputDirectory": "path/to/my/root"
+  }
+}

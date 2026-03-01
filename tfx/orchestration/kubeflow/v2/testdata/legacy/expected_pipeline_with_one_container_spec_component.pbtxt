@@ -1,0 +1,258 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineSpec
+
+pipeline_info {
+  name: "pipeline-with-container"
+}
+deployment_spec {
+  fields {
+    key: "executors"
+    value {
+      struct_value {
+        fields {
+          key: "DummyContainerSpecComponent_executor"
+          value {
+            struct_value {
+              fields {
+                key: "container"
+                value {
+                  struct_value {
+                    fields {
+                      key: "command"
+                      value {
+                        list_value {
+                          values {
+                            string_value: "transformer"
+                          }
+                          values {
+                            string_value: "--input1"
+                          }
+                          values {
+                            string_value: "{{$.inputs.artifacts[\'input1\'].uri}}"
+                          }
+                          values {
+                            string_value: "--output1"
+                          }
+                          values {
+                            string_value: "{{$.outputs.artifacts[\'output1\'].uri}}"
+                          }
+                          values {
+                            string_value: "--param1"
+                          }
+                          values {
+                            string_value: "{{$.inputs.parameters[\'param1\']}}"
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "image"
+                      value {
+                        string_value: "dummy/transformer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        fields {
+          key: "my_importer_executor"
+          value {
+            struct_value {
+              fields {
+                key: "importer"
+                value {
+                  struct_value {
+                    fields {
+                      key: "artifactUri"
+                      value {
+                        struct_value {
+                          fields {
+                            key: "constantValue"
+                            value {
+                              struct_value {
+                                fields {
+                                  key: "stringValue"
+                                  value {
+                                    string_value: "some-uri"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    fields {
+                      key: "typeSchema"
+                      value {
+                        struct_value {
+                          fields {
+                            key: "instanceSchema"
+                            value {
+                              string_value: "title: tfx.Model\ntype: object\n"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+components {
+  key: "DummyContainerSpecComponent"
+  value {
+    input_definitions {
+      artifacts {
+        key: "input1"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Model\ntype: object\n"
+          }
+        }
+      }
+      parameters {
+        key: "param1"
+        value {
+          type: STRING
+        }
+      }
+    }
+    output_definitions {
+      artifacts {
+        key: "output1"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Model\ntype: object\n"
+          }
+        }
+      }
+    }
+    executor_label: "DummyContainerSpecComponent_executor"
+  }
+}
+components {
+  key: "my_importer"
+  value {
+    input_definitions {
+      parameters {
+        key: "artifact_uri"
+        value {
+          type: STRING
+        }
+      }
+      parameters {
+        key: "output_key"
+        value {
+          type: STRING
+        }
+      }
+      parameters {
+        key: "reimport"
+        value {
+          type: INT
+        }
+      }
+    }
+    output_definitions {
+      artifacts {
+        key: "result"
+        value {
+          artifact_type {
+            instance_schema: "title: tfx.Model\ntype: object\n"
+          }
+        }
+      }
+    }
+    executor_label: "my_importer_executor"
+  }
+}
+root {
+  dag {
+    tasks {
+      key: "DummyContainerSpecComponent"
+      value {
+        task_info {
+          name: "DummyContainerSpecComponent"
+        }
+        inputs {
+          parameters {
+            key: "param1"
+            value {
+              runtime_value {
+                constant_value {
+                  string_value: "value1"
+                }
+              }
+            }
+          }
+          artifacts {
+            key: "input1"
+            value {
+              task_output_artifact {
+                producer_task: "my_importer"
+                output_artifact_key: "result"
+              }
+            }
+          }
+        }
+        dependent_tasks: "my_importer"
+        component_ref {
+          name: "DummyContainerSpecComponent"
+        }
+      }
+    }
+    tasks {
+      key: "my_importer"
+      value {
+        task_info {
+          name: "my_importer"
+        }
+        inputs {
+          parameters {
+            key: "artifact_uri"
+            value {
+              runtime_value {
+                constant_value {
+                  string_value: "some-uri"
+                }
+              }
+            }
+          }
+          parameters {
+            key: "output_key"
+            value {
+              runtime_value {
+                constant_value {
+                  string_value: "result"
+                }
+              }
+            }
+          }
+          parameters {
+            key: "reimport"
+            value {
+              runtime_value {
+                constant_value {
+                  int_value: 0
+                }
+              }
+            }
+          }
+        }
+        component_ref {
+          name: "my_importer"
+        }
+      }
+    }
+  }
+}

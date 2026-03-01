@@ -1,0 +1,41 @@
+// Copyright 2022 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.components.distribution_validator;
+
+import "tensorflow_metadata/proto/v0/path.proto";
+import "tensorflow_metadata/proto/v0/schema.proto";
+
+message FeatureComparator {
+  // The feature path.
+  tensorflow.metadata.v0.Path path = 1;
+
+  // Comparator to use to compare two distributions
+  tensorflow.metadata.v0.FeatureComparator distribution_comparator = 2;
+}
+
+message DistributionValidatorConfig {
+  message DatasetConfig {
+    // Associates the specified feature(s) with thresholds at which the
+    // divergence between datasets generates an anomaly.
+    repeated FeatureComparator feature = 1;
+
+    // Sepecifies the point at which a change in number of examples between the
+    // baseline dataset and test dataset generates an anomaly.
+    tensorflow.metadata.v0.NumericValueComparator num_examples_comparator = 2;
+  }
+
+  DatasetConfig default_slice_config = 1;
+}

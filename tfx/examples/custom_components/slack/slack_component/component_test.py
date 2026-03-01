@@ -13,12 +13,8 @@
 # limitations under the License.
 """Tests for slack component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from slack_component import component
 import tensorflow as tf
+from tfx.examples.custom_components.slack.slack_component import component
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -26,21 +22,17 @@ from tfx.types import standard_artifacts
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ComponentTest, self).setUp()
+    super().setUp()
     self._model_export = channel_utils.as_channel([standard_artifacts.Model()])
     self._model_blessing = channel_utils.as_channel(
         [standard_artifacts.ModelBlessing()])
 
   def testConstruct(self):
     slack_component = component.SlackComponent(
-        model_export=self._model_export,
+        model=self._model_export,
         model_blessing=self._model_blessing,
         slack_token='token',
         slack_channel_id='slack_channel_id',
         timeout_sec=3600)
-    self.assertEqual('ModelBlessingPath',
+    self.assertEqual(standard_artifacts.ModelBlessing.TYPE_NAME,
                      slack_component.outputs['slack_blessing'].type_name)
-
-
-if __name__ == '__main__':
-  tf.test.main()

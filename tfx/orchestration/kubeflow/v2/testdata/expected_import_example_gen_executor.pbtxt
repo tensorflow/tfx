@@ -1,0 +1,28 @@
+# proto-file: kfp/pipeline_spec/pipeline_spec.proto
+# proto-message: PipelineDeploymentConfig
+
+executors {
+  key: "ImportExampleGen_executor"
+  value {
+    container {
+      image: "gcr.io/tensorflow/tfx:latest"
+      args: "--executor_class_path"
+      args: "tfx.components.example_gen.import_example_gen.executor.Executor"
+      args: "--json_serialized_invocation_args"
+      args: "{{$}}"
+      args: "--json_serialized_inputs_spec_args"
+      args: "{\n  \"parameters\": {\n    \"input_base\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"input_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_data_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"output_file_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    }\n  }\n}"
+      lifecycle {
+        pre_cache_check {
+          command: "python"
+          command: "-m"
+          command: "tfx.orchestration.kubeflow.v2.file_based_example_gen.driver"
+          args: "--json_serialized_invocation_args"
+          args: "{{$}}"
+          args: "--json_serialized_inputs_spec_args"
+          args: "{\n  \"parameters\": {\n    \"input_base\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"input_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_config\": {\n      \"parameterType\": \"STRING\"\n    },\n    \"output_data_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    },\n    \"output_file_format\": {\n      \"parameterType\": \"NUMBER_INTEGER\"\n    }\n  }\n}"
+        }
+      }
+    }
+  }
+}

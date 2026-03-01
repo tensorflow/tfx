@@ -13,22 +13,18 @@
 # limitations under the License.
 """Tests for tfx.utils.logging_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import logging
 import os
-# Standard Imports
+
 import tensorflow as tf
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
+from tfx.dsl.io import fileio
 from tfx.utils import logging_utils
 
 
 class LoggingUtilsTest(tf.test.TestCase):
 
   def setUp(self):
-    super(LoggingUtilsTest, self).setUp()
+    super().setUp()
     self._log_root = os.path.join(self.get_temp_dir(), 'log_dir')
     self._logger_config = logging_utils.LoggerConfig(log_root=self._log_root)
 
@@ -37,8 +33,8 @@ class LoggingUtilsTest(tf.test.TestCase):
     logger = logging_utils.get_logger(self._logger_config)
     logger.info('Test')
     log_file_path = os.path.join(self._log_root)
-    f = file_io.FileIO(os.path.join(log_file_path, 'tfx.log'), mode='r')
-    self.assertRegexpMatches(
+    f = fileio.open(os.path.join(log_file_path, 'tfx.log'), mode='r')
+    self.assertRegex(
         f.read(),
         r'^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d,\d\d\d - : \(logging_utils_test.py:\d\d\) - INFO: Test$'
     )
@@ -59,6 +55,3 @@ class LoggingUtilsTest(tf.test.TestCase):
     self.assertEqual(config.log_level, logging.WARN)
     self.assertEqual(config.pipeline_name, 'pipe')
     self.assertEqual(config.worker_name, 'wrk')
-
-if __name__ == '__main__':
-  tf.test.main()

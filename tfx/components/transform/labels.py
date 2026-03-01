@@ -20,14 +20,21 @@ ANALYZE_DATA_PATHS_LABEL = 'analyze_data_paths'
 ANALYZE_PATHS_FILE_FORMATS_LABEL = 'analyze_paths_file_formats'
 TRANSFORM_DATA_PATHS_LABEL = 'transform_data_paths'
 TRANSFORM_PATHS_FILE_FORMATS_LABEL = 'transform_paths_file_formats'
-COMPUTE_STATISTICS_LABEL = 'compute_statistics'
+DISABLE_STATISTICS_LABEL = 'disable_statistics'
 MODULE_FILE = 'module_file'
+MODULE_PATH = 'module_path'
 PREPROCESSING_FN = 'preprocessing_fn'
-TFT_STATISTICS_USE_TFDV_LABEL = 'tft_statistics_use_tfdv'
-BEAM_PIPELINE_ARGS = 'pipeline_args'
+STATS_OPTIONS_UPDATER_FN = 'stats_options_updater_fn'
+CUSTOM_CONFIG = 'custom_config'
+MAKE_BEAM_PIPELINE_FN = 'make_beam_pipeline_fn'
+DATA_VIEW_LABEL = 'data_view_uri'
 # This label is currently not used externally.
 EXAMPLES_METADATA_LABEL = 'examples_metadata'
 CACHE_INPUT_PATH_LABEL = 'cache_input_path'
+# This label is used to determine whether Transform should execute in
+# `tf.compat.v1` mode or not.
+FORCE_TF_COMPAT_V1_LABEL = 'force_tf_compat_v1'
+SAVE_OPTIONS_LABEL = 'save_options'
 
 # Output labels.
 # TODO(b/72214804): Ideally per-set stats and materialization output paths
@@ -39,14 +46,12 @@ TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL = (
 TRANSFORM_METADATA_OUTPUT_PATH_LABEL = 'transform_output_path'
 CACHE_OUTPUT_PATH_LABEL = 'cache_output_path'
 TEMP_OUTPUT_LABEL = 'temp_path'
+PRE_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL = 'pre_transform_output_schema_path'
+PRE_TRANSFORM_OUTPUT_STATS_PATH_LABEL = 'pre_transform_output_stats_path'
+POST_TRANSFORM_OUTPUT_SCHEMA_PATH_LABEL = 'post_transform_output_schema_path'
+POST_TRANSFORM_OUTPUT_STATS_PATH_LABEL = 'post_transform_output_stats_path'
+POST_TRANSFORM_OUTPUT_ANOMALIES_PATH_LABEL = (
+    'post_transform_output_anomalies_path')
 
 # Examples File Format
-FORMAT_TFRECORD = 'FORMAT_TFRECORD'
-
-# Examples Data Format
-# Indicates that the data format is tf.Example.
-FORMAT_TF_EXAMPLE = 'FORMAT_TF_EXAMPLE'
-# Indicates that the data format is tf.SequenceExample.
-FORMAT_TF_SEQUENCE_EXAMPLE = 'FORMAT_TF_SEQUENCE_EXAMPLE'
-# Indicates the data format is a custom proto.
-FORMAT_PROTO = 'FORMAT_PROTO'
+FORMAT_TFRECORD = 'tfrecords_gzip'

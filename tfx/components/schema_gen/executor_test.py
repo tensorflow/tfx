@@ -13,88 +13,82 @@
 # limitations under the License.
 """Tests for tfx.components.schema_gen.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
+
 import tensorflow as tf
 from tfx.components.schema_gen import executor
+from tfx.dsl.io import fileio
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-from tfx.utils import io_utils
+from tfx.types import standard_component_specs
+from tfx.utils import json_utils
 
 
 class ExecutorTest(tf.test.TestCase):
 
-  def setUp(self):
-    super(ExecutorTest, self).setUp()
-
-    self.source_data_dir = os.path.join(
+  def testDo(self):
+    source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
-    self.train_stats_artifact = standard_artifacts.ExampleStatistics(
-        split='train')
-    self.train_stats_artifact.uri = os.path.join(self.source_data_dir,
-                                                 'statistics_gen/train/')
+    statistics_artifact = standard_artifacts.ExampleStatistics()
+    statistics_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
+    statistics_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval', 'test'])
 
-    self.output_data_dir = os.path.join(
+    output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-    self.schema_output = standard_artifacts.Schema()
-    self.schema_output.uri = os.path.join(self.output_data_dir, 'schema_output')
+    schema_output = standard_artifacts.Schema()
+    schema_output.uri = os.path.join(output_data_dir, 'schema_output')
 
-    self.schema = standard_artifacts.Schema()
-    self.schema.uri = os.path.join(self.source_data_dir, 'fixed_schema/')
-
-    self.expected_schema = standard_artifacts.Schema()
-    self.expected_schema.uri = os.path.join(self.source_data_dir, 'schema_gen/')
-
-    self.input_dict = {
-        'stats': [self.train_stats_artifact],
-        'schema': None
+    input_dict = {
+        standard_component_specs.STATISTICS_KEY: [statistics_artifact],
     }
-    self.output_dict = {
-        'output': [self.schema_output],
+
+    exec_properties = {
+        # List needs to be serialized before being passed into Do function.
+        standard_component_specs.EXCLUDE_SPLITS_KEY:
+            json_utils.dumps(['test'])
     }
-    self.exec_properties = {'infer_feature_shape': False}
 
-  def _assertSchemaEqual(self, expected_schema, actual_schema):
-    schema_reader = io_utils.SchemaReader()
-    expected_schema_proto = schema_reader.read(
-        os.path.join(expected_schema.uri, executor._DEFAULT_FILE_NAME))
-    actual_schema_proto = schema_reader.read(
-        os.path.join(actual_schema.uri, executor._DEFAULT_FILE_NAME))
-    self.assertProtoEquals(expected_schema_proto, actual_schema_proto)
+    output_dict = {
+        standard_component_specs.SCHEMA_KEY: [schema_output],
+    }
 
-  def testDoWithStatistics(self):
     schema_gen_executor = executor.Executor()
-    schema_gen_executor.Do(self.input_dict, self.output_dict,
-                           self.exec_properties)
-    self.assertNotEqual(0, len(tf.gfile.ListDirectory(self.schema_output.uri)))
-    self._assertSchemaEqual(self.expected_schema, self.schema_output)
+    schema_gen_executor.Do(input_dict, output_dict, exec_properties)
+    self.assertNotEqual(0, len(fileio.listdir(schema_output.uri)))
 
-  def testDoWithSchema(self):
-    self.input_dict['schema'] = [self.schema]
-    self.input_dict.pop('stats')
+  def testNoInputSplits(self):
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+
+    statistics_artifact = standard_artifacts.ExampleStatistics()
+    statistics_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
+    statistics_artifact.split_names = artifact_utils.encode_split_names([])
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    schema_output = standard_artifacts.Schema()
+    schema_output.uri = os.path.join(output_data_dir, 'schema_output')
+
+    input_dict = {
+        standard_component_specs.STATISTICS_KEY: [statistics_artifact],
+    }
+
+    exec_properties = {
+        # List needs to be serialized before being passed into Do function.
+        standard_component_specs.EXCLUDE_SPLITS_KEY:
+            json_utils.dumps(['test'])
+    }
+
+    output_dict = {
+        standard_component_specs.SCHEMA_KEY: [schema_output],
+    }
+
     schema_gen_executor = executor.Executor()
-    schema_gen_executor.Do(self.input_dict, self.output_dict,
-                           self.exec_properties)
-    self.assertNotEqual(0, len(tf.gfile.ListDirectory(self.schema_output.uri)))
-    self._assertSchemaEqual(self.schema, self.schema_output)
-
-  def testDoWithNonExistentSchema(self):
-    non_existent_schema = standard_artifacts.Schema()
-    non_existent_schema.uri = '/path/to/non_existent/schema'
-
-    self.input_dict['schema'] = [non_existent_schema]
-    self.input_dict.pop('stats')
-
     with self.assertRaises(ValueError):
-      schema_gen_executor = executor.Executor()
-      schema_gen_executor.Do(self.input_dict, self.output_dict,
-                             self.exec_properties)
-
-
-if __name__ == '__main__':
-  tf.test.main()
+      schema_gen_executor.Do(input_dict, output_dict, exec_properties)

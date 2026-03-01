@@ -1,0 +1,69 @@
+nodes {
+  pipeline_node {
+    contexts {
+      contexts {
+        name {
+          runtime_parameter {
+            type: STRING
+            name: "context_name_rp"
+          }
+        }
+        properties {
+          key: "prop_one"
+          value {
+            runtime_parameter {
+              type: INT
+              name: "prop_one_rp"
+              default_value {
+                int_value: 1
+              }
+            }
+          }
+        }
+        properties {
+          key: "prop_two"
+          value {
+            structural_runtime_parameter {
+              parts {
+                constant_value: "pre_"
+              }
+              parts {
+                runtime_parameter {
+                  type: STRING
+                  name: "prop_two_rp"
+                }
+              }
+              parts {
+                constant_value: "_post"
+              }
+            }
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+              properties {
+                key: "span"
+                value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

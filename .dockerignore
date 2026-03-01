@@ -1,15 +1,15 @@
 # LINT.IfChange
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
-*$py.class
+**/*.py[cod]
+**/*$py.class
 
 # C extensions
-*.so
+**/*.so
 
 # Distribution / packaging
 .Python
-build/
+# build/  # build/ contains required files for building tfx package.
 develop-eggs/
 dist/
 downloads/
@@ -27,6 +27,13 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Pip package build symlinks for "tfx" / "ml-pipelines-sdk"
+package_build/*/README*.md
+package_build/*/build
+package_build/*/dist
+package_build/*/setup.py
+package_build/*/tfx
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -115,6 +122,9 @@ venv.bak/
 # Intellij project settings
 .idea
 
+# VSCode project settings
+.vscode
+
 # mkdocs documentation
 /site
 
@@ -126,10 +136,17 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# pb2.py files
-*_pb2.py
+# Bazel generated files
+bazel-*
+**/*_pb2.py
+**/*_pb2_grpc.py
 # LINT.ThenChange(.gitignore)
 
-# .dockerignore and Dockerfile themselves are not needed by docker build.
+# Github integration settings
+.github
+
+# .dockerignore, Dockerfile and builder script themselves are not needed by
+# docker build.
 .dockerignore
 tfx/tools/docker/Dockerfile*
+tfx/tools/docker/build_docker_image.sh

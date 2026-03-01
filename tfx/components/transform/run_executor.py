@@ -11,24 +11,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Invoke transform executor for data transformation."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Invoke transform processor for data transformation."""
 
 import argparse
-import tensorflow as tf
-# pylint: disable=g-direct-tensorflow-import
-from tensorflow.python.platform import app
-# pylint: enable=g-direct-tensorflow-import
+
+from typing import List, Tuple
+
+import absl
+from absl import app
+from absl.flags import argparse_flags
+import apache_beam as beam
+
+from tfx.components.transform import executor
 from tfx.components.transform import labels
-from tfx.components.transform.executor import Executor
+from tfx.components.util import udf_utils
+from tfx.proto import example_gen_pb2
+from tfx.types import standard_component_specs
 
 
 def _run_transform(args, beam_pipeline_args):
   """Construct and run transform executor."""
-  tf.logging.set_verbosity(tf.logging.INFO)
+  absl.logging.set_verbosity(absl.logging.INFO)
+
+  def make_beam_pipeline():
+    return beam.Pipeline(beam_pipeline_args)
+
+  preprocessing_fn = udf_utils.get_fn(
+      {
+          standard_component_specs.PREPROCESSING_FN_KEY:
+              args.preprocessing_fn_path
+      }, standard_component_specs.PREPROCESSING_FN_KEY)
 
   inputs = {
       labels.ANALYZE_DATA_PATHS_LABEL:
@@ -44,15 +56,13 @@ def _run_transform(args, beam_pipeline_args):
       labels.SCHEMA_PATH_LABEL:
           args.input_schema_path,
       labels.PREPROCESSING_FN:
-          args.preprocessing_fn_path,
+          preprocessing_fn,
       labels.EXAMPLES_DATA_FORMAT_LABEL:
-          args.example_data_format,
-      labels.TFT_STATISTICS_USE_TFDV_LABEL:
-          args.use_tfdv,
-      labels.COMPUTE_STATISTICS_LABEL:
-          args.compute_statistics,
-      labels.BEAM_PIPELINE_ARGS:
-          beam_pipeline_args,
+          example_gen_pb2.PayloadFormat.Value(args.example_data_format),
+      labels.DISABLE_STATISTICS_LABEL:
+          args.disable_statistics,
+      labels.MAKE_BEAM_PIPELINE_FN:
+          make_beam_pipeline,
   }
   outputs = {
       labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: args.transform_fn,
@@ -61,12 +71,14 @@ def _run_transform(args, beam_pipeline_args):
       labels.PER_SET_STATS_OUTPUT_PATHS_LABEL: (args.per_set_stats_outputs),
       labels.TEMP_OUTPUT_LABEL: args.tmp_location,
   }
-  executor = Executor(Executor.Context(beam_pipeline_args=beam_pipeline_args))
-  executor.Transform(inputs, outputs, args.status_file)
+
+  executor.TransformProcessor().Transform(inputs, outputs, args.status_file)
 
 
-def main(argv):
-  parser = argparse.ArgumentParser()
+def _parse_flags(argv: List[str]) -> Tuple[argparse.Namespace, List[str]]:
+  """Command lines flag parsing."""
+  parser = argparse_flags.ArgumentParser()
+
   # Arguments in inputs
   parser.add_argument(
       '--input_schema_path',
@@ -83,12 +95,12 @@ def main(argv):
       '--use_tfdv',
       type=bool,
       default=True,
-      help='Whether use TFDV for statistics computation')
+      help='Deprecated and ignored. DO NOT SET.')
   parser.add_argument(
-      '--compute_statistics',
+      '--disable_statistics',
       type=bool,
       default=False,
-      help='Whether computes statistics')
+      help='Whether to disable statistics')
   parser.add_argument(
       '--analyze_examples',
       nargs='+',
@@ -105,7 +117,8 @@ def main(argv):
   parser.add_argument(
       '--example_data_format',
       type=str,
-      default=labels.FORMAT_TF_EXAMPLE,
+      default=example_gen_pb2.PayloadFormat.Name(
+          example_gen_pb2.FORMAT_TF_EXAMPLE),
       help='Example data format')
   # Arguments in outputs
   parser.add_argument(
@@ -133,9 +146,13 @@ def main(argv):
       help='Paths to statistics output')
   parser.add_argument(
       '--status_file', type=str, default='', help='Path to write status')
-  args, beam_args = parser.parse_known_args(argv)
+  return parser.parse_known_args(argv)
+
+
+def main(parsed_argv: Tuple[argparse.Namespace, List[str]]):
+  args, beam_args = parsed_argv
   _run_transform(args, beam_args)
 
 
 if __name__ == '__main__':
-  app.run(main=main)
+  app.run(main, flags_parser=_parse_flags)

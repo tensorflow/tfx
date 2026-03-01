@@ -12,186 +12,186 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX Trainer component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional, Union
 
+from absl import logging
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
-from tfx.components.trainer import driver
 from tfx.components.trainer import executor
+from tfx.components.util import udf_utils
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import TrainerSpec
+from tfx.types import standard_component_specs
+from tfx.utils import json_utils
 
 
 class Trainer(base_component.BaseComponent):
   """A TFX component to train a TensorFlow model.
 
   The Trainer component is used to train and eval a model using given inputs and
-  a user-supplied estimator.  This component includes a custom driver to
-  optionally grab previous model to warm start from.
+  a user-supplied `run_fn` function.
 
-  ## Providing an estimator
-  The TFX executor will use the estimator provided in the `module_file` file
-  to train the model.  The Trainer executor will look specifically for the
-  `trainer_fn()` function within that file.  Before training, the executor will
-  call that function expecting the following returned as a dictionary:
+  An example of `run_fn()` can be found in the [user-supplied
+  code](https://github.com/tensorflow/tfx/blob/master/tfx/examples/penguin/penguin_utils_keras.py)
+  of the TFX penguin pipeline example.
 
-    - estimator: The
-    [estimator](https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator)
-    to be used by TensorFlow to train the model.
-    - train_spec: The
-    [configuration](https://www.tensorflow.org/api_docs/python/tf/estimator/TrainSpec)
-    to be used by the "train" part of the TensorFlow `train_and_evaluate()`
-    call.
-    - eval_spec: The
-    [configuration](https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec)
-    to be used by the "eval" part of the TensorFlow `train_and_evaluate()` call.
-    - eval_input_receiver_fn: The
-    [configuration](https://www.tensorflow.org/tfx/model_analysis/get_started#modify_an_existing_model)
-    to be used
-    by the [ModelValidator](https://www.tensorflow.org/tfx/guide/modelval)
-    component when validating the model.
+  !!! Note
+      This component trains locally. For cloud distributed training, please
+      refer to [Cloud AI Platform
+      Trainer](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/trainer).
 
-  An example of `trainer_fn()` can be found in the [user-supplied
-  code]((https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py))
-  of the TFX Chicago Taxi pipeline example.
+  !!! Example
+      ```
+      # Uses user-provided Python function that trains a model using TF.
+      trainer = Trainer(
+          module_file=module_file,
+          examples=transform.outputs["transformed_examples"],
+          schema=infer_schema.outputs["schema"],
+          transform_graph=transform.outputs["transform_graph"],
+          train_args=proto.TrainArgs(splits=["train"], num_steps=10000),
+          eval_args=proto.EvalArgs(splits=["eval"], num_steps=5000),
+      )
+      ```
 
-  *Note:* The default executor for this component trains locally.  This can be
-  overriden to enable the model to be trained on other platforms.  The [Cloud AI
-  Platform custom
-  executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/trainer)
-  provides an example how to implement this.
+  Component `outputs` contains:
 
-  Please see https://www.tensorflow.org/guide/estimators for more details.
+   - `model`: Channel of type [`standard_artifacts.Model`][tfx.v1.types.standard_artifacts.Model] for trained model.
+   - `model_run`: Channel of type [`standard_artifacts.ModelRun`][tfx.v1.types.standard_artifacts.ModelRun], as the working
+                  dir of models, can be used to output non-model related output
+                  (e.g., TensorBoard logs).
 
-  ## Example 1: Training locally
-  ```
-  # Uses user-provided Python function that implements a model using TF-Learn.
-  trainer = Trainer(
-      module_file=module_file,
-      transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['output'],
-      transform_output=transform.outputs['transform_output'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
-  ```
-
-  ## Example 2: Training through a cloud provider
-  ```
-  # Train using Google Cloud AI Platform.
-  trainer = Trainer(
-      executor_class=ai_platform_trainer_executor.Executor,
-      module_file=module_file,
-      transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['output'],
-      transform_output=transform.outputs['transform_output'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
-  ```
+  Please see [the Trainer guide](../../../guide/trainer)
+  for more details.
   """
 
-  SPEC_CLASS = TrainerSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
-  DRIVER_CLASS = driver.Driver
+  SPEC_CLASS = standard_component_specs.TrainerSpec
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.GenericExecutor)
 
   def __init__(
       self,
-      examples: types.Channel = None,
-      transformed_examples: Optional[types.Channel] = None,
-      transform_output: Optional[types.Channel] = None,
-      schema: types.Channel = None,
-      module_file: Optional[Text] = None,
-      trainer_fn: Optional[Text] = None,
-      train_args: trainer_pb2.TrainArgs = None,
-      eval_args: trainer_pb2.EvalArgs = None,
-      custom_config: Optional[Dict[Text, Any]] = None,
-      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      output: Optional[types.Channel] = None,
-      transform_graph: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      statistics: Optional[types.BaseChannel] = None,
+      examples: Optional[types.BaseChannel] = None,
+      transformed_examples: Optional[types.BaseChannel] = None,
+      transform_graph: Optional[types.BaseChannel] = None,
+      schema: Optional[types.BaseChannel] = None,
+      base_model: Optional[types.BaseChannel] = None,
+      hyperparameters: Optional[types.BaseChannel] = None,
+      module_file: Optional[Union[str, data_types.RuntimeParameter]] = None,
+      run_fn: Optional[Union[str, data_types.RuntimeParameter]] = None,
+      train_args: Optional[Union[trainer_pb2.TrainArgs,
+                                 data_types.RuntimeParameter]] = None,
+      eval_args: Optional[Union[trainer_pb2.EvalArgs,
+                                data_types.RuntimeParameter]] = None,
+      custom_config: Optional[Union[Dict[str, Any],
+                                    data_types.RuntimeParameter]] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a Trainer component.
 
     Args:
-      examples: A Channel of 'ExamplesPath' type, serving as the source of
-        examples that are used in training (required). May be raw or
+      examples: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples],
+        serving as the source of examples used in training (required). May be raw or
         transformed.
-      transformed_examples: Deprecated field. Please set 'examples' instead.
-      transform_output: An optional Channel of 'TransformPath' type, serving as
-        the input transform graph if present.
-      schema:  A Channel of 'SchemaPath' type, serving as the schema of training
-        and eval data.
+      transformed_examples: Deprecated (no compatibility guarantee). Please set
+        'examples' instead.
+      transform_graph: An optional [BaseChannel][tfx.v1.types.BaseChannel] of type
+        [`standard_artifacts.TransformGraph`][tfx.v1.types.standard_artifacts.TransformGraph],
+        serving as the input transform graph if present.
+      schema:  An optional [BaseChannel][tfx.v1.types.BaseChannel] of type
+        [`standard_artifacts.Schema`][tfx.v1.types.standard_artifacts.Schema],
+        serving as the schema of training and eval data. Schema is optional when
+
+          1. transform_graph is provided which contains schema.
+          2. user module bypasses the usage of schema, e.g., hardcoded.
+      base_model: A [BaseChannel][tfx.v1.types.BaseChannel] of type `Model`, containing model that will be
+        used for training. This can be used for warmstart, transfer learning or
+        model ensembling.
+      hyperparameters: A [BaseChannel] of type
+        [`standard_artifacts.HyperParameters`][tfx.v1.types.standard_artifacts.HyperParameters],
+        serving as the hyperparameters for training module. Tuner's output best
+        hyperparameters can be feed into this.
       module_file: A path to python module file containing UDF model definition.
-        The module_file must implement a function named `trainer_fn` at its
-        top level. The function must have the following signature.
+        The `module_file` must implement a function named `run_fn` at its top
+        level with function signature:
+        ```python
+        def run_fn(trainer.fn_args_utils.FnArgs)
+        ```
+        and the trained model must be saved to `FnArgs.serving_model_dir` when
+        this function is executed.
 
-        def trainer_fn(tf.contrib.training.HParams,
-                       tensorflow_metadata.proto.v0.schema_pb2) -> Dict:
-          ...
-
-        where the returned Dict has the following key-values.
-          'estimator': an instance of tf.estimator.Estimator
-          'train_spec': an instance of tf.estimator.TrainSpec
-          'eval_spec': an instance of tf.estimator.EvalSpec
-          'eval_input_receiver_fn': an instance of tfma.export.EvalInputReceiver
-
-        Exactly one of 'module_file' or 'trainer_fn' must be supplied.
-      trainer_fn:  A python path to UDF model definition function. See
-        'module_file' for the required signature of the UDF.
-        Exactly one of 'module_file' or 'trainer_fn' must be supplied.
-      train_args: A trainer_pb2.TrainArgs instance, containing args used for
-        training. Current only num_steps is available.
-      eval_args: A trainer_pb2.EvalArgs instance, containing args used for eval.
-        Current only num_steps is available.
-      custom_config: A dict which contains the training job parameters to be
-        passed to Google Cloud ML Engine.  For the full set of parameters
-        supported by Google Cloud ML Engine, refer to
-        https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
-      custom_executor_spec: Optional custom executor spec.
-      output: Optional 'ModelExportPath' channel for result of exported models.
-      transform_graph: Forwards compatibility alias for the 'transform_output'
-        argument.
-      instance_name: Optional unique instance name. Necessary iff multiple
-        Trainer components are declared in the same pipeline.
+        Exactly one of `module_file` or `run_fn` must be supplied if Trainer
+        uses GenericExecutor (default). Use of a [RuntimeParameter][tfx.v1.dsl.experimental.RuntimeParameter] for this
+        argument is experimental.
+      run_fn:  A python path to UDF model definition function for generic
+        trainer. See 'module_file' for details. Exactly one of 'module_file' or
+        'run_fn' must be supplied if Trainer uses GenericExecutor (default). Use
+        of a [RuntimeParameter][tfx.v1.dsl.experimental.RuntimeParameter] for this argument is experimental.
+      train_args: A proto.TrainArgs instance, containing args used for training
+        Currently only splits and num_steps are available. Default behavior
+        (when splits is empty) is train on `train` split.
+      eval_args: A proto.EvalArgs instance, containing args used for evaluation.
+        Currently only splits and num_steps are available. Default behavior
+        (when splits is empty) is evaluate on `eval` split.
+      custom_config: A dict which contains addtional training job parameters
+        that will be passed into user module.
+      custom_executor_spec: Optional custom executor spec. Deprecated (no
+        compatibility guarantee), please customize component directly.
 
     Raises:
       ValueError:
-        - When both or neither of 'module_file' and 'trainer_fn' is supplied.
-        - When both or neither of 'examples' and 'transformed_examples'
+        - When both or neither of `module_file` and `run_fn` is supplied.
+        - When both or neither of `examples` and `transformed_examples`
             is supplied.
-        - When 'transformed_examples' is supplied but 'transform_output'
+        - When `transformed_examples` is supplied but `transform_graph`
             is not supplied.
     """
-    transform_output = transform_output or transform_graph
-    if bool(module_file) == bool(trainer_fn):
+    if [bool(module_file), bool(run_fn)].count(True) != 1:
       raise ValueError(
-          "Exactly one of 'module_file' or 'trainer_fn' must be supplied")
+          "Exactly one of 'module_file', or 'run_fn' must be supplied.")
 
     if bool(examples) == bool(transformed_examples):
       raise ValueError(
           "Exactly one of 'example' or 'transformed_example' must be supplied.")
 
-    if transformed_examples and not transform_output:
+    if transformed_examples and not transform_graph:
       raise ValueError("If 'transformed_examples' is supplied, "
-                       "'transform_output' must be supplied too.")
+                       "'transform_graph' must be supplied too.")
+
+    if custom_executor_spec:
+      logging.warning(
+          "`custom_executor_spec` is deprecated. Please customize component directly."
+      )
+    if transformed_examples:
+      logging.warning(
+          "`transformed_examples` is deprecated. Please use `examples` instead."
+      )
     examples = examples or transformed_examples
-    output = output or types.Channel(
-        type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
-    spec = TrainerSpec(
+    model = types.Channel(type=standard_artifacts.Model)
+    model_run = types.Channel(type=standard_artifacts.ModelRun)
+    spec = standard_component_specs.TrainerSpec(
+        statistics=statistics,
         examples=examples,
-        transform_output=transform_output,
+        transform_graph=transform_graph,
         schema=schema,
-        train_args=train_args,
-        eval_args=eval_args,
+        base_model=base_model,
+        hyperparameters=hyperparameters,
+        train_args=train_args or trainer_pb2.TrainArgs(),
+        eval_args=eval_args or trainer_pb2.EvalArgs(),
         module_file=module_file,
-        trainer_fn=trainer_fn,
-        custom_config=custom_config,
-        output=output)
-    super(Trainer, self).__init__(
-        spec=spec,
-        custom_executor_spec=custom_executor_spec,
-        instance_name=instance_name)
+        run_fn=run_fn,
+        custom_config=(custom_config
+                       if isinstance(custom_config, data_types.RuntimeParameter)
+                       else json_utils.dumps(custom_config)),
+        model=model,
+        model_run=model_run)
+    super().__init__(spec=spec, custom_executor_spec=custom_executor_spec)
+
+    if udf_utils.should_package_user_modules():
+      # In this case, the `MODULE_PATH_KEY` execution property will be injected
+      # as a reference to the given user module file after packaging, at which
+      # point the `MODULE_FILE_KEY` execution property will be removed.
+      udf_utils.add_user_module_dependency(
+          self, standard_component_specs.MODULE_FILE_KEY,
+          standard_component_specs.MODULE_PATH_KEY)

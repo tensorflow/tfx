@@ -13,23 +13,20 @@
 # limitations under the License.
 """TFX ModelValidator component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Optional, Text
+from typing import Optional
 
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
 from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
+from tfx.dsl.components.base import base_beam_component
+from tfx.dsl.components.base import executor_spec
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import ModelValidatorSpec
+from tfx.types import standard_component_specs
+from tfx.utils import deprecation_utils
 
 
-class ModelValidator(base_component.BaseComponent):
-  """A TFX component to validate a newly trained model against a prior model.
+class ModelValidator(base_beam_component.BaseBeamComponent):
+  """DEPRECATED: Please use `Evaluator` instead.
 
   The model validator component can be used to check model metrics threshold
   and validate current model against a previously validated model. If there
@@ -58,36 +55,35 @@ class ModelValidator(base_component.BaseComponent):
     # Performs quality validation of a candidate model (compared to a baseline).
     model_validator = ModelValidator(
         examples=example_gen.outputs['examples'],
-        model=trainer.outputs['output'])
+        model=trainer.outputs['model'])
   ```
   """
 
-  SPEC_CLASS = ModelValidatorSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  SPEC_CLASS = standard_component_specs.ModelValidatorSpec
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
   DRIVER_CLASS = driver.Driver
 
+  @deprecation_utils.deprecated(
+      None, 'ModelValidator is deprecated, use Evaluator instead.')
   def __init__(self,
-               examples: types.Channel,
-               model: types.Channel,
-               blessing: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               examples: types.BaseChannel,
+               model: types.BaseChannel,
+               blessing: Optional[types.Channel] = None):
     """Construct a ModelValidator component.
 
     Args:
-      examples: A Channel of 'ExamplesPath' type, usually produced by
-        [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
-        _required_
-      model: A Channel of 'ModelExportPath' type, usually produced by
-        [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
-        _required_
-      blessing: Output channel of 'ModelBlessingPath' that contains the
-        validation result.
-      instance_name: Optional name assigned to this specific instance of
-        ModelValidator.  Required only if multiple ModelValidator components are
-        declared in the same pipeline.
+      examples: A BaseChannel of type `standard_artifacts.Examples`, usually
+        produced by an
+        [ExampleGen](../../../guide/examplegen) component.
+          _required_
+      model: A BaseChannel of type `standard_artifacts.Model`, usually produced
+        by
+        a [Trainer](../../../guide/trainer) component.
+          _required_
+      blessing: Output channel of type `standard_artifacts.ModelBlessing` that
+        contains the validation result.
     """
-    blessing = blessing or types.Channel(
-        type=standard_artifacts.ModelBlessing,
-        artifacts=[standard_artifacts.ModelBlessing()])
-    spec = ModelValidatorSpec(examples=examples, model=model, blessing=blessing)
-    super(ModelValidator, self).__init__(spec=spec, instance_name=instance_name)
+    blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
+    spec = standard_component_specs.ModelValidatorSpec(
+        examples=examples, model=model, blessing=blessing)
+    super().__init__(spec=spec)

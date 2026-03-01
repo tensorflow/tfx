@@ -1,0 +1,9 @@
+title: tfx.ExampleStatistics
+type: object
+properties:
+  span:
+    type: integer
+    description: Span for an artifact.
+  split_names:
+    type: string
+    description: JSON-encoded list of splits for an artifact. Empty string means artifact has no split.

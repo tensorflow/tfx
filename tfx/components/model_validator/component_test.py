@@ -13,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.components.model_validator.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 from tfx.components.model_validator import component
 from tfx.types import channel_utils
@@ -31,9 +27,5 @@ class ComponentTest(tf.test.TestCase):
     model_validator = component.ModelValidator(
         examples=channel_utils.as_channel([examples]),
         model=channel_utils.as_channel([model]))
-    self.assertEqual('ModelBlessingPath',
+    self.assertEqual(standard_artifacts.ModelBlessing.TYPE_NAME,
                      model_validator.outputs['blessing'].type_name)
-
-
-if __name__ == '__main__':
-  tf.test.main()

@@ -1,0 +1,74 @@
+// Copyright 2020 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package tfx.orchestration;
+
+import "ml_metadata/proto/metadata_store.proto";
+import "ml_metadata/proto/metadata_store_service.proto";
+import "tfx/proto/orchestration/pipeline.proto";
+
+// All the information needed for a TFX component execution.
+// Next ID: 17
+message ExecutionInvocation {
+  reserved 1, 2;
+
+  // The exec_properties to feed to execution.
+  map<string, ml_metadata.Value> execution_properties = 3;
+
+  // The execution_properties and schema to parse non-primitive types.
+  map<string, tfx.orchestration.Value> execution_properties_with_schema = 13;
+
+  // The uri to execution result. This is used to "return" the output to the
+  // caller if they are not running in the same process.
+  string output_metadata_uri = 4;
+
+  // Input artifact map.
+  map<string, ml_metadata.ArtifactStructList> input_dict = 5;
+
+  // Output artifact map.
+  map<string, ml_metadata.ArtifactStructList> output_dict = 6;
+
+  // Stateful working dir will be deterministic given pipeline, node and run_id.
+  // The typical usecase is to restore long running execution's state after
+  // eviction. This dir is clean up only when the execution succeeded.
+  string stateful_working_dir = 7;
+
+  // A temporary dir for executions and it is expected to be cleared up at the
+  // end of executions in both success and failure cases.
+  string tmp_dir = 10;
+
+  // Pipeline info proto from the IR specification.
+  tfx.orchestration.PipelineInfo pipeline_info = 8;
+
+  // Pipeline node proto from the IR specification.
+  tfx.orchestration.PipelineNode pipeline_node = 9;
+
+  // The MLMD `Execution` ID.
+  int64 execution_id = 11;
+
+  // The id of the pipeline run that this execution is in.
+  string pipeline_run_id = 12;
+
+  // The id of the pipeline run for the top-level pipeline in this execution.
+  // If the top level-pipeline is ASYNC then this will be empty.
+  string top_level_pipeline_run_id = 15;
+
+  // URL to the Tflex frontend for this pipeline/run.
+  string frontend_url = 16;
+
+  // Flags passed to a component.
+  map<string, string> extra_flags = 14;
+}

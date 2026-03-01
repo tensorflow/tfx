@@ -12,81 +12,86 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX ExampleValidator component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Optional, Text
+from typing import List, Optional
 
+from absl import logging
+from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
 from tfx.components.example_validator import executor
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import executor_spec
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import ExampleValidatorSpec
+from tfx.types import standard_component_specs
+from tfx.utils import json_utils
 
 
 class ExampleValidator(base_component.BaseComponent):
   """A TFX component to validate input examples.
 
   The ExampleValidator component uses [Tensorflow Data
-  Validation](https://www.tensorflow.org/tfx/data_validation) to
-  validate the statistics of some splits on input examples against a schema.
+  Validation](https://www.tensorflow.org/tfx/data_validation/api_docs/python/tfdv)
+  to validate the statistics of some splits on input examples against a schema.
 
   The ExampleValidator component identifies anomalies in training and serving
   data. The component can be configured to detect different classes of anomalies
   in the data. It can:
-    - perform validity checks by comparing data statistics against a schema that
-      codifies expectations of the user.
-    - detect data drift by looking at a series of data.
-    - detect changes in dataset-wide data (i.e., num_examples) across spans or
-      versions.
 
-  Schema Based Example Validation
+  - perform validity checks by comparing data statistics against a schema that
+    codifies expectations of the user.
+  - run custom validations based on an optional SQL-based config.
+
+  ## Schema Based Example Validation
+
   The ExampleValidator component identifies any anomalies in the example data by
-  comparing data statistics computed by the StatisticsGen component against a
+  comparing data statistics computed by the [StatisticsGen][tfx.v1.components.StatisticsGen] component against a
   schema. The schema codifies properties which the input data is expected to
   satisfy, and is provided and maintained by the user.
 
-  Please see https://www.tensorflow.org/tfx/data_validation for more details.
+  !!! Example
+      ``` python
+      # Performs anomaly detection based on statistics and data schema.
+      validate_stats = ExampleValidator(
+          statistics=statistics_gen.outputs['statistics'],
+          schema=infer_schema.outputs['schema'])
+      ```
 
-  ## Example
-  ```
-  # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs['output'],
-      schema=infer_schema.outputs['output'])
-  ```
+  Component `outputs` contains:
+
+   - `anomalies`: Channel of type `standard_artifacts.ExampleAnomalies`.
+
+  See [the ExampleValidator
+  guide](../../../guide/exampleval) for more details.
   """
 
-  SPEC_CLASS = ExampleValidatorSpec
+  SPEC_CLASS = standard_component_specs.ExampleValidatorSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
-               stats: types.Channel = None,
-               schema: types.Channel = None,
-               output: Optional[types.Channel] = None,
-               statistics: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               statistics: types.BaseChannel,
+               schema: types.BaseChannel,
+               exclude_splits: Optional[List[str]] = None,
+               custom_validation_config: Optional[
+                   custom_validation_config_pb2.CustomValidationConfig] = None):
     """Construct an ExampleValidator component.
 
     Args:
-      stats: A Channel of 'ExampleStatisticsPath` type. This should contain at
-        least 'eval' split. Other splits are ignored currently.  Will be
-        deprecated in the future for the `statistics` parameter.
-      schema: A Channel of "SchemaPath' type. _required_
-      output: Output channel of 'ExampleValidationPath' type.
-      statistics: Future replacement of the 'stats' argument.
-      instance_name: Optional name assigned to this specific instance of
-        ExampleValidator. Required only if multiple ExampleValidator components
-        are declared in the same pipeline.
-
-    Either `stats` or `statistics` must be present in the arguments.
+      statistics: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.ExampleStatistics`][tfx.v1.types.standard_artifacts.ExampleStatistics].
+      schema: A [BaseChannel][tfx.v1.types.BaseChannel] of type [`standard_artifacts.Schema`]. _required_
+      exclude_splits: Names of splits that the example validator should not
+        validate. Default behavior (when exclude_splits is set to None) is
+        excluding no splits.
+      custom_validation_config: Optional configuration for specifying SQL-based
+        custom validations.
     """
-    stats = stats or statistics
-    output = output or types.Channel(
-        type=standard_artifacts.ExampleAnomalies,
-        artifacts=[standard_artifacts.ExampleAnomalies()])
-    spec = ExampleValidatorSpec(stats=stats, schema=schema, output=output)
-    super(ExampleValidator, self).__init__(
-        spec=spec, instance_name=instance_name)
+    if exclude_splits is None:
+      exclude_splits = []
+      logging.info('Excluding no splits because exclude_splits is not set.')
+    anomalies = types.Channel(type=standard_artifacts.ExampleAnomalies)
+    spec = standard_component_specs.ExampleValidatorSpec(
+        statistics=statistics,
+        schema=schema,
+        exclude_splits=json_utils.dumps(exclude_splits),
+        custom_validation_config=custom_validation_config,
+        anomalies=anomalies)
+    super().__init__(spec=spec)

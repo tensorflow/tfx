@@ -1,0 +1,115 @@
+# proto-file: tensorflow_metadata/proto/v0/schema.proto
+# proto-message: Schema
+feature {
+  name: "body_mass_g"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "culmen_depth_mm"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "culmen_length_mm"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "flipper_length_mm"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "island"
+  type: BYTES
+  domain: "island"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "sex"
+  type: BYTES
+  domain: "sex"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "species"
+  type: BYTES
+  domain: "species"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+string_domain {
+  name: "island"
+  value: "Biscoe"
+  value: "Dream"
+  value: "Torgersen"
+}
+string_domain {
+  name: "sex"
+  value: "FEMALE"
+  value: "MALE"
+  value: "."
+}
+string_domain {
+  name: "species"
+  value: "Adelie"
+  value: "Chinstrap"
+  value: "Gentoo"
+}
+# generate_legacy_feature_spec: false

@@ -13,27 +13,29 @@
 # limitations under the License.
 """Tests for tfx.components.example_validator.component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 from tfx.components.example_validator import component
+from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 
 
 class ExampleValidatorTest(tf.test.TestCase):
 
   def testConstruct(self):
+    statistics_artifact = standard_artifacts.ExampleStatistics()
+    statistics_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
+    exclude_splits = ['eval']
     example_validator = component.ExampleValidator(
-        stats=channel_utils.as_channel(
-            [standard_artifacts.ExampleStatistics(split='eval')]),
+        statistics=channel_utils.as_channel([statistics_artifact]),
         schema=channel_utils.as_channel([standard_artifacts.Schema()]),
-    )
-    self.assertEqual('ExampleValidationPath',
-                     example_validator.outputs['output'].type_name)
-
-
-if __name__ == '__main__':
-  tf.test.main()
+        exclude_splits=exclude_splits)
+    self.assertEqual(
+        standard_artifacts.ExampleAnomalies.TYPE_NAME,
+        example_validator.outputs[
+            standard_component_specs.ANOMALIES_KEY].type_name)
+    self.assertEqual(
+        example_validator.spec.exec_properties[
+            standard_component_specs.EXCLUDE_SPLITS_KEY], '["eval"]')

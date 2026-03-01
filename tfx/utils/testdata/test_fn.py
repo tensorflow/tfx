@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test module containing test function."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 
 def test_fn(inputs):
@@ -22,6 +19,6 @@ def test_fn(inputs):
   return sum(inputs)
 
 
-class TestClass(object):
+class TestClass:
   """a class to test import_utils."""
   pass

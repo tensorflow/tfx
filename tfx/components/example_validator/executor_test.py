@@ -13,59 +13,196 @@
 # limitations under the License.
 """Tests for tfx.components.example_validator.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-import tensorflow as tf
-from tensorflow_metadata.proto.v0 import anomalies_pb2
-from tfx import types
+import tempfile
+
+from absl.testing import parameterized
+from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.example_validator import executor
+from tfx.dsl.io import fileio
+from tfx.proto.orchestration import execution_result_pb2
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.types import standard_component_specs
 from tfx.utils import io_utils
+from tfx.utils import json_utils
+
+from google.protobuf import text_format
+from tensorflow_metadata.proto.v0 import anomalies_pb2
 
 
-class ExecutorTest(tf.test.TestCase):
+_ANOMALIES_PROTO = text_format.Parse(
+    """
+    anomaly_info {
+      key: 'company'
+      value {
+        path {
+          step: 'company'
+        }
+        severity: ERROR
+        short_description: 'Feature does not have enough values.'
+        description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
+        reason {
+          description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
+          type: CUSTOM_VALIDATION
+          short_description: 'Feature does not have enough values.'
+        }
+      }
+    }
+    dataset_anomaly_info {
+      description: "Low num examples in dataset."
+      severity: ERROR
+      short_description: "Low num examples in dataset."
+      reason {
+          type: DATASET_LOW_NUM_EXAMPLES
+      }
+    }
+    """,
+    anomalies_pb2.Anomalies()
+)
 
-  def testDo(self):
+
+class ExecutorTest(parameterized.TestCase):
+
+  def _get_temp_dir(self):
+    return tempfile.mkdtemp()
+
+  def _assert_equal_anomalies(self, actual_anomalies, expected_anomalies):
+    # Check if the actual anomalies matches with the expected anomalies.
+    for feature_name in expected_anomalies.anomaly_info:
+      self.assertIn(feature_name, actual_anomalies.anomaly_info)
+      # Do not compare diff_regions.
+      actual_anomalies.anomaly_info[feature_name].ClearField('diff_regions')
+
+      self.assertEqual(actual_anomalies.anomaly_info[feature_name],
+                       expected_anomalies.anomaly_info[feature_name])
+    self.assertEqual(
+        len(actual_anomalies.anomaly_info),
+        len(expected_anomalies.anomaly_info)
+    )
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': 'No_anomalies',
+          'custom_validation_config': None,
+          'expected_anomalies': anomalies_pb2.Anomalies(),
+          'expected_blessing': {
+              'train': executor.BLESSED_VALUE,
+              'eval': executor.BLESSED_VALUE,
+          },
+      },
+      {
+          'testcase_name': 'Custom_validation',
+          'custom_validation_config': """
+              feature_validations {
+              feature_path { step: 'company' }
+              validations {
+                sql_expression: 'feature.string_stats.common_stats.min_num_values > 5'
+                severity: ERROR
+                description: 'Feature does not have enough values.'
+                }
+              }
+              """,
+          'expected_anomalies': _ANOMALIES_PROTO,
+          'expected_blessing': {
+              'train': executor.NOT_BLESSED_VALUE,
+              'eval': executor.NOT_BLESSED_VALUE,
+          },
+      },
+  )
+  def testDo(
+      self,
+      custom_validation_config,
+      expected_anomalies,
+      expected_blessing,
+  ):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
-    eval_stats_artifact = types.Artifact('ExampleStatsPath', split='eval')
-    eval_stats_artifact.uri = os.path.join(source_data_dir,
-                                           'statistics_gen/eval/')
+    eval_stats_artifact = standard_artifacts.ExampleStatistics()
+    eval_stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
+    eval_stats_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval', 'test'])
+    eval_stats_artifact.span = 11
 
     schema_artifact = standard_artifacts.Schema()
-    schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen/')
+    schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
 
     output_data_dir = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self._get_temp_dir()),
         self._testMethodName)
 
     validation_output = standard_artifacts.ExampleAnomalies()
     validation_output.uri = os.path.join(output_data_dir, 'output')
 
     input_dict = {
-        'stats': [eval_stats_artifact],
-        'schema': [schema_artifact],
-    }
-    output_dict = {
-        'output': [validation_output],
+        standard_component_specs.STATISTICS_KEY: [eval_stats_artifact],
+        standard_component_specs.SCHEMA_KEY: [schema_artifact],
     }
 
-    exec_properties = {}
+    if custom_validation_config is not None:
+      custom_validation_config = text_format.Parse(
+          custom_validation_config,
+          custom_validation_config_pb2.CustomValidationConfig()
+      )
+    exec_properties = {
+        # List needs to be serialized before being passed into Do function.
+        standard_component_specs.EXCLUDE_SPLITS_KEY:
+            json_utils.dumps(['test']),
+        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY:
+            custom_validation_config,
+    }
+
+    output_dict = {
+        standard_component_specs.ANOMALIES_KEY: [validation_output],
+    }
 
     example_validator_executor = executor.Executor()
-    example_validator_executor.Do(input_dict, output_dict, exec_properties)
-    self.assertEqual(['anomalies.pbtxt'],
-                     tf.gfile.ListDirectory(validation_output.uri))
-    anomalies = io_utils.parse_pbtxt_file(
-        os.path.join(validation_output.uri, 'anomalies.pbtxt'),
-        anomalies_pb2.Anomalies())
-    self.assertNotEqual(0, len(anomalies.anomaly_info))
+    executor_output = example_validator_executor.Do(
+        input_dict, output_dict, exec_properties
+    )
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        validation_output.split_names)
+    self.assertEqual(eval_stats_artifact.span, validation_output.span)
+
+    # Check example_validator outputs.
+    train_anomalies_path = os.path.join(validation_output.uri, 'Split-train',
+                                        'SchemaDiff.pb')
+    eval_anomalies_path = os.path.join(validation_output.uri, 'Split-eval',
+                                       'SchemaDiff.pb')
+    self.assertTrue(fileio.exists(train_anomalies_path))
+    self.assertTrue(fileio.exists(eval_anomalies_path))
+    train_anomalies_bytes = io_utils.read_bytes_file(train_anomalies_path)
+    train_anomalies = anomalies_pb2.Anomalies()
+    train_anomalies.ParseFromString(train_anomalies_bytes)
+    eval_anomalies_bytes = io_utils.read_bytes_file(eval_anomalies_path)
+    eval_anomalies = anomalies_pb2.Anomalies()
+    eval_anomalies.ParseFromString(eval_anomalies_bytes)
+
+    self._assert_equal_anomalies(train_anomalies, expected_anomalies)
+    self._assert_equal_anomalies(eval_anomalies, expected_anomalies)
+
+    # Assert 'test' split is excluded.
+    train_file_path = os.path.join(validation_output.uri, 'Split-test',
+                                   'SchemaDiff.pb')
+    self.assertFalse(fileio.exists(train_file_path))
     # TODO(zhitaoli): Add comparison to expected anomolies.
 
+    self.assertEqual(
+        validation_output.get_json_value_custom_property(
+            executor.ARTIFACT_PROPERTY_BLESSED_KEY
+        ),
+        expected_blessing,
+    )
 
-if __name__ == '__main__':
-  tf.test.main()
+    expected_executor_output = execution_result_pb2.ExecutorOutput(
+        output_artifacts={
+            standard_component_specs.ANOMALIES_KEY: (
+                execution_result_pb2.ExecutorOutput.ArtifactList(
+                    artifacts=[validation_output.mlmd_artifact]))
+        },
+    )
+
+    self.assertEqual(executor_output, expected_executor_output)

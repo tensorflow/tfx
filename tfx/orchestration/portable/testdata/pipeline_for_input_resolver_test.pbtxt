@@ -1,0 +1,333 @@
+# proto-file: tfx/proto/orchestration/pipeline.proto
+# proto-message: Pipeline
+
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "ExampleGen"
+      }
+      id: "my_example_gen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_example_gen"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "output_examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+            }
+          }
+        }
+      }
+      outputs {
+        key: "side_examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+            }
+          }
+        }
+      }
+    }
+    downstream_nodes: "my_trainer"
+    downstream_nodes: "my_transform"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "ExampleGen"
+      }
+      id: "another_example_gen"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "another_example_gen"
+          }
+        }
+      }
+    }
+    outputs {
+      outputs {
+        key: "output_examples"
+        value {
+          artifact_spec {
+            type {
+              name: "Examples"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "Transform"
+      }
+      id: "my_transform"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_transform"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "non_exists"
+        }
+        name {
+          field_value {
+            string_value: "non_exists"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples_1"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_example_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_example_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "output_examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "examples_2"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_example_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_example_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "output_examples"
+          }
+          min_count: 1
+        }
+      }
+    }
+    upstream_nodes: "my_example_gen"
+    downstream_nodes: "my_trainer"
+  }
+}
+nodes {
+  pipeline_node {
+    node_info {
+      type {
+        name: "Trainer"
+      }
+      id: "my_trainer"
+    }
+    contexts {
+      contexts {
+        type {
+          name: "pipeline"
+        }
+        name {
+          field_value {
+            string_value: "my_pipeline"
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "component"
+        }
+        name {
+          field_value {
+            string_value: "my_trainer"
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "examples"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_example_gen"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_example_gen"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "Examples"
+              }
+            }
+            output_key: "output_examples"
+          }
+          min_count: 1
+        }
+      }
+      inputs {
+        key: "transform_graph"
+        value {
+          channels {
+            producer_node_query {
+              id: "my_transform"
+            }
+            context_queries {
+              type {
+                name: "pipeline"
+              }
+              name {
+                field_value {
+                  string_value: "my_pipeline"
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "component"
+              }
+              name {
+                field_value {
+                  string_value: "my_transform"
+                }
+              }
+            }
+            artifact_query {
+              type {
+                name: "TransformGraph"
+              }
+            }
+            output_key: "transform_graph"
+          }
+          min_count: 1
+        }
+      }
+    }
+    upstream_nodes: "my_example_gen"
+    upstream_nodes: "my_transform"
+  }
+}

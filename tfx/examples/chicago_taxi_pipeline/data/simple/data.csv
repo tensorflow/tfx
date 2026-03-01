@@ -1,4 +1,6 @@
 pickup_community_area,fare,trip_start_month,trip_start_hour,trip_start_day,trip_start_timestamp,pickup_latitude,pickup_longitude,dropoff_latitude,dropoff_longitude,trip_miles,pickup_census_tract,dropoff_census_tract,payment_type,company,trip_seconds,dropoff_community_area,tips
+,12.45,5,19,6,1400269500,,,,,0.0,,,Credit Card,Chicago Elite Cab Corp. (Chicago Carriag,0,,0.0
+,0,3,19,5,1362683700,,,,,0,,,Unknown,Chicago Elite Cab Corp.,300,,0
 60,27.05,10,2,3,1380593700,41.836150155,-87.648787952,,,12.6,,,Cash,Taxi Affiliation Services,1380,,0.0
 10,5.85,10,1,2,1382319000,41.985015101,-87.804532006,,,0.0,,,Cash,Taxi Affiliation Services,180,,0.0
 14,16.65,5,7,5,1369897200,41.968069,-87.721559063,,,0.0,,,Cash,Dispatch Taxi Affiliation,1080,,0.0
@@ -14998,4 +15000,4 @@ pickup_community_area,fare,trip_start_month,trip_start_hour,trip_start_day,trip_
 8,3.25,11,16,4,1385568900,41.904935302,-87.649907226,41.904935302,-87.649907226,0.0,,17031842200,Cash,Taxi Affiliation Services,0,8,0.0
 8,4.25,12,13,3,1449579600,41.904935302,-87.649907226,41.904935302,-87.649907226,0.3,,17031842200,Cash,,180,8,0.0
 61,9.85,9,15,6,1410534000,41.80901825,-87.659166599,41.829922304,-87.672502646,3.0,,,Cash,Taxi Affiliation Services,780,59,0.0
-61,5.65,4,14,6,1398436200,41.80901825,-87.659166599,41.817366208,-87.698860797,1.0,,,Cash,Taxi Affiliation Services,300,58,0.0
+8,7.45,7,11,4,1374061500,41.89503345,-87.619710672,,,0.0,17031081401,,Cash,Taxi Affiliation Services,0,,0.0

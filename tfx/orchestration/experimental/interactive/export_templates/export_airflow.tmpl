@@ -1,0 +1,36 @@
+import absl
+import datetime
+from tfx.orchestration.airflow import airflow_dag_runner
+
+{{ notebook_content }}
+
+# Pipeline args for Beam jobs within Components.
+_beam_pipeline_args = [
+    '--direct_running_mode=multi_processing',
+    # 0 means auto-detect based on on the number of CPUs available
+    # during execution time.
+    '--direct_num_workers=0',
+]
+
+# Airflow-specific configs; these will be passed directly to airflow
+_airflow_config = {
+    'schedule_interval': None,
+    'start_date': datetime.datetime(2019, 1, 1),
+}
+
+absl.logging.set_verbosity(absl.logging.INFO)
+
+tfx_pipeline = pipeline.Pipeline(
+    pipeline_name=_pipeline_name,
+    pipeline_root=_pipeline_root,
+    components=components,
+    enable_cache=True,
+    metadata_connection_config=(
+        metadata.sqlite_metadata_connection_config(_metadata_path)),
+    beam_pipeline_args=_beam_pipeline_args,
+    additional_pipeline_args={})
+
+# 'DAG' below needs to be kept for Airflow to detect dag.
+DAG = airflow_dag_runner.AirflowDagRunner(
+    airflow_dag_runner.AirflowPipelineConfig(_airflow_config)).run(
+      tfx_pipeline)

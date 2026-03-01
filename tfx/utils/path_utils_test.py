@@ -13,37 +13,92 @@
 # limitations under the License.
 """Tests for tfx.utils.path_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-# Standard Imports
 
+from absl.testing import parameterized
 import tensorflow as tf
+from tfx.types import standard_artifacts
+from tfx.utils import io_utils
 from tfx.utils import path_utils
+from tfx.utils import path_constants
+
+from ml_metadata.proto import metadata_store_pb2
 
 
-class PathUtilsTest(tf.test.TestCase):
+class PathUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
-  def setUp(self):
-    super(PathUtilsTest, self).setUp()
-    # Create folders based on current Trainer output model directory.
-    self._output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
-    self._eval_model_path = os.path.join(self._output_uri, 'eval_model_dir',
-                                         'MODEL')
-    tf.io.gfile.makedirs(self._eval_model_path)
-    self._serving_model_path = os.path.join(
-        self._output_uri, 'serving_model_dir', 'export', 'taxi', 'MODEL')
-    tf.io.gfile.makedirs(self._serving_model_path)
+  @parameterized.parameters(True, False)
+  def testEstimatorModelPath(self, is_old_artifact):
+    # Create folders based on Estimator based Trainer output model directory,
+    # after Executor performs cleaning.
+    output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
+    eval_model_path = path_utils.eval_model_dir(output_uri, is_old_artifact)
+    eval_model = os.path.join(eval_model_path, 'saved_model.pb')
+    io_utils.write_string_file(eval_model, 'testing')
+    serving_model_path = path_utils.serving_model_dir(output_uri,
+                                                      is_old_artifact)
+    serving_model = os.path.join(eval_model_path, 'saved_model.pb')
+    io_utils.write_string_file(serving_model, 'testing')
 
-  def testModelPath(self):
     # Test retrieving model folder.
-    self.assertEqual(self._eval_model_path,
-                     path_utils.eval_model_path(self._output_uri))
-    self.assertEqual(self._serving_model_path,
-                     path_utils.serving_model_path(self._output_uri))
+    self.assertEqual(eval_model_path,
+                     path_utils.eval_model_path(output_uri, is_old_artifact))
+    self.assertEqual(serving_model_path,
+                     path_utils.serving_model_path(output_uri, is_old_artifact))
 
+    self.assertEqual(
+        eval_model_path,
+        path_utils.get_model_dir_by_type(output_uri, path_constants.TFMA_EVAL,
+                                         is_old_artifact))
+    self.assertEqual(
+        serving_model_path,
+        path_utils.get_model_dir_by_type(output_uri, path_constants.TF_KERAS,
+                                         is_old_artifact))
+    self.assertEqual(
+        serving_model_path,
+        path_utils.get_model_dir_by_type(output_uri, path_constants.TF_GENERIC,
+                                         is_old_artifact))
+    self.assertEqual(
+        serving_model_path,
+        path_utils.get_model_dir_by_type(output_uri,
+                                         path_constants.TF_ESTIMATOR,
+                                         is_old_artifact))
+    self.assertEqual(
+        serving_model_path,
+        path_utils.get_model_dir_by_type(output_uri, path_constants.TF_JS,
+                                         is_old_artifact))
+    self.assertEqual(
+        serving_model_path,
+        path_utils.get_model_dir_by_type(output_uri, path_constants.TF_LITE,
+                                         is_old_artifact))
 
-if __name__ == '__main__':
-  tf.test.main()
+  @parameterized.parameters(True, False)
+  def testKerasModelPath(self, is_old_artifact):
+    # Create folders based on Keras based Trainer output model directory.
+    output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
+    serving_model_path = path_utils.serving_model_dir(output_uri,
+                                                      is_old_artifact)
+    serving_model = os.path.join(serving_model_path, 'saved_model.pb')
+    io_utils.write_string_file(serving_model, 'testing')
+
+    # Test retrieving model folder.
+    self.assertEqual(serving_model_path,
+                     path_utils.eval_model_path(output_uri, is_old_artifact))
+    self.assertEqual(serving_model_path,
+                     path_utils.serving_model_path(output_uri, is_old_artifact))
+
+  def testIsOldModelArtifact(self):
+    artifact = standard_artifacts.Model()
+    self.assertFalse(path_utils.is_old_model_artifact(artifact))
+    artifact.mlmd_artifact.state = metadata_store_pb2.Artifact.LIVE
+    self.assertTrue(path_utils.is_old_model_artifact(artifact))
+
+  def testStampedModelPath(self):
+    self.assertEqual(
+        path_utils.stamped_model_path('/my-artifact'),
+        '/my-artifact/stamped_model')
+
+  def testWarmupFilePath(self):
+    self.assertEqual(
+        path_utils.warmup_file_path('/my-model'),
+        '/my-model/assets.extra/tf_serving_warmup_requests')

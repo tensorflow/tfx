@@ -13,27 +13,20 @@
 # limitations under the License.
 """Generic TFX PrestoExampleGen executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import datetime
+from typing import Any, Dict, Iterable, Tuple
 
 import apache_beam as beam
 import prestodb
-from proto import presto_config_pb2
 import tensorflow as tf
-from typing import Any, Dict, Iterable, List, Text, Tuple
-
-from google.protobuf import json_format
-from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
+from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
 from tfx.proto import example_gen_pb2
+from tfx.utils import proto_utils
 
 
-@beam.typehints.with_input_types(Text)
-@beam.typehints.with_output_types(beam.typehints.Iterable[Tuple[Text, Text,
-                                                                Any]])
+@beam.typehints.with_input_types(str)
+@beam.typehints.with_output_types(beam.typehints.Iterable[Tuple[str, str, Any]])
 class _ReadPrestoDoFn(beam.DoFn):
   """Beam DoFn class that reads from Presto.
 
@@ -44,7 +37,7 @@ class _ReadPrestoDoFn(beam.DoFn):
   def __init__(self, client: prestodb.dbapi.Connection):
     self.cursor = client.cursor()
 
-  def process(self, query: Text) -> Iterable[Tuple[Text, Text, Any]]:
+  def process(self, query: str) -> Iterable[Tuple[str, str, Any]]:
     """Yields rows from query results.
 
     Args:
@@ -133,7 +126,7 @@ def _deserialize_auth_config(
 
 
 def _row_to_example(
-    instance: Iterable[Tuple[Text, Text, Any]]) -> tf.train.Example:
+    instance: Iterable[Tuple[str, str, Any]]) -> tf.train.Example:
   """Convert presto result row to tf example."""
   feature = {}
   for key, data_type, value in instance:
@@ -164,15 +157,12 @@ def _row_to_example(
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
 def _PrestoToExample(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.Artifact]],  # pylint: disable=unused-argument
-    exec_properties: Dict[Text, Any],
-    split_pattern: Text) -> beam.pvalue.PCollection:
+    pipeline: beam.Pipeline, exec_properties: Dict[str, Any],
+    split_pattern: str) -> beam.pvalue.PCollection:
   """Read from Presto and transform to TF examples.
 
   Args:
     pipeline: beam pipeline.
-    input_dict: Input dict from input key to a list of Artifacts.
     exec_properties: A dict of execution properties.
     split_pattern: Split.pattern in Input config, a Presto sql string.
 
@@ -180,7 +170,7 @@ def _PrestoToExample(  # pylint: disable=invalid-name
     PCollection of TF examples.
   """
   conn_config = example_gen_pb2.CustomConfig()
-  json_format.Parse(exec_properties['custom_config'], conn_config)
+  proto_utils.json_to_proto(exec_properties['custom_config'], conn_config)
   presto_config = presto_config_pb2.PrestoConnConfig()
   conn_config.custom_config.Unpack(presto_config)
 

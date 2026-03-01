@@ -13,15 +13,12 @@
 # limitations under the License.
 """Common functionalities used in transform executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from typing import Any, Text, Sequence, Mapping
+import inspect
+import sys
+from typing import Any, Callable, Sequence, Mapping
 
 
-def GetValues(inputs: Mapping[Text, Sequence[Any]],
-              label: Text) -> Sequence[Any]:
+def GetValues(inputs: Mapping[str, Sequence[Any]], label: str) -> Sequence[Any]:
   """Retrieves the value of the given labeled input.
 
   Args:
@@ -42,14 +39,15 @@ def GetValues(inputs: Mapping[Text, Sequence[Any]],
   return values
 
 
-def GetSoleValue(inputs: Mapping[Text, Sequence[Any]], label: Text,
+def GetSoleValue(inputs: Mapping[str, Sequence[Any]],
+                 label: str,
                  strict=True) -> Any:
   """Helper method for retrieving a sole labeled input.
 
   Args:
     inputs: Dict from label to a value list.
     label: Label of the value to retrieve.
-    strict: If true, exact one value should exist for label.
+    strict: If true, exactly one value should exist for label.
 
   Returns:
     A sole labeled value.
@@ -69,3 +67,19 @@ def GetSoleValue(inputs: Mapping[Text, Sequence[Any]], label: Text,
     if not values:
       return None
   return values[0]
+
+
+def FunctionHasArg(fn: Callable, arg_name: str) -> bool:  # pylint: disable=g-bare-generic
+  """Test at runtime if a function's signature contains a certain argument.
+
+  Args:
+    fn: function to be tested.
+    arg_name: Name of the argument to be tested.
+
+  Returns:
+    True if the function signature contains that argument.
+  """
+  if sys.version_info.major == 2:
+    return arg_name in inspect.getargspec(fn).args  # pylint: disable=deprecated-method
+  else:
+    return arg_name in inspect.signature(fn).parameters

@@ -13,56 +13,87 @@
 # limitations under the License.
 """TFX CsvExampleGen component definition."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from typing import Optional, Union
 
-from typing import Optional, Text
-
-from tfx import types
-from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen.csv_example_gen import executor
+from tfx.dsl.components.base import executor_spec
+from tfx.dsl.placeholder import placeholder
+from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 
 
 class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected-access
   """Official TFX CsvExampleGen component.
 
   The csv examplegen component takes csv data, and generates train
-  and eval examples for downsteam components.
+  and eval examples for downstream components.
+
+  The csv examplegen encodes column values to tf.Example int/float/byte feature.
+  For the case when there's missing cells, the csv examplegen uses:
+
+  - tf.train.Feature(`type`_list=tf.train.`type`List(value=[])), when the
+     `type` can be inferred.
+  - tf.train.Feature() when it cannot infer the `type` from the column.
+
+  Note that the type inferring will be per input split. If input isn't a single
+  split, users need to ensure the column types align in each pre-splits.
+
+  For example, given the following csv rows of a split:
+
+  ```
+  header:A,B,C,D
+  row1:  1,,x,0.1
+  row2:  2,,y,0.2
+  row3:  3,,,0.3
+  row4:
+  ```
+
+  The output example will be
+  ```
+  example1: 1(int), empty feature(no type), x(string), 0.1(float)
+  example2: 2(int), empty feature(no type), x(string), 0.2(float)
+  example3: 3(int), empty feature(no type), empty list(string), 0.3(float)
+  ```
+
+  Note that the empty feature is `tf.train.Feature()` while empty list string
+  feature is `tf.train.Feature(bytes_list=tf.train.BytesList(value=[]))`.
+
+  Component `outputs` contains:
+
+   - `examples`: Channel of type [`standard_artifacts.Examples`][tfx.v1.types.standard_artifacts.Examples] for output train
+                 and eval examples.
   """
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
+  EXECUTOR_SPEC = executor_spec.BeamExecutorSpec(executor.Executor)
 
-  def __init__(self,
-               input_base: types.Channel = None,
-               input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None,
-               input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      input_base: Optional[str] = None,
+      input_config: Optional[Union[example_gen_pb2.Input,
+                                   data_types.RuntimeParameter]] = None,
+      output_config: Optional[Union[example_gen_pb2.Output,
+                                    data_types.RuntimeParameter]] = None,
+      range_config: Optional[Union[placeholder.Placeholder,
+                                   range_config_pb2.RangeConfig,
+                                   data_types.RuntimeParameter]] = None):
     """Construct a CsvExampleGen component.
 
     Args:
-      input_base: A Channel of 'ExternalPath' type, which includes one artifact
-        whose uri is an external directory with csv files inside (required).
+      input_base: an external directory containing the CSV files.
       input_config: An example_gen_pb2.Input instance, providing input
         configuration. If unset, the files under input_base will be treated as a
         single split.
       output_config: An example_gen_pb2.Output instance, providing output
         configuration. If unset, default splits will be 'train' and 'eval' with
         size 2:1.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
-        eval examples.
-      input: Forwards compatibility alias for the 'input_base' argument.
-      instance_name: Optional unique instance name. Necessary if multiple
-        CsvExampleGen components are declared in the same pipeline.
+      range_config: An optional range_config_pb2.RangeConfig instance,
+        specifying the range of span values to consider. If unset, driver will
+        default to searching for latest span with no restrictions.
     """
-    super(CsvExampleGen, self).__init__(
+    super().__init__(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        example_artifacts=example_artifacts,
-        input=input,
-        instance_name=instance_name)
+        range_config=range_config)

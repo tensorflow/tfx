@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFX Pusher component definition."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional, Union
 
+from absl import logging
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import executor_spec
 from tfx.components.pusher import executor
+from tfx.dsl.components.base import base_component
+from tfx.dsl.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.proto import pusher_pb2
 from tfx.types import standard_artifacts
-from tfx.types.standard_component_specs import PusherSpec
+from tfx.types import standard_component_specs
+from tfx.utils import json_utils
 
 
 # TODO(b/133845381): Investigate other ways to keep push destination converged.
@@ -32,82 +32,97 @@ class Pusher(base_component.BaseComponent):
   """A TFX component to push validated TensorFlow models to a model serving platform.
 
   The `Pusher` component can be used to push an validated SavedModel from output
-  of the [Trainer component](https://www.tensorflow.org/tfx/guide/trainer) to
+  of the [Trainer component](../../../guide/trainer) to
   [TensorFlow Serving](https://www.tensorflow.org/tfx/serving).  The Pusher
-  will check the validation results from the [ModelValidator
-  component](https://www.tensorflow.org/tfx/guide/model_validator)
+  will check the validation results from the [Evaluator
+  component](../../../guide/evaluator) and [InfraValidator
+  component](../../../guide/infra_validator)
   before deploying the model.  If the model has not been blessed, then the model
   will not be pushed.
 
-  *Note:* The executor for this component can be overriden to enable the model
-  to be pushed to other serving platforms than tf.serving.  The [Cloud AI
-  Platform custom
-  executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/pusher)
-  provides an example how to implement this.
+  !!! Note
+      The executor for this component can be overriden to enable the model
+      to be pushed to other serving platforms than tf.serving.  The [Cloud AI
+      Platform custom executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/pusher)
+      provides an example how to implement this.
 
-  ## Example
-  ```
-    # Checks whether the model passed the validation steps and pushes the model
-    # to a file destination if check passed.
-    pusher = Pusher(
-        model_export=trainer.outputs['output'],
-        model_blessing=model_validator.outputs['blessing'],
-        push_destination=pusher_pb2.PushDestination(
-            filesystem=pusher_pb2.PushDestination.Filesystem(
-                base_directory=serving_model_dir)))
-  ```
+  !!! Example
+      ``` python
+      # Checks whether the model passed the validation steps and pushes the model
+      # to a file destination if check passed.
+      pusher = Pusher(
+          model=trainer.outputs['model'],
+          model_blessing=evaluator.outputs['blessing'],
+          push_destination=proto.PushDestination(
+              filesystem=proto.PushDestination.Filesystem(
+                  base_directory=serving_model_dir,
+              )
+          ),
+      )
+      ```
+
+  Component `outputs` contains:
+
+   - `pushed_model`: Channel of type [`standard_artifacts.PushedModel`][tfx.v1.types.standard_artifacts.PushedModel] with
+                     result of push.
+
+  See [the Pusher guide](../../../guide/pusher) for more
+  details.
   """
 
-  SPEC_CLASS = PusherSpec
+  SPEC_CLASS = standard_component_specs.PusherSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(
       self,
-      model_export: types.Channel = None,
-      model_blessing: types.Channel = None,
-      push_destination: Optional[pusher_pb2.PushDestination] = None,
-      custom_config: Optional[Dict[Text, Any]] = None,
-      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      model_push: Optional[types.Channel] = None,
-      model: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      model: Optional[types.BaseChannel] = None,
+      model_blessing: Optional[types.BaseChannel] = None,
+      infra_blessing: Optional[types.BaseChannel] = None,
+      push_destination: Optional[Union[pusher_pb2.PushDestination,
+                                       data_types.RuntimeParameter]] = None,
+      custom_config: Optional[Dict[str, Any]] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None):
     """Construct a Pusher component.
 
     Args:
-      model_export: A Channel of 'ModelExportPath' type, usually produced by
-        Trainer component. Will be deprecated in the future for the `model`
-        parameter.
-      model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
-        ModelValidator component. _required_
+      model: An optional [BaseChannel][tfx.v1.types.BaseChannel] of type `standard_artifacts.Model`, usually
+        produced by a [Trainer][tfx.v1.components.Trainer] component.
+      model_blessing: An optional [BaseChannel][tfx.v1.types.BaseChannel] of type
+        [`standard_artifacts.ModelBlessing`][tfx.v1.types.standard_artifacts.ModelBlessing],
+        usually produced from an [Evaluator][tfx.v1.components.Evaluator] component.
+      infra_blessing: An optional [BaseChannel][tfx.v1.types.BaseChannel] of type
+        [`standard_artifacts.InfraBlessing`][tfx.v1.types.standard_artifacts.InfraBlessing],
+        usually produced from an [InfraValidator][tfx.v1.components.InfraValidator] component.
       push_destination: A pusher_pb2.PushDestination instance, providing info
         for tensorflow serving to load models. Optional if executor_class
         doesn't require push_destination.
       custom_config: A dict which contains the deployment job parameters to be
-        passed to cloud-based training platforms.  The
-        [Kubeflow
-          example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow.py#L211)
-          contains an example how this can be used by custom executors.
-      custom_executor_spec: Optional custom executor spec.
-      model_push: Optional output 'ModelPushPath' channel with result of push.
-      model: Forwards compatibility alias for the 'model_exports' argument.
-      instance_name: Optional unique instance name. Necessary if multiple Pusher
-        components are declared in the same pipeline.
+        passed to Cloud platforms.
+      custom_executor_spec: Optional custom executor spec. Deprecated (no
+        compatibility guarantee), please customize component directly.
     """
-    model_export = model_export or model
-    model_push = model_push or types.Channel(
-        type=standard_artifacts.PushedModel,
-        artifacts=[standard_artifacts.PushedModel()])
-    if push_destination is None and not custom_executor_spec:
+    pushed_model = types.Channel(type=standard_artifacts.PushedModel)
+    if (push_destination is None and not custom_executor_spec and
+        self.EXECUTOR_SPEC.executor_class == executor.Executor):
       raise ValueError('push_destination is required unless a '
                        'custom_executor_spec is supplied that does not require '
                        'it.')
-    spec = PusherSpec(
-        model_export=model_export,
+    if custom_executor_spec:
+      logging.warning(
+          '`custom_executor_spec` is deprecated. Please customize component directly.'
+      )
+    if model is None and infra_blessing is None:
+      raise ValueError(
+          'Either one of model or infra_blessing channel should be given. '
+          'If infra_blessing is used in place of model, it must have been '
+          'created with InfraValidator with RequestSpec.make_warmup = True. '
+          'This cannot be checked during pipeline construction time but will '
+          'raise runtime error if infra_blessing does not contain a model.')
+    spec = standard_component_specs.PusherSpec(
+        model=model,
         model_blessing=model_blessing,
+        infra_blessing=infra_blessing,
         push_destination=push_destination,
-        custom_config=custom_config,
-        model_push=model_push)
-    super(Pusher, self).__init__(
-        spec=spec,
-        custom_executor_spec=custom_executor_spec,
-        instance_name=instance_name)
+        custom_config=json_utils.dumps(custom_config),
+        pushed_model=pushed_model)
+    super().__init__(spec=spec, custom_executor_spec=custom_executor_spec)
