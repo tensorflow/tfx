@@ -10,19 +10,23 @@ index 71db771..944a4df 100644
 -    strip_prefix = "zetasql-%s" % ZETASQL_COMMIT,
 +    sha256 = "33e03478ef90063e22d1875eb6185d3d7caca2b21ae22572f5d8e85b9654c64c",
 +    strip_prefix = "googlesql-%s" % ZETASQL_COMMIT,
-         urls = ["https://github.com/google/zetasql/archive/%s.tar.gz" % ZETASQL_COMMIT],
-     )
-     diff --git a/tensorflow_data_validation/workspace.bzl b/tensorflow_data_validation/workspace.bzlindex 9f67ea5..8e6c248 100644
+     urls = ["https://github.com/google/zetasql/archive/%s.tar.gz" % ZETASQL_COMMIT],
+ )
+
+diff --git a/tensorflow_data_validation/workspace.bzl b/tensorflow_data_validation/workspace.bzl
+index 9f67ea5..8e6c248 100644
 --- a/tensorflow_data_validation/workspace.bzl
 +++ b/tensorflow_data_validation/workspace.bzl
 @@ -8,12 +8,12 @@ def tf_data_validation_workspace():
+
      git_repository(
          name = "com_github_tensorflow_metadata",
 -        branch = "master",
 +        branch = "51d688ffc0e1b94e6298981df58eecb4ef47ab9a",
-                 remote = "https://github.com/tensorflow/metadata.git",
-             )
-             git_repository(
+         remote = "https://github.com/tensorflow/metadata.git",
+     )
+
+     git_repository(
          name = "com_github_tfx_bsl",
 -        branch = "master",
 +        branch = "ed8aeec4f00680f9e88cd75c85ee60d8aa6789df",
