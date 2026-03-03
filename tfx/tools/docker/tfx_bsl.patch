@@ -1,0 +1,19 @@
+diff --git a/WORKSPACE b/WORKSPACE
+index a837043..312be97 100644
+--- a/WORKSPACE
++++ b/WORKSPACE
+@@ -227,11 +227,12 @@ http_archive(
+     name = "com_google_zetasql",
+     patch_args = ["-p1"],
+     patches = ["//third_party:zetasql.patch"],
+-    sha256 = "1afc2210d4aad371eff0a6bfdd8417ba99e02183a35dff167af2fa6097643f26",
+-    strip_prefix = "zetasql-%s" % ZETASQL_COMMIT,
++    sha256 = "33e03478ef90063e22d1875eb6185d3d7caca2b21ae22572f5d8e85b9654c64c",
++    strip_prefix = "googlesql-%s" % ZETASQL_COMMIT,
+     urls = ["https://github.com/google/zetasql/archive/%s.tar.gz" % ZETASQL_COMMIT],
+ )
+
++
+ load("@com_google_zetasql//bazel:zetasql_deps_step_1.bzl", "zetasql_deps_step_1")
+
+ zetasql_deps_step_1()
