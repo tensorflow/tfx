@@ -28,7 +28,7 @@
       paths for test data, resolving `RuntimeError` issues.
 *   Introduced patches for `tfdv`, `tfx-bsl`, and `tfx` to facilitate
       compilation issues and to resolve dependency conflicts.
-    
+
 ## Dependency Updates
 
 *   Supports Tensorflow | `>=2.17.0,<2.18.0` |
