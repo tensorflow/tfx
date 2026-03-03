@@ -143,7 +143,7 @@ tfx run create --pipeline-name $pipeline_name --endpoint=$endpoint \
 
 Use command `fg` to access the port-forwarding in the background then ctrl-C to
 terminate. You can delete the directory with recorded pipeline outputs using
-`gsutil -m rm -R $output_dir`.
+`gcloud storage rm --recursive $output_dir`.
 
 To clean up all Google Cloud resources used in this project, you can
 [delete the Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects#shutting_down_projects)

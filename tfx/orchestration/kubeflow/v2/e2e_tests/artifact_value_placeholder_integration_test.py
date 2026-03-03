@@ -46,7 +46,7 @@ def _tasks_for_pipeline_with_artifact_value_passing():
             echo "Hello $message" >"$output_data_path"
 
             # Getting data out of the container
-            gsutil cp -r "$output_data_path" "$output_data_uri"
+            gcloud storage cp --recursive "$output_data_path" "$output_data_uri"
           """,
           placeholders.InputValuePlaceholder('message'),
           placeholders.OutputUriPlaceholder('data'),
