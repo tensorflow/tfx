@@ -321,7 +321,7 @@ tensorflow-metadata>=1.16.1
 tensorflow-serving-api==2.17.1
 tensorflow-text==2.17.0
 tensorflow-transform>=1.17.0
-tensorflow_model_analysis>=0.8.0
+tensorflow_model_analysis>=0.48.0
 tensorflowjs==4.17.0
 tensorstore==0.1.66
 termcolor==2.5.0
