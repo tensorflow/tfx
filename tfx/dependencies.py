@@ -58,7 +58,7 @@ def make_pipeline_sdk_required_install_packages():
         "ml-metadata"
         + select_constraint(
             # LINT.IfChange
-            default=">=1.16.0,<1.17.0",
+            default=">=1.16.0,<1.19.0",
             # LINT.ThenChange(tfx/workspace.bzl)
             nightly=">=1.17.0.dev",
             git_master="@git+https://github.com/google/ml-metadata@master",
@@ -90,7 +90,7 @@ def make_required_install_packages():
         "keras-tuner>=1.0.4,<2,!=1.4.0,!=1.4.1",
         "kubernetes>=10.0.1,<27",
         "numpy>=1.16,<2",
-        "pyarrow>=10,<11",
+        "pyarrow>=10",
         # TODO: b/358471141 - Orjson 3.10.7 breaks TFX OSS tests.
         # Unpin once the issue with installation is resolved.
         "orjson!=3.10.7",
@@ -110,26 +110,26 @@ def make_required_install_packages():
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
-            default=">=1.16.1,<1.17.0",
+            default=">=1.16.1,<1.18.0",
             nightly=">=1.16.1.dev",
             git_master=("@git+https://github.com/tensorflow/data-validation@master"),
         ),
         "tensorflow-model-analysis"
         + select_constraint(
-            default=">=0.47.0,<0.48.0",
+            default=">=0.47.0,<0.49.0",
             nightly=">=0.47.0.dev",
             git_master="@git+https://github.com/tensorflow/model-analysis@master",
         ),
         "tensorflow-serving-api>=2.16,<2.17",
         "tensorflow-transform"
         + select_constraint(
-            default=">=1.16.0,<1.17.0",
+            default=">=1.16.0,<1.19.0",
             nightly=">=1.16.0.dev",
             git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
-            default=">=1.16.1,<1.17.0",
+            default=">=1.16.1,<1.18.0",
             nightly=">=1.16.0.dev",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
