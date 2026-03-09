@@ -23,7 +23,7 @@ from tfx.types.experimental import simple_artifacts
 import pytest
 
 
-def _tasks_for_pipeline_with_artifact_value_passing():
+def _tasks_for_pipeline_with_artifact_value_passing(container_image: str):
   """A simple pipeline with artifact consumed as value."""
   producer_component = tfx.dsl.experimental.create_container_component(
       name='Produce',
@@ -33,7 +33,7 @@ def _tasks_for_pipeline_with_artifact_value_passing():
       parameters={
           'message': str,
       },
-      image='gcr.io/ml-pipeline/mirrors/cloud-sdk',
+      image=container_image,
       command=[
           'sh',
           '-exc',
@@ -58,7 +58,7 @@ def _tasks_for_pipeline_with_artifact_value_passing():
       inputs={
           'text': simple_artifacts.File,
       },
-      image='gcr.io/ml-pipeline/mirrors/cloud-sdk',
+      image=container_image,
       command=[
           'echo',
           placeholders.InputValuePlaceholder('text'),
@@ -81,7 +81,8 @@ class ArtifactValuePlaceholderIntegrationTest(
       dict(testcase_name='use_pipeline_spec_2_0', use_pipeline_spec_2_1=False),
   )
   def testArtifactValuePlaceholders(self, use_pipeline_spec_2_1):
-    component_instances = (_tasks_for_pipeline_with_artifact_value_passing())
+    component_instances = (_tasks_for_pipeline_with_artifact_value_passing(
+        self.container_image))
 
     pipeline_name = 'kubeflow-v2-test-artifact-value-{}'.format(
         test_utils.random_id())

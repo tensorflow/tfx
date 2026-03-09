@@ -58,9 +58,9 @@ def make_pipeline_sdk_required_install_packages():
         "ml-metadata"
         + select_constraint(
             # LINT.IfChange
-            default=">=1.16.0,<1.17.0",
+            default=">=1.17.0,<1.18.0",
             # LINT.ThenChange(tfx/workspace.bzl)
-            nightly=">=1.17.0.dev",
+            nightly=">=1.17.0",
             git_master="@git+https://github.com/google/ml-metadata@master",
         ),
         "packaging>=22",
@@ -105,32 +105,32 @@ def make_required_install_packages():
         # Pip might stuck in a TF 1.15 dependency although there is a working
         # dependency set with TF 2.x without the sync.
         # pylint: disable=line-too-long
-        "tensorflow" + select_constraint(">=2.16.0,<2.17"),
+        "tensorflow" + select_constraint(">=2.17.0,<2.18"),
         # pylint: enable=line-too-long
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
-            default=">=1.16.1,<1.17.0",
-            nightly=">=1.16.1.dev",
+            default=">=1.17.0,<1.18.0",
+            nightly=">=1.17.0",
             git_master=("@git+https://github.com/tensorflow/data-validation@master"),
         ),
         "tensorflow-model-analysis"
         + select_constraint(
-            default=">=0.47.0,<0.48.0",
-            nightly=">=0.47.0.dev",
+            default=">=0.48.0,<0.49.0",
+            nightly=">=0.48.0",
             git_master="@git+https://github.com/tensorflow/model-analysis@master",
         ),
-        "tensorflow-serving-api>=2.16,<2.17",
+        "tensorflow-serving-api>=2.17,<2.18",
         "tensorflow-transform"
         + select_constraint(
-            default=">=1.16.0,<1.17.0",
-            nightly=">=1.16.0.dev",
+            default=">=1.17.0,<1.18.0",
+            nightly=">=1.17.0",
             git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
-            default=">=1.16.1,<1.17.0",
-            nightly=">=1.16.0.dev",
+            default=">=1.17.1,<1.18.0",
+            nightly=">=1.17.1",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
     ]
@@ -144,11 +144,11 @@ def make_extra_packages_airflow():
 
 
 def make_extra_packages_kfp():
-    """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
-    return [
-        "kfp>=2",
-        "kfp-pipeline-spec>=0.2.2",
-    ]
+  """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
+  return [
+      "kfp>=2.6.0,<2.7.0",
+      "kfp-pipeline-spec>=0.3.0,<0.4.0",
+  ]
 
 
 def make_extra_packages_test():
@@ -168,8 +168,8 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
     # Packages needed for tfx docker image.
     return [
-        "kfp>=2",
-        "kfp-pipeline-spec>=0.2.2",
+        "kfp>=2.6.0,<2.7.0",
+        "kfp-pipeline-spec>=0.3.0,<0.4.0",
         "mmh>=2.2,<3",
         "python-snappy>=0.7",
         # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
@@ -189,7 +189,7 @@ def make_extra_packages_tflite_support():
     # Required for tfx/examples/cifar10
     return [
         "flatbuffers>=1.12",
-        "tflite-support>=0.4.3,<0.4.5",
+
     ]
 
 
@@ -199,8 +199,8 @@ def make_extra_packages_tf_ranking():
         "tensorflow-ranking>=0.5,<0.6",
         "struct2tensor"
         + select_constraint(
-            default=">=0.47.0,<0.48.0",
-            nightly=">=0.47.0.dev",
+            default=">=0.48.0,<0.49.0",
+            nightly=">=0.48.0",
             git_master="@git+https://github.com/google/struct2tensor@master",
         ),
     ]
@@ -211,7 +211,7 @@ def make_extra_packages_tfdf():
     # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
     return [
         # NOTE: TFDF 1.0.1 is only compatible with TF 2.10.x.
-        "tensorflow-decision-forests>=1.8.1,<2",
+        "tensorflow-decision-forests>=1.10.1,<2",
     ]
 
 
