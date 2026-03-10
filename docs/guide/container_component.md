@@ -70,8 +70,8 @@ grep_component = tfx.dsl.components.create_container_component(
     parameters={
         'pattern': str,
     },
-    # The component code uses gsutil to upload the data to Google Cloud Storage, so the
-    # container image needs to have gsutil installed and configured.
+    # The component code uses gcloud storage to upload the data to Google Cloud Storage, so the
+    # container image needs to have gcloud storage installed and configured.
     image='google/cloud-sdk:278.0.0',
     command=[
         'sh', '-exc',
@@ -83,13 +83,13 @@ grep_component = tfx.dsl.components.create_container_component(
           filtered_text_path=$(mktemp)
 
           # Getting data into the container
-          gsutil cp "$text_uri" "$text_path"
+          gcloud storage cp "$text_uri" "$text_path"
 
           # Running the main code
           grep "$pattern" "$text_path" >"$filtered_text_path"
 
           # Getting data out of the container
-          gsutil cp "$filtered_text_path" "$filtered_text_uri"
+          gcloud storage cp "$filtered_text_path" "$filtered_text_uri"
         ''',
         '--pattern', tfx.dsl.placeholders.InputValuePlaceholder('pattern'),
         '--text', tfx.dsl.placeholders.InputUriPlaceholder('text'),
