@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Check out the repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.10'
 
@@ -35,7 +35,7 @@ jobs:
         twine check wheelhouse/*
 
     - name: Upload sdist
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: sdist
         path: ./wheelhouse/*.tar.gz
@@ -53,10 +53,10 @@ jobs:
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     steps:
     - name: Check out the repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.10'
 
@@ -98,7 +98,7 @@ jobs:
         twine check wheelhouse/*
 
     - name: Upload wheels
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: wheels-${{ matrix.python-version }}-${{ matrix.os }}
         path: ./wheelhouse/*.whl
@@ -115,7 +115,7 @@ jobs:
       id-token: write
     steps:
       - name: Retrieve wheels and sdist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           merge-multiple: true
           path: wheels/
