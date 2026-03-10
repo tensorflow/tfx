@@ -95,9 +95,8 @@ def _create_proto_instance_from_name(
     message_name: str, pool: descriptor_pool.DescriptorPool) -> ProtoMessage:
   """Creates a protobuf message instance from a given message name."""
   message_descriptor = pool.FindMessageTypeByName(message_name)
-  factory = message_factory.MessageFactory(pool)
-  message_type = factory.GetPrototype(message_descriptor)
-  return message_type()
+  message_class = message_factory.GetMessageClass(message_descriptor)
+  return message_class()
 
 
 def get_pool_with_descriptors(
