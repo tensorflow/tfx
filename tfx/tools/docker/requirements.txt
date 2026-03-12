@@ -215,7 +215,7 @@ opt_einsum==3.4.0
 optax==0.2.2
 orbax-checkpoint==0.5.16
 ordered-set==4.1.0
-orjson==3.10.6
+orjson==3.11.6
 overrides==7.7.0
 packaging==23.2
 pandas==1.5.3
