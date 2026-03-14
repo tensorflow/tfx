@@ -252,7 +252,7 @@ pydot==1.4.2
 pyfarmhash==0.3.2
 Pygments==2.18.0
 pyjsparser==2.7.1
-PyJWT==2.9.0
+PyJWT==2.12.0
 pymongo==4.10.1
 pyparsing==3.1.4
 pytest==8.0.0
