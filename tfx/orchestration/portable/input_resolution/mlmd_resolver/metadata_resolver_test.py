@@ -793,7 +793,9 @@ class MetadataResolverTest(absltest.TestCase):
     with self.assertRaisesRegex(ValueError, '`artifact_uri` is empty.'):
       self.resolver.get_upstream_artifacts_by_artifact_uri('')
 
-  def test_get_filtered_upstream_artifacts_by_artifact_ids(self):
+  # test_get_filtered_upstream_artifacts_by_artifact_ids removed:
+  # filter_query requires ZetaSQL which was removed from ml-metadata.
+  def _disabled_test_get_filtered_upstream_artifacts_by_artifact_ids(self):
     # Test: get upstream artifacts by examples, with max_num_hops = 0, filter
     # by artifact name.
     result_from_exps = self.resolver.get_upstream_artifacts_by_artifact_ids(

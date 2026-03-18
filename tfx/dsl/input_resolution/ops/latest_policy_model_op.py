@@ -23,7 +23,6 @@ from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver
 from tfx.orchestration.portable.mlmd import event_lib
-from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.types import artifact_utils
 from tfx.types import external_artifact_utils
 from tfx.utils import typing_utils
@@ -423,27 +422,12 @@ class LatestPolicyModel(
     # need to deduplicate the Model artifacts.
     deduped_models, model_artifact_ids = _dedpupe_model_artifacts(models)
 
-    downstream_artifact_type_names_filter_query = q.to_sql_string([
+    # The set of valid downstream artifact type names.
+    _downstream_type_names = {
         ops_utils.MODEL_BLESSING_TYPE_NAME,
         ops_utils.MODEL_INFRA_BLESSSING_TYPE_NAME,
         ops_utils.MODEL_PUSH_TYPE_NAME,
-    ])
-    input_child_artifact_ids_filter_query = q.to_sql_string(
-        list(input_child_artifact_ids)
-    )
-
-    artifact_states_filter_query = (
-        ops_utils.get_valid_artifact_states_filter_query(_VALID_ARTIFACT_STATES)
-    )
-    filter_query = (
-        f'type IN {downstream_artifact_type_names_filter_query} AND '
-        f'{artifact_states_filter_query}'
-    )
-
-    if input_child_artifact_ids and specifies_child_artifacts:
-      filter_query = (
-          f'id IN {input_child_artifact_ids_filter_query} AND {filter_query}'
-      )
+    }
 
     if self.policy == Policy.LATEST_PUSHED:
       event_input_key = ops_utils.MODEL_EXPORT_KEY
@@ -485,11 +469,12 @@ class LatestPolicyModel(
           id_index : id_index + ops_utils.BATCH_SIZE
       ]
       # Set `max_num_hops` to 50, which should be enough for this use case.
+      # filter_query is not used because ZetaSQL was removed from ml-metadata;
+      # type, state, and ID filtering is done in Python below.
       batch_downstream_artifacts_and_types_by_model_identifier = (
           mlmd_resolver.get_downstream_artifacts_by_artifacts(
               batch_model_artifacts,
               max_num_hops=ops_utils.LATEST_POLICY_MODEL_OP_MAX_NUM_HOPS,
-              filter_query=filter_query,
               event_filter=event_filter,
           )
       )
@@ -499,6 +484,19 @@ class LatestPolicyModel(
           artifacts_and_types,
       ) in batch_downstream_artifacts_and_types_by_model_identifier.items():
         for downstream_artifact, artifact_type in artifacts_and_types:
+          # Filter by downstream artifact type.
+          if artifact_type.name not in _downstream_type_names:
+            continue
+          # Filter by artifact state.
+          if downstream_artifact.state not in _VALID_ARTIFACT_STATES:
+            continue
+          # Filter by explicit child artifact IDs if specified.
+          if (
+              input_child_artifact_ids
+              and specifies_child_artifacts
+              and downstream_artifact.id not in input_child_artifact_ids
+          ):
+            continue
           artifact_type_by_name[artifact_type.name] = artifact_type
           model_relations_by_model_identifier[
               model_identifier

@@ -51,53 +51,55 @@ class Siblings(
       raise ValueError('Siblings ResolverOp does not support batch queries.')
     root_artifact = input_list[0]
 
-    artifact_states_filter_query = (
-        ops_utils.get_valid_artifact_states_filter_query(_VALID_ARTIFACT_STATES)
+    # Check that the root artifact is in a valid state.
+    if root_artifact.mlmd_artifact.state not in _VALID_ARTIFACT_STATES:
+      return {}
+
+    # Find the execution that produced the root artifact (OUTPUT event).
+    root_events = self.context.store.get_events_by_artifact_ids(
+        [root_artifact.id]
     )
-    lineage_graph = self.context.store.get_lineage_subgraph(
-        query_options=metadata_store_pb2.LineageSubgraphQueryOptions(
-            starting_artifacts=(
-                metadata_store_pb2.LineageSubgraphQueryOptions.StartingNodes(
-                    filter_query=(
-                        f'id = {root_artifact.id} AND '
-                        f'{artifact_states_filter_query}'
-                    ),
-                )
-            ),
-            ending_executions=(
-                metadata_store_pb2.LineageSubgraphQueryOptions.EndingNodes(
-                    # NOTE: This query assumes that an artifact will never be
-                    # the input of an execution and the output of another (or
-                    # the same) execution. This is always the case in Tflex,
-                    # because the orchestrator produces new output artifacts
-                    # for every execution.
-                    filter_query=(
-                        f'events_0.artifact_id = {root_artifact.id} AND'
-                        ' events_0.type = INPUT'
-                    )
-                )
-            ),
-            max_num_hops=2,
-            direction=metadata_store_pb2.LineageSubgraphQueryOptions.BIDIRECTIONAL,
-        ),
-        field_mask_paths=[
-            'artifacts',
-            'artifact_types',
-            'events',
-        ],
+    producing_execution_ids = [
+        e.execution_id
+        for e in root_events
+        if event_lib.is_valid_output_event(e)
+    ]
+    if not producing_execution_ids:
+      return {ops_utils.ROOT_ARTIFACT_KEY: [root_artifact]}
+
+    # Get all events for those executions and keep only output events.
+    all_execution_events = self.context.store.get_events_by_execution_ids(
+        producing_execution_ids
     )
+    output_events = [
+        e for e in all_execution_events if event_lib.is_valid_output_event(e)
+    ]
+
+    # Fetch the artifacts and filter to LIVE state only.
+    sibling_artifact_ids = list({e.artifact_id for e in output_events})
+    sibling_artifacts = self.context.store.get_artifacts_by_id(
+        sibling_artifact_ids
+    )
+    live_artifact_ids = {
+        a.id
+        for a in sibling_artifacts
+        if a.state in _VALID_ARTIFACT_STATES
+    }
+    output_events = [
+        e for e in output_events if e.artifact_id in live_artifact_ids
+    ]
+    artifact_type_ids = list({a.type_id for a in sibling_artifacts})
+    artifact_types = self.context.store.get_artifact_types_by_id(
+        artifact_type_ids
+    )
+    artifact_by_id = {a.id: a for a in sibling_artifacts}
+    artifact_type_by_id = {t.id: t for t in artifact_types}
 
     if not self.output_keys:
-      # Find all output keys.
+      # Find all output keys, excluding the key(s) associated with root artifact.
       output_keys = set()
-      for event in lineage_graph.events:
-        if (
-            event_lib.is_valid_output_event(event)
-            # We exclude output keys associated with the root artifact. This
-            # ensures the root artifact will only be associated with the key
-            # "root_artifact" in the returned dictionary.
-            and event.artifact_id != root_artifact.id
-        ):
+      for event in output_events:
+        if event.artifact_id != root_artifact.id:
           keys_and_indexes = event_lib._parse_path(event)  # pylint: disable=protected-access
           for key, _ in keys_and_indexes:
             output_keys.add(key)
@@ -112,12 +114,7 @@ class Siblings(
     for output_key in self.output_keys:
       result[output_key] = []
 
-    # Get output Artifact IDs associated with each output key.
-    artifact_by_id = {a.id: a for a in lineage_graph.artifacts}
-    artifact_type_by_id = {at.id: at for at in lineage_graph.artifact_types}
-    for event in lineage_graph.events:
-      if not event_lib.is_valid_output_event(event):
-        continue
+    for event in output_events:
       for output_key in self.output_keys:
         if event_lib.contains_key(event, output_key):
           artifact = artifact_by_id[event.artifact_id]
