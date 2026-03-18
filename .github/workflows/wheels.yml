@@ -7,7 +7,7 @@ on:
     types: [published]
 
 env:
-  USE_BAZEL_VERSION: "6.5.0"
+  USE_BAZEL_VERSION: "7.4.1"
 
 jobs:
   build_sdist:

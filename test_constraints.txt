@@ -22,7 +22,7 @@ alembic==1.13.3
 annotated-types==0.7.0
 anyio==4.6.0
 apache-airflow==2.10.3
-apache-beam==2.50.0
+apache-beam>=2.47
 apispec==6.6.1
 argcomplete==3.5.1
 argon2-cffi==23.1.0
@@ -192,7 +192,7 @@ mdurl==0.1.2
 methodtools==0.4.7
 mistune==3.0.2
 ml-dtypes==0.3.2
-ml-metadata>=1.17.1
+ml-metadata-czgdp1807>=1.16.0
 mmh==2.2
 more-itertools==10.5.0
 msgpack==1.1.0
