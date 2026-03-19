@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.dsl.input_resolution.ops.span_driven_evaluator_inputs_op."""
+import unittest
 from typing import List, Optional
 
 
@@ -116,6 +117,17 @@ class SpanDrivenEvaluatorInputsOpTest(
     for i, model in enumerate(self.models):
       self.train_on_examples(model, self.examples[i : i + 2], transform_graph)
 
+  # The tests below are disabled because SpanDrivenEvaluatorInputs calls
+  # training_range(), which reaches metadata_resolver.get_lineage_subgraph()
+  # using filter_query in LineageSubgraphQueryOptions.StartingNodes to find
+  # starting artifacts by ID. ZetaSQL (which powers filter_query) was removed
+  # from ml-metadata v1.18.0. A custom implementation in metadata_resolver
+  # (e.g. get_artifacts_by_id for StartingNodes) is needed before re-enabling.
+  @unittest.skip(
+          'filter_query in LineageSubgraphQueryOptions.StartingNodes requires'
+          ' ZetaSQL, which was removed from ml-metadata v1.18.0. A custom'
+          ' implementation in metadata_resolver is needed before re-enabling.'
+  )
   def testSpanDrivenEvaluatorInputs_InvalidArguments_RaisesInvalidArgument(
       self,
   ):
@@ -181,6 +193,11 @@ class SpanDrivenEvaluatorInputsOpTest(
       self._span_driven_evaluator(self.models, [])
       self._span_driven_evaluator([], self.examples)
 
+  @unittest.skip(
+      'filter_query in LineageSubgraphQueryOptions.StartingNodes requires'
+      ' ZetaSQL, which was removed from ml-metadata v1.18.0. A custom'
+      ' implementation in metadata_resolver is needed before re-enabling.'
+  )
   def testSpanDrivenEvaluatorInputs_NoArguments(self):
     actual = self._span_driven_evaluator(
         self.models,
@@ -233,6 +250,11 @@ class SpanDrivenEvaluatorInputsOpTest(
           self.examples[:5],
       )
 
+  @unittest.skip(
+      'filter_query in LineageSubgraphQueryOptions.StartingNodes requires'
+      ' ZetaSQL, which was removed from ml-metadata v1.18.0. A custom'
+      ' implementation in metadata_resolver is needed before re-enabling.'
+  )
   def testSpanDrivenEvaluatorInputs_WaitSpansBeforeEval(self):
     actual = self._span_driven_evaluator(
         self.models,
@@ -319,6 +341,11 @@ class SpanDrivenEvaluatorInputsOpTest(
           wait_spans_before_eval=50,
       )
 
+  @unittest.skip(
+      'filter_query in LineageSubgraphQueryOptions.StartingNodes requires'
+      ' ZetaSQL, which was removed from ml-metadata v1.18.0. A custom'
+      ' implementation in metadata_resolver is needed before re-enabling.'
+  )
   def testSpanDrivenEvaluatorInputs_AdditionalSpansPerEval(self):
     actual = self._span_driven_evaluator(
         self.models,
@@ -391,6 +418,11 @@ class SpanDrivenEvaluatorInputsOpTest(
           additional_spans_per_eval=50,
       )
 
+  @unittest.skip(
+      'filter_query in LineageSubgraphQueryOptions.StartingNodes requires'
+      ' ZetaSQL, which was removed from ml-metadata v1.18.0. A custom'
+      ' implementation in metadata_resolver is needed before re-enabling.'
+  )
   def testSpanDrivenEvaluatorInputs_EvaluationTrainingOffset(self):
     actual = self._span_driven_evaluator(
         self.models,
@@ -492,6 +524,11 @@ class SpanDrivenEvaluatorInputsOpTest(
           evaluation_training_offset=50,
       )
 
+  @unittest.skip(
+      'filter_query in LineageSubgraphQueryOptions.StartingNodes requires'
+      ' ZetaSQL, which was removed from ml-metadata v1.18.0. A custom'
+      ' implementation in metadata_resolver is needed before re-enabling.'
+  )
   def testSpanDrivenEvaluatorInputs_StartSpanNumber(self):
     actual = self._span_driven_evaluator(
         self.models,
@@ -539,6 +576,11 @@ class SpanDrivenEvaluatorInputsOpTest(
           start_span_number=50,
       )
 
+  @unittest.skip(
+      'filter_query in LineageSubgraphQueryOptions.StartingNodes requires'
+      ' ZetaSQL, which was removed from ml-metadata v1.18.0. A custom'
+      ' implementation in metadata_resolver is needed before re-enabling.'
+  )
   def testSpanDrivenEvaluatorInputs_MultipleVersions(self):
     examples_3_2 = self.prepare_tfx_artifact(
         test_utils.Examples, properties={'span': 3, 'version': 2}
@@ -559,6 +601,11 @@ class SpanDrivenEvaluatorInputsOpTest(
     }
     self.assertArtifactMapsEqual(actual, expected)
 
+  @unittest.skip(
+          'filter_query in LineageSubgraphQueryOptions.StartingNodes requires'
+          ' ZetaSQL, which was removed from ml-metadata v1.18.0. A custom'
+          ' implementation in metadata_resolver is needed before re-enabling.'
+  )
   def testSpanDrivenEvaluatorInputs_AllArguments(self):
     # Evaluates the model on the next 3 day rolling window.
     # [start_span, end_span] is [9 - 1 - 3, 9 - 1] = [5, 8]. max_span is
