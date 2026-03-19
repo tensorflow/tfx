@@ -20,7 +20,6 @@ from tfx import types
 from tfx.orchestration.portable.input_resolution import exceptions
 from tfx.utils import typing_utils
 
-from ml_metadata.proto import metadata_store_pb2
 
 
 # Maps from "span" and "version" to PropertyType.INT. Many ResolverOps require
@@ -209,21 +208,21 @@ def filter_artifacts_by_span(
     # Recursively resolve nested key attributes like
     # 'mlmd_artifact.create_time_since_epoch' to the form
     # getattr(getattr(artifact, 'mlmd_artifact'), 'create_time_since_epoch')
-    key = lambda a: (
-        tuple(
-            functools.reduce(getattr, k.split('.'), a)
+      def key(artifact):
+        return tuple(
+            functools.reduce(getattr, k.split('.'), artifact)
             for k in version_sort_keys
         )
-    )
   else:
     # span_descending only applies to sorting by span, but version should
     # always be sorted in ascending order. By default, latest version is defined
     # as the largest version and ties are broken by create_time and  id.
-    key = lambda a: (  # pylint: disable=g-long-lambda
-        a.version,
-        a.mlmd_artifact.create_time_since_epoch,
-        a.id,
-    )
+      def key(artifact):
+        return (
+            artifact.version,
+            artifact.mlmd_artifact.create_time_since_epoch,
+            artifact.id,
+        )
 
   result = []
   for span in sorted(spans):
