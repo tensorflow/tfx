@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Integration tests for metadata resolver."""
+import unittest
 from typing import Dict, List
 from absl.testing import absltest
 from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver
@@ -392,7 +393,10 @@ class MetadataResolverTest(absltest.TestCase):
 
   # test_get_filtered_downstream_artifacts_by_artifact_ids removed:
   # filter_query requires ZetaSQL which was removed from ml-metadata.
-  def _disabled_test_get_filtered_downstream_artifacts_by_artifact_ids(self):
+  @unittest.skip(
+      'filter_query requires ZetaSQL which was removed from ml-metadata.'
+  )
+  def test_get_filtered_downstream_artifacts_by_artifact_ids(self):
     # Disabled: filter_query requires ZetaSQL dependency which was removed from ml-metadata.
     # Test: get downstream artifacts by examples, with max_num_hops = 0, filter
     # by artifact name.
@@ -795,7 +799,10 @@ class MetadataResolverTest(absltest.TestCase):
 
   # test_get_filtered_upstream_artifacts_by_artifact_ids removed:
   # filter_query requires ZetaSQL which was removed from ml-metadata.
-  def _disabled_test_get_filtered_upstream_artifacts_by_artifact_ids(self):
+  @unittest.skip(
+      'filter_query requires ZetaSQL which was removed from ml-metadata.'
+  )
+  def test_get_filtered_upstream_artifacts_by_artifact_ids(self):
     # Test: get upstream artifacts by examples, with max_num_hops = 0, filter
     # by artifact name.
     result_from_exps = self.resolver.get_upstream_artifacts_by_artifact_ids(
