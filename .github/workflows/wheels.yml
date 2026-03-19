@@ -47,8 +47,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu]
-        python-version: ['cp39', 'cp310']
+        include:
+          - os: ubuntu
+            python-version: 'cp39'
+          - os: ubuntu
+            python-version: 'cp310'
+          - os: macos
+            python-version: 'cp39'
 
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     steps:
