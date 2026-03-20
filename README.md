@@ -115,6 +115,113 @@ tfx                                                                       | Pyth
 [0.13.0](https://github.com/tensorflow/tfx/blob/0.13.0/RELEASE.md)        | >=2.7,<3 or >=3.5,<4 | 2.12.0           | 0.13.2      | n/a     | 1.13.1            | 0.13.1                     | 0.13.0              | 0.13.2                    | 1.13.0                 | 0.13.0               | n/a
 [0.12.0](https://github.com/tensorflow/tfx/blob/0.12.0/RELEASE.md)        | >=2.7,<3             | 2.10.0           | 0.13.2      | n/a     | 1.12.0            | 0.12.0                     | 0.12.1              | 0.12.1                    | 1.12.0                 | 0.12.0               | n/a
 
+## Releasing Wheels to PyPI
+
+### Setup (Required for both release methods)
+
+Before releasing, you need to set up the PyPI environment and token once:
+
+**Step 1: Create PyPI environment**
+
+Create a new environment named `pypi` in the GitHub repository:
+- Go to https://github.com/tensorflow/tfx/settings/environments/new
+- Name it `pypi`
+- Click "Configure environment"
+
+**Step 2: Add PYPI_TOKEN secret**
+
+Add your PyPI token to the `pypi` environment:
+- In the `pypi` environment settings, scroll to "Environment secrets"
+- Click "Add secret"
+- Name: `PYPI_TOKEN` (use this exact name)
+- Value: Your PyPI API token
+- Click "Add secret"
+
+**Step 3: Commit and push your release branch**
+
+Ensure your release branch has the correct version set in `tfx/version.py`, then:
+
+```bash
+git add tfx/version.py
+git commit -m "Prepare release vX.Y.Z"
+git push origin your-release-branch
+```
+
+### Pre-release Checks (Required)
+
+Before triggering any release workflow, complete all of the following:
+
+1. Make sure CI jobs are all green on your release branch.
+
+2. Run Vertex ML pipeline tests and confirm they are all passing:
+
+```bash
+export image_repo="gcr.io/tfx-testing/ai-platform-pipelines-e2e-test"
+export image_tag="$(date +%s)-$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 10)"
+export image_name="${image_repo}:${image_tag}"
+export KFP_E2E_SRC="$(pwd)"
+export KFP_E2E_GCP_PROJECT_ID=tfx-testing
+export KFP_E2E_GCP_REGION=us-central1
+export KFP_E2E_BASE_CONTAINER_IMAGE="${image_name}"
+export KFP_E2E_BUCKET_NAME="tfx-testing-bucket"
+export KFP_E2E_TEST_DATA_ROOT="$(pwd)/tfx/components/testdata"
+export CAIP_E2E_DATA_BUCKET="tfx-testing-sample-data"
+export CAIP_TRAINING_COMPONENT_TEST_IMAGE="gcr.io/tfx-testing/caip-training:tfx-test"
+gcloud config set project "${KFP_E2E_GCP_PROJECT_ID}"
+
+export MY_BASE_IMAGE="gcr.io/tfx-oss-public/tfx_base:py310-20260316"
+export MY_BEAM_VERSION="2.50.0"
+
+TFX_DEPENDENCY_SELECTOR=DEFAULT DOCKER_IMAGE_REPO="${image_repo}" DOCKER_IMAGE_TAG="${image_tag}" tfx/tools/docker/build_docker_image.sh --build-arg BASE_IMAGE="${MY_BASE_IMAGE}" --build-arg BEAM_VERSION="${MY_BEAM_VERSION}" --no-cache
+
+docker inspect "${image_name}"
+docker push "${image_name}"
+
+pytest \
+    tfx/experimental/templates/taxi/e2e_tests/vertex_e2e_test.py \
+    tfx/tools/cli/handler/vertex_handler_test.py \
+    tfx/orchestration/kubeflow/v2
+```
+
+3. Verify test runs in Vertex AI Pipelines:
+- https://console.cloud.google.com/vertex-ai/pipelines/runs?project=tfx-testing
+- You must have access to this project and URL to complete release validation.
+
+4. Review the security scan report and confirm the vulnerability count satisfies release requirements for the branch/release context. This check is subjective and should be approved by the release owner based on severity, exploitability, and risk acceptance.
+
+### Part 1: Releasing via `workflow_dispatch`
+
+This method allows you to manually trigger a release from any branch without creating a GitHub release.
+
+**Steps** (after completing setup and pre-release checks above):
+
+1. Navigate to the GitHub Actions page: https://github.com/tensorflow/tfx/actions
+2. Find and select the `Build Wheels & Publish to PyPI` workflow: https://github.com/tensorflow/tfx/actions/workflows/wheels.yml
+3. Click the "Run workflow" dropdown button.
+4. Select your release branch from the dropdown menu.
+5. Click "Run workflow".
+
+The workflow will build wheels for all supported Python versions and automatically upload them to PyPI.
+
+### Part 2: Releasing via GitHub Release
+
+This method creates a formal GitHub release with a tag, which automatically triggers the build and upload workflow.
+
+**Steps** (after completing setup and pre-release checks above):
+
+1. Go to the Releases tab: https://github.com/tensorflow/tfx/releases
+2. Click the `Draft new release` button (you'll be redirected to https://github.com/tensorflow/tfx/releases/new)
+3. Click the `Choose a tag`/`Select tag` button and create a new tag for your release (e.g., `v1.18.0`)
+4. Click the `Target` dropdown and select your release branch
+5. Fill in the **Release title** and **Release notes** sections
+6. Choose the release type:
+	 - Check `Set as a pre-release` if this is a beta/test release
+	 - Leave unchecked for `Set as the latest release` for stable releases
+7. Click the `Publish release` button
+8. Verify the workflow is running by going to the Actions workflow page: https://github.com/tensorflow/tfx/actions/workflows/wheels.yml
+
+The `Build Wheels & Publish to PyPI` workflow will automatically trigger and build/upload artifacts to PyPI.
+
 ## Resources
 
 *   [TFX tutorials ](https://www.tensorflow.org/tfx/tutorials)
