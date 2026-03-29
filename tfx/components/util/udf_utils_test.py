@@ -148,7 +148,7 @@ class UdfUtilsTest(tf.test.TestCase):
     self.assertEqual(
         dependency,
         os.path.join(
-            temp_pipeline_root, '_wheels', 'tfx_user_code_MyComponent-0.0+'
+            temp_pipeline_root, '_wheels', 'tfx_user_code_mycomponent-0.0+'
             '1c9b861db85cc54c56a56cbf64f77c1b9d1ded487d60a97d082ead6b250ee62c'
             '-py3-none-any.whl'))
 
