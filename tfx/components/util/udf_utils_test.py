@@ -146,7 +146,7 @@ class UdfUtilsTest(tf.test.TestCase):
     # The hash version is based on the module names and contents and thus
     # should be stable.
     self.assertEqual(
-        dependency,
+        dependency.lower,
         os.path.join(
             temp_pipeline_root, '_wheels', 'tfx_user_code_mycomponent-0.0+'
             '1c9b861db85cc54c56a56cbf64f77c1b9d1ded487d60a97d082ead6b250ee62c'
