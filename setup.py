@@ -166,14 +166,18 @@ class _GenProtoCommand(setuptools.Command):
       # https://docs.bazel.build/versions/master/command-line-reference.html
       bazel_args.append('--override_repository={}={}'.format(
           'com_github_google_ml_metadata', self.local_mlmd_repo))
+    bazel_cwd = os.path.dirname(os.path.realpath(__file__))
+    bazel_args.append(f"--define=TFX_ROOT={bazel_cwd}")
     cmd = [self._bazel_cmd, 'run', *bazel_args, '//build:gen_proto']
     print('Running Bazel command', cmd, file=sys.stderr)
+    env = os.environ.copy()
+    env.setdefault('TFX_ROOT', bazel_cwd)
     subprocess.check_call(
-        cmd,
-        # Bazel should be invoked in a directory containing bazel WORKSPACE
-        # file, which is the root directory.
-        cwd=os.path.dirname(os.path.realpath(__file__)),
-        env=os.environ)
+      cmd,
+      # Bazel should be invoked in a directory containing bazel WORKSPACE
+      # file, which is the root directory.
+      cwd=bazel_cwd,
+      env=env)
 
 
 _TFX_DESCRIPTION = (

@@ -42,6 +42,11 @@ def _tfx_github_archive(ctx):
         stripPrefix = skip_prefix,
     )
 
+    # Apply patches if provided
+    if ctx.attr.patches:
+        for patch_file in ctx.attr.patches:
+            ctx.patch(patch_file, strip = ctx.attr.patch_strip)
+
 # Repository rule that is similar to git_repository, but uses master branch
 # regardless of given parameter if TFX_DEPENDENCY_SELECTOR environment
 # variable is set to "GIT_MASTER". Normally this environment variable is set when
@@ -60,6 +65,8 @@ tfx_github_archive = repository_rule(
         "branch": attr.string(),
         "commit": attr.string(),
         "tag": attr.string(),
+        "patches": attr.label_list(default = []),
+        "patch_strip": attr.int(default = 1),
     },
     environ = [
         "TFX_DEPENDENCY_SELECTOR",
@@ -79,7 +86,7 @@ def tfx_workspace():
         name = "com_github_google_ml_metadata",
         repo = "google/ml-metadata",
         # LINT.IfChange
-        tag = "v1.16.0",
+        tag = "v1.17.1",
         # LINT.ThenChange(//tfx/dependencies.py)
     )
 
@@ -89,6 +96,8 @@ def tfx_workspace():
         repo = "tensorflow/metadata",
         # LINT.IfChange
         # Keep in sync with TFDV version (TFDV requires TFMD).
-        tag = "v1.16.1",
+        tag = "v1.17.1",
         # LINT.ThenChange(//tfx/dependencies.py)
+        patches = ["//patches:tensorflow_metadata_proto_v0.patch"],
+        patch_strip = 1,
     )

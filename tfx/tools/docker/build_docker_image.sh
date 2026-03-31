@@ -23,6 +23,36 @@ DOCKER_FILE=${DOCKER_FILE:-"Dockerfile"}
 TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR:-""}
 echo "Env for TFX_DEPENDENCY_SELECTOR is set as ${TFX_DEPENDENCY_SELECTOR}"
 
+# Apply the patch before building
+echo "Applying tfx.patch..."
+if [[ -f patches/tfx.patch ]]; then
+  git apply patches/tfx.patch
+  patch_applied=true
+else
+  echo "Warning: patches/tfx.patch not found, skipping patch application"
+  patch_applied=false
+fi
+
+mkdir -p tfx/tools/docker/wheels
+
+# Download tensorflow-model-analysis wheel
+echo "Downloading tensorflow-model-analysis wheel..."
+TFMA_WHEEL_URL="https://files.pythonhosted.org/packages/a9/45/1ed03c0bd8168ebc8bdc5c15c206d2e3a7fb9269f8083492d17b995ac35f/tensorflow_model_analysis-0.48.0-py3-none-any.whl"
+TFMA_WHEEL_FILE="tensorflow_model_analysis-0.48.0-py3-none-any.whl"
+curl -L -o tfx/tools/docker/wheels/${TFMA_WHEEL_FILE} ${TFMA_WHEEL_URL}
+
+# Download tensorflow-transform wheel
+echo "Downloading tensorflow-transform wheel..."
+TFT_WHEEL_URL="https://files.pythonhosted.org/packages/a2/b2/32d2ad3fbf16a67f7e91e125dca616a9e1b0d10588167ce3c19394a1811f/tensorflow_transform-1.17.0-py3-none-any.whl"
+TFT_WHEEL_FILE="tensorflow_transform-1.17.0-py3-none-any.whl"
+curl -L -o tfx/tools/docker/wheels/${TFT_WHEEL_FILE} ${TFT_WHEEL_URL}
+
+# Download tensorflow-cloud wheel
+echo "Downloading tensorflow-cloud wheel..."
+TFC_WHEEL_URL="https://files.pythonhosted.org/packages/4b/bc/da205a15aaf22c1fda1f58552990d17d532a8573af6830e3663730ed485b/tensorflow_cloud-0.1.16-py3-none-any.whl"
+TFC_WHEEL_FILE="tensorflow_cloud-0.1.16-py3-none-any.whl"
+curl -L -o tfx/tools/docker/wheels/${TFC_WHEEL_FILE} ${TFC_WHEEL_URL}
+
 function _get_tf_version_of_image() {
   local img="$1"
   docker run --rm --entrypoint=python ${img} -c 'import tensorflow as tf; print(tf.__version__)'
@@ -102,3 +132,12 @@ fi
 
 # Remove the temp image.
 docker rmi ${wheel_builder_tag}
+
+# Cleanup: revert patch and remove downloaded wheel
+if [[ "${patch_applied}" == "true" ]]; then
+  echo "Reverting tfx.patch..."
+  git apply -R patches/tfx.patch
+fi
+
+echo "Removing downloaded wheel..."
+rm -rf tfx/tools/docker/wheels

@@ -53,10 +53,38 @@ http_archive(
 # LINT.ThenChange(:tf_commit)
 
 http_archive(
+    name = "build_bazel_rules_apple",
+    urls = ["https://github.com/bazelbuild/rules_apple/archive/refs/tags/0.34.1.tar.gz"],
+    sha256 = "301ad0c16585f44fdb404dee7496332501606939698afb372e8311f7445f1175",
+    strip_prefix = "rules_apple-0.34.1",
+)
+
+# Needed by gRPC.
+http_archive(
+    name = "build_bazel_apple_support",
+    sha256 = "cf4d63f39c7ba9059f70e995bf5fe1019267d3f77379c2028561a5d7645ef67c",
+    urls = ["https://github.com/bazelbuild/apple_support/releases/download/1.11.1/apple_support.1.11.1.tar.gz"],
+)
+
+http_archive(
+    name = "build_bazel_rules_swift",
+    sha256 = "d0833bc6dad817a367936a5f902a0c11318160b5e80a20ece35fb85a5675c886",
+    strip_prefix = "rules_swift-3eeeb53cebda55b349d64c9fc144e18c5f7c0eb8",
+    urls = ["https://github.com/bazelbuild/rules_swift/archive/3eeeb53cebda55b349d64c9fc144e18c5f7c0eb8.tar.gz"],
+)
+
+http_archive(
+    name = "com_github_grpc_grpc",
+    urls = ["https://github.com/grpc/grpc/archive/v1.46.3.tar.gz"],
+    sha256 = "d6cbf22cb5007af71b61c6be316a79397469c58c82a942552a62e708bce60964",
+    strip_prefix = "grpc-1.46.3",
+)
+
+http_archive(
     name = "com_google_protobuf",
-    sha256 = "930c2c3b5ecc6c9c12615cf5ad93f1cd6e12d0aba862b572e076259970ac3a53",
-    strip_prefix = "protobuf-3.21.12",
-    urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.21.12.tar.gz"],
+    sha256 = "22fdaf641b31655d4b2297f9981fa5203b2866f8332d3c6333f6b0107bb320de",
+    strip_prefix = "protobuf-21.12",
+    urls = ["https://github.com/protocolbuffers/protobuf/archive/v21.12/protobuf-21.12.tar.gz"],
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
