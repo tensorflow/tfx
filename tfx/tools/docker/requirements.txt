@@ -13,7 +13,7 @@ aiohttp==3.13.5
 alembic==1.13.3
 annotated-types==0.7.0
 anyio==4.13.0
-apache-airflow==2.10.3
+apache-airflow==3.2.0b1
 apache-beam==2.50.0
 apispec==6.6.1
 argcomplete==3.5.1
