@@ -50,7 +50,7 @@ cramjam==2.8.4
 crcmod==1.7
 cron-descriptor==1.4.5
 croniter==3.0.3
-cryptography==45.0.7
+cryptography==46.0.6
 Cython==3.0.11
 debugpy==1.8.7
 decorator==5.1.1
