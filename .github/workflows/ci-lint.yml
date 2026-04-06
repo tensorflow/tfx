@@ -9,13 +9,13 @@ jobs:
   pre-commit:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@v6
       with:
         # Ensure the full history is fetched
         # This is required to run pre-commit on a specific set of commits
         # TODO: Remove this when all the pre-commit issues are fixed
         fetch-depth: 0
-    - uses: actions/setup-python@v5.1.1
+    - uses: actions/setup-python@v6
       with:
         python-version: 3.9
     - name: Determine commit range

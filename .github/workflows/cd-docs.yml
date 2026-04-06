@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure Git Credentials
         run: |
@@ -21,7 +21,7 @@ jobs:
         if: (github.event_name != 'pull_request')
 
       - name: Set up Python 3.9
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.9'
           cache: 'pip'
@@ -34,7 +34,7 @@ jobs:
         run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
 
       - name: Caching
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           key: mkdocs-material-${{ env.cache_id }}
           path: .cache

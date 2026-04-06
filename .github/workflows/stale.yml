@@ -34,7 +34,7 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/stale@v7
+    - uses: actions/stale@v10
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         #Comma separated list of labels that can be assigned to issues to exclude them from being marked as stale 
@@ -77,8 +77,8 @@ jobs:
 
         #stale label for issues
         stale-issue-label: 'stale'
-    - uses: actions/checkout@v3
-    - uses: actions/github-script@v6
+    - uses: actions/checkout@v6
+    - uses: actions/github-script@v8
       with:
         script: |
           const script = require('./\.github/workflows/scripts/stale_csat.js')
