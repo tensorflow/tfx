@@ -1,0 +1,19 @@
+FROM python:3.10-slim@sha256:c299e10e0070171113f9a1f109dd05e7e634fa94589b056e0e87bb22b2b382a2
+
+WORKDIR /src
+
+COPY tfx/dependencies.py .
+COPY tfx/tools/docker/discover_versions.py .
+COPY tfx/tools/docker/requirements.txt tfx/tools/docker/
+COPY tfx/tools/docker/build_constraints.txt tfx/tools/docker/
+
+ENV PIP_CONSTRAINT="/src/tfx/tools/docker/build_constraints.txt"
+
+RUN pip install --upgrade pip setuptools wheel tomli \
+    -c tfx/tools/docker/requirements.txt \
+    -c tfx/tools/docker/build_constraints.txt
+
+# Ensure dependencies.py can be imported
+ENV PYTHONPATH="/src"
+
+ENTRYPOINT ["python3", "discover_versions.py"]
