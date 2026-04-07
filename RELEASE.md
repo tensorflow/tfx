@@ -1,3 +1,29 @@
+# Version 1.17.3
+
+## Major Features and Improvements
+
+*   N/A
+
+## Breaking Changes
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   Patched security vulnerabilities in the TFX docker image and fixed Vertex AI tests.
+
 # Version 1.17.2
 
 ## Major Features and Improvements
