@@ -29,7 +29,6 @@ from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable.mlmd import artifact_lib
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
-from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.utils import metrics_utils
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -639,16 +638,26 @@ def get_executions_associated_with_all_contexts(
   Returns:
     A list of executions associated with all given contexts.
   """
-  execution_query = q.And(
-      [
-          'contexts_%s.id = %s' % (i, context.id)
-          for i, context in enumerate(contexts)
-      ]
-  )
-  executions = metadata_handle.store.get_executions(
-      list_options=execution_query.list_options()
-  )
-  return executions
+  contexts = list(contexts)
+  if not contexts:
+    return []
+  # Fetch executions per context and intersect client-side, avoiding
+  # filter_query which requires the ZetaSQL dependency.
+  executions_by_id: Dict[int, metadata_store_pb2.Execution] = {
+      e.id: e
+      for e in metadata_handle.store.get_executions_by_context(contexts[0].id)
+  }
+  for context in contexts[1:]:
+    context_exec_ids = {
+        e.id
+        for e in metadata_handle.store.get_executions_by_context(context.id)
+    }
+    executions_by_id = {
+        eid: e
+        for eid, e in executions_by_id.items()
+        if eid in context_exec_ids
+    }
+  return list(executions_by_id.values())
 
 
 @telemetry_utils.noop_telemetry(metrics_utils.no_op_metrics)

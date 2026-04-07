@@ -11,6 +11,14 @@ workspace(name = "tfx")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+http_archive(
+    name = "zlib",
+    build_file = "@com_google_protobuf//:third_party/zlib.BUILD",
+    sha256 = "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c",
+    strip_prefix = "zlib-1.3.1",
+    urls = ["https://github.com/madler/zlib/archive/v1.3.1.tar.gz"],
+)
+
 # TF 1.15
 # LINT.IfChange(tf_commit)
 _TENSORFLOW_GIT_COMMIT = "590d6eef7e91a6a7392c8ffffb7b58f2e0c8bc6b"
@@ -54,9 +62,8 @@ http_archive(
 
 http_archive(
     name = "build_bazel_rules_apple",
-    urls = ["https://github.com/bazelbuild/rules_apple/archive/refs/tags/0.34.1.tar.gz"],
-    sha256 = "301ad0c16585f44fdb404dee7496332501606939698afb372e8311f7445f1175",
-    strip_prefix = "rules_apple-0.34.1",
+    urls = ["https://github.com/bazelbuild/rules_apple/releases/download/3.2.1/rules_apple.3.2.1.tar.gz"],
+    sha256 = "9c4f1e1ec4fdfeac5bddb07fa0e872c398e3d8eb0ac596af9c463f9123ace292",
 )
 
 # Needed by gRPC.

@@ -87,11 +87,19 @@ def training_range(
       # In MLMD, artifacts are 2 hops away. Because we are considering
       # Example -> (transformd) Examples -> Model, we set max_num_hops to 4.
       max_num_hops=4,
-      filter_query=f'type="{ops_utils.EXAMPLES_TYPE_NAME}"',
   )
   if not upstream_examples_dict:
     return []
   upstream_example_and_type = upstream_examples_dict[model.id]
+  if not upstream_example_and_type:
+    return []
+  # Keep only Examples artifacts; filter_query was removed since ZetaSQL is
+  # no longer available in ml-metadata.
+  upstream_example_and_type = [
+      (a, t)
+      for a, t in upstream_example_and_type
+      if t.name == ops_utils.EXAMPLES_TYPE_NAME
+  ]
   if not upstream_example_and_type:
     return []
 

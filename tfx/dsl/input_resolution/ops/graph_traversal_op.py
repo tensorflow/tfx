@@ -23,7 +23,6 @@ from tfx.dsl.input_resolution import resolver_op
 from tfx.dsl.input_resolution.ops import ops_utils
 from tfx.orchestration.portable.input_resolution.mlmd_resolver import metadata_resolver
 from tfx.orchestration.portable.mlmd import event_lib
-from tfx.orchestration.portable.mlmd import filter_query_builder as q
 from tfx.types import artifact_utils
 
 from ml_metadata.proto import metadata_store_pb2
@@ -96,14 +95,11 @@ class GraphTraversal(
     root_artifact = input_list[0]
 
     # Query MLMD to get the upstream (or downstream) artifacts.
-    artifact_states_filter_query = (
-        ops_utils.get_valid_artifact_states_filter_query(_VALID_ARTIFACT_STATES)
-    )
-    filter_query = (
-        f'type IN {q.to_sql_string(self.artifact_type_names)} AND '
-        f'{artifact_states_filter_query}'
-    )
+    # filter_query is not used because ZetaSQL was removed from ml-metadata;
+    # type, state, and context filtering is done in Python below.
 
+    # Pre-compute valid artifact IDs for node_ids filtering, if requested.
+    valid_artifact_ids_for_node_ids = None
     if self.node_ids:
       for context in self.context.store.get_contexts_by_artifact(
           root_artifact.id
@@ -120,12 +116,15 @@ class GraphTraversal(
           compiler_utils.node_context_name(pipeline_name, ni)
           for ni in self.node_ids
       ]
-      query = (
-          f'contexts_a.name IN {q.to_sql_string(node_context_names)} '
-          'AND contexts_a.type = '
-          f'{q.to_sql_string(constants.NODE_CONTEXT_TYPE_NAME)}'
-      )
-      filter_query += ' AND ' + query
+      valid_artifact_ids_for_node_ids = set()
+      for node_ctx_name in node_context_names:
+        ctx = self.context.store.get_context_by_type_and_name(
+            type_name=constants.NODE_CONTEXT_TYPE_NAME,
+            context_name=node_ctx_name,
+        )
+        if ctx:
+          for a in self.context.store.get_artifacts_by_context(ctx.id):
+            valid_artifact_ids_for_node_ids.add(a.id)
 
     mlmd_resolver = metadata_resolver.MetadataResolver(self.context.store)
     mlmd_resolver_fn = (
@@ -136,7 +135,6 @@ class GraphTraversal(
     related_artifact_and_type = mlmd_resolver_fn(
         [root_artifact.id],
         max_num_hops=ops_utils.GRAPH_TRAVERSAL_OP_MAX_NUM_HOPS,
-        filter_query=filter_query,
     )
     artifact_type_by_id = {}
     related_artifacts = {}
@@ -178,14 +176,29 @@ class GraphTraversal(
     events_by_artifact_id = {
         e.artifact_id: e for e in events if event_lib.is_valid_output_event(e)
     }
+    artifact_type_names_set = set(self.artifact_type_names)
     for artifact in related_artifacts:
+      # Filter by artifact type name.
+      if artifact.type not in artifact_type_names_set:
+        continue
+      # Filter by artifact state (only LIVE artifacts are valid).
+      if artifact.state not in _VALID_ARTIFACT_STATES:
+        continue
+      # Filter by node context membership if node_ids were specified.
+      if (
+          valid_artifact_ids_for_node_ids is not None
+          and artifact.id not in valid_artifact_ids_for_node_ids
+      ):
+        continue
       # MLMD does not support filter querying by event.paths, so we manually
       # check for matching output key.
-      # TODO(b/302394845): Once MLMD supports filtering by the last event, then
-      # add this check inside the filter_query or event_filter.
-      if self.output_keys and not any(
-          event_lib.contains_key(events_by_artifact_id[artifact.id], k)
-          for k in self.output_keys
+      artifact_event = events_by_artifact_id.get(artifact.id)
+      if self.output_keys and (
+          not artifact_event
+          or not any(
+              event_lib.contains_key(artifact_event, k)
+              for k in self.output_keys
+          )
       ):
         continue
 

@@ -23,8 +23,6 @@ from tfx.orchestration.portable.mlmd import event_lib
 from tfx.types import artifact_utils
 from tfx.utils import typing_utils
 
-import ml_metadata as mlmd
-
 from ml_metadata.proto import metadata_store_pb2
 
 
@@ -66,11 +64,15 @@ class LatestPipelineRunOutputs(
           'possibly due to not defining the pipeline outputs.')
 
     # Gets the COMPLETE executions of the pipeline end node, and then find the
-    # latest one.
-    pipeline_end_node_executions = self.context.store.get_executions_by_context(
-        context_id=pipeline_end_node_ctx.id,
-        list_options=mlmd.ListOptions(
-            filter_query='last_known_state = COMPLETE'))
+    # latest one. filter_query is not used because ZetaSQL was removed from
+    # ml-metadata; state filtering is done in Python.
+    pipeline_end_node_executions = [
+        e
+        for e in self.context.store.get_executions_by_context(
+            context_id=pipeline_end_node_ctx.id
+        )
+        if e.last_known_state == metadata_store_pb2.Execution.State.COMPLETE
+    ]
     if not pipeline_end_node_executions:
       raise exceptions.SkipSignal(
           f'Pipeline {self.pipeline_name} does not have a successful execution.'

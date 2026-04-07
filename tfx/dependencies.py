@@ -55,10 +55,10 @@ def select_constraint(default, nightly=None, git_master=None):
 def make_pipeline_sdk_required_install_packages():
     return [
         "absl-py>=0.9,<2.0.0",
-        "ml-metadata"
+        "ml-metadata-czgdp1807"
         + select_constraint(
             # LINT.IfChange
-            default=">=1.17.0,<1.18.0",
+            default=">=1.16.0",
             # LINT.ThenChange(tfx/workspace.bzl)
             nightly=">=1.17.0",
             git_master="@git+https://github.com/google/ml-metadata@master",
@@ -80,7 +80,7 @@ def make_required_install_packages():
     # Make sure to sync the versions of common dependencies (absl-py, numpy,
     # and protobuf) with TF.
     return make_pipeline_sdk_required_install_packages() + [
-        "apache-beam[gcp]>=2.47,<3",
+        "apache-beam[gcp]>=2.47",
         "attrs>=19.3.0,<24",
         "click>=7,<9",
         "google-api-core<3",

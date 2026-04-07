@@ -7,12 +7,12 @@ on:
     types: [published]
 
 env:
-  USE_BAZEL_VERSION: "6.5.0"
+  USE_BAZEL_VERSION: "7.4.1"
 
 jobs:
   build_sdist:
     name: Build sdist
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest]
     steps:
     - name: Check out the repo
       uses: actions/checkout@v4
@@ -47,8 +47,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu]
-        python-version: ['cp39', 'cp310']
+        include:
+          - os: ubuntu
+            python-version: 'cp39'
+          - os: ubuntu
+            python-version: 'cp310'
+          - os: macos
+            python-version: 'cp39'
 
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     steps:
