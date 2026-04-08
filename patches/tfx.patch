@@ -101,7 +101,7 @@ index de61db74f..d45f53ae7 100644
          "tensorflow-io>=0.9.0, <=0.24.0",
      ]
  
-@@ -245,8 +219,6 @@
+@@ -245,6 +219,4 @@
          "scikit-learn>=1.0,<2",
          # LINT.ThenChange(
          #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
