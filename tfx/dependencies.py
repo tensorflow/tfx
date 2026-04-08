@@ -58,7 +58,7 @@ def make_pipeline_sdk_required_install_packages():
         "ml-metadata"
         + select_constraint(
             # LINT.IfChange
-            default=">=1.17.0,<1.18.0",
+            default=">=1.16.0,<1.19.0",
             # LINT.ThenChange(tfx/workspace.bzl)
             nightly=">=1.17.0",
             git_master="@git+https://github.com/google/ml-metadata@master",
@@ -90,7 +90,7 @@ def make_required_install_packages():
         "keras-tuner>=1.0.4,<2,!=1.4.0,!=1.4.1",
         "kubernetes>=10.0.1,<27",
         "numpy>=1.16,<2",
-        "pyarrow>=10,<11",
+        "pyarrow>=10",
         # TODO: b/358471141 - Orjson 3.10.7 breaks TFX OSS tests.
         # Unpin once the issue with installation is resolved.
         "orjson!=3.10.7",
@@ -105,32 +105,32 @@ def make_required_install_packages():
         # Pip might stuck in a TF 1.15 dependency although there is a working
         # dependency set with TF 2.x without the sync.
         # pylint: disable=line-too-long
-        "tensorflow" + select_constraint(">=2.17.0,<2.18"),
+        "tensorflow" + select_constraint(">=2.16.0,<2.18"),
         # pylint: enable=line-too-long
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
-            default=">=1.17.0,<1.18.0",
-            nightly=">=1.17.0",
+            default=">=1.16.1,<1.19.0",
+            nightly=">=1.16.1.dev",
             git_master=("@git+https://github.com/tensorflow/data-validation@master"),
         ),
         "tensorflow-model-analysis"
         + select_constraint(
-            default=">=0.48.0,<0.49.0",
-            nightly=">=0.48.0",
+            default=">=0.47.0,<0.49.0",
+            nightly=">=0.47.0.dev",
             git_master="@git+https://github.com/tensorflow/model-analysis@master",
         ),
-        "tensorflow-serving-api>=2.17,<2.18",
+        "tensorflow-serving-api>=2.16,<2.17",
         "tensorflow-transform"
         + select_constraint(
-            default=">=1.17.0,<1.18.0",
-            nightly=">=1.17.0",
+            default=">=1.16.0,<1.19.0",
+            nightly=">=1.16.0.dev",
             git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
-            default=">=1.17.1,<1.18.0",
-            nightly=">=1.17.1",
+            default=">=1.16.1,<1.18.0",
+            nightly=">=1.16.0.dev",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
     ]
