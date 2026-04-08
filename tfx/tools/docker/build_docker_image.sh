@@ -16,12 +16,39 @@
 # Convenience script to build TFX docker image.
 set -ex
 
+# Parse arguments for USE_CPP_WHEELS_FROM_TEMP and other custom flags
+USE_CPP_WHEELS_FROM_TEMP=false
+CLEAN_CPP_TEMP_CACHE=false
+NEW_ARGS=()
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --no-rebuild|--skip-rebuild)
+      USE_CPP_WHEELS_FROM_TEMP=true
+      shift
+      ;;
+    --clean-cache)
+      CLEAN_CPP_TEMP_CACHE=true
+      shift
+      ;;
+    *)
+      NEW_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+set -- "${NEW_ARGS[@]}"
+
+export BEAM_VERSION=${BEAM_VERSION}
+export BASE_IMAGE=${BASE_IMAGE}
+
+
 DOCKER_IMAGE_REPO=${DOCKER_IMAGE_REPO:-"tensorflow/tfx"}
 DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:-"latest"}
 DOCKER_FILE=${DOCKER_FILE:-"Dockerfile"}
 
 TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR:-""}
 echo "Env for TFX_DEPENDENCY_SELECTOR is set as ${TFX_DEPENDENCY_SELECTOR}"
+
 
 # Apply the patch before building
 echo "Applying tfx.patch..."
@@ -32,6 +59,19 @@ else
   echo "Warning: patches/tfx.patch not found, skipping patch application"
   patch_applied=false
 fi
+
+# Programmatically remove pins for components built from source or downloaded as wheels
+# This replicates the logic previously in tfx.patch for requirements.txt and constraints files
+for f in nightly_test_constraints.txt test_constraints.txt tfx/tools/docker/requirements.txt; do
+  if [[ -f "$f" ]]; then
+    echo "Removing pins from $f..."
+    # Remove exact version pins or range constraints for the following packages
+    sed -i '/tensorflow-cloud/d' "$f"
+    sed -i '/tensorflow-data-validation/d' "$f"
+    sed -i '/tensorflow-transform/d' "$f"
+    sed -i '/tfx-bsl/d' "$f"
+  fi
+done
 
 mkdir -p tfx/tools/docker/wheels
 
@@ -58,26 +98,40 @@ function _get_tf_version_of_image() {
   docker run --rm --entrypoint=python ${img} -c 'import tensorflow as tf; print(tf.__version__)'
 }
 
+function _get_beam_version_of_image() {
+  local img="$1"
+  docker run --rm --entrypoint=python ${img} -c 'import apache_beam as beam; print(beam.version.__version__)'
+}
+
 # Base image to extend: This should be a deep learning image with a compatible
 # TensorFlow version. See
 # https://cloud.google.com/ai-platform/deep-learning-containers/docs/choosing-container
 # for possible images to use here.
 
-# Use timestmap-rand for tag, to avoid collision of concurrent runs.
-wheel_builder_tag="tfx-wheel-builder:$(date +%s)-$RANDOM"
-# Run docker build command to build the wheel-builder first. We have to extract
-# TF version from it.
-docker build --target wheel-builder\
-  -t ${wheel_builder_tag} \
-  -f tfx/tools/docker/${DOCKER_FILE} \
-  --build-arg TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR} \
-  . "$@"
+if [ "$CLEAN_CPP_TEMP_CACHE" = "true" ]; then
+  echo "Pruning Docker builder cache..."
+  docker builder prune -a -f
+fi
 
-# TensorFlow current TFX code depends on here and use that instead.
-if [[ -n "$BASE_IMAGE" ]]; then
-  echo "Using override base image $BASE_IMAGE"
+# Use timestmap-rand for tag, to avoid collision of concurrent runs.
+if [[ -z "$BASE_IMAGE" || -z "$BEAM_VERSION" ]]; then
+  echo "Discovering versions using lightweight container..."
+  discovery_tag="tfx-beam-discovery:$(date +%s)-$RANDOM"
+  docker build -t ${discovery_tag} -f tfx/tools/docker/Dockerfile.beam_discovery .
+  discovery_output=$(docker run --rm ${discovery_tag})
+  tf_version=$(echo "${discovery_output}" | cut -d'|' -f1)
+  beam_version_detected=$(echo "${discovery_output}" | cut -d'|' -f2)
+  docker rmi ${discovery_tag}
+
+  if [[ -z "$BEAM_VERSION" ]]; then
+    BEAM_VERSION=${beam_version_detected}
+  fi
+  echo "Detected Beam version as ${BEAM_VERSION}"
 else
-  tf_version=$(_get_tf_version_of_image "${wheel_builder_tag}")
+  echo "Using override base image $BASE_IMAGE"
+fi
+
+if [[ -z "$BASE_IMAGE" ]]; then
   arr_version=(${tf_version//./ })
   echo "Detected TensorFlow version as ${tf_version}"
   DLVM_REPO=gcr.io/deeplearning-platform-release
@@ -108,14 +162,15 @@ else
   echo "Using compatible tf2-gpu image $BASE_IMAGE as base"
 fi
 
-beam_version=$(docker run --rm --entrypoint=python ${wheel_builder_tag} -c 'import apache_beam as beam; print(beam.version.__version__)')
 # Run docker build command.
-docker build -t ${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG} \
+docker build --progress=plain -t ${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG} \
   -f tfx/tools/docker/${DOCKER_FILE} \
-  --build-arg "TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}" \
   --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
-  --build-arg "BEAM_VERSION=${beam_version}" \
+  --build-arg "BEAM_VERSION=${BEAM_VERSION}" \
   --build-arg "ADDITIONAL_PACKAGES=${ADDITIONAL_PACKAGES}" \
+  --build-arg USE_CPP_WHEELS_FROM_TEMP=${USE_CPP_WHEELS_FROM_TEMP} \
+  --build-arg CLEAN_CPP_TEMP_CACHE=${CLEAN_CPP_TEMP_CACHE} \
+  --build-arg "TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}" \
   . "$@"
 
 if [[ -n "${installed_tf_version}" && ! "${installed_tf_version}" =~ rc ]]; then
@@ -131,7 +186,6 @@ fi
 
 
 # Remove the temp image.
-docker rmi ${wheel_builder_tag}
 
 # Cleanup: revert patch and remove downloaded wheel
 if [[ "${patch_applied}" == "true" ]]; then
