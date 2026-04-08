@@ -2,7 +2,7 @@ diff --git a/nightly_test_constraints.txt b/nightly_test_constraints.txt
 index 9e1714c3b..565c37fa5 100644
 --- a/nightly_test_constraints.txt
 +++ b/nightly_test_constraints.txt
-@@ -308,8 +308,6 @@
+@@ -307,9 +307,7 @@
  tenacity==9.0.0
  tensorboard==2.17.1
  tensorboard-data-server==0.7.2
@@ -32,7 +32,7 @@ diff --git a/test_constraints.txt b/test_constraints.txt
 index de61db74f..d45f53ae7 100644
 --- a/test_constraints.txt
 +++ b/test_constraints.txt
-@@ -308,8 +308,6 @@
+@@ -307,9 +307,7 @@
  tenacity==9.0.0
  tensorboard==2.17.1
  tensorboard-data-server==0.7.2
@@ -60,7 +60,7 @@ index de61db74f..d45f53ae7 100644
  tinycss2==1.3.0
 --- tfx/dependencies.py
 +++ tfx/dependencies.py.patched
-@@ -108,31 +108,7 @@
+@@ -108,29 +108,5 @@
          "tensorflow" + select_constraint(">=2.17.1,<2.18"),
          # pylint: enable=line-too-long
          "tensorflow-hub>=0.15.0,<0.16",
@@ -92,7 +92,7 @@ index de61db74f..d45f53ae7 100644
      ]
  
  
-@@ -172,8 +148,6 @@
+@@ -172,7 +148,5 @@
          "kfp-pipeline-spec>=0.3.0,<0.4.0",
          "mmh>=2.2,<3",
          "python-snappy>=0.7",
@@ -101,7 +101,7 @@ index de61db74f..d45f53ae7 100644
          "tensorflow-io>=0.9.0, <=0.24.0",
      ]
  
-@@ -245,8 +219,6 @@
+@@ -245,6 +219,4 @@
          "scikit-learn>=1.0,<2",
          # LINT.ThenChange(
          #     examples/penguin/experimental/penguin_pipeline_sklearn_gcp.py)
