@@ -174,7 +174,7 @@ matplotlib==3.7.1
 mdit-py-plugins==0.4.2
 mdurl==0.1.2
 methodtools==0.4.7
-mistune==3.0.2
+mistune==3.2.1
 ml-dtypes==0.3.2
 ml-metadata==1.17.0
 mmh==2.2
