@@ -129,9 +129,9 @@ def make_required_install_packages():
         ),
         "tfx-bsl"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/tfx-bsl@master",
-            nightly="@git+https://github.com/tensorflow/tfx-bsl@master",
-            git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
+            default="@git+https://github.com/vkarampudi/tfx-bsl@testing",
+            nightly="@git+https://github.com/vkarampudi/tfx-bsl@testing",
+            git_master="@git+https://github.com/vkarampudi/tfx-bsl@testing",
         ),
     ]
 

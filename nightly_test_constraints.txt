@@ -326,7 +326,7 @@ termcolor==2.5.0
 terminado==0.18.1
 text-unidecode==1.3
 tflite-support==0.4.4
-tfx-bsl @ git+https://github.com/tensorflow/tfx-bsl@master
+tfx-bsl @ git+https://github.com/vkarampudi/tfx-bsl@testing
 threadpoolctl==3.5.0
 time-machine==2.16.0
 tinycss2==1.3.0
