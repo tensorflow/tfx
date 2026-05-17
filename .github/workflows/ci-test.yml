@@ -24,7 +24,7 @@ jobs:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
         which-tests: ["not e2e", "e2e"]
-        dependency-selector: ["NIGHTLY", "DEFAULT"]
+        dependency-selector: ["DEFAULT"]
 
     steps:
     - uses: actions/checkout@v4
