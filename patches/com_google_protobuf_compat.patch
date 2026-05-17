@@ -1,0 +1,131 @@
+--- a/protobuf.bzl
++++ b/protobuf.bzl
+@@ -1,5 +1,6 @@
+ load("@bazel_skylib//lib:versions.bzl", "versions")
+-load("@rules_cc//cc:defs.bzl", "objc_library")
++load("@rules_cc//cc:defs.bzl", "objc_library", _cc_proto_library = "cc_proto_library")
++load("@com_google_protobuf//bazel:py_proto_library.bzl", _py_proto_library = "py_proto_library")
+ load("@rules_python//python:defs.bzl", "py_library")
+ load("//bazel/common:proto_info.bzl", "ProtoInfo")
+ 
+@@ -761,3 +762,120 @@
+     copied filegroup. (Fixed in bazel 0.5.4)
+     """
+     versions.check(minimum_bazel_version = "0.5.4")
++
++def cc_proto_library(
++        name,
++        srcs = [],
++        deps = [],
++        cc_libs = [],
++        protoc = None,
++        default_runtime = None,
++        use_grpc_plugin = False,
++        testonly = None,
++        visibility = None,
++        **kwargs):
++    proto_deps = []
++    for d in deps:
++        if "well_known" in d or "cc_wkt_protos" in d:
++            proto_deps.extend([
++                "@com_google_protobuf//:any_proto",
++                "@com_google_protobuf//:api_proto",
++                "@com_google_protobuf//:duration_proto",
++                "@com_google_protobuf//:empty_proto",
++                "@com_google_protobuf//:field_mask_proto",
++                "@com_google_protobuf//:source_context_proto",
++                "@com_google_protobuf//:struct_proto",
++                "@com_google_protobuf//:timestamp_proto",
++                "@com_google_protobuf//:type_proto",
++                "@com_google_protobuf//:wrappers_proto",
++                "@com_google_protobuf//:descriptor_proto",
++            ])
++        elif "protobuf_python" in d or "protobuf" in d or d.endswith("_py_pb2"):
++            continue
++        elif d.endswith("_proto"):
++            proto_deps.append(d + "_library_implicit")
++        elif d.startswith(":") or not d.startswith("@"):
++            proto_deps.append(d + "_proto_library_implicit")
++        else:
++            proto_deps.append(d)
++
++    proto_name = name + "_proto_library_implicit"
++    native.proto_library(
++        name = proto_name,
++        srcs = srcs,
++        deps = proto_deps,
++        testonly = testonly,
++        visibility = visibility,
++    )
++
++    standard_args = {}
++    for key in ["tags", "target_compatible_with", "features", "licenses"]:
++        if key in kwargs:
++            standard_args[key] = kwargs[key]
++
++    _cc_proto_library(
++        name = name,
++        deps = [":" + proto_name],
++        testonly = testonly,
++        visibility = visibility,
++        **standard_args
++    )
++
++def py_proto_library(
++        name,
++        srcs = [],
++        deps = [],
++        py_libs = [],
++        py_extra_srcs = [],
++        default_runtime = None,
++        protoc = None,
++        use_grpc_plugin = False,
++        testonly = None,
++        visibility = None,
++        **kwargs):
++    proto_deps = []
++    for d in deps:
++        if "well_known" in d or "cc_wkt_protos" in d:
++            proto_deps.extend([
++                "@com_google_protobuf//:any_proto",
++                "@com_google_protobuf//:api_proto",
++                "@com_google_protobuf//:duration_proto",
++                "@com_google_protobuf//:empty_proto",
++                "@com_google_protobuf//:field_mask_proto",
++                "@com_google_protobuf//:source_context_proto",
++                "@com_google_protobuf//:struct_proto",
++                "@com_google_protobuf//:timestamp_proto",
++                "@com_google_protobuf//:type_proto",
++                "@com_google_protobuf//:wrappers_proto",
++                "@com_google_protobuf//:descriptor_proto",
++            ])
++        elif "protobuf_python" in d or "protobuf" in d or d.endswith("_py_pb2"):
++            continue
++        elif d.endswith("_proto"):
++            proto_deps.append(d + "_library_implicit")
++        elif d.startswith(":") or not d.startswith("@"):
++            proto_deps.append(d + "_proto_library_implicit")
++        else:
++            proto_deps.append(d)
++
++    proto_name = name + "_proto_library_implicit"
++    native.proto_library(
++        name = proto_name,
++        srcs = srcs,
++        deps = proto_deps,
++        testonly = testonly,
++        visibility = visibility,
++    )
++
++    standard_args = {}
++    for key in ["tags", "target_compatible_with", "features", "licenses"]:
++        if key in kwargs:
++            standard_args[key] = kwargs[key]
++
++    _py_proto_library(
++        name = name,
++        deps = [":" + proto_name],
++        testonly = testonly,
++        visibility = visibility,
++        **standard_args
++    )

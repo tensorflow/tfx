@@ -13,7 +13,6 @@
 # limitations under the License.
 """TFX external dependencies that can be loaded in WORKSPACE files."""
 
-load("@org_tensorflow//tensorflow:workspace.bzl", "tf_workspace")
 
 def _github_archive_url(org, repo, ref):
     return "https://github.com/{0}/{1}/archive/{2}.zip".format(org, repo, ref)
@@ -76,10 +75,6 @@ tfx_github_archive = repository_rule(
 
 def tfx_workspace():
     """All TFX external dependencies."""
-    tf_workspace(
-        path_prefix = "",
-        tf_repo_name = "org_tensorflow",
-    )
 
     # Fetch MLMD repo from GitHub.
     tfx_github_archive(

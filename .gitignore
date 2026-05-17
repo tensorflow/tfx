@@ -34,6 +34,8 @@ package_build/*/build
 package_build/*/dist
 package_build/*/setup.py
 package_build/*/tfx
+package_build/*/LICENSE
+package_build/*/MANIFEST.in
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

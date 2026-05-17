@@ -1,23 +1,55 @@
 workspace(name = "tfx")
 
-# To update TensorFlow to a new revision.
-# TODO(b/177694034): Follow the new format for tensorflow import.
-# 1. Update the '_TENSORFLOW_GIT_COMMIT' var below to include the new git hash.
-# 2. Get the sha256 hash of the archive with a command such as...
-#    curl -L https://github.com/tensorflow/tensorflow/archive/<git hash>.tar.gz | sha256sum
-#    and update the 'sha256' arg with the result.
-# 3. Request the new archive to be mirrored on mirror.bazel.build for more
-#    reliable downloads.
-
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-# TF 1.15
+http_archive(
+    name = "com_google_protobuf",
+    sha256 = "597071a340acc5346494c119ba3a541825c3f81071fc783521b24e29a485d60f",
+    strip_prefix = "protobuf-6.31.1",
+    urls = ["https://github.com/protocolbuffers/protobuf/archive/refs/tags/v6.31.1.tar.gz"],
+    patch_args = ["-p1", "-l"],
+    patches = ["//patches:com_google_protobuf_compat.patch"],
+    repo_mapping = {
+        "@abseil-cpp": "@com_google_absl",
+    },
+)
+
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
+    urls = [
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+    ],
+)
+
+http_archive(
+    name = "rules_java",
+    urls = [
+        "https://github.com/bazelbuild/rules_java/releases/download/8.7.0/rules_java-8.7.0.tar.gz",
+    ],
+    sha256 = "5449ed36d61269579dd9f4b0e532cd131840f285b389b3795ae8b4d717387dd8",
+)
+
+load("@rules_java//java:rules_java_deps.bzl", "rules_java_dependencies")
+rules_java_dependencies()
+
+load("@rules_java//java:repositories.bzl", "rules_java_toolchains")
+rules_java_toolchains()
+
+http_archive(
+    name = "rules_cc",
+    sha256 = "abc605dd850f813bb37004b77db20106a19311a96b2da1c92b789da529d28fe1",
+    strip_prefix = "rules_cc-0.0.17",
+    urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.0.17/rules_cc-0.0.17.tar.gz"],
+)
+
+# TF 2.21
 # LINT.IfChange(tf_commit)
-_TENSORFLOW_GIT_COMMIT = "590d6eef7e91a6a7392c8ffffb7b58f2e0c8bc6b"
+_TENSORFLOW_GIT_COMMIT = "a481b10260dfdf833a1b16007eead49c1d7febf3"
 # LINT.ThenChange(:io_bazel_rules_clousure)
 http_archive(
     name = "org_tensorflow",
-    sha256 = "750186951a699cb73d6b440c7cd06f4b2b80fd3ebb00cbe00f655c7da4ae243e",
+    sha256 = "6438396f3b19af5d7ad787cf041f857af7505916dc08092e20b07d1b1f8df492",
     urls = [
       # Bazel mirror disabled due to b/162781348.
       # "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/%s.tar.gz" % _TENSORFLOW_GIT_COMMIT,
@@ -25,6 +57,18 @@ http_archive(
     ],
     strip_prefix = "tensorflow-%s" % _TENSORFLOW_GIT_COMMIT,
 )
+
+load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
+tf_workspace3()
+
+load("@org_tensorflow//third_party/py:python_init_rules.bzl", "python_init_rules")
+python_init_rules()
+
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+protobuf_deps()
+
+load("@rules_python//python:repositories.bzl", "py_repositories")
+py_repositories()
 
 # Needed by tf_py_wrap_cc rule from Tensorflow.
 # When upgrading tensorflow version, also check tensorflow/WORKSPACE for the
@@ -54,54 +98,66 @@ http_archive(
 
 http_archive(
     name = "build_bazel_rules_apple",
-    urls = ["https://github.com/bazelbuild/rules_apple/archive/refs/tags/0.34.1.tar.gz"],
-    sha256 = "301ad0c16585f44fdb404dee7496332501606939698afb372e8311f7445f1175",
-    strip_prefix = "rules_apple-0.34.1",
+    sha256 = "b4df908ec14868369021182ab191dbd1f40830c9b300650d5dc389e0b9266c8d",
+    url = "https://github.com/bazelbuild/rules_apple/releases/download/3.5.1/rules_apple.3.5.1.tar.gz",
 )
 
 # Needed by gRPC.
 http_archive(
     name = "build_bazel_apple_support",
-    sha256 = "cf4d63f39c7ba9059f70e995bf5fe1019267d3f77379c2028561a5d7645ef67c",
-    urls = ["https://github.com/bazelbuild/apple_support/releases/download/1.11.1/apple_support.1.11.1.tar.gz"],
+    sha256 = "1ae6fcf983cff3edab717636f91ad0efff2e5ba75607fdddddfd6ad0dbdfaf10",
+    urls = ["https://github.com/bazelbuild/apple_support/releases/download/1.24.5/apple_support.1.24.5.tar.gz"],
 )
 
 http_archive(
     name = "build_bazel_rules_swift",
-    sha256 = "d0833bc6dad817a367936a5f902a0c11318160b5e80a20ece35fb85a5675c886",
-    strip_prefix = "rules_swift-3eeeb53cebda55b349d64c9fc144e18c5f7c0eb8",
-    urls = ["https://github.com/bazelbuild/rules_swift/archive/3eeeb53cebda55b349d64c9fc144e18c5f7c0eb8.tar.gz"],
+    sha256 = "bb01097c7c7a1407f8ad49a1a0b1960655cf823c26ad2782d0b7d15b323838e2",
+    urls = ["https://github.com/bazelbuild/rules_swift/releases/download/1.18.0/rules_swift.1.18.0.tar.gz"],
 )
 
-http_archive(
-    name = "com_github_grpc_grpc",
-    urls = ["https://github.com/grpc/grpc/archive/v1.46.3.tar.gz"],
-    sha256 = "d6cbf22cb5007af71b61c6be316a79397469c58c82a942552a62e708bce60964",
-    strip_prefix = "grpc-1.46.3",
+# Initialize hermetic Python
+load("@org_tensorflow//third_party/py:python_init_repositories.bzl", "python_init_repositories")
+python_init_repositories(
+    default_python_version = "system",
+    local_wheel_dist_folder = "dist",
+    local_wheel_inclusion_list = [
+        "tensorflow*",
+        "tf_nightly*",
+    ],
+    local_wheel_workspaces = ["@org_tensorflow//:WORKSPACE"],
+    requirements = {
+        "3.10": "@org_tensorflow//:requirements_lock_3_10.txt",
+        "3.11": "@org_tensorflow//:requirements_lock_3_11.txt",
+        "3.12": "@org_tensorflow//:requirements_lock_3_12.txt",
+        "3.13": "@org_tensorflow//:requirements_lock_3_13.txt",
+    },
 )
 
-http_archive(
-    name = "com_google_protobuf",
-    sha256 = "597071a340acc5346494c119ba3a541825c3f81071fc783521b24e29a485d60f",
-    strip_prefix = "protobuf-6.31.1",
-    urls = ["https://github.com/protocolbuffers/protobuf/archive/refs/tags/v6.31.1.tar.gz"],
-)
+load("@org_tensorflow//third_party/py:python_init_toolchains.bzl", "python_init_toolchains")
+python_init_toolchains()
 
-load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+load("@org_tensorflow//third_party/py:python_init_pip.bzl", "python_init_pip")
+python_init_pip()
 
-protobuf_deps()
+load("@pypi//:requirements.bzl", "install_deps")
+install_deps()
+
+load("@org_tensorflow//tensorflow:workspace2.bzl", "tf_workspace2")
+tf_workspace2()
+
+load("@org_tensorflow//tensorflow:workspace1.bzl", "tf_workspace1")
+tf_workspace1()
+
+load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
+tf_workspace0()
 
 
-# MLMD depends on "io_bazel_rules_go" so we need this here.
-http_archive(
-    name = "io_bazel_rules_go",
-    sha256 = "492c3ac68ed9dcf527a07e6a1b2dcbf199c6bf8b35517951467ac32e421c06c1",
-    urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.17.0/rules_go-0.17.0.tar.gz"],
-)
+
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+grpc_deps()
 
 # Please add all new TFX dependencies in workspace.bzl.
 load("//tfx:workspace.bzl", "tfx_workspace")
-
 tfx_workspace()
 
 # Specify the minimum required bazel version.
