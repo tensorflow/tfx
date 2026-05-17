@@ -110,9 +110,9 @@ def make_required_install_packages():
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/data-validation@master",
-            nightly="@git+https://github.com/tensorflow/data-validation@master",
-            git_master="@git+https://github.com/tensorflow/data-validation@master",
+            default="@git+https://github.com/vkarampudi/data-validation@testing",
+            nightly="@git+https://github.com/vkarampudi/data-validation@testing",
+            git_master="@git+https://github.com/vkarampudi/data-validation@testing",
         ),
         "tensorflow-model-analysis"
         + select_constraint(
