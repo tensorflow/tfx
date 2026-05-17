@@ -192,7 +192,7 @@ mdurl==0.1.2
 methodtools==0.4.7
 mistune==3.0.2
 ml-dtypes==0.3.2
-ml-metadata @ git+https://github.com/vkarampudi/ml-metadata@master
+ml-metadata @ git+https://github.com/vkarampudi/ml-metadata@testing
 mmh==2.2
 more-itertools==10.5.0
 msgpack==1.1.0

@@ -58,10 +58,10 @@ def make_pipeline_sdk_required_install_packages():
         "ml-metadata"
         + select_constraint(
             # LINT.IfChange
-            default="@git+https://github.com/vkarampudi/ml-metadata@master",
+            default="@git+https://github.com/vkarampudi/ml-metadata@testing",
             # LINT.ThenChange(tfx/workspace.bzl)
-            nightly="@git+https://github.com/vkarampudi/ml-metadata@master",
-            git_master="@git+https://github.com/vkarampudi/ml-metadata@master",
+            nightly="@git+https://github.com/vkarampudi/ml-metadata@testing",
+            git_master="@git+https://github.com/vkarampudi/ml-metadata@testing",
         ),
         "packaging>=22",
         "portpicker>=1.3.1,<2",

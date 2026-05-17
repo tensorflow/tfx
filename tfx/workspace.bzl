@@ -80,7 +80,7 @@ def tfx_workspace():
     tfx_github_archive(
         name = "com_github_google_ml_metadata",
         repo = "vkarampudi/ml-metadata",
-        branch = "master",
+        branch = "testing",
     )
 
     # Fetch TFMD repo from GitHub.
