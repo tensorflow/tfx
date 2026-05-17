@@ -97,7 +97,7 @@ def make_required_install_packages():
         # TODO(b/332616741): Scipy version 1.13 breaks the TFX OSS test.
         # Unpin once the issue is resolved.
         "scipy<2",
-        "scikit-learn==1.5.1",
+        "scikit-learn==1.5.2",
         # TODO(b/291837844): Pinned pyyaml to 5.3.1.
         # Unpin once the issue with installation is resolved.
         "pyyaml>=6,<7",
