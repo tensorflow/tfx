@@ -110,27 +110,27 @@ def make_required_install_packages():
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/data-validation@master",
-            nightly="@git+https://github.com/tensorflow/data-validation@master",
+            default=">=1.17.0,<1.18.0",
+            nightly=">=1.17.0",
             git_master="@git+https://github.com/tensorflow/data-validation@master",
         ),
         "tensorflow-model-analysis"
         + select_constraint(
-            default="@git+https://github.com/vkarampudi/model-analysis@master",
-            nightly="@git+https://github.com/vkarampudi/model-analysis@master",
+            default=">=0.48.0,<0.49.0",
+            nightly=">=0.48.0",
             git_master="@git+https://github.com/vkarampudi/model-analysis@master",
         ),
         "tensorflow-serving-api>=2.19.1,<2.22",
         "tensorflow-transform"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/transform@master",
-            nightly="@git+https://github.com/tensorflow/transform@master",
+            default=">=1.17.0,<1.18.0",
+            nightly=">=1.17.0",
             git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/tfx-bsl@master",
-            nightly="@git+https://github.com/tensorflow/tfx-bsl@master",
+            default=">=1.17.1,<1.18.0",
+            nightly=">=1.17.1",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
     ]
