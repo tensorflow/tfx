@@ -68,8 +68,8 @@ plugins:
               - "!^logger"
             extensions:
               - griffe_inherited_docstrings
-          import:
-            - https://docs.python.org/3/objects.inv
+      import:
+        - https://docs.python.org/3/objects.inv
   - mkdocs-jupyter:
       execute: false
       execute_ignore: # There are issues with executing these notebooks
