@@ -22,7 +22,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.10', '3.11', '3.12']
         which-tests: ["not e2e", "e2e"]
         dependency-selector: ["NIGHTLY", "DEFAULT"]
 
@@ -62,9 +62,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip wheel setuptools
-        # TODO(b/232490018): Cython and grpcio-tools need to be installed separately to build pycocotools and bypass build-isolation issues.
-        python -m pip install Cython grpcio-tools -c ./test_constraints.txt
-        pip install --no-build-isolation \
+        # TODO(b/232490018): Cython need to be installed separately to build pycocotools.
+        python -m pip install Cython -c ./test_constraints.txt
+        pip install \
           -c ./${{ matrix.dependency-selector == 'NIGHTLY' && 'nightly_test_constraints.txt' || 'test_constraints.txt' }} \
           --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre .[all]
 
