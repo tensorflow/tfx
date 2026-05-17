@@ -58,14 +58,14 @@ def make_pipeline_sdk_required_install_packages():
         "ml-metadata"
         + select_constraint(
             # LINT.IfChange
-            default=">=1.17.0,<1.18.0",
+            default="@git+https://github.com/vkarampudi/ml-metadata@master",
             # LINT.ThenChange(tfx/workspace.bzl)
-            nightly=">=1.17.0",
-            git_master="@git+https://github.com/google/ml-metadata@master",
+            nightly="@git+https://github.com/vkarampudi/ml-metadata@master",
+            git_master="@git+https://github.com/vkarampudi/ml-metadata@master",
         ),
         "packaging>=22",
         "portpicker>=1.3.1,<2",
-        "protobuf>=3.20.3,<5",
+        "protobuf>=6.0.0,<7.0.0",
         "docker>=7,<8",
         "google-apitools>=0.5,<1",
         "google-api-python-client>=1.8,<2",
@@ -81,7 +81,7 @@ def make_required_install_packages():
     # and protobuf) with TF.
     return make_pipeline_sdk_required_install_packages() + [
         "apache-beam[gcp]>=2.47,<3",
-        "attrs>=19.3.0,<24",
+        "attrs>=19.3.0,<26",
         "click>=7,<9",
         "google-api-core<3",
         "google-cloud-aiplatform>=1.6.2,<2",
@@ -89,14 +89,14 @@ def make_required_install_packages():
         "grpcio>=1.28.1,<2",
         "keras-tuner>=1.0.4,<2,!=1.4.0,!=1.4.1",
         "kubernetes>=10.0.1,<27",
-        "numpy>=1.16,<2",
-        "pyarrow>=10,<11",
+        "numpy>=1.16,<3",
+        "pyarrow>=10,<19",
         # TODO: b/358471141 - Orjson 3.10.7 breaks TFX OSS tests.
         # Unpin once the issue with installation is resolved.
         "orjson!=3.10.7",
         # TODO(b/332616741): Scipy version 1.13 breaks the TFX OSS test.
         # Unpin once the issue is resolved.
-        "scipy<1.13",
+        "scipy<2",
         "scikit-learn==1.5.1",
         # TODO(b/291837844): Pinned pyyaml to 5.3.1.
         # Unpin once the issue with installation is resolved.
@@ -105,32 +105,32 @@ def make_required_install_packages():
         # Pip might stuck in a TF 1.15 dependency although there is a working
         # dependency set with TF 2.x without the sync.
         # pylint: disable=line-too-long
-        "tensorflow" + select_constraint(">=2.17.0,<2.18"),
+        "tensorflow" + select_constraint(">=2.21.0,<2.22"),
         # pylint: enable=line-too-long
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
-            default=">=1.17.0,<1.18.0",
-            nightly=">=1.17.0",
-            git_master=("@git+https://github.com/tensorflow/data-validation@master"),
+            default="@git+https://github.com/tensorflow/data-validation@master",
+            nightly="@git+https://github.com/tensorflow/data-validation@master",
+            git_master="@git+https://github.com/tensorflow/data-validation@master",
         ),
         "tensorflow-model-analysis"
         + select_constraint(
-            default=">=0.48.0,<0.49.0",
-            nightly=">=0.48.0",
-            git_master="@git+https://github.com/tensorflow/model-analysis@master",
+            default="@git+https://github.com/vkarampudi/model-analysis@master",
+            nightly="@git+https://github.com/vkarampudi/model-analysis@master",
+            git_master="@git+https://github.com/vkarampudi/model-analysis@master",
         ),
-        "tensorflow-serving-api>=2.17,<2.18",
+        "tensorflow-serving-api>=2.21.0,<2.22",
         "tensorflow-transform"
         + select_constraint(
-            default=">=1.17.0,<1.18.0",
-            nightly=">=1.17.0",
+            default="@git+https://github.com/tensorflow/transform@master",
+            nightly="@git+https://github.com/tensorflow/transform@master",
             git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
-            default=">=1.17.1,<1.18.0",
-            nightly=">=1.17.1",
+            default="@git+https://github.com/tensorflow/tfx-bsl@master",
+            nightly="@git+https://github.com/tensorflow/tfx-bsl@master",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
     ]
@@ -199,8 +199,8 @@ def make_extra_packages_tf_ranking():
         "tensorflow-ranking>=0.5,<0.6",
         "struct2tensor"
         + select_constraint(
-            default=">=0.48.0,<0.49.0",
-            nightly=">=0.48.0",
+            default="@git+https://github.com/google/struct2tensor@master",
+            nightly="@git+https://github.com/google/struct2tensor@master",
             git_master="@git+https://github.com/google/struct2tensor@master",
         ),
     ]

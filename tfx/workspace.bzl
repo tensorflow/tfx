@@ -84,20 +84,15 @@ def tfx_workspace():
     # Fetch MLMD repo from GitHub.
     tfx_github_archive(
         name = "com_github_google_ml_metadata",
-        repo = "google/ml-metadata",
-        # LINT.IfChange
-        tag = "v1.17.1",
-        # LINT.ThenChange(//tfx/dependencies.py)
+        repo = "vkarampudi/ml-metadata",
+        branch = "master",
     )
 
     # Fetch TFMD repo from GitHub.
     tfx_github_archive(
         name = "com_github_tf_metadata",
         repo = "tensorflow/metadata",
-        # LINT.IfChange
-        # Keep in sync with TFDV version (TFDV requires TFMD).
-        tag = "v1.17.1",
-        # LINT.ThenChange(//tfx/dependencies.py)
+        branch = "master",
         patches = ["//patches:tensorflow_metadata_proto_v0.patch"],
         patch_strip = 1,
     )

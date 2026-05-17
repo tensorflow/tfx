@@ -11,8 +11,8 @@
 # TODO(b/321609768): Remove pinned Flask-session version after resolving the issue.
 Flask-session<0.6.0
 
-tensorflow==2.17.1
-tensorflow-text==2.17.0
+tensorflow==2.21.0
+tensorflow-text==2.21.0
 keras==3.6.0
 
 absl-py==1.4.0
@@ -192,7 +192,7 @@ mdurl==0.1.2
 methodtools==0.4.7
 mistune==3.0.2
 ml-dtypes==0.3.2
-ml-metadata>=1.17.1
+ml-metadata @ git+https://github.com/vkarampudi/ml-metadata@master
 mmh==2.2
 more-itertools==10.5.0
 msgpack==1.1.0
@@ -207,7 +207,7 @@ nltk==3.9.1
 nodeenv==1.9.1
 notebook==7.2.2
 notebook_shim==0.2.4
-numpy==1.24.4
+numpy==2.1.0
 oauth2client==4.1.3
 oauthlib==3.2.2
 objsize==0.6.1
@@ -246,7 +246,7 @@ promise==2.3
 prompt_toolkit==3.0.48
 propcache==0.2.0
 proto-plus==1.24.0
-protobuf==4.21.12
+protobuf==6.31.1
 psutil==6.0.0
 ptyprocess==0.7.0
 pyarrow-hotfix==0.6
@@ -289,7 +289,7 @@ rpds-py==0.20.0
 rsa==4.9
 sacrebleu==2.4.3
 scikit-learn==1.5.1
-scipy==1.12.0
+scipy==1.14.1
 Send2Trash==1.8.3
 setproctitle==1.3.3
 shapely==2.0.6
@@ -302,14 +302,14 @@ SQLAlchemy==1.4.54
 SQLAlchemy-JSONField==1.0.2
 SQLAlchemy-Utils==0.41.2
 sqlparse==0.5.1
-struct2tensor>=0.48.1
+struct2tensor @ git+https://github.com/google/struct2tensor@master
 tabulate==0.9.0
 tenacity==9.0.0
 tensorboard==2.17.1
 tensorboard-data-server==0.7.2
 tensorflow==2.17.1
 tensorflow-cloud==0.1.16
-tensorflow-data-validation>=1.17.0
+tensorflow-data-validation @ git+https://github.com/tensorflow/data-validation@master
 tensorflow-datasets==4.9.3
 tensorflow-decision-forests==1.10.1
 tensorflow-estimator==2.15.0
@@ -318,17 +318,17 @@ tensorflow-io==0.24.0
 tensorflow-io-gcs-filesystem==0.24.0
 tensorflow-metadata>=1.17.1
 # tensorflow-ranking==0.5.5
-tensorflow-serving-api==2.17.1
+tensorflow-serving-api==2.21.0
 tensorflow-text==2.17.0
-tensorflow-transform>=1.17.0
-tensorflow_model_analysis>=0.48.0
+tensorflow-transform @ git+https://github.com/tensorflow/transform@master
+tensorflow-model-analysis @ git+https://github.com/vkarampudi/model-analysis@master
 tensorflowjs==4.17.0
 tensorstore==0.1.66
 termcolor==2.5.0
 terminado==0.18.1
 text-unidecode==1.3
 tflite-support==0.4.4
-tfx-bsl>=1.17.1
+tfx-bsl @ git+https://github.com/tensorflow/tfx-bsl@master
 threadpoolctl==3.5.0
 time-machine==2.16.0
 tinycss2==1.3.0
