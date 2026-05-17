@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 env:
-  USE_BAZEL_VERSION: "6.5.0"
+  USE_BAZEL_VERSION: "7.7.0"
   # Changed to match tensorflow
   # https://github.com/tensorflow/tensorflow/blob/master/.bazelversion
 
@@ -22,7 +22,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.9', '3.10']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
         which-tests: ["not e2e", "e2e"]
         dependency-selector: ["NIGHTLY", "DEFAULT"]
 
