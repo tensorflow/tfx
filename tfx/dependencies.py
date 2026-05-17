@@ -120,7 +120,7 @@ def make_required_install_packages():
             nightly="@git+https://github.com/vkarampudi/model-analysis@master",
             git_master="@git+https://github.com/vkarampudi/model-analysis@master",
         ),
-        "tensorflow-serving-api>=2.21.0,<2.22",
+        "tensorflow-serving-api>=2.19.1,<2.22",
         "tensorflow-transform"
         + select_constraint(
             default="@git+https://github.com/tensorflow/transform@master",
