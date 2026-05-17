@@ -7,7 +7,7 @@
 +load("@com_google_protobuf//bazel:py_proto_library.bzl", _py_proto_library = "py_proto_library")
  load("@rules_python//python:defs.bzl", "py_library")
  load("//bazel/common:proto_info.bzl", "ProtoInfo")
- 
+
 @@ -761,3 +762,120 @@
      copied filegroup. (Fixed in bazel 0.5.4)
      """
