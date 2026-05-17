@@ -1,1 +1,2 @@
 common --noenable_bzlmod
+common --experimental_repo_remote_exec
