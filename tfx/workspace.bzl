@@ -93,6 +93,4 @@ def tfx_workspace():
         name = "com_github_tf_metadata",
         repo = "tensorflow/metadata",
         branch = "master",
-        patches = ["//patches:tensorflow_metadata_proto_v0.patch"],
-        patch_strip = 1,
     )
