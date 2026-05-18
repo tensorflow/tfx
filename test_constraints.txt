@@ -22,7 +22,8 @@ alembic==1.13.3
 annotated-types==0.7.0
 anyio==4.6.0
 apache-airflow==2.10.3
-apache-beam==2.50.0
+apache-beam==2.50.0; python_version < "3.11"
+apache-beam==2.53.0; python_version >= "3.11"
 apispec==6.6.1
 argcomplete==3.5.1
 argon2-cffi==23.1.0
@@ -125,7 +126,7 @@ greenlet==3.1.1
 grpc-google-iam-v1==0.13.1
 grpc-interceptor==0.15.4
 grpcio==1.66.2
-grpcio-status==1.48.2
+grpcio-status==1.62.3
 gunicorn==23.0.0
 h11==0.14.0
 h5py==3.12.1
@@ -246,9 +247,11 @@ promise==2.3
 prompt_toolkit==3.0.48
 propcache==0.2.0
 proto-plus==1.24.0
-protobuf==4.21.12
+protobuf==4.21.12; python_version < "3.11"
+protobuf==4.25.5; python_version >= "3.11"
 psutil==6.0.0
 ptyprocess==0.7.0
+pyarrow==10.0.1; python_version >= "3.11"
 pyarrow-hotfix==0.6
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
@@ -315,7 +318,8 @@ tensorflow-decision-forests==1.10.1
 tensorflow-estimator==2.15.0
 tensorflow-hub==0.15.0
 tensorflow-io==0.24.0
-tensorflow-io-gcs-filesystem==0.24.0
+tensorflow-io-gcs-filesystem==0.24.0; python_version < "3.11"
+tensorflow-io-gcs-filesystem==0.37.1; python_version >= "3.11"
 tensorflow-metadata>=1.16.1
 # tensorflow-ranking==0.5.5
 tensorflow-serving-api==2.17.1
