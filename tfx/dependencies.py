@@ -180,9 +180,7 @@ def make_extra_packages_docker_image():
 
 def make_extra_packages_tfjs():
     # Packages needed for tfjs.
-    return [
-        "tensorflowjs>=4.5,<5; python_version < '3.12'",
-    ]
+    return []
 
 
 def make_extra_packages_tflite_support():

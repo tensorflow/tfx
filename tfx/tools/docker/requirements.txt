@@ -303,7 +303,6 @@ tensorflow-serving-api==2.21.0
 tensorflow-revived-types==0.1.1
 tensorflow-model-analysis @ git+https://github.com/vkarampudi/model-analysis@master
 tensorflow-transform @ git+https://github.com/tensorflow/transform@master
-tensorflowjs==4.17.0
 tensorstore==0.1.66
 termcolor==2.5.0
 terminado==0.18.1

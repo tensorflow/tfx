@@ -340,7 +340,6 @@ tensorflow-metadata>=1.17.1
 tensorflow-serving-api==2.19.1
 tensorflow-transform @ git+https://github.com/vkarampudi/transform@master
 tensorflow-model-analysis @ git+https://github.com/vkarampudi/model-analysis@master
-tensorflowjs==4.17.0
 tensorstore==0.1.66
 termcolor==2.5.0
 terminado==0.18.1
