@@ -90,7 +90,8 @@ def make_required_install_packages():
         "keras-tuner>=1.0.4,<2,!=1.4.0,!=1.4.1",
         "kubernetes>=10.0.1,<27",
         "numpy>=1.16,<3",
-        "pyarrow>=10,<19",
+        "pyarrow>=10,<19; python_version < '3.13'",
+        "pyarrow>=18,<19; python_version >= '3.13'",
         # TODO: b/358471141 - Orjson 3.10.7 breaks TFX OSS tests.
         # Unpin once the issue with installation is resolved.
         "orjson!=3.10.7",
