@@ -230,7 +230,7 @@ proto-plus==1.24.0
 protobuf==6.31.1
 psutil==6.0.0
 ptyprocess==0.7.0
-pyarrow==23.0.1
+pyarrow==18.1.0
 pyarrow-hotfix==0.6
 pyasn1>=0.6.0
 pyasn1_modules==0.4.1
