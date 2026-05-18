@@ -235,8 +235,6 @@ def make_extra_packages_examples():
         # tfx/examples/custom_components/slack
         "slackclient>=2.8.2,<3",
         "websocket-client>=0.57,<1",
-        # Required for bert examples in tfx/examples/bert
-        "tensorflow-text>=1.15.1,<3; python_version < '3.12'",
         # Required for tfx/examples/penguin/experimental
         # LINT.IfChange
         "scikit-learn>=1.0,<2",

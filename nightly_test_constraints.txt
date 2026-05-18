@@ -12,7 +12,6 @@
 Flask-session<0.6.0
 
 tensorflow==2.21.0
-tensorflow-text==2.20.1
 keras==3.14.0; python_version >= '3.11'
 keras==3.12.2; python_version < '3.11'
 
