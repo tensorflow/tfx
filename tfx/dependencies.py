@@ -199,9 +199,9 @@ def make_extra_packages_tf_ranking():
         "tensorflow-ranking>=0.5,<0.6",
         "struct2tensor"
         + select_constraint(
-            default="@git+https://github.com/google/struct2tensor@master",
-            nightly="@git+https://github.com/google/struct2tensor@master",
-            git_master="@git+https://github.com/google/struct2tensor@master",
+            default="@git+https://github.com/vkarampudi/struct2tensor@testing2",
+            nightly="@git+https://github.com/vkarampudi/struct2tensor@testing2",
+            git_master="@git+https://github.com/vkarampudi/struct2tensor@testing2",
         ),
     ]
 
