@@ -101,7 +101,7 @@ google-apitools==0.5.35; python_version >= '3.13'
 google-auth==2.49.1
 google-auth-httplib2==0.1.1
 google-auth-oauthlib==1.2.1
-google-cloud-aiplatform==1.153.1
+google-cloud-aiplatform==1.148.1
 google-cloud-bigquery==3.41.0
 google-cloud-bigquery-storage==2.38.0
 google-cloud-bigtable==2.38.0
