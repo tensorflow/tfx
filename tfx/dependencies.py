@@ -221,10 +221,10 @@ def make_extra_packages_flax():
     # tfx/examples/penguin.
     return [
         # TODO(b/324157691): Upgrade jax once we upgrade TF version.
-        "jax<0.4.24",
-        "jaxlib<0.4.24",
-        "flax<1",
-        "optax<1",
+        "jax<0.4.24; python_version < '3.13'",
+        "jaxlib<0.4.24; python_version < '3.13'",
+        "flax<1; python_version < '3.13'",
+        "optax<1; python_version < '3.13'",
     ]
 
 

@@ -89,7 +89,7 @@ Flask-Session==0.5.0
 Flask-SQLAlchemy==2.5.1
 Flask-WTF==1.2.1
 flatbuffers==24.3.25
-flax==0.8.4
+flax==0.8.4; python_version < '3.13'
 fqdn==1.5.1
 frozenlist==1.4.1
 fsspec==2024.9.0
@@ -144,8 +144,8 @@ ipython-genutils==0.2.0
 ipywidgets==7.8.4
 isoduration==20.11.0
 itsdangerous==2.2.0
-jax==0.4.23
-jaxlib==0.4.23
+jax==0.4.23; python_version < '3.13'
+jaxlib==0.4.23; python_version < '3.13'
 jedi==0.19.1
 Jinja2==3.1.4
 jmespath==1.0.1
@@ -220,7 +220,7 @@ opentelemetry-proto==1.27.0
 opentelemetry-sdk==1.27.0
 opentelemetry-semantic-conventions==0.48b0
 opt_einsum==3.4.0
-optax==0.2.2
+optax==0.2.2; python_version < '3.13'
 orbax-checkpoint==0.5.16
 ordered-set==4.1.0
 orjson==3.10.11
