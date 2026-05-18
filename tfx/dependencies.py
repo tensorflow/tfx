@@ -146,8 +146,8 @@ def make_extra_packages_airflow():
 def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
-      "kfp>=2.6.0,<2.7.0; python_version < '3.13'",
-      "kfp-pipeline-spec>=0.3.0,<0.4.0; python_version < '3.13'",
+      "kfp>=2.6.0,<2.7.0; python_version < '3.12'",
+      "kfp-pipeline-spec>=0.3.0,<0.4.0; python_version < '3.12'",
   ]
 
 
@@ -168,8 +168,8 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
     # Packages needed for tfx docker image.
     return [
-        "kfp>=2.6.0,<2.7.0",
-        "kfp-pipeline-spec>=0.3.0,<0.4.0",
+        "kfp>=2.6.0,<2.7.0; python_version < '3.12'",
+        "kfp-pipeline-spec>=0.3.0,<0.4.0; python_version < '3.12'",
         "mmh>=2.2,<3",
         "python-snappy>=0.7",
         # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
@@ -181,7 +181,7 @@ def make_extra_packages_docker_image():
 def make_extra_packages_tfjs():
     # Packages needed for tfjs.
     return [
-        "tensorflowjs>=4.5,<5",
+        "tensorflowjs>=4.5,<5; python_version < '3.12'",
     ]
 
 
@@ -196,7 +196,7 @@ def make_extra_packages_tflite_support():
 def make_extra_packages_tf_ranking():
     # Packages needed for tf-ranking which is used in tfx/examples/ranking.
     return [
-        "tensorflow-ranking>=0.5,<0.6",
+        "tensorflow-ranking>=0.5,<0.6; python_version < '3.12'",
         "struct2tensor"
         + select_constraint(
             default="@git+https://github.com/vkarampudi/struct2tensor@testing2",
@@ -239,7 +239,7 @@ def make_extra_packages_examples():
         "slackclient>=2.8.2,<3",
         "websocket-client>=0.57,<1",
         # Required for bert examples in tfx/examples/bert
-        "tensorflow-text>=1.15.1,<3",
+        "tensorflow-text>=1.15.1,<3; python_version < '3.12'",
         # Required for tfx/examples/penguin/experimental
         # LINT.IfChange
         "scikit-learn>=1.0,<2",
