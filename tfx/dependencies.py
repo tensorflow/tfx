@@ -139,7 +139,7 @@ def make_required_install_packages():
 def make_extra_packages_airflow():
     """Prepare extra packages needed for Apache Airflow orchestrator."""
     return [
-        "apache-airflow[mysql]>=1.10.14,<3",
+        "apache-airflow[mysql]>=1.10.14,<3; python_version < '3.13'",
     ]
 
 
