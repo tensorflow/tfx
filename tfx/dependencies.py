@@ -209,10 +209,8 @@ def make_extra_packages_tf_ranking():
 def make_extra_packages_tfdf():
     # Packages needed for tensorflow-decision-forests.
     # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
-    return [
-        # NOTE: TFDF 1.0.1 is only compatible with TF 2.10.x.
-        "tensorflow-decision-forests>=1.10.1,<2; python_version < '3.12'",
-    ]
+    return []
+
 
 
 def make_extra_packages_flax():

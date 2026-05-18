@@ -333,7 +333,6 @@ tensorboard-data-server==0.7.2
 tensorflow-cloud==0.1.16
 tensorflow-data-validation @ git+https://github.com/vkarampudi/data-validation@testing
 tensorflow-datasets==4.9.3
-tensorflow-decision-forests==1.10.1; python_version < '3.12'
 tensorflow-estimator==2.15.0
 tensorflow-hub==0.15.0
 tensorflow-io==0.24.0
