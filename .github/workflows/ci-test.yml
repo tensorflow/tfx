@@ -66,6 +66,22 @@ jobs:
         python -m pip install Cython -c ./test_constraints.txt
         # Pre-install grpcio-tools with --no-deps to bypass transitive Protobuf 6.x dependency conflicts on Python 3.13.
         python -m pip install grpcio-tools==1.66.2 --no-deps
+        # Pre-install apache-beam with --no-deps and patch its METADATA to bypass protobuf/numpy limits.
+        python -m pip install apache-beam==2.60.0 --no-deps
+        python -c "
+        import glob, os, sysconfig
+        purelib = sysconfig.get_paths()['purelib']
+        for p in glob.glob(os.path.join(purelib, 'apache_beam-*.dist-info/METADATA')):
+            with open(p, 'r') as f:
+                lines = f.readlines()
+            with open(p, 'w') as f:
+                for line in lines:
+                    if 'Requires-Dist: protobuf' in line:
+                        line = 'Requires-Dist: protobuf (>=3.20.3)\n'
+                    if 'Requires-Dist: numpy' in line:
+                        line = 'Requires-Dist: numpy (>=1.14.3)\n'
+                    f.write(line)
+        "
         pip install --no-build-isolation \
           -c ./${{ matrix.dependency-selector == 'NIGHTLY' && 'nightly_test_constraints.txt' || 'test_constraints.txt' }} \
           --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre .[all]
