@@ -228,7 +228,7 @@ orbax-checkpoint==0.5.16
 ordered-set==4.1.0
 orjson==3.10.11
 overrides==7.7.0
-packaging==23.2
+packaging==24.2
 pandas==2.2.3
 pandocfilters==1.5.1
 parso==0.8.4
