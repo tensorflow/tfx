@@ -7,14 +7,14 @@
 # This file should be updated when tfx/dependencies.py is updated.
 
 absl-py==1.4.0
-aiohappyeyeballs==2.4.3
-aiosignal==1.3.1
+aiohappyeyeballs==2.6.1
+aiosignal==1.4.0
 aiohttp==3.13.5
 alembic==1.13.3
 annotated-types==0.7.0
 anyio==4.13.0
 apache-airflow==2.10.3
-apache-beam==2.50.0
+apache-beam==2.73.0
 apispec==6.6.1
 argcomplete==3.5.1
 argon2-cffi==23.1.0
@@ -38,7 +38,7 @@ cffi==1.17.1
 cfgv==3.4.0
 charset-normalizer==3.3.2
 chex==0.1.86
-click==8.1.3
+click==8.1.8
 clickclick==20.10.2
 cloudpickle==2.2.1
 colorama==0.4.6
@@ -93,7 +93,7 @@ google-apitools==0.5.31
 google-auth==2.49.1
 google-auth-httplib2>=0.1.1
 google-auth-oauthlib==1.2.1
-google-cloud-aiplatform==1.144.0
+google-cloud-aiplatform==1.148.1
 google-cloud-bigquery==3.26.0
 google-cloud-bigquery-storage==2.26.0
 google-cloud-bigtable==2.26.0
@@ -114,12 +114,12 @@ google-pasta==0.2.0
 google-re2==1.1.20240702
 google-resumable-media==2.7.2
 google-genai==1.68.0
-googleapis-common-protos==1.63.0
+googleapis-common-protos==1.75.0
 greenlet==3.1.1
 grpc-google-iam-v1==0.13.1
 grpc-interceptor==0.15.4
-grpcio==1.62.3
-grpcio-status==1.62.3
+grpcio==1.80.0
+grpcio-status==1.80.0
 gunicorn==23.0.0
 h11==0.16.0
 h5py==3.12.1
@@ -149,11 +149,11 @@ jsonpointer==3.0.0
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
 tf-keras==2.17.0
-keras==3.6.0
+keras==3.14.0
 keras-tuner==1.4.7
-kfp==2.6.0
-kfp-pipeline-spec==0.3.0
-kfp-server-api==2.0.5
+kfp==2.16.1
+kfp-pipeline-spec==2.16.0
+kfp-server-api==2.16.0
 kt-legacy==1.0.5
 kubernetes==23.6.0
 lazy-object-proxy==1.10.0
@@ -188,7 +188,7 @@ nbformat==5.10.4
 nest-asyncio==1.6.0
 nltk>=3.9.4
 nodeenv==1.9.1
-numpy==1.24.4
+numpy==1.26.4
 oauth2client==4.1.3
 oauthlib==3.2.2
 objsize==0.6.1
@@ -207,7 +207,7 @@ ordered-set==4.1.0
 orjson==3.11.8
 overrides==7.7.0
 packaging==23.2
-pandas==1.5.3
+pandas==2.2.3
 pandocfilters==1.5.1
 parso==0.8.4
 pathspec==0.12.1
@@ -225,12 +225,12 @@ prison==0.2.1
 prometheus_client==0.21.0
 promise==2.3
 prompt_toolkit==3.0.48
-propcache==0.2.0
+propcache==0.5.2
 proto-plus==1.24.0
 protobuf==6.31.1
 psutil==6.0.0
 ptyprocess==0.7.0
-pyarrow==10.0.1
+pyarrow==23.0.1
 pyarrow-hotfix==0.6
 pyasn1>=0.6.0
 pyasn1_modules==0.4.1
@@ -271,8 +271,8 @@ rouge_score==0.1.2
 rpds-py==0.20.0
 rsa==4.9
 sacrebleu==2.4.3
-scikit-learn==1.5.1
-scipy==1.12.0
+scikit-learn==1.5.2
+scipy==1.14.1
 Send2Trash==1.8.3
 setproctitle==1.3.3
 shapely==2.0.6
@@ -299,7 +299,7 @@ tensorflow-hub==0.15.0
 tensorflow-cloud==0.1.16
 tensorflow-io==0.24.0
 tensorflow-io-gcs-filesystem==0.24.0
-tensorflow-metadata==1.17.1
+tensorflow-metadata==1.18.0.dev0
 # tensorflow-ranking==0.5.5
 tensorflow-serving-api==2.21.0
 tensorflow-text==2.17.0
@@ -331,7 +331,7 @@ unicodecsv==0.14.1
 universal_pathlib==0.2.5
 uri-template==1.3.0
 uritemplate==3.0.1
-urllib3==1.26.19
+urllib3==1.26.20
 virtualenv==20.26.6
 wcwidth==0.2.13
 webcolors==24.8.0
@@ -343,7 +343,7 @@ wirerope==0.4.7
 wrapt==1.14.1
 WTForms==3.1.2
 wurlitzer==3.1.1
-yarl==1.14.0
+yarl==1.23.0
 zipp==3.20.2
 zstandard==0.23.0
 pip>=26.0.0
