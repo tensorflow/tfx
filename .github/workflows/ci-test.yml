@@ -66,8 +66,8 @@ jobs:
         python -m pip install Cython -c ./test_constraints.txt
         # Pre-install grpcio-tools with --no-deps to bypass transitive Protobuf 6.x dependency conflicts on Python 3.13.
         python -m pip install grpcio-tools==1.66.2 --no-deps
-        # Pre-install apache-beam with --no-deps and patch its METADATA to bypass protobuf/numpy limits.
-        python -m pip install apache-beam==2.60.0 --no-deps
+        # Pre-install apache-beam with --no-deps and --no-build-isolation and patch its METADATA to bypass protobuf/numpy limits.
+        python -m pip install apache-beam==2.60.0 --no-deps --no-build-isolation
         python -c "
         import glob, os, sysconfig
         purelib = sysconfig.get_paths()['purelib']
