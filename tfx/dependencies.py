@@ -196,7 +196,6 @@ def make_extra_packages_tflite_support():
 def make_extra_packages_tf_ranking():
     # Packages needed for tf-ranking which is used in tfx/examples/ranking.
     return [
-        "tensorflow-ranking>=0.5,<0.6; python_version < '3.12'",
         "struct2tensor"
         + select_constraint(
             default="@git+https://github.com/vkarampudi/struct2tensor@testing2",

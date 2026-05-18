@@ -338,7 +338,6 @@ tensorflow-hub==0.15.0
 tensorflow-io==0.24.0
 tensorflow-io-gcs-filesystem==0.24.0
 tensorflow-metadata>=1.17.1
-tensorflow-ranking==0.5.5
 tensorflow-serving-api==2.19.1
 tensorflow-transform @ git+https://github.com/vkarampudi/transform@master
 tensorflow-model-analysis @ git+https://github.com/vkarampudi/model-analysis@master
