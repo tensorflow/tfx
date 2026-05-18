@@ -12,7 +12,7 @@
 Flask-session<0.6.0
 
 tensorflow==2.21.0
-tensorflow-text==2.21.0
+tensorflow-text==2.20.1
 keras==3.6.0
 
 absl-py==1.4.0
