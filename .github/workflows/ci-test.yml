@@ -69,7 +69,7 @@ jobs:
         # Pre-install numpy first because apache-beam requires it to build C extensions from source under --no-build-isolation.
         python -m pip install numpy -c ./${{ matrix.dependency-selector == 'NIGHTLY' && 'nightly_test_constraints.txt' || 'test_constraints.txt' }}
         # Pre-install apache-beam with --no-deps and --no-build-isolation and patch its METADATA to bypass protobuf/numpy limits.
-        python -m pip install apache-beam==2.60.0 --no-deps --no-build-isolation
+        python -m pip install apache-beam -c ./${{ matrix.dependency-selector == 'NIGHTLY' && 'nightly_test_constraints.txt' || 'test_constraints.txt' }} --no-deps --no-build-isolation
         python -c "
         import glob, os, sysconfig
         purelib = sysconfig.get_paths()['purelib']
