@@ -236,7 +236,8 @@ pathspec==0.12.1
 pendulum==3.0.0
 pexpect==4.9.0
 pickleshare==0.7.5
-pillow==10.4.0
+pillow==10.4.0; python_version < '3.13'
+pillow==12.1.1; python_version >= '3.13'
 platformdirs==4.3.6
 pluggy==1.5.0
 portalocker==2.10.1
