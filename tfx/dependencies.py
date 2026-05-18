@@ -123,9 +123,9 @@ def make_required_install_packages():
         "tensorflow-serving-api>=2.19.1,<2.22",
         "tensorflow-transform"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/transform@master",
-            nightly="@git+https://github.com/tensorflow/transform@master",
-            git_master="@git+https://github.com/tensorflow/transform@master",
+            default="@git+https://github.com/vkarampudi/transform@master",
+            nightly="@git+https://github.com/vkarampudi/transform@master",
+            git_master="@git+https://github.com/vkarampudi/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
