@@ -21,8 +21,9 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10']
+        python-version: ['3.9', '3.10', '3.11']
         which-tests: ["not e2e", "e2e"]
         dependency-selector: ["NIGHTLY", "DEFAULT"]
 
