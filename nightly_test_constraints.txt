@@ -121,7 +121,7 @@ google-crc32c==1.6.0
 google-pasta==0.2.0
 google-re2==1.1.20240702
 google-resumable-media==2.7.2
-googleapis-common-protos==1.65.0
+googleapis-common-protos==1.75.0
 greenlet==3.1.1
 grpc-google-iam-v1==0.14.4
 grpc-interceptor==0.15.4
