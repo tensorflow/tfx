@@ -98,7 +98,7 @@ google-api-core==2.30.3
 google-api-python-client==1.12.11
 google-apitools==0.5.31; python_version < '3.13'
 google-apitools==0.5.35; python_version >= '3.13'
-google-auth==2.35.0
+google-auth==2.49.1
 google-auth-httplib2==0.1.1
 google-auth-oauthlib==1.2.1
 google-cloud-aiplatform==1.153.1
