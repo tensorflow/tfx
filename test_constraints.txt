@@ -133,7 +133,7 @@ h5py==3.12.1
 hdfs==2.7.3
 httpcore==1.0.6
 httplib2==0.22.0
-httpx==0.27.2
+httpx==0.28.1
 identify==2.6.1
 idna==3.10
 importlib_metadata==8.4.0
