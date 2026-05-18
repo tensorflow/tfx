@@ -160,8 +160,10 @@ importlib_resources==6.4.5
 inflection==0.5.1
 iniconfig==2.0.0
 ipykernel==6.29.5
+ipython==8.30.0; python_version >= '3.13'
 ipython-genutils==0.2.0
-ipywidgets==7.8.4
+ipywidgets==7.8.4; python_version < '3.13'
+ipywidgets==8.1.5; python_version >= '3.13'
 isoduration==20.11.0
 itsdangerous==2.2.0
 jax==0.4.23; python_version < '3.13'
@@ -185,7 +187,8 @@ jupyter_server_terminals==0.5.3
 jupyterlab==4.2.5
 jupyterlab_pygments==0.3.0
 jupyterlab_server==2.27.3
-jupyterlab_widgets==1.1.10
+jupyterlab_widgets==1.1.10; python_version < '3.13'
+jupyterlab_widgets==3.0.13; python_version >= '3.13'
 tf-keras==2.21.0
 keras-tuner==1.4.7
 kfp==2.16.1; python_version < '3.12'
@@ -371,7 +374,8 @@ wcwidth==0.2.13
 webcolors==24.8.0
 webencodings==0.5.1
 websocket-client==0.59.0
-widgetsnbextension==3.6.9
+widgetsnbextension==3.6.9; python_version < '3.13'
+widgetsnbextension==4.0.13; python_version >= '3.13'
 wirerope==0.4.7
 wrapt==1.14.1
 WTForms==3.1.2
