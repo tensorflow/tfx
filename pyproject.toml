@@ -49,3 +49,10 @@ markers = [
     "integration: integration tests that are slow and require more dependencies (deselect with `-m 'not integration'`)",
     "perf: performance 'perf' tests that are slow and require more dependencies (deselect with `-m 'not perf'`)",
 ]
+filterwarnings = [
+    "ignore:.*sql_alchemy_conn.*:FutureWarning",
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+    "ignore::UserWarning",
+]
+
