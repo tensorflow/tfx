@@ -22,4 +22,3 @@ def pytest_ignore_collect(collection_path, config):
     except Exception:
       return True
   return False
-
