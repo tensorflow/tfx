@@ -55,4 +55,3 @@ filterwarnings = [
     "ignore::FutureWarning",
     "ignore::UserWarning",
 ]
-

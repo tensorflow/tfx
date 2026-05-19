@@ -11,7 +11,7 @@ os.environ['AIRFLOW__CORE__UNIT_TEST_MODE'] = 'True'
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
-from absl import flags
+from absl import flags  # noqa: E402
 
 def pytest_configure(config):
   # This is needed to avoid
@@ -46,4 +46,3 @@ def pytest_ignore_collect(collection_path, config):
     except ImportError:
       return True
   return False
-
