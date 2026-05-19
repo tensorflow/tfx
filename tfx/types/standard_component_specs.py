@@ -13,8 +13,12 @@
 # limitations under the License.
 """Component specifications for the standard set of TFX Components."""
 
-from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tensorflow_model_analysis import sdk as tfma
+try:
+  _ = tfma.EvalConfig
+except AttributeError:
+  from tensorflow_model_analysis.proto.config_pb2 import EvalConfig as _EvalConfig
+  tfma.EvalConfig = _EvalConfig
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import distribution_validator_pb2
 from tfx.proto import evaluator_pb2
@@ -54,7 +58,6 @@ EXCLUDE_SPLITS_KEY = 'exclude_splits'
 STATISTICS_KEY = 'statistics'
 # Key for example_validator
 ANOMALIES_KEY = 'anomalies'
-CUSTOM_VALIDATION_CONFIG_KEY = 'custom_validation_config'
 # Key for evaluator
 EVAL_CONFIG_KEY = 'eval_config'
 FEATURE_SLICING_SPEC_KEY = 'feature_slicing_spec'
@@ -206,11 +209,6 @@ class ExampleValidatorSpec(ComponentSpec):
   PARAMETERS = {
       EXCLUDE_SPLITS_KEY:
           ExecutionParameter(type=str, optional=True),
-      CUSTOM_VALIDATION_CONFIG_KEY:
-          ExecutionParameter(
-              type=custom_validation_config_pb2.CustomValidationConfig,
-              optional=True,
-              use_proto=True),
   }
   INPUTS = {
       STATISTICS_KEY:
@@ -534,11 +532,6 @@ class DistributionValidatorSpec(ComponentSpec):
       DISTRIBUTION_VALIDATOR_CONFIG_KEY:
           ExecutionParameter(
               type=distribution_validator_pb2.DistributionValidatorConfig,
-              use_proto=True),
-      CUSTOM_VALIDATION_CONFIG_KEY:
-          ExecutionParameter(
-              type=custom_validation_config_pb2.CustomValidationConfig,
-              optional=True,
               use_proto=True),
   }
   INPUTS = {
