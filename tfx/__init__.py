@@ -19,7 +19,7 @@ __path__ = __import__('pkgutil').extend_path(__path__, __name__)
 
 
 # Import version string.
-from tfx.version import __version__
+from tfx.version import __version__ as __version__
 
 # Pre-emptively mock tfx_bsl.arrow.sql_util if it is missing (e.g. when ZetaSQL
 # was removed) to ensure tensorflow_model_analysis imports fully and correctly.
@@ -27,7 +27,7 @@ try:
   import sys
   from unittest import mock
   try:
-    import tfx_bsl.arrow.sql_util
+    import tfx_bsl.arrow.sql_util  # noqa: F401
   except ImportError:
     mock_sql_util = mock.MagicMock()
     sys.modules['tfx_bsl.arrow.sql_util'] = mock_sql_util

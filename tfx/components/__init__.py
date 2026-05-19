@@ -20,7 +20,7 @@ try:
   import sys
   from unittest import mock
   try:
-    import tfx_bsl.arrow.sql_util
+    import tfx_bsl.arrow.sql_util  # noqa: F401
   except ImportError:
     mock_sql_util = mock.MagicMock()
     sys.modules['tfx_bsl.arrow.sql_util'] = mock_sql_util
