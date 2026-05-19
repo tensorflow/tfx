@@ -62,6 +62,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip wheel setuptools==69.5.1 tomli
+        # Pre-install build-time requirements of packages built from source
+        python -m pip install -c ./${{ matrix.dependency-selector == 'NIGHTLY' && 'nightly_test_constraints.txt' || 'test_constraints.txt' }} numpy
         # TODO(b/232490018): Cython need to be installed separately to build pycocotools.
         python -m pip install Cython -c ./test_constraints.txt
         pip install --no-build-isolation \
