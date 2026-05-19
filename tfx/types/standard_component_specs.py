@@ -15,10 +15,16 @@
 
 from tensorflow_model_analysis import sdk as tfma
 try:
-  _ = tfma.EvalConfig
-except AttributeError:
-  from tensorflow_model_analysis.proto.config_pb2 import EvalConfig as _EvalConfig
-  tfma.EvalConfig = _EvalConfig
+  from tensorflow_model_analysis.proto import config_pb2 as _config_pb2
+  for attr in [
+      'EvalConfig', 'ModelSpec', 'SlicingSpec', 'MetricsSpec',
+      'MetricConfig', 'MetricThreshold', 'GenericValueThreshold',
+      'GenericChangeThreshold', 'MetricDirection'
+  ]:
+    if hasattr(_config_pb2, attr) and not hasattr(tfma, attr):
+      setattr(tfma, attr, getattr(_config_pb2, attr))
+except Exception:
+  pass
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import distribution_validator_pb2
 from tfx.proto import evaluator_pb2

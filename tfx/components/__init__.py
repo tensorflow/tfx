@@ -14,17 +14,30 @@
 """Subpackage for TFX components."""
 # For component user to direct use tfx.components.[...] as an alias.
 
-# Pre-emptively monkeypatch/inject EvalConfig into tensorflow_model_analysis
-# to prevent AttributeErrors caused by broken/partial imports in environments
-# with missing tfx_bsl.arrow.sql_util.
+# Pre-emptively mock tfx_bsl.arrow.sql_util if it is missing (e.g. when ZetaSQL
+# was removed) to ensure tensorflow_model_analysis imports fully and correctly.
 try:
+  import sys
+  from unittest import mock
+  try:
+    import tfx_bsl.arrow.sql_util
+  except ImportError:
+    mock_sql_util = mock.MagicMock()
+    sys.modules['tfx_bsl.arrow.sql_util'] = mock_sql_util
+
   import tensorflow_model_analysis as _tfma
-  if not hasattr(_tfma, 'EvalConfig'):
-    from tensorflow_model_analysis.proto.config_pb2 import EvalConfig as _EvalConfig
-    _tfma.EvalConfig = _EvalConfig
-  if hasattr(_tfma, 'sdk') and not hasattr(_tfma.sdk, 'EvalConfig'):
-    from tensorflow_model_analysis.proto.config_pb2 import EvalConfig as _EvalConfig
-    _tfma.sdk.EvalConfig = _EvalConfig
+  from tensorflow_model_analysis.proto import config_pb2 as _config_pb2
+  for attr in [
+      'EvalConfig', 'ModelSpec', 'SlicingSpec', 'MetricsSpec',
+      'MetricConfig', 'MetricThreshold', 'GenericValueThreshold',
+      'GenericChangeThreshold', 'MetricDirection'
+  ]:
+    if hasattr(_config_pb2, attr):
+      val = getattr(_config_pb2, attr)
+      if not hasattr(_tfma, attr):
+        setattr(_tfma, attr, val)
+      if hasattr(_tfma, 'sdk') and not hasattr(_tfma.sdk, attr):
+        setattr(_tfma.sdk, attr, val)
 except Exception:
   pass
 
