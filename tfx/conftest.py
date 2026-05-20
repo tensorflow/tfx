@@ -60,4 +60,3 @@ def pytest_ignore_collect(collection_path, config):
     if not _is_installed('nbformat'):
       return True
   return False
-
