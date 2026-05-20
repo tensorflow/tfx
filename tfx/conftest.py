@@ -21,7 +21,6 @@ sys.excepthook = debug_excepthook
 
 # Disable deprecated lookup warnings in Airflow and speed up execution
 os.environ['AIRFLOW__DATABASE__SQL_ALCHEMY_CONN'] = 'sqlite:////tmp/airflow.db'
-os.environ['AIRFLOW__CORE__UNIT_TEST_MODE'] = 'True'
 
 from absl import flags  # noqa: E402
 
