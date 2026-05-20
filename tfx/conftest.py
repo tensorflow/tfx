@@ -1,4 +1,5 @@
 """Test configuration."""
+import importlib.util
 import os
 import sys
 import traceback
@@ -31,13 +32,18 @@ def pytest_configure(config):
   flags.FLAGS.mark_as_parsed()
 
 
+def _is_installed(module_name):
+  try:
+    return importlib.util.find_spec(module_name) is not None
+  except Exception:
+    return False
+
+
 def pytest_ignore_collect(collection_path, config):
   path_str = str(collection_path)
   # Ignore Kubeflow/Vertex related tests if kfp is not installed
   if any(k in path_str for k in ('kubeflow', 'kfp', 'vertex')):
-    try:
-      import kfp  # noqa: F401
-    except Exception:
+    if not _is_installed('kfp'):
       return True
   # Ignore ranking tests if struct2tensor is not installed/functional
   if 'ranking' in path_str:
@@ -47,14 +53,11 @@ def pytest_ignore_collect(collection_path, config):
       return True
   # Ignore Airflow related tests if airflow is not installed
   if 'airflow' in path_str or 'chicago_taxi_pipeline/taxi_pipeline_simple_test' in path_str:
-    try:
-      import airflow  # noqa: F401
-    except Exception:
+    if not _is_installed('airflow'):
       return True
   # Ignore interactive context tests if nbformat is not installed
   if 'interactive_context' in path_str:
-    try:
-      import nbformat  # noqa: F401
-    except Exception:
+    if not _is_installed('nbformat'):
       return True
   return False
+
