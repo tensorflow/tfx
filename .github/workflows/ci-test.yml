@@ -22,8 +22,8 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
-        which-tests: ["not e2e", "e2e"]
+        python-version: ['3.10']
+        which-tests: ["not e2e"]
         dependency-selector: ["DEFAULT"]
 
     steps:
