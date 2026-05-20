@@ -1,17 +1,12 @@
 """Test configuration."""
 import os
-import warnings
 
 # Disable deprecated lookup warnings in Airflow and speed up execution
 os.environ['AIRFLOW__DATABASE__SQL_ALCHEMY_CONN'] = 'sqlite:////tmp/airflow.db'
 os.environ['AIRFLOW__CORE__UNIT_TEST_MODE'] = 'True'
 
-# Suppress deprecation and future warnings globally at interpreter level
-# to prevent crashes during interpreter teardown when standard streams are closed.
-warnings.filterwarnings('ignore', category=FutureWarning)
-warnings.filterwarnings('ignore', category=DeprecationWarning)
-
 from absl import flags  # noqa: E402
+
 
 def pytest_configure(config):
   # This is needed to avoid
