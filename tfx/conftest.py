@@ -25,7 +25,7 @@ def pytest_ignore_collect(collection_path, config):
   if any(k in path_str for k in ('kubeflow', 'kfp', 'vertex')):
     try:
       import kfp  # noqa: F401
-    except ImportError:
+    except Exception:
       return True
   # Ignore ranking tests if struct2tensor is not installed/functional
   if 'ranking' in path_str:
@@ -37,12 +37,12 @@ def pytest_ignore_collect(collection_path, config):
   if 'airflow' in path_str or 'chicago_taxi_pipeline/taxi_pipeline_simple_test' in path_str:
     try:
       import airflow  # noqa: F401
-    except ImportError:
+    except Exception:
       return True
   # Ignore interactive context tests if nbformat is not installed
   if 'interactive_context' in path_str:
     try:
       import nbformat  # noqa: F401
-    except ImportError:
+    except Exception:
       return True
   return False
