@@ -60,31 +60,59 @@ def _get_node_live_artifacts(
   Returns:
     A list of LIVE artifacts of the given pipeline node.
   """
-  artifact_state_filter_query = (
-      f'state = {mlmd.proto.Artifact.State.Name(mlmd.proto.Artifact.LIVE)}'
-  )
-  node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
-  node_filter_query = q.And([
-      f'contexts_0.type = "{constants.NODE_CONTEXT_TYPE_NAME}"',
-      f'contexts_0.name = "{node_context_name}"',
-  ])
-
-  artifact_filter_query = q.And([
-      node_filter_query,
-      artifact_state_filter_query,
-  ])
-
-  if pipeline_run_id:
-    artifact_filter_query.append(
-        q.And([
-            f'contexts_1.type = "{constants.PIPELINE_RUN_CONTEXT_TYPE_NAME}"',
-            f'contexts_1.name = "{pipeline_run_id}"',
-        ])
+  try:
+    artifact_state_filter_query = (
+        f'state = {mlmd.proto.Artifact.State.Name(mlmd.proto.Artifact.LIVE)}'
     )
+    node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
+    node_filter_query = q.And([
+        f'contexts_0.type = "{constants.NODE_CONTEXT_TYPE_NAME}"',
+        f'contexts_0.name = "{node_context_name}"',
+    ])
 
-  return store.get_artifacts(
-      list_options=mlmd.ListOptions(filter_query=str(artifact_filter_query))
-  )
+    artifact_filter_query = q.And([
+        node_filter_query,
+        artifact_state_filter_query,
+    ])
+
+    if pipeline_run_id:
+      artifact_filter_query.append(
+          q.And([
+              f'contexts_1.type = "{constants.PIPELINE_RUN_CONTEXT_TYPE_NAME}"',
+              f'contexts_1.name = "{pipeline_run_id}"',
+          ])
+      )
+
+    return store.get_artifacts(
+        list_options=mlmd.ListOptions(filter_query=str(artifact_filter_query))
+    )
+  except Exception as e:
+    if 'ZetaSQL dependency removed' not in str(e):
+      raise e
+
+    # Fallback to local python filtering when ZetaSQL is unavailable
+    node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
+    node_context = store.get_context_by_type_and_name(
+        constants.NODE_CONTEXT_TYPE_NAME, node_context_name
+    )
+    if node_context is None:
+      return []
+
+    artifacts = store.get_artifacts_by_context(node_context.id)
+
+    if pipeline_run_id:
+      run_context = store.get_context_by_type_and_name(
+          constants.PIPELINE_RUN_CONTEXT_TYPE_NAME, pipeline_run_id
+      )
+      if run_context is None:
+        return []
+      run_artifacts = store.get_artifacts_by_context(run_context.id)
+      node_artifact_ids = {a.id for a in artifacts}
+      artifacts = [a for a in run_artifacts if a.id in node_artifact_ids]
+
+    return [
+        a for a in artifacts if a.state == mlmd.proto.Artifact.State.LIVE
+    ]
 
 
 def get_node_executions(
@@ -118,40 +146,85 @@ def get_node_executions(
   Returns:
     A list of executions of the given pipeline node.
   """
-  node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
+  try:
+    node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
 
-  node_executions_filter_queries = []
-  node_executions_filter_queries.append(
-      q.And([
-          f'contexts_0.type = "{constants.NODE_CONTEXT_TYPE_NAME}"',
-          f'contexts_0.name = "{node_context_name}"',
-      ])
-  )
-  if pipeline_run_id:
+    node_executions_filter_queries = []
     node_executions_filter_queries.append(
         q.And([
-            f'contexts_1.type = "{constants.PIPELINE_RUN_CONTEXT_TYPE_NAME}"',
-            f'contexts_1.name = "{pipeline_run_id}"',
+            f'contexts_0.type = "{constants.NODE_CONTEXT_TYPE_NAME}"',
+            f'contexts_0.name = "{node_context_name}"',
         ])
     )
-  if execution_states:
-    states_str = ','.join(
-        [mlmd.proto.Execution.State.Name(state) for state in execution_states]
-    )
-    states_filter_query = f'last_known_state IN ({states_str})'
-    node_executions_filter_queries.append(states_filter_query)
-
-  if min_last_update_time_since_epoch:
-    node_executions_filter_queries.append(
-        f'last_update_time_since_epoch >= {min_last_update_time_since_epoch}'
-    )
-  return store.get_executions(
-      list_options=mlmd.ListOptions(
-          filter_query=str(q.And(node_executions_filter_queries)),
-          order_by=order_by,
-          is_asc=is_asc,
+    if pipeline_run_id:
+      node_executions_filter_queries.append(
+          q.And([
+              f'contexts_1.type = "{constants.PIPELINE_RUN_CONTEXT_TYPE_NAME}"',
+              f'contexts_1.name = "{pipeline_run_id}"',
+          ])
       )
-  )
+    if execution_states:
+      states_str = ','.join(
+          [mlmd.proto.Execution.State.Name(state) for state in execution_states]
+      )
+      states_filter_query = f'last_known_state IN ({states_str})'
+      node_executions_filter_queries.append(states_filter_query)
+
+    if min_last_update_time_since_epoch:
+      node_executions_filter_queries.append(
+          f'last_update_time_since_epoch >= {min_last_update_time_since_epoch}'
+      )
+    return store.get_executions(
+        list_options=mlmd.ListOptions(
+            filter_query=str(q.And(node_executions_filter_queries)),
+            order_by=order_by,
+            is_asc=is_asc,
+        )
+    )
+  except Exception as e:
+    if 'ZetaSQL dependency removed' not in str(e):
+      raise e
+
+    # Fallback to local python filtering when ZetaSQL is unavailable
+    node_context_name = compiler_utils.node_context_name(pipeline_id, node_id)
+    node_context = store.get_context_by_type_and_name(
+        constants.NODE_CONTEXT_TYPE_NAME, node_context_name
+    )
+    if node_context is None:
+      return []
+
+    executions = store.get_executions_by_context(node_context.id)
+
+    if pipeline_run_id:
+      run_context = store.get_context_by_type_and_name(
+          constants.PIPELINE_RUN_CONTEXT_TYPE_NAME, pipeline_run_id
+      )
+      if run_context is None:
+        return []
+      run_executions = store.get_executions_by_context(run_context.id)
+      node_execution_ids = {exec_item.id for exec_item in executions}
+      executions = [e for e in run_executions if e.id in node_execution_ids]
+
+    if execution_states:
+      executions = [
+          e for e in executions if e.last_known_state in execution_states
+      ]
+
+    if min_last_update_time_since_epoch:
+      executions = [
+          e for e in executions
+          if e.last_update_time_since_epoch >= min_last_update_time_since_epoch
+      ]
+
+    # Sort executions
+    if order_by == mlmd.OrderByField.CREATE_TIME:
+      key_fn = lambda e: e.create_time_since_epoch
+    elif order_by == mlmd.OrderByField.UPDATE_TIME:
+      key_fn = lambda e: e.last_update_time_since_epoch
+    else:
+      key_fn = lambda e: e.id
+
+    return sorted(executions, key=key_fn, reverse=not is_asc)
 
 
 def get_live_output_artifacts_of_node_by_output_key(

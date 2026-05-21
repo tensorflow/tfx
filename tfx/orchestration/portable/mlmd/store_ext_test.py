@@ -37,17 +37,6 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
     super().setUp()
     self.init_mlmd()
 
-    # Dynamic check for ZetaSQL support (fake_database under python < 3.12 has ZetaSQL disabled)
-    try:
-      self.store.get_artifacts(
-          list_options=mlmd.ListOptions(filter_query='id IN (1)')
-      )
-    except Exception as e:
-      if 'ZetaSQL dependency removed' in str(e):
-        self.skipTest(
-            'ZetaSQL dependency is removed in this MLMD python package version.'
-        )
-
   def testGetNodeExecutions(self):
     c = self.put_context('node', 'my-pipeline.my-node')
     e1 = self.put_execution('E', last_known_state='UNKNOWN', contexts=[c])

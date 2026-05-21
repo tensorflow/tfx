@@ -153,24 +153,6 @@ class MetadataResolverTest(absltest.TestCase):
     connection_config.fake_database.SetInParent()
     self.store = mlmd.MetadataStore(connection_config)
 
-    # Dynamic check for ZetaSQL support (fake_database under python < 3.12 has ZetaSQL disabled)
-    try:
-      options = metadata_store_pb2.LineageSubgraphQueryOptions(
-          starting_artifacts=metadata_store_pb2.LineageSubgraphQueryOptions.StartingNodes(
-              filter_query='id IN (1)'
-          ),
-          max_num_hops=1,
-          direction=metadata_store_pb2.LineageSubgraphQueryOptions.Direction.DOWNSTREAM,
-      )
-      self.store.get_lineage_subgraph(
-          query_options=options, field_mask_paths=['artifacts']
-      )
-    except Exception as e:
-      if 'ZetaSQL dependency removed' in str(e):
-        self.skipTest(
-            'ZetaSQL dependency is removed in this MLMD python package version.'
-        )
-
     self._mlmd_connection_manager = None
 
     self.resolver = metadata_resolver.MetadataResolver(
