@@ -16,7 +16,6 @@
 import time
 
 import tensorflow as tf
-import ml_metadata as mlmd
 from tfx.orchestration.portable.mlmd import store_ext
 from tfx.utils import test_case_utils
 

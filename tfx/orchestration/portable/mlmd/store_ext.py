@@ -218,11 +218,14 @@ def get_node_executions(
 
     # Sort executions
     if order_by == mlmd.OrderByField.CREATE_TIME:
-      key_fn = lambda e: e.create_time_since_epoch
+      def key_fn(e):
+        return e.create_time_since_epoch
     elif order_by == mlmd.OrderByField.UPDATE_TIME:
-      key_fn = lambda e: e.last_update_time_since_epoch
+      def key_fn(e):
+        return e.last_update_time_since_epoch
     else:
-      key_fn = lambda e: e.id
+      def key_fn(e):
+        return e.id
 
     return sorted(executions, key=key_fn, reverse=not is_asc)
 
