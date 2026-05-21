@@ -16,6 +16,7 @@
 import time
 
 import tensorflow as tf
+import ml_metadata as mlmd
 from tfx.orchestration.portable.mlmd import store_ext
 from tfx.utils import test_case_utils
 
@@ -35,6 +36,17 @@ class StoreExtTest(tf.test.TestCase, test_case_utils.MlmdMixins):
   def setUp(self):
     super().setUp()
     self.init_mlmd()
+
+    # Dynamic check for ZetaSQL support (fake_database under python < 3.12 has ZetaSQL disabled)
+    try:
+      self.store.get_artifacts(
+          list_options=mlmd.ListOptions(filter_query='id IN (1)')
+      )
+    except Exception as e:
+      if 'ZetaSQL dependency removed' in str(e):
+        self.skipTest(
+            'ZetaSQL dependency is removed in this MLMD python package version.'
+        )
 
   def testGetNodeExecutions(self):
     c = self.put_context('node', 'my-pipeline.my-node')
