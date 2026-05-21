@@ -31,7 +31,7 @@ else
 fi
 
 echo "Building wheels..."
-export USE_BAZEL_VERSION=6.5.0
+export USE_BAZEL_VERSION=7.7.0
 export LDFLAGS="-fuse-ld=bfd"
 pip install numpy==1.24.4
 CFLAGS=$(python-config --cflags) python setup.py bdist_wheel

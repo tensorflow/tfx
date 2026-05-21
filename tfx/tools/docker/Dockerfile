@@ -50,7 +50,7 @@ ARG CLEAN_CPP_TEMP_CACHE=false
 ARG TFX_DEPENDENCY_SELECTOR
 ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
-ENV USE_BAZEL_VERSION=6.5.0
+ENV USE_BAZEL_VERSION=7.7.0
 
 RUN apt-get update && apt-get install -y curl git && \
     (find /opt/conda/bin -name "python3-config" | head -n 1 | xargs -I {} ln -sf {} /usr/bin/python-config) && \
