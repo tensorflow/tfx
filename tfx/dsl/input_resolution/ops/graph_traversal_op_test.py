@@ -53,6 +53,8 @@ class GraphTraversalOpTest(
   def setUp(self):
     super().setUp()
     self.init_mlmd()
+    if not self.is_zetasql_supported:
+      self.skipTest('ZetaSQL is required for graph traversal lineage tests.')
 
     self.pipeline_name = 'pipeline-name'
     self.pipeline_context = self.put_context('pipeline', self.pipeline_name)

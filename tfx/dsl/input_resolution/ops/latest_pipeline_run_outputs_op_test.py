@@ -25,12 +25,14 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 class LatestPipelineRunOutputsTest(
-    tf.test.TestCase, test_case_utils.MlmdMixins
+    test_utils.ResolverTestCase,
 ):
 
   def setUp(self):
     super().setUp()
     self.init_mlmd()
+    if not self.is_zetasql_supported:
+      self.skipTest('ZetaSQL is required for latest pipeline run output tests.')
 
   def _latest_pipeline_run(self, *args, **kwargs):
     return test_utils.strict_run_resolver_op(

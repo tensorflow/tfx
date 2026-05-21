@@ -258,7 +258,7 @@ class MakeProtoPlaceholder(Generic[_T], placeholder_base.Placeholder):
             # TODO(b/323991103):
             # Switch to using the message_factory.GetMessageClass() function.
             # See http://yaqs/3936732114019418112 for more context.
-            message_factory.MessageFactory().GetPrototype(
+            message_factory.GetMessageClass(
                 descriptor.message_type
             )(**value)
         )
