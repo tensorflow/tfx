@@ -14,6 +14,7 @@
 """Tests for tfx.dsl.components.base.decorators."""
 
 
+import contextlib
 import os
 from typing import Any, Dict, List, Optional
 
@@ -368,9 +369,6 @@ def list_of_artifacts(
   assert isinstance(one_examples[0], standard_artifacts.Examples)
   assert len(two_examples) == 2
   assert all(isinstance(e, standard_artifacts.Examples) for e in two_examples)
-
-
-import contextlib
 
 
 class ComponentDecoratorTest(tf.test.TestCase):

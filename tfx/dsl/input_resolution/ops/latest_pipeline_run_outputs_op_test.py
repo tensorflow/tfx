@@ -15,11 +15,9 @@
 
 import contextlib
 
-import tensorflow as tf
 from tfx.dsl.input_resolution.ops import ops
 from tfx.dsl.input_resolution.ops import test_utils
 from tfx.orchestration.portable.input_resolution import exceptions
-from tfx.utils import test_case_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
