@@ -247,7 +247,7 @@ def _build_keras_model(
       tf.keras.layers.concatenate([deep, wide])
   )
 
-  model = tf.keras.Model(input_layers, output)
+  model = tf.keras.Model(list(input_layers.values()), output)
   model.compile(
       loss='binary_crossentropy',
       optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),

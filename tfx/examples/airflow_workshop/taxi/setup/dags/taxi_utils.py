@@ -385,7 +385,7 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units):
 
   output = tf.keras.layers.Dense(1)(tf.keras.layers.concatenate([deep, wide]))
 
-  model = tf.keras.Model(input_layers, output)
+  model = tf.keras.Model(list(input_layers.values()), output)
   model.compile(
       loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
       optimizer=tf.keras.optimizers.Adam(lr=0.001),
