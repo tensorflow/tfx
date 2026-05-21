@@ -120,7 +120,11 @@ def _build_keras_model(hidden_units, learning_rate):
   }
   wide_categorical_input = {
       colname: tf.keras.layers.Input(name=colname, shape=(1,), dtype='int32')
-      for colname in features.transformed_names(features.CATEGORICAL_FEATURE_KEYS)
+      for colname in features.transformed_names(
+          features.CATEGORICAL_FEATURE_KEYS[:len(
+              features.CATEGORICAL_FEATURE_MAX_VALUES
+          )]
+      )
   }
   input_layers = {
       **deep_input,
