@@ -129,9 +129,10 @@ def _build_keras_model(hidden_units, learning_rate):
       **wide_categorical_input,
   }
 
-  deep = tf.keras.layers.concatenate(
-      [tf.keras.layers.Normalization()(layer) for layer in deep_input.values()]
-  )
+  deep_layers = []
+  for layer in deep_input.values():
+    deep_layers.append(tf.keras.layers.Normalization()(layer))
+  deep = tf.keras.layers.concatenate(deep_layers)
   for numnodes in (hidden_units or [100, 70, 50, 25]):
     deep = tf.keras.layers.Dense(numnodes)(deep)
 
