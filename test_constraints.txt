@@ -318,7 +318,8 @@ rpds-py==0.20.0
 rsa==4.9
 sacrebleu==2.4.3
 scikit-learn==1.5.2
-scipy==1.14.1
+scipy==1.11.4; python_version < '3.13'
+scipy==1.14.1; python_version >= '3.13'
 Send2Trash==1.8.3
 setproctitle==1.3.3
 shapely==2.0.6
