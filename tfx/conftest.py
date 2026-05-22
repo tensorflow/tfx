@@ -42,7 +42,7 @@ def _is_installed(module_name):
 def pytest_ignore_collect(collection_path, config):
   path_str = str(collection_path)
   # Ignore Kubeflow/Vertex related tests if kfp is not installed
-  if any(k in path_str for k in ('kubeflow', 'kfp', 'vertex')):
+  if any(k in path_str for k in ('kubeflow', 'kfp', 'vertex', 'penguin_pipeline_sklearn_gcp_test')):
     if not _is_installed('kfp'):
       return True
   # Ignore ranking tests if struct2tensor is not installed/functional
