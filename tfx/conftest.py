@@ -2,6 +2,8 @@
 import importlib.util
 import os
 import sys
+import threading
+import time
 import traceback
 
 # Prioritize the local cloned repository workspace root in sys.path to ensure testdata is resolvable.
@@ -110,9 +112,6 @@ def pytest_ignore_collect(collection_path, config):
 
 
 # Pure-Python sentinel thread to print tracebacks of all active threads and exit immediately if any test hangs/takes too long
-import threading
-import time
-
 class HangSentinel(threading.Thread):
   def __init__(self, timeout=120):
     super().__init__()
