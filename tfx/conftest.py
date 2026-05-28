@@ -23,6 +23,39 @@ sys.excepthook = debug_excepthook
 # Disable deprecated lookup warnings in Airflow and speed up execution
 os.environ['AIRFLOW__DATABASE__SQL_ALCHEMY_CONN'] = 'sqlite:////tmp/airflow.db'
 
+# Monkey-patch PipelineOptions to force fast, low-overhead in-memory DirectRunner under unit tests.
+try:
+  from apache_beam.options.pipeline_options import PipelineOptions
+
+  original_init = PipelineOptions.__init__
+
+  def custom_init(self, flags=None, **kwargs):
+    import sys
+    if flags is None:
+      flags_list = list(sys.argv)
+    else:
+      flags_list = list(flags)
+
+    has_other_runner = False
+    for flag in flags_list:
+      if isinstance(flag, str) and flag.startswith('--runner=') and 'DirectRunner' not in flag:
+        has_other_runner = True
+        break
+
+    runner_kwarg = kwargs.get('runner')
+    if runner_kwarg and 'DirectRunner' not in str(runner_kwarg):
+      has_other_runner = True
+
+    if not has_other_runner:
+      if not any(isinstance(flag, str) and flag.startswith('--direct_running_mode=') for flag in flags_list):
+        flags_list.append('--direct_running_mode=in_memory')
+
+    original_init(self, flags=flags_list, **kwargs)
+
+  PipelineOptions.__init__ = custom_init
+except Exception:
+  pass
+
 from absl import flags  # noqa: E402
 
 
