@@ -107,3 +107,68 @@ def pytest_ignore_collect(collection_path, config):
     if not _is_installed('nbformat'):
       return True
   return False
+
+
+# Pure-Python sentinel thread to print tracebacks of all active threads and exit immediately if any test hangs/takes too long
+import threading
+import time
+
+class HangSentinel(threading.Thread):
+  def __init__(self, timeout=120):
+    super().__init__()
+    self.timeout = timeout
+    self.daemon = True
+    self.last_heartbeat = time.time()
+    self.active = True
+    self.current_test = "None"
+
+  def heartbeat(self, test_name):
+    self.last_heartbeat = time.time()
+    self.current_test = test_name
+
+  def run(self):
+    while self.active:
+      time.sleep(5)
+      if time.time() - self.last_heartbeat > self.timeout:
+        os.write(2, b"\n================!!! HANG SENTINEL TIMEOUT DETECTED !!!================\n")
+        os.write(2, f"Test '{self.current_test}' has been running for {time.time() - self.last_heartbeat:.1f}s (Threshold: {self.timeout}s)!\n".encode('utf-8'))
+        os.write(2, b"=== ACTIVE THREADS STACK TRACES ===\n")
+        for thread_id, frame in sys._current_frames().items():
+          thread_name = "Unknown"
+          for t in threading.enumerate():
+            if t.ident == thread_id:
+              thread_name = t.name
+              break
+          os.write(2, f"\nThread: {thread_name} (ID: {thread_id}):\n".encode('utf-8'))
+          tb_lines = traceback.format_stack(frame)
+          os.write(2, "".join(tb_lines).encode('utf-8'))
+        os.write(2, b"============================================================\n\n")
+        os._exit(124)
+
+_sentinel = None
+
+def pytest_sessionstart(session):
+  global _sentinel
+  if 'TEST_TMPDIR' in os.environ or 'TEST_UNDECLARED_OUTPUTS_DIR' in os.environ or os.environ.get('GITHUB_ACTIONS'):
+    _sentinel = HangSentinel(timeout=120)
+    _sentinel.start()
+
+def pytest_sessionfinish(session, exitstatus):
+  global _sentinel
+  if _sentinel:
+    _sentinel.active = False
+
+def pytest_runtest_setup(item):
+  global _sentinel
+  if _sentinel:
+    _sentinel.heartbeat(f"{item.nodeid} [SETUP]")
+
+def pytest_runtest_call(item):
+  global _sentinel
+  if _sentinel:
+    _sentinel.heartbeat(f"{item.nodeid} [CALL]")
+
+def pytest_runtest_teardown(item):
+  global _sentinel
+  if _sentinel:
+    _sentinel.heartbeat(f"{item.nodeid} [TEARDOWN]")
