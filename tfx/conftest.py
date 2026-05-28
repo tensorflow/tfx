@@ -4,6 +4,12 @@ import os
 import sys
 import traceback
 
+# Prioritize the local cloned repository workspace root in sys.path to ensure testdata is resolvable.
+_workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _workspace_root in sys.path:
+  sys.path.remove(_workspace_root)
+sys.path.insert(0, _workspace_root)
+
 def debug_excepthook(exc_type, exc_value, exc_traceback):
   try:
     tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
@@ -22,6 +28,14 @@ sys.excepthook = debug_excepthook
 
 # Disable deprecated lookup warnings in Airflow and speed up execution
 os.environ['AIRFLOW__DATABASE__SQL_ALCHEMY_CONN'] = 'sqlite:////tmp/airflow.db'
+
+# Prevent library thread pool and gRPC fork deadlocks under multi-process/multithreaded environments
+os.environ['GRPC_ENABLE_FORK_SUPPORT'] = 'false'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
 
 # Monkey-patch PipelineOptions to force fast, low-overhead in-memory DirectRunner under unit tests.
 try:
