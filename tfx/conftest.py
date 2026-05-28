@@ -130,19 +130,21 @@ class HangSentinel(threading.Thread):
     while self.active:
       time.sleep(5)
       if time.time() - self.last_heartbeat > self.timeout:
-        os.write(2, b"\n================!!! HANG SENTINEL TIMEOUT DETECTED !!!================\n")
-        os.write(2, f"Test '{self.current_test}' has been running for {time.time() - self.last_heartbeat:.1f}s (Threshold: {self.timeout}s)!\n".encode('utf-8'))
-        os.write(2, b"=== ACTIVE THREADS STACK TRACES ===\n")
+        sys.stderr.write("\n================!!! HANG SENTINEL TIMEOUT DETECTED !!!================\n")
+        sys.stderr.write(f"Test '{self.current_test}' has been running for {time.time() - self.last_heartbeat:.1f}s (Threshold: {self.timeout}s)!\n")
+        sys.stderr.write("=== ACTIVE THREADS STACK TRACES ===\n")
         for thread_id, frame in sys._current_frames().items():
           thread_name = "Unknown"
           for t in threading.enumerate():
             if t.ident == thread_id:
               thread_name = t.name
               break
-          os.write(2, f"\nThread: {thread_name} (ID: {thread_id}):\n".encode('utf-8'))
+          sys.stderr.write(f"\nThread: {thread_name} (ID: {thread_id}):\n")
           tb_lines = traceback.format_stack(frame)
-          os.write(2, "".join(tb_lines).encode('utf-8'))
-        os.write(2, b"============================================================\n\n")
+          sys.stderr.write("".join(tb_lines))
+        sys.stderr.write("============================================================\n\n")
+        sys.stderr.flush()
+        time.sleep(2)  # Secure pipe flush delivery to GHA host!
         os._exit(124)
 
 _sentinel = None
@@ -150,7 +152,13 @@ _sentinel = None
 def pytest_sessionstart(session):
   global _sentinel
   if 'TEST_TMPDIR' in os.environ or 'TEST_UNDECLARED_OUTPUTS_DIR' in os.environ or os.environ.get('GITHUB_ACTIONS'):
-    _sentinel = HangSentinel(timeout=120)
+    timeout = 120
+    # Increase timeout significantly (15 minutes) if running e2e tests
+    for arg in sys.argv:
+      if 'e2e' in arg:
+        timeout = 900
+        break
+    _sentinel = HangSentinel(timeout=timeout)
     _sentinel.start()
 
 def pytest_sessionfinish(session, exitstatus):
