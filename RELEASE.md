@@ -24,6 +24,7 @@
 *   Upgraded Docker build tools and wheel scripts, configuring internal compilation of TFDV and TFX-BSL source files on a unified conda-GCC 13/binutils toolchain using Bazel 7.7.0.
 *   Resolved random temporary directory synchronization and write finalizer errors in BulkInferrer (`executor.py`) when executing flattened PCollections under local runners (DirectRunner/PrismRunner/FnApiRunner) by introducing a dynamic helper mapping local executions to use `num_shards=1` while preserving high-performance dynamic sharding for distributed production pipelines.
 *   Bypassed strict committed/attempted metrics equivalence checks in the Transform `ExecutorTest` base class (`executor_test.py`) that crashed under modern versions of Apache Beam utilizing the parallel/multi-process `PrismRunner` backend due to asynchronous task metric updating limits, ensuring robust and stable local metrics count verifications.
+*   Monkey-patched `PipelineOptions` dynamically in the global test conftest (`conftest.py`) to bypass resource-throttled multi-process `PrismRunner` delegation for standard local testing jobs, forcing the low-overhead, fast single-threaded in-memory DirectRunner (`--direct_running_mode=in_memory`) globally. This slashes total unit testing execution time and prevents workflow cancellations/timeouts across Python 3.9, 3.10, 3.11, and 3.12 GHA platforms.
 
 ## Dependency Updates
 
