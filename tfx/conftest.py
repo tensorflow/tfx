@@ -129,20 +129,19 @@ class HangSentinel(threading.Thread):
     while self.active:
       time.sleep(5)
       if time.time() - self.last_heartbeat > self.timeout:
-        sys.stderr.write("\n================!!! HANG SENTINEL TIMEOUT DETECTED !!!================\n")
-        sys.stderr.write(f"Test '{self.current_test}' has been running for {time.time() - self.last_heartbeat:.1f}s (Threshold: {self.timeout}s)!\n")
-        sys.stderr.write("=== ACTIVE THREADS STACK TRACES ===\n")
+        os.write(2, b"\n================!!! HANG SENTINEL TIMEOUT DETECTED !!!================\n")
+        os.write(2, f"Test '{self.current_test}' has been running for {time.time() - self.last_heartbeat:.1f}s (Threshold: {self.timeout}s)!\n".encode('utf-8'))
+        os.write(2, b"=== ACTIVE THREADS STACK TRACES ===\n")
         for thread_id, frame in sys._current_frames().items():
           thread_name = "Unknown"
           for t in threading.enumerate():
             if t.ident == thread_id:
               thread_name = t.name
               break
-          sys.stderr.write(f"\nThread: {thread_name} (ID: {thread_id}):\n")
+          os.write(2, f"\nThread: {thread_name} (ID: {thread_id}):\n".encode('utf-8'))
           tb_lines = traceback.format_stack(frame)
-          sys.stderr.write("".join(tb_lines))
-        sys.stderr.write("============================================================\n\n")
-        sys.stderr.flush()
+          os.write(2, "".join(tb_lines).encode('utf-8'))
+        os.write(2, b"============================================================\n\n")
         time.sleep(2)  # Secure pipe flush delivery to GHA host!
         os._exit(124)
 
