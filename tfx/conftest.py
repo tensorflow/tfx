@@ -130,26 +130,54 @@ class HangSentinel(threading.Thread):
     while self.active:
       self.stop_event.wait(5)
       if time.time() - self.last_heartbeat > self.timeout:
-        os.write(2, b"\n================!!! HANG SENTINEL TIMEOUT DETECTED !!!================\n")
-        os.write(2, f"Test '{self.current_test}' has been running for {time.time() - self.last_heartbeat:.1f}s (Threshold: {self.timeout}s)!\n".encode('utf-8'))
-        os.write(2, b"=== ACTIVE THREADS STACK TRACES ===\n")
+        # 1. Safely attempt programmatical pytest capture suspension
+        global _pytest_config
+        if _pytest_config:
+          try:
+            capman = _pytest_config.pluginmanager.getplugin('capturemanager')
+            if capman:
+              capman.suspend_global_capture(in_=True)
+          except Exception:
+            pass
+
+        # 2. Prepare diagnostic report strings
+        report_lines = []
+        report_lines.append("\n================!!! HANG SENTINEL TIMEOUT DETECTED !!!================\n")
+        report_lines.append(f"Test '{self.current_test}' has been running for {time.time() - self.last_heartbeat:.1f}s (Threshold: {self.timeout}s)!\n")
+        report_lines.append("=== ACTIVE THREADS STACK TRACES ===\n")
         for thread_id, frame in sys._current_frames().items():
           thread_name = "Unknown"
           for t in threading.enumerate():
             if t.ident == thread_id:
               thread_name = t.name
               break
-          os.write(2, f"\nThread: {thread_name} (ID: {thread_id}):\n".encode('utf-8'))
+          report_lines.append(f"\nThread: {thread_name} (ID: {thread_id}):\n")
           tb_lines = traceback.format_stack(frame)
-          os.write(2, "".join(tb_lines).encode('utf-8'))
-        os.write(2, b"============================================================\n\n")
+          report_lines.extend(tb_lines)
+        report_lines.append("============================================================\n\n")
+        report_text = "".join(report_lines)
+
+        # 3. Direct console stream output
+        os.write(2, report_text.encode('utf-8'))
+
+        # 4. Persistant workspace file dump fallback
+        try:
+          workspace_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+          file_path = os.path.join(workspace_path, 'hang_traceback.txt')
+          with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(report_text)
+        except Exception:
+          pass
+
         time.sleep(2)  # Secure pipe flush delivery to GHA host!
         os._exit(124)
 
 _sentinel = None
+_pytest_config = None
 
 def pytest_sessionstart(session):
-  global _sentinel
+  global _sentinel, _pytest_config
+  _pytest_config = session.config
   if 'TEST_TMPDIR' in os.environ or 'TEST_UNDECLARED_OUTPUTS_DIR' in os.environ or os.environ.get('GITHUB_ACTIONS'):
     timeout = 120
     # Increase timeout significantly (15 minutes) if running e2e tests

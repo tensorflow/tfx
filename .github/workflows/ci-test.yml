@@ -77,3 +77,11 @@ jobs:
       shell: bash
       run: |
         pytest -m "${{ matrix.which-tests }}"
+
+    - name: Print Sentinel Traceback
+      if: always()
+      run: |
+        if [ -f hang_traceback.txt ]; then
+          echo "=== HANG SENTINEL TRACEBACK FOUND ==="
+          cat hang_traceback.txt
+        fi
