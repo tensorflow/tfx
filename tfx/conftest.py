@@ -108,6 +108,9 @@ def pytest_ignore_collect(collection_path, config):
   if 'interactive_context' in path_str:
     if not _is_installed('nbformat'):
       return True
+  # Ignore unstable/legacy TF1 session distributed inference graphdef experiments
+  if 'distributed_inference' in path_str:
+    return True
   return False
 
 
