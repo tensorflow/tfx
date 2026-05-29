@@ -120,6 +120,7 @@ class HangSentinel(threading.Thread):
     self.last_heartbeat = time.time()
     self.active = True
     self.current_test = "None"
+    self.stop_event = threading.Event()
 
   def heartbeat(self, test_name):
     self.last_heartbeat = time.time()
@@ -127,7 +128,7 @@ class HangSentinel(threading.Thread):
 
   def run(self):
     while self.active:
-      time.sleep(5)
+      self.stop_event.wait(5)
       if time.time() - self.last_heartbeat > self.timeout:
         os.write(2, b"\n================!!! HANG SENTINEL TIMEOUT DETECTED !!!================\n")
         os.write(2, f"Test '{self.current_test}' has been running for {time.time() - self.last_heartbeat:.1f}s (Threshold: {self.timeout}s)!\n".encode('utf-8'))
@@ -163,6 +164,7 @@ def pytest_sessionfinish(session, exitstatus):
   global _sentinel
   if _sentinel:
     _sentinel.active = False
+    _sentinel.stop_event.set()
 
 def pytest_runtest_setup(item):
   global _sentinel
