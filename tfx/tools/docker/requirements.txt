@@ -176,7 +176,7 @@ mdurl==0.1.2
 methodtools==0.4.7
 mistune==3.0.2
 ml-dtypes==0.3.2
-ml-metadata @ git+https://github.com/vkarampudi/ml-metadata@master
+ml-metadata @ git+https://github.com/google/ml-metadata@master
 mmh==2.2
 more-itertools==10.5.0
 msgpack==1.1.0
@@ -301,7 +301,7 @@ tensorflow-io-gcs-filesystem==0.24.0
 tensorflow-metadata==1.18.0.dev0
 tensorflow-serving-api==2.21.0
 tensorflow-revived-types==0.1.1
-tensorflow-model-analysis @ git+https://github.com/vkarampudi/model-analysis@master
+tensorflow-model-analysis @ git+https://github.com/tensorflow/model-analysis@master
 tensorflow-transform @ git+https://github.com/tensorflow/transform@master
 tensorstore==0.1.66
 termcolor==2.5.0

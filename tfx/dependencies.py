@@ -58,10 +58,10 @@ def make_pipeline_sdk_required_install_packages():
         "ml-metadata"
         + select_constraint(
             # LINT.IfChange
-            default="@git+https://github.com/vkarampudi/ml-metadata@testing",
+            default="@git+https://github.com/google/ml-metadata@master",
             # LINT.ThenChange(tfx/workspace.bzl)
-            nightly="@git+https://github.com/vkarampudi/ml-metadata@testing",
-            git_master="@git+https://github.com/vkarampudi/ml-metadata@testing",
+            nightly="@git+https://github.com/google/ml-metadata@master",
+            git_master="@git+https://github.com/google/ml-metadata@master",
         ),
         "packaging>=22",
         "portpicker>=1.3.1,<2",
@@ -111,28 +111,28 @@ def make_required_install_packages():
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
-            default="@git+https://github.com/vkarampudi/data-validation@testing",
-            nightly="@git+https://github.com/vkarampudi/data-validation@testing",
-            git_master="@git+https://github.com/vkarampudi/data-validation@testing",
+            default="@git+https://github.com/tensorflow/data-validation@master",
+            nightly="@git+https://github.com/tensorflow/data-validation@master",
+            git_master="@git+https://github.com/tensorflow/data-validation@master",
         ),
         "tensorflow-model-analysis"
         + select_constraint(
-            default="@git+https://github.com/vkarampudi/model-analysis@master",
-            nightly="@git+https://github.com/vkarampudi/model-analysis@master",
-            git_master="@git+https://github.com/vkarampudi/model-analysis@master",
+            default="@git+https://github.com/tensorflow/model-analysis@master",
+            nightly="@git+https://github.com/tensorflow/model-analysis@master",
+            git_master="@git+https://github.com/tensorflow/model-analysis@master",
         ),
         "tensorflow-serving-api>=2.19.1,<2.22",
         "tensorflow-transform"
         + select_constraint(
-            default="@git+https://github.com/vkarampudi/transform@master",
-            nightly="@git+https://github.com/vkarampudi/transform@master",
-            git_master="@git+https://github.com/vkarampudi/transform@master",
+            default="@git+https://github.com/tensorflow/transform@master",
+            nightly="@git+https://github.com/tensorflow/transform@master",
+            git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
-            default="@git+https://github.com/vkarampudi/tfx-bsl@testing",
-            nightly="@git+https://github.com/vkarampudi/tfx-bsl@testing",
-            git_master="@git+https://github.com/vkarampudi/tfx-bsl@testing",
+            default="@git+https://github.com/tensorflow/tfx-bsl@master",
+            nightly="@git+https://github.com/tensorflow/tfx-bsl@master",
+            git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
     ]
 
@@ -197,9 +197,9 @@ def make_extra_packages_tf_ranking():
     return [
         "struct2tensor"
         + select_constraint(
-            default="@git+https://github.com/vkarampudi/struct2tensor@testing2",
-            nightly="@git+https://github.com/vkarampudi/struct2tensor@testing2",
-            git_master="@git+https://github.com/vkarampudi/struct2tensor@testing2",
+            default="@git+https://github.com/google/struct2tensor@master",
+            nightly="@git+https://github.com/google/struct2tensor@master",
+            git_master="@git+https://github.com/google/struct2tensor@master",
         ),
     ]
 

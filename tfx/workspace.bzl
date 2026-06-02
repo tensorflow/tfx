@@ -79,8 +79,8 @@ def tfx_workspace():
     # Fetch MLMD repo from GitHub.
     tfx_github_archive(
         name = "com_github_google_ml_metadata",
-        repo = "vkarampudi/ml-metadata",
-        branch = "testing",
+        repo = "google/ml-metadata",
+        branch = "master",
     )
 
     # Fetch TFMD repo from GitHub.
