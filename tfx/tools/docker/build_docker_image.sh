@@ -50,42 +50,94 @@ TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR:-""}
 echo "Env for TFX_DEPENDENCY_SELECTOR is set as ${TFX_DEPENDENCY_SELECTOR}"
 
 
-# Apply the patch before building
-echo "Applying tfx.patch..."
-if [[ -f patches/tfx.patch ]]; then
-  git apply patches/tfx.patch
-  patch_applied=true
-else
-  echo "Warning: patches/tfx.patch not found, skipping patch application"
-  patch_applied=false
-fi
+# Programmatically remove TFX sibling libraries from dependencies.py
+echo "Programmatically editing tfx/dependencies.py to remove sibling dependencies..."
+python3 -c "
+import re
+with open('tfx/dependencies.py', 'r') as f:
+    content = f.read()
+# Remove tfdv, tfma, tft, tfx-bsl blocks from make_required_install_packages
+content = re.sub(r'\"tensorflow-data-validation\".*?\),', '', content, flags=re.DOTALL)
+content = re.sub(r'\"tensorflow-model-analysis\".*?\),', '', content, flags=re.DOTALL)
+content = re.sub(r'\"tensorflow-transform\".*?\),', '', content, flags=re.DOTALL)
+content = re.sub(r'\"tfx-bsl\".*?\),', '', content, flags=re.DOTALL)
+content = re.sub(r'\"ml-metadata\".*?\),', '', content, flags=re.DOTALL)
+content = re.sub(r'\"tensorflow-cloud>=0.1,<0.2\",', '', content)
+with open('tfx/dependencies.py', 'w') as f:
+    f.write(content)
+"
 
 # Programmatically remove pins for components built from source or downloaded as wheels
-# This replicates the logic previously in tfx.patch for requirements.txt and constraints files
 for f in nightly_test_constraints.txt test_constraints.txt tfx/tools/docker/requirements.txt; do
   if [[ -f "$f" ]]; then
     echo "Removing pins from $f..."
     # Remove exact version pins or range constraints for the following packages
     sed -i '/tensorflow-cloud/d' "$f"
     sed -i '/tensorflow-data-validation/d' "$f"
+    sed -i '/tensorflow-model-analysis/d' "$f"
     sed -i '/tensorflow-transform/d' "$f"
     sed -i '/tfx-bsl/d' "$f"
+    sed -i '/ml-metadata/d' "$f"
+    sed -i '/ml_metadata/d' "$f"
+    sed -i '/tensorflow-metadata/d' "$f"
+    sed -i '/absl-py/d' "$f"
+    sed -i '/astunparse/d' "$f"
+    sed -i '/flatbuffers/d' "$f"
+    sed -i '/gast/d' "$f"
+    sed -i '/google-/d' "$f"
+    sed -i '/google_/d' "$f"
+    sed -i '/grpcio/d' "$f"
+    sed -i '/h5py/d' "$f"
+    sed -i '/keras/d' "$f"
+    sed -i '/libclang/d' "$f"
+    sed -i '/ml-dtypes/d' "$f"
+    sed -i '/ml_dtypes/d' "$f"
+    sed -i '/numpy/d' "$f"
+    sed -i '/opt-einsum/d' "$f"
+    sed -i '/opt_einsum/d' "$f"
+    sed -i '/packaging/d' "$f"
+    sed -i '/protobuf/d' "$f"
+    sed -i '/requests/d' "$f"
+    sed -i '/six/d' "$f"
+    sed -i '/termcolor/d' "$f"
+    sed -i '/typing-extensions/d' "$f"
+    sed -i '/typing_extensions/d' "$f"
+    sed -i '/wrapt/d' "$f"
+    sed -i '/kfp/d' "$f"
+    sed -i '/kubernetes/d' "$f"
+    sed -i '/urllib3/d' "$f"
+    sed -i '/cryptography/d' "$f"
+    sed -i '/proto-plus/d' "$f"
+    sed -i '/proto_plus/d' "$f"
+    sed -i '/opentelemetry/d' "$f"
+    sed -i '/apache-/d' "$f"
   fi
 done
 
 mkdir -p tfx/tools/docker/wheels
+rm -rf tfx/tools/docker/wheels/*
 
-# Download tensorflow-model-analysis wheel
-echo "Downloading tensorflow-model-analysis wheel..."
-TFMA_WHEEL_URL="https://files.pythonhosted.org/packages/a9/45/1ed03c0bd8168ebc8bdc5c15c206d2e3a7fb9269f8083492d17b995ac35f/tensorflow_model_analysis-0.48.0-py3-none-any.whl"
-TFMA_WHEEL_FILE="tensorflow_model_analysis-0.48.0-py3-none-any.whl"
-curl -L -o tfx/tools/docker/wheels/${TFMA_WHEEL_FILE} ${TFMA_WHEEL_URL}
+# Build tensorflow-model-analysis wheel from master
+echo "Building tensorflow-model-analysis wheel from master..."
+TFMA_BUILD_DIR="/tmp/tfma_build_$(date +%s)"
+git clone --depth 1 https://github.com/tensorflow/model-analysis.git "${TFMA_BUILD_DIR}"
+pushd "${TFMA_BUILD_DIR}"
+TFX_DEPENDENCY_SELECTOR=NIGHTLY python setup.py bdist_wheel
+popd
+cp "${TFMA_BUILD_DIR}"/dist/*.whl tfx/tools/docker/wheels/
+rm -rf "${TFMA_BUILD_DIR}"
 
-# Download tensorflow-transform wheel
-echo "Downloading tensorflow-transform wheel..."
-TFT_WHEEL_URL="https://files.pythonhosted.org/packages/a2/b2/32d2ad3fbf16a67f7e91e125dca616a9e1b0d10588167ce3c19394a1811f/tensorflow_transform-1.17.0-py3-none-any.whl"
-TFT_WHEEL_FILE="tensorflow_transform-1.17.0-py3-none-any.whl"
-curl -L -o tfx/tools/docker/wheels/${TFT_WHEEL_FILE} ${TFT_WHEEL_URL}
+# Build tensorflow-transform wheel from master
+echo "Building tensorflow-transform wheel from master..."
+TFT_BUILD_DIR="/tmp/tft_build_$(date +%s)"
+git clone --depth 1 https://github.com/tensorflow/transform.git "${TFT_BUILD_DIR}"
+pushd "${TFT_BUILD_DIR}"
+# Loosen the hardcoded tfx-bsl git URL pin in setup.py to support installing our local compiled wheel
+sed -i 's|tfx-bsl@git+https://github.com/tensorflow/tfx-bsl@master|tfx-bsl>=1.18.0.dev|g' setup.py
+TFX_DEPENDENCY_SELECTOR=NIGHTLY python setup.py bdist_wheel
+popd
+cp "${TFT_BUILD_DIR}"/dist/*.whl tfx/tools/docker/wheels/
+rm -rf "${TFT_BUILD_DIR}"
 
 # Download tensorflow-cloud wheel
 echo "Downloading tensorflow-cloud wheel..."
@@ -187,11 +239,9 @@ fi
 
 # Remove the temp image.
 
-# Cleanup: revert patch and remove downloaded wheel
-if [[ "${patch_applied}" == "true" ]]; then
-  echo "Reverting tfx.patch..."
-  git apply -R patches/tfx.patch
-fi
+# Cleanup: revert edits to dependencies.py and constraint files
+echo "Reverting edits to dependencies.py and constraint files..."
+git checkout tfx/dependencies.py test_constraints.txt nightly_test_constraints.txt tfx/tools/docker/requirements.txt
 
 echo "Removing downloaded wheel..."
 rm -rf tfx/tools/docker/wheels

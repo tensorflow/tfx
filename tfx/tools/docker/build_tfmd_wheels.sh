@@ -1,28 +1,23 @@
 #!/bin/bash
-# Build tensorflow-data-validation wheels from source with patch applied.
+# Build tensorflow-metadata wheels from source.
 set -ex
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_DIR="/tmp/tfdv_build"
-TFDV_REPO="https://github.com/tensorflow/data-validation/"
-TFDV_TAG="master"
+BUILD_DIR="/tmp/tfmd_build"
+TFMD_REPO="https://github.com/tensorflow/metadata/"
+TFMD_TAG="master"
 OUTPUT_DIR="${1:-.}"
 
 echo "Creating build directory..."
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-echo "Cloning data-validation repository..."
-git clone --no-depth "$TFDV_REPO" data-validation
-cd data-validation
+echo "Cloning metadata repository..."
+git clone --no-depth "$TFMD_REPO" metadata
+cd metadata
 
-echo "Checking out to $TFDV_TAG..."
-git checkout "$TFDV_TAG"
-
-echo "Applying tfdv.patch..."
-if [[ -f "$SCRIPT_DIR/tfdv.patch" ]]; then
-  git apply "$SCRIPT_DIR/tfdv.patch" || echo "Warning: tfdv.patch could not be applied, skipping..."
-fi
+echo "Checking out to $TFMD_TAG..."
+git checkout "$TFMD_TAG"
 
 echo "Building wheels..."
 export USE_BAZEL_VERSION=7.7.0

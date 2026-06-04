@@ -52,7 +52,7 @@ ENV TFX_DEPENDENCY_SELECTOR=${TFX_DEPENDENCY_SELECTOR}
 
 ENV USE_BAZEL_VERSION=7.7.0
 
-RUN apt-get update && apt-get install -y curl git && \
+RUN apt-get update && apt-get install -y curl git openjdk-17-jdk-headless cmake && \
     (find /opt/conda/bin -name "python3-config" | head -n 1 | xargs -I {} ln -sf {} /usr/bin/python-config) && \
     (find /opt/conda/bin -name "python3-config" | head -n 1 | xargs -I {} ln -sf {} /opt/conda/bin/python-config)
 RUN mkdir -p /usr/local/lib/bazel/bin && \
@@ -66,27 +66,37 @@ ENV PATH="/usr/local/lib/bazel/bin:${PATH}"
 COPY . /tfx/src/
 WORKDIR /tfx/src/
 
-# 1. C++ Wheels (tfdv, tfx_bsl) - Normal production build path
+# 1. C++ Wheels (tfdv, tfx_bsl, tfmd, mlmd) - Normal production build path
 RUN if [ "$USE_CPP_WHEELS_FROM_TEMP" = "false" ]; then \
-      echo "Rebuild of C++ wheels (tfdv, tfx_bsl)..." && \
+      echo "Rebuild of C++ wheels (tfdv, tfx_bsl, tfmd, mlmd)..." && \
       cp tfx/tools/docker/build_tfdv_wheels.sh /tmp/ && \
       cp tfx/tools/docker/build_tfx_bsl_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/build_tfmd_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/build_mlmd_wheels.sh /tmp/ && \
       cp tfx/tools/docker/*.patch /tmp/ && \
       mkdir -p /tfx/src/dist_wheels && \
+      bash /tmp/build_tfmd_wheels.sh /tfx/src/dist_wheels && \
+      bash /tmp/build_mlmd_wheels.sh /tfx/src/dist_wheels && \
       bash /tmp/build_tfdv_wheels.sh /tfx/src/dist_wheels && \
       bash /tmp/build_tfx_bsl_wheels.sh /tfx/src/dist_wheels ; \
     fi
 
-# 2. C++ Wheels (tfdv, tfx_bsl) - Cached Path to avoid any CPP rebuilds
+# 2. C++ Wheels (tfdv, tfx_bsl, tfmd, mlmd) - Cached Path to avoid any CPP rebuilds
 RUN --mount=type=cache,target=/tmp/wheels --mount=type=cache,target=/root/.cache/bazel \
     if [ "$USE_CPP_WHEELS_FROM_TEMP" = "true" ]; then \
-      echo "Re-use cached build of C++ wheels (tfdv, tfx_bsl)..." && \
+      echo "Re-use cached build of C++ wheels (tfdv, tfx_bsl, tfmd, mlmd)..." && \
       cp tfx/tools/docker/build_tfdv_wheels.sh /tmp/ && \
       cp tfx/tools/docker/build_tfx_bsl_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/build_tfmd_wheels.sh /tmp/ && \
+      cp tfx/tools/docker/build_mlmd_wheels.sh /tmp/ && \
       cp tfx/tools/docker/*.patch /tmp/ && \
+      if [ ! -f /tmp/wheels/tensorflow_metadata-*.whl ]; then bash /tmp/build_tfmd_wheels.sh /tmp/wheels; fi && \
+      if [ ! -f /tmp/wheels/ml_metadata-*.whl ]; then bash /tmp/build_mlmd_wheels.sh /tmp/wheels; fi && \
       if [ ! -f /tmp/wheels/tensorflow_data_validation-*.whl ]; then bash /tmp/build_tfdv_wheels.sh /tmp/wheels; fi && \
       if [ ! -f /tmp/wheels/tfx_bsl-*.whl ]; then bash /tmp/build_tfx_bsl_wheels.sh /tmp/wheels; fi && \
       mkdir -p /tfx/src/dist_wheels && \
+      cp /tmp/wheels/tensorflow_metadata-*.whl /tfx/src/dist_wheels/ && \
+      cp /tmp/wheels/ml_metadata-*.whl /tfx/src/dist_wheels/ && \
       cp /tmp/wheels/tensorflow_data_validation-*.whl /tfx/src/dist_wheels/ && \
       cp /tmp/wheels/tfx_bsl-*.whl /tfx/src/dist_wheels/ ; \
     fi
@@ -154,7 +164,7 @@ RUN python -m pip install --upgrade pip setuptools==78.1.1 wheel \
 # to ensure the resolver doesn't downgrade it or use a broken version
 # that lacks the pkg_resources shim (needed by apache-beam).
 RUN if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
-	  python -m pip install --no-cache-dir \
+	  python -m pip install --upgrade --upgrade-strategy=eager --no-cache-dir \
             --extra-index-url https://pypi-nightly.tensorflow.org/simple \
 	    -c /tfx/src/tfx/tools/docker/requirements.txt \
 	    -c /tfx/src/tfx/tools/docker/build_constraints.txt \
@@ -163,7 +173,7 @@ RUN if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
 	    "$(find /tfx/src/dist_wheels/ \( -name 'tfx_dev-*.whl' -o -name 'tfx-*.whl' \) | head -n 1)[docker-image]" \
 	    tf_keras setuptools==78.1.1 ${ADDITIONAL_PACKAGES} ; \
     else \
-	  python -m pip install --no-cache-dir \
+	  python -m pip install --upgrade --upgrade-strategy=eager --no-cache-dir \
 	    -c /tfx/src/tfx/tools/docker/requirements.txt \
 	    -c /tfx/src/tfx/tools/docker/build_constraints.txt \
 	    /tfx/src/dist_wheels/*.whl \
