@@ -192,6 +192,7 @@ RUN python -m pip install --upgrade pip setuptools==78.1.1 wheel \
     rm -rf /opt/conda/pkgs/* && \
     find /opt/conda -name "*.tar.bz2" -type f -delete || true && \
     find /opt/conda -name "*.conda" -type f -delete || true && \
+    find /usr/local/lib -name "*golang*" -delete || true && \
     find /root/.cache -type f -delete || true
 
 RUN echo "Installed python packages:\n" && python -m pip list && \
