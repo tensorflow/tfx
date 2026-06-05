@@ -153,18 +153,13 @@ LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
 COPY --from=wheel-builder /tfx/src /tfx/src
 
-# 2. Upgrade core python build tools and remove unused vulnerable components
-# setuptools==78.1.1 is required for the pkg_resources shim (needed by apache-beam),
-# while providing the security fix for CVE-2025-47273.
+# 2. Consolidated Installation and Security Remediation in a Single RUN layer
+# Combining upgrade, install, purge, and cache clean into one multi-command execution
+# ensures intermediate vulnerable packages and conda caches never persist in layer tarballs.
 RUN python -m pip install --upgrade pip setuptools==78.1.1 wheel \
     -c /tfx/src/tfx/tools/docker/requirements.txt \
-    -c /tfx/src/tfx/tools/docker/build_constraints.txt
-
-# 3. Main installation: consolidated to a single RUN for single-pass resolution.
-# We explicitly include setuptools==78.1.1 as a top-level requirement here
-# to ensure the resolver doesn't downgrade it or use a broken version
-# that lacks the pkg_resources shim (needed by apache-beam).
-RUN if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
+    -c /tfx/src/tfx/tools/docker/build_constraints.txt && \
+    if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
 	  python -m pip install --upgrade --upgrade-strategy=eager --no-cache-dir \
             --extra-index-url https://pypi-nightly.tensorflow.org/simple \
 	    -c /tfx/src/tfx/tools/docker/requirements.txt \
@@ -182,31 +177,24 @@ RUN if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
 	    "$(find /tfx/src/dist_wheels/ \( -name 'tfx_dev-*.whl' -o -name 'tfx-*.whl' \) | head -n 1)[docker-image]" \
 	    tf_keras setuptools==78.1.1 ${ADDITIONAL_PACKAGES} ; \
     fi && \
-    (python -m pip uninstall -y jupyter jupyter-server jupyterlab notebook nbconvert jaraco-context jaraco.context || true)
-
-# 4. Final OS cleanup: remove Go toolchain and other unused tools to fix Go-related CVEs
-# Many High/Critical CVEs are in the Go stdlib/toolchain which we don't need at runtime.
-# We use a loop to avoid build failures if a package name is not found in the repo.
-RUN for pkg in golang-go golang git binutils wget policykit-1 packagekit gnupg2 gcc-12; do apt-get purge -y $pkg || echo "Package $pkg not found, skipping"; done && \
+    for pkg in golang-go golang git binutils wget policykit-1 packagekit gnupg2 gcc-12; do apt-get purge -y $pkg || true; done && \
     rm -rf /usr/local/go && \
     rm -rf /opt/apache/beam && \
-    find /opt/conda -name "*go*" -type f -delete || true && \
-    find /opt/conda -name "*boot*" -type f -delete || true && \
+    find /opt/conda -name "*go*" -delete || true && \
+    find /opt/conda -name "*boot*" -delete || true && \
     apt-get autoremove -y && \
-    apt-get clean
-
-# 5. Force upgrade vulnerable Python runtime libraries and wipe dormant raw cache archives
-RUN python -m pip install --upgrade --no-cache-dir \
-    pip \
-    wheel \
-    protobuf \
-    lxml \
-    cryptography \
-    idna \
-    python-dotenv \
-    keras \
-    tf_keras || true && \
-    (python -m pip uninstall -y mistune pyopenssl pygments jaraco jaraco-context jaraco.context jaraco.classes jaraco.functools || true) && \
+    apt-get clean && \
+    python -m pip install --upgrade --no-cache-dir \
+        pip \
+        wheel \
+        protobuf \
+        lxml \
+        cryptography \
+        idna \
+        python-dotenv \
+        keras \
+        tf_keras || true && \
+    (python -m pip uninstall -y jupyter jupyter-server jupyterlab notebook nbconvert mistune pyopenssl pygments jaraco jaraco-context jaraco.context jaraco.classes jaraco.functools || true) && \
     rm -rf /opt/conda/pkgs/* && \
     find /opt/conda -name "*.tar.bz2" -type f -delete || true && \
     find /opt/conda -name "*.conda" -type f -delete || true && \
