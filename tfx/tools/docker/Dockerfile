@@ -132,6 +132,7 @@ ENV TF_USE_LEGACY_KERAS=1
 
 # 1. Apply OS security updates and install required system libraries
 RUN apt-get update && \
+    apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
     libsnappy-dev \
@@ -189,9 +190,22 @@ RUN if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
 RUN for pkg in golang-go golang git binutils wget policykit-1 packagekit gnupg2 gcc-12; do apt-get purge -y $pkg || echo "Package $pkg not found, skipping"; done && \
     rm -rf /usr/local/go && \
     rm -rf /opt/apache/beam && \
-    find /opt/conda/lib/python3.10/site-packages/apache_beam -type f -name "boot" -delete || true && \
+    find /opt/conda -name "*go*" -type f -delete || true && \
+    find /opt/conda -name "*boot*" -type f -delete || true && \
     apt-get autoremove -y && \
     apt-get clean
+
+# 5. Force upgrade vulnerable Python runtime libraries and purge unused submodules
+RUN python -m pip install --upgrade --no-cache-dir \
+    pip \
+    wheel \
+    protobuf \
+    lxml \
+    cryptography \
+    idna \
+    keras \
+    tf_keras || true && \
+    (python -m pip uninstall -y mistune pyopenssl pygments python-dotenv jaraco jaraco-context jaraco.context jaraco.classes jaraco.functools || true)
 
 RUN echo "Installed python packages:\n" && python -m pip list && \
     echo "Setuptools version:" && python -c "import setuptools; print(setuptools.__version__)"
