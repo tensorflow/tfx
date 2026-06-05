@@ -15,8 +15,8 @@
 # Base image used to facilitate docker building.
 # This gets updated nightly.
 
-# Use an ubuntu 20.04 image.
-FROM ubuntu:20.04
+# Use an ubuntu 22.04 image.
+FROM ubuntu:22.04
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
 ARG DEBIAN_FRONTEND=noninteractive
