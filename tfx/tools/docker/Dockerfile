@@ -195,7 +195,7 @@ RUN for pkg in golang-go golang git binutils wget policykit-1 packagekit gnupg2 
     apt-get autoremove -y && \
     apt-get clean
 
-# 5. Force upgrade vulnerable Python runtime libraries and purge unused submodules
+# 5. Force upgrade vulnerable Python runtime libraries and purge unused submodules and conda cache
 RUN python -m pip install --upgrade --no-cache-dir \
     pip \
     wheel \
@@ -205,7 +205,9 @@ RUN python -m pip install --upgrade --no-cache-dir \
     idna \
     keras \
     tf_keras || true && \
-    (python -m pip uninstall -y mistune pyopenssl pygments python-dotenv jaraco jaraco-context jaraco.context jaraco.classes jaraco.functools || true)
+    (python -m pip uninstall -y mistune pyopenssl pygments python-dotenv jaraco jaraco-context jaraco.context jaraco.classes jaraco.functools || true) && \
+    conda clean --all -f -y && \
+    rm -rf /opt/conda/pkgs/*
 
 RUN echo "Installed python packages:\n" && python -m pip list && \
     echo "Setuptools version:" && python -c "import setuptools; print(setuptools.__version__)"
