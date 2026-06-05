@@ -25,9 +25,6 @@ ARG APT_COMMAND="apt-get -o Acquire::Retries=3 -y"
 
 # Install python 3.10 and additional dependencies.
 RUN ${APT_COMMAND} update && ${APT_COMMAND} upgrade && \
-  ${APT_COMMAND} install --no-install-recommends -q software-properties-common && \
-  add-apt-repository -y ppa:deadsnakes/ppa && \
-  ${APT_COMMAND} update && \
   ${APT_COMMAND} install --no-install-recommends -q \
   build-essential \
   ca-certificates \
