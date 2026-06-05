@@ -18,21 +18,15 @@ ARG BASE_IMAGE
 ARG BEAM_VERSION
 
 FROM ${BASE_IMAGE} AS base-with-gcc13
-RUN /opt/conda/bin/conda install -y --override-channels -c conda-forge \
-    gcc_linux-64=13 \
-    gxx_linux-64=13 \
-    binutils_linux-64=2.40 \
-    ld_impl_linux-64=2.40
+RUN if [ -x "/opt/conda/bin/conda" ]; then \
+      /opt/conda/bin/conda install -y --override-channels -c conda-forge \
+      gcc_linux-64=13 gxx_linux-64=13 binutils_linux-64=2.40 ld_impl_linux-64=2.40 ; \
+    else \
+      apt-get update && apt-get install -y gcc-13 g++-13 binutils ; \
+    fi
 
-ENV CC=/opt/conda/bin/x86_64-conda-linux-gnu-gcc
-ENV CXX=/opt/conda/bin/x86_64-conda-linux-gnu-g++
-ENV LD=/opt/conda/bin/x86_64-conda-linux-gnu-ld
-ENV AR=/opt/conda/bin/x86_64-conda-linux-gnu-ar
-ENV NM=/opt/conda/bin/x86_64-conda-linux-gnu-nm
-ENV OBJCOPY=/opt/conda/bin/x86_64-conda-linux-gnu-objcopy
-ENV OBJDUMP=/opt/conda/bin/x86_64-conda-linux-gnu-objdump
-ENV RANLIB=/opt/conda/bin/x86_64-conda-linux-gnu-ranlib
-ENV STRIP=/opt/conda/bin/x86_64-conda-linux-gnu-strip
+ENV CC=gcc
+ENV CXX=g++
 
 ENV BAZEL_COMPILER=gcc
 
