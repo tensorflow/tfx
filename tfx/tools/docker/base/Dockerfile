@@ -51,3 +51,5 @@ RUN wget https://bootstrap.pypa.io/get-pip.py && python3 get-pip.py && \
 RUN wget -O /bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64 && \
   chmod +x /bin/bazel && \
   bazel version
+
+# End of base Dockerfile
