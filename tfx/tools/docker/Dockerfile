@@ -22,7 +22,7 @@ RUN if [ -x "/opt/conda/bin/conda" ]; then \
       /opt/conda/bin/conda install -y --override-channels -c conda-forge \
       gcc_linux-64=13 gxx_linux-64=13 binutils_linux-64=2.40 ld_impl_linux-64=2.40 ; \
     else \
-      apt-get update && apt-get install -y gcc-13 g++-13 binutils ; \
+      apt-get update && apt-get install -y gcc g++ build-essential binutils ; \
     fi
 
 ENV CC=gcc
