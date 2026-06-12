@@ -2,7 +2,7 @@
 
 # TFX
 
-[![Python](https://img.shields.io/badge/python%20-3.10%7C3.11%7C3.12-blue)](https://github.com/tensorflow/tfx)
+[![Python](https://img.shields.io/badge/python%20-3.10%7C3.11%7C3.12%7C3.13-blue)](https://github.com/tensorflow/tfx)
 [![PyPI](https://badge.fury.io/py/tfx.svg)](https://badge.fury.io/py/tfx)
 [![TensorFlow](https://img.shields.io/badge/TensorFow-page-orange)](https://www.tensorflow.org/tfx)
 
