@@ -156,7 +156,7 @@ COPY --from=wheel-builder /tfx/src /tfx/src
 # 2. Consolidated Installation and Security Remediation in a Single RUN layer
 # Combining upgrade, install, purge, and cache clean into one multi-command execution
 # ensures intermediate vulnerable packages and conda caches never persist in layer tarballs.
-RUN python -m pip install --upgrade pip setuptools==78.1.1 wheel \
+RUN python -m pip install --upgrade pip setuptools==82.0.0 wheel \
     -c /tfx/src/tfx/tools/docker/requirements.txt \
     -c /tfx/src/tfx/tools/docker/build_constraints.txt && \
     if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
@@ -167,7 +167,7 @@ RUN python -m pip install --upgrade pip setuptools==78.1.1 wheel \
 	    /tfx/src/dist_wheels/*.whl \
 	    /tfx/src/tfx/tools/docker/wheels/*.whl \
 	    "$(find /tfx/src/dist_wheels/ \( -name 'tfx_dev-*.whl' -o -name 'tfx-*.whl' \) | head -n 1)[docker-image]" \
-	    tf_keras setuptools==78.1.1 ${ADDITIONAL_PACKAGES} ; \
+	    tf_keras setuptools==82.0.0 ${ADDITIONAL_PACKAGES} ; \
     else \
 	  python -m pip install --upgrade --upgrade-strategy=eager --no-cache-dir \
 	    -c /tfx/src/tfx/tools/docker/requirements.txt \
@@ -175,7 +175,7 @@ RUN python -m pip install --upgrade pip setuptools==78.1.1 wheel \
 	    /tfx/src/dist_wheels/*.whl \
 	    /tfx/src/tfx/tools/docker/wheels/*.whl \
 	    "$(find /tfx/src/dist_wheels/ \( -name 'tfx_dev-*.whl' -o -name 'tfx-*.whl' \) | head -n 1)[docker-image]" \
-	    tf_keras setuptools==78.1.1 ${ADDITIONAL_PACKAGES} ; \
+	    tf_keras setuptools==82.0.0 ${ADDITIONAL_PACKAGES} ; \
     fi && \
     for pkg in golang-go golang git binutils wget policykit-1 packagekit gnupg2 gcc-12; do apt-get purge -y $pkg || true; done && \
     rm -rf /usr/local/go && \
@@ -196,6 +196,7 @@ RUN python -m pip install --upgrade pip setuptools==78.1.1 wheel \
         tf_keras || true && \
     (python -m pip uninstall -y jupyter jupyter-server jupyterlab notebook nbconvert mistune pyopenssl pygments jaraco jaraco-context jaraco.context jaraco.classes jaraco.functools || true) && \
     rm -rf /opt/conda/pkgs/* && \
+    rm -f /opt/conda/lib/python3.10/ensurepip/_bundled/pip-23.0.1-py3-none-any.whl && \
     find /opt/conda -name "*.tar.bz2" -type f -delete || true && \
     find /opt/conda -name "*.conda" -type f -delete || true && \
     find /root/.cache -type f -delete || true

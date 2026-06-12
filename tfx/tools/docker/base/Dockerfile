@@ -47,7 +47,7 @@ RUN ${APT_COMMAND} update && ${APT_COMMAND} upgrade && \
 
 # Pre-install pip and upgrade core packaging tools securely
 RUN wget https://bootstrap.pypa.io/get-pip.py && python3 get-pip.py && \
-  python3 -m pip install --upgrade --no-cache-dir pip>=26.1.2 setuptools==78.1.1 wheel>=0.47.0 && \
+  python3 -m pip install --upgrade --no-cache-dir pip>=26.1.2 setuptools==82.0.0 wheel>=0.47.0 && \
   rm -f get-pip.py
 
 # Install bazel
