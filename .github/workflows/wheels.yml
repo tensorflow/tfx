@@ -130,3 +130,4 @@ jobs:
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages_dir: wheels/
           verbose: true
+          verify-metadata: true
