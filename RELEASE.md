@@ -1,4 +1,4 @@
-# Current Version (Still in Development)
+# Version 1.21.0
 
 ## Major Features and Improvements
 
