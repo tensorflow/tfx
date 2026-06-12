@@ -80,12 +80,12 @@ def tfx_workspace():
     tfx_github_archive(
         name = "com_github_google_ml_metadata",
         repo = "google/ml-metadata",
-        branch = "master",
+        branch = "r1.21.0",
     )
 
     # Fetch TFMD repo from GitHub.
     tfx_github_archive(
         name = "com_github_tf_metadata",
         repo = "tensorflow/metadata",
-        branch = "master",
+        branch = "r1.21.0",
     )

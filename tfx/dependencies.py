@@ -58,9 +58,9 @@ def make_pipeline_sdk_required_install_packages():
         "ml-metadata"
         + select_constraint(
             # LINT.IfChange
-            default="@git+https://github.com/google/ml-metadata@master",
+            default=">=1.21.0,<1.22.0",
             # LINT.ThenChange(tfx/workspace.bzl)
-            nightly="@git+https://github.com/google/ml-metadata@master",
+            nightly=">=1.21.0",
             git_master="@git+https://github.com/google/ml-metadata@master",
         ),
         "packaging>=22",
@@ -111,27 +111,27 @@ def make_required_install_packages():
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/data-validation@master",
-            nightly="@git+https://github.com/tensorflow/data-validation@master",
+            default=">=1.21.0,<1.22.0",
+            nightly=">=1.21.0",
             git_master="@git+https://github.com/tensorflow/data-validation@master",
         ),
         "tensorflow-model-analysis"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/model-analysis@master",
-            nightly="@git+https://github.com/tensorflow/model-analysis@master",
+            default=">=0.52.0,<0.53.0",
+            nightly=">=0.52.0",
             git_master="@git+https://github.com/tensorflow/model-analysis@master",
         ),
         "tensorflow-serving-api>=2.19.1,<2.22",
         "tensorflow-transform"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/transform@master",
-            nightly="@git+https://github.com/tensorflow/transform@master",
+            default=">=1.21.0,<1.22.0",
+            nightly=">=1.21.0",
             git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/tfx-bsl@master",
-            nightly="@git+https://github.com/tensorflow/tfx-bsl@master",
+            default=">=1.21.0,<1.22.0",
+            nightly=">=1.21.0",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
     ]
@@ -197,8 +197,8 @@ def make_extra_packages_tf_ranking():
     return [
         "struct2tensor"
         + select_constraint(
-            default="@git+https://github.com/google/struct2tensor@master",
-            nightly="@git+https://github.com/google/struct2tensor@master",
+            default=">=0.52.0,<0.53.0",
+            nightly=">=0.52.0",
             git_master="@git+https://github.com/google/struct2tensor@master",
         ),
     ]
