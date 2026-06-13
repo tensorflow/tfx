@@ -2,6 +2,40 @@
 
 ## Major Features and Improvements
 
+*   N/A
+
+## Breaking Changes
+
+*   N/A
+
+### For Pipeline Authors
+
+*   N/A
+
+### For Component Authors
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+## Bug Fixes and Other Changes
+
+*   N/A
+
+## Dependency Updates
+
+*   N/A
+
+## Documentation Updates
+
+*   N/A
+
+# Version 1.21.0
+
+## Major Features and Improvements
+
 *   Added dynamic support for ZetaSQL-free MLMD environments across TFX Resolvers and metadata extensions. The system automatically detects missing C++ ZetaSQL engine binaries at runtime and transparently falls back to a highly robust, pure-Python in-memory lineage graph traversal and relation evaluation engine.
 
 ## Breaking Changes
