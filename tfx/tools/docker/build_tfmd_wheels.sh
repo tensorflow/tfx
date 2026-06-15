@@ -5,7 +5,7 @@ set -ex
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="/tmp/tfmd_build"
 TFMD_REPO="https://github.com/tensorflow/metadata/"
-TFMD_TAG="master"
+TFMD_TAG="r1.21.0"
 OUTPUT_DIR="${1:-.}"
 
 echo "Creating build directory..."

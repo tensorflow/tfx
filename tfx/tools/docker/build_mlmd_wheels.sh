@@ -5,7 +5,7 @@ set -ex
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="/tmp/mlmd_build"
 MLMD_REPO="https://github.com/google/ml-metadata/"
-MLMD_TAG="master"
+MLMD_TAG="r1.21.0"
 OUTPUT_DIR="${1:-.}"
 
 echo "Creating build directory..."
