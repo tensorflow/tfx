@@ -180,8 +180,7 @@ RUN python -m pip install --upgrade pip setuptools==82.0.0 wheel \
     for pkg in golang-go golang git binutils wget policykit-1 packagekit gnupg2 gcc-12; do apt-get purge -y $pkg || true; done && \
     rm -rf /usr/local/go && \
     rm -rf /opt/apache/beam && \
-    find /opt/conda -name "*go*" -delete || true && \
-    find /opt/conda -name "*boot*" -delete || true && \
+    find /opt/conda -name "*golang*" -delete || true && \
     apt-get autoremove -y && \
     apt-get clean && \
     python -m pip install --upgrade --no-cache-dir \
