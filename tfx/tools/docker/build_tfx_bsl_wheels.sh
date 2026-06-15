@@ -5,7 +5,7 @@ set -ex
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="/tmp/tfx_bsl_build"
 TFX_BSL_REPO="https://github.com/tensorflow/tfx-bsl/"
-TFX_BSL_TAG="master"
+TFX_BSL_TAG="r1.21.0"
 OUTPUT_DIR="${1:-.}"
 
 echo "Creating build directory..."
