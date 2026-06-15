@@ -1,3 +1,5 @@
 setuptools==82.0.0
 wheel>=0.47.0
 pip>=26.1.2
+urllib3>=2.2.2
+requests>=2.32.3
