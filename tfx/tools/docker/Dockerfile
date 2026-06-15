@@ -180,7 +180,10 @@ RUN python -m pip install --upgrade pip setuptools==82.0.0 wheel \
     for pkg in golang-go golang git binutils wget policykit-1 packagekit gnupg2 gcc-12; do apt-get purge -y $pkg || true; done && \
     rm -rf /usr/local/go && \
     rm -rf /opt/apache/beam && \
+    /opt/conda/bin/conda remove -y --force go golang || true && \
+    rm -rf /opt/conda/go /opt/conda/lib/go /opt/conda/lib/golang /opt/conda/share/go /opt/conda/share/golang /opt/conda/bin/go /opt/conda/bin/gofmt /usr/lib/go && \
     find /opt/conda -name "*golang*" -delete || true && \
+    find /opt/conda -name "*.go" -delete || true && \
     apt-get autoremove -y && \
     apt-get clean && \
     python -m pip install --upgrade --no-cache-dir \
@@ -192,7 +195,9 @@ RUN python -m pip install --upgrade pip setuptools==82.0.0 wheel \
         idna \
         python-dotenv \
         keras \
-        tf_keras || true && \
+        tf_keras \
+        urllib3 \
+        requests || true && \
     (python -m pip uninstall -y jupyter jupyter-server jupyterlab notebook nbconvert mistune pyopenssl pygments jaraco jaraco-context jaraco.context jaraco.classes jaraco.functools || true) && \
     rm -rf /opt/conda/pkgs/* && \
     rm -f /opt/conda/lib/python3.10/ensurepip/_bundled/pip-23.0.1-py3-none-any.whl && \
