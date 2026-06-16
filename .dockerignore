@@ -150,3 +150,8 @@ bazel-*
 .dockerignore
 tfx/tools/docker/Dockerfile*
 tfx/tools/docker/build_docker_image.sh
+
+# Gradle build/cache/distribution directories
+.gradle/
+**/gradle-8.5/
+**/build/

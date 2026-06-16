@@ -31,7 +31,7 @@ echo "Building wheels..."
 export USE_BAZEL_VERSION=7.7.0
 export LDFLAGS="-fuse-ld=bfd"
 pip install numpy==1.26.4
-export TFX_DEPENDENCY_SELECTOR=NIGHTLY
+export TFX_DEPENDENCY_SELECTOR=UNCONSTRAINED
 CFLAGS=$(python-config --cflags) python setup.py bdist_wheel
 
 echo "Copying wheels to output directory..."
