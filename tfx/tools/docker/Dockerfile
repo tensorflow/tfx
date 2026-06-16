@@ -63,8 +63,8 @@ RUN mkdir -p /usr/local/lib/bazel/bin && \
 ENV PATH="/usr/local/lib/bazel/bin:${PATH}"
 
 
-COPY . /tfx/src/
-WORKDIR /tfx/src/
+COPY . /tfx_src/src/
+WORKDIR /tfx_src/src/
 
 # 1. C++ Wheels (tfdv, tfx_bsl, tfmd, mlmd) - Normal production build path
 RUN if [ "$USE_CPP_WHEELS_FROM_TEMP" = "false" ]; then \
@@ -74,11 +74,11 @@ RUN if [ "$USE_CPP_WHEELS_FROM_TEMP" = "false" ]; then \
       cp tfx/tools/docker/build_tfmd_wheels.sh /tmp/ && \
       cp tfx/tools/docker/build_mlmd_wheels.sh /tmp/ && \
       cp tfx/tools/docker/*.patch /tmp/ && \
-      mkdir -p /tfx/src/dist_wheels && \
-      bash /tmp/build_tfmd_wheels.sh /tfx/src/dist_wheels && \
-      bash /tmp/build_mlmd_wheels.sh /tfx/src/dist_wheels && \
-      bash /tmp/build_tfdv_wheels.sh /tfx/src/dist_wheels && \
-      bash /tmp/build_tfx_bsl_wheels.sh /tfx/src/dist_wheels ; \
+      mkdir -p /tfx_src/src/dist_wheels && \
+      bash /tmp/build_tfmd_wheels.sh /tfx_src/src/dist_wheels && \
+      bash /tmp/build_mlmd_wheels.sh /tfx_src/src/dist_wheels && \
+      bash /tmp/build_tfdv_wheels.sh /tfx_src/src/dist_wheels && \
+      bash /tmp/build_tfx_bsl_wheels.sh /tfx_src/src/dist_wheels ; \
     fi
 
 # 2. C++ Wheels (tfdv, tfx_bsl, tfmd, mlmd) - Cached Path to avoid any CPP rebuilds
@@ -94,26 +94,28 @@ RUN --mount=type=cache,target=/tmp/wheels --mount=type=cache,target=/root/.cache
       if [ ! -f /tmp/wheels/ml_metadata-*.whl ]; then bash /tmp/build_mlmd_wheels.sh /tmp/wheels; fi && \
       if [ ! -f /tmp/wheels/tensorflow_data_validation-*.whl ]; then bash /tmp/build_tfdv_wheels.sh /tmp/wheels; fi && \
       if [ ! -f /tmp/wheels/tfx_bsl-*.whl ]; then bash /tmp/build_tfx_bsl_wheels.sh /tmp/wheels; fi && \
-      mkdir -p /tfx/src/dist_wheels && \
-      cp /tmp/wheels/tensorflow_metadata-*.whl /tfx/src/dist_wheels/ && \
-      cp /tmp/wheels/ml_metadata-*.whl /tfx/src/dist_wheels/ && \
-      cp /tmp/wheels/tensorflow_data_validation-*.whl /tfx/src/dist_wheels/ && \
-      cp /tmp/wheels/tfx_bsl-*.whl /tfx/src/dist_wheels/ ; \
+      mkdir -p /tfx_src/src/dist_wheels && \
+      cp /tmp/wheels/tensorflow_metadata-*.whl /tfx_src/src/dist_wheels/ && \
+      cp /tmp/wheels/ml_metadata-*.whl /tfx_src/src/dist_wheels/ && \
+      cp /tmp/wheels/tensorflow_data_validation-*.whl /tfx_src/src/dist_wheels/ && \
+      cp /tmp/wheels/tfx_bsl-*.whl /tfx_src/src/dist_wheels/ ; \
     fi
 
 # TODO(b/175089240): clean up conditional checks on whether ml-pipelines-sdk is
 # built after TFX versions <= 0.25 are no longer eligible for cherry-picks.
 RUN echo "Building TFX and SDK wheels from source..." && \
-    mkdir -p /tfx/src/dist_wheels && \
+    mkdir -p /tfx_src/src/dist_wheels && \
     if [ -e "package_build" ]; then \
       bash -x package_build/initialize.sh && \
+      python package_build/tfx/setup.py gen_proto && \
       CFLAGS=$(python-config --cflags) python package_build/ml-pipelines-sdk/setup.py bdist_wheel && \
       CFLAGS=$(python-config --cflags) python package_build/tfx/setup.py bdist_wheel && \
-      cp package_build/ml-pipelines-sdk/dist/*.whl /tfx/src/dist_wheels/ && \
-      cp package_build/tfx/dist/*.whl /tfx/src/dist_wheels/ ; \
+      cp package_build/ml-pipelines-sdk/dist/*.whl /tfx_src/src/dist_wheels/ && \
+      cp package_build/tfx/dist/*.whl /tfx_src/src/dist_wheels/ ; \
     else \
+      python setup.py gen_proto && \
       CFLAGS=$(python-config --cflags) python setup.py bdist_wheel && \
-      cp dist/*.whl /tfx/src/dist_wheels/ ; \
+      cp dist/*.whl /tfx_src/src/dist_wheels/ ; \
     fi
 
 # --- Stage 2: beam-worker ---
@@ -151,30 +153,30 @@ ENTRYPOINT ["/opt/apache/beam/boot"]
 
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
-COPY --from=wheel-builder /tfx/src /tfx/src
+COPY --from=wheel-builder /tfx_src/src /tfx_src/src
 
 # 2. Consolidated Installation and Security Remediation in a Single RUN layer
 # Combining upgrade, install, purge, and cache clean into one multi-command execution
 # ensures intermediate vulnerable packages and conda caches never persist in layer tarballs.
 RUN python -m pip install --upgrade pip setuptools==82.0.0 wheel \
-    -c /tfx/src/tfx/tools/docker/requirements.txt \
-    -c /tfx/src/tfx/tools/docker/build_constraints.txt && \
+    -c /tfx_src/src/tfx/tools/docker/requirements.txt \
+    -c /tfx_src/src/tfx/tools/docker/build_constraints.txt && \
     if [ "${TFX_DEPENDENCY_SELECTOR}" = "NIGHTLY" ]; then \
 	  python -m pip install --upgrade --upgrade-strategy=eager --no-cache-dir \
             --extra-index-url https://pypi-nightly.tensorflow.org/simple \
-	    -c /tfx/src/tfx/tools/docker/requirements.txt \
-	    -c /tfx/src/tfx/tools/docker/build_constraints.txt \
-	    /tfx/src/dist_wheels/*.whl \
-	    /tfx/src/tfx/tools/docker/wheels/*.whl \
-	    "$(find /tfx/src/dist_wheels/ \( -name 'tfx_dev-*.whl' -o -name 'tfx-*.whl' \) | head -n 1)[docker-image]" \
+	    -c /tfx_src/src/tfx/tools/docker/requirements.txt \
+	    -c /tfx_src/src/tfx/tools/docker/build_constraints.txt \
+	    /tfx_src/src/dist_wheels/*.whl \
+	    /tfx_src/src/tfx/tools/docker/wheels/*.whl \
+	    "$(find /tfx_src/src/dist_wheels/ \( -name 'tfx_dev-*.whl' -o -name 'tfx-*.whl' \) | head -n 1)[docker-image]" \
 	    tf_keras setuptools==82.0.0 ${ADDITIONAL_PACKAGES} ; \
     else \
 	  python -m pip install --upgrade --upgrade-strategy=eager --no-cache-dir \
-	    -c /tfx/src/tfx/tools/docker/requirements.txt \
-	    -c /tfx/src/tfx/tools/docker/build_constraints.txt \
-	    /tfx/src/dist_wheels/*.whl \
-	    /tfx/src/tfx/tools/docker/wheels/*.whl \
-	    "$(find /tfx/src/dist_wheels/ \( -name 'tfx_dev-*.whl' -o -name 'tfx-*.whl' \) | head -n 1)[docker-image]" \
+	    -c /tfx_src/src/tfx/tools/docker/requirements.txt \
+	    -c /tfx_src/src/tfx/tools/docker/build_constraints.txt \
+	    /tfx_src/src/dist_wheels/*.whl \
+	    /tfx_src/src/tfx/tools/docker/wheels/*.whl \
+	    "$(find /tfx_src/src/dist_wheels/ \( -name 'tfx_dev-*.whl' -o -name 'tfx-*.whl' \) | head -n 1)[docker-image]" \
 	    tf_keras setuptools==82.0.0 ${ADDITIONAL_PACKAGES} ; \
     fi && \
     for pkg in golang-go golang git binutils wget policykit-1 packagekit gnupg2 gcc-12; do apt-get purge -y $pkg || true; done && \
@@ -187,20 +189,19 @@ RUN python -m pip install --upgrade pip setuptools==82.0.0 wheel \
     apt-get autoremove -y && \
     apt-get clean && \
     python -m pip install --upgrade --no-cache-dir \
-        pip \
-        wheel \
-        protobuf \
         lxml \
-        cryptography \
         idna \
         python-dotenv \
-        keras \
-        tf_keras \
-        urllib3 \
-        requests || true && \
-    (python -m pip uninstall -y jupyter jupyter-server jupyterlab notebook nbconvert mistune pyopenssl pygments jaraco jaraco-context jaraco.context jaraco.classes jaraco.functools || true) && \
+        aiohttp \
+        protobuf>=6.33.5 \
+        cryptography>=48.0.1 \
+        bleach>=6.4.0 \
+        pygments>=2.20.0 \
+        pyjwt || true && \
+    (python -m pip uninstall -y jupyter jupyter-server jupyterlab notebook nbconvert mistune pyopenssl jaraco jaraco-context jaraco.context jaraco.classes jaraco.functools || true) && \
     rm -rf /opt/conda/pkgs/* && \
     rm -f /opt/conda/lib/python3.10/ensurepip/_bundled/pip-23.0.1-py3-none-any.whl && \
+    rm -rf /usr/lib/google-cloud-sdk/platform/bundledpythonunix && \
     find /opt/conda -name "*.tar.bz2" -type f -delete || true && \
     find /opt/conda -name "*.conda" -type f -delete || true && \
     find /root/.cache -type f -delete || true

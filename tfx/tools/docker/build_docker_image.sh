@@ -117,24 +117,22 @@ done
 mkdir -p tfx/tools/docker/wheels
 rm -rf tfx/tools/docker/wheels/*
 
-# Build tensorflow-model-analysis wheel from master
-echo "Building tensorflow-model-analysis wheel from master..."
+# Build tensorflow-model-analysis wheel from tag v0.52.0
+echo "Building tensorflow-model-analysis wheel from tag v0.52.0..."
 TFMA_BUILD_DIR="/tmp/tfma_build_$(date +%s)"
-git clone --depth 1 https://github.com/tensorflow/model-analysis.git "${TFMA_BUILD_DIR}"
+git clone --branch v0.52.0 --depth 1 https://github.com/tensorflow/model-analysis.git "${TFMA_BUILD_DIR}"
 pushd "${TFMA_BUILD_DIR}"
-TFX_DEPENDENCY_SELECTOR=NIGHTLY python setup.py bdist_wheel
+TFX_DEPENDENCY_SELECTOR=UNCONSTRAINED python setup.py bdist_wheel
 popd
 cp "${TFMA_BUILD_DIR}"/dist/*.whl tfx/tools/docker/wheels/
 rm -rf "${TFMA_BUILD_DIR}"
 
-# Build tensorflow-transform wheel from master
-echo "Building tensorflow-transform wheel from master..."
+# Build tensorflow-transform wheel from tag v1.21.0
+echo "Building tensorflow-transform wheel from tag v1.21.0..."
 TFT_BUILD_DIR="/tmp/tft_build_$(date +%s)"
-git clone --depth 1 https://github.com/tensorflow/transform.git "${TFT_BUILD_DIR}"
+git clone --branch v1.21.0 --depth 1 https://github.com/tensorflow/transform.git "${TFT_BUILD_DIR}"
 pushd "${TFT_BUILD_DIR}"
-# Loosen the hardcoded tfx-bsl git URL pin in setup.py to support installing our local compiled wheel
-sed -i 's|tfx-bsl@git+https://github.com/tensorflow/tfx-bsl@master|tfx-bsl>=1.18.0.dev|g' setup.py
-TFX_DEPENDENCY_SELECTOR=NIGHTLY python setup.py bdist_wheel
+TFX_DEPENDENCY_SELECTOR=UNCONSTRAINED python setup.py bdist_wheel
 popd
 cp "${TFT_BUILD_DIR}"/dist/*.whl tfx/tools/docker/wheels/
 rm -rf "${TFT_BUILD_DIR}"
