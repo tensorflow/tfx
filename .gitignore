@@ -142,6 +142,11 @@ dmypy.json
 bazel-*
 **/*_pb2.py
 **/*_pb2_grpc.py
+# Gradle build/cache/distribution directories
+.gradle/
+**/gradle-8.5/
+**/build/
+
 # LINT.ThenChange(.dockerignore)
 
 MODULE.bazel
