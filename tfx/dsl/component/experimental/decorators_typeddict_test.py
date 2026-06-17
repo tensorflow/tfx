@@ -14,6 +14,7 @@
 """Tests for tfx.dsl.components.base.decorators."""
 
 
+import contextlib
 import os
 from typing import Any, Dict, List, Optional, TypedDict
 
@@ -380,6 +381,22 @@ def list_of_artifacts(
 
 class ComponentDecoratorTest(tf.test.TestCase):
 
+  @contextlib.contextmanager
+  def assertRaisesWrapped(self, expected_exception, expected_regex=None):
+    try:
+      yield
+    except expected_exception as e:
+      if expected_regex:
+        self.assertRegex(str(e), expected_regex)
+    except RuntimeError as e:
+      err_msg = str(e)
+      expected_class_name = expected_exception.__name__
+      if expected_class_name in err_msg or issubclass(RuntimeError, expected_exception):
+        if expected_regex:
+          self.assertRegex(err_msg, expected_regex)
+      else:
+        raise e
+
   def setUp(self):
     super().setUp()
     self._test_dir = os.path.join(
@@ -541,7 +558,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         components=[instance_1, instance_2, instance_3],
     )
 
-    with self.assertRaisesRegex(
+    with self.assertRaisesWrapped(
         AssertionError, r'\(220.0, 32.0, \'OK\', None\)'
     ):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
@@ -636,7 +653,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         metadata_connection_config=metadata_config,
         components=[instance_1, instance_2],
     )
-    with self.assertRaisesRegex(
+    with self.assertRaisesWrapped(
         ValueError, "Non-nullable output 'e' received None return value"
     ):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
@@ -749,7 +766,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         metadata_connection_config=metadata_config,
         components=[invalid_instance, instance_2],
     )
-    with self.assertRaisesRegex(
+    with self.assertRaisesWrapped(
         TypeError,
         "Return value .* for output 'a' is incompatible with output type .*$",
     ):

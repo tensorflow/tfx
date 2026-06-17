@@ -158,7 +158,13 @@ class _GenProtoCommand(setuptools.Command):
           'installation instruction.')
 
   def run(self):
-    bazel_args = ['--compilation_mode', 'opt']
+    bazel_args = [
+        '--compilation_mode',
+        'opt',
+        '--experimental_repo_remote_exec',
+        '--cxxopt=-std=c++17',
+        '--host_cxxopt=-std=c++17',
+    ]
     if self.local_mlmd_repo:
       # If local MLMD repo is given, override com_github_google_ml_metadata
       # remote repository with the local path. This is required to use the

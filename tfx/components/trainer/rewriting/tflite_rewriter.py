@@ -28,6 +28,8 @@ from tfx.utils import io_utils
 
 EXTRA_ASSETS_DIRECTORY = 'assets.extra'
 
+_TFLiteConverter = tf.lite.TFLiteConverter
+
 
 def _create_tflite_compatible_saved_model(src: str, dst: str):
   io_utils.copy_dir(src, dst)
@@ -258,10 +260,10 @@ class TFLiteRewriter(rewriter.BaseRewriter):
     if signature_key:
       # Need the check here because from_saved_model takes signature_keys list.
       # [None] is not None.
-      converter = tf.lite.TFLiteConverter.from_saved_model(
+      converter = _TFLiteConverter.from_saved_model(
           saved_model_path, signature_keys=[signature_key])
     else:
-      converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
+      converter = _TFLiteConverter.from_saved_model(saved_model_path)
 
     converter.optimizations = quantization_optimizations
     converter.target_spec.supported_types = quantization_supported_types

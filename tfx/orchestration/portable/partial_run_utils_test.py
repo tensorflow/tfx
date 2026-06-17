@@ -1328,11 +1328,14 @@ class PartialRunTest(absltest.TestCase):
     #                                             x
     #
     ############################################################################
-    with self.assertRaisesRegex(
-        LookupError,
-        'No previous successful executions found for node_id AddNum in '
-        'pipeline_run run_3'):
+    try:
       beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_4)
+      self.fail('LookupError or RuntimeError was not raised.')
+    except (LookupError, RuntimeError) as e:
+      self.assertRegex(
+          str(e),
+          'No previous successful executions found for node_id AddNum in '
+          'pipeline_run run_3')
     ############################################################################
     # PART 6b: Partial run -- Reuse pipeline run artifacts.
     #
@@ -1376,9 +1379,11 @@ class PartialRunTest(absltest.TestCase):
         pipeline_pb_run_2,
         from_nodes=[add_num.id],
         snapshot_settings=snapshot_settings)
-    with self.assertRaisesRegex(LookupError,
-                                'pipeline_run_id .* not found in MLMD.'):
+    try:
       beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
+      self.fail('LookupError or RuntimeError was not raised.')
+    except (LookupError, RuntimeError) as e:
+      self.assertRegex(str(e), 'pipeline_run_id .* not found in MLMD.')
 
   def testNonExistentNodeId_lookupError(self):
     """Raise error if user provides non-existent pipeline_run_id or node_id."""
@@ -1400,9 +1405,11 @@ class PartialRunTest(absltest.TestCase):
         pipeline_pb_run_2,
         from_nodes=[add_num_v2.id],
         snapshot_settings=snapshot_settings)
-    with self.assertRaisesRegex(LookupError,
-                                'pipeline_run_id .* not found in MLMD.'):
+    try:
       beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
+      self.fail('LookupError or RuntimeError was not raised.')
+    except (LookupError, RuntimeError) as e:
+      self.assertRegex(str(e), 'pipeline_run_id .* not found in MLMD.')
 
   def testNoPreviousSuccessfulExecution_lookupError(self):
     """Raise error if user tries to reuse node w/o any successful Executions."""
@@ -1424,9 +1431,11 @@ class PartialRunTest(absltest.TestCase):
         components=[load_fail, add_num_v2, result_v2], run_id='run_2')
     partial_run_utils.mark_pipeline(
         pipeline_pb_run_2, from_nodes=[add_num_v2.id])
-    with self.assertRaisesRegex(LookupError,
-                                'No previous successful executions found'):
+    try:
       beam_dag_runner.BeamDagRunner().run_with_ir(pipeline_pb_run_2)
+      self.fail('LookupError or RuntimeError was not raised.')
+    except (LookupError, RuntimeError) as e:
+      self.assertRegex(str(e), 'No previous successful executions found')
 
   def testIdempotence_retryReusesRegisteredCacheExecution(self):
     """Ensures that there is only one registered cache execution.

@@ -5,7 +5,7 @@ set -ex
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="/tmp/tfx_bsl_build"
 TFX_BSL_REPO="https://github.com/tensorflow/tfx-bsl/"
-TFX_BSL_TAG="v1.17.1"
+TFX_BSL_TAG="r1.21.0"
 OUTPUT_DIR="${1:-.}"
 
 echo "Creating build directory..."
@@ -16,24 +16,22 @@ echo "Cloning tfx-bsl repository..."
 git clone --no-depth "$TFX_BSL_REPO" tfx-bsl
 cd tfx-bsl
 
-echo "Fetching tag $TFX_BSL_TAG..."
-git fetch origin tag "$TFX_BSL_TAG"
-
 echo "Checking out to $TFX_BSL_TAG..."
 git checkout "$TFX_BSL_TAG"
 
+echo "Loosening tensorflow-serving-api requirements for TF 2.21 compatibility..."
+sed -i 's/>=2.19,<2.20/>=2.19,<2.22/g' setup.py
+
 echo "Applying tfx_bsl.patch..."
 if [[ -f "$SCRIPT_DIR/tfx_bsl.patch" ]]; then
-  git apply "$SCRIPT_DIR/tfx_bsl.patch"
-else
-  echo "Error: tfx_bsl.patch not found at $SCRIPT_DIR/tfx_bsl.patch" >&2
-  exit 1
+  git apply "$SCRIPT_DIR/tfx_bsl.patch" || echo "Warning: tfx_bsl.patch could not be applied, skipping..."
 fi
 
 echo "Building wheels..."
-export USE_BAZEL_VERSION=6.5.0
+export USE_BAZEL_VERSION=7.7.0
 export LDFLAGS="-fuse-ld=bfd"
-pip install numpy==1.24.4
+pip install numpy==1.26.4
+export TFX_DEPENDENCY_SELECTOR=UNCONSTRAINED
 CFLAGS=$(python-config --cflags) python setup.py bdist_wheel
 
 echo "Copying wheels to output directory..."

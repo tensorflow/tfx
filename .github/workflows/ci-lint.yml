@@ -17,7 +17,7 @@ jobs:
         fetch-depth: 0
     - uses: actions/setup-python@v5.1.1
       with:
-        python-version: 3.9
+        python-version: '3.10'
     - name: Determine commit range
       id: commit_range
       run: |

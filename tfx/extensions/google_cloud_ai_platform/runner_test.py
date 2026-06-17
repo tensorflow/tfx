@@ -40,6 +40,9 @@ from tfx.utils import version_utils
 
 class RunnerTest(tf.test.TestCase):
 
+  def _assertDictContainsSubset(self, subset, dictionary, msg=None):
+    self.assertEqual({k: dictionary[k] for k in subset}, subset, msg=msg)
+
   def setUp(self):
     super().setUp()
     self._output_data_dir = os.path.join(
@@ -151,7 +154,7 @@ class RunnerTest(tf.test.TestCase):
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
     kwargs = self._mock_create.call_args[1]
     body = kwargs['body']
-    self.assertDictContainsSubset(
+    self._assertDictContainsSubset(
         {
             'masterConfig': {
                 'imageUri':
@@ -193,7 +196,7 @@ class RunnerTest(tf.test.TestCase):
 
     default_image = 'gcr.io/tfx-oss-public/tfx:{}'.format(
         version_utils.get_image_version())
-    self.assertDictContainsSubset(
+    self._assertDictContainsSubset(
         {
             'worker_pool_specs': [{
                 'container_spec': {
@@ -302,7 +305,7 @@ class RunnerTest(tf.test.TestCase):
         custom_job=mock.ANY)
     kwargs = self._mock_create.call_args[1]
     body = kwargs['custom_job']
-    self.assertDictContainsSubset(
+    self._assertDictContainsSubset(
         {
             'worker_pool_specs': [{
                 'container_spec': {

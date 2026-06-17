@@ -56,6 +56,8 @@ class TrainingRangeOpTest(
   def setUp(self):
     super().setUp()
     self.init_mlmd()
+    if not self.is_zetasql_supported:
+      self.skipTest('ZetaSQL is required for training range lineage tests.')
 
     self.model = self.prepare_tfx_artifact(test_utils.Model)
     self.transform_graph = self.prepare_tfx_artifact(test_utils.TransformGraph)

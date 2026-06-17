@@ -58,14 +58,14 @@ def make_pipeline_sdk_required_install_packages():
         "ml-metadata"
         + select_constraint(
             # LINT.IfChange
-            default=">=1.17.0,<1.18.0",
+            default=">=1.21.0,<1.22.0",
             # LINT.ThenChange(tfx/workspace.bzl)
-            nightly=">=1.17.0",
+            nightly=">=1.21.0",
             git_master="@git+https://github.com/google/ml-metadata@master",
         ),
         "packaging>=22",
         "portpicker>=1.3.1,<2",
-        "protobuf>=3.20.3,<5",
+        "protobuf>=6.0.0,<7.0.0",
         "docker>=7,<8",
         "google-apitools>=0.5,<1",
         "google-api-python-client>=1.8,<2",
@@ -81,7 +81,7 @@ def make_required_install_packages():
     # and protobuf) with TF.
     return make_pipeline_sdk_required_install_packages() + [
         "apache-beam[gcp]>=2.47,<3",
-        "attrs>=19.3.0,<24",
+        "attrs>=19.3.0,<26",
         "click>=7,<9",
         "google-api-core<3",
         "google-cloud-aiplatform>=1.6.2,<2",
@@ -89,15 +89,16 @@ def make_required_install_packages():
         "grpcio>=1.28.1,<2",
         "keras-tuner>=1.0.4,<2,!=1.4.0,!=1.4.1",
         "kubernetes>=10.0.1,<27",
-        "numpy>=1.16,<2",
-        "pyarrow>=10,<11",
+        "numpy>=1.16,<3",
+        "pyarrow>=10,<19; python_version < '3.13'",
+        "pyarrow>=18,<19; python_version >= '3.13'",
         # TODO: b/358471141 - Orjson 3.10.7 breaks TFX OSS tests.
         # Unpin once the issue with installation is resolved.
         "orjson!=3.10.7",
         # TODO(b/332616741): Scipy version 1.13 breaks the TFX OSS test.
         # Unpin once the issue is resolved.
-        "scipy<1.13",
-        "scikit-learn==1.5.1",
+        "scipy<2",
+        "scikit-learn==1.5.2",
         # TODO(b/291837844): Pinned pyyaml to 5.3.1.
         # Unpin once the issue with installation is resolved.
         "pyyaml>=6,<7",
@@ -105,32 +106,32 @@ def make_required_install_packages():
         # Pip might stuck in a TF 1.15 dependency although there is a working
         # dependency set with TF 2.x without the sync.
         # pylint: disable=line-too-long
-        "tensorflow" + select_constraint(">=2.17.0,<2.18"),
+        "tensorflow" + select_constraint(">=2.21.0,<2.22"),
         # pylint: enable=line-too-long
         "tensorflow-hub>=0.15.0,<0.16",
         "tensorflow-data-validation"
         + select_constraint(
-            default=">=1.17.0,<1.18.0",
-            nightly=">=1.17.0",
-            git_master=("@git+https://github.com/tensorflow/data-validation@master"),
+            default=">=1.21.0,<1.22.0",
+            nightly=">=1.21.0",
+            git_master="@git+https://github.com/tensorflow/data-validation@master",
         ),
         "tensorflow-model-analysis"
         + select_constraint(
-            default=">=0.48.0,<0.49.0",
-            nightly=">=0.48.0",
+            default=">=0.52.0,<0.53.0",
+            nightly=">=0.52.0",
             git_master="@git+https://github.com/tensorflow/model-analysis@master",
         ),
-        "tensorflow-serving-api>=2.17,<2.18",
+        "tensorflow-serving-api>=2.19.1,<2.22",
         "tensorflow-transform"
         + select_constraint(
-            default=">=1.17.0,<1.18.0",
-            nightly=">=1.17.0",
+            default=">=1.21.0,<1.22.0",
+            nightly=">=1.21.0",
             git_master="@git+https://github.com/tensorflow/transform@master",
         ),
         "tfx-bsl"
         + select_constraint(
-            default=">=1.17.1,<1.18.0",
-            nightly=">=1.17.1",
+            default=">=1.21.0,<1.22.0",
+            nightly=">=1.21.0",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
     ]
@@ -139,15 +140,15 @@ def make_required_install_packages():
 def make_extra_packages_airflow():
     """Prepare extra packages needed for Apache Airflow orchestrator."""
     return [
-        "apache-airflow[mysql]>=1.10.14,<3",
+        "apache-airflow[mysql]>=1.10.14,<3; python_version < '3.13'",
     ]
 
 
 def make_extra_packages_kfp():
   """Prepare extra packages needed for Kubeflow Pipelines orchestrator."""
   return [
-      "kfp>=2.6.0,<2.7.0",
-      "kfp-pipeline-spec>=0.3.0,<0.4.0",
+      "kfp>=2.6.0,<2.17.0; python_version < '3.12'",
+      "kfp-pipeline-spec>=0.3.0,<2.17.0; python_version < '3.12'",
   ]
 
 
@@ -168,8 +169,8 @@ def make_extra_packages_test():
 def make_extra_packages_docker_image():
     # Packages needed for tfx docker image.
     return [
-        "kfp>=2.6.0,<2.7.0",
-        "kfp-pipeline-spec>=0.3.0,<0.4.0",
+        "kfp>=2.6.0,<2.17.0; python_version < '3.12'",
+        "kfp-pipeline-spec>=0.3.0,<2.17.0; python_version < '3.12'",
         "mmh>=2.2,<3",
         "python-snappy>=0.7",
         # Required for tfx/examples/penguin/penguin_utils_cloud_tuner.py
@@ -180,9 +181,7 @@ def make_extra_packages_docker_image():
 
 def make_extra_packages_tfjs():
     # Packages needed for tfjs.
-    return [
-        "tensorflowjs>=4.5,<5",
-    ]
+    return []
 
 
 def make_extra_packages_tflite_support():
@@ -196,11 +195,10 @@ def make_extra_packages_tflite_support():
 def make_extra_packages_tf_ranking():
     # Packages needed for tf-ranking which is used in tfx/examples/ranking.
     return [
-        "tensorflow-ranking>=0.5,<0.6",
         "struct2tensor"
         + select_constraint(
-            default=">=0.48.0,<0.49.0",
-            nightly=">=0.48.0",
+            default=">=0.52.0,<0.53.0",
+            nightly=">=0.52.0",
             git_master="@git+https://github.com/google/struct2tensor@master",
         ),
     ]
@@ -209,10 +207,8 @@ def make_extra_packages_tf_ranking():
 def make_extra_packages_tfdf():
     # Packages needed for tensorflow-decision-forests.
     # Required for tfx/examples/penguin/penguin_utils_tfdf_experimental.py
-    return [
-        # NOTE: TFDF 1.0.1 is only compatible with TF 2.10.x.
-        "tensorflow-decision-forests>=1.10.1,<2",
-    ]
+    return []
+
 
 
 def make_extra_packages_flax():
@@ -221,10 +217,10 @@ def make_extra_packages_flax():
     # tfx/examples/penguin.
     return [
         # TODO(b/324157691): Upgrade jax once we upgrade TF version.
-        "jax<0.4.24",
-        "jaxlib<0.4.24",
-        "flax<1",
-        "optax<1",
+        "jax<0.4.24; python_version < '3.13'",
+        "jaxlib<0.4.24; python_version < '3.13'",
+        "flax<1; python_version < '3.13'",
+        "optax<1; python_version < '3.13'",
     ]
 
 
@@ -238,8 +234,6 @@ def make_extra_packages_examples():
         # tfx/examples/custom_components/slack
         "slackclient>=2.8.2,<3",
         "websocket-client>=0.57,<1",
-        # Required for bert examples in tfx/examples/bert
-        "tensorflow-text>=1.15.1,<3",
         # Required for tfx/examples/penguin/experimental
         # LINT.IfChange
         "scikit-learn>=1.0,<2",

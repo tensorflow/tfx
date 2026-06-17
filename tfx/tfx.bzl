@@ -13,6 +13,8 @@
 # limitations under the License.
 """Proto library helper utils."""
 
+load("@rules_python//python:py_info.bzl", "PyInfo")
+
 # Custom provider for descriptor proto files.
 ProtoDescriptorInfo = provider(
     fields = {
