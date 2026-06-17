@@ -23,11 +23,13 @@ jobs:
         python-version: '3.10'
 
     - name: install python dependencies
-      run: pip install build twine
+      run: pip install build twine tomli
 
     - name: build sdist
       run: |
-        python -m build --sdist -o wheelhouse
+        package_build/initialize.sh
+        python -m build --sdist package_build/tfx/ -o wheelhouse
+        python -m build --sdist package_build/ml-pipelines-sdk/ -o wheelhouse
 
     - name: List and check sdist
       run: |
