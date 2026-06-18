@@ -7,7 +7,7 @@ on:
     types: [published]
 
 env:
-  USE_BAZEL_VERSION: "6.5.0"
+  USE_BAZEL_VERSION: "7.7.0"
 
 jobs:
   build_sdist:
@@ -23,11 +23,13 @@ jobs:
         python-version: '3.10'
 
     - name: install python dependencies
-      run: pip install build twine
+      run: pip install build twine tomli
 
     - name: build sdist
       run: |
-        python -m build --sdist -o wheelhouse
+        package_build/initialize.sh
+        python -m build --sdist package_build/tfx/ -o wheelhouse
+        python -m build --sdist package_build/ml-pipelines-sdk/ -o wheelhouse
 
     - name: List and check sdist
       run: |
@@ -48,7 +50,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu]
-        python-version: ['cp39', 'cp310']
+        python-version: ['cp310', 'cp311', 'cp312', 'cp313']
 
     runs-on: ${{ format('{0}-latest', matrix.os) }}
     steps:
@@ -127,4 +129,7 @@ jobs:
       - name: Upload to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1.9
         with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
           packages_dir: wheels/
+          verbose: true
+          verify-metadata: true

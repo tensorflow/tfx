@@ -95,8 +95,22 @@ def _create_proto_instance_from_name(
     message_name: str, pool: descriptor_pool.DescriptorPool) -> ProtoMessage:
   """Creates a protobuf message instance from a given message name."""
   message_descriptor = pool.FindMessageTypeByName(message_name)
-  factory = message_factory.MessageFactory(pool)
-  message_type = factory.GetPrototype(message_descriptor)
+  if hasattr(message_factory, 'GetMessageClass'):
+    message_type = message_factory.GetMessageClass(message_descriptor)
+  elif hasattr(message_factory, 'MessageFactory'):
+    factory = message_factory.MessageFactory(pool)
+    if hasattr(factory, 'GetPrototype'):
+      message_type = factory.GetPrototype(message_descriptor)
+    elif hasattr(factory, 'GetMessageClass'):
+      message_type = factory.GetMessageClass(message_descriptor)
+    else:
+      raise AttributeError(
+          'Protobuf MessageFactory has neither GetPrototype nor GetMessageClass'
+      )
+  else:
+    raise AttributeError(
+        'Protobuf module has no GetMessageClass or MessageFactory'
+    )
   return message_type()
 
 

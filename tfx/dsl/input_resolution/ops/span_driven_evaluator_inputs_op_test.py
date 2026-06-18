@@ -51,6 +51,8 @@ class SpanDrivenEvaluatorInputsOpTest(
   def setUp(self):
     super().setUp()
     self.init_mlmd()
+    if not self.is_zetasql_supported:
+      self.skipTest('ZetaSQL is required for span driven evaluator inputs tests.')
 
     # We intentionally save a variable of each Examples/Model artifact so that
     # the tests are more readable.

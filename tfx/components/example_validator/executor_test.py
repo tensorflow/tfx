@@ -17,7 +17,6 @@ import os
 import tempfile
 
 from absl.testing import parameterized
-from tensorflow_data_validation.anomalies.proto import custom_validation_config_pb2
 from tfx.components.example_validator import executor
 from tfx.dsl.io import fileio
 from tfx.proto.orchestration import execution_result_pb2
@@ -27,39 +26,7 @@ from tfx.types import standard_component_specs
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 
-from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import anomalies_pb2
-
-
-_ANOMALIES_PROTO = text_format.Parse(
-    """
-    anomaly_info {
-      key: 'company'
-      value {
-        path {
-          step: 'company'
-        }
-        severity: ERROR
-        short_description: 'Feature does not have enough values.'
-        description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
-        reason {
-          description: 'Custom validation triggered anomaly. Query: feature.string_stats.common_stats.min_num_values > 5 Test dataset: default slice'
-          type: CUSTOM_VALIDATION
-          short_description: 'Feature does not have enough values.'
-        }
-      }
-    }
-    dataset_anomaly_info {
-      description: "Low num examples in dataset."
-      severity: ERROR
-      short_description: "Low num examples in dataset."
-      reason {
-          type: DATASET_LOW_NUM_EXAMPLES
-      }
-    }
-    """,
-    anomalies_pb2.Anomalies()
-)
 
 
 class ExecutorTest(parameterized.TestCase):
@@ -81,41 +48,7 @@ class ExecutorTest(parameterized.TestCase):
         len(expected_anomalies.anomaly_info)
     )
 
-  @parameterized.named_parameters(
-      {
-          'testcase_name': 'No_anomalies',
-          'custom_validation_config': None,
-          'expected_anomalies': anomalies_pb2.Anomalies(),
-          'expected_blessing': {
-              'train': executor.BLESSED_VALUE,
-              'eval': executor.BLESSED_VALUE,
-          },
-      },
-      {
-          'testcase_name': 'Custom_validation',
-          'custom_validation_config': """
-              feature_validations {
-              feature_path { step: 'company' }
-              validations {
-                sql_expression: 'feature.string_stats.common_stats.min_num_values > 5'
-                severity: ERROR
-                description: 'Feature does not have enough values.'
-                }
-              }
-              """,
-          'expected_anomalies': _ANOMALIES_PROTO,
-          'expected_blessing': {
-              'train': executor.NOT_BLESSED_VALUE,
-              'eval': executor.NOT_BLESSED_VALUE,
-          },
-      },
-  )
-  def testDo(
-      self,
-      custom_validation_config,
-      expected_anomalies,
-      expected_blessing,
-  ):
+  def testDo(self):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
@@ -140,17 +73,10 @@ class ExecutorTest(parameterized.TestCase):
         standard_component_specs.SCHEMA_KEY: [schema_artifact],
     }
 
-    if custom_validation_config is not None:
-      custom_validation_config = text_format.Parse(
-          custom_validation_config,
-          custom_validation_config_pb2.CustomValidationConfig()
-      )
     exec_properties = {
         # List needs to be serialized before being passed into Do function.
         standard_component_specs.EXCLUDE_SPLITS_KEY:
             json_utils.dumps(['test']),
-        standard_component_specs.CUSTOM_VALIDATION_CONFIG_KEY:
-            custom_validation_config,
     }
 
     output_dict = {
@@ -181,6 +107,12 @@ class ExecutorTest(parameterized.TestCase):
     eval_anomalies = anomalies_pb2.Anomalies()
     eval_anomalies.ParseFromString(eval_anomalies_bytes)
 
+    expected_anomalies = anomalies_pb2.Anomalies()
+    expected_blessing = {
+        'train': executor.BLESSED_VALUE,
+        'eval': executor.BLESSED_VALUE,
+    }
+
     self._assert_equal_anomalies(train_anomalies, expected_anomalies)
     self._assert_equal_anomalies(eval_anomalies, expected_anomalies)
 
@@ -188,7 +120,6 @@ class ExecutorTest(parameterized.TestCase):
     train_file_path = os.path.join(validation_output.uri, 'Split-test',
                                    'SchemaDiff.pb')
     self.assertFalse(fileio.exists(train_file_path))
-    # TODO(zhitaoli): Add comparison to expected anomolies.
 
     self.assertEqual(
         validation_output.get_json_value_custom_property(

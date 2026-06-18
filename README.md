@@ -2,7 +2,7 @@
 
 # TFX
 
-[![Python](https://img.shields.io/badge/python%20-3.9%7C3.10-blue)](https://github.com/tensorflow/tfx)
+[![Python](https://img.shields.io/badge/python%20-3.10%7C3.11%7C3.12%7C3.13-blue)](https://github.com/tensorflow/tfx)
 [![PyPI](https://badge.fury.io/py/tfx.svg)](https://badge.fury.io/py/tfx)
 [![TensorFlow](https://img.shields.io/badge/TensorFow-page-orange)](https://www.tensorflow.org/tfx)
 
@@ -62,7 +62,8 @@ but other *untested* combinations may also work.
 
 tfx                                                                       | Python               | apache-beam[gcp] | ml-metadata | pyarrow | tensorflow        | tensorflow-data-validation | tensorflow-metadata | tensorflow-model-analysis | tensorflow-serving-api | tensorflow-transform | tfx-bsl
 ------------------------------------------------------------------------- | -------------------- | ---------------- | ----------- | ------- | ----------------- | -------------------------- | ------------------- | ------------------------- | ---------------------- | -------------------- | -------
-[GitHub master](https://github.com/tensorflow/tfx/blob/master/RELEASE.md) | >=3.9,<3.11          | 2.59.0           | 1.17.1      | 10.0.1  | nightly (2.x)     | 1.17.0                     | 1.17.1              | 0.48.0                    | 2.17.1                 | 1.17.0               | 1.17.1
+[GitHub master](https://github.com/tensorflow/tfx/blob/master/RELEASE.md) | >=3.10,<3.13         | 2.73.0           | 1.21.0      | 18.1.0  | nightly (2.x)     | 1.21.0                     | 1.21.0              | 0.52.0                    | 2.19.1                 | 1.21.0               | 1.21.0
+[1.21.0](https://github.com/tensorflow/tfx/blob/v1.21.0/RELEASE.md)       | >=3.10,<3.13         | 2.73.0           | 1.21.0      | 18.1.0  | 2.21              | 1.21.0                     | 1.21.0              | 0.52.0                    | 2.19.1                 | 1.21.0               | 1.21.0
 [1.17.2](https://github.com/tensorflow/tfx/blob/v1.17.2/RELEASE.md)       | >=3.9,<3.11          | 2.59.0           | 1.17.1      | 10.0.1  | 2.17              | 1.17.0                     | 1.17.1              | 0.48.0                    | 2.17.1                 | 1.17.0               | 1.17.1
 [1.17.1](https://github.com/tensorflow/tfx/blob/v1.17.1/RELEASE.md)       | >=3.9,<3.11          | 2.59.0           | 1.17.1      | 10.0.1  | 2.17              | 1.17.0                     | 1.17.1              | 0.48.0                    | 2.17.1                 | 1.17.0               | 1.17.1
 [1.17.0](https://github.com/tensorflow/tfx/blob/v1.17.0/RELEASE.md)       | >=3.9,<3.11          | 2.59.0           | 1.17.1      | 10.0.1  | 2.17              | 1.17.0                     | 1.17.1              | 0.48.0                    | 2.17.1                 | 1.17.0               | 1.17.1

@@ -120,7 +120,11 @@ def _build_keras_model(hidden_units, learning_rate):
   }
   wide_categorical_input = {
       colname: tf.keras.layers.Input(name=colname, shape=(1,), dtype='int32')
-      for colname in features.transformed_names(features.CATEGORICAL_FEATURE_KEYS)
+      for colname in features.transformed_names(
+          features.CATEGORICAL_FEATURE_KEYS[:len(
+              features.CATEGORICAL_FEATURE_MAX_VALUES
+          )]
+      )
   }
   input_layers = {
       **deep_input,
@@ -129,9 +133,10 @@ def _build_keras_model(hidden_units, learning_rate):
       **wide_categorical_input,
   }
 
-  deep = tf.keras.layers.concatenate(
-      [tf.keras.layers.Normalization()(layer) for layer in deep_input.values()]
-  )
+  deep_layers = []
+  for layer in deep_input.values():
+    deep_layers.append(tf.keras.layers.Normalization()(layer))
+  deep = tf.keras.layers.concatenate(deep_layers)
   for numnodes in (hidden_units or [100, 70, 50, 25]):
     deep = tf.keras.layers.Dense(numnodes)(deep)
 
@@ -167,7 +172,7 @@ def _build_keras_model(hidden_units, learning_rate):
   )
   output = tf.keras.layers.Reshape((1,))(output)
 
-  model = tf.keras.Model(input_layers, output)
+  model = tf.keras.Model(list(input_layers.values()), output)
   model.compile(
       loss='binary_crossentropy',
       optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),

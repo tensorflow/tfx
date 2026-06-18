@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==70", "wheel", "tomli"]
+requires = ["setuptools>=69.5.1", "wheel", "tomli"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -20,8 +20,10 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -31,7 +33,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 keywords = ["tensorflow", "tfx"]
-requires-python = ">=3.9,<3.11"
+requires-python = ">=3.10,<3.14"
 [project.urls]
 Homepage = "https://www.tensorflow.org/tfx"
 Repository = "https://github.com/tensorflow/tfx"
@@ -46,4 +48,10 @@ markers = [
     "serial: mark tests that should not run in parallel",
     "integration: integration tests that are slow and require more dependencies (deselect with `-m 'not integration'`)",
     "perf: performance 'perf' tests that are slow and require more dependencies (deselect with `-m 'not perf'`)",
+]
+filterwarnings = [
+    "ignore:.*sql_alchemy_conn.*:FutureWarning",
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+    "ignore::UserWarning",
 ]
