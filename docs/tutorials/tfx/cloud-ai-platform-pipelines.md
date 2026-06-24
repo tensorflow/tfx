@@ -359,7 +359,7 @@ The notebook will upload our sample data to GCS bucket so that we can use it in
 our pipeline later.
 
 ```python
-!gsutil cp data/data.csv gs://{GOOGLE_CLOUD_PROJECT}-kubeflowpipelines-default/tfx-template/data/taxi/data.csv
+!gcloud storage cp data/data.csv gs://{GOOGLE_CLOUD_PROJECT}-kubeflowpipelines-default/tfx-template/data/taxi/data.csv
 ```
 
 The notebook then uses the `tfx pipeline create` command to create the pipeline.

@@ -114,7 +114,7 @@ pipeline in Google Cloud Platform for production.
 First prepare a gcs bucket for the pipeline run root:
 
 ```bash
-gsutil mb -p ${PROJECT_ID} gs://${BUCKET_NAME}
+gcloud storage buckets create gs://${BUCKET_NAME} --project=${PROJECT_ID}
 ```
 
 Let's copy the dataset CSV to the GCS where TFX ExampleGen will ingest it

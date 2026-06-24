@@ -197,7 +197,7 @@ class HelloWorldComponent(BaseComponent):
       args=[
           'echo "hello ' +
           ph.exec_property('word') +
-          '" | gsutil cp - ' +
+          '" | gcloud storage cp - ' +
           ph.output('greeting')[0].uri
       ])
 

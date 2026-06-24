@@ -67,8 +67,8 @@ pipeline python file. Output can be found at `[BUCKET]/tfx`.
 
 <pre class="devsite-terminal devsite-click-to-copy">
 vi ~/penguin/experimental/penguin_pipeline_sklearn_gcp.py
-gsutil -m cp -r ~/penguin/data/* gs://[BUCKET]/penguin/data/
-gsutil -m cp ~/penguin/experimental/\*.py gs://[BUCKET]/penguin/experimental/
+gcloud storage cp --recursive ~/penguin/data/* gs://[BUCKET]/penguin/data/
+gcloud storage cp ~/penguin/experimental/\*.py gs://[BUCKET]/penguin/experimental/
 
 tfx pipeline create \
   --engine kubeflow \
@@ -77,7 +77,7 @@ tfx pipeline create \
 </pre>
 
 Note that
-`gsutil -m cp ~/penguin/experimental/*.py gs://[BUCKET]/penguin/experimental`
+`gcloud storage cp ~/penguin/experimental/*.py gs://[BUCKET]/penguin/experimental`
 will need to be run every time updates are made to the GCP example.
 Additionally, subsequent pipeline deployments should use `tfx pipeline update`
 instead of `tfx pipeline create`.

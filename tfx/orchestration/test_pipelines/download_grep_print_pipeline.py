@@ -41,7 +41,7 @@ downloader_component = container_component.create_container_component(
           wget "$0" -O "$output_data_path" || curl "$0" > "$output_data_path"
 
           # Getting data out of the container
-          gsutil cp "$output_data_path" "$output_data_uri"
+          gcloud storage cp "$output_data_path" "$output_data_uri"
         ''',
         ph.exec_property('url'),
         ph.output('data')[0].uri,
@@ -74,13 +74,13 @@ grep_component = container_component.create_container_component(
           filtered_text_path=$(mktemp)
 
           # Getting data into the container
-          gsutil cp "$text_uri" "$text_path"
+          gcloud storage cp "$text_uri" "$text_path"
 
           # Running the main code
           grep "$pattern" "$text_path" >"$filtered_text_path"
 
           # Getting data out of the container
-          gsutil cp "$filtered_text_path" "$filtered_text_uri"
+          gcloud storage cp "$filtered_text_path" "$filtered_text_uri"
         ''',
         ph.exec_property('pattern'),
         ph.input('text')[0].uri,
@@ -105,7 +105,7 @@ print_component = container_component.create_container_component(
           text_path=$(mktemp)
 
           # Getting data into the container
-          gsutil cp "$text_uri" "$text_path"
+          gcloud storage cp "$text_uri" "$text_path"
 
           # Running the main code
           cat "$text_path"
