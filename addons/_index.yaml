@@ -1,0 +1,155 @@
+# Copyright 2023 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# ==============================================================================
+book_path: /tfx/_book.yaml
+project_path: /tfx/_project.yaml
+description: A library of useful extra functionality for TFX, created and maintained by
+ the SIG TFX-Addons community.
+landing_page:
+  custom_css_path: /site-assets/css/style.css
+  rows:
+  - heading: Community-developed components, examples, and tools for TFX
+    items:
+    - classname: devsite-landing-row-50
+      description: >
+        <p>
+        Developers helping developers. TFX-Addons is a collection of community
+        projects to build new components, examples, libraries, and tools for TFX.
+        The projects are organized under the auspices of the special interest group,
+        SIG TFX-Addons.
+        </P><P>
+        <a target='#' href='http://goo.gle/tfx-addons-group'>Join the community and
+        share your work with the world!</a>
+        </p>
+      code_block: |
+        <p>
+        TFX-Addons is available on PyPI for all OS. To install the latest version, run:
+        </p>
+        <pre class = "prettyprint">
+        pip install tfx-addons
+        </pre>
+        <p>
+        You can then use TFX-Addons like this:
+        </p>
+        <pre class = "prettyprint">
+        from tfx import v1 as tfx
+        import tfx_addons as tfxa
+
+        # Then you can easily load projects tfxa.{project_name}. For example:
+        tfxa.feast_examplegen.FeastExampleGen(...)
+        </pre>
+  - classname: devsite-landing-row-cards
+    items:
+    - heading: "Feast ExampleGen Component"
+      description: >
+        <p>An
+        <a target='#' href='https://www.tensorflow.org/tfx/guide/examplegen'>ExampleGen</a>
+        component for ingesting datasets from a
+        <a target='#' href='https://feast.dev/'>Feast Feature Store</a>.</p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/feast_examplegen
+      buttons:
+      - label: "Feast ExampleGen"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/feast_examplegen
+    - heading: "Feature Selection Component"
+      description: >
+        <p>Perform feature selection using various algorithms
+        with this TFX component.</p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/feature_selection
+      buttons:
+      - label: "Feature Selection"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/feature_selection
+    - heading: "Firebase Publisher Component"
+      description: >
+        <p>A TFX component to publish/update ML models to
+        <a target='#' href='https://firebase.google.com/products/ml'>Firebase ML.</a></p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/firebase_publisher
+      buttons:
+      - label: "Firebase Publisher"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/firebase_publisher
+    - heading: "Hugging Face Pusher Component"
+      description: >
+        <p>Pushes a blessed model to the
+        <a target='#' href='https://huggingface.co/models'>Hugging Face Model Hub.</a>
+        Optionally pushes the application to the
+        <a target='#' href='https://huggingface.co/spaces'>Hugging Face Spaces Hub.</a></p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/huggingface_pusher
+      buttons:
+      - label: "Hugging Face Pusher"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/huggingface_pusher
+    - heading: "Message Exit Handler Component"
+      description: >
+        <p>Handle the completion or failure of a pipeline by notifying users, including any error
+        messages.</p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/message_exit_handler
+      buttons:
+      - label: "Message Exit Handler"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/message_exit_handler
+    - heading: "MLMD Client Library"
+      description: >
+        <p>Client library to inspect content in
+        <a target='#' href='https://www.tensorflow.org/tfx/guide/mlmd'>ML Metadata</a>
+        populated by TFX pipelines.</p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/mlmd_client
+      buttons:
+      - label: "MLMD Client"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/mlmd_client
+    - heading: "Model Card Generator"
+      description: >
+        <p>The ModelCardGenerator takes
+        <a target='#' href='https://www.tensorflow.org/tfx/guide/statsgen'>dataset statistics</a>,
+        <a target='#' href='https://www.tensorflow.org/tfx/guide/evaluator'>model evaluation</a>,
+        and a <a target='#' href='https://www.tensorflow.org/tfx/guide/pusher'>pushed model</a>
+        to automatically populate parts of a model card.</p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/model_card_generator
+      buttons:
+      - label: "Model Card Generator"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/model_card_generator
+    - heading: "Pandas Transform Component"
+      description: >
+        <p>Use <a target='#' href='https://pandas.pydata.org/'>Pandas dataframes</a>
+        instead of the standard Transform component for your feature engineering.  Processing is
+        distributed using <a target='#' href='https://beam.apache.org/'>Apache Beam</a>
+        for scalability.</p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/pandas_transform
+      buttons:
+      - label: "Pandas Transform"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/pandas_transform
+    - heading: "Sampling Component"
+      description: >
+        <p>A TFX component to sample data from examples, using probabilistic estimation.</p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/sampling
+      buttons:
+      - label: "Sampling"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/sampling
+    - heading: "Schema Curation Component"
+      description: >
+        <p>Apply user code to a schema produced by the
+        <a target='#' href='https://www.tensorflow.org/tfx/guide/schemagen'>SchemaGen component</a>,
+        and curate it based on domain knowledge.</p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/schema_curation
+      buttons:
+      - label: "Schema Curation"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/schema_curation
+    - heading: "XGBoost Evaluator Component"
+      description: >
+        <p>Evaluate
+        <a target='#' href='https://xgboost.ai/'>XGBoost</a>
+        models by extending the standard
+        <a target='#' href='https://www.tensorflow.org/tfx/guide/evaluator'>Evaluator component</a>.
+        </p>
+      path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/xgboost_evaluator
+      buttons:
+      - label: "XGBoost Evaluator"
+        path: https://github.com/tensorflow/tfx-addons/tree/main/tfx_addons/xgboost_evaluator

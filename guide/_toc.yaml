@@ -1,0 +1,127 @@
+toc:
+- title: "Guide"
+  path: /tfx/guide/
+
+- heading: "What's New"
+  style: divider
+- title: "TFX-Addons"
+  path: /tfx/addons
+- title: "TFX Cloud Solutions"
+  path: /tfx/guide/solutions.md
+- title: "Using Keras with TFX"
+  path: /tfx/guide/keras
+- title: "Using Non-TensorFlow Frameworks in TFX"
+  path: /tfx/guide/non_tf
+- title: "Mobile & IoT: TFX for TensorFlow Lite"
+  path: /tfx/tutorials/tfx/tfx_for_mobile
+
+- heading: "TFX Pipelines"
+  style: divider
+- title: "Understanding TFX pipelines"
+  path: /tfx/guide/understanding_tfx_pipelines
+- title: "Building a TFX pipeline"
+  path: /tfx/guide/build_tfx_pipeline
+- title: "Local Pipelines"
+  path: /tfx/guide/build_local_pipeline
+
+- heading: "TFX Standard Components"
+  style: divider
+- title: "ExampleGen"
+  path: /tfx/guide/examplegen
+- title: "StatisticsGen"
+  path: /tfx/guide/statsgen
+- title: "SchemaGen"
+  path: /tfx/guide/schemagen
+- title: "ExampleValidator"
+  path: /tfx/guide/exampleval
+- title: "Transform"
+  path: /tfx/guide/transform
+- title: "Trainer"
+  path: /tfx/guide/trainer
+- title: "Tuner"
+  path: /tfx/guide/tuner
+- title: "Evaluator"
+  path: /tfx/guide/evaluator
+- title: "InfraValidator"
+  path: /tfx/guide/infra_validator
+- title: "Pusher"
+  path: /tfx/guide/pusher
+- title: "BulkInferrer"
+  path: /tfx/guide/bulkinferrer
+
+- heading: "TFX Custom Components"
+  style: divider
+- title: "Understanding custom components"
+  path: /tfx/guide/understanding_custom_components
+- title: "Python function-based components"
+  path: /tfx/guide/custom_function_component
+- title: "Container-based components"
+  path: /tfx/guide/container_component
+- title: "Fully custom components"
+  path: /tfx/guide/custom_component
+
+- heading: "Orchestrators"
+  style: divider
+- title: "Local orchestrator"
+  path: /tfx/guide/local_orchestrator
+- title: "Vertex AI Pipelines"
+  path: /tfx/guide/vertex
+- title: "Apache Airflow"
+  path: /tfx/guide/airflow
+- title: "Kubeflow Pipelines"
+  path: /tfx/guide/kubeflow
+
+- heading: "TFX CLI"
+  style: divider
+- title: "Using the TFX CLI"
+  path: /tfx/guide/cli
+
+- heading: "Libraries"
+  style: divider
+
+- title: "Data Validation"
+  style: accordion
+  section:
+  - title: "Check and analyze data"
+    path: /tfx/guide/tfdv
+  - include: /tfx/data_validation/_toc.yaml
+
+- title: "Transform"
+  style: accordion
+  section:
+  - title: "Preprocess and transform data"
+    path: /tfx/guide/tft
+  - include: /tfx/transform/_toc.yaml
+  - title: "Data preprocessing best practices"
+    path: /tfx/guide/tft_bestpractices
+
+- title: "Modeling"
+  style: accordion
+  section:
+  - title: "Design modeling code"
+    path: /tfx/guide/train
+
+- title: "Model Analysis"
+  style: accordion
+  section:
+  - include: /tfx/model_analysis/_toc.yaml
+
+- title: "Serving"
+  style: accordion
+  section:
+  - title: "Serving models"
+    path: /tfx/guide/serving
+  - include: /tfx/serving/_toc.yaml
+
+- heading: "Related projects"
+  style: divider
+- title: "Apache Beam"
+  path: "https://beam.apache.org/"
+  status: external
+- title: "MLTransform"
+  path: "https://cloud.google.com/dataflow/docs/machine-learning/ml-preprocess-data"
+  status: external
+- title: "ML Metadata"
+  path: /tfx/guide/mlmd
+- title: "TensorBoard"
+  path: /tensorboard

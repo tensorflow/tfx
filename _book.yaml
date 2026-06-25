@@ -1,0 +1,59 @@
+upper_tabs:
+- name: "Install"
+  lower_tabs:
+    guides:
+    - include: /install/_toc.yaml
+
+- name: "Learn"
+  path: /learn/
+  is_default: true
+  menu:
+  - include: /learn/_menu_toc.yaml
+  lower_tabs:
+    other:
+    - name: "Tutorials"
+      contents:
+      - include: /tfx/tutorials/_toc.yaml
+    - name: "Guide"
+      contents:
+      - include: /tfx/guide/_toc.yaml
+    - name: "TFX-Addons"
+      contents:
+      - title: TFX-Addons
+        path: /tfx/addons
+    - name: API
+      skip_translation: true
+      contents:
+      - title: TFX API
+        path: /tfx/api_overview
+      - heading: TFX V1
+      - include: /tfx/api_docs/python/tfx/v1/_toc.yaml
+      - heading: Data Validation
+      - include: /tfx/data_validation/api_docs/python/tfdv/_toc.yaml
+      - heading: Transform
+      - include: /tfx/transform/api_docs/python/tft/_toc.yaml
+      - break: true
+      - include: /tfx/transform/api_docs/python/tft_beam/_toc.yaml
+      - heading: Model Analysis
+      - include: /tfx/model_analysis/api_docs/python/tfma/_toc.yaml
+      - heading: Serving
+      - title: Client API (REST)
+        path: /tfx/serving/api_rest/
+      - title: Client API (gRPC)
+        path: https://github.com/tensorflow/serving/tree/master/tensorflow_serving/apis
+        status: external
+      - title: Server API (C++)
+        section:
+        - title: Overview
+          path: /tfx/serving/api_docs/cc/
+        - include: /tfx/serving/api_docs/cc/_doxygen.yaml
+      - heading: ML Metadata
+      - include: /tfx/ml_metadata/api_docs/python/mlmd/_toc.yaml
+      - heading: TF Metadata
+      - include: /tfx/tf_metadata/api_docs/python/tfmd/proto/_toc.yaml
+      - heading: tfx_bsl
+      - include: /tfx/tfx_bsl/api_docs/python/tfx_bsl/public/_toc.yaml
+
+- include: /api_docs/_upper_tabs_api.yaml
+- include: /resources/_upper_tabs_resources.yaml
+- include: /_upper_tabs_right.yaml
