@@ -169,7 +169,7 @@ prompt_toolkit==3.0.48
 propcache==0.5.2
 psutil==6.0.0
 ptyprocess==0.7.0
-pyarrow==18.1.0
+pyarrow==23.0.1
 pyarrow-hotfix==0.6
 pyasn1>=0.6.0
 pyasn1_modules==0.4.1
