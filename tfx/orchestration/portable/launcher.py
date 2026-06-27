@@ -149,10 +149,12 @@ class Launcher:
       executor_spec: Optional[message.Message] = None,
       custom_driver_spec: Optional[message.Message] = None,
       platform_config: Optional[message.Message] = None,
-      custom_executor_operators: Optional[Dict[Any,
-                                               Type[ExecutorOperator]]] = None,
-      custom_driver_operators: Optional[Dict[Any,
-                                             Type[DriverOperator]]] = None):
+      custom_executor_operators: Optional[
+          Dict[Any, Type[ExecutorOperator]]
+      ] = None,
+      custom_driver_operators: Optional[Dict[Any, Type[DriverOperator]]] = None,
+      grpc_creds=None,
+  ):
     """Initializes a Launcher.
 
     Args:
@@ -174,6 +176,7 @@ class Launcher:
         ExecutorOperation implementation.
       custom_driver_operators: a map of ExecutableSpec to its DriverOperator
         implementation.
+      grpc_creds: Credentials to use for gRPC. Defaults to local credentials.
 
     Raises:
       ValueError: when component and component_config are not launchable by the
@@ -191,6 +194,7 @@ class Launcher:
     self._driver_operators = {}
     self._driver_operators.update(DEFAULT_DRIVER_OPERATORS)
     self._driver_operators.update(custom_driver_operators or {})
+    self._grpc_creds = grpc_creds or grpc.local_server_credentials()
 
     self._executor_operator = None
     # redundant line for external usage.
@@ -606,7 +610,8 @@ class Launcher:
               port=portpicker.pick_unused_port(),
               mlmd_connection=self._mlmd_connection,
               execution=execution_preparation_result.execution_metadata,
-              creds=grpc.local_server_credentials())
+              creds=self._grpc_creds,
+          )
           self._executor_operator.with_execution_watcher(
               executor_watcher.address)
           executor_watcher.start()
