@@ -79,13 +79,13 @@ class ModelRelations:
     """Adds a downstream artifact to the ModelRelations."""
     artifact_type_name = downstream_artifact.type
     if _is_eval_blessed(artifact_type_name, downstream_artifact):
-      self.model_blessing_artifacts.append(downstream_artifact)
+      self.model_blessing_artifacts.append(downstream_artifact)  # pytype: disable=container-type-mismatch  # dont-delete-module-type
 
     elif _is_infra_blessed(artifact_type_name, downstream_artifact):
-      self.infra_blessing_artifacts.append(downstream_artifact)
+      self.infra_blessing_artifacts.append(downstream_artifact)  # pytype: disable=container-type-mismatch  # dont-delete-module-type
 
     elif artifact_type_name == ops_utils.MODEL_PUSH_TYPE_NAME:
-      self.model_push_artifacts.append(downstream_artifact)
+      self.model_push_artifacts.append(downstream_artifact)  # pytype: disable=container-type-mismatch  # dont-delete-module-type
 
   def meets_policy(self, policy: Policy) -> bool:
     """Checks if ModelRelations contains artifacts that meet the Policy."""
@@ -486,7 +486,7 @@ class LatestPolicyModel(
       ]
       # Set `max_num_hops` to 50, which should be enough for this use case.
       batch_downstream_artifacts_and_types_by_model_identifier = (
-          mlmd_resolver.get_downstream_artifacts_by_artifacts(
+          mlmd_resolver.get_downstream_artifacts_by_artifacts(  # pytype: disable=wrong-arg-types  # dont-delete-module-type
               batch_model_artifacts,
               max_num_hops=ops_utils.LATEST_POLICY_MODEL_OP_MAX_NUM_HOPS,
               filter_query=filter_query,
