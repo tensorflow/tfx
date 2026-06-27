@@ -258,6 +258,46 @@ def generate_output_artifacts(
   return output_artifacts
 
 
+# TODO(b/308452534): Remove this after we can guarantee that no jobs will use
+# the old directory.
+def migrate_executor_output_dir_from_stateful_working_directory(
+    execution_info: data_types.ExecutionInfo,
+    files: collections.abc.Sequence[str],
+):
+  """Copies files from stateful working dir to executor output dir.
+
+  Will not overwrite any files already existing in the executor output dir.
+
+  Args:
+    execution_info: Information for the execution that should have its files
+      migrated.
+    files: The relative file paths to be migrated.
+  """
+  executor_output_dir = get_executor_output_dir(execution_info)
+  stateful_working_dir = execution_info.stateful_working_dir
+  found_paths = []
+  for file in files:
+    stateful_working_file = os.path.join(stateful_working_dir, file)
+    executor_output_file = os.path.join(executor_output_dir, file)
+
+    if fileio.exists(stateful_working_file) and not fileio.exists(
+        executor_output_file
+    ):
+      # We may need to make the parent directories for the executor output dir.
+      executor_output_file_dir = os.path.dirname(executor_output_file)
+      if not fileio.exists(executor_output_file_dir):
+        fileio.makedirs(executor_output_file_dir)
+      found_paths.append(stateful_working_file)
+      fileio.copy(stateful_working_file, executor_output_file)
+
+  if found_paths:
+    logging.info(
+        'Executor output dir %s has had the following files migrated to it. %s',
+        executor_output_dir,
+        found_paths,
+    )
+
+
 def get_executor_output_dir(execution_info: data_types.ExecutionInfo) -> str:
   """Generates executor output directory for a given execution info."""
   return os.path.dirname(execution_info.execution_output_uri)
