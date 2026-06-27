@@ -36,6 +36,8 @@ class ArgFormats(enum.Enum):
   BEAM_PARAMETER = 5
   LIST_INPUT_ARTIFACTS = 6
   PREVIOUS_OUTPUT_ARTIFACTS = 7
+  # Used for context param passed to Xflow components.
+  XFLOW_CONTEXT = 8
 
 
 def assert_is_functype(func: Any) -> None:
