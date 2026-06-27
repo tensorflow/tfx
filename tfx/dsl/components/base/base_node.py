@@ -22,6 +22,7 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec as executor_spec_module
 from tfx.dsl.context_managers import dsl_context_registry
 from tfx.dsl.experimental.node_execution_options import utils
+from tfx.types import channel
 from tfx.utils import deprecation_utils
 from tfx.utils import doc_controls
 from tfx.utils import json_utils
@@ -137,12 +138,12 @@ class BaseNode(json_utils.Jsonable, abc.ABC):
 
   @property
   @abc.abstractmethod
-  def inputs(self) -> Dict[str, Any]:
+  def inputs(self) -> Dict[str, channel.Channel]:
     pass
 
   @property
   @abc.abstractmethod
-  def outputs(self) -> Dict[str, Any]:
+  def outputs(self) -> Dict[str, channel.Channel]:
     pass
 
   @property
