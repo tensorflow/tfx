@@ -818,7 +818,7 @@ management.
 -   ${HOME}/tfx/local, beam, airflow, vertex
     -   Pipeline metadata read from the configuration is stored under
         `${HOME}/tfx/${ORCHESTRATION_ENGINE}/${PIPELINE_NAME}`. This location
-        can be customized by setting environment varaible like `AIRFLOW_HOME` or
+        can be customized by setting environment variable like `AIRFLOW_HOME` or
         `KUBEFLOW_HOME`. This behavior might be changed in future releases. This
         directory is used to store pipeline information including pipeline ids
         in the Kubeflow Pipelines cluster which is needed to create runs or
