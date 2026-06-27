@@ -63,9 +63,13 @@ def WriteSplit(
     exec_properties: Optional[Dict[str, Any]] = None) -> beam.pvalue.PDone:
   """Shuffles and writes output split as serialized records in TFRecord or Parquet."""
   del output_format
+  num_shards = 0
   if exec_properties:
     output_payload_format = exec_properties.get(
         standard_component_specs.OUTPUT_DATA_FORMAT_KEY)
+    custom_config = exec_properties.get('custom_config')
+    if custom_config:
+      num_shards = custom_config.get('num_shards', 0)
 
     if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PARQUET:
       schema = exec_properties.get('pyarrow_schema')
@@ -76,6 +80,7 @@ def WriteSplit(
                   os.path.join(output_split_path, DEFAULT_PARQUET_FILE_NAME),
                   schema,
                   file_name_suffix='.parquet',
+                  num_shards=num_shards,
                   codec='snappy'))
 
   return (example_split
@@ -84,6 +89,7 @@ def WriteSplit(
           | 'Shuffle' >> beam.transforms.Reshuffle()
           | 'Write' >> beam.io.WriteToTFRecord(
               os.path.join(output_split_path, DEFAULT_FILE_NAME),
+              num_shards=num_shards,
               file_name_suffix='.gz'))
 
 
