@@ -121,9 +121,6 @@ def _type_check_execution_function_params(
                 f' types are {allowed_param_types}.'
             )
 
-      # TODO(wssong): We should care for AsyncOutputArtifact type annotation for
-      # channels with is_async=True (go/tflex-list-output).
-
       if param_type not in allowed_param_types:
         raise TypeError(
             f'Parameter type mismatched {param_name}: {param_type} from the'
