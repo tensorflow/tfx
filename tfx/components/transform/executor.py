@@ -1809,7 +1809,10 @@ class TransformProcessor:
     """
     if self._DecodesSequenceExamplesAsRawRecords(data_format, schema):
       return 1
-    return None
+    assert (
+        tft_beam.context.Context.get_desired_batch_size() is None
+    ), tft_beam.context.Context.get_desired_batch_size()
+    return tft_beam.context.Context.get_desired_batch_size()
 
   @classmethod
   def _DecodesSequenceExamplesAsRawRecords(cls, data_format: int,
