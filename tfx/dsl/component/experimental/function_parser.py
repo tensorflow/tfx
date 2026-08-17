@@ -28,6 +28,7 @@ from typing import Any, Dict, NamedTuple, Optional, Type, Union, get_args, get_o
 from tfx.dsl.component.experimental import annotations
 from tfx.dsl.component.experimental import json_compat
 from tfx.dsl.component.experimental import utils
+from tfx.dsl.component.experimental import xflow_context
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 import typing_extensions
@@ -254,6 +255,8 @@ def _parse_signature(
           '`InputArtifact[ArtifactType]` or `OutputArtifact[ArtifactType]` '
           'typehint annotations.' % (arg, func)
       )
+    elif arg_typehint == xflow_context.XflowContext:
+      arg_formats[arg] = utils.ArgFormats.XFLOW_CONTEXT
     else:
       raise ValueError(
           'Unknown type hint annotation for argument %r on function %r'

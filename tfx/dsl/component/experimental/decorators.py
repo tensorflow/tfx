@@ -101,6 +101,8 @@ def _extract_func_args(
       if name in arg_defaults and arg_defaults[name] is not None:
         raise ValueError('beam Pipeline parameter does not allow default ',
                          'value other than None.')
+    elif arg_format == utils.ArgFormats.XFLOW_CONTEXT:
+      continue
     else:
       raise ValueError('Unknown argument format: %r' % (arg_format,))
   return result
