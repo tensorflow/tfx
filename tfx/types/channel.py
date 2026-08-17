@@ -209,6 +209,9 @@ class BaseChannel(abc.ABC, Generic[_AT]):
   def future(self) -> ChannelWrappedPlaceholder:
     raise NotImplementedError()
 
+  def latest(self) -> placeholder.ChannelWrappedPlaceholder:
+    return placeholder.ChannelWrappedPlaceholder(self)[0]
+
   def __eq__(self, other):
     return self is other
 
