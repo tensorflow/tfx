@@ -180,7 +180,7 @@ pydantic==2.9.2
 pydantic_core==2.23.4
 pydot==1.4.2
 pyfarmhash==0.3.2
-pygments==2.19.1
+pygments==2.20.0
 pyjsparser==2.7.1
 pyjwt>=2.8.0
 pymongo==4.10.1
