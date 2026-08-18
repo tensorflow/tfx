@@ -639,7 +639,7 @@ class _ArtifactRecycler:
         pipeline_run_contexts, key=lambda c: c.create_time_since_epoch
     )
     if not sorted_run_contexts:
-      return None
+      return None  # pytype: disable=bad-return-type  # dont-delete-module-type
 
     logging.info(
         'base_run_id not provided. Default to latest pipeline run: %s',
